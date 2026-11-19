@@ -4,13 +4,13 @@
   "test_tmn_code": "TEST-TMN",
   "hash_algorithm": "HmacSHA512, lower-case hex, 128 chars",
   "rules": {
-    "pay": "sign string = params sorted ascending by name, empty values dropped, vnp_SecureHash and vnp_SecureHashType excluded, each name and value URL-encoded like java.net.URLEncoder (UTF-8: space to '+', '*' '-' '.' '_' left raw, '~' to %7E, other bytes %XX upper-case hex), joined as name=value with '&'. The same rule applies to the return URL and the IPN (VNPAY to merchant). Measured on the VNPAY sandbox on 2026-11-19 (dot-3/vnpay/pay-params.json, return-params.json)",
-    "querydr_refund": "sign string = the values joined by '|' in the field order of VNPAY docs 2.1.0 (TM 8.4); missing optional values are empty strings. NOT measured on the sandbox (the merchant API gave 99 / HTTP 500 to every call); hash assumed HMAC-SHA512 like pay"
+    "pay": "sign string = params sorted ascending by name, empty values dropped, vnp_SecureHash and vnp_SecureHashType excluded, each name and value URL-encoded like java.net.URLEncoder (UTF-8: space to '+', '*' '-' '.' '_' left raw, '~' to %7E, other bytes %XX upper-case hex), joined as name=value with '&'. Measured on the VNPAY sandbox on 2026-11-19 for the pay request URL and for the browser return URL (dot-3/vnpay/pay-params.json, return-params.json). Applying the same rule to the IPN (VNPAY to merchant) comes from the VNPAY docs and has NOT been tested on the sandbox (VP-2)",
+    "querydr_refund": "sign string = the values joined by '|' in the field order of VNPAY docs 2.1.0 (TM 8.4); missing optional values are empty strings. NOT measured on the sandbox: the merchant API gave querydr 99 (HTTP 200) and refund HTTP 500 (HTML page) to every well-formed call, both with loopback vnp_IpAddr (r1) and with the machine's real public IP (r2), so the hash function was not confirmed; HMAC-SHA512 assumed like pay (dot-3/vnpay/querydr.json, refund.json)"
   },
   "pay": [
     {
       "name": "pay-basic-success",
-      "note": "request URL params and the success return/IPN of the same txn; rule measured on sandbox 2026-11-19",
+      "note": "request: URL params of a pay request; return: constructed from the observed browser return shape (the real return params are in dot-3/vnpay/return-params.json), signed with the test key; the rule itself was measured on the sandbox 2026-11-19 for the request and the browser return. This is not an IPN fixture: IPN signing by the same rule is from the docs, untested on the sandbox (VP-2)",
       "request": {
         "params": {
           "vnp_Version": "2.1.0",
@@ -73,7 +73,7 @@
     },
     {
       "name": "pay-return-cancelled",
-      "note": "customer cancelled: ResponseCode 24, TransactionStatus 02, BankCode VNPAY, CardType QRCODE, TransactionNo 0, no vnp_BankTranNo key (shape observed on the sandbox 2026-11-19, dot-3/vnpay/return-params.json label cancel-1)",
+      "note": "return constructed from the observed return shape (not a captured URL; signed with the test key): customer cancelled: ResponseCode 24, TransactionStatus 02, BankCode VNPAY, CardType QRCODE, TransactionNo 0, no vnp_BankTranNo key (shape observed on the sandbox 2026-11-19, dot-3/vnpay/return-params.json label cancel-1)",
       "return": {
         "params": {
           "vnp_Amount": "1000000",
@@ -93,7 +93,7 @@
     },
     {
       "name": "pay-return-with-hash-type-excluded",
-      "note": "vnp_SecureHashType, when present, is not part of the sign string",
+      "note": "return constructed from the observed return shape (test key): vnp_SecureHashType, when present, is not part of the sign string",
       "return": {
         "params": {
           "vnp_Amount": "1000000",
@@ -141,7 +141,7 @@
   "querydr": [
     {
       "name": "querydr-success",
-      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox merchant API answered 99 for every request, so no real signed response exists; absent optional values are joined as empty strings (assumption)",
+      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox merchant API answered 99 for every request (loopback IP and real egress IP, 2026-11-19), so no real signed response exists; absent optional values are joined as empty strings (assumption). The response is constructed, not captured",
       "request": {
         "params": {
           "vnp_RequestId": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
@@ -183,7 +183,7 @@
   "refund": [
     {
       "name": "refund-full",
-      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox refund answered HTTP 500 (dot-3/vnpay/refund.json), so no real response exists",
+      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox refund answered HTTP 500 (HTML page) with loopback and with the real egress IP (dot-3/vnpay/refund.json), so no real response exists; the response is constructed, not captured",
       "request": {
         "params": {
           "vnp_RequestId": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
@@ -225,7 +225,7 @@
     },
     {
       "name": "refund-partial",
-      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox refund answered HTTP 500 (dot-3/vnpay/refund.json), so no real response exists",
+      "note": "NOT measured: field order from VNPAY docs 2.1.0, hash HMAC-SHA512 assumed. Sandbox refund answered HTTP 500 (HTML page) with loopback and with the real egress IP (dot-3/vnpay/refund.json), so no real response exists; the response is constructed, not captured",
       "request": {
         "params": {
           "vnp_RequestId": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
