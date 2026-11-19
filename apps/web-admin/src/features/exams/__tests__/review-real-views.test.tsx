@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { mapExamDetail } from "../api-mapping";
+import { ExamReviewCheck } from "../components/exam-review-check";
 import { ExamVersionsView } from "../components/exam-versions-view";
 import { checkResultWire, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
 
@@ -191,5 +194,98 @@ describe("ngừng bán, nhánh thật", () => {
     await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
 
     expect(await within(dialog).findByText(/không còn ở trạng thái Đang phục vụ/)).toBeInTheDocument();
+  });
+});
+
+describe("rulesChangedOnCheckPage", () => {
+  const CHECK = `${EXAM_PATH}/check`;
+  const STRUCTURE = `/exams/${EXAM_PATH.split("/").pop()}/structure`;
+  const issue = (code: string, sectionId: string, subjectCode: string) => ({
+    key: `${code}:${sectionId}`,
+    code,
+    severity: "ERROR",
+    group: "STRUCTURE",
+    partId: "part-1",
+    sectionId,
+    subjectCode,
+    affectedCodes: [],
+  });
+  const ISSUES = [issue("SECTION_SET_COUNT_RANGE", "sec-phys", "LY"), issue("SHORT_ANSWER_MIN", "sec-chem", "HOA")];
+  const STALE_CHECK = {
+    ...checkResultWire("INVALID"),
+    stale: true,
+    invalidReason: "RULES_CHANGED",
+    issueCount: 2,
+    groups: [{ group: "STRUCTURE", status: "FAIL", issues: ISSUES }],
+    paths: [{ pathId: "default", result: "INVALID", issues: [] }],
+  };
+
+  function checkPageServer() {
+    return new FakeServer()
+      .on("POST", CHECK, { status: 200, body: { ...checkResultWire("INVALID"), issueCount: 2, groups: STALE_CHECK.groups, paths: STALE_CHECK.paths } })
+      .on("GET", CHECK, { status: 200, body: STALE_CHECK })
+      .install();
+  }
+
+  it("vi: hai mã mới đúng môn và đích, lý do RULES_CHANGED bằng chữ, nút kiểm tra lại gửi kiểm tra", async () => {
+    server = checkPageServer();
+    const user = userEvent.setup();
+    renderWithProviders(<ExamReviewCheck exam={mapExamDetail(examDetailWire())} onPreview={() => {}} active />);
+
+    expect(
+      await screen.findByText("Quy tắc kiểm tra đã đổi sau lần kiểm tra này. Kiểm tra lại cả bài trước khi công bố."),
+    ).toBeInTheDocument();
+    const errors = within(await screen.findByTestId("findings-errors"));
+    expect(errors.getByText("SECTION_SET_COUNT_RANGE")).toBeInTheDocument();
+    expect(errors.getByText("SHORT_ANSWER_MIN")).toBeInTheDocument();
+    expect(errors.queryByText("INFO_MISSING")).not.toBeInTheDocument();
+    expect(errors.getByText(/LY: số chùm phải từ 1 đến 2/)).toBeInTheDocument();
+    expect(errors.getByText(/HOA: cần ít nhất 1 câu điền đáp án/)).toBeInTheDocument();
+    expect(errors.getByText("LY")).toBeInTheDocument();
+    expect(errors.getByText("HOA")).toBeInTheDocument();
+    expect(errors.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      `${STRUCTURE}?section=sec-phys`,
+      `${STRUCTURE}?section=sec-chem`,
+    ]);
+
+    expect(server.calls("POST", CHECK)).toHaveLength(0);
+    await user.click(screen.getAllByRole("button", { name: "Kiểm tra lại" })[0]!);
+    await waitFor(() => expect(server.calls("POST", CHECK)).toHaveLength(1));
+  });
+
+  it("en: cùng kết quả bằng chữ tiếng Anh, không còn khóa dịch thô", async () => {
+    server = checkPageServer();
+    renderWithProviders(<ExamReviewCheck exam={mapExamDetail(examDetailWire())} onPreview={() => {}} active />, {
+      locale: "en",
+      messages: en,
+    });
+
+    expect(
+      await screen.findByText("The check rules changed after this check. Run the check on the whole exam again before publishing."),
+    ).toBeInTheDocument();
+    const errors = within(await screen.findByTestId("findings-errors"));
+    expect(errors.getByText(/LY: the number of sets must be 1 to 2/)).toBeInTheDocument();
+    expect(errors.getByText(/HOA: at least 1 short-answer question is required/)).toBeInTheDocument();
+    expect(errors.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      `${STRUCTURE}?section=sec-phys`,
+      `${STRUCTURE}?section=sec-chem`,
+    ]);
+    expect(screen.queryByText(/staleReason|exams\.review/)).not.toBeInTheDocument();
+  });
+
+  it("vi: 409 CHECK_REQUIRED lý do RULES_CHANGED ở hộp công bố hiện câu tiếng Việt và liên kết Kiểm tra lại", async () => {
+    server.on("POST", PUBLISH_PATH, {
+      status: 409,
+      body: { code: "CHECK_REQUIRED", message: "Check required", fieldErrors: [{ field: "reason", code: "RULES_CHANGED" }] },
+    });
+    const { user, dialog, submit } = await openPublishDialog();
+
+    await user.click(submit);
+
+    expect(
+      await within(dialog).findByText("Quy tắc kiểm tra đã được cập nhật sau lần kiểm tra gần nhất. Kiểm tra lại cả bài rồi công bố."),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText("Cấu hình cần được kiểm tra lại trước khi công bố.")).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Kiểm tra lại" })).toHaveAttribute("href", `/exams/${EXAM_PATH.split("/").pop()}/review`);
   });
 });

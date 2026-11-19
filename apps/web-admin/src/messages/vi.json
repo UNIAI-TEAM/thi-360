@@ -4571,7 +4571,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
         "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
-        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố."
+        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "RULES_CHANGED": "Quy tắc kiểm tra đã đổi sau lần kiểm tra này. Kiểm tra lại cả bài trước khi công bố."
       },
       "runError": "Không chạy được kiểm tra. Thử lại.",
       "live": {
@@ -4822,7 +4823,9 @@
         "BLOCK_COUNT_LOCKED": "Khối {block}: mẫu khóa {dimension, select, COUNT {số câu của dòng} SET_COUNT {số chùm của dòng} SET_SIZE {số câu mỗi chùm} TYPE {dạng của dòng} other {dạng và số lượng của dòng}}{hasCount, select, yes {; mẫu giữ {required, number}, hiện có {available, number}} other {}}. Đưa dòng về đúng như mẫu.",
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
-        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}."
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "SECTION_SET_COUNT_RANGE": "Môn {subject}: số chùm phải từ 1 đến 2 và mỗi chùm có 3 câu con.",
+        "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu điền đáp án."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -5295,6 +5298,7 @@
           "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "RULES_CHANGED": "Quy tắc kiểm tra đã được cập nhật sau lần kiểm tra gần nhất. Kiểm tra lại cả bài rồi công bố.",
           "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
           "UNKNOWN": "Cấu hình cần được kiểm tra lại trước khi công bố."
         },

@@ -4571,7 +4571,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
         "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
-        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing.",
+        "RULES_CHANGED": "The check rules changed after this check. Run the check on the whole exam again before publishing."
       },
       "runError": "The check could not run. Try again.",
       "live": {
@@ -4822,7 +4823,9 @@
         "BLOCK_COUNT_LOCKED": "Block {block}: the template locks the {dimension, select, COUNT {row's question count} SET_COUNT {row's set count} SET_SIZE {row's set size} TYPE {row's question type} other {row's type and counts}}{hasCount, select, yes {; the template keeps {required, number}, the row has {available, number}} other {}}. Set the row back to the template.",
         "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
-        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}."
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
+        "SECTION_SET_COUNT_RANGE": "Subject {subject}: the number of sets must be 1 to 2, with 3 sub-questions per set.",
+        "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -5295,6 +5298,7 @@
           "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
           "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
           "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "RULES_CHANGED": "The check rules were updated after the latest check. Check the whole exam again, then publish.",
           "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
           "UNKNOWN": "The configuration must be checked again before publishing."
         },

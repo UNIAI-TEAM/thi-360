@@ -228,3 +228,40 @@ describe("mapIssue: khóa dự phòng khi máy chủ không gửi key", () => {
     expect(mapIssue({ code: "INFO_MISSING", key: "server-key" }).key).toBe("server-key");
   });
 });
+
+describe("newCodesAndRulesChanged", () => {
+  it("hai mã mới giữ nguyên mã, không rơi về INFO_MISSING; chùm ở môn Lý, câu điền ở môn Hóa", () => {
+    const sets = mapIssue({ code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-phys", subjectCode: "LY" });
+    const shortAnswer = mapIssue({ code: "SHORT_ANSWER_MIN", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-chem", subjectCode: "HOA" });
+    expect([sets.code, sets.sectionId, sets.subjectCode]).toEqual(["SECTION_SET_COUNT_RANGE", "sec-phys", "LY"]);
+    expect([shortAnswer.code, shortAnswer.sectionId, shortAnswer.subjectCode]).toEqual(["SHORT_ANSWER_MIN", "sec-chem", "HOA"]);
+    expect(sets.key).not.toBe(shortAnswer.key);
+  });
+
+  it("GET kiểm tra giữ lý do RULES_CHANGED cùng hai mã mới", async () => {
+    backend.seedCheck(HSA, {
+      examId: HSA,
+      ...VALID_CHECK,
+      status: "INVALID",
+      stale: true,
+      invalidReason: "RULES_CHANGED",
+      issueCount: 2,
+      paths: [
+        {
+          pathId: SCIENCE,
+          result: "INVALID",
+          issues: [
+            { code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-phys", subjectCode: "LY" },
+            { code: "SHORT_ANSWER_MIN", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-chem", subjectCode: "HOA" },
+          ],
+        },
+      ],
+    });
+
+    const result = await getExamCheck({ examId: HSA });
+
+    expect(result?.stale).toBe(true);
+    expect(result?.invalidReason).toBe("RULES_CHANGED");
+    expect(result?.paths[0]!.issues.map((issue) => issue.code)).toEqual(["SECTION_SET_COUNT_RANGE", "SHORT_ANSWER_MIN"]);
+  });
+});
