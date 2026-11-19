@@ -275,6 +275,13 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | tạm dừng sau pha 0: gộp vào đặc tả form thiết lập theo môn (AD-34) |
 | HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | merge PR #131 (`cf789ed9`); vào `develop`: PR #132 (`9b8a7e2e`) |
 
+**Ngoài plan, thay đổi theo yêu cầu (AD-34):** khóa giá trị hệ thống của danh mục, issue UniAI **UNI-2759**.
+
+| Lane | Issue | Việc | Trạng thái |
+|---|---|---|---|
+| CL | UNI-2759 | 52 giá trị của 6 nhóm EXAM, SUBJECT, GRADE, QUESTION_LEVEL, QUESTION_FORMAT, TASK_TYPE thành giá trị hệ thống: chỉ sửa tên, mô tả, thứ tự | merge PR #135 (`b4e575c4`), chỉ vào `integration/dot-3` |
+| Form theo môn | chưa tạo | Thiết lập cấu trúc theo từng môn dựa trên mã danh mục cố định | đang viết đặc tả bổ sung, chờ M.Trường trả lời 6 câu hỏi |
+
 Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 
 ## Backlog
