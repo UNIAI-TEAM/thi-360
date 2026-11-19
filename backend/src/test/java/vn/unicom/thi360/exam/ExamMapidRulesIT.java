@@ -371,6 +371,22 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
                 .mapToLong(vn.unicom.thi360.catalog.spi.CatalogUsage::count).sum();
     }
 
+    // ---- conflicts see the catalog hierarchy on a pure matrix document (review R1-6) --------------------------
+
+    @Test
+    void aParentRuleAndAChildRuleConflictThroughTheCatalogHierarchy() throws Exception {
+        arrange();
+        List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
+        CatalogItemView child = knowledge.stream().filter(item -> item.parentId() != null
+                && knowledge.stream().anyMatch(parent -> parent.id().equals(item.parentId()))).findFirst().orElseThrow();
+        for (int i = 0; i < 10; i++) single("SINGLE_CHOICE", child.id());
+        UUID exam = exam(section(6, "MATRIX", "[" + count("parent", null, "EXACT", 2, child.parentId().toString())
+                + "," + count("child", "g1", "AT_LEAST", 3, child.id().toString()) + "]",
+                block("g1", "SINGLE_CHOICE", 6)));
+        JsonNode issue = issue(check(exam), "MAPID_RULE_CONFLICT");
+        assertThat(texts(issue.path("ruleIds"))).containsExactly("parent", "child");
+    }
+
     @Test
     void everyRuleTypeIsSavedAndReadBack() throws Exception {
         arrange();
