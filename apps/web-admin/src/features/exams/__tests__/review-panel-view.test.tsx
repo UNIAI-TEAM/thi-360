@@ -115,6 +115,31 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
     expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveAttribute("readonly");
   });
 
+  it("R1-F2: nhóm không chùm lệch bước 1: 'Dùng số của bước 1' đặt số câu của môn và nhóm về 10, hết cảnh báo, lưu gửi 10", async () => {
+    const server = boot({ questionCount: 12 }, 200, { questionCount: 12 });
+    const user = userEvent.setup();
+    open();
+    expect(await screen.findByText(/Bước 1 đặt 10 câu, ở đây đang 12/)).toBeInTheDocument();
+    expect(screen.queryByText(/Sửa một trong hai chỗ/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Dùng số của bước 1" }));
+    expect(screen.queryByText(/Bước 1 đặt/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Dùng số của bước 1" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveValue("10");
+
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const section = sentOf(server).parts[0]!.sections[0]!;
+    expect(section.questionCount).toBe(10);
+    expect(section.blocks[0]).toMatchObject({ questionCount: 10 });
+  });
+
+  it("R1-F2: nhóm không lệch thì không có nút 'Dùng số của bước 1'", async () => {
+    boot();
+    open();
+    await screen.findByRole("combobox", { name: "Dạng câu" });
+    expect(screen.queryByRole("button", { name: "Dùng số của bước 1" })).not.toBeInTheDocument();
+  });
+
   it("R1-17: khớp bước 1 thì không có cảnh báo lệch", async () => {
     boot();
     open();

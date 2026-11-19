@@ -105,6 +105,15 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     ...QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE").map((type) => ({ value: type, label: tContent(`questionType.${type}`) })),
   ];
   const mismatch = count !== step1Count;
+  // Nhóm lưu từ trước lệch bước 1 mà không có chùm: một cú bấm đưa số câu của môn và nhóm về số của bước 1 (R1-F2). Nhóm chùm
+  // đổi số chùm hoặc số câu con ở vùng "Câu chùm".
+  const applyStep1Count = () =>
+    onChange((current) => ({
+      ...current,
+      ...retotal(current, step1Count),
+      questionCount: step1Count,
+      blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, { questionCount: step1Count }) : item)),
+    }));
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
@@ -124,6 +133,11 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <Input {...controlProps} value={String(count)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
               <EditOverviewLink examId={examId} className="h-auto p-0" />
+              {mismatch && !isSet && (
+                <Button type="button" variant="secondary" size="sm" onClick={applyStep1Count}>
+                  {t("useStep1Count")}
+                </Button>
+              )}
             </span>
           )}
         </FormField>
