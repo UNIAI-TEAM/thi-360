@@ -41,12 +41,24 @@ describe("renderMath with on-demand mhchem", () => {
     expect(span.classList.contains("math-error")).toBe(false);
   });
 
-  it("renders a formula without \\ce or \\pu synchronously", async () => {
+  it("renders a formula without \\ce or \\pu synchronously and never imports mhchem", async () => {
+    const mhchemImported = vi.fn();
+    vi.doMock("katex/contrib/mhchem", () => {
+      mhchemImported();
+      return {};
+    });
     const renderMath = await freshRenderMath();
     const host = formula("x^2");
     renderMath(host);
     expect(host.querySelector(".katex")).toBeTruthy();
     expect(host.querySelector("[aria-busy]")).toBeNull();
+    await vi.dynamicImportSettled();
+    expect(mhchemImported).not.toHaveBeenCalled();
+
+    // Đối chứng: cùng cách mock, một công thức `\ce` thì có nạp, nên spy đang nối đúng module.
+    const chemistry = formula("\\ce{H2O}");
+    renderMath(chemistry);
+    await vi.waitFor(() => expect(mhchemImported).toHaveBeenCalledTimes(1));
   });
 
   it("does not re-render a placeholder whose element left the DOM", async () => {
