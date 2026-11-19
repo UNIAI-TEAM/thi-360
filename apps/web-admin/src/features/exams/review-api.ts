@@ -32,10 +32,12 @@ import type {
   PathChoice,
   PathSelectionCheck,
   PreviewAllocationCell,
+  PreviewAttachment,
   PreviewBlock,
   PreviewCheck,
   PreviewCheckCode,
   PreviewCompliance,
+  PreviewDisplaySegment,
   PreviewItem,
   PreviewPaper,
   PreviewPart,
@@ -336,6 +338,9 @@ type ApiCheckBlock = Schema["ExamCheckBlock"];
 type ApiCheckSubject = Schema["ExamCheckSubject"];
 type ApiCheckSelection = Schema["ExamCheckSelection"];
 type ApiCheckIssue = Schema["ExamCheckIssue"];
+type ApiPreviewIssue = Schema["ExamPreviewIssue"];
+/** Vấn đề của Kiểm tra (`ExamCheckIssue`, có `excludedPoints`) và của Sinh thử (`ExamPreviewIssue`, có `segmentCode`). */
+type ApiIssue = ApiCheckIssue | ApiPreviewIssue;
 type ApiCheckGroup = Schema["ExamCheckGroup"];
 type ApiCheckChoice = Schema["ExamCheckChoice"];
 type ApiCheckRequirement = Schema["ExamCheckRequirement"];
@@ -396,6 +401,19 @@ const PREVIEW_CHECK_CODES: Record<string, true> = {
   TOTAL_POINTS: true,
 };
 const VERSION_STATES: Record<string, true> = { WORKING: true, SERVING: true, RETIRED: true };
+/** Chiều của vấn đề mà máy chủ gửi (`dimension`): chỉ tiêu ma trận, số bị khóa của mẫu, phân đoạn lệch (BE-20). */
+const ISSUE_DIMENSIONS: Record<string, true> = {
+  GRADE: true,
+  DIFFICULTY: true,
+  COMPETENCY: true,
+  COUNT: true,
+  SET_COUNT: true,
+  SET_SIZE: true,
+  TYPE: true,
+  COMMANDS: true,
+  POINTS: true,
+};
+
 
 function isCheckResult(data: object): data is ApiCheckResult {
   return "status" in data;
@@ -418,13 +436,14 @@ function issueKey(issue: Omit<CheckIssue, "key">): string {
     issue.gradeCode ?? "",
     issue.difficultyCode ?? "",
     issue.dimension ?? "",
+    issue.segmentCode ?? "",
     issue.competencyCode ?? "",
     issue.answerType ?? "",
     issue.subjectCount ?? "",
   ].join("|");
 }
 
-function mapIssue(issue: ApiCheckIssue): CheckIssue {
+export function mapIssue(issue: ApiIssue): CheckIssue {
   const mapped: Omit<CheckIssue, "key"> = {
     code: issue.code !== undefined && ISSUE_CODES[issue.code] ? (issue.code as CheckIssueCode) : "INFO_MISSING",
     severity:
@@ -441,20 +460,19 @@ function mapIssue(issue: ApiCheckIssue): CheckIssue {
     optionId: issue.optionId ?? null,
     gradeCode: issue.gradeCode ?? null,
     difficultyCode: issue.difficultyCode ?? null,
-    dimension:
-      issue.dimension === "GRADE" || issue.dimension === "DIFFICULTY" || issue.dimension === "COMPETENCY"
-        ? issue.dimension
-        : null,
+    dimension: issue.dimension !== undefined && ISSUE_DIMENSIONS[issue.dimension] ? (issue.dimension as CheckIssue["dimension"]) : null,
     competencyCode: issue.competencyCode ?? null,
     answerType: questionTypeOf(issue.answerType),
     subjectCount: issue.subjectCount ?? null,
     required: issue.required ?? null,
     available: issue.available ?? null,
+    excludedPoints: "excludedPoints" in issue ? (issue.excludedPoints ?? null) : null,
     timeLimitSeconds: issue.timeLimitSeconds ?? null,
     questionCodes: issue.questionCodes ?? null,
-    affectedCodes: issue.affectedCodes ?? null,
+    affectedCodes: "affectedCodes" in issue ? (issue.affectedCodes ?? null) : null,
     slotIndex: issue.location?.slotIndex ?? null,
     childPosition: issue.location?.childPosition ?? null,
+    segmentCode: "segmentCode" in issue ? (issue.segmentCode ?? null) : null,
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
@@ -609,6 +627,25 @@ function mapPreviewCheck(check: ApiPreviewCheck): PreviewCheck {
   };
 }
 
+function mapAttachments(attachments: Schema["ExamPreviewAttachment"][] | undefined): PreviewAttachment[] {
+  return (attachments ?? []).map((attachment) => ({
+    id: attachment.id ?? "",
+    name: attachment.name ?? "",
+    mime: attachment.mime ?? "",
+  }));
+}
+
+function mapDisplaySegments(segments: Schema["DisplaySegment"][] | undefined): PreviewDisplaySegment[] {
+  return (segments ?? []).map((segment) => ({
+    code: segment.code ?? "",
+    name: segment.name ?? "",
+    fromPosition: segment.fromPosition ?? 0,
+    toPosition: segment.toPosition ?? 0,
+    commandCount: segment.commandCount ?? 0,
+    maxPoints: segment.maxPoints ?? 0,
+  }));
+}
+
 function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
   return {
     number: question.number ?? 0,
@@ -650,6 +687,7 @@ function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
     optionOrder: question.optionOrder ?? null,
     originalOptionOrder: question.originalOptionOrder ?? null,
     assignedTopicQuotaIds: question.assignedTopicQuotaIds ?? [],
+    attachments: mapAttachments(question.attachments),
   };
 }
 
@@ -664,6 +702,7 @@ function mapPreviewItem(item: ApiPreviewItem): PreviewItem {
       passage: item.passage ?? null,
       children: (item.children ?? []).map(mapPreviewQuestion),
       originalOrder: item.originalOrder ?? null,
+      attachments: mapAttachments(item.attachments),
     };
   }
   return { kind: "QUESTION", question: mapPreviewQuestion(item.question ?? {}), originalOrder: item.originalOrder ?? null };
@@ -709,6 +748,7 @@ function mapPreviewPart(part: ApiPreviewPart): PreviewPart {
     lastNumber: part.lastNumber ?? 0,
     points: part.points ?? 0,
     maxPoints: part.maxPoints ?? null,
+    displaySegments: mapDisplaySegments(part.displaySegments),
     blocks: (part.blocks ?? []).map(mapPreviewBlock),
   };
 }
@@ -773,7 +813,7 @@ function mapCompliance(row: Schema["ExamPreviewCompliance"]): PreviewCompliance 
   return {
     criterion: row.criterion ?? "",
     scope: row.scope ?? "",
-    required: row.required ?? 0,
+    required: row.required ?? null,
     actual: row.actual ?? 0,
     enforcement: row.enforcement === "REFERENCE" ? "REFERENCE" : "REQUIRED",
     basis: basis.startsWith("POINTS") ? "POINTS" : basis.startsWith("PROMPT") ? "PROMPT" : "QUESTION",
