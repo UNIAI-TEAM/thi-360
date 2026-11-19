@@ -72,6 +72,8 @@ final class MapidRuleConflicts {
         for (MapidRule rule : section.mapidRules()) {
             order++;
             if (rule.type() == MapidRuleType.SOURCE || rule.nodeIds().isEmpty()) continue;
+            // A rule of a gone group is reported as MAPID_RULE_GROUP_MISSING and compiles to nothing: not compared.
+            if (rule.groupId() != null && section.blocks().stream().noneMatch(block -> rule.groupId().equals(block.id()))) continue;
             int minimum = minimums.getOrDefault(rule.id(), 0);
             rules.add(new Resolved(rule, order, minimum, exacts.get(rule.id())));
         }

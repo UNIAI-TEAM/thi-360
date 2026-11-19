@@ -789,6 +789,7 @@ public final class ExamCheckRules {
             // With a MAPID mode the rules are the source of truth: the legacy topic quotas are ignored (UNI-2758).
             if (section.mapidMode() == null) topicQuotas(found, context, null, section.topicQuotas());
             found.addAll(mapidConflicts(context));
+            found.addAll(mapidGroupMissing(context));
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
                 if (block.childConditions().stream().anyMatch(condition -> condition.from() == null || condition.to() == null
@@ -807,6 +808,27 @@ public final class ExamCheckRules {
                 if (section.mapidMode() == null) topicQuotas(found, context, block, block.topicQuotas());
                 fractionalMatrix(found, context, block, block.matrix());
             }
+        }
+        return found;
+    }
+
+    /**
+     * MAPID_RULE_GROUP_MISSING (UNI-2758): a saved rule of a MATRIX section names a group the section no longer has.
+     * The compiler skips such a rule so check and preview still run; the error names the rule and blocks publish.
+     */
+    private List<ObjectNode> mapidGroupMissing(SectionContext context) {
+        List<ObjectNode> found = new ArrayList<>();
+        if (context.section.mapidMode() != vn.unicom.thi360.exam.domain.MapidMode.MATRIX) return found;
+        for (var rule : context.section.mapidRules()) {
+            if (rule.groupId() == null
+                    || context.section.blocks().stream().anyMatch(block -> rule.groupId().equals(block.id()))) continue;
+            ObjectNode failure = sectionIssue("MAPID_RULE_GROUP_MISSING", "MATRIX", context, null);
+            failure.put("ruleId", rule.id());
+            ArrayNode nodes = failure.putArray("nodeIds");
+            rule.nodeIds().forEach(node -> nodes.add(node.toString()));
+            issues.key(failure);
+            failure.put("key", failure.path("key").asText() + "|" + rule.id());
+            found.add(failure);
         }
         return found;
     }

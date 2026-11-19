@@ -42,7 +42,12 @@ public final class MapidRuleCompiler {
     private MapidRuleCompiler() {
     }
 
-    /** @throws IllegalArgumentException when a rule is malformed or targets a block the section does not have */
+    /**
+     * A rule whose {@code groupId} names no block of the section (the group was deleted after the rule was saved) is
+     * skipped, so check and preview keep working; {@code ExamCheckRules} reports it as MAPID_RULE_GROUP_MISSING.
+     *
+     * @throws IllegalArgumentException when a rule is malformed
+     */
     public static CompiledMapidRules compile(ExamSection section) {
         if (section.mapidMode() == null) {
             return new CompiledMapidRules(section, List.of(), Map.of());
@@ -61,7 +66,7 @@ public final class MapidRuleCompiler {
             for (MapidRule rule : section.mapidRules()) {
                 QuestionBlock target = rule.groupId() == null ? null : blocks.get(rule.groupId());
                 if (rule.groupId() != null && target == null) {
-                    throw new IllegalArgumentException("MAPID rule " + rule.id() + " targets an unknown group");
+                    continue;
                 }
                 switch (rule.type()) {
                     case SOURCE -> (target == null ? sectionSource

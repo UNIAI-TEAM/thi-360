@@ -264,6 +264,7 @@ final class PreviewCompliance {
         compiled.caps().forEach(cap -> exacts.put(cap.ruleId(), cap.max()));
         for (MapidRule rule : declared.mapidRules()) {
             if (rule.type() == MapidRuleType.SOURCE) continue;
+            if (rule.groupId() != null && declared.blocks().stream().noneMatch(block -> rule.groupId().equals(block.id()))) continue;
             BigDecimal number = BigDecimal.valueOf(exacts.containsKey(rule.id())
                     ? exacts.get(rule.id()) : minimums.getOrDefault(rule.id(), 0));
             Predicate<Datum> carries = datum -> carries(datum, rule.nodeIds(), knowledge);
