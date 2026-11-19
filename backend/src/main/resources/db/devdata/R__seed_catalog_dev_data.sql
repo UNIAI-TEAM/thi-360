@@ -182,14 +182,15 @@ SELECT m.id, g.id, m.code, lower(m.code),
 FROM missing m JOIN catalog.catalog_group g ON g.id = '00000000-0000-7000-8100-000000000001'
 ON CONFLICT (group_id, code_normalized) DO NOTHING;
 
--- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6, chỉ khi tên còn đúng bản mặc định cũ:
--- tên admin đã sửa không bị ghi đè khi seed chạy lại (AD-35).
-UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực ĐHQG Hà Nội (HSA)', name_en = 'VNU Hanoi Competency Assessment (HSA)'
-WHERE id = '00000000-0000-7000-8200-000000000101'
-  AND name_vi = 'Đánh giá năng lực ĐHQGHN (HSA)' AND name_en = 'VNU Hanoi Competency Assessment (HSA)';
-UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực Bộ Quốc phòng (QDA)', name_en = 'Ministry of Defence Competency Assessment (QDA)'
-WHERE id = '00000000-0000-7000-8200-000000000102'
-  AND name_vi = 'Đánh giá năng lực ĐHSPHN (QDA)' AND name_en = 'QDA Competency Assessment';
+-- Chuẩn lại tên hai kỳ đã seed ở đợt 1 theo spec mục 6. Mỗi cột chỉ đổi khi còn đúng bản seed cũ:
+-- tên admin đã sửa không bị ghi đè khi seed chạy lại (AD-35), DB cũ vẫn nhận tên mới.
+-- (HSA en: bản cũ trùng bản mới nên không cần đổi.)
+UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực ĐHQG Hà Nội (HSA)'
+WHERE id = '00000000-0000-7000-8200-000000000101' AND name_vi = 'Đánh giá năng lực ĐHQGHN (HSA)';
+UPDATE catalog.catalog_item SET name_vi = 'Đánh giá năng lực Bộ Quốc phòng (QDA)'
+WHERE id = '00000000-0000-7000-8200-000000000102' AND name_vi = 'Đánh giá năng lực ĐHSPHN (QDA)';
+UPDATE catalog.catalog_item SET name_en = 'Ministry of Defence Competency Assessment (QDA)'
+WHERE id = '00000000-0000-7000-8200-000000000102' AND name_en = 'QDA Competency Assessment';
 
 -- 10. SUBJECT: 6 môn bổ sung (mã mới theo spec mục 6; không đổi mã các môn đợt 1)
 INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
