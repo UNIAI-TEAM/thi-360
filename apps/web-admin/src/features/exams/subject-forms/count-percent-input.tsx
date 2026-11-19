@@ -90,8 +90,15 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
   };
   const changePercent = (text: string) => {
     setPercentText(text);
-    const parsed = text.trim() === "" ? 0 : parseNumberText(text, true);
-    if (parsed === null) return reject(text, "invalidNumber");
+    // Xóa ô tỷ lệ: không gọi onChange (giữ số câu), nhưng vẫn phải gỡ lỗi nhập thô đang bám vào ô này (R1-7).
+    if (text.trim() === "") {
+      setProblem(null);
+      onRawInput?.(null);
+      return;
+    }
+    const parsed = parseNumberText(text, true);
+    // R1-9: tỷ lệ ngoài 0–100 báo sai ngay, không quy đổi.
+    if (parsed === null || parsed < 0 || parsed > 100) return reject(text, "invalidNumber");
     const converted = percentToCount(parsed, total);
     if (setSize !== null && !wholeSetCount(converted, setSize).ok) return reject(text, "setNotWhole", converted);
     setCountText(String(converted));

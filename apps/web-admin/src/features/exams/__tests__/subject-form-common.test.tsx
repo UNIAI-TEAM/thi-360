@@ -190,6 +190,33 @@ describe("Ô số câu / tỷ lệ (R-9)", () => {
     view.rerender(<CountPercentInput label="Dòng" entry="NONE" total={40} count={9} fieldName="row" onChange={vi.fn()} />);
     expect(screen.getByRole("textbox", { name: "Dòng" })).toHaveValue("9");
   });
+
+  it("xóa ô tỷ lệ: không gọi onChange, số câu giữ nguyên, nhưng nhập thô của ô được gỡ (R1-7)", async () => {
+    const onChange = vi.fn();
+    const onRawInput = vi.fn();
+    renderWithProviders(<CountPercentInput label="Dòng" entry="COUNT_OR_PERCENT" total={40} count={12} fieldName="row" onChange={onChange} onRawInput={onRawInput} />);
+    // Tạo một lỗi nhập thô rồi xóa trắng: lỗi phải được gỡ mà số câu không đổi.
+    await type(/Tỷ lệ/, "abc");
+    expect(onRawInput).toHaveBeenLastCalledWith({ text: "abc", code: "invalidNumber" });
+    onChange.mockClear();
+    await type(/Tỷ lệ/, "");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onRawInput).toHaveBeenLastCalledWith(null);
+    expect(screen.getByRole("textbox", { name: "Số câu" })).toHaveValue("12");
+  });
+
+  it("tỷ lệ ngoài 0–100: báo sai số, không ghi bản nháp (R1-9)", async () => {
+    const onChange = vi.fn();
+    const onRawInput = vi.fn();
+    renderWithProviders(<CountPercentInput label="Dòng" entry="COUNT_OR_PERCENT" total={40} count={0} fieldName="row" onChange={onChange} onRawInput={onRawInput} />);
+    // Gõ một lần (thay đổi nguyên cụm) để tránh các tiền tố hợp lệ như "15" gọi onChange trước.
+    fireEvent.change(screen.getByRole("textbox", { name: /Tỷ lệ/ }), { target: { value: "150" } });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onRawInput).toHaveBeenLastCalledWith({ text: "150", code: "invalidNumber" });
+    fireEvent.change(screen.getByRole("textbox", { name: /Tỷ lệ/ }), { target: { value: "-5" } });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onRawInput).toHaveBeenLastCalledWith({ text: "-5", code: "invalidNumber" });
+  });
 });
 
 describe("Đầu môn dùng chung (R-7, R-15)", () => {
