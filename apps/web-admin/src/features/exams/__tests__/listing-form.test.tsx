@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { notify } from "@thi360/ui";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   COVER_URL,
   examServer,
@@ -22,6 +23,8 @@ vi.mock("next/navigation", () => ({
 beforeEach(() => {
   window.history.replaceState(null, "", `/exams/${EXAM_ID}/listing`);
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 const price = () => screen.findByRole("textbox", { name: /Giá bán/ });
 const attempts = () => screen.findByRole("spinbutton", { name: /Số lượt mỗi lần mua/ });
@@ -213,9 +216,10 @@ describe("tab Thông tin bán: lưu", () => {
   });
 
   it("412: nạp lại bản mới, giữ thông báo trên màn tới khi đóng; lưu thành công cũng xóa thông báo", async () => {
+    const success = vi.spyOn(notify, "success");
     const server = examServer()
       .on("GET", LISTING_PATH, { status: 200, body: listingWire() }, { status: 200, body: listingWire({ revision: 9, listPriceVnd: 280000 }) })
-      .on("PUT", LISTING_PATH, { status: 412, body: { code: "EXAM_REVISION_CONFLICT", message: "x" } }, { status: 200, body: listingWire({ revision: 10 }) })
+      .on("PUT", LISTING_PATH, { status: 412, body: { code: "EXAM_REVISION_CONFLICT", message: "x" } }, { status: 200, body: listingWire({ revision: 10, listPriceVnd: 295000 }) })
       .install();
     const user = userEvent.setup();
     renderListingTab();
@@ -231,13 +235,37 @@ describe("tab Thông tin bán: lưu", () => {
     expect(screen.getByText("Bài thi vừa được người khác sửa. Đã nạp lại bản mới nhất.")).toBeInTheDocument();
     expect(screen.getByText(/Thay đổi của bạn chưa được lưu/)).toBeInTheDocument();
 
-    // Sửa lại và lưu bằng revision mới: thành công thì thông báo biến mất.
+    // Sửa lại và lưu bằng revision mới. Tải lại bài thi sau khi lưu chậm: biểu mẫu dựng lại khi bản mới về, trước khi
+    // yêu cầu tải lại xong; thông báo xung đột vẫn phải mất và toast vẫn phải hiện.
+    server.hold("GET", EXAM_PATH);
     const again = screen.getByRole("textbox", { name: /Giá bán/ });
     await user.clear(again);
     await user.type(again, "290000");
     await user.click(saveButton());
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("295.000"));
+    server.release("GET", EXAM_PATH);
+
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Đã lưu thông tin bán."));
     await waitFor(() => expect(screen.queryByText("Bài thi vừa được người khác sửa. Đã nạp lại bản mới nhất.")).not.toBeInTheDocument());
     expect(server.calls("PUT", LISTING_PATH)[1]!.body).toMatchObject({ expectedRevision: 9 });
+  });
+
+  it("lưu thành công: hiện toast dù yêu cầu tải lại sau khi lưu còn chậm", async () => {
+    const success = vi.spyOn(notify, "success");
+    const server = listingServer()
+      .on("PUT", LISTING_PATH, { status: 200, body: listingWire({ revision: 8, listPriceVnd: 310000 }) })
+      .install();
+    const user = userEvent.setup();
+    renderListingTab();
+    const priceInput = await price();
+    server.hold("GET", EXAM_PATH);
+    await user.clear(priceInput);
+    await user.type(priceInput, "300000");
+    await user.click(saveButton());
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Giá bán/ })).toHaveValue("310.000"));
+    server.release("GET", EXAM_PATH);
+
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Đã lưu thông tin bán."));
   });
 
   it("412: người dùng đóng thông báo được", async () => {

@@ -173,6 +173,7 @@ test.describe("FA-1: tab Thông tin bán", () => {
     const saved = (await response.json()) as ListingWire;
     expect(saved.revision).toBeGreaterThan(before.revision);
     expect(saved).toMatchObject({ listPriceVnd: 249000, attemptsGranted: 3, benefitPractice: true, resultView: "FULL_SOLUTION" });
+    await expect(page.locator("[data-sonner-toast]").getByText("Đã lưu thông tin bán.")).toBeVisible();
 
     // Tải lại: giá trị đã lưu hiện lại; lưu tiếp dùng revision mới.
     await page.reload();

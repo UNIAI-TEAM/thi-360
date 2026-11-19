@@ -49,7 +49,12 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
   const tv = useTranslations("exams.listing.validation");
   const format = useFormatter();
   const formId = useId();
-  const save = useSaveExamListing(exam.id);
+  const save = useSaveExamListing(exam.id, {
+    onSaved: () => {
+      notify.success(t("saved"));
+      onSaved();
+    },
+  });
   const cover = useCoverField(exam.id, listing.coverAssetId && listing.coverUrl ? { assetId: listing.coverAssetId, url: listing.coverUrl } : null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -96,10 +101,6 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
     save.mutate(toListingRequest(submitted, cover.cover?.assetId ?? null, listing.revision), {
-      onSuccess: () => {
-        notify.success(t("saved"));
-        onSaved();
-      },
       onError: (error) => {
         if (getErrorStatus(error) === 412) {
           onConflict();

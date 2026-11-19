@@ -23,14 +23,17 @@ export function useExamListing(examId: string) {
 }
 
 /**
- * Lưu thông tin bán. Xong thì bản mới ghi thẳng vào bộ đệm của tab, các truy vấn khác của bài thi (chi tiết, kiểm tra,
- * phiên bản, danh sách: `revision` và cờ "bản sửa chưa công bố" đã đổi) tải lại.
+ * Lưu thông tin bán. `onSaved` chạy trước khi bản mới ghi vào bộ đệm: bản mới làm biểu mẫu (khóa theo `revision`) dựng
+ * lại và observer của mutation ngắt, nên callback đưa vào `mutate()` sẽ không chạy nữa. Xong thì bản mới ghi thẳng vào
+ * bộ đệm của tab, các truy vấn khác của bài thi (chi tiết, kiểm tra, phiên bản, danh sách: `revision` và cờ "bản sửa
+ * chưa công bố" đã đổi) tải lại.
  */
-export function useSaveExamListing(examId: string) {
+export function useSaveExamListing(examId: string, { onSaved }: { onSaved?: (saved: ExamListing) => void } = {}) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: UpdateListingRequest) => updateExamListing(examId, request),
     onSuccess: async (saved: ExamListing) => {
+      onSaved?.(saved);
       queryClient.setQueryData(LISTING_QUERY_KEYS.detail(examId), saved);
       await queryClient.invalidateQueries({
         queryKey: EXAMS_QUERY_KEYS.all,
