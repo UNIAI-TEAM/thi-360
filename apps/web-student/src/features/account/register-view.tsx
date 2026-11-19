@@ -170,7 +170,7 @@ export function RegisterView({
   async function onSubmit(values: RegisterValues) {
     setServerAlert(null);
     try {
-      const result = await registerApi({
+      await registerApi({
         username: values.username.trim(),
         fullName: values.fullName.trim(),
         email: values.email.trim(),
@@ -179,8 +179,9 @@ export function RegisterView({
         termsVersion: TERMS_VERSION,
         ...(callbackUrl ? { callbackUrl } : {}),
       });
-      // Màn xác minh nhận `callbackUrl` là đích đã dựng bởi máy chủ (`callbackUrl` hợp lệ hoặc /home).
-      navigate(`/verify-email?callbackUrl=${encodeURIComponent(result.redirectTo)}`);
+      // `callbackUrl` đã qua `validateCallbackUrl` ở máy khách (đường dẫn người dùng mở trang với); không dùng
+      // `redirectTo` tuyệt đối của máy chủ vì nguồn gốc của nó có thể khác `NEXT_PUBLIC_THI360_WEB_URL` của bản dựng.
+      navigate(withCallbackUrl("/verify-email", callbackUrl));
     } catch (error) {
       if (error instanceof ApiStatusError) {
         if (error.status === 429) {

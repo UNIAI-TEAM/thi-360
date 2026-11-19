@@ -56,9 +56,10 @@ describe("RegisterView", () => {
     expect(screen.getByLabelText(/^Username/)).toHaveAttribute("aria-describedby", expect.stringContaining(enHint.id));
   });
 
-  it("gửi đủ trường kèm termsVersion và callbackUrl hợp lệ, rồi sang /verify-email theo redirectTo", async () => {
+  it("gửi đủ trường kèm termsVersion và callbackUrl hợp lệ, rồi sang /verify-email kèm đường dẫn tương đối (R1-5)", async () => {
     mocks.callbackUrl = "/checkout/BCA-FULL";
-    mocks.registerApi.mockResolvedValue({ redirectTo: "http://localhost:3000/checkout/BCA-FULL" });
+    // Máy chủ trả URL tuyệt đối thuộc origin khác với bản dựng: màn xác minh không được phụ thuộc vào nó.
+    mocks.registerApi.mockResolvedValue({ redirectTo: "http://thi360.example:8443/checkout/BCA-FULL" });
     const user = userEvent.setup();
     renderView();
 
@@ -78,8 +79,20 @@ describe("RegisterView", () => {
       }),
     );
     expect(mocks.navigate).toHaveBeenCalledWith(
-      `/verify-email?callbackUrl=${encodeURIComponent("http://localhost:3000/checkout/BCA-FULL")}`,
+      `/verify-email?callbackUrl=${encodeURIComponent("/checkout/BCA-FULL")}`,
     );
+  });
+
+  it("không có callbackUrl: sang /verify-email trần (màn xác minh tự về /home)", async () => {
+    mocks.registerApi.mockResolvedValue({ redirectTo: "http://localhost:3000/home" });
+    const user = userEvent.setup();
+    renderView();
+
+    await fillValid(user);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Đăng ký" }));
+
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email"));
   });
 
   it("callbackUrl trỏ ra ngoài hệ thống không được gửi đi (AC-7)", async () => {
