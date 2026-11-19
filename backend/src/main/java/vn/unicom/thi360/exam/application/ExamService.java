@@ -1298,6 +1298,7 @@ public class ExamService {
         requireActiveReference(SUBJECT_GROUP, section.subjectCode());
         validateScopeReferences(section.knowledgeScope());
         validateMatrixReferences(section.matrix());
+        section.mapidRules().forEach(rule -> validateKnowledgeIds(rule.nodeIds()));
         Set<String> groupIds = section.blocks().stream().map(QuestionBlock::id)
                 .collect(java.util.stream.Collectors.toSet());
         validateTopicReferences(section.topicQuotas(), groupIds);
