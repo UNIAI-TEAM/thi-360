@@ -222,23 +222,33 @@ public class ExamPublishService {
     }
 
     /**
-     * E24, BS 8: an exam with a choice made after the attempt starts publishes every valid path of the latest check and
-     * every path still serving in one version, the first publish included. A path that is not valid and not serving may
-     * stay out. The code of BCA and the orientation of Informatics are chosen before the attempt starts: not covered.
+     * E24, BS 8, AD-60: an exam with a choice made after the attempt starts publishes every valid path of the latest
+     * check and EVERY path still serving in one version, the first publish included. A serving path is never dropped
+     * because the fresh check no longer lists it or no longer finds it VALID: the refusal names it so the admin knows
+     * what to fix. A path that is neither valid nor serving may stay out. The code of BCA and the orientation of
+     * Informatics are chosen before the attempt starts: not covered.
      */
     private void requireAllPathsTogether(UUID kindId, JsonNode structure, Set<String> selected, Set<String> valid,
             Set<String> allPaths, List<VersionPaths> serving) {
         String kindCode = catalog.findItem(kindId).map(CatalogItemView::code).orElse(null);
         if (!choiceAfterStart(structure, kindCode)) return;
-        Set<String> required = new LinkedHashSet<>(valid);
-        for (VersionPaths version : serving) {
-            version.paths().stream().filter(allPaths::contains).forEach(required::add);
+        Set<String> servingPaths = new LinkedHashSet<>();
+        for (VersionPaths version : serving) servingPaths.addAll(version.paths());
+        List<FieldError> blocking = new ArrayList<>();
+        for (String path : servingPaths) {
+            if (selected.contains(path)) continue;
+            String code = !allPaths.contains(path) ? "PATH_SERVING_MISSING_FROM_CHECK"
+                    : valid.contains(path) ? "PATH_VALID_NOT_SELECTED" : "PATH_SERVING_INVALID";
+            blocking.add(new FieldError("pathIds", code, path));
         }
-        List<FieldError> missing = required.stream().filter(path -> !selected.contains(path))
-                .map(path -> new FieldError("pathIds", "PATH_MISSING", path)).toList();
-        if (!missing.isEmpty()) {
+        for (String path : valid) {
+            if (!selected.contains(path) && !servingPaths.contains(path)) {
+                blocking.add(new FieldError("pathIds", "PATH_VALID_NOT_SELECTED", path));
+            }
+        }
+        if (!blocking.isEmpty()) {
             throw new BusinessRuleException(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED,
-                    messages.get(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED), missing);
+                    messages.get(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED), blocking);
         }
     }
 

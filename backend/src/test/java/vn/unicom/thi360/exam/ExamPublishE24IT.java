@@ -50,4 +50,45 @@ class ExamPublishE24IT extends AbstractExamPublishIT {
         assertThat(jdbc.queryForList("SELECT DISTINCT version_no FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING'",
                 Integer.class, exam)).containsExactly(2);
     }
+
+    /** AD-60, R1-14: a serving path that turned INVALID blocks the publish and is named as serving-but-INVALID. */
+    @Test
+    void servingInvalidPathIsListedAsBlocking() throws Exception {
+        UUID exam = newExam("HSA", ExamPublishAllPathsIT.HSA_PART3);
+        saveCheck(exam, paths("science=VALID", "english=VALID"));
+        publish(exam, "science", "english").andExpect(status().isOk());
+        jdbc.update("UPDATE exam.exam SET description = 'Changed description' WHERE id = ?", exam);
+        saveCheck(exam, paths("science=VALID", "english=INVALID"));
+        publish(exam, "science").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PUBLISH_ALL_PATHS_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors.length()").value(1))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("pathIds"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PATH_SERVING_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("english"));
+        // Selecting it does not help: it is not VALID.
+        publish(exam, "science", "english").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PATH_NOT_VALID"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT array_to_string(serving_path_ids, ',') FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING'",
+                String.class, exam)).isEqualTo("science,english");
+    }
+
+    /** R1-1: a path that vanished from the fresh check (structure edit) is still serving, so it blocks and is named. */
+    @Test
+    void servingPathVanishedFromCheckBlocksPublish() throws Exception {
+        UUID exam = newExam("HSA", ExamPublishAllPathsIT.HSA_PART3);
+        saveCheck(exam, paths("science=VALID", "english=VALID"));
+        publish(exam, "science", "english").andExpect(status().isOk());
+        jdbc.update("UPDATE exam.exam SET description = 'Changed description' WHERE id = ?", exam);
+        // english was replaced by english2 (a new option id) and one more path is valid and not selected.
+        saveCheck(exam, paths("science=VALID", "english2=VALID", "extra=VALID"));
+        publish(exam, "science", "english2").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PUBLISH_ALL_PATHS_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors.length()").value(2))
+                .andExpect(jsonPath("$.fieldErrors[?(@.message=='english')].code").value("PATH_SERVING_MISSING_FROM_CHECK"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.message=='extra')].code").value("PATH_VALID_NOT_SELECTED"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT DISTINCT version_no FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING'",
+                Integer.class, exam)).containsExactly(1);
+    }
 }
