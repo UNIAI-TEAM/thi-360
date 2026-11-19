@@ -14,7 +14,8 @@ import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 @Schema(description = "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12): một quyền dùng nguồn mua, hoặc một đơn đã thu "
         + "tiền chưa cấp quyền (state CHECKING, không có entitlementId)")
 public record MyExamCard(
-        @Schema(description = "Quyền dùng; trống ở thẻ \"Đang kiểm tra\" của đơn chưa cấp quyền", nullable = true)
+        @Schema(description = "Quyền dùng; trống ở thẻ \"Đang kiểm tra\" của đơn chưa cấp quyền",
+                types = {"string", "null"})
         UUID entitlementId,
         @Schema(description = "Mã sản phẩm, cũng là mã bài thi", requiredMode = Schema.RequiredMode.REQUIRED)
         String code,
@@ -28,7 +29,8 @@ public record MyExamCard(
         @Schema(description = "STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         String buildMode,
-        @Schema(description = "Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định", nullable = true) String coverUrl,
+        @Schema(description = "Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định", types = {"string", "null"})
+        String coverUrl,
         @Schema(description = "Số câu học viên làm theo các đường đã mua; khoảng khi các đường khác nhau", nullable = true)
         IntRange questionCount,
         @Schema(description = "Thời lượng một lượt, phút, theo các đường đã mua; khoảng khi các đường khác nhau",
@@ -45,13 +47,14 @@ public record MyExamCard(
         @Schema(description = "Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), "
                 + "CHECKING (Đang kiểm tra)", requiredMode = Schema.RequiredMode.REQUIRED)
         ExamAccessState state,
-        @Schema(description = "Lượt đang mở (kể cả STARTING)", nullable = true) UUID activeAttemptId,
-        @Schema(description = "Trạng thái của lượt đang mở", nullable = true) OpenAttemptState activeAttemptState,
-        @Schema(description = "Lượt mới nhất đã có kết quả, đích của nút VIEW_RESULT", nullable = true)
+        @Schema(description = "Lượt đang mở (kể cả STARTING)", types = {"string", "null"}) UUID activeAttemptId,
+        @Schema(description = "Trạng thái của lượt đang mở", types = {"string", "null"})
+        OpenAttemptState activeAttemptState,
+        @Schema(description = "Lượt mới nhất đã có kết quả, đích của nút VIEW_RESULT", types = {"string", "null"})
         UUID resultAttemptId,
         @Schema(description = "Có đơn đã thu tiền chưa cấp xong cho bài này", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean hasPendingFulfillment,
-        @Schema(description = "Mã đơn đã thu tiền chưa cấp xong", nullable = true) String pendingOrderCode,
+        @Schema(description = "Mã đơn đã thu tiền chưa cấp xong", types = {"string", "null"}) String pendingOrderCode,
         @Schema(description = "Nút của thẻ theo TM 12, nút chính đứng đầu", requiredMode = Schema.RequiredMode.REQUIRED)
         List<MyExamAction> actions) {
 }

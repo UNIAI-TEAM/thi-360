@@ -15,13 +15,13 @@ public record ExamAccessItem(
         @Schema(description = "Lượt còn dùng được; 0 khi chưa có quyền dùng, hoặc khi lượt cuối đang được giữ",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         int attemptsLeft,
-        @Schema(description = "Quyền dùng của tài khoản với bài này; trống khi chưa có", nullable = true)
+        @Schema(description = "Quyền dùng của tài khoản với bài này; trống khi chưa có", types = {"string", "null"})
         UUID entitlementId,
-        @Schema(description = "Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS", nullable = true)
+        @Schema(description = "Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS", types = {"string", "null"})
         UUID activeAttemptId,
         @Schema(description = "Có đơn đã thu tiền chưa cấp xong cho bài này (kể cả khi vẫn còn lượt dùng)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         boolean hasPendingFulfillment,
-        @Schema(description = "Mã đơn đã thu tiền chưa cấp xong; trống khi không có", nullable = true)
+        @Schema(description = "Mã đơn đã thu tiền chưa cấp xong; trống khi không có", types = {"string", "null"})
         String pendingOrderCode) {
 }

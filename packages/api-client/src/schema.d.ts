@@ -4016,7 +4016,7 @@ export interface components {
              * Format: uuid
              * @description Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS
              */
-            activeAttemptId?: string;
+            activeAttemptId?: string | null;
             /**
              * Format: int32
              * @description Lượt còn dùng được; 0 khi chưa có quyền dùng, hoặc khi lượt cuối đang được giữ
@@ -4028,11 +4028,11 @@ export interface components {
              * Format: uuid
              * @description Quyền dùng của tài khoản với bài này; trống khi chưa có
              */
-            entitlementId?: string;
+            entitlementId?: string | null;
             /** @description Có đơn đã thu tiền chưa cấp xong cho bài này (kể cả khi vẫn còn lượt dùng) */
             hasPendingFulfillment: boolean;
             /** @description Mã đơn đã thu tiền chưa cấp xong; trống khi không có */
-            pendingOrderCode?: string;
+            pendingOrderCode?: string | null;
             /**
              * @description Giá trị đầu tiên thỏa theo thứ tự IN_PROGRESS, CAN_START, CHECKING, EXHAUSTED, NONE
              * @enum {string}
@@ -5490,12 +5490,12 @@ export interface components {
              * Format: uuid
              * @description Lượt đang mở (kể cả STARTING)
              */
-            activeAttemptId?: string;
+            activeAttemptId?: string | null;
             /**
              * @description Trạng thái của lượt đang mở
-             * @enum {string}
+             * @enum {string|null}
              */
-            activeAttemptState?: "STARTING" | "IN_PROGRESS";
+            activeAttemptState?: "STARTING" | "IN_PROGRESS" | null;
             /**
              * Format: int32
              * @description Lượt còn dùng được, từ quyền đã cấp (không từ sản phẩm đang bán)
@@ -5511,14 +5511,14 @@ export interface components {
             /** @description Mã sản phẩm, cũng là mã bài thi */
             code: string;
             /** @description Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định */
-            coverUrl?: string;
+            coverUrl?: string | null;
             /** @description Thời lượng một lượt, phút, theo các đường đã mua; khoảng khi các đường khác nhau */
-            durationMinutes?: components["schemas"]["IntRange"];
+            durationMinutes?: components["schemas"]["IntRange"] | null;
             /**
              * Format: uuid
              * @description Quyền dùng; trống ở thẻ "Đang kiểm tra" của đơn chưa cấp quyền
              */
-            entitlementId?: string;
+            entitlementId?: string | null;
             examKind: components["schemas"]["ExamKindRef"];
             /** @description Hình thức (E4): FULL, PART hay SUBJECT */
             format: string;
@@ -5527,21 +5527,21 @@ export interface components {
             /** @description Tên sản phẩm */
             name: string;
             /** @description Mã đơn đã thu tiền chưa cấp xong */
-            pendingOrderCode?: string;
+            pendingOrderCode?: string | null;
             /** @description Số câu học viên làm theo các đường đã mua; khoảng khi các đường khác nhau */
-            questionCount?: components["schemas"]["IntRange"];
+            questionCount?: components["schemas"]["IntRange"] | null;
             /**
              * Format: uuid
              * @description Lượt mới nhất đã có kết quả, đích của nút VIEW_RESULT
              */
-            resultAttemptId?: string;
+            resultAttemptId?: string | null;
             /**
              * @description Trạng thái bán của sản phẩm; ON_SALE thì có nút mua
              * @enum {string}
              */
             saleState: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE";
             /** @description Tên phần (PART) hoặc môn (SUBJECT); null với FULL */
-            scopeLabel?: components["schemas"]["LocalizedName"];
+            scopeLabel?: components["schemas"]["LocalizedName"] | null;
             /**
              * @description Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)
              * @enum {string}
