@@ -91,4 +91,35 @@ class ExamPublishE24IT extends AbstractExamPublishIT {
         assertThat(jdbc.queryForList("SELECT DISTINCT version_no FROM exam.exam_version WHERE exam_id = ? AND state = 'SERVING'",
                 Integer.class, exam)).containsExactly(1);
     }
+
+    /** R2-3: nothing changed in the configuration, a fresh check finds a serving path INVALID: named, not NOTHING_TO_PUBLISH. */
+    @Test
+    void unchangedHsaWithServingPathNowInvalidIsNamed() throws Exception {
+        UUID exam = newExam("HSA", ExamPublishAllPathsIT.HSA_PART3);
+        saveCheck(exam, paths("science=VALID", "english=VALID"));
+        publish(exam, "science", "english").andExpect(status().isOk());
+        entityManager.clear();
+        saveCheck(exam, paths("science=VALID", "english=INVALID"));
+        publish(exam, "science").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PUBLISH_ALL_PATHS_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors.length()").value(1))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PATH_SERVING_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("english"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam)).isEqualTo(1);
+    }
+
+    @Test
+    void unchangedQdaWithServingPathNowInvalidIsNamed() throws Exception {
+        UUID exam = newExam("QDA", ExamPublishAllPathsIT.CODE_PART);
+        saveCheck(exam, paths("codes:QD01=VALID", "codes:QD02=VALID"));
+        publish(exam, "codes:QD01", "codes:QD02").andExpect(status().isOk());
+        entityManager.clear();
+        saveCheck(exam, paths("codes:QD01=VALID", "codes:QD02=INVALID"));
+        publish(exam, "codes:QD01").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PUBLISH_ALL_PATHS_REQUIRED"))
+                .andExpect(jsonPath("$.fieldErrors.length()").value(1))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("PATH_SERVING_INVALID"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("codes:QD02"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam)).isEqualTo(1);
+    }
 }

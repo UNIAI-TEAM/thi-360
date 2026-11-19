@@ -162,8 +162,11 @@ public class ExamPublishService {
         for (VersionPaths old : versions) {
             if (matchingVersions.contains(old.version())) alreadyServing.addAll(old.paths());
         }
+        // E24 first: a serving path that is missing or INVALID in the fresh check is named even when nothing changed (R2-3).
+        List<FieldError> blocking = allPathsBlockers(kindCode, document, selected, valid, allPaths, versions);
+        if (blocksServing(blocking)) throw allPathsRequired(blocking);
         if (alreadyServing.containsAll(selected)) throw new ConflictException(ExamErrorCodes.NOTHING_TO_PUBLISH);
-        requireAllPathsTogether(kindCode, document, selected, valid, allPaths, versions);
+        if (!blocking.isEmpty()) throw allPathsRequired(blocking);
         requireSellableListing(examId);
         for (VersionPaths old : versions) {
             List<String> remaining = old.paths().stream().filter(path -> !selected.contains(path)).toList();
@@ -231,9 +234,9 @@ public class ExamPublishService {
      * what to fix. A path that is neither valid nor serving may stay out. The code of BCA and the orientation of
      * Informatics are chosen before the attempt starts: not covered.
      */
-    private void requireAllPathsTogether(String kindCode, JsonNode structure, Set<String> selected, Set<String> valid,
+    private List<FieldError> allPathsBlockers(String kindCode, JsonNode structure, Set<String> selected, Set<String> valid,
             Set<String> allPaths, List<VersionPaths> serving) {
-        if (!choiceAfterStart(structure, kindCode)) return;
+        if (!choiceAfterStart(structure, kindCode)) return List.of();
         Set<String> servingPaths = new LinkedHashSet<>();
         for (VersionPaths version : serving) servingPaths.addAll(version.paths());
         List<FieldError> blocking = new ArrayList<>();
@@ -248,10 +251,17 @@ public class ExamPublishService {
                 blocking.add(new FieldError("pathIds", "PATH_VALID_NOT_SELECTED", path));
             }
         }
-        if (!blocking.isEmpty()) {
-            throw new BusinessRuleException(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED,
-                    messages.get(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED), blocking);
-        }
+        return blocking;
+    }
+
+    private BusinessRuleException allPathsRequired(List<FieldError> blocking) {
+        return new BusinessRuleException(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED,
+                messages.get(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED), blocking);
+    }
+
+    /** A serving path that the fresh check lost or finds INVALID: reported even when the configuration is unchanged (R2-3). */
+    private static boolean blocksServing(List<FieldError> blocking) {
+        return blocking.stream().anyMatch(error -> !"PATH_VALID_NOT_SELECTED".equals(error.code()));
     }
 
     /** Part 3 of HSA (a CHOICE part with subject options) and the code of QDA are chosen after the attempt starts. */
