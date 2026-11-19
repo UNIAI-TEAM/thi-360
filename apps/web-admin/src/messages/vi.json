@@ -5805,6 +5805,7 @@
         "pick": "Chọn MAPID",
         "pickEdit": "Đổi MAPID",
         "pickHint": "Câu khớp khi có ít nhất một mã đã chọn. Muốn cả ba chủ đề đều xuất hiện, thêm một quy tắc riêng cho từng mã.",
+        "pickHintSource": "Câu khớp quy tắc này khi có ít nhất một mã đã chọn. Mỗi quy tắc “Chỉ lấy nguồn” khác áp dụng cho phạm vi này (của chính nhóm, hoặc của cả môn) cũng phải khớp: thêm quy tắc thì nguồn hẹp lại, không rộng thêm.",
         "pickerDescription": "Quy tắc của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó.",
         "save": "Lưu quy tắc",
         "scope": {
@@ -5838,10 +5839,10 @@
             "label": "Phải xuất hiện"
           },
           "SOURCE": {
-            "description": "Giới hạn nguồn: phạm vi này chỉ lấy câu thuộc ít nhất một MAPID đã chọn. Chủ đề vẫn có thể xuất hiện ở nhóm khác.",
+            "description": "Giới hạn nguồn: phạm vi này chỉ lấy câu thuộc ít nhất một MAPID đã chọn. Quy tắc nguồn khác của cùng phạm vi, hoặc của cả môn, cũng phải khớp. Chủ đề vẫn có thể xuất hiện ở nhóm khác.",
             "label": "Chỉ lấy nguồn từ các MAPID"
           },
-          "contrast": "Hai quy tắc dễ nhầm: “Chỉ xuất hiện ở nhóm này” giới hạn vị trí của chủ đề (các nhóm khác loại chủ đề đó). “Chỉ lấy nguồn từ các MAPID” giới hạn nguồn của nhóm (nhóm chỉ lấy từ các chủ đề đó, chủ đề vẫn có thể xuất hiện ở nhóm khác).",
+          "contrast": "Hai quy tắc dễ nhầm: “Chỉ xuất hiện ở nhóm này” giới hạn vị trí của chủ đề (các nhóm khác loại chủ đề đó). “Chỉ lấy nguồn từ các MAPID” giới hạn nguồn của nhóm (nhóm chỉ lấy từ các chủ đề đó, chủ đề vẫn có thể xuất hiện ở nhóm khác). Nhiều quy tắc nguồn cùng áp dụng thì câu phải khớp cả từng quy tắc.",
           "legend": "Loại quy tắc"
         },
         "withNumber": "Kèm số lượng",

@@ -157,7 +157,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
               <span>{t(refs.length === 0 ? "pick" : "pickEdit")}</span>
             </Button>
           </div>
-          <p className="text-caption text-text-muted">{t("pickHint")}</p>
+          <p className="text-caption text-text-muted">{t(form.type === "SOURCE" ? "pickHintSource" : "pickHint")}</p>
         </fieldset>
 
         {form.type === "ONLY_IN_GROUP" && (

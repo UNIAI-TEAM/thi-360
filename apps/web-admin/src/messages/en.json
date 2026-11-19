@@ -5805,6 +5805,7 @@
         "pick": "Pick MAPID",
         "pickEdit": "Change MAPID",
         "pickHint": "A question matches when it has at least one picked code. To require all three topics, add one rule per code.",
+        "pickHintSource": "A question matches this rule when it has at least one picked code. Every other “Source only” rule that applies to this scope (the group's own or the whole subject's) must match too: adding a rule narrows the source, never widens it.",
         "pickerDescription": "Rule for {name}: pick a chapter, lesson or knowledge item. A picked node also matches questions on its child nodes.",
         "save": "Save rule",
         "scope": {
@@ -5838,10 +5839,10 @@
             "label": "Must appear"
           },
           "SOURCE": {
-            "description": "Limits the source: this scope draws only questions with at least one picked MAPID. The topic can still appear in other groups.",
+            "description": "Limits the source: this scope draws only questions with at least one picked MAPID. Every other source rule of the same scope, or of the whole subject, must match too. The topic can still appear in other groups.",
             "label": "Source only from these MAPIDs"
           },
-          "contrast": "Two rules are easy to mix up: “Only appears in this group” limits where the topic can appear (other groups drop that topic). “Source only from these MAPIDs” limits what the group draws from (the group takes only those topics, which can still appear in other groups).",
+          "contrast": "Two rules are easy to mix up: “Only appears in this group” limits where the topic can appear (other groups drop that topic). “Source only from these MAPIDs” limits what the group draws from (the group takes only those topics, which can still appear in other groups). When several source rules apply, a question must match every one of them.",
           "legend": "Rule type"
         },
         "withNumber": "With a count",
