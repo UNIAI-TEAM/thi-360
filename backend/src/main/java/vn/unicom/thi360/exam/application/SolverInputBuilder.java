@@ -197,6 +197,11 @@ public class SolverInputBuilder {
 
     /** Build all paths without reading candidates. Invalid draft structures may throw IllegalArgumentException. */
     public SolverInput build(UUID examKindId, ExamStructureDocument document) {
+        return build(examKindId, document, limits);
+    }
+
+    /** As {@link #build(UUID, ExamStructureDocument)}, with the candidate fetch limit of {@code buildLimits}. */
+    public SolverInput build(UUID examKindId, ExamStructureDocument document, SolverLimits buildLimits) {
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         Map<UUID, CatalogItemView> knowledgeById = new HashMap<>();
         for (var item : knowledge) knowledgeById.put(item.id(), item);
@@ -276,7 +281,7 @@ public class SolverInputBuilder {
             if (choose == null) throw new IllegalArgumentException("Choice count is missing");
             parts.add(new SolvePart.Choice(part.id(), common, options, choose));
         }
-        int limit = limits.maxCandidatesPerBlock();
+        int limit = buildLimits.maxCandidatesPerBlock();
         return new SolverInput(parts, new SolverCandidates(source, filters, setRowGroups,
                 limit == Integer.MAX_VALUE ? limit : limit + 1));
     }

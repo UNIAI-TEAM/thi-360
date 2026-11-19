@@ -213,10 +213,27 @@ public class ExamPreviewService {
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
                 PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
                         actualPath, paper));
-        if (regeneration != null) selectedParts.putAll(regeneration.retained());
+        if (regeneration != null) {
+            // A retained part keeps its picks and option order but is saved with the presentation of the paper just
+            // returned: an earlier part regenerated at another length moves its numbers, and the timing is the new one.
+            Map<String, PreviewPart> finalParts = new HashMap<>();
+            for (PreviewPart part : paper.parts()) finalParts.put(part.partId(), part);
+            regeneration.retained().forEach((partId, kept) -> selectedParts.put(partId, new PreviewSnapshotStore.PartSnapshot(
+                    kept.groups(), kept.candidates(), kept.versions(), kept.droppedQuestions(),
+                    finalParts.getOrDefault(partId, kept.presentation()), kept.allocations())));
+        }
         List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
+        // BS 9: the trial extension reads the duration from here, never from the draft. SHARED is the exam's own
+        // duration; PER_PART (or a SHARED exam with none) is the sum of the parts this path generated.
+        int generatedPartMinutes = selectedParts.values().stream().filter(part -> part.presentation() != null)
+                .mapToInt(part -> part.presentation().durationMinutes() == null ? 0
+                        : part.presentation().durationMinutes()).sum();
+        int trialMinutes = "SHARED".equals(snapshot.timing()) && snapshot.durationMinutes() != null
+                ? snapshot.durationMinutes() : generatedPartMinutes;
+        String kindCode = snapshot.exam().getKindItemId() == null ? null
+                : catalog.findItem(snapshot.exam().getKindItemId()).map(CatalogItemView::code).orElse(null);
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
-                request.seed(), selectedParts));
+                request.seed(), selectedParts, kindCode, snapshot.timing(), trialMinutes));
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
         return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                 "GENERATED", paper, null, null, previewId, compliance, droppedQuestions);
