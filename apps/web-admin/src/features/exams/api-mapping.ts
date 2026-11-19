@@ -526,7 +526,12 @@ function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): 
   const sections = part.sections.map((section, sectionIndex) => {
     const omittedBlocks = (raw?.sections?.[sectionIndex]?.blocks ?? [])
       .filter((block) => block.omitted)
-      .map((block) => ({ name: block.name ?? "", questionCount: nullable(block.questionCount) }));
+      .map((block) => ({
+        ...(block.id ? { id: block.id } : {}),
+        ...(block.templateGroupCode ? { templateGroupCode: block.templateGroupCode } : {}),
+        name: block.name ?? "",
+        questionCount: nullable(block.questionCount),
+      }));
     return { ...templateSection(section), ...(omittedBlocks.length ? { omittedBlocks } : {}) };
   });
   return {

@@ -4,29 +4,32 @@ import { Switch } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { isSetBlock } from "../matrix";
-import type { QuestionBlock } from "../types";
+import { isTemplateOmittedGroup } from "../omitted-part";
+import type { ExamTemplate, QuestionBlock } from "../types";
 import { blockFieldAnchor } from "./block-form-fields";
 
 export interface BlockSwitchesProps {
   block: QuestionBlock;
   onChange: (patch: Partial<QuestionBlock>) => void;
-  /** Mẫu đặt `omittedLocked` (H43): nhóm đã lược của mẫu không bật lại được. */
-  omittedLocked?: boolean;
+  /** Mẫu của bài; khi mẫu đặt `omittedLocked` (H43), bản sao nhóm đã lược của mẫu không bật lại được. */
+  template?: ExamTemplate | null;
 }
 
 /**
  * Hai công tắc của nhóm (2B 3.3, 15.3). "Đảo thứ tự các chùm" chỉ hiện khi mẫu đặt `shuffleEditable` (Văn HSA và Văn
  * QDA nhóm 5); nhóm khác luôn đảo và chỉ có dòng chú thích. "Tạm bỏ qua" chỉ cho nhóm Tự luận (K1). Khi mẫu khóa nhóm
- * đã lược (`omittedLocked`), nhóm của mẫu đang tạm bỏ qua không bật lại được: công tắc khóa kèm lý do. Nhóm đã bật
+ * đã lược (`omittedLocked`), chỉ bản sao của nhóm mà chính mẫu đã lược (cùng id, hoặc cùng mã nhóm mẫu duy nhất) đang tạm
+ * bỏ qua là không bật lại được: công tắc khóa kèm lý do. Nhóm Tự luận khác, kể cả nhóm có mã nhóm mẫu nhưng mẫu không lược
+ * (Đọc hiểu của H-SCA Văn đổi sang Tự luận), vẫn bật tắt tự do. Nhóm đã bật
  * (bản nháp lưu trước khi có khóa) vẫn tắt/bật được để sửa lại. Kiểm tra cấu hình (`OMITTED_BLOCK_LOCKED`) vẫn là lớp
  * chặn cuối cho ghi qua API và bản nháp cũ.
  */
-export function BlockSwitches({ block, onChange, omittedLocked = false }: BlockSwitchesProps) {
+export function BlockSwitches({ block, onChange, template = null }: BlockSwitchesProps) {
   const t = useTranslations("exams.structure.blockForm.switches");
   const shuffleId = useId();
   const omittedId = useId();
-  // Điều kiện của `ExamCheckRules.lockedBlockIssues`: nhóm của mẫu (mã nhóm mẫu) đang lược thì bật lại mới bị chặn.
-  const omittedSwitchLocked = omittedLocked && block.omitted === true && block.templateGroupCode != null;
+  // Cùng điều kiện với `ExamCheckRules.lockedBlockIssues`: chỉ bản sao của nhóm mẫu đã lược mới bị chặn khi bật lại.
+  const omittedSwitchLocked = template?.omittedLocked === true && block.omitted === true && isTemplateOmittedGroup(template, block);
   const shuffleEditable = block.shuffleEditable === true;
   const shuffling = block.shuffleUnits !== false;
 

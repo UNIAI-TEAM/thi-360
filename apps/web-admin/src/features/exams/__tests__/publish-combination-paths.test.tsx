@@ -131,4 +131,19 @@ describe("nút công bố theo số đường đã chọn (F-PUBLISH0)", () => {
     await user.click(within(dialog).getByRole("checkbox", { name: /^QD02/ }));
     expect(within(dialog).getByRole("button", { name: "Công bố 1 đường lựa chọn" })).toBeEnabled();
   });
+
+  it("đang công bố: nút aria-disabled và bấm thêm không gửi lần hai", async () => {
+    server.hold("POST", PUBLISH_PATH);
+    const { user, dialog } = await openPublishDialog();
+    const button = within(dialog).getByRole("button", { name: "Công bố 5 đường lựa chọn" });
+    expect(button).not.toHaveAttribute("aria-disabled");
+
+    await user.click(button);
+    await waitFor(() => expect(server.calls("POST", PUBLISH_PATH)).toHaveLength(1));
+    await waitFor(() => expect(button).toHaveAttribute("aria-disabled", "true"));
+
+    await user.click(button);
+    expect(server.calls("POST", PUBLISH_PATH)).toHaveLength(1);
+    server.release("POST", PUBLISH_PATH);
+  });
 });

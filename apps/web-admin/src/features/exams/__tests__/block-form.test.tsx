@@ -7,7 +7,7 @@ import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
 import { BlockEditor } from "../components/block-editor";
 import { blockFieldAnchor, BLOCK_FIELDS, focusBlockField } from "../components/block-form-fields";
-import type { ExamSection, QuestionBlock } from "../types";
+import type { ExamSection, ExamTemplate, ExamTemplateBlock, QuestionBlock } from "../types";
 
 // Danh mục là dữ liệu của lane Nội dung; dùng danh mục mẫu như `subject-matrix.test.tsx`.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -55,7 +55,7 @@ function setBlock(patch: Partial<QuestionBlock> = {}): QuestionBlock {
 }
 
 /** Giữ nhóm trong state như `ExamStructureView` và ghi lại nhóm mới nhất để kiểm tra giá trị lưu. */
-function renderEditor(initial: QuestionBlock, options: { examKind?: string; omittedLocked?: boolean } = {}) {
+function renderEditor(initial: QuestionBlock, options: { examKind?: string; template?: ExamTemplate | null } = {}) {
   const latest = { block: initial };
   function Harness() {
     const [block, setBlock_] = useState(initial);
@@ -71,7 +71,7 @@ function renderEditor(initial: QuestionBlock, options: { examKind?: string; omit
         labels={{ grade: (code) => code, difficulty: (code) => code }}
         reference={reference as unknown as ContentReference}
         examKind={options.examKind}
-        omittedLocked={options.omittedLocked}
+        template={options.template}
         scoringDefaults={null}
         competencies={[]}
         onChange={(next) => {
@@ -297,12 +297,48 @@ describe("biểu mẫu nhóm: công tắc và dải vị trí", () => {
     expect(screen.queryByRole("switch", { name: "Tạm bỏ qua" })).not.toBeInTheDocument();
   });
 
-  describe("mẫu khóa nhóm đã lược (H43)", () => {
-    const TEMPLATE_GROUP = { questionType: "ESSAY", questionCount: 1, templateGroupCode: "HSCA_VAN_PARAGRAPH" } as const;
+  describe("mẫu khóa nhóm đã lược (H43): khóa theo nguồn gốc của nhóm mẫu", () => {
+    // H-SCA Văn: Đọc hiểu (mã riêng, mẫu không lược) và Viết (mã riêng, mẫu lược); cả hai có `templateGroupCode`.
+    const READING = { questionType: "ESSAY", questionCount: 1, templateGroupCode: "HSCA_VAN_INFORMATION" } as const;
+    const WRITING = { questionType: "ESSAY", questionCount: 1, templateGroupCode: "HSCA_VAN_PARAGRAPH" } as const;
+    const templateBlock = (code: string, name: string): ExamTemplateBlock => ({
+      name,
+      questionType: "ESSAY",
+      questionCount: 1,
+      requiredPointsPerQuestion: 1,
+      templateGroupCode: code,
+    });
+    const vanTemplate = (patch: Partial<ExamTemplate> = {}): ExamTemplate => ({
+      code: "HSCA_SUBJECT_VAN",
+      kind: "HSCA",
+      scope: "SUBJECT",
+      name: "H-SCA Ngữ văn",
+      timing: "SHARED",
+      durationMinutes: null,
+      maxScore: 20,
+      omittedLocked: true,
+      parts: [
+        {
+          name: "Phần 1",
+          questionCount: 1,
+          durationMinutes: null,
+          mode: "FIXED",
+          sections: [
+            {
+              subjectCode: "LIT",
+              questionCount: 1,
+              blocks: [templateBlock("HSCA_VAN_INFORMATION", "Thông tin"), templateBlock("HSCA_VAN_PARAGRAPH", "Đoạn văn")],
+              omittedBlocks: [{ id: "tpl-paragraph", templateGroupCode: "HSCA_VAN_PARAGRAPH", name: "Đoạn văn", questionCount: 1 }],
+            },
+          ],
+        },
+      ],
+      ...patch,
+    });
 
-    it("nhóm của mẫu đang tạm bỏ qua: công tắc khóa, lý do nối bằng aria-describedby", async () => {
+    it("nhóm là bản sao nhóm mà mẫu đã lược (khớp mã duy nhất): công tắc khóa, lý do nối bằng aria-describedby", async () => {
       const user = userEvent.setup();
-      const { latest } = renderEditor(makeBlock({ ...TEMPLATE_GROUP, omitted: true }), { omittedLocked: true });
+      const { latest } = renderEditor(makeBlock({ ...WRITING, omitted: true }), { template: vanTemplate() });
       const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
       expect(toggle).toBeDisabled();
       expect(toggle).toBeChecked();
@@ -312,9 +348,34 @@ describe("biểu mẫu nhóm: công tắc và dải vị trí", () => {
       expect(latest.block.omitted).toBe(true);
     });
 
-    it("nhóm đã bật từ bản nháp cũ vẫn tắt/bật được để sửa lại; tắt rồi thì khóa lại", async () => {
+    it("nhóm trùng id với nhóm đã lược của mẫu bị khóa dù không mang mã nhóm mẫu", () => {
+      renderEditor(makeBlock({ id: "tpl-paragraph", questionType: "ESSAY", questionCount: 1, omitted: true }), { template: vanTemplate() });
+      expect(screen.getByRole("switch", { name: "Tạm bỏ qua" })).toBeDisabled();
+    });
+
+    it("Đọc hiểu đổi sang Tự luận (mẫu không lược nhóm này): bật Tạm bỏ qua không bị khóa, tắt lại được", async () => {
       const user = userEvent.setup();
-      const { latest } = renderEditor(makeBlock({ ...TEMPLATE_GROUP, omitted: false }), { omittedLocked: true });
+      const { latest } = renderEditor(makeBlock({ ...READING, omitted: false }), { template: vanTemplate() });
+      const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
+      expect(toggle).toBeEnabled();
+      await user.click(toggle);
+      expect(latest.block.omitted).toBe(true);
+      expect(toggle).toBeEnabled();
+      expect(screen.queryByText(/Mẫu đã khóa nhóm này/)).not.toBeInTheDocument();
+      await user.click(toggle);
+      expect(latest.block.omitted).toBe(false);
+    });
+
+    it("mã nhóm mẫu trùng ở hai nhóm của mẫu thì không khớp (như bộ kiểm tra: mã mơ hồ không khớp gì)", () => {
+      const template = vanTemplate();
+      template.parts[0]!.sections![0]!.blocks!.push(templateBlock("HSCA_VAN_PARAGRAPH", "Đoạn văn 2"));
+      renderEditor(makeBlock({ ...WRITING, omitted: true }), { template });
+      expect(screen.getByRole("switch", { name: "Tạm bỏ qua" })).toBeEnabled();
+    });
+
+    it("nhóm viết đã bật từ bản nháp cũ vẫn tắt/bật được để sửa lại; tắt rồi thì khóa lại", async () => {
+      const user = userEvent.setup();
+      const { latest } = renderEditor(makeBlock({ ...WRITING, omitted: false }), { template: vanTemplate() });
       const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
       expect(toggle).toBeEnabled();
       expect(screen.queryByText(/Mẫu đã khóa nhóm này/)).not.toBeInTheDocument();
@@ -323,9 +384,9 @@ describe("biểu mẫu nhóm: công tắc và dải vị trí", () => {
       expect(toggle).toBeDisabled();
     });
 
-    it("mẫu không đặt cờ (ví dụ SP2E): công tắc vẫn bật tắt được", async () => {
+    it("mẫu không đặt cờ (ví dụ SP2E): công tắc của nhóm đã lược vẫn bật tắt được", async () => {
       const user = userEvent.setup();
-      const { latest } = renderEditor(makeBlock({ ...TEMPLATE_GROUP, omitted: true }), { omittedLocked: false });
+      const { latest } = renderEditor(makeBlock({ ...WRITING, omitted: true }), { template: vanTemplate({ omittedLocked: null }) });
       const toggle = screen.getByRole("switch", { name: "Tạm bỏ qua" });
       expect(toggle).toBeEnabled();
       await user.click(toggle);
@@ -333,7 +394,7 @@ describe("biểu mẫu nhóm: công tắc và dải vị trí", () => {
     });
 
     it("nhóm thêm tay (không có mã nhóm mẫu) không bị khóa, như bộ kiểm tra", () => {
-      renderEditor(makeBlock({ questionType: "ESSAY", questionCount: 1, omitted: true }), { omittedLocked: true });
+      renderEditor(makeBlock({ questionType: "ESSAY", questionCount: 1, omitted: true }), { template: vanTemplate() });
       expect(screen.getByRole("switch", { name: "Tạm bỏ qua" })).toBeEnabled();
     });
   });
