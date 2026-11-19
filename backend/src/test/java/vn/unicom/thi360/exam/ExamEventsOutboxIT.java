@@ -157,6 +157,12 @@ class ExamEventsOutboxIT extends AbstractIntegrationTest {
         assertThat(events(ExamEventTopics.PUBLISHED)).as("the failed command wrote no event").isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?", Long.class, exam)).isZero();
         assertThat(jdbc.queryForObject("SELECT status FROM exam.exam WHERE id = ?", String.class, exam)).isEqualTo("DRAFT");
+        // The control (R1-16): the same exam, revision and path published without the audit failure DOES write the event.
+        // Without it the empty list above would also be true of a build that never emits the event at all.
+        reset(audit);
+        publish(UUID.randomUUID().toString(), revision()).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+        assertThat(events(ExamEventTopics.PUBLISHED)).as("the event rolled back above is written by the successful publish").hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM exam.exam WHERE id = ?", String.class, exam)).isEqualTo("PUBLISHED");
     }
 
     @Test
