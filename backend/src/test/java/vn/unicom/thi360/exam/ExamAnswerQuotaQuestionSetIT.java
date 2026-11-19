@@ -104,8 +104,9 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
     }
 
     /**
-     * The Toán part of a real template, moved onto an isolated subject. Matrices and scopes are dropped (they need
-     * graded data); answer quotas, block types, counts and the set group stay as the template declares them.
+     * The Toán part of a real template, moved onto an isolated subject. Matrices, scopes and the QDA short-answer
+     * format filter (the isolated questions carry no answer format) are dropped; answer quotas, block types, counts
+     * and the set group stay as the template declares them.
      * {@code quotas} replaces the template's answer quotas when not null.
      */
     private String toanPart(String templateCode, Subject subject, String quotas) throws Exception {
@@ -133,6 +134,8 @@ class ExamAnswerQuotaQuestionSetIT extends AbstractIntegrationTest {
                     block.put("id", UUID.randomUUID().toString());
                     block.remove("matrix");
                     block.remove("knowledgeScope");
+                    block.remove("itemShape");
+                    block.putArray("answerFormats");
                     block.putArray("topicQuotas");
                 }
                 sections.add(section);
