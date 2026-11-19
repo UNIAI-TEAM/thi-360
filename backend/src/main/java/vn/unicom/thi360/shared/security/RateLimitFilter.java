@@ -8,6 +8,7 @@ import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.redis.lettuce.Bucket4jLettuce;
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.ScriptOutputType;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
@@ -17,10 +18,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -43,8 +47,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public static final String KEY_PREFIX = "rl:login:ip:";
     public static final String UPLOAD_KEY_PREFIX = "rl:upload:ip:";
     public static final String PUBLIC_KEY_PREFIX = "rl:public:ip:";
-    private static final String REGISTER_PATH = "/api/v1/auth/register";
-    public static final String REGISTER_KEY_PREFIX = "rl:register:ip:";
+    // Separate namespace from the previous Bucket4j string values: this policy stores a sorted set.
+    public static final String REGISTER_KEY_PREFIX = "rl:register:rolling:ip:";
     /** Decoded path segments (as Spring MVC matches them) of the public API prefix {@code /api/v1/public/**}. */
     private static final List<String> PUBLIC_SEGMENTS = List.of("api", "v1", "public");
     /** TM 8.4: VNPAY retries the IPN up to 10 times; limiting it would lose payments. */
@@ -56,6 +60,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final SecurityErrorWriter errorWriter;
     private final LettuceConnectionFactory lettuceConnectionFactory;
     private final boolean loginOnly;
+    private final Clock clock;
     private final ExemptIpMatcher exemptIpMatcher;
 
     private volatile StatefulRedisConnection<String, byte[]> connection;
@@ -66,12 +71,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
             SecurityProperties securityProperties,
             SecurityErrorWriter errorWriter,
             LettuceConnectionFactory lettuceConnectionFactory, boolean loginOnly) {
+        this(clientIpResolver, securityProperties, errorWriter, lettuceConnectionFactory, loginOnly, Clock.systemUTC());
+    }
+
+    /** {@code clock}: mốc thời gian của giới hạn đăng ký (cửa sổ trượt); kiểm thử đưa đồng hồ cố định vào. */
+    RateLimitFilter(
+            ClientIpResolver clientIpResolver,
+            SecurityProperties securityProperties,
+            SecurityErrorWriter errorWriter,
+            LettuceConnectionFactory lettuceConnectionFactory, boolean loginOnly, Clock clock) {
         this.clientIpResolver = Objects.requireNonNull(clientIpResolver, "clientIpResolver must not be null");
         this.securityProperties = Objects.requireNonNull(securityProperties, "securityProperties must not be null");
         this.errorWriter = Objects.requireNonNull(errorWriter, "errorWriter must not be null");
         this.lettuceConnectionFactory = Objects.requireNonNull(lettuceConnectionFactory, "lettuceConnectionFactory must not be null");
         this.loginOnly = loginOnly;
         this.exemptIpMatcher = new ExemptIpMatcher(securityProperties.rateLimit().exemptIps());
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
@@ -84,9 +99,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!"POST".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        boolean beforeAuthentication = LOGIN_PATH.equals(path) || REGISTER_PATH.equals(path);
-        return loginOnly ? !beforeAuthentication
-                : beforeAuthentication || resolvePolicy(path) == null;
+        if (RegistrationRoute.matches(request)) {
+            // Đăng ký chạy ở bộ lọc đứng trước xác thực, đúng một lần mỗi yêu cầu.
+            return !loginOnly;
+        }
+        return loginOnly ? !LOGIN_PATH.equals(path)
+                : LOGIN_PATH.equals(path) || resolvePolicy(path) == null;
     }
 
     @Override
@@ -95,6 +113,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain)
             throws ServletException, IOException {
+        if (RegistrationRoute.matches(request)) {
+            limitRegistration(request, response, filterChain);
+            return;
+        }
         RateLimitPolicy policy = isReadMethod(request.getMethod())
                 ? publicPolicy(request)
                 : resolvePolicy(extractPath(request));
@@ -117,21 +139,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         ConsumptionProbe probe;
         try {
             ProxyManager<String> manager = getOrCreateProxyManager();
-            Supplier<BucketConfiguration> configSupplier = () -> {
-                var builder = BucketConfiguration.builder()
-                        .addLimit(Bandwidth.builder()
-                                .capacity(limit)
-                                .refillIntervally(limit, window)
-                                .build());
-                for (WindowLimit extra : policy.extraWindows()) {
-                    int extraLimit = Math.max(1, extra.limit());
-                    builder.addLimit(Bandwidth.builder()
-                            .capacity(extraLimit)
-                            .refillIntervally(extraLimit, extra.window())
-                            .build());
-                }
-                return builder.build();
-            };
+            Supplier<BucketConfiguration> configSupplier = () -> BucketConfiguration.builder()
+                    .addLimit(Bandwidth.builder()
+                            .capacity(limit)
+                            .refillIntervally(limit, window)
+                            .build())
+                    .build();
             Bucket bucket = manager.builder().build(policy.keyPrefix() + clientIp, configSupplier);
             probe = bucket.tryConsumeAndReturnRemaining(1);
         } catch (RuntimeException ex) {
@@ -160,6 +173,50 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .log(policy.exceededMessage());
         errorWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "RATE_LIMITED");
     }
+
+    /**
+     * Đăng ký (E19): 30 lần mỗi giờ và 100 lần mỗi ngày theo từng IP, đều là cửa sổ trượt, quyết định nguyên tử trên cả hai
+     * cửa sổ. Chỉ chạy ở bộ lọc đứng trước xác thực; chính sách khác không đi qua đây.
+     */
+    private void limitRegistration(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        SecurityProperties.RateLimitProperties rateLimit = securityProperties.rateLimit();
+        String clientIp = clientIpResolver.resolve(request);
+        RollingWindowLimiter.Decision decision;
+        try {
+            getOrCreateProxyManager(); // mở kết nối Redis dùng chung
+            decision = RollingWindowLimiter.tryAcquire(
+                    connection,
+                    REGISTER_KEY_PREFIX + clientIp,
+                    List.of(
+                            new RollingWindowLimiter.Window(
+                                    rateLimit.registerPerIpHourLimit(), rateLimit.registerPerIpHourWindow()),
+                            new RollingWindowLimiter.Window(
+                                    rateLimit.registerPerIpDayLimit(), rateLimit.registerPerIpDayWindow())),
+                    clock.millis());
+        } catch (RuntimeException ex) {
+            securityLog.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("event", "rate_limit.backend_error")
+                    .addKeyValue("clientIp", clientIp)
+                    .log("Redis rate-limit check failed; failing open");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        response.setHeader("X-RateLimit-Remaining", Long.toString(decision.remaining()));
+        if (decision.allowed()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        long retryAfterSeconds = Math.max(1L, (decision.retryAfterMillis() + 999L) / 1000L);
+        response.setHeader("Retry-After", Long.toString(retryAfterSeconds));
+        securityLog.atWarn()
+                .addKeyValue("event", "rate_limit.register_ip_exceeded")
+                .addKeyValue("clientIp", clientIp)
+                .log("Per-IP registration rate limit exceeded");
+        errorWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "RATE_LIMITED");
+    }
     public void close() {
         StatefulRedisConnection<String, byte[]> conn = this.connection;
         if (conn != null) {
@@ -185,9 +242,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 Duration maxWindow = Stream.of(
                                 securityProperties.rateLimit().loginPerIpWindow(),
                                 securityProperties.rateLimit().uploadPerIpWindow(),
-                                securityProperties.rateLimit().publicPerIpWindow(),
-                                securityProperties.rateLimit().registerPerIpHourWindow(),
-                                securityProperties.rateLimit().registerPerIpDayWindow())
+                                securityProperties.rateLimit().publicPerIpWindow())
                         .max(Duration::compareTo)
                         .orElseThrow();
                 Duration maxTtl = maxWindow.multipliedBy(2);
@@ -223,7 +278,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * {@code getRequestURI()} differs for admitted equivalent forms such as {@code /api/v1/%70ublic/...},
      * which would reach the controller of a public path without being counted.
      */
-    private static List<String> decodedSegments(HttpServletRequest request) {
+    static List<String> decodedSegments(HttpServletRequest request) {
         boolean parsedHere = !ServletRequestPathUtils.hasParsedRequestPath(request);
         try {
             RequestPath requestPath = ServletRequestPathUtils.parseAndCache(request);
@@ -267,45 +322,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     "Per-IP import upload rate limit exceeded",
                     false);
         }
-        if (REGISTER_PATH.equals(path)) {
-            SecurityProperties.RateLimitProperties rateLimit = securityProperties.rateLimit();
-            return new RateLimitPolicy(
-                    REGISTER_KEY_PREFIX,
-                    rateLimit.registerPerIpHourLimit(),
-                    rateLimit.registerPerIpHourWindow(),
-                    "rate_limit.register_ip_exceeded",
-                    "Per-IP registration rate limit exceeded",
-                    false,
-                    List.of(new WindowLimit(rateLimit.registerPerIpDayLimit(), rateLimit.registerPerIpDayWindow())));
-        }
         return null;
     }
 
-    /**
-     * @param extraWindows các cửa sổ thêm của cùng một chính sách (E19: 30 lần mỗi giờ và 100 lần mỗi ngày); yêu cầu
-     *                     chỉ qua khi mọi cửa sổ còn lượt, và {@code Retry-After} lấy theo cửa sổ phải chờ lâu nhất
-     */
     private record RateLimitPolicy(
             String keyPrefix,
             int limit,
             Duration window,
             String exceededEvent,
             String exceededMessage,
-            boolean exemptible,
-            List<WindowLimit> extraWindows) {
-
-        RateLimitPolicy(
-                String keyPrefix,
-                int limit,
-                Duration window,
-                String exceededEvent,
-                String exceededMessage,
-                boolean exemptible) {
-            this(keyPrefix, limit, window, exceededEvent, exceededMessage, exemptible, List.of());
-        }
-    }
-
-    private record WindowLimit(int limit, Duration window) {
+            boolean exemptible) {
     }
     private static String extractPath(HttpServletRequest request) {
         String uri = request.getRequestURI();
@@ -314,5 +340,74 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return uri.substring(contextPath.length());
         }
         return uri;
+    }
+
+    /** POST route matched using the same decoded segments as MVC. */
+    static final class RegistrationRoute {
+        private static final List<String> SEGMENTS = List.of("api", "v1", "auth", "register");
+
+        private RegistrationRoute() {}
+
+        static boolean matches(HttpServletRequest request) {
+            return "POST".equalsIgnoreCase(request.getMethod())
+                    && SEGMENTS.equals(decodedSegments(request));
+        }
+    }
+
+    /** Atomic rolling-window decisions for registration, isolated from the existing Bucket4j policies. */
+    private static final class RollingWindowLimiter {
+        record Window(int limit, Duration duration) {}
+        record Decision(boolean allowed, long retryAfterMillis, long remaining) {}
+
+        private static final String SCRIPT = """
+                local key = KEYS[1]
+                local now = tonumber(ARGV[1])
+                local member = ARGV[2]
+                local count = (#ARGV - 2) / 2
+                local longest = 0
+                for i = 1, count do
+                  local w = tonumber(ARGV[1 + 2 * i])
+                  if w > longest then longest = w end
+                end
+                redis.call('ZREMRANGEBYSCORE', key, '-inf', string.format('%.0f', now - longest))
+                local retry = 0
+                local remaining = -1
+                for i = 1, count do
+                  local w = tonumber(ARGV[1 + 2 * i])
+                  local l = tonumber(ARGV[2 + 2 * i])
+                  local from = '(' .. string.format('%.0f', now - w)
+                  local c = redis.call('ZCOUNT', key, from, '+inf')
+                  if c >= l then
+                    local oldest = redis.call('ZRANGEBYSCORE', key, from, '+inf', 'WITHSCORES', 'LIMIT', c - l, 1)
+                    local wait = tonumber(oldest[2]) + w - now
+                    if wait > retry then retry = wait end
+                  end
+                  local left = l - c - 1
+                  if remaining < 0 or left < remaining then remaining = left end
+                end
+                if retry > 0 then
+                  return {0, retry, 0}
+                end
+                redis.call('ZADD', key, now, member)
+                redis.call('PEXPIRE', key, string.format('%.0f', longest))
+                return {1, 0, remaining}
+                """;
+
+        private RollingWindowLimiter() {}
+
+        static Decision tryAcquire(
+                StatefulRedisConnection<String, byte[]> connection, String key, List<Window> windows, long nowMillis) {
+            byte[][] argv = new byte[2 + 2 * windows.size()][];
+            argv[0] = Long.toString(nowMillis).getBytes(StandardCharsets.UTF_8);
+            argv[1] = (nowMillis + "-" + UUID.randomUUID()).getBytes(StandardCharsets.UTF_8);
+            for (int i = 0; i < windows.size(); i++) {
+                Window window = windows.get(i);
+                argv[2 + 2 * i] = Long.toString(window.duration().toMillis()).getBytes(StandardCharsets.UTF_8);
+                argv[3 + 2 * i] = Integer.toString(Math.max(1, window.limit())).getBytes(StandardCharsets.UTF_8);
+            }
+            List<?> result = connection.sync().eval(SCRIPT, ScriptOutputType.MULTI, new String[] {key}, argv);
+            boolean allowed = ((Number) result.get(0)).longValue() == 1L;
+            return new Decision(allowed, ((Number) result.get(1)).longValue(), ((Number) result.get(2)).longValue());
+        }
     }
 }

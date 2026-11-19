@@ -25,7 +25,6 @@ public class CookieAuthFilter extends OncePerRequestFilter {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
-            "/api/v1/auth/register",
             "/api/v1/ping",
             "/api/v1/appearance",
             "/error"
@@ -37,7 +36,8 @@ public class CookieAuthFilter extends OncePerRequestFilter {
         return SKIP_EXACT_PATHS.contains(path)
                 || path.startsWith("/actuator/health")
                 || path.startsWith("/v3/api-docs")
-                || TestApiPaths.matches(path);
+                || TestApiPaths.matches(path)
+                || RateLimitFilter.RegistrationRoute.matches(request);
     }
 
     @Override
