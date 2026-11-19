@@ -779,7 +779,12 @@ export interface SuggestExamCodeQuery {
  */
 export interface CountKnowledgeScope extends KnowledgeScope {
   excludedNodeIds?: string[];
-  /** Nhóm dưới quy tắc "Chỉ lấy từ": chùm chỉ tính khi mọi câu con cùng nằm trong một nhánh MAPID của quy tắc (chặt hơn `everyChildInScope`). */
+  /**
+   * Các quy tắc "Chỉ lấy từ" áp dụng cho nhóm (của cả môn và của chính nhóm), mỗi quy tắc một mảng MAPID: câu phải khớp từng mảng
+   * (VÀ), trong một mảng chỉ cần một MAPID (HOẶC). `nodeIds` rỗng khi dùng nó.
+   */
+  nodeGroups?: string[][];
+  /** Chùm dưới quy tắc "Chỉ lấy từ": chùm chỉ tính khi mọi câu con cùng nằm trong một nhánh MAPID của từng nhóm (chặt hơn `everyChildInScope`). */
   everyChildSameNode?: boolean;
 }
 

@@ -79,12 +79,15 @@ function withoutNodes(scope: QuestionBlock["knowledgeScope"]): QuestionBlock["kn
 }
 
 /**
- * Phạm vi cũ của chùm lọc theo "mọi câu con thuộc hợp các MAPID" (`everyChildInScope`), hoặc lỏng hơn khi cờ tắt (chỉ cần một câu con
- * hoặc cả bộ). SOURCE mới của máy chủ đòi mọi câu con cùng nằm dưới MỘT MAPID chung. Chỉ khi chùm có đúng một MAPID và đòi mọi câu
- * con thì hai bên lọc như nhau (R1-3); còn lại chuyển sẽ đổi nguồn của đề, nên môn giữ kiểu cũ. Phạm vi tính theo `effectiveScope`:
- * chùm chưa chọn MAPID kế thừa phạm vi của môn.
+ * Phạm vi MAPID cũ phải lọc như quy tắc SOURCE mới thì mới chuyển được, nếu không chuyển sẽ đổi nguồn của đề (R1-2, R1-3):
+ * - Quy tắc SOURCE của máy chủ áp dụng VÀ (cả môn và nhóm cùng phải khớp), còn bản cũ để phạm vi riêng của nhóm thay phạm vi của
+ *   môn: môn có MAPID ở cả môn và ở một nhóm giữ kiểu cũ.
+ * - Phạm vi cũ của chùm lọc theo "mọi câu con thuộc hợp các MAPID" (`everyChildInScope`), hoặc lỏng hơn khi cờ tắt (chỉ cần một
+ *   câu con hoặc cả bộ); SOURCE mới đòi mọi câu con cùng nằm dưới MỘT MAPID chung. Chỉ khi chùm có đúng một MAPID và đòi mọi câu
+ *   con thì hai bên lọc như nhau. Phạm vi tính theo `effectiveScope`: chùm chưa chọn MAPID kế thừa phạm vi của môn.
  */
-function setSourcesUnchanged(section: ExamSection): boolean {
+function sourcesUnchanged(section: ExamSection): boolean {
+  if (hasNodes(section.knowledgeScope) && section.blocks.some((block) => hasNodes(block.knowledgeScope))) return false;
   return section.blocks.every((block) => {
     if (!isSetBlock(block)) return true;
     const scope = effectiveScope(block, section);
@@ -105,7 +108,7 @@ export function convertLegacySection(section: ExamSection): ExamSection {
   const sectionQuotas = section.topicQuotas ?? [];
   const blockQuotas = section.blocks.flatMap((block) => block.topicQuotas ?? []);
   if (![...sectionQuotas, ...blockQuotas].every(convertibleQuota)) return section;
-  if (!setSourcesUnchanged(section)) return section;
+  if (!sourcesUnchanged(section)) return section;
 
   const ids = new Set<string>();
   const unique = (base: string): string => {
@@ -471,30 +474,38 @@ export function revealMapidRulesTable(root: ParentNode = document, frames = 30):
 
 const unique = (items: readonly string[]): string[] => [...new Set(items)];
 
-function compiledScope(legacy: KnowledgeScope | null, source: readonly string[], everyChild: boolean): CountKnowledgeScope | null {
-  const competencyCodes = legacy?.competencyCodes ?? [];
-  if (source.length > 0) {
-    return { nodeIds: [...source], competencyCodes, ...(everyChild ? { everyChildInScope: true, everyChildSameNode: true } : {}) };
-  }
-  return legacy ? { nodeIds: [], competencyCodes } : null;
+/** Phạm vi chỉ còn lọc năng lực (MAPID cũ bị bỏ khi môn có `mapidMode`); `null` khi không còn gì. */
+function competencyOnly(legacy: KnowledgeScope | null): CountKnowledgeScope | null {
+  return legacy ? { nodeIds: [], competencyCodes: legacy.competencyCodes ?? [] } : null;
 }
 
 /**
  * Phạm vi để đếm nguồn của một nhóm, khớp cách máy chủ biên dịch khi sinh đề (`MapidRuleCompiler`): môn có `mapidMode` thì MAPID
- * cũ của môn và nhóm bị bỏ; ở MATRIX phạm vi là các quy tắc "Chỉ lấy từ" (của nhóm, không có thì của cả môn; chùm đòi cả chùm cùng
- * phạm vi) và `excludedNodeIds` là MAPID mà quy tắc "Chỉ xuất hiện ở nhóm này" của nhóm khác loại khỏi nhóm này. Môn chưa có
- * `mapidMode` (kỳ thi khác, Văn, Anh) giữ phạm vi kiểu cũ.
+ * cũ của môn và nhóm bị bỏ; ở MATRIX mỗi quy tắc "Chỉ lấy từ" là MỘT nhóm MAPID (`nodeGroups`: trong một quy tắc là HOẶC), câu
+ * phải khớp mọi nhóm áp dụng, tức quy tắc của cả môn và của chính nhóm (VÀ). Chùm còn đòi mọi câu con cùng một MAPID của từng nhóm.
+ * `excludedNodeIds` là MAPID mà quy tắc "Chỉ xuất hiện ở nhóm này" của nhóm khác loại khỏi nhóm này. Môn chưa có `mapidMode` (kỳ
+ * thi khác, Văn, Anh) giữ phạm vi kiểu cũ.
  */
 export function groupCountScope(block: QuestionBlock, section: ExamSection): CountKnowledgeScope | null {
   if (section.mapidMode === undefined) return effectiveScope(block, section);
-  const matrix = section.mapidMode === "MATRIX";
-  const rules = matrix ? (section.mapidRules ?? []) : [];
-  const sourceOf = (groupId: string | null) =>
-    unique(rules.filter((rule) => rule.type === "SOURCE" && (rule.groupId ?? null) === groupId).flatMap((rule) => rule.nodeIds));
-  const scope = effectiveScope(
-    { knowledgeScope: compiledScope(block.knowledgeScope, sourceOf(block.id), isSetBlock(block)) },
-    { knowledgeScope: compiledScope(section.knowledgeScope, sourceOf(null), true) },
-  );
+  const rules = section.mapidMode === "MATRIX" ? (section.mapidRules ?? []) : [];
+  const sourceGroups = (groupId: string | null) =>
+    rules
+      .filter((rule) => rule.type === "SOURCE" && (rule.groupId ?? null) === groupId)
+      .map((rule) => unique(rule.nodeIds))
+      .filter((nodes) => nodes.length > 0);
+  const own = sourceGroups(block.id);
+  const nodeGroups = [...sourceGroups(null), ...own];
+  const inherited = effectiveScope({ knowledgeScope: competencyOnly(block.knowledgeScope) }, { knowledgeScope: competencyOnly(section.knowledgeScope) });
+  const scope: CountKnowledgeScope | null =
+    nodeGroups.length > 0
+      ? {
+          nodeIds: [],
+          competencyCodes: own.length > 0 ? (block.knowledgeScope?.competencyCodes ?? []) : (inherited?.competencyCodes ?? []),
+          nodeGroups,
+          ...(isSetBlock(block) ? { everyChildInScope: true, everyChildSameNode: true } : {}),
+        }
+      : inherited;
   const groups = new Set(section.blocks.map((item) => item.id));
   const excluded = unique(
     rules
