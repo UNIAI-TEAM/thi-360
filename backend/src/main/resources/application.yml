@@ -119,6 +119,11 @@ thi360:
       forgot-per-ip-window: PT1M
       reset-per-ip-limit: ${THI360_RESET_PER_IP_LIMIT:60}
       reset-per-ip-window: PT1M
+      # CM-1 (TM 10.2): GET /api/v1/public/** gets 120 requests per minute per IP. exempt-ips lists the web servers that render
+      # the public pages from one IP (comma separated IPs or CIDRs, plan B6); empty means nobody is exempt.
+      public-per-ip-limit: 120
+      public-per-ip-window: PT1M
+      exempt-ips: ${THI360_SECURITY_RATELIMIT_EXEMPTIPS:}
   s3:
     mode: ${THI360_S3_MODE:s3}
     endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}

@@ -38,6 +38,8 @@ public class CookieAuthFilter extends OncePerRequestFilter {
         return SKIP_EXACT_PATHS.contains(path)
                 || path.startsWith("/actuator/health")
                 || path.startsWith("/v3/api-docs")
+                // CM-1: a stale or wrong access cookie must not break the public pages (TM 10.2).
+                || path.startsWith("/api/v1/public/")
                 || TestApiPaths.matches(path)
                 || RateLimitFilter.RegistrationRoute.matches(request);
     }
