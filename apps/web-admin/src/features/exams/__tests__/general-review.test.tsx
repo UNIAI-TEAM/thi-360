@@ -86,7 +86,9 @@ describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có tha
 
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/Bài ôn/)).toBeInTheDocument();
+    expect(within(dialog).getByText("1. Vật lí")).toBeInTheDocument();
+    expect(within(dialog).getByText(/0 câu/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Bài ôn/)).not.toBeInTheDocument();
     expect(within(dialog).queryByText(/Vật lí chuẩn/)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));

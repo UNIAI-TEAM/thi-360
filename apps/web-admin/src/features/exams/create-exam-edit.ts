@@ -116,6 +116,9 @@ export function reloadPartRows({
       shared: sharedNext,
     }));
   }
+  // Bài ôn (`SUBJECT` + `REVIEW`) hiển thị tên môn đã chọn thay cho tên phần "Review" của mẫu (đồng bộ với `rowLabel`).
+  const reviewSubjectName =
+    next.scope === "SUBJECT" && next.buildMode === "REVIEW" && next.subjectCode ? subjectName(next.subjectCode) : undefined;
   return initialParts({
     templates,
     kind: next.kind,
@@ -127,7 +130,7 @@ export function reloadPartRows({
     subjectCode: next.subjectCode,
     subjectName,
   }).map((part) => ({
-    name: part.name,
+    name: reviewSubjectName ?? part.name,
     questionCount: part.questionCount,
     durationMinutes: part.durationMinutes,
     shared: sharedNext,

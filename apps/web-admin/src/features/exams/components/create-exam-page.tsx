@@ -468,8 +468,8 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     !exam,
   );
   useEffect(() => {
-    if (suggestion.data && !getFieldState("code").isDirty) resetField("code", { defaultValue: suggestion.data });
-  }, [suggestion.data, getFieldState, resetField]);
+    if (!exam && suggestion.data && !getFieldState("code").isDirty) resetField("code", { defaultValue: suggestion.data });
+  }, [exam, suggestion.data, getFieldState, resetField]);
 
   const generateCode = async () => {
     const result = await suggestion.refetch();

@@ -1,8 +1,10 @@
+import { QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { CreateExamPage } from "../components/create-exam-page";
+import { EXAMS_QUERY_KEYS } from "../keys";
 import type { ExamDetail, ExamPart, QuestionBlock } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
@@ -95,9 +97,9 @@ function setup(override: Partial<ExamDetail> = {}, configure?: (backend: ExamsBa
   backend.seedExam(seeded);
 }
 
-async function open() {
+async function open(client?: QueryClient) {
   window.history.replaceState(null, "", `/exams/new?exam=${EXAM_ID}`);
-  const view = renderWithProviders(<CreateExamPage />);
+  const view = renderWithProviders(<CreateExamPage />, client ? { client } : {});
   await screen.findByRole("form", { name: "Tạo bài thi" });
   await screen.findByRole("region", { name: "Bảng cấu trúc tổng quan của bài thi" });
   return view;
@@ -142,6 +144,26 @@ describe("Bước 1 ở chế độ sửa (/exams/new?exam=<id>, UNI-2751)", () 
     // Không phải tab Thông tin chung: không có cột Tình trạng.
     expect(screen.queryByRole("heading", { name: "Tình trạng" })).not.toBeInTheDocument();
     expect(screen.getByText(/Đang sửa bài HSA-EDIT-001/)).toBeInTheDocument();
+  }, 30_000);
+
+  it("V1: chế độ sửa giữ mã bài thi đã lưu ngay cả khi QueryClient đã lưu mã gợi ý từ lượt tạo bài trước", async () => {
+    setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(EXAMS_QUERY_KEYS.suggestedCode({ kind: "HSA", scope: "FULL", partCode: null, subjectCode: null }), "HSA-F-001");
+    await open(client);
+    expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-EDIT-001");
+    expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).not.toHaveValue("HSA-F-001");
+  }, 30_000);
+
+  it("chế độ sửa vẫn cho phép bấm Tự sinh mã để lấy mã mới khi người dùng chủ động yêu cầu", async () => {
+    setup({}, (server) => {
+      server.server.on("GET", "/api/v1/admin/exams/suggested-code", { status: 200, body: { code: "HSA-F-999" } });
+    });
+    const user = userEvent.setup();
+    await open();
+    expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-EDIT-001");
+    await user.click(screen.getByRole("button", { name: "Tự sinh mã" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-F-999"));
   }, 30_000);
 
   it("AC-1697-2: sửa số câu phần 1 rồi Lưu và tiếp tục ghi cấu trúc của bài đó (không tạo bài mới) và về bước 2", async () => {
@@ -205,6 +227,8 @@ describe("Bước 1 ở chế độ sửa (/exams/new?exam=<id>, UNI-2751)", () 
     expect(
       within(dialog).getByText("Đổi cách dựng bài sẽ tạo lại cấu trúc như đề mới. Cấu trúc, ma trận và nhóm lấy câu hiện tại sẽ bị thay."),
     ).toBeInTheDocument();
+    expect(within(dialog).getByText("1. Toán")).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Review/)).not.toBeInTheDocument();
     expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Tạo lại cấu trúc" }));
     await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));

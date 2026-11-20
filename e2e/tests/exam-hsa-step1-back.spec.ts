@@ -252,7 +252,12 @@ test("AC-1697-5c bài đã công bố: cách dựng bài chỉ đọc kèm lý d
 
   await page.goto(`${ADMIN_URL}/exams/new?exam=${id}`);
   await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
-  await expect(page.getByRole("group", { name: /^Cách dựng bài/ })).toBeDisabled();
+  const buildModeGroup = page.getByRole("group", { name: /^Cách dựng bài/ });
+  // Chromium không xem `<fieldset disabled>` là disabled trên `role="group"`, nên kiểm cả thuộc tính lẫn từng radio bên trong.
+  await expect(buildModeGroup).toHaveAttribute("disabled");
+  await expect(buildModeGroup.getByRole("radio")).toHaveCount(2);
+  await expect(buildModeGroup.getByRole("radio", { name: /^Dùng cấu trúc môn HSA/ })).toBeDisabled();
+  await expect(buildModeGroup.getByRole("radio", { name: /^Tự thiết lập bài ôn/ })).toBeDisabled();
   await expect(page.getByText("Bài đã có phiên bản công bố; muốn đổi cách dựng bài hãy tạo bài mới")).toBeVisible();
 
   const refused = await admin.api.patch(`${ADMIN_URL}/api/v1/admin/exams/${id}`, {
