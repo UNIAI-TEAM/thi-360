@@ -68,6 +68,32 @@ describe("mapExamTemplate", () => {
     expect(option.subjectChoice).toMatchObject({ chooseSubjects: 3, countsByPick: [17, 17, 16] });
     expect(option.subjectChoice?.sections[0]).toMatchObject({ subjectCode: "LY", questionCount: null, choiceGroup: "NATURAL" });
   });
+
+  it("chống thiếu structure/parts và khớp partId không ghép nhầm theo vị trí (R1-10)", () => {
+    const partial = {
+      ...template([]),
+      structure: null,
+      parts: undefined,
+    } as unknown as Template;
+    expect(mapExamTemplate(partial).parts).toEqual([]);
+
+    const reordered = {
+      ...template([
+        { id: "p1", name: "Phần 1", questionCount: 10, participation: { mode: "ALL" }, sections: [] },
+        { id: "p2", name: "Phần 2", questionCount: 15, participation: { mode: "ALL" }, sections: [] },
+        { id: "p3", name: "Phần 3", questionCount: 5, participation: { mode: "ALL" }, sections: [] },
+      ]),
+      parts: [
+        { partId: "p2", order: 2, name: "Phần 2", questionCount: 15, questionTypes: [{ questionType: "ESSAY", questionCount: 15 }] },
+        { partId: "p1", order: 1, name: "Phần 1", questionCount: 10, questionTypes: [{ questionType: "SINGLE_CHOICE", questionCount: 10 }] },
+      ],
+    } as unknown as Template;
+
+    const mapped = mapExamTemplate(reordered);
+    expect(mapped.parts[0]!.questionTypes).toEqual([{ questionType: "SINGLE_CHOICE", questionCount: 10 }]);
+    expect(mapped.parts[1]!.questionTypes).toEqual([{ questionType: "ESSAY", questionCount: 15 }]);
+    expect(mapped.parts[2]!.questionTypes).toBeUndefined();
+  });
 });
 
 describe("mapExamDetail thời lượng (F-4)", () => {

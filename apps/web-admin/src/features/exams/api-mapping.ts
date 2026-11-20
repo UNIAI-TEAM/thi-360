@@ -568,7 +568,9 @@ function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined, s
 
 /** Mẫu cấu trúc; máy chủ không trả tên nên `name` để trống, giao diện dựng tên theo ngôn ngữ (`useExamTemplates`). */
 export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): ExamTemplate {
-  const document = response.structure;
+  const document = response.structure ?? { parts: [] };
+  const summaries = response.parts ?? [];
+  const hasIds = summaries.some((summary) => Boolean(summary.partId));
   return {
     code: response.code,
     kind: response.kindCode,
@@ -590,14 +592,10 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     fixedCounts: nullable(response.fixedCounts),
     fixedBlockCounts: nullable(response.fixedBlockCounts),
     omittedLocked: nullable(response.omittedLocked),
-    parts: mapParts(document.parts).map((part, index) =>
-      templatePart(
-        part,
-        index,
-        document.parts?.[index],
-        // Cùng phần theo id khi mẫu đã gán id, không thì theo vị trí.
-        response.parts.find((summary) => summary.partId && summary.partId === part.id) ?? response.parts[index],
-      ),
-    ),
+    parts: mapParts(document.parts).map((part, index) => {
+      // Khi bản tóm tắt có `partId`, khớp đúng theo id phần (không ghép nhầm theo vị trí nếu thiếu hoặc lệch thứ tự).
+      const summary = hasIds ? (part.id ? summaries.find((item) => item.partId === part.id) : undefined) : summaries[index];
+      return templatePart(part, index, document.parts?.[index], summary);
+    }),
   };
 }

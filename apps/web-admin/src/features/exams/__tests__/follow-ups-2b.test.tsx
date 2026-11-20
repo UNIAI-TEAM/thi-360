@@ -1,7 +1,9 @@
-import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
 import type { ContentReference } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
 import { getContentReferenceFixture } from "@/test/fixtures/content-reference";
@@ -10,7 +12,9 @@ import { CreateExamScopeFields } from "../components/create-exam-scope-fields";
 import { ExamEditorActions, ExamEditorActionsSlot } from "../components/exam-editor-actions";
 import { ExamEditorLayout } from "../components/exam-editor-layout";
 import { ExamPreviewCompliance } from "../components/exam-preview-compliance";
+import { ExamPreviewPanel } from "../components/exam-preview-panel";
 import { describeStructureChanges } from "../components/exam-structure-changes";
+import { ExamStructureCheckResult } from "../components/exam-structure-check-result";
 import { ExamStructureLeaveDialog } from "../components/exam-structure-leave-dialog";
 import { KnowledgeScopeField } from "../components/knowledge-scope-field";
 import { overviewRowsFromTemplate } from "../create-exam-overview";
@@ -20,15 +24,17 @@ import type { PreviewCompliance } from "../review-types";
 import type { ExamPart, ExamTemplate, KnowledgeScope, QuestionBlock } from "../types";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
 import { block as previewBlock, paperOf, partOf, question as previewQuestion, single } from "./preview-paper-fixtures";
-import { mapBlock, mapExamTemplate, mapParts } from "../api-mapping";
+import { mapBlock, mapExamDetail, mapExamTemplate, mapParts } from "../api-mapping";
 import { BlockEditor } from "../components/block-editor";
 import { blockFieldAnchor } from "../components/block-form-fields";
 import { consumeBlockFieldRequest, requestBlockFieldFocus } from "../components/block-field-focus";
+import { useIssueText } from "../components/exam-review-shared";
 import { ReloadStructureDialog } from "../components/reload-structure-dialog";
 import { partTypeCounts } from "../part-type-counts";
 import { previewMinutesLeft, usePreviewMinutesLeft } from "../preview-retention";
+import { getExamCheck, getExamVersion } from "../review-api";
 import { issueStructureHref } from "../check";
-import type { CheckIssue } from "../review-types";
+import type { CheckIssue, ExamCheckResult } from "../review-types";
 import reference from "@/test/fixtures/content-reference.json";
 
 const nav = vi.hoisted(() => ({ pathname: "/" }));
@@ -281,15 +287,15 @@ describe("lỗi soạn đề 2B", () => {
       expect(within(only).getAllByText("Chưa có dữ liệu đối chiếu")).toHaveLength(2);
       expect(within(only).queryByText("Lệch · tham khảo")).not.toBeInTheDocument();
       expect(screen.queryByText(/dòng lệch/)).not.toBeInTheDocument();
-      expect(screen.getByText("Đạt mọi tiêu chí")).toBeInTheDocument();
+      expect(screen.queryByText("Đạt mọi tiêu chí")).not.toBeInTheDocument();
 
       server.release("GET", `${EXAM_PATH}/structure`);
       // Có cấu trúc: dòng đã gắn MAPID là lệch thật, dòng rỗng nodeIds vẫn chờ mapping.
-      await screen.findByText("Chính tả, từ vựng và ngữ nghĩa · Nhận biết");
+      await screen.findByText((_, node) => node?.tagName === "SPAN" && node.textContent === "Chính tả, từ vựng và ngữ nghĩa · Nhận biết");
       expect(screen.getByText("Chờ mapping")).toBeInTheDocument();
     });
 
-    it("tải lỗi: vẫn trung tính và có dòng nhắn chưa đối chiếu được", async () => {
+    it("tải lỗi: vẫn trung tính, không hiện Đạt mọi tiêu chí và có dòng nhắn chưa đối chiếu được", async () => {
       new FakeServer().on("GET", `${EXAM_PATH}/structure`, { status: 500, body: { code: "INTERNAL", message: "x" } }).install();
       renderCompliance();
 
@@ -298,6 +304,7 @@ describe("lỗi soạn đề 2B", () => {
       const only = within(screen.getByRole("table", { name: tableName })).getAllByRole("row")[1]!;
       expect(within(only).getByText("Chờ mapping")).toBeInTheDocument();
       expect(within(only).queryByText("Lệch · tham khảo")).not.toBeInTheDocument();
+      expect(screen.queryByText("Đạt mọi tiêu chí")).not.toBeInTheDocument();
     });
   });
 
@@ -408,6 +415,38 @@ describe("lỗi soạn đề 2B", () => {
       );
       expect(screen.getByText(/Tổng tỷ lệ .* đang là 80%|tổng tỷ lệ .* là 80%/i)).toBeInTheDocument();
     });
+
+    it("ô sai giá trị (INVALID_VALUE) ở cơ sở không phải câu hiển thị đúng và không gây cảnh báo key (R1-12)", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const invalid = {
+          ...emptyMatrix(),
+          unit: "PERCENT" as const,
+          basis: "PROMPT" as const,
+          cells: [
+            { gradeCode: "GRADE_10", difficultyCode: "RECOGNITION", value: -1 },
+            { gradeCode: "GRADE_10", difficultyCode: "COMPREHENSION", value: 50 },
+            { gradeCode: "GRADE_11", difficultyCode: "RECOGNITION", value: 25 },
+            { gradeCode: "GRADE_11", difficultyCode: "COMPREHENSION", value: 26 },
+          ],
+        };
+        renderWithProviders(
+          <BlockMatrixEditor
+            block={{ ...block("m-dup"), questionCount: 20, matrix: invalid }}
+            axes={axes}
+            labels={labels}
+            competencies={[]}
+            onChange={() => undefined}
+            available={{ total: 0, cells: [], byAnswerType: [] }}
+            availableState="ready"
+          />,
+        );
+        expect(screen.getByText("Ma trận có giá trị âm hoặc số câu không phải số nguyên.")).toBeInTheDocument();
+        expect(errorSpy).not.toHaveBeenCalled();
+      } finally {
+        errorSpy.mockRestore();
+      }
+    });
   });
 
   describe("chế độ của ô phạm vi kiến thức (FU-FE3AA-V1 V1-04)", () => {
@@ -449,6 +488,25 @@ describe("xem trước và đổi phiên bản 2B", () => {
       expect(within(rows[2]!).getByText("Chỉ tiêu chủ đề")).toBeInTheDocument();
       // Tên chủ đề là nội dung đề: đánh dấu để bộ kiểm tra lẫn ngôn ngữ bỏ qua.
       expect(within(rows[0]!).getByText("Hàm số và đồ thị").closest("[data-exam-content]")).not.toBeNull();
+    });
+
+    it("bản en: nhãn độ khó đứng ngoài data-exam-content và topicName rỗng rơi về quota.name (R1-3)", async () => {
+      new FakeServer().on("GET", `${EXAM_PATH}/structure`, { status: 200, body: structureWire([PENDING_TOPIC]) }).install();
+      const { container } = renderWithProviders(
+        <ExamPreviewCompliance
+          paper={paper}
+          examId={EXAM_ID}
+          dropped={[]}
+          compliance={[comparison({ criterion: "TOPIC:pending-1", enforcement: "REQUIRED", required: 5, actual: 5, topicName: "" })]}
+        />,
+        { locale: "en", messages: en },
+      );
+
+      const nameNode = await screen.findByText("Chính tả, từ vựng và ngữ nghĩa");
+      expect(nameNode.parentElement).toHaveTextContent("Chính tả, từ vựng và ngữ nghĩa · Recognition");
+      const tagged = [...container.querySelectorAll("[data-exam-content]")].map((node) => node.textContent);
+      expect(tagged).toContain("Chính tả, từ vựng và ngữ nghĩa");
+      expect(tagged.some((text) => text?.includes("Recognition"))).toBe(false);
     });
   });
 
@@ -494,6 +552,85 @@ describe("xem trước và đổi phiên bản 2B", () => {
         // Quá hạn thì số phút giữ ở 0, không âm.
         act(() => vi.advanceTimersByTime(120_000));
         expect(result.current).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("mốc không tròn 10 giây: luôn bắt đầu ở 30 phút (không bao giờ 31), giảm còn 29 sau 60s, về 0 và dừng bộ đếm; null/hết hạn/SSR không mở bộ đếm (R1-1)", async () => {
+      const NON_ALIGNED = Date.parse("2026-11-20T10:00:04.321Z");
+      vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+      try {
+        vi.setSystemTime(NON_ALIGNED);
+        const { result, unmount: unmountMain } = renderHook(() => usePreviewMinutesLeft(at(30, NON_ALIGNED)));
+        expect(result.current).toBe(30);
+        expect(vi.getTimerCount()).toBe(1);
+
+        act(() => vi.advanceTimersByTime(60_000));
+        expect(result.current).toBe(29);
+
+        act(() => vi.advanceTimersByTime(29 * 60_000));
+        expect(result.current).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+        unmountMain();
+
+        // null hoặc đã hết hạn: không mở interval nào.
+        const empty = renderHook(() => usePreviewMinutesLeft(null));
+        expect(empty.result.current).toBeNull();
+        expect(vi.getTimerCount()).toBe(0);
+        empty.unmount();
+
+        const expired = renderHook(() => usePreviewMinutesLeft(at(-1, NON_ALIGNED)));
+        expect(expired.result.current).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+        expired.unmount();
+
+        // SSR trả null thay vì 0 (tránh tính ~30M phút từ Date(0)).
+        function SsrProbe() {
+          const left = usePreviewMinutesLeft(at(30, NON_ALIGNED));
+          return <span>{left === null ? "ssr-null" : String(left)}</span>;
+        }
+        expect(renderToString(<SsrProbe />)).toContain("ssr-null");
+
+        // ExamPreviewPanel: đặt lại đồng hồ về mốc sinh đề rồi kiểm tra còn 30 phút và hết hạn sau 30 phút.
+        vi.setSystemTime(NON_ALIGNED);
+        const generatedAt = new Date(NON_ALIGNED).toISOString();
+        const expiresAt = at(30, NON_ALIGNED);
+        new FakeServer()
+          .on("GET", EXAM_PATH, { status: 200, body: examDetailWire() })
+          .on("POST", `${EXAM_PATH}/preview`, {
+            status: 200,
+            body: {
+              previewId: "pv-1",
+              status: "GENERATED",
+              seed: 1,
+              generatedAt,
+              expiresAt,
+              path: { pathId: "default", choices: [] },
+              paper: { totalQuestions: 1, totalPoints: 1, parts: [] },
+              compliance: [],
+              checks: [],
+              droppedQuestions: [],
+            },
+          })
+          .install();
+        const panel = renderWithProviders(
+          <ExamPreviewPanel
+            exam={mapExamDetail(examDetailWire())}
+            check={null}
+            initialPathId={null}
+            autoGenerate={false}
+            version={null}
+            onClearVersion={() => {}}
+            onShowCheck={() => {}}
+          />,
+        );
+        fireEvent.click(screen.getByRole("button", { name: "Sinh đề xem trước" }));
+        expect(await screen.findByText(/giữ trong 30 phút \(còn 30 phút\)/)).toBeInTheDocument();
+
+        act(() => vi.advanceTimersByTime(30 * 60_000));
+        expect(screen.getByText(/giữ trong 30 phút \(đã hết hạn\)/)).toBeInTheDocument();
+        panel.unmount();
       } finally {
         vi.useRealTimers();
       }
@@ -551,6 +688,174 @@ describe("xem trước và đổi phiên bản 2B", () => {
       await waitFor(() => expect(setCount).toHaveFocus());
       expect(setSize).not.toHaveFocus();
       consumeBlockFieldRequest();
+    });
+
+    it("bấm lỗi ở ExamStructureCheckResult: gọi onSelect và đưa tiêu điểm vào đúng ô (R1-6)", async () => {
+      window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure`);
+      const onSelect = vi.fn();
+      const result: ExamCheckResult = {
+        examId: EXAM_ID,
+        checkedAt: "2026-11-20T01:00:00Z",
+        durationSeconds: 1,
+        timeLimitSeconds: 30,
+        stale: false,
+        invalidReason: null,
+        status: "INVALID",
+        issueCount: 1,
+        paths: [],
+        groups: [
+          {
+            group: "STRUCTURE",
+            status: "FAIL",
+            issues: [issue({ key: "k-set", code: "SET_SIZE_MISMATCH", severity: "ERROR", group: "STRUCTURE", blockName: "Chùm" })],
+          },
+        ],
+        listingCheck: null,
+        partCount: 1,
+        totalPoints: 10,
+        printedQuestions: 10,
+        maxScore: 10,
+        sectionStates: null,
+      };
+      const user = userEvent.setup();
+      renderWithProviders(<ExamStructureCheckResult result={result} names={{ subject: () => "Toán" }} onSelect={onSelect} />);
+      await user.click(screen.getByRole("button", { name: "Đến chỗ sửa" }));
+      expect(onSelect).toHaveBeenCalledWith({ kind: "block", blockId: "b1" });
+
+      const { container } = renderEditor({});
+      const setCount = container.querySelector(`[data-field="${blockFieldAnchor("b1", "setCount")}"]`) as HTMLElement;
+      await waitFor(() => expect(setCount).toHaveFocus());
+      consumeBlockFieldRequest();
+    });
+
+    it("yêu cầu focus quá hạn (> 2000ms) không cướp tiêu điểm khi BlockEditor mở sau đó (R1-6)", async () => {
+      window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure`);
+      vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+      try {
+        vi.setSystemTime(Date.parse("2026-11-20T10:00:00Z"));
+        requestBlockFieldFocus("b1", "setCount");
+        act(() => vi.advanceTimersByTime(2500));
+
+        const { container } = renderEditor({});
+        const setCount = container.querySelector(`[data-field="${blockFieldAnchor("b1", "setCount")}"]`) as HTMLElement;
+        await new Promise<void>((resolve) => queueMicrotask(resolve));
+        expect(setCount).not.toHaveFocus();
+      } finally {
+        consumeBlockFieldRequest();
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe("getExamVersion và STATEMENT_POINTS_UNEVEN trên đường API thật (R1-7, R1-8)", () => {
+    it("getExamVersion ánh xạ đủ itemShape, answerFormats, childConditions ở cả sections[].blocks và options[].blocks (R1-7)", async () => {
+      const sectionBlock = {
+        id: "blk-sec",
+        name: "Nhóm phần",
+        questionType: "QUESTION_SET",
+        questionCount: 10,
+        itemShape: { statements: 4, options: 4 },
+        answerFormats: ["INTEGER", "FRACTION"],
+        childConditions: [{ from: 1, to: 2, nodeIds: ["n1"], answerType: "TRUE_FALSE", itemShape: { statements: 4 } }],
+      };
+      const optionBlock = {
+        id: "blk-opt",
+        name: "Nhóm lựa chọn",
+        questionType: "CLOZE",
+        questionCount: 5,
+        itemShape: { leftItems: 4, rightItems: 4 },
+        answerFormats: ["TEXT"],
+        childConditions: [{ from: 1, to: 1, nodeIds: ["n2"], answerType: "SHORT_ANSWER" }],
+      };
+      new FakeServer()
+        .on("GET", `${EXAM_PATH}/versions/1`, {
+          status: 200,
+          body: {
+            examId: EXAM_ID,
+            row: { version: 1, state: "SERVING", attemptCount: 0, publishedPaths: [], servingPaths: [] },
+            parts: [
+              {
+                id: "p1",
+                name: "Phần 1",
+                participation: { mode: "CHOICE", choose: 1 },
+                sections: [{ id: "s1", subjectCode: "MATH", blocks: [sectionBlock] }],
+                options: [{ id: "o1", kind: "BRANCH", code: "B1", sections: [], blocks: [optionBlock] }],
+              },
+            ],
+          },
+        })
+        .install();
+
+      const version = await getExamVersion({ examId: EXAM_ID, version: 1 });
+      expect(version.parts[0]!.sections[0]!.blocks[0]).toMatchObject({
+        itemShape: { statements: 4, options: 4 },
+        answerFormats: ["INTEGER", "FRACTION"],
+        childConditions: [{ from: 1, to: 2, nodeIds: ["n1"], answerType: "TRUE_FALSE", itemShape: { statements: 4 } }],
+      });
+      expect(version.parts[0]!.options[0]!.blocks![0]).toMatchObject({
+        itemShape: { leftItems: 4, rightItems: 4 },
+        answerFormats: ["TEXT"],
+        childConditions: [{ from: 1, to: 1, nodeIds: ["n2"], answerType: "SHORT_ANSWER" }],
+      });
+    });
+
+    it("getExamCheck giữ nguyên STATEMENT_POINTS_UNEVEN và useIssueText dựng đúng câu vi/en (R1-8)", async () => {
+      new FakeServer()
+        .on("GET", `${EXAM_PATH}/check`, {
+          status: 200,
+          body: {
+            examId: EXAM_ID,
+            status: "INVALID",
+            stale: false,
+            checkedAt: "2026-11-20T01:00:00Z",
+            durationSeconds: 1,
+            timeLimitSeconds: 30,
+            issueCount: 1,
+            paths: [],
+            groups: [
+              {
+                group: "STRUCTURE",
+                status: "FAIL",
+                issues: [
+                  {
+                    key: "STATEMENT_POINTS_UNEVEN|blk-tf",
+                    code: "STATEMENT_POINTS_UNEVEN",
+                    severity: "ERROR",
+                    group: "STRUCTURE",
+                    blockId: "blk-tf",
+                    blockName: "Đúng/Sai",
+                    subjectCode: "MATH",
+                    questionCodes: ["Q-01", "Q-02"],
+                  },
+                ],
+              },
+            ],
+          },
+        })
+        .install();
+
+      const check = await getExamCheck({ examId: EXAM_ID });
+      const mapped = check!.groups[0]!.issues[0]!;
+      expect(mapped.code).toBe("STATEMENT_POINTS_UNEVEN");
+      expect(mapped.questionCodes).toEqual(["Q-01", "Q-02"]);
+
+      function IssueLine({ item }: { item: CheckIssue }) {
+        const text = useIssueText();
+        return <p data-testid="issue-msg">{text(item)}</p>;
+      }
+
+      const viView = renderWithProviders(<IssueLine item={mapped} />, { locale: "vi" });
+      const viMsg = (await within(viView.container).findByText(/ý Đúng\/Sai không chia điểm đều/)).textContent ?? "";
+      expect(viMsg).toContain("Đúng/Sai");
+      expect(viMsg).toContain("Q-01, Q-02");
+      expect(viMsg).not.toMatch(/\{|\}|undefined/);
+      viView.unmount();
+
+      const enView = renderWithProviders(<IssueLine item={mapped} />, { locale: "en", messages: en });
+      const enMsg = (await within(enView.container).findByText(/unequal points to its True\/False statements/)).textContent ?? "";
+      expect(enMsg).toContain("Đúng/Sai");
+      expect(enMsg).toContain("Q-01, Q-02");
+      expect(enMsg).not.toMatch(/\{|\}|undefined/);
     });
   });
 
@@ -672,6 +977,94 @@ describe("xem trước và đổi phiên bản 2B", () => {
       const changes = within(dialog).getAllByRole("listitem").map((item) => item.textContent);
       expect(changes).toContain("Ghép đôi: 10 câu");
       expect(changes).toContain("Dạng câu chưa ghi: 5 câu");
+    });
+
+    it("unknown questionType ở ReloadStructureDialog không ném lỗi thiếu khóa dịch (R1-11)", async () => {
+      renderWithProviders(
+        <ReloadStructureDialog
+          open
+          onOpenChange={() => {}}
+          title="Đổi cấu trúc?"
+          description="Mô tả"
+          confirmLabel="Nạp lại cấu trúc"
+          parts={[
+            {
+              name: "Phần I",
+              questionCount: 10,
+              durationMinutes: 30,
+              shared: false,
+              typeCounts: [{ questionType: "FUTURE_TYPE" as never, questionCount: 4 }],
+              before: null,
+            },
+          ]}
+          onConfirm={() => {}}
+        />,
+      );
+
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("FUTURE_TYPE: 4 câu")).toBeInTheDocument();
+    });
+
+    it("partTypeCounts đồng bộ BE R1-1: SUBJECT_CHOICE/subjectPool trả rỗng, setCount*setSize trước questionCount, tính nhóm phần còn lại, bỏ <= 0", () => {
+      const choiceSubjectPart = part([], {
+        mode: "CHOICE",
+        participation: { mode: "CHOICE", choose: 1 },
+        sections: [],
+        options: [
+          {
+            id: "o-sc",
+            kind: "SUBJECT_CHOICE",
+            code: "SCIENCE",
+            name: "Khoa học",
+            chooseSubjects: 3,
+            countsByPick: [17, 17, 16],
+            sections: [
+              {
+                id: "s-ly",
+                subjectCode: "PHYSICS",
+                questionCount: 17,
+                knowledgeScope: null,
+                answerQuotas: null,
+                matrix: null,
+                choiceGroup: null,
+                blocks: [block("b-ly", { questionType: "SINGLE_CHOICE", questionCount: 17 })],
+              },
+            ],
+          },
+        ],
+      });
+      expect(partTypeCounts(choiceSubjectPart)).toEqual([]);
+
+      const poolOnlyPart = part([], {
+        sections: [],
+        subjectPool: [
+          {
+            id: "s-pool",
+            subjectCode: "PHYSICS",
+            questionCount: 15,
+            knowledgeScope: null,
+            answerQuotas: null,
+            matrix: null,
+            choiceGroup: null,
+            blocks: [block("b-pool", { questionType: "SINGLE_CHOICE", questionCount: 15 })],
+          },
+        ],
+      });
+      expect(partTypeCounts(poolOnlyPart)).toEqual([]);
+
+      const setAndRemainder = part(
+        [
+          block("b-set", { questionType: "QUESTION_SET", setCount: 2, setSize: 4, questionCount: 99 }),
+          block("b-rem", { questionType: "SHORT_ANSWER", questionCount: null }),
+          block("b-zero", { questionType: null, questionCount: 0 }),
+        ],
+        { questionCount: 15 },
+      );
+      setAndRemainder.sections[0]!.questionCount = 15;
+      expect(partTypeCounts(setAndRemainder)).toEqual([
+        { questionType: "QUESTION_SET", questionCount: 8 },
+        { questionType: "SHORT_ANSWER", questionCount: 7 },
+      ]);
     });
   });
 });

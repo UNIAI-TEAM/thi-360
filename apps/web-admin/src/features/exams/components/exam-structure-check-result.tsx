@@ -3,9 +3,11 @@
 import { Button, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { issueBlockField } from "../check";
 import { focusMapidRuleWhenReady } from "../mapid-rules";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamPart } from "../types";
+import { requestBlockFieldFocus } from "./block-field-focus";
 import type { StructureSelection } from "./exam-structure-draft";
 import { ExamContentText } from "./exam-content-text";
 import { useIssueText } from "./exam-review-shared";
@@ -105,7 +107,16 @@ export function ExamStructureCheckResult({ result, names, parts, onSelect }: Exa
                     </Button>
                   ) : (
                     target && (
-                      <Button type="button" variant="link" size="sm" onClick={() => onSelect(target)}>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          const field = issue.blockId ? issueBlockField(issue) : null;
+                          if (issue.blockId && field) requestBlockFieldFocus(issue.blockId, field);
+                          onSelect(target);
+                        }}
+                      >
                         {structureT("issueGo")}
                       </Button>
                     )

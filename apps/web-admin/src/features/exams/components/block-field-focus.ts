@@ -8,22 +8,49 @@ import { BLOCK_FIELDS, type BlockField } from "./block-form-fields";
  * `useBlockFieldRequest`, đặt tiêu điểm sau khi vẽ xong rồi `consumeBlockFieldRequest` để không đặt lại. Chỉ màn nhóm của
  * biểu mẫu đầy đủ (MD) đọc: MT, DS đặt tiêu điểm theo `navigation.ts` của biểu mẫu theo môn.
  */
+export const BLOCK_FIELD_FOCUS_TTL_MS = 2000;
+
 export interface BlockFieldRequest {
   blockId: string;
   field: BlockField;
+  requestedAt: number;
 }
 
 let pending: BlockFieldRequest | null = null;
+let expireTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 
 const emit = () => listeners.forEach((listener) => listener());
 
+function clearExpireTimer(): void {
+  if (expireTimer !== null) {
+    clearTimeout(expireTimer);
+    expireTimer = null;
+  }
+}
+
+function clearExpiredPending(): void {
+  if (pending && Date.now() - pending.requestedAt >= BLOCK_FIELD_FOCUS_TTL_MS) {
+    pending = null;
+    clearExpireTimer();
+  }
+}
+
 export function requestBlockFieldFocus(blockId: string, field: BlockField): void {
-  pending = { blockId, field };
+  clearExpireTimer();
+  pending = { blockId, field, requestedAt: Date.now() };
+  expireTimer = setTimeout(() => {
+    expireTimer = null;
+    if (pending && Date.now() - pending.requestedAt >= BLOCK_FIELD_FOCUS_TTL_MS) {
+      pending = null;
+      emit();
+    }
+  }, BLOCK_FIELD_FOCUS_TTL_MS);
   emit();
 }
 
 export function consumeBlockFieldRequest(): void {
+  clearExpireTimer();
   pending = null;
   emit();
 }
@@ -47,15 +74,18 @@ export function clearBlockFieldFromUrl(): void {
   window.history.replaceState(window.history.state, "", url);
 }
 
-/** Yêu cầu đang chờ của nhóm `blockId` (hoặc `null`): đổi mỗi lần có yêu cầu mới, kể cả cùng ô. */
+function subscribePending(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getPending(): BlockFieldRequest | null {
+  clearExpiredPending();
+  return pending;
+}
+
+/** Yêu cầu đang chờ của nhóm `blockId` (hoặc `null`): đổi mỗi lần có yêu cầu mới, tự hết hạn nếu chưa kịp tiêu thụ. */
 export function useBlockFieldRequest(blockId: string): BlockFieldRequest | null {
-  const request = useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    () => pending,
-    () => null,
-  );
+  const request = useSyncExternalStore(subscribePending, getPending, () => null);
   return request?.blockId === blockId ? request : null;
 }

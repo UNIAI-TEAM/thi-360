@@ -161,7 +161,8 @@ export function BlockMatrixEditor({
   const input = combinedGrid(matrix, axes);
 
   // Cùng một danh sách báo lỗi cho cả hai nhánh: cơ sở không phải câu vẫn bị chặn lưu khi tổng % lệch, nên lỗi phải hiện.
-  const issueMessages = issues.map((issue) => {
+  const issueMessages = issues
+    .map((issue) => {
       const dimension =
         "dimension" in issue && issue.dimension !== "COMBINED"
           ? issue.dimension === "GRADE"
@@ -188,7 +189,8 @@ export function BlockMatrixEditor({
         };
       }
       return { text: "", over: false };
-  });
+    })
+    .filter((item) => item.text.length > 0);
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-4">
@@ -550,8 +552,8 @@ export function BlockMatrixEditor({
           </p>
           {issueMessages.length > 0 && (
             <ul className="flex flex-col gap-1">
-              {issueMessages.map((message) => (
-                <li key={message.text} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
+              {issueMessages.map((message, index) => (
+                <li key={`${index}-${message.text}`} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
                   <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
                   {message.text}
                 </li>
@@ -777,8 +779,8 @@ function AllocationStatus({
         </p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {messages.map((message) => (
-            <li key={message.text} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
+          {messages.map((message, index) => (
+            <li key={`${index}-${message.text}`} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
               {message.text}
             </li>
