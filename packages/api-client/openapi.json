@@ -8507,7 +8507,7 @@
           "fullName" : {
             "description" : "Họ và tên",
             "example" : "Nguyễn Văn An",
-            "maxLength" : 256,
+            "maxLength" : 200,
             "minLength" : 0,
             "type" : "string"
           },
