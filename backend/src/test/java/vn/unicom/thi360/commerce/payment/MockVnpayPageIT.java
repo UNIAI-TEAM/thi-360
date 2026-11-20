@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.web.util.HtmlUtils;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.classroom.application.DevClassSeeder;
@@ -149,6 +152,75 @@ class MockVnpayPageIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void emitsDistinctTransactionNosInDataIpnUrlsAndRejectsInvalidReturnUrls() throws Exception {
+        var buyer1 = fixtures.createLearner();
+        var buyer2 = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+        var o1 = fixtures.insertStubOrder(
+                buyer1, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var p1 = fixtures.insertStubPayment(o1, 1, 200_000L, PaymentState.CREATED);
+        var o2 = fixtures.insertStubOrder(
+                buyer2, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var p2 = fixtures.insertStubPayment(o2, 1, 200_000L, PaymentState.CREATED);
+
+        String payUrl1 = vnpayGateway.pay(new PayRequest(
+                p1.txnRef(), o1.code(), 200_000L,
+                "Thanh toan don " + o1.code(), "vn",
+                "/checkout/result", "127.0.0.1", "20261121100000", "20261121101500"));
+        String payUrl2 = vnpayGateway.pay(new PayRequest(
+                p2.txnRef(), o2.code(), 200_000L,
+                "Thanh toan don " + o2.code(), "vn",
+                "/checkout/result", "127.0.0.1", "20261121100000", "20261121101500"));
+
+        String html1 = mockMvc.perform(getDecodedUrl(payUrl1))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String html2 = mockMvc.perform(getDecodedUrl(payUrl2))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        String ipnUrl1 = extractSuccessIpnUrl(html1);
+        String ipnUrl2 = extractSuccessIpnUrl(html2);
+        String txnNo1 = parseQueryParams(ipnUrl1).get("vnp_TransactionNo");
+        String txnNo2 = parseQueryParams(ipnUrl2).get("vnp_TransactionNo");
+        assertThat(txnNo1).isNotBlank().isNotEqualTo("MOCK000001");
+        assertThat(txnNo2).isNotBlank().isNotEqualTo("MOCK000001").isNotEqualTo(txnNo1);
+
+        mockMvc.perform(getDecodedUrl(ipnUrl1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("00"));
+        mockMvc.perform(getDecodedUrl(ipnUrl2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o1.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o2.id()))
+                .isEqualTo("FULFILLED");
+
+        // Từ chối path traversal và #fragment trên vnp_ReturnUrl.
+        for (String badReturnUrl : new String[] {
+            "/checkout/result/../admin",
+            "/checkout/result/%2e%2e/admin",
+            "/checkout/result#frag",
+            "http://localhost:3000/checkout/result#frag"
+        }) {
+            String badPayUrl = vnpayGateway.pay(new PayRequest(
+                    p1.txnRef(), o1.code(), 200_000L,
+                    "Thanh toan don " + o1.code(), "vn",
+                    badReturnUrl, "127.0.0.1", "20261121100000", "20261121101500"));
+            mockMvc.perform(getDecodedUrl(badPayUrl))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+            String badActionUrl = badPayUrl.replace("/mock-vnpay?", "/mock-vnpay/action?outcome=no_response&");
+            mockMvc.perform(getDecodedUrl(badActionUrl))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+    }
+
+    @Test
     void mockVnpayIsExcludedFromOpenApi() throws Exception {
         String raw = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
@@ -218,5 +290,12 @@ class MockVnpayPageIT extends AbstractIntegrationTest {
             map.put(k, v);
         }
         return map;
+    }
+
+    private static String extractSuccessIpnUrl(String html) {
+        Matcher matcher = Pattern.compile("data-mock-action=\"success\"\\s+data-ipn-url=\"([^\"]+)\"")
+                .matcher(html);
+        assertThat(matcher.find()).as("success data-ipn-url present in HTML").isTrue();
+        return HtmlUtils.htmlUnescape(matcher.group(1));
     }
 }

@@ -11,8 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +31,7 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService;
 import vn.unicom.thi360.commerce.fulfillment.application.FulfillmentRetryWorker;
+import vn.unicom.thi360.commerce.fulfillment.application.RefundProgress;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
@@ -53,17 +57,20 @@ class FulfillmentRetryWorkerIT extends AbstractIntegrationTest {
     @MockitoSpyBean
     private EntitlementGrantService entitlementGrantService;
 
+    @MockitoSpyBean
+    private RefundProgress refundProgress;
+
     private CommerceTestFixtures fixtures;
 
     @BeforeEach
     void setUp() {
-        reset(entitlementGrantService);
+        reset(entitlementGrantService, refundProgress);
         fixtures = new CommerceTestFixtures(jdbc, mapper, catalogLookup, promotionRepository, testSecuritySupport);
     }
 
     @AfterEach
     void tearDown() {
-        reset(entitlementGrantService);
+        reset(entitlementGrantService, refundProgress);
         fixtures.cleanup();
     }
 
@@ -146,6 +153,44 @@ class FulfillmentRetryWorkerIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
                 Integer.class, buyer.id(), product.examId())).isEqualTo(3);
+    }
+
+    @Test
+    void doesNotStarveHealthyOrderBehind20RefundBlockedOrdersWithinRetryWindow() {
+        var healthyBuyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+
+        Set<UUID> blockedOrderIds = new HashSet<>();
+        for (int i = 0; i < 20; i++) {
+            var blockedBuyer = fixtures.createLearner();
+            var blocked = fixtures.insertStubOrder(
+                    blockedBuyer, product, OrderState.PAID, PaymentMethod.VNPAY,
+                    200_000L, null, Instant.now().minus(10, ChronoUnit.MINUTES).minusSeconds(20L - i));
+            blockedOrderIds.add(blocked.id());
+        }
+        var healthyNewer = fixtures.insertStubOrder(
+                healthyBuyer, product, OrderState.PAID, PaymentMethod.VNPAY,
+                200_000L, null, Instant.now().minus(1, ChronoUnit.MINUTES));
+
+        doAnswer(inv -> {
+            UUID id = inv.getArgument(0);
+            return blockedOrderIds.contains(id);
+        }).when(refundProgress).hasNonRejectedRefund(any());
+
+        retryWorker.retryPendingFulfillments();
+
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, healthyNewer.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, healthyBuyer.id(), product.examId()))
+                .isEqualTo(2);
+        for (UUID blockedId : blockedOrderIds) {
+            assertThat(jdbc.queryForObject(
+                    "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, blockedId))
+                    .isEqualTo("PAID");
+        }
     }
 
     @Nested

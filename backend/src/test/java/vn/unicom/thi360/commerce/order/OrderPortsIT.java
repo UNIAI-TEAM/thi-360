@@ -124,5 +124,16 @@ class OrderPortsIT extends AbstractIntegrationTest {
         var access = examAccessService.query(buyer.id(), List.of(product.code()));
         assertThat(access.getFirst().state()).isEqualTo(ExamAccessState.CHECKING);
         assertThat(access.getFirst().pendingOrderCode()).isEqualTo(paidOrder.code());
+
+        // R1-26: cấp xong đơn 1 -> còn lượt CAN_START; thêm đơn 2 PAID chưa cấp -> CAN_START + hasPendingFulfillment=true.
+        assertThat(fulfillmentService.fulfill(paidOrder.id())).isTrue();
+        var secondPaidOrder = fixtures.insertStubOrder(
+                buyer, product, OrderState.PAID, PaymentMethod.VNPAY,
+                200_000L, null, Instant.now());
+
+        var canStartWithPending = examAccessService.query(buyer.id(), List.of(product.code()));
+        assertThat(canStartWithPending.getFirst().state()).isEqualTo(ExamAccessState.CAN_START);
+        assertThat(canStartWithPending.getFirst().hasPendingFulfillment()).isTrue();
+        assertThat(canStartWithPending.getFirst().pendingOrderCode()).isEqualTo(secondPaidOrder.code());
     }
 }

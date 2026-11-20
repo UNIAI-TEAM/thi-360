@@ -6258,16 +6258,12 @@ export interface components {
             expiresAt?: string;
             /** Format: date-time */
             fulfilledAt?: string;
-            fulfillmentError?: string;
-            /** Format: int32 */
-            fulfillmentTries: number;
             history: components["schemas"]["OrderHistoryView"][];
             /** Format: uuid */
             id: string;
             items: components["schemas"]["OrderItemView"][];
             /** Format: int64 */
             listPriceVnd: number;
-            needsReview: boolean;
             optionCodes: string[];
             /** Format: date-time */
             paidAt?: string;
@@ -6286,9 +6282,8 @@ export interface components {
             /** Format: uuid */
             replacedByOrderId?: string;
             resultView: string;
-            reviewReason?: string;
             /** @enum {string} */
-            state: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+            state?: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
             /** Format: date-time */
             updatedAt: string;
             /** Format: uuid */

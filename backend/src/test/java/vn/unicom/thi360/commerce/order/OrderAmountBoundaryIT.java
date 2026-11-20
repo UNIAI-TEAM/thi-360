@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -109,5 +110,53 @@ class OrderAmountBoundaryIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.order.paymentMethod").value("FREE"))
                 .andExpect(jsonPath("$.order.amountDueVnd").value(0L))
                 .andExpect(jsonPath("$.order.state").value("FULFILLED"));
+
+        // 4. R1-25: Voucher kéo còn đúng 1 VND < 10_000đ -> ép về 0đ FREE.
+        var buyer4 = fixtures.createLearner();
+        var oneVndAfterVoucherProduct = fixtures.insertOnSaleProduct("SPT", 15_000L, 1);
+        var toOneVndVoucher = fixtures.createVoucher(
+                "TOONE", DiscountType.AMOUNT, 14_999L, null,
+                5, 1, false, PromotionScope.ALL, PromotionAudienceType.ALL);
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer4))
+                        .header("Idempotency-Key", "onefree-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", oneVndAfterVoucherProduct.code(),
+                                "voucherCode", toOneVndVoucher.getCode(),
+                                "expectedAccountId", buyer4.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 0L))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.next").value("FULFILLED"))
+                .andExpect(jsonPath("$.order.paymentMethod").value("FREE"))
+                .andExpect(jsonPath("$.order.amountDueVnd").value(0L))
+                .andExpect(jsonPath("$.order.state").value("FULFILLED"));
+    }
+
+    @Nested
+    @TestPropertySource(properties = "thi360.commerce.vnpay-min-amount=0")
+    class ZeroMinAmountAllowsOneVndVnpay {
+
+        @Test
+        void allowsOneVndOrderViaVnpayWhenMinAmountIsZero() throws Exception {
+            var buyer = fixtures.createLearner();
+            var oneVndProduct = fixtures.insertOnSaleProduct("HSA", 1L, 1);
+
+            mockMvc.perform(post("/api/v1/me/orders")
+                            .with(fixtures.asLearner(buyer))
+                            .header("Idempotency-Key", "min0-" + UUID.randomUUID())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(Map.of(
+                                    "code", oneVndProduct.code(),
+                                    "expectedAccountId", buyer.id(),
+                                    "expectedVersionNo", 1,
+                                    "expectedAmountDue", 1L))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.next").value("REDIRECT"))
+                    .andExpect(jsonPath("$.order.paymentMethod").value("VNPAY"))
+                    .andExpect(jsonPath("$.order.amountDueVnd").value(1L))
+                    .andExpect(jsonPath("$.paymentUrl").value(org.hamcrest.Matchers.containsString("vnp_Amount=100")));
+        }
     }
 }

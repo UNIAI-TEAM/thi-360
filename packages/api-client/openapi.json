@@ -2994,6 +2994,8 @@
       "CreateOrderRequest" : {
         "properties" : {
           "code" : {
+            "maxLength" : 100,
+            "minLength" : 0,
             "type" : "string"
           },
           "expectedAccountId" : {
@@ -3011,6 +3013,8 @@
             "type" : "integer"
           },
           "voucherCode" : {
+            "maxLength" : 100,
+            "minLength" : 0,
             "type" : "string"
           }
         },
@@ -7711,13 +7715,6 @@
             "format" : "date-time",
             "type" : "string"
           },
-          "fulfillmentError" : {
-            "type" : "string"
-          },
-          "fulfillmentTries" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
           "history" : {
             "items" : {
               "$ref" : "#/components/schemas/OrderHistoryView"
@@ -7737,9 +7734,6 @@
           "listPriceVnd" : {
             "format" : "int64",
             "type" : "integer"
-          },
-          "needsReview" : {
-            "type" : "boolean"
           },
           "optionCodes" : {
             "items" : {
@@ -7789,9 +7783,6 @@
           "resultView" : {
             "type" : "string"
           },
-          "reviewReason" : {
-            "type" : "string"
-          },
           "state" : {
             "enum" : [ "PENDING_PAYMENT", "PAID", "FULFILLED", "EXPIRED", "REPLACED", "CANCELLED", "REFUNDED" ],
             "type" : "string"
@@ -7816,7 +7807,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "amountDueVnd", "attemptsGranted", "benefits", "buyerFullName", "buyerUsername", "code", "createdAt", "discountApplied", "fulfillmentTries", "history", "id", "items", "listPriceVnd", "needsReview", "optionCodes", "paymentMethod", "payments", "productCode", "productName", "productType", "promotionDiscountVnd", "resultView", "state", "updatedAt", "userId", "voucherDiscountVnd" ],
+        "required" : [ "amountDueVnd", "attemptsGranted", "benefits", "buyerFullName", "buyerUsername", "code", "createdAt", "discountApplied", "history", "id", "items", "listPriceVnd", "optionCodes", "paymentMethod", "payments", "productCode", "productName", "productType", "promotionDiscountVnd", "resultView", "updatedAt", "userId", "voucherDiscountVnd" ],
         "type" : "object"
       },
       "OrderHistoryView" : {

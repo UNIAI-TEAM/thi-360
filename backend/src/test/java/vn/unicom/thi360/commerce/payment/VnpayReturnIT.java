@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.TreeMap;
@@ -22,10 +25,13 @@ import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
 import vn.unicom.thi360.commerce.payment.gateway.MockVnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.PayRequest;
 import vn.unicom.thi360.commerce.payment.gateway.VnpaySigner;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.security.AuthCookieService;
+import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
 /**
  * AC-22: {@code GET /api/v1/public/payments/vnpay/return} công khai — chữ ký đúng trả {@code {orderCode, paymentState}}
@@ -38,6 +44,7 @@ class VnpayReturnIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
+    @Autowired private VnpayGateway vnpayGateway;
 
     private CommerceTestFixtures fixtures;
 
@@ -71,6 +78,8 @@ class VnpayReturnIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.paymentState").value("SUCCEEDED"))
                 .andReturn().getResponse().getContentAsString();
 
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(okBody);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(okBody);
         assertThat(okBody)
                 .doesNotContain(buyer.id().toString())
                 .doesNotContain(buyer.username())
@@ -83,19 +92,65 @@ class VnpayReturnIT extends AbstractIntegrationTest {
                 "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = 'RETURN' AND signature_valid = true",
                 Integer.class, payment.id())).isEqualTo(1);
 
-        // 2. Chữ ký sai -> 422 VNPAY_SIGNATURE_INVALID nhưng vẫn ghi payment_event RETURN signature_valid=false.
+        // 2. Chữ ký sai -> 422 VNPAY_SIGNATURE_INVALID, không lộ orderCode và không cấp quyền, vẫn ghi payment_event RETURN signature_valid=false.
         Map<String, String> badParams = new TreeMap<>(okParams);
         badParams.put("vnp_Amount", "100");
         MockHttpServletRequestBuilder badReq = get("/api/v1/public/payments/vnpay/return");
         badParams.forEach(badReq::param);
-        mockMvc.perform(badReq)
+        String badBody = mockMvc.perform(badReq)
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.code").value("VNPAY_SIGNATURE_INVALID"));
+                .andExpect(jsonPath("$.code").value("VNPAY_SIGNATURE_INVALID"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(badBody)
+                .doesNotContain("orderCode")
+                .doesNotContain(order.code());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
+                Integer.class, order.id())).isZero();
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = 'RETURN' AND signature_valid = false",
                 Integer.class, payment.id())).isEqualTo(1);
 
-        // 3. vnp_TxnRef không tồn tại (nhưng chữ ký đúng) -> 404 ORDER_NOT_FOUND, vẫn ghi payment_event RETURN.
+        // 2b. R1-2: phát lại paymentUrl (có vnp_Command=pay, thiếu vnp_ResponseCode/TransactionStatus) tới /return -> 422 VNPAY_SIGNATURE_INVALID.
+        String payUrl = vnpayGateway.pay(new PayRequest(
+                payment.txnRef(), order.code(), 200_000L,
+                "Thanh toan don " + order.code(), "vn",
+                "http://localhost:3000/checkout/result",
+                "127.0.0.1", "20261121100000", "20261121101500"));
+        MockHttpServletRequestBuilder replayReq = get("/api/v1/public/payments/vnpay/return");
+        parseQueryParams(payUrl).forEach(replayReq::param);
+        String replayBody = mockMvc.perform(replayReq)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VNPAY_SIGNATURE_INVALID"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(replayBody)
+                .doesNotContain("orderCode")
+                .doesNotContain(order.code());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = 'RETURN' AND signature_valid = false AND outcome = 'RETURN_INVALID_CALLBACK_PARAMS'",
+                Integer.class, payment.id())).isEqualTo(1);
+
+        // 2c. R1-2: chữ ký hợp lệ nhưng vnp_Amount lệch với payment -> 422 VNPAY_SIGNATURE_INVALID.
+        Map<String, String> signedWrongAmount = signedParams(payment.txnRef(), 100_000L, "00", "00");
+        MockHttpServletRequestBuilder wrongAmountReq = get("/api/v1/public/payments/vnpay/return");
+        signedWrongAmount.forEach(wrongAmountReq::param);
+        mockMvc.perform(wrongAmountReq)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VNPAY_SIGNATURE_INVALID"));
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = 'RETURN' AND signature_valid = false AND outcome = 'RETURN_INVALID_AMOUNT'",
+                Integer.class, payment.id())).isEqualTo(1);
+
+        // 3. R1-27: ưu tiên trạng thái đã lưu (DB FAILED thắng tham số query 00/00 đã ký).
+        var failedPayment = fixtures.insertStubPayment(order, 2, 200_000L, PaymentState.FAILED);
+        MockHttpServletRequestBuilder failedPrecedenceReq = get("/api/v1/public/payments/vnpay/return");
+        signedParams(failedPayment.txnRef(), 200_000L, "00", "00").forEach(failedPrecedenceReq::param);
+        mockMvc.perform(failedPrecedenceReq)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderCode").value(order.code()))
+                .andExpect(jsonPath("$.paymentState").value("FAILED"));
+
+        // 4. vnp_TxnRef không tồn tại (nhưng chữ ký đúng) -> 404 ORDER_NOT_FOUND, vẫn ghi payment_event RETURN.
         Map<String, String> missingParams = signedParams("DH999999ZZZZZZ01", 200_000L, "00", "00");
         MockHttpServletRequestBuilder missingReq = get("/api/v1/public/payments/vnpay/return");
         missingParams.forEach(missingReq::param);
@@ -119,5 +174,17 @@ class VnpayReturnIT extends AbstractIntegrationTest {
         params.put("vnp_TxnRef", txnRef);
         params.put("vnp_SecureHash", VnpaySigner.signPayParams(params, MockVnpayGateway.DEFAULT_MOCK_SECRET));
         return params;
+    }
+
+    private static Map<String, String> parseQueryParams(String url) {
+        String query = URI.create(url).getRawQuery();
+        Map<String, String> map = new TreeMap<>();
+        for (String pair : query.split("&")) {
+            int idx = pair.indexOf('=');
+            String k = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+            String v = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+            map.put(k, v);
+        }
+        return map;
     }
 }

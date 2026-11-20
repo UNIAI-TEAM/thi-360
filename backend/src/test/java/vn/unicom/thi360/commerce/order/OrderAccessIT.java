@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -97,10 +98,24 @@ class OrderAccessIT extends AbstractIntegrationTest {
                                 "expectedAmountDue", 200_000L))))
                 .andExpect(status().isForbidden());
 
-        // 3. Đơn của Alice: Alice thấy; Bob nhận danh sách rỗng và nhận 404 ở xem, /pay, /cancel.
+        // 3. Đơn của Alice: Alice xem danh sách và chi tiết (kể cả mã chữ thường, không lộ trường nội bộ);
+        // Bob nhận danh sách rỗng và nhận 404 ở xem, /pay, /cancel.
         mockMvc.perform(get("/api/v1/me/orders").with(fixtures.asLearner(alice)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].code").value(aliceOrder.code()));
+
+        mockMvc.perform(get("/api/v1/me/orders/" + aliceOrder.code().toLowerCase(Locale.ROOT))
+                        .with(fixtures.asLearner(alice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(aliceOrder.code()))
+                .andExpect(jsonPath("$.productCode").value(product.code()))
+                .andExpect(jsonPath("$.items[0].examCode").value(product.code()))
+                .andExpect(jsonPath("$.payments").isArray())
+                .andExpect(jsonPath("$.history").isArray())
+                .andExpect(jsonPath("$.fulfillmentError").doesNotExist())
+                .andExpect(jsonPath("$.fulfillmentTries").doesNotExist())
+                .andExpect(jsonPath("$.needsReview").doesNotExist())
+                .andExpect(jsonPath("$.reviewReason").doesNotExist());
 
         mockMvc.perform(get("/api/v1/me/orders").with(fixtures.asLearner(bob)))
                 .andExpect(status().isOk())
@@ -115,5 +130,33 @@ class OrderAccessIT extends AbstractIntegrationTest {
         mockMvc.perform(post("/api/v1/me/orders/" + aliceOrder.code() + "/cancel").with(fixtures.asLearner(bob)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+    }
+
+    @Test
+    void respectsCallerRequestedSortOnListMyOrders() throws Exception {
+        var buyer = fixtures.createLearner();
+        var cheap = fixtures.insertOnSaleProduct("HSA", 100_000L, 1);
+        var expensive = fixtures.insertOnSaleProduct("QDA", 300_000L, 2);
+
+        fixtures.insertStubOrder(
+                buyer, expensive, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                300_000L, Instant.now().plusSeconds(900), null);
+        fixtures.insertStubOrder(
+                buyer, cheap, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                100_000L, Instant.now().plusSeconds(900), null);
+
+        mockMvc.perform(get("/api/v1/me/orders")
+                        .param("sort", "amountDueVnd,asc")
+                        .with(fixtures.asLearner(buyer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].amountDueVnd").value(100_000L))
+                .andExpect(jsonPath("$.items[1].amountDueVnd").value(300_000L));
+
+        mockMvc.perform(get("/api/v1/me/orders")
+                        .param("sort", "amountDueVnd,desc")
+                        .with(fixtures.asLearner(buyer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].amountDueVnd").value(300_000L))
+                .andExpect(jsonPath("$.items[1].amountDueVnd").value(100_000L));
     }
 }

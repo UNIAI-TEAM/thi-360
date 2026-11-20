@@ -2,17 +2,28 @@ package vn.unicom.thi360.commerce.payment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.ConditionContext;
-import org.springframework.core.type.AnnotatedTypeMetadata;
-import org.springframework.mock.env.MockEnvironment;
-import vn.unicom.thi360.commerce.payment.gateway.MockVnpayPageCondition;
-import vn.unicom.thi360.commerce.payment.gateway.VnpayMode;
-import vn.unicom.thi360.commerce.payment.gateway.VnpayModeStartupGuard;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.time.Clock;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+import org.springframework.mock.env.MockEnvironment;
+import vn.unicom.thi360.commerce.payment.gateway.MockVnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.MockVnpayPageCondition;
+import vn.unicom.thi360.commerce.payment.gateway.UnsupportedVnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayConfiguration;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayMode;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayModeStartupGuard;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayProperties;
 
 /**
  * AC-18: Kiểm tra đầy đủ bảng chân trị khởi động {@code thi360.vnpay.mode} và điều kiện mở trang {@code /mock-vnpay}.
@@ -105,6 +116,85 @@ class VnpayModeStartupTest {
         production.setActiveProfiles("prod");
         assertThat(VnpayModeStartupGuard.validate(production)).isEqualTo(VnpayMode.PRODUCTION);
         assertThat(conditionMatches(production)).isFalse();
+    }
+
+    @Test
+    void realApplicationYamlRejectsProdOrApiWithoutModeAndProdWithMock() {
+        yamlRunner("api,prod").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("thi360.vnpay.mode");
+        });
+
+        yamlRunner("api").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("thi360.vnpay.mode");
+        });
+
+        yamlRunner("api,prod", "thi360.vnpay.mode=MOCK").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(context.getStartupFailure())
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("prod");
+        });
+    }
+
+    @Test
+    void realApplicationYamlWiresMockInDevAndE2eAndTrimmedWhitespaceMockAndProductionInTestProd() {
+        for (String profile : new String[] {"api,dev", "api,e2e"}) {
+            yamlRunner(profile).run(context -> {
+                assertThat(context).hasNotFailed();
+                assertThat(VnpayModeStartupGuard.validate(context.getEnvironment())).isEqualTo(VnpayMode.MOCK);
+                assertThat(context).hasSingleBean(VnpayGateway.class);
+                assertThat(context.getBean(VnpayGateway.class)).isInstanceOf(MockVnpayGateway.class);
+                assertThat(context).hasBean("mockVnpayPageConditionMarker");
+            });
+        }
+
+        yamlRunner("api,dev", "thi360.vnpay.mode= MOCK ").run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(VnpayModeStartupGuard.validate(context.getEnvironment())).isEqualTo(VnpayMode.MOCK);
+            assertThat(context).hasSingleBean(VnpayGateway.class);
+            assertThat(context.getBean(VnpayGateway.class)).isInstanceOf(MockVnpayGateway.class);
+            assertThat(context).hasBean("mockVnpayPageConditionMarker");
+        });
+
+        yamlRunner("api,worker,test,prod").run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(VnpayModeStartupGuard.validate(context.getEnvironment())).isEqualTo(VnpayMode.PRODUCTION);
+            assertThat(context).hasSingleBean(VnpayGateway.class);
+            assertThat(context.getBean(VnpayGateway.class)).isInstanceOf(UnsupportedVnpayGateway.class);
+            assertThat(context.getBean(VnpayGateway.class)).isNotInstanceOf(MockVnpayGateway.class);
+            assertThat(context).doesNotHaveBean("mockVnpayPageConditionMarker");
+        });
+    }
+
+    private static ApplicationContextRunner yamlRunner(String activeProfiles, String... extraProperties) {
+        ApplicationContextRunner runner = new ApplicationContextRunner()
+                .withInitializer(new ConfigDataApplicationContextInitializer())
+                .withPropertyValues("spring.profiles.active=" + activeProfiles)
+                .withBean(Clock.class, Clock::systemUTC)
+                .withUserConfiguration(
+                        VnpayConfiguration.class,
+                        MockVnpayGateway.class,
+                        MockPageMarkerConfig.class);
+        if (extraProperties != null && extraProperties.length > 0) {
+            runner = runner.withPropertyValues(extraProperties);
+        }
+        return runner;
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(VnpayProperties.class)
+    static class MockPageMarkerConfig {
+        @Bean
+        @Conditional(MockVnpayPageCondition.class)
+        String mockVnpayPageConditionMarker() {
+            return "enabled";
+        }
     }
 
     private static boolean conditionMatches(MockEnvironment env) {

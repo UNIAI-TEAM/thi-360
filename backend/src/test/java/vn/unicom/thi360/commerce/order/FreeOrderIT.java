@@ -98,29 +98,62 @@ class FreeOrderIT extends AbstractIntegrationTest {
                 "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
                 Integer.class, buyer1.id(), product.examId())).isEqualTo(4);
 
-        // 2. Lỗi khi cấp quyền -> vẫn tạo đơn PAID, trả 201 với next = CHECKING, KHÔNG trả 500!
+        // 2. Lỗi khi cấp quyền -> vẫn tạo đơn PAID, trả 201 với next = CHECKING, KHÔNG trả 500 và KHÔNG lộ trường nội bộ!
         failGrant.set(true);
+        String freeCheckingKey = "free-chk-" + UUID.randomUUID();
+        String freeCheckingBody = mapper.writeValueAsString(Map.of(
+                "code", product.code(),
+                "voucherCode", fullVoucher.getCode(),
+                "expectedAccountId", buyer2.id(),
+                "expectedVersionNo", 1,
+                "expectedAmountDue", 0L));
         String checkingRaw = mockMvc.perform(post("/api/v1/me/orders")
                         .with(fixtures.asLearner(buyer2))
-                        .header("Idempotency-Key", "free-chk-" + UUID.randomUUID())
+                        .header("Idempotency-Key", freeCheckingKey)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(Map.of(
-                                "code", product.code(),
-                                "voucherCode", fullVoucher.getCode(),
-                                "expectedAccountId", buyer2.id(),
-                                "expectedVersionNo", 1,
-                                "expectedAmountDue", 0L))))
+                        .content(freeCheckingBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.next").value("CHECKING"))
                 .andExpect(jsonPath("$.order.state").value("PAID"))
-                .andExpect(jsonPath("$.order.fulfillmentTries").value(1))
+                .andExpect(jsonPath("$.order.fulfillmentError").doesNotExist())
+                .andExpect(jsonPath("$.order.fulfillmentTries").doesNotExist())
+                .andExpect(jsonPath("$.order.needsReview").doesNotExist())
+                .andExpect(jsonPath("$.order.reviewReason").doesNotExist())
                 .andReturn().getResponse().getContentAsString();
 
+        assertThat(checkingRaw).doesNotContain("Transient entitlement storage outage");
         UUID checkingOrderId = UUID.fromString(mapper.readTree(checkingRaw).path("order").path("id").asText());
+        assertThat(jdbc.queryForObject(
+                "SELECT fulfillment_tries FROM commerce.purchase_order WHERE id = ?", Integer.class, checkingOrderId))
+                .isEqualTo(1);
+
+        // R1-28: replay khi chưa khôi phục không gọi lại fulfill (fulfillment_tries vẫn = 1).
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer2))
+                        .header("Idempotency-Key", freeCheckingKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(freeCheckingBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.next").value("CHECKING"))
+                .andExpect(jsonPath("$.order.state").value("PAID"));
+        assertThat(jdbc.queryForObject(
+                "SELECT fulfillment_tries FROM commerce.purchase_order WHERE id = ?", Integer.class, checkingOrderId))
+                .isEqualTo(1);
+
         failGrant.set(false);
         assertThat(fulfillmentService.fulfill(checkingOrderId)).isTrue();
         assertThat(jdbc.queryForObject(
                 "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, checkingOrderId))
                 .isEqualTo("FULFILLED");
+
+        // R1-23: sau khi phục hồi, replay cùng Idempotency-Key tính lại next từ trạng thái mới -> FULFILLED!
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer2))
+                        .header("Idempotency-Key", freeCheckingKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(freeCheckingBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.next").value("FULFILLED"))
+                .andExpect(jsonPath("$.order.state").value("FULFILLED"));
     }
 }

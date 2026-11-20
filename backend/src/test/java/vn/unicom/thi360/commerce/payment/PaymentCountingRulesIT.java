@@ -41,6 +41,7 @@ import vn.unicom.thi360.commerce.payment.gateway.VnpaySigner;
 import vn.unicom.thi360.commerce.payment.infrastructure.PaymentRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
+import vn.unicom.thi360.shared.outbox.OutboxRelay;
 
 /**
  * Kiểm thử tích hợp cho quy tắc đếm khoản thu mỗi đơn (AC-41..AC-47, TM §8.4, BS §14):
@@ -56,6 +57,7 @@ class PaymentCountingRulesIT extends AbstractIntegrationTest {
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private EntitlementGrantService entitlementGrantService;
+    @Autowired private OutboxRelay outboxRelay;
 
     private CommerceTestFixtures fixtures;
 
@@ -295,6 +297,19 @@ class PaymentCountingRulesIT extends AbstractIntegrationTest {
 
         assertThat(orderState(created.orderId())).isEqualTo("FULFILLED");
         assertThat(grantCount(created.orderId())).isEqualTo(1);
+
+        // R1-16: chuyển PENDING -> AUTO_EXCESS trên lần thanh toán anh em phải ghi cả OrderHistory và AuditEvent PAYMENT_EXCESS_RECEIVED.
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.order_history WHERE order_id = ? AND actor = 'VNPAY_IPN' AND reason = ?",
+                Integer.class, created.orderId(), "AUTO_EXCESS_AFTER_COUNTED:" + created.firstTxnRef()))
+                .isEqualTo(1);
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy hết outbox sang audit.audit_event.
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'PAYMENT_EXCESS_RECEIVED' AND target_id = ? AND reason = 'AUTO_EXCESS' AND after->>'txnRef' = ?",
+                Integer.class, created.orderId().toString(), created.firstTxnRef()))
+                .isEqualTo(1);
     }
 
     @Test

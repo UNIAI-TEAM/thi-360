@@ -23,6 +23,7 @@ import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
+import vn.unicom.thi360.commerce.order.infrastructure.PurchaseOrderRepository;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionAudienceType;
@@ -43,6 +44,7 @@ class LatePaymentIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
+    @Autowired private PurchaseOrderRepository purchaseOrderRepository;
 
     private CommerceTestFixtures fixtures;
 
@@ -388,6 +390,58 @@ class LatePaymentIT extends AbstractIntegrationTest {
                 .isTrue();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
                 Integer.class, fulfilledOrder.id())).isZero();
+    }
+
+    @Test
+    void flagsDoubleChargeAcrossThreeOrderReplacementChainAndHandlesCycleSafely() throws Exception {
+        // R1-8/9: chuỗi 3 đơn O1 -> O2 -> O3, O3 thu tiền trước rồi O1 nhận IPN muộn -> O1.needs_review=true (DOUBLE_CHARGE_REPLACED_ORDER).
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 1);
+
+        var o3 = fixtures.insertStubOrder(
+                buyer, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var p3 = fixtures.insertStubPayment(o3, 1, 200_000L, PaymentState.CREATED);
+
+        var o2 = fixtures.insertStubOrder(
+                buyer, product, OrderState.REPLACED, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", o3.id(), o2.id());
+
+        var o1 = fixtures.insertStubOrder(
+                buyer, product, OrderState.REPLACED, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", o2.id(), o1.id());
+        var p1 = fixtures.insertStubPayment(o1, 1, 200_000L, PaymentState.CREATED);
+
+        callIpn(p3.txnRef(), 200_000L, "93000061").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o3.id()))
+                .isEqualTo("FULFILLED");
+
+        callIpn(p1.txnRef(), 200_000L, "93000062").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o1.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o1.id()))
+                .isTrue();
+        assertThat(jdbc.queryForObject("SELECT review_reason FROM commerce.purchase_order WHERE id = ?", String.class, o1.id()))
+                .isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
+
+        // R1-31: các truy vấn WITH RECURSIVE có CYCLE dừng an toàn ngay cả khi dữ liệu bị hỏng tạo vòng lặp.
+        var c1 = fixtures.insertStubOrder(
+                buyer, product, OrderState.REPLACED, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var c2 = fixtures.insertStubOrder(
+                buyer, product, OrderState.REPLACED, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", c2.id(), c1.id());
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", c1.id(), c2.id());
+        assertThat(purchaseOrderRepository.existsPaidInReplacementChainStartingAt(c1.id())).isFalse();
+        assertThat(purchaseOrderRepository.findPaidReplacementChainOrderIds(c1.id())).isEmpty();
+        assertThat(purchaseOrderRepository.findPaidPredecessorOrderIds(c1.id())).isEmpty();
+        assertThat(purchaseOrderRepository.findAllReplacementChainOrderIds(c1.id()))
+                .containsExactlyInAnyOrder(c1.id(), c2.id());
+        assertThat(purchaseOrderRepository.findAllPredecessorOrderIds(c1.id()))
+                .containsExactlyInAnyOrder(c1.id(), c2.id());
     }
 
     private org.springframework.test.web.servlet.ResultActions callIpn(

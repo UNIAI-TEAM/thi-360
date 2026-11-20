@@ -115,6 +115,44 @@ class MockVnpayGatewayTest {
         assertThat(refundResult.amountVnd()).isEqualTo(125_000L);
     }
 
+    @Test
+    void mockGatewayIgnoresRealTmnCodeAndHashSecretWhenMockSettingsUnset() {
+        VnpayProperties props = new VnpayProperties(
+                "MOCK",
+                "REAL-SANDBOX-TMN",
+                "REAL-SANDBOX-SECRET-KEY",
+                null,
+                null,
+                List.of(),
+                null,
+                null,
+                null);
+        Clock fixedClock = Clock.fixed(Instant.parse("2026-11-21T03:00:00Z"), ZoneOffset.UTC);
+        MockVnpayGateway gateway = new MockVnpayGateway(props, fixedClock);
+
+        assertThat(gateway.resolveTmnCode()).isEqualTo(MockVnpayGateway.DEFAULT_MOCK_TMN_CODE);
+        assertThat(gateway.resolveSecret()).isEqualTo(MockVnpayGateway.DEFAULT_MOCK_SECRET);
+
+        String payUrl = gateway.pay(new PayRequest(
+                "DH261121MOCK9901",
+                "DH261121MOCK99",
+                50_000L,
+                "Thanh toan don DH261121MOCK99",
+                "vn",
+                "http://localhost:3000/checkout/result",
+                "127.0.0.1",
+                "20261121100000",
+                "20261121101500"));
+        Map<String, String> parsed = parseQueryParams(payUrl);
+        assertThat(parsed.get("vnp_TmnCode")).isEqualTo(MockVnpayGateway.DEFAULT_MOCK_TMN_CODE);
+        assertThat(payUrl).doesNotContain("REAL-SANDBOX-TMN").doesNotContain("REAL-SANDBOX-SECRET-KEY");
+        assertThat(gateway.verify(parsed)).isTrue();
+
+        Map<String, String> signedWithRealSecret = new LinkedHashMap<>(parsed);
+        signedWithRealSecret.put("vnp_SecureHash", VnpaySigner.signPayParams(parsed, "REAL-SANDBOX-SECRET-KEY"));
+        assertThat(gateway.verify(signedWithRealSecret)).isFalse();
+    }
+
     private static void assertPayVector(String label, JsonNode vector, String secret) {
         Map<String, String> params = new LinkedHashMap<>();
         vector.path("params").fields().forEachRemaining(e -> params.put(e.getKey(), e.getValue().asText()));

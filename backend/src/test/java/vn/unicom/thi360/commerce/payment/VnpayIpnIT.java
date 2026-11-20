@@ -6,19 +6,26 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -188,6 +195,46 @@ class VnpayIpnIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void rejectsReplayedPaymentUrlParamsAndMapsContradictorySuccessTxnStatusToUnknown() throws Exception {
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+
+        String createdRaw = mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer))
+                        .header("Idempotency-Key", "ipn-replay-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "expectedAccountId", buyer.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 200_000L))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = mapper.readTree(createdRaw);
+        UUID paymentId = UUID.fromString(root.path("order").path("payments").get(0).path("id").asText());
+        String txnRef = root.path("order").path("payments").get(0).path("txnRef").asText();
+        Map<String, String> paymentUrlParams = parseQueryParams(root.path("paymentUrl").asText());
+
+        // R1-2: phát lại nguyên tham số paymentUrl (vnp_Command=pay, thiếu vnp_ResponseCode/TransactionStatus) tới /ipn
+        // phải bị từ chối với RspCode 97, signature_valid = false, không đổi trạng thái payment.
+        sendIpn(mockMvc, paymentUrlParams, "198.51.100.1")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("97"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, paymentId))
+                .isEqualTo("CREATED");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND signature_valid = false AND outcome = 'INVALID_CALLBACK_PARAMS_97'",
+                Integer.class, paymentId)).isEqualTo(1);
+
+        // R1-32: responseCode=24 nhưng vnp_TransactionStatus=00 (mâu thuẫn) -> UNKNOWN (không kết luận FAILED).
+        sendIpn(mockMvc, signedParams(txnRef, 200_000L, "24", "00", "0"), "198.51.100.1")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, paymentId))
+                .isEqualTo("UNKNOWN");
+    }
+
+    @Test
     void internalErrorRollsBackCompletelyReturns99AndSubsequentRetrySucceedsOnce() throws Exception {
         var buyer = fixtures.createLearner();
         var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
@@ -330,5 +377,17 @@ class VnpayIpnIT extends AbstractIntegrationTest {
         params.put("vnp_TxnRef", txnRef);
         params.put("vnp_SecureHash", VnpaySigner.signPayParams(params, MockVnpayGateway.DEFAULT_MOCK_SECRET));
         return params;
+    }
+
+    private static Map<String, String> parseQueryParams(String url) {
+        String query = URI.create(url).getRawQuery();
+        Map<String, String> map = new TreeMap<>();
+        for (String pair : query.split("&")) {
+            int idx = pair.indexOf('=');
+            String k = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+            String v = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+            map.put(k, v);
+        }
+        return map;
     }
 }
