@@ -15,4 +15,6 @@ public interface AttemptItemRepository extends JpaRepository<AttemptItem, UUID> 
     List<AttemptItem> findByPartIdOrderByOrdAsc(UUID partId);
 
     List<AttemptItem> findByAttemptIdAndPartIdInOrderByPartIdAscOrdAsc(UUID attemptId, Collection<UUID> partIds);
+
+    boolean existsByPartId(UUID partId);
 }

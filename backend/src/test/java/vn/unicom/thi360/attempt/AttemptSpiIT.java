@@ -121,7 +121,20 @@ class AttemptSpiIT extends AbstractAttemptDsIT {
         assertThat(attemptStatusProvider.findOpenAttempt(userId, line.entitlementId()))
                 .contains(new OpenAttempt(inProgId, OpenAttemptState.IN_PROGRESS));
 
-        // 3. Mark SCORED -> findLatestResultAttempt returns scoredId, findOpenAttempt empty
+        // 3. Submit via real POST /me/attempts/{id}/submit -> GRADING, activeAttempt false, findOpenAttempt empty, findLatestResultAttempt present
+        MvcResult submitRes = performSubmit(userId, inProgId, "spi-real-submit", null, null);
+        assertThat(submitRes.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(submitRes).path("state").asText()).isEqualTo("GRADING");
+        Attempt submitted = attemptRepository.findById(inProgId).orElseThrow();
+        assertThat(submitted.getState()).isEqualTo(AttemptState.GRADING);
+        assertThat(activeAttemptChecker.hasActiveAttempt(userId)).isFalse();
+        assertThat(callDeactivationCheck(UUID.randomUUID(), userId)).isFalse();
+        assertThat(attemptStatusProvider.findOpenAttempt(userId, line.entitlementId())).isEmpty();
+        Optional<ResultAttempt> submittedResult =
+                attemptStatusProvider.findLatestResultAttempt(userId, line.entitlementId());
+        assertThat(submittedResult).contains(new ResultAttempt(inProgId, submitted.getFinishedAt()));
+
+        // 4. Mark SCORED -> findLatestResultAttempt returns scoredId, findOpenAttempt empty
         Instant finished = Instant.parse("2026-11-20T12:00:00Z");
         jdbc.update(
                 "UPDATE attempt.attempt SET state = 'SCORED', finished_at = ? WHERE id = ?",

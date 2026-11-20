@@ -273,6 +273,17 @@ public class Attempt {
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
+    /** Closes an IN_PROGRESS attempt into GRADING using the shared close procedure (LT §6.3). */
+    public void close(EndReason endReason, Instant finishedAt, Instant now) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot close attempt from state " + this.state);
+        }
+        this.state = AttemptState.GRADING;
+        this.endReason = Objects.requireNonNull(endReason, "endReason must not be null");
+        this.finishedAt = Objects.requireNonNull(finishedAt, "finishedAt must not be null");
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
     public UUID getId() {
         return id;
     }

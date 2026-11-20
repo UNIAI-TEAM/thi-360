@@ -24,7 +24,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import vn.unicom.thi360.attempt.application.AttemptGuard;
 import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
 import vn.unicom.thi360.attempt.application.NoOpAttemptSessionChecker;
-import vn.unicom.thi360.attempt.application.NoOpOverdueAttemptCloser;
 import vn.unicom.thi360.attempt.application.OverdueAttemptCloser;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
@@ -213,19 +212,17 @@ class AttemptGuardTest {
 
     @Test
     void temporaryNoOpPortsPerformNoSideEffects() {
-        NoOpOverdueAttemptCloser noOpCloser = new NoOpOverdueAttemptCloser();
         NoOpAttemptSessionChecker noOpSession = new NoOpAttemptSessionChecker();
         Attempt attempt = openAttempt(AttemptTiming.PER_PART, null);
         AttemptPart part = openPart(NOW.plusSeconds(60));
 
-        assertThatCode(() -> noOpCloser.closeIfOverdue(attemptId, NOW)).doesNotThrowAnyException();
         assertThatCode(() -> noOpSession.requireEditSession(attempt, null)).doesNotThrowAnyException();
         assertThatCode(() -> noOpSession.requireEditSession(attempt, sessionId)).doesNotThrowAnyException();
 
         AttemptGuard guardWithNoOps = new AttemptGuard(
                 attemptRepository,
                 attemptPartRepository,
-                noOpCloser,
+                overdueCloser,
                 noOpSession,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         when(attemptRepository.existsByIdAndUserId(attemptId, ownerId)).thenReturn(true);
@@ -234,6 +231,7 @@ class AttemptGuardTest {
 
         assertThat(guardWithNoOps.requireEditablePart(attemptId, partId, ownerId, null).part().getState())
                 .isEqualTo(PartState.OPEN);
+        verify(overdueCloser).closeIfOverdue(attemptId, NOW);
     }
 
     @Test

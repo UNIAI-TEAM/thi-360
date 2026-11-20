@@ -4,15 +4,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Default no-op beans for temporary module-internal ports (plan B1); replaced automatically by AT-2a/AT-3 beans. */
+/** Default no-op bean for temporary module-internal session port (plan B1); replaced by AT-3. */
 @Configuration(proxyBeanMethods = false)
 public class AttemptDefaultPortsConfig {
-
-    @Bean
-    @ConditionalOnMissingBean(OverdueAttemptCloser.class)
-    public OverdueAttemptCloser noOpOverdueAttemptCloser() {
-        return new NoOpOverdueAttemptCloser();
-    }
 
     @Bean
     @ConditionalOnMissingBean(AttemptSessionChecker.class)
