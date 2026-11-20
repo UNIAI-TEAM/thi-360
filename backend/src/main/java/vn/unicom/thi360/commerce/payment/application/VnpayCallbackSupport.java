@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import org.springframework.util.StringUtils;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
 
 /**
@@ -29,13 +30,35 @@ final class VnpayCallbackSupport {
         return result;
     }
 
+    static boolean hasValidCallbackShape(Map<String, String> vnpParams) {
+        if (vnpParams == null) {
+            return false;
+        }
+        return !StringUtils.hasText(vnpParams.get("vnp_Command"))
+                && StringUtils.hasText(vnpParams.get("vnp_ResponseCode"))
+                && StringUtils.hasText(vnpParams.get("vnp_TransactionStatus"));
+    }
+
+    static boolean matchesScaledAmount(String rawAmount, long expectedVnd) {
+        String trimmed = trimToNull(rawAmount);
+        if (trimmed == null) {
+            return false;
+        }
+        try {
+            long scaled = Long.parseLong(trimmed);
+            return scaled > 0 && scaled % 100L == 0 && (scaled / 100L) == expectedVnd;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
     static PaymentState classifyOutcome(Map<String, String> vnpParams) {
         String responseCode = trimToNull(vnpParams.get("vnp_ResponseCode"));
         String txnStatus = trimToNull(vnpParams.get("vnp_TransactionStatus"));
         if ("00".equals(responseCode) && "00".equals(txnStatus)) {
             return PaymentState.SUCCEEDED;
         }
-        if ("01".equals(txnStatus)) {
+        if ("00".equals(txnStatus) || "01".equals(txnStatus)) {
             return PaymentState.UNKNOWN;
         }
         if (responseCode != null && CLEAR_FAILURE_RESPONSE_CODES.contains(responseCode)) {

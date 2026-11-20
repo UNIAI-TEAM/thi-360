@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -17,7 +17,7 @@ import org.springframework.util.StringUtils;
  * Bản cài giả lập {@link VnpayGateway} cho chế độ {@code MOCK} (TM 8.4, plan CM-3a).
  */
 @Component
-@ConditionalOnProperty(name = "thi360.vnpay.mode", havingValue = "MOCK")
+@Conditional(MockVnpayModeCondition.class)
 public class MockVnpayGateway implements VnpayGateway {
 
     public static final String DEFAULT_MOCK_TMN_CODE = "DEV-MOCK";
@@ -146,18 +146,12 @@ public class MockVnpayGateway implements VnpayGateway {
         if (StringUtils.hasText(properties.mockTmnCode())) {
             return properties.mockTmnCode().trim();
         }
-        if (StringUtils.hasText(properties.tmnCode())) {
-            return properties.tmnCode().trim();
-        }
         return DEFAULT_MOCK_TMN_CODE;
     }
 
     public String resolveSecret() {
         if (StringUtils.hasText(properties.mockSecret())) {
             return properties.mockSecret().trim();
-        }
-        if (StringUtils.hasText(properties.hashSecret())) {
-            return properties.hashSecret().trim();
         }
         return DEFAULT_MOCK_SECRET;
     }

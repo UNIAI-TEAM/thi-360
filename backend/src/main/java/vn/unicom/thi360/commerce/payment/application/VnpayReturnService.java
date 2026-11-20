@@ -75,9 +75,19 @@ public class VnpayReturnService {
             throw new BusinessRuleException("VNPAY_SIGNATURE_INVALID");
         }
 
+        if (!VnpayCallbackSupport.hasValidCallbackShape(vnpParams)) {
+            saveReturnEvent(paymentId, raw, false, "RETURN_INVALID_CALLBACK_PARAMS");
+            throw new BusinessRuleException("VNPAY_SIGNATURE_INVALID");
+        }
+
         if (payment == null) {
             saveReturnEvent(null, raw, true, "RETURN_ORDER_NOT_FOUND");
             throw new NotFoundException("ORDER_NOT_FOUND", messages.get("ORDER_NOT_FOUND"));
+        }
+
+        if (!VnpayCallbackSupport.matchesScaledAmount(vnpParams.get("vnp_Amount"), payment.getAmountVnd())) {
+            saveReturnEvent(payment.getId(), raw, false, "RETURN_INVALID_AMOUNT");
+            throw new BusinessRuleException("VNPAY_SIGNATURE_INVALID");
         }
 
         PurchaseOrder order = purchaseOrderRepository.findById(payment.getOrderId()).orElse(null);

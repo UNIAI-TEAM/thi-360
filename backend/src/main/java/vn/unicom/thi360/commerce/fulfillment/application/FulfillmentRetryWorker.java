@@ -3,8 +3,10 @@ package vn.unicom.thi360.commerce.fulfillment.application;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ public class FulfillmentRetryWorker {
     private static final Logger log = LoggerFactory.getLogger(FulfillmentRetryWorker.class);
     private static final Duration RETRY_WINDOW = Duration.ofMinutes(30);
     private static final int BATCH_SIZE = 20;
+    private static final int MAX_BATCHES = 25;
 
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final FulfillmentService fulfillmentService;
@@ -44,13 +47,25 @@ public class FulfillmentRetryWorker {
     @Scheduled(fixedDelayString = "${thi360.commerce.fulfillment-retry.interval:PT1M}")
     public void retryPendingFulfillments() {
         Instant cutoff = clock.instant().minus(RETRY_WINDOW);
-        List<UUID> orderIds = purchaseOrderRepository.findPaidIdsSince(
-                OrderState.PAID, cutoff, PageRequest.of(0, BATCH_SIZE));
-        for (UUID orderId : orderIds) {
-            try {
-                fulfillmentService.fulfill(orderId);
-            } catch (RuntimeException ex) {
-                log.warn("Unexpected error retrying fulfillment for order {}", orderId, ex);
+        Set<UUID> visited = new HashSet<>();
+        for (int batch = 0; batch < MAX_BATCHES; batch++) {
+            List<UUID> orderIds = visited.isEmpty()
+                    ? purchaseOrderRepository.findPaidIdsSince(
+                            OrderState.PAID, cutoff, PageRequest.of(0, BATCH_SIZE))
+                    : purchaseOrderRepository.findPaidIdsSinceExcluding(
+                            OrderState.PAID, cutoff, visited, PageRequest.of(0, BATCH_SIZE));
+            if (orderIds.isEmpty()) {
+                break;
+            }
+            for (UUID orderId : orderIds) {
+                if (!visited.add(orderId)) {
+                    continue;
+                }
+                try {
+                    fulfillmentService.fulfill(orderId);
+                } catch (RuntimeException ex) {
+                    log.warn("Unexpected error retrying fulfillment for order {}", orderId, ex);
+                }
             }
         }
     }

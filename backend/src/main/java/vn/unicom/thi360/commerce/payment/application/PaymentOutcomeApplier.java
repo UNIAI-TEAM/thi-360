@@ -3,6 +3,7 @@ package vn.unicom.thi360.commerce.payment.application;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -277,20 +278,7 @@ public class PaymentOutcomeApplier {
                 payment.markAutoExcessFromPendingReview(
                         vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, now);
                 paymentRepository.save(payment);
-                orderHistoryRepository.save(new OrderHistory(
-                        Ids.newId(),
-                        order.getId(),
-                        order.getState(),
-                        order.getState(),
-                        "VNPAY_IPN",
-                        "AUTO_EXCESS_AFTER_COUNTED:" + payment.getTxnRef(),
-                        now));
-                auditRecorder.record(AuditEvent.builder("commerce", "PAYMENT_EXCESS_RECEIVED")
-                        .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
-                        .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
-                        .reason("AUTO_EXCESS")
-                        .after(Map.of("txnRef", payment.getTxnRef()))
-                        .build());
+                recordAutoExcessAuditAndHistory(order, payment, now);
                 recordEvent(payment.getId(), PaymentEventSource.IPN, rawPayload, true, now, "AUTO_EXCESS_00");
                 return new ApplyResult("00", "Confirm Success", null);
             }
@@ -346,6 +334,7 @@ public class PaymentOutcomeApplier {
                     && other.getLateSuccessReview() == LateSuccessReview.PENDING) {
                 other.markAutoExcessFromPendingReview(now);
                 paymentRepository.save(other);
+                recordAutoExcessAuditAndHistory(order, other, now);
             }
         }
 
@@ -424,6 +413,23 @@ public class PaymentOutcomeApplier {
                 .toList();
     }
 
+    private void recordAutoExcessAuditAndHistory(PurchaseOrder order, Payment payment, Instant now) {
+        orderHistoryRepository.save(new OrderHistory(
+                Ids.newId(),
+                order.getId(),
+                order.getState(),
+                order.getState(),
+                "VNPAY_IPN",
+                "AUTO_EXCESS_AFTER_COUNTED:" + payment.getTxnRef(),
+                now));
+        auditRecorder.record(AuditEvent.builder("commerce", "PAYMENT_EXCESS_RECEIVED")
+                .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
+                .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
+                .reason("AUTO_EXCESS")
+                .after(Map.of("txnRef", payment.getTxnRef()))
+                .build());
+    }
+
     private boolean hasPaidReplacement(
             PurchaseOrder replacedOrder, List<UUID> preLockChainIds, List<PurchaseOrder> lockedOrders) {
         if (replacedOrder.getReplacedByOrderId() == null) {
@@ -432,9 +438,24 @@ public class PaymentOutcomeApplier {
         if (!findPaidOrdersByIds(preLockChainIds, replacedOrder.getId(), lockedOrders).isEmpty()) {
             return true;
         }
-        // Nếu đơn vừa bị thay thế trong lúc chờ khóa thì kiểm tra trực tiếp chuỗi mới.
-        if (!preLockChainIds.contains(replacedOrder.getReplacedByOrderId())) {
-            return purchaseOrderRepository.existsPaidInReplacementChainStartingAt(replacedOrder.getReplacedByOrderId());
+        // Duyệt toàn bộ các nút đã khóa từ replacedByOrderId: nếu nút nào vừa mọc thêm nhánh mới ngoài lockedById
+        // (vd. O1 -> O2 -> O3 xảy ra song song sau lần đọc trước khi khóa) thì kiểm tra trực tiếp trên DB.
+        Map<UUID, PurchaseOrder> lockedById = new LinkedHashMap<>();
+        for (PurchaseOrder locked : lockedOrders) {
+            lockedById.put(locked.getId(), locked);
+        }
+        Set<UUID> visited = new LinkedHashSet<>();
+        UUID cursor = replacedOrder.getReplacedByOrderId();
+        while (cursor != null && visited.add(cursor)) {
+            PurchaseOrder node = lockedById.get(cursor);
+            if (node == null) {
+                return purchaseOrderRepository.existsPaidInReplacementChainStartingAt(cursor);
+            }
+            if (!node.getId().equals(replacedOrder.getId())
+                    && (node.getPaidAt() != null || isOrderAlreadyPaid(node.getState()))) {
+                return true;
+            }
+            cursor = node.getReplacedByOrderId();
         }
         return false;
     }

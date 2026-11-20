@@ -78,7 +78,8 @@ public class MockVnpayController {
         String failedHref = buildActionUrl("failed", vnpParams);
         String noResponseHref = buildActionUrl("no_response", vnpParams);
 
-        Map<String, String> successIpn = buildCallbackParams(vnpParams, "00", "00", "NCB", "ATM", "MOCK000001", true);
+        Map<String, String> successIpn = buildCallbackParams(
+                vnpParams, "00", "00", "NCB", "ATM", nextMockTransactionNo(), true);
         Map<String, String> failedIpn = buildCallbackParams(vnpParams, "24", "02", "VNPAY", "QRCODE", "0", false);
         String successIpnUrl = MockVnpayGateway.appendQuery(
                 "/api/v1/public/payments/vnpay/ipn", successIpn, mockGateway.signParams(successIpn));
@@ -238,14 +239,22 @@ public class MockVnpayController {
         if (candidate.startsWith("/") && !candidate.startsWith("//") && !candidate.contains("\\")) {
             try {
                 URI rel = URI.create(candidate);
-                String path = rel.getPath();
-                if (path != null && (path.equals("/checkout/result") || path.startsWith("/checkout/result/"))) {
-                    return candidate;
+                if (rel.getRawFragment() != null) {
+                    throw invalid("vnp_ReturnUrl", "INVALID", "Fragment is not allowed in vnp_ReturnUrl");
                 }
+                String decodedPath = rel.getPath();
+                String normalizedPath = rel.normalize().getPath();
+                if (decodedPath == null
+                        || normalizedPath == null
+                        || decodedPath.contains("..")
+                        || normalizedPath.contains("..")
+                        || !(normalizedPath.equals("/checkout/result") || normalizedPath.startsWith("/checkout/result/"))) {
+                    throw invalid("vnp_ReturnUrl", "INVALID", "Relative vnp_ReturnUrl must target /checkout/result");
+                }
+                return candidate;
             } catch (IllegalArgumentException ex) {
                 throw invalid("vnp_ReturnUrl", "INVALID", "Invalid vnp_ReturnUrl");
             }
-            throw invalid("vnp_ReturnUrl", "INVALID", "Relative vnp_ReturnUrl must target /checkout/result");
         }
         URI candidateUri;
         URI allowedBase;
@@ -254,6 +263,9 @@ public class MockVnpayController {
             allowedBase = URI.create(webUrl.trim());
         } catch (IllegalArgumentException ex) {
             throw invalid("vnp_ReturnUrl", "INVALID", "Malformed vnp_ReturnUrl");
+        }
+        if (candidateUri.getRawFragment() != null) {
+            throw invalid("vnp_ReturnUrl", "INVALID", "Fragment is not allowed in vnp_ReturnUrl");
         }
         if (candidateUri.getScheme() == null || candidateUri.getHost() == null) {
             throw invalid("vnp_ReturnUrl", "INVALID", "vnp_ReturnUrl must include scheme and host");

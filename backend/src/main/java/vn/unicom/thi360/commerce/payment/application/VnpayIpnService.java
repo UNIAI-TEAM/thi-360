@@ -83,6 +83,12 @@ public class VnpayIpnService implements VnpayIpnProcessor {
                 return new IpnReply("97", "Invalid Checksum");
             }
 
+            if (!VnpayCallbackSupport.hasValidCallbackShape(vnpParams)) {
+                UUID optionalPaymentId = findPaymentIdQuietly(txnRef);
+                saveAuditEvent(optionalPaymentId, raw, false, "INVALID_CALLBACK_PARAMS_97");
+                return new IpnReply("97", "Invalid Checksum");
+            }
+
             if (!StringUtils.hasText(txnRef)) {
                 saveAuditEvent(null, raw, true, "ORDER_NOT_FOUND_01");
                 return new IpnReply("01", "Order not Found");
@@ -94,7 +100,7 @@ public class VnpayIpnService implements VnpayIpnProcessor {
                 return new IpnReply("01", "Order not Found");
             }
 
-            if (!matchesScaledAmount(vnpParams.get("vnp_Amount"), payment.amountVnd())) {
+            if (!VnpayCallbackSupport.matchesScaledAmount(vnpParams.get("vnp_Amount"), payment.amountVnd())) {
                 saveAuditEvent(payment.id(), raw, true, "INVALID_AMOUNT_04");
                 return new IpnReply("04", "Invalid Amount");
             }
@@ -128,18 +134,5 @@ public class VnpayIpnService implements VnpayIpnProcessor {
         Instant now = clock.instant();
         requiresNewTx.executeWithoutResult(status -> paymentEventRepository.save(new PaymentEvent(
                 Ids.newId(), paymentId, PaymentEventSource.IPN, raw, sigValid, now, outcome)));
-    }
-
-    private static boolean matchesScaledAmount(String rawAmount, long expectedVnd) {
-        String trimmed = VnpayCallbackSupport.trimToNull(rawAmount);
-        if (trimmed == null) {
-            return false;
-        }
-        try {
-            long scaled = Long.parseLong(trimmed);
-            return scaled > 0 && scaled % 100L == 0 && (scaled / 100L) == expectedVnd;
-        } catch (NumberFormatException ex) {
-            return false;
-        }
     }
 }

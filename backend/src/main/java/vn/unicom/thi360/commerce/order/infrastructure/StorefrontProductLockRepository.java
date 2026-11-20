@@ -1,7 +1,9 @@
 package vn.unicom.thi360.commerce.order.infrastructure;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -45,6 +47,28 @@ public class StorefrontProductLockRepository {
         }
         List<StoredProduct> rows = jdbcTemplate.query(BASE_SELECT, this::mapRow, codeNormalized);
         return rows.stream().findFirst();
+    }
+
+    /** Khóa tập khuyến mãi theo thứ tự UUID tăng dần toàn cục (PostgreSQL unsigned 128-bit) để tránh deadlock (plan B2). */
+    public List<UUID> lockPromotionsInOrder(Collection<UUID> promotionIds) {
+        if (promotionIds == null || promotionIds.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> distinct = promotionIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinct.isEmpty()) {
+            return List.of();
+        }
+        return jdbcTemplate.query(
+                con -> {
+                    PreparedStatement ps = con.prepareStatement(
+                            "SELECT id FROM commerce.promotion WHERE id = ANY(?) ORDER BY id ASC FOR UPDATE");
+                    ps.setArray(1, con.createArrayOf("uuid", distinct.toArray(UUID[]::new)));
+                    return ps;
+                },
+                (rs, rowNum) -> rs.getObject("id", UUID.class));
     }
 
     private StoredProduct mapRow(ResultSet rs, int rowNum) throws SQLException {

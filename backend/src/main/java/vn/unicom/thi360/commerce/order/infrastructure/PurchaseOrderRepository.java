@@ -2,6 +2,7 @@ package vn.unicom.thi360.commerce.order.infrastructure;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,7 +57,7 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
     @Query("SELECT o FROM PurchaseOrder o WHERE o.id IN :ids ORDER BY o.id ASC")
     List<PurchaseOrder> lockAllByIdInOrderByIdAsc(@Param("ids") List<UUID> ids);
 
-    Page<PurchaseOrder> findByUserIdOrderByCreatedAtDescIdDesc(UUID userId, Pageable pageable);
+    Page<PurchaseOrder> findByUserId(UUID userId, Pageable pageable);
 
     @Query(value = EXISTS_BY_USER_ID_SQL, nativeQuery = true)
     boolean existsByUserId(@Param("userId") UUID userId);
@@ -67,10 +68,21 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
     @Query("""
             SELECT o.id FROM PurchaseOrder o
             WHERE o.state = :state AND o.paidAt >= :cutoff
-            ORDER BY o.paidAt ASC, o.createdAt ASC
+            ORDER BY o.fulfillmentTries ASC, o.updatedAt ASC, o.paidAt ASC, o.id ASC
             """)
     List<UUID> findPaidIdsSince(
             @Param("state") OrderState state, @Param("cutoff") Instant cutoff, Pageable pageable);
+
+    @Query("""
+            SELECT o.id FROM PurchaseOrder o
+            WHERE o.state = :state AND o.paidAt >= :cutoff AND o.id NOT IN :excludedIds
+            ORDER BY o.fulfillmentTries ASC, o.updatedAt ASC, o.paidAt ASC, o.id ASC
+            """)
+    List<UUID> findPaidIdsSinceExcluding(
+            @Param("state") OrderState state,
+            @Param("cutoff") Instant cutoff,
+            @Param("excludedIds") Collection<UUID> excludedIds,
+            Pageable pageable);
 
     @Query(value = """
             SELECT o.code, i.exam_id
@@ -90,10 +102,11 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
                 SELECT nxt.id, nxt.state, nxt.paid_at, nxt.replaced_by_order_id
                 FROM commerce.purchase_order nxt
                 JOIN chain c ON nxt.id = c.replaced_by_order_id
-            )
+            ) CYCLE id SET is_cycle USING path
             SELECT EXISTS (
                 SELECT 1 FROM chain
-                WHERE paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED')
+                WHERE NOT is_cycle
+                  AND (paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED'))
             )
             """, nativeQuery = true)
     boolean existsPaidInReplacementChainStartingAt(@Param("startId") UUID startId);
@@ -107,9 +120,10 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
                 SELECT nxt.id, nxt.state, nxt.paid_at, nxt.replaced_by_order_id
                 FROM commerce.purchase_order nxt
                 JOIN chain c ON nxt.id = c.replaced_by_order_id
-            )
+            ) CYCLE id SET is_cycle USING path
             SELECT id FROM chain
-            WHERE paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED')
+            WHERE NOT is_cycle
+              AND (paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED'))
             ORDER BY id ASC
             """, nativeQuery = true)
     List<UUID> findPaidReplacementChainOrderIds(@Param("startId") UUID startId);
@@ -123,9 +137,10 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
                 SELECT prev.id, prev.state, prev.paid_at
                 FROM commerce.purchase_order prev
                 JOIN predecessors p ON prev.replaced_by_order_id = p.id
-            )
+            ) CYCLE id SET is_cycle USING path
             SELECT id FROM predecessors
-            WHERE paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED')
+            WHERE NOT is_cycle
+              AND (paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED'))
             ORDER BY id ASC
             """, nativeQuery = true)
     List<UUID> findPaidPredecessorOrderIds(@Param("orderId") UUID orderId);
@@ -139,8 +154,9 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
                 SELECT nxt.id, nxt.replaced_by_order_id
                 FROM commerce.purchase_order nxt
                 JOIN chain c ON nxt.id = c.replaced_by_order_id
-            )
+            ) CYCLE id SET is_cycle USING path
             SELECT id FROM chain
+            WHERE NOT is_cycle
             ORDER BY id ASC
             """, nativeQuery = true)
     List<UUID> findAllReplacementChainOrderIds(@Param("startId") UUID startId);
@@ -154,8 +170,9 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
                 SELECT prev.id
                 FROM commerce.purchase_order prev
                 JOIN predecessors p ON prev.replaced_by_order_id = p.id
-            )
+            ) CYCLE id SET is_cycle USING path
             SELECT id FROM predecessors
+            WHERE NOT is_cycle
             ORDER BY id ASC
             """, nativeQuery = true)
     List<UUID> findAllPredecessorOrderIds(@Param("orderId") UUID orderId);

@@ -76,7 +76,7 @@ public class PurchaseOrderItem {
         this.examName = Objects.requireNonNull(examName, "examName must not be null");
         this.optionCodes = optionCodes == null ? new String[0] : optionCodes.toArray(String[]::new);
         this.attemptsGranted = attemptsGranted;
-        this.benefits = benefits == null ? Map.of() : Map.copyOf(benefits);
+        this.benefits = PurchaseOrder.copyNonNullEntries(benefits);
         this.resultView = Objects.requireNonNull(resultView, "resultView must not be null");
         this.position = position;
     }

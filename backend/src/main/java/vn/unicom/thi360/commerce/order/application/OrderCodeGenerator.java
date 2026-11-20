@@ -20,6 +20,7 @@ public class OrderCodeGenerator {
     private static final char[] ALPHANUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".toCharArray();
     private static final int SUFFIX_LENGTH = 6;
     private static final int MAX_GENERATION_ATTEMPTS = 20;
+    public static final int MAX_ATTEMPT_SEQ = 99;
 
     private final SecureRandom random = new SecureRandom();
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -43,8 +44,8 @@ public class OrderCodeGenerator {
 
     public String txnRef(String orderCode, int attemptSeq) {
         Objects.requireNonNull(orderCode, "orderCode must not be null");
-        if (attemptSeq < 1) {
-            throw new IllegalArgumentException("attemptSeq must be >= 1");
+        if (attemptSeq < 1 || attemptSeq > MAX_ATTEMPT_SEQ) {
+            throw new IllegalArgumentException("attemptSeq must be between 1 and " + MAX_ATTEMPT_SEQ);
         }
         return orderCode + String.format("%02d", attemptSeq);
     }

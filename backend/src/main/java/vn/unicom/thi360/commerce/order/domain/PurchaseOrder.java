@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -196,7 +197,7 @@ public class PurchaseOrder {
         this.discountApplied = Objects.requireNonNull(discountApplied, "discountApplied must not be null");
         this.amountDueVnd = amountDueVnd;
         this.attemptsGranted = attemptsGranted;
-        this.benefits = benefits == null ? Map.of() : Map.copyOf(benefits);
+        this.benefits = copyNonNullEntries(benefits);
         this.resultView = Objects.requireNonNull(resultView, "resultView must not be null");
         this.paymentMethod = Objects.requireNonNull(paymentMethod, "paymentMethod must not be null");
         this.state = Objects.requireNonNull(state, "state must not be null");
@@ -321,6 +322,19 @@ public class PurchaseOrder {
         this.needsReview = true;
         this.reviewReason = reason;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
+    public static Map<String, Object> copyNonNullEntries(Map<String, Object> source) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> clean = new LinkedHashMap<>();
+        source.forEach((k, v) -> {
+            if (k != null && v != null) {
+                clean.put(k, v);
+            }
+        });
+        return clean.isEmpty() ? Map.of() : Map.copyOf(clean);
     }
 
     private static String truncate(String s, int maxLen) {

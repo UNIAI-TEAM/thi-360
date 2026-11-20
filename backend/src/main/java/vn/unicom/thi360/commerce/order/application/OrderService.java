@@ -7,20 +7,21 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -63,6 +64,7 @@ import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepo
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.identity.spi.UserDirectory.MailContact;
 import vn.unicom.thi360.identity.spi.UserDirectory.UserSummary;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.api.PageQuery;
@@ -157,19 +159,31 @@ public class OrderService {
         }
 
         String normalizedIp = normalizeIp(clientIp);
-        CreateOrderOutcome outcome = idempotentCommand.execute(
-                idempotencyKey,
-                "order.create",
-                request,
-                CreateOrderOutcome.class,
-                () -> createOrderInTx(userId, request, normalizedIp));
+        AtomicBoolean freshlyCreated = new AtomicBoolean(false);
+        CreateOrderOutcome outcome;
+        try {
+            outcome = idempotentCommand.execute(
+                    idempotencyKey,
+                    "order.create",
+                    request,
+                    CreateOrderOutcome.class,
+                    () -> {
+                        CreateOrderOutcome created = createOrderInTx(userId, request, normalizedIp);
+                        freshlyCreated.set(true);
+                        return created;
+                    });
+        } catch (AutoPromotionStaleException ex) {
+            throw new OrderPriceChangedException(
+                    recalculateFreshQuote(userId, ex.productCode, ex.voucherCode));
+        }
 
         if (!outcome.freeOrder()) {
             return outcome.response();
         }
 
-        // Đơn miễn phí (amount_due == 0): transaction tạo đơn đã commit xong -> cấp quyền trong REQUIRES_NEW riêng.
-        boolean fulfilled = fulfillmentService.fulfill(outcome.orderId());
+        // Đơn miễn phí (amount_due == 0): chỉ tự động gọi fulfill khi đơn vừa được tạo mới;
+        // replay idempotency chỉ đọc lại trạng thái mới nhất để tính `next`.
+        boolean fulfilled = freshlyCreated.get() && fulfillmentService.fulfill(outcome.orderId());
         OrderDetail fresh = txTemplate.execute(status -> purchaseOrderRepository.findById(outcome.orderId())
                 .map(this::buildOrderDetail)
                 .orElse(outcome.response().order()));
@@ -182,7 +196,7 @@ public class OrderService {
     public PageResponse<OrderSummary> listMyOrders(PageQuery pageQuery) {
         UUID userId = learnerGate.requireLearner();
         Page<OrderSummary> page = txTemplate.execute(status -> {
-            Page<PurchaseOrder> raw = purchaseOrderRepository.findByUserIdOrderByCreatedAtDescIdDesc(
+            Page<PurchaseOrder> raw = purchaseOrderRepository.findByUserId(
                     userId, pageQuery.toPageable());
             return raw.map(OrderService::toSummary);
         });
@@ -274,6 +288,20 @@ public class OrderService {
                     existingPending.getId(),
                     false,
                     new CreateOrderResponse(detail, "REDIRECT", paymentUrl));
+        }
+
+        // Khóa toàn bộ khuyến mãi cũ và mới theo thứ tự UUID tăng dần toàn cục trước khi thay thế đơn cũ
+        // hoặc chèn purchase_order mới (FK promotion_id/voucher_id lấy FOR KEY SHARE trên promotion; khóa FOR UPDATE
+        // trước tránh deadlock nâng khóa FOR KEY SHARE -> FOR UPDATE khi nhiều sản phẩm dùng chung khuyến mãi).
+        Set<UUID> promotionIdsToLock = new LinkedHashSet<>();
+        if (existingPending != null) {
+            addIfNonNull(promotionIdsToLock, existingPending.getPromotionId());
+            addIfNonNull(promotionIdsToLock, existingPending.getVoucherId());
+        }
+        addIfNonNull(promotionIdsToLock, discounts.promotionId());
+        addIfNonNull(promotionIdsToLock, discounts.voucherId());
+        if (!promotionIdsToLock.isEmpty()) {
+            storefrontLockRepository.lockPromotionsInOrder(promotionIdsToLock);
         }
 
         if (existingPending != null) {
@@ -375,7 +403,14 @@ public class OrderService {
 
         List<ReserveRequest> reserveRequests = buildReserveRequests(discounts);
         if (!reserveRequests.isEmpty()) {
-            promotionRedemptionService.reserveForOrder(userId, newOrderId, newOrderCode, reserveRequests);
+            try {
+                promotionRedemptionService.reserveForOrder(userId, newOrderId, newOrderCode, reserveRequests);
+            } catch (BusinessRuleException ex) {
+                if (discounts.voucherId() == null) {
+                    throw new AutoPromotionStaleException(stored.code(), normalizedVoucher, ex);
+                }
+                throw ex;
+            }
         }
 
         orderHistoryRepository.save(new OrderHistory(
@@ -474,6 +509,9 @@ public class OrderService {
 
     private Payment createNextPayment(PurchaseOrder order, String clientIp, Instant now) {
         int nextSeq = paymentRepository.findMaxAttemptSeqByOrderId(order.getId()) + 1;
+        if (nextSeq > OrderCodeGenerator.MAX_ATTEMPT_SEQ) {
+            throw new BusinessRuleException("PAYMENT_ATTEMPTS_EXCEEDED");
+        }
         String txnRef = codeGenerator.txnRef(order.getCode(), nextSeq);
         Instant payWindowEnd = now.plus(VNPAY_PAYMENT_WINDOW);
         Instant effectiveExpire = (order.getExpiresAt() != null && order.getExpiresAt().isBefore(payWindowEnd))
@@ -511,7 +549,31 @@ public class OrderService {
         return userDirectory.findMailContact(userId)
                 .map(MailContact::preferredLocale)
                 .filter(StringUtils::hasText)
+                .map(locale -> "en".equalsIgnoreCase(locale.trim()) ? "en" : "vn")
                 .orElse("vn");
+    }
+
+    private PriceQuote recalculateFreshQuote(UUID userId, String productCode, String voucherCode) {
+        return txTemplate.execute(status -> {
+            Instant now = clock.instant();
+            String normalizedProductCode = StorefrontSearchText.normalize(productCode);
+            StoredProduct stored = requireOnSaleProduct(
+                    storefrontLockRepository.findByNormalizedCode(normalizedProductCode).orElse(null));
+            UUID survivingPendingId = purchaseOrderRepository
+                    .findPendingPaymentOrderId(userId, normalizedProductCode)
+                    .orElse(null);
+            PricedProduct pricedProduct = new PricedProduct(
+                    stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
+            QuoteCalculation freshCalc = priceCalculator.calculateQuote(
+                    new QuoteRequest(pricedProduct, userId, voucherCode, survivingPendingId, now));
+            return PriceQuote.from(stored, freshCalc, true);
+        });
+    }
+
+    private static void addIfNonNull(Set<UUID> target, UUID id) {
+        if (id != null) {
+            target.add(id);
+        }
     }
 
     private static StoredProduct requireOnSaleProduct(StoredProduct stored) {
@@ -603,8 +665,7 @@ public class OrderService {
             Map<String, Object> benefits = Map.of();
             JsonNode benefitsNode = root.get("benefits");
             if (benefitsNode != null && benefitsNode.isObject()) {
-                benefits = Collections.unmodifiableMap(
-                        new LinkedHashMap<>(objectMapper.convertValue(benefitsNode, MAP_TYPE)));
+                benefits = PurchaseOrder.copyNonNullEntries(objectMapper.convertValue(benefitsNode, MAP_TYPE));
             }
             String resultView = root.path("resultView").asText(DEFAULT_RESULT_VIEW);
             if (!StringUtils.hasText(resultView)) {
@@ -681,13 +742,9 @@ public class OrderService {
                 order.getState(),
                 order.getReplacedByOrderId(),
                 replacedByCode,
-                order.isNeedsReview(),
-                order.getReviewReason(),
                 order.getExpiresAt(),
                 order.getPaidAt(),
                 order.getFulfilledAt(),
-                order.getFulfillmentError(),
-                order.getFulfillmentTries(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 items,
@@ -766,12 +823,35 @@ public class OrderService {
             CreateOrderResponse response) {
     }
 
+    private static final class AutoPromotionStaleException extends RuntimeException {
+        private final String productCode;
+        private final String voucherCode;
+
+        private AutoPromotionStaleException(String productCode, String voucherCode, Throwable cause) {
+            super(cause);
+            this.productCode = productCode;
+            this.voucherCode = voucherCode;
+        }
+    }
+
     public record CreateOrderRequest(
-            @NotBlank @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+            @NotBlank(message = "{validation.order.code.notBlank}")
+            @Size(max = 100, message = "{validation.order.code.size}")
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+            String code,
+            @Size(max = 100, message = "{validation.order.voucherCode.size}")
             String voucherCode,
-            @NotNull @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID expectedAccountId,
-            @NotNull @Min(1) @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Integer expectedVersionNo,
-            @NotNull @Min(0) @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long expectedAmountDue) {
+            @NotNull(message = "{validation.order.expectedAccountId.notNull}")
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+            UUID expectedAccountId,
+            @NotNull(message = "{validation.order.expectedVersionNo.notNull}")
+            @Min(value = 1, message = "{validation.order.expectedVersionNo.min}")
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+            Integer expectedVersionNo,
+            @NotNull(message = "{validation.order.expectedAmountDue.notNull}")
+            @Min(value = 0, message = "{validation.order.expectedAmountDue.min}")
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+            Long expectedAmountDue) {
     }
 
     public record CreateOrderResponse(
@@ -837,16 +917,12 @@ public class OrderService {
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Map<String, Object> benefits,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String resultView,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PaymentMethod paymentMethod,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OrderState state,
+            OrderState state,
             UUID replacedByOrderId,
             String replacedByOrderCode,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean needsReview,
-            String reviewReason,
             Instant expiresAt,
             Instant paidAt,
             Instant fulfilledAt,
-            String fulfillmentError,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int fulfillmentTries,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<OrderItemView> items,
