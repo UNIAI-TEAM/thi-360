@@ -39,7 +39,7 @@ export function SubjectFormHeader({ subjectName, choiceGroupLabel = null, count,
           </h2>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-text-muted">
             {count === null ? t("countUnknown") : t("countFixed", { count })}
-            {templateLocked && <LockReason code="templateTotal" />}
+            {templateLocked && count !== null && <LockReason code="templateTotal" />}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">

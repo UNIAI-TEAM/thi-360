@@ -238,7 +238,11 @@ export function ExamStructureSubjectPanel({
     <Card padding="md" className="flex flex-col gap-6 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 ref={titleRef} tabIndex={-1} className="flex flex-wrap items-center gap-2 text-h3 font-bold wrap-break-word text-text">
+          <h2
+            ref={titleRef}
+            tabIndex={-1}
+            className={cn("flex flex-wrap items-center gap-2 rounded-sm text-h3 font-bold wrap-break-word text-text", focusRing)}
+          >
             {t("title", { subject: subjectName })}
             {section.choiceGroup && <Badge className="font-medium">{t(`choiceGroup.${section.choiceGroup}`)}</Badge>}
           </h2>
@@ -248,7 +252,7 @@ export function ExamStructureSubjectPanel({
               : varies
                 ? t("countVaries", { counts: cases.join(" / ") })
                 : t("countFixed", { count: cases[0] ?? 0 })}
-            {templateLocked && (
+            {templateLocked && cases.length > 0 && (
               <span className="inline-flex items-center gap-1 font-medium text-text-secondary">
                 <Lock aria-hidden className="size-3.5" />
                 {t("countField.locked")}

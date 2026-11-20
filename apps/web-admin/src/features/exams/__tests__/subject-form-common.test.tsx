@@ -235,8 +235,12 @@ describe("Đầu môn dùng chung (R-7, R-15)", () => {
     const view = renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={53} />);
     expect(screen.getByText("Vượt 3 câu")).toBeInTheDocument();
     view.unmount();
-    renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={50} templateLocked />);
+    const locked = renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={50} templateLocked />);
     expect(screen.getByText("Khớp số câu của môn")).toBeInTheDocument();
     expect(screen.getByText("Số câu của mục theo mẫu, không đổi")).toBeInTheDocument();
+    locked.unmount();
+    renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={null} allocated={50} templateLocked />);
+    expect(screen.getByText("Số câu của môn chưa xác định.")).toBeInTheDocument();
+    expect(screen.queryByText("Số câu của mục theo mẫu, không đổi")).not.toBeInTheDocument();
   });
 });

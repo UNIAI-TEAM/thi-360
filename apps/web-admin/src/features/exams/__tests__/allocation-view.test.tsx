@@ -179,6 +179,7 @@ describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
       renderPanel(section());
       await user.click(screen.getByRole("button", { name: action }));
       await waitFor(() => expect(screen.getByRole("heading", { level: 2 })).toHaveFocus());
+      expect(screen.getByRole("heading", { level: 2 })).toHaveClass("focus-visible:ring-3");
       cleanup();
     }
   });
@@ -305,6 +306,13 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     for (const name of [/^Số câu trên đề/, /^Số câu phải làm/]) {
       expect(await screen.findByRole("textbox", { name })).toHaveAttribute("readonly");
     }
+    expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
+  });
+
+  it("R1-18: chưa rõ số câu của môn thì không gắn nhãn Mẫu đã khóa số câu cạnh dòng số câu", async () => {
+    boot({ section: { questionCount: null }, template: template(true) });
+    open();
+    expect(await screen.findByText("Số câu của môn chưa xác định.")).toBeInTheDocument();
     expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
   });
 });
