@@ -73,7 +73,9 @@ public class AttemptPaperAssembler {
             sectionById.put(section.sectionId(), section);
             List<PaperOrdering.Block> orderingBlocks = new ArrayList<>();
             for (PaperSolverPort.GeneratedGroup group : section.groups()) {
-                boolean shuffleUnits = shuffleMap.getOrDefault(group.groupId(), true);
+                boolean shuffleUnits = shuffleMap.containsKey(group.groupId())
+                        ? Boolean.TRUE.equals(shuffleMap.get(group.groupId()))
+                        : group.shuffleUnits();
                 List<PaperOrdering.Question> units = new ArrayList<>();
                 for (PaperSolverPort.GeneratedQuestion gq : group.questions()) {
                     questionById.put(gq.questionId().toString(), gq);

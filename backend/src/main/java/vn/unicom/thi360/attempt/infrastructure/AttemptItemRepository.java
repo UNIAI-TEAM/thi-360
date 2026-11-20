@@ -1,5 +1,6 @@
 package vn.unicom.thi360.attempt.infrastructure;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,6 @@ public interface AttemptItemRepository extends JpaRepository<AttemptItem, UUID> 
     List<AttemptItem> findByAttemptIdOrderByPartIdAscOrdAsc(UUID attemptId);
 
     List<AttemptItem> findByPartIdOrderByOrdAsc(UUID partId);
+
+    List<AttemptItem> findByAttemptIdAndPartIdInOrderByOrdAsc(UUID attemptId, Collection<UUID> partIds);
 }

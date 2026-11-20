@@ -259,6 +259,10 @@ public class Attempt {
         this.updatedAt = startedAt;
     }
 
+    public void updateMaxScore(BigDecimal maxScore) {
+        this.maxScore = maxScore;
+    }
+
     /** Aborts a STARTING attempt without assigning attemptNo (LT §5.2 step 4, AC-10). */
     public void abort(AbortReason reason, Instant now) {
         if (this.state != AttemptState.STARTING) {

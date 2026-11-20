@@ -534,4 +534,39 @@ class AttemptPaperAssemblerTest {
         }
         return child;
     }
+
+    @Test
+    void generatedGroupShuffleUnitsFalseIsRespectedWithoutOverrideMap() {
+        UUID q1 = UUID.randomUUID();
+        UUID q2 = UUID.randomUUID();
+        UUID q3 = UUID.randomUUID();
+        Map<VersionKey, Version> versions =
+                Map.of(
+                        key(q1), singleChoiceVersion(q1, false, BigDecimal.ONE),
+                        key(q2), singleChoiceVersion(q2, false, BigDecimal.ONE),
+                        key(q3), singleChoiceVersion(q3, false, BigDecimal.ONE));
+        GeneratedPart part =
+                new GeneratedPart(
+                        "P1",
+                        List.of(
+                                new GeneratedSection(
+                                        "S1",
+                                        "TOAN",
+                                        3,
+                                        List.of(
+                                                new GeneratedGroup(
+                                                        "G1",
+                                                        List.of(
+                                                                new GeneratedQuestion(q1, 1),
+                                                                new GeneratedQuestion(q2, 1),
+                                                                new GeneratedQuestion(q3, 1)),
+                                                        false)))));
+
+        AttemptPaperAssembler.AssembledPart assembled =
+                assembler.assemble(part, versions, Map.of(), 999L, 1);
+
+        assertThat(assembled.items())
+                .extracting(AttemptPaperAssembler.AssembledItem::questionId)
+                .containsExactly(q1, q2, q3);
+    }
 }
