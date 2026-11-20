@@ -61,10 +61,22 @@ function allAnswerGroups(product: ProductDetail): AnswerTypeGroup[] {
 function ChoiceOption({ option }: { option: DetailChoiceOption }) {
   const t = useTranslations("storefront.detail");
   const locale = useLocale();
-  const optionTypes = mergeAnswerTypes([
-    ...option.answerTypes,
-    ...option.subjectAnswerTypes.flatMap((subject) => subject.answerTypes),
-  ]);
+  const typeText = (groups: AnswerTypeGroup[]) =>
+    mergeAnswerTypes(groups)
+      .map(({ type, count }) =>
+        t.has(`answerType.${type}`)
+          ? t("answerTypeCount", { type: t(`answerType.${type}`), count })
+          : t("answerTypeCount", { type, count }),
+      )
+      .join(", ");
+  // Số câu của môn chỉ cộng trong phạm vi môn đó: học viên chọn `chooseSubjects` môn, không làm cả bể.
+  const optionTypes = typeText(option.answerTypes);
+  const subjectLines = option.subjectAnswerTypes
+    .map((entry) => {
+      const types = typeText(entry.answerTypes);
+      return types ? { name: pickName(entry.subject, locale), types } : null;
+    })
+    .filter((line) => line !== null);
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
       <div className="font-semibold text-text">
@@ -85,17 +97,16 @@ function ChoiceOption({ option }: { option: DetailChoiceOption }) {
           ))}
         </ul>
       )}
-      {optionTypes.length > 0 && (
-        <p className="text-field-label text-text-muted">
-          {optionTypes
-            .map(({ type, count }) =>
-              t.has(`answerType.${type}`)
-                ? t("answerTypeCount", { type: t(`answerType.${type}`), count })
-                : t("answerTypeCount", { type, count }),
-            )
-            .join(", ")}
+      {optionTypes && <p className="text-field-label text-text-muted">{optionTypes}</p>}
+      {subjectLines.map((line) => (
+        <p key={line.name} className="text-field-label text-text-muted">
+          {t.rich("subjectAnswerTypes", {
+            subject: line.name,
+            types: line.types,
+            examContent: (chunks) => <span data-exam-content>{chunks}</span>,
+          })}
         </p>
-      )}
+      ))}
       {option.countsByPick && option.countsByPick.length > 0 && (
         <p className="text-field-label text-text-muted">
           {t("countsByPick", { counts: option.countsByPick.join(" / ") })}

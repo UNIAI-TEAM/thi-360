@@ -592,7 +592,8 @@
       },
       "structureCaption": "Các phần theo thứ tự làm bài",
       "structureTitle": "Cấu trúc bài thi",
-      "structureTotal": "{questions} câu · {minutes} phút"
+      "structureTotal": "{questions} câu · {minutes} phút",
+      "subjectAnswerTypes": "<examContent>{subject}</examContent>: {types}"
     },
     "discount": "Giảm {percent}%",
     "format": {

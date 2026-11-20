@@ -139,6 +139,47 @@ describe("ExamDetailView", () => {
     expect(choices).toHaveTextContent("Tự luận: 2");
   });
 
+  it("môn của lựa chọn nhiều hơn số môn được chọn: số câu theo từng môn, không cộng cả bể (R2-2)", () => {
+    const pooled = {
+      ...FULL_DETAIL,
+      choices: [
+        {
+          partName: "Phan 3",
+          options: [
+            {
+              code: "KH",
+              kind: "SUBJECT_CHOICE",
+              name: "Khoa hoc",
+              chooseSubjects: 1,
+              countsByPick: [15, 10],
+              answerTypes: [],
+              subjectAnswerTypes: [
+                {
+                  subject: { code: "LY", nameVi: "Vat li", nameEn: "Physics" },
+                  answerTypes: [{ questionType: "SINGLE_CHOICE", questionCount: 15 }],
+                },
+                {
+                  subject: { code: "HOA", nameVi: "Hoa hoc", nameEn: "Chemistry" },
+                  answerTypes: [{ questionType: "SINGLE_CHOICE", questionCount: 10 }],
+                },
+              ],
+              subjects: [
+                { code: "LY", nameVi: "Vat li", nameEn: "Physics" },
+                { code: "HOA", nameVi: "Hoa hoc", nameEn: "Chemistry" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    renderWithProviders(<ExamDetailView product={pooled} />);
+
+    const choices = screen.getByRole("region", { name: "Phần được chọn trong phạm vi mua" });
+    expect(choices).toHaveTextContent("Vat li: Trắc nghiệm một đáp án: 15");
+    expect(choices).toHaveTextContent("Hoa hoc: Trắc nghiệm một đáp án: 10");
+    expect(choices).not.toHaveTextContent("25");
+  });
+
   it("nhóm QUESTION_SET có childAnswerType ESSAY: ghi 'sau khi người chấm xong'", () => {
     const childEssay = {
       ...FULL_DETAIL,

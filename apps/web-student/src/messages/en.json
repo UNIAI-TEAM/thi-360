@@ -592,7 +592,8 @@
       },
       "structureCaption": "Sections in the order you take them",
       "structureTitle": "Exam structure",
-      "structureTotal": "{questions} questions · {minutes} minutes"
+      "structureTotal": "{questions} questions · {minutes} minutes",
+      "subjectAnswerTypes": "<examContent>{subject}</examContent>: {types}"
     },
     "discount": "{percent}% off",
     "format": {
