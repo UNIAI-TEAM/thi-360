@@ -6,6 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import vn.unicom.thi360.exam.domain.ExamPart;
+import vn.unicom.thi360.exam.domain.ExamPartOption;
+import vn.unicom.thi360.exam.domain.ExamSection;
+import vn.unicom.thi360.exam.domain.ExamStructureDocument;
+import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.domain.solver.GroupQuota;
 import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
@@ -16,7 +21,6 @@ import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SubjectChoice;
 import vn.unicom.thi360.exam.domain.solver.SubjectPick;
 import vn.unicom.thi360.exam.domain.solver.SubjectWitness;
-import vn.unicom.thi360.exam.spi.PaperGenerationException;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.DroppedQuestion;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedGroup;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedPaper;
@@ -32,9 +36,10 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 final class PaperGenerationAssembler {
     private PaperGenerationAssembler() {}
 
-    static GeneratedPaper assemble(List<String> partIds, List<SolvePart> solveParts, SolvePath actual,
-            List<SubjectWitness> witnesses, List<QuestionPick> dropped,
+    static GeneratedPaper assemble(List<String> partIds, ExamStructureDocument document, List<SolvePart> solveParts,
+            SolvePath actual, List<SubjectWitness> witnesses, List<QuestionPick> dropped,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates) {
+        Map<String, Boolean> shuffleByBlockId = collectShuffleUnits(document);
         Map<String, String> partOfSection = partOfSection(solveParts);
         Map<String, List<SectionOnPath>> sectionsByPart = new LinkedHashMap<>();
         for (String partId : partIds) sectionsByPart.put(partId, new ArrayList<>());
@@ -53,7 +58,7 @@ final class PaperGenerationAssembler {
         for (var entry : sectionsByPart.entrySet()) {
             List<GeneratedSection> sections = new ArrayList<>();
             for (SectionOnPath section : entry.getValue()) {
-                sections.add(section(section, groups, candidates));
+                sections.add(section(section, groups, candidates, shuffleByBlockId));
             }
             parts.add(new GeneratedPart(entry.getKey(), sections));
         }
@@ -79,7 +84,8 @@ final class PaperGenerationAssembler {
     }
 
     private static GeneratedSection section(SectionOnPath section, Map<String, GroupWitness> witnesses,
-            Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates) {
+            Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates,
+            Map<String, Boolean> shuffleByBlockId) {
         // A block with passage slots is solved as one synthetic group per slot; the port speaks authored blocks, so the
         // slot picks join, in slot order, under the id of the block they came from (as the preview consolidates them).
         Map<String, List<GeneratedQuestion>> byBlock = new LinkedHashMap<>();
@@ -101,13 +107,42 @@ final class PaperGenerationAssembler {
             }
         }
         List<GeneratedGroup> groups = new ArrayList<>();
-        byBlock.forEach((blockId, questions) -> groups.add(new GeneratedGroup(blockId, questions)));
+        byBlock.forEach((blockId, questions) ->
+                groups.add(new GeneratedGroup(blockId, questions, shuffleByBlockId.getOrDefault(blockId, true))));
         if (section.questionCount() != null && units != section.questionCount()) {
             throw PaperGenerationPlan.failed("section " + section.sectionId() + " holds " + units
                     + " of " + section.questionCount() + " questions");
         }
         return new GeneratedSection(section.sectionId(), section.subjectCode(),
                 section.questionCount() == null ? (int) units : section.questionCount(), groups);
+    }
+
+    private static Map<String, Boolean> collectShuffleUnits(ExamStructureDocument document) {
+        Map<String, Boolean> shuffle = new HashMap<>();
+        if (document == null) {
+            return shuffle;
+        }
+        for (ExamPart part : document.parts()) {
+            collectSections(shuffle, part.sections());
+            collectSections(shuffle, part.subjectPool());
+            for (ExamPartOption option : part.options()) {
+                collectSections(shuffle, option.sections());
+                collectBlocks(shuffle, option.blocks());
+            }
+        }
+        return shuffle;
+    }
+
+    private static void collectSections(Map<String, Boolean> target, List<ExamSection> sections) {
+        for (ExamSection section : sections) {
+            collectBlocks(target, section.blocks());
+        }
+    }
+
+    private static void collectBlocks(Map<String, Boolean> target, List<QuestionBlock> blocks) {
+        for (QuestionBlock block : blocks) {
+            target.put(block.id(), Boolean.TRUE.equals(block.shuffleUnits()));
+        }
     }
 
     /** Sections whose count was cut below the full count of their subject choice, in pick order (HSA science). */

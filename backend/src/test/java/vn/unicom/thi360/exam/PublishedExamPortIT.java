@@ -550,4 +550,24 @@ class PublishedExamPortIT extends AbstractExamPublishIT {
         assertThat(serving.version().combinations()).extracting(PublishedExamPort.Combination::code).containsExactly("QD02");
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(serving));
     }
+
+    /** AD-121 #1: frozen instructions come from exam_version.config and do not move when the draft is later edited. */
+    @Test
+    void frozenInstructionsStayImmutableAfterDraftEdit() throws Exception {
+        UUID exam = newExam("HSA", PLAIN);
+        jdbc.update("UPDATE exam.exam SET instructions = ? WHERE id = ?", "<p>Huong dan co dinh</p>", exam);
+        saveCheck(exam, paths("default=VALID"));
+        publish(exam, "default").andExpect(status().isOk());
+        entityManager.clear();
+
+        jdbc.update("UPDATE exam.exam SET instructions = ? WHERE id = ?", "<p>Huong dan da sua nhap</p>", exam);
+        entityManager.clear();
+
+        var loaded = port.loadVersion(exam, 1).orElseThrow();
+        var serving = port.findServing(exam).orElseThrow();
+        assertThat(loaded.instructions()).isEqualTo("<p>Huong dan co dinh</p>");
+        assertThat(serving.version().instructions()).isEqualTo("<p>Huong dan co dinh</p>");
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(serving));
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(mapper.valueToTree(loaded));
+    }
 }
