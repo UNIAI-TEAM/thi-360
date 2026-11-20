@@ -217,4 +217,243 @@ class ExamCheckFollowUpIT extends AbstractIntegrationTest {
         assertThat(save(editedInput)).isFalse();
         assertThat(save(snapshots.read(edited).persistenceInput())).isTrue();
     }
+
+    // ---- AC-2: flexible diagnostic, SP2E statement points, BE-13 R3-1 --------------------------------------------
+
+    private record Subject(UUID id, String code) { }
+
+    private Subject subject() {
+        UUID id = UUID.randomUUID();
+        String code = "FU_" + id.toString().replace("-", "");
+        UUID group = UUID.fromString("00000000-0000-7000-8100-000000000002");
+        jdbc.update("INSERT INTO catalog.catalog_item(id,group_id,code,code_normalized,value,name_vi,path) VALUES (?,?,?,?,"
+                + "(SELECT coalesce(max(value),0)+1 FROM catalog.catalog_item WHERE group_id=?),'FU',?)",
+                id, group, code, code.toLowerCase(java.util.Locale.ROOT), group, "/" + id + "/");
+        return new Subject(id, code);
+    }
+
+    private void trueFalse(Subject subject, String method, String points, String statements) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
+                + "VALUES (?,?,'TRUE_FALSE','READY',?,1,?)", id, "Q-" + id, subject.id(), new java.math.BigDecimal(points));
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", id,
+                "{\"body\":{\"type\":\"TRUE_FALSE\",\"scoringMethod\":\"" + method + "\","
+                        + ("COUNT_TABLE".equals(method) ? "\"scoreTable\":[0.1,0.25,0.5,1]," : "")
+                        + "\"statements\":" + statements + "}}");
+    }
+
+    private static String statements(String... points) {
+        StringBuilder out = new StringBuilder("[");
+        for (int i = 0; i < points.length; i++) {
+            out.append(i == 0 ? "" : ",").append("{\"id\":\"s").append(i).append("\",\"answer\":")
+                    .append(i % 2 == 0).append(",\"points\":").append(points[i]).append("}");
+        }
+        return out.append("]").toString();
+    }
+
+    private static final String EVEN = statements("0.2", "0.2", "0.2", "0.2");
+    private static final String UNEVEN = statements("0.1", "0.3", "0.2", "0.2");
+
+    private UUID kind(String code) {
+        return jdbc.queryForObject("SELECT i.id FROM catalog.catalog_item i JOIN catalog.catalog_group g ON g.id = i.group_id "
+                + "WHERE g.code = 'EXAM' AND i.code = ?", UUID.class, code);
+    }
+
+    /** A FULL exam of one subject and one True/False block, checked through the API. */
+    private JsonNode checkBlock(String kindCode, Subject subject, int count, String block) throws Exception {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'FU',?,'FULL','SHARED',?,60)", id, id.toString(), id.toString(), kind(kindCode), count);
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'fu')", id, """
+                {"parts":[{"id":"p","order":1,"name":"P","questionCount":%d,"sections":[
+                  {"id":"s","subjectCode":"%s","questionCount":%d,"blocks":[%s]}]}]}
+                """.formatted(count, subject.code(), count, block));
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "b", "p", "s", subject.id());
+        entityManager.clear();
+        return check(id);
+    }
+
+    private static String perStatementBlock(int count) {
+        return "{\"id\":\"b\",\"questionType\":\"TRUE_FALSE\",\"questionCount\":" + count
+                + ",\"requiredPointsPerQuestion\":0.8,\"expectedScoring\":{\"trueFalseMethod\":\"PER_STATEMENT\"}}";
+    }
+
+    /**
+     * FU-BE9-2: a True/False question of an SP2E block scored per statement must split its points 0.2 a statement. The
+     * source filter leaves an uneven question out (the paper stays valid while enough even questions remain) and reports
+     * a shortage only when too few remain.
+     */
+    @Test
+    void sp2eTrueFalseStatementPoints() throws Exception {
+        Subject enough = subject();
+        trueFalse(enough, "PER_STATEMENT", "0.8", EVEN);
+        trueFalse(enough, "PER_STATEMENT", "0.8", EVEN);
+        for (int i = 0; i < 3; i++) trueFalse(enough, "PER_STATEMENT", "0.8", UNEVEN);
+        JsonNode valid = checkBlock("SP2E", enough, 2, perStatementBlock(2));
+        assertThat(valid.path("status").asText()).as(valid.toString()).isEqualTo("VALID");
+
+        Subject short_ = subject();
+        trueFalse(short_, "PER_STATEMENT", "0.8", EVEN);
+        for (int i = 0; i < 3; i++) trueFalse(short_, "PER_STATEMENT", "0.8", UNEVEN);
+        JsonNode invalid = checkBlock("SP2E", short_, 2, perStatementBlock(2));
+        assertThat(invalid.path("status").asText()).as(invalid.toString()).isEqualTo("INVALID");
+        assertThat(invalid.findValuesAsText("code")).anyMatch(code -> code.endsWith("SHORTAGE"));
+    }
+
+    /** A COUNT_TABLE block of an SP2E exam keeps the approved table: uneven statements are still chosen, checked and valid. */
+    @Test
+    void sp2eCountTableBlockUnaffected() throws Exception {
+        Subject subject = subject();
+        for (int i = 0; i < 3; i++) trueFalse(subject, "COUNT_TABLE", "1", UNEVEN);
+        JsonNode result = checkBlock("SP2E", subject, 2, "{\"id\":\"b\",\"questionType\":\"TRUE_FALSE\",\"questionCount\":2,"
+                + "\"requiredPointsPerQuestion\":1,\"expectedScoring\":{\"trueFalseMethod\":\"COUNT_TABLE\","
+                + "\"trueFalseTable\":[0.1,0.25,0.5,1]}}");
+        assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("VALID");
+    }
+
+    /** The same uneven questions stay usable in another kind (THPTQG), even in a block declared per statement. */
+    @Test
+    void unevenStatementsAllowedOutsideSp2e() throws Exception {
+        Subject subject = subject();
+        for (int i = 0; i < 3; i++) trueFalse(subject, "PER_STATEMENT", "0.8", UNEVEN);
+        JsonNode result = checkBlock("THPTQG", subject, 2, perStatementBlock(2));
+        assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("VALID");
+    }
+
+    @Autowired private vn.unicom.thi360.exam.application.SolverInputBuilder builder;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private vn.unicom.thi360.questionbank.spi.QuestionSourcePort source;
+
+    private UUID flexibleSet(Subject subject, int children, UUID positionZeroNode) {
+        UUID root = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
+                + "VALUES (?,?,'QUESTION_SET','READY',?,1,1)", root, "Q-" + root, subject.id());
+        StringBuilder snapshot = new StringBuilder("{\"type\":\"QUESTION_SET\",\"children\":[");
+        String child = "\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true},{\"id\":\"b\",\"correct\":false}]}";
+        for (int position = 0; position < children; position++) {
+            UUID id = UUID.randomUUID();
+            jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) "
+                    + "VALUES (?,?,'SINGLE_CHOICE','READY',?,?,1)", id, "CH-" + id, root, position);
+            jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
+                    id, "{" + child + "}");
+            jdbc.update("INSERT INTO questionbank.question_knowledge(question_id,knowledge_item_id,is_primary) VALUES (?,?,true)",
+                    id, positionZeroNode);
+            snapshot.append(position > 0 ? "," : "").append("{\"id\":\"").append(id).append("\",").append(child).append("}");
+        }
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", root,
+                "{\"body\":" + snapshot.append("]}") + "}");
+        return root;
+    }
+
+    private List<UUID> twoDisjointNodes() {
+        List<vn.unicom.thi360.catalog.spi.CatalogItemView> all = catalog().listActiveGroupItems("KNOWLEDGE");
+        var first = all.stream().filter(a -> all.stream().anyMatch(b -> !b.path().startsWith(a.path())
+                && !a.path().startsWith(b.path()))).findFirst().orElseThrow();
+        var second = all.stream().filter(item -> !item.path().startsWith(first.path()) && !first.path().startsWith(item.path()))
+                .findFirst().orElseThrow();
+        return List.of(first.id(), second.id());
+    }
+
+    @Autowired private vn.unicom.thi360.catalog.spi.CatalogLookup catalogLookup;
+
+    private vn.unicom.thi360.catalog.spi.CatalogLookup catalog() {
+        return catalogLookup;
+    }
+
+    /**
+     * FU-BE12-1: the optional flexible filter-shortage diagnostic stops at the check deadline and answers nothing, so the
+     * base shortage stays; before the deadline it blames the relaxed condition as before.
+     */
+    @Test
+    void flexibleDiagnosticStopsAtDeadline() throws Exception {
+        Subject subject = subject();
+        List<UUID> nodes = twoDisjointNodes();
+        flexibleSet(subject, 4, nodes.get(0));
+        flexibleSet(subject, 3, nodes.get(1));
+        var document = new vn.unicom.thi360.exam.domain.ExamStructureCodec(mapper).read("""
+                {"parts":[{"id":"p","order":1,"name":"P","questionCount":3,"sections":[
+                  {"id":"s","subjectCode":"%s","questionCount":3,"blocks":[
+                    {"id":"b","questionType":"QUESTION_SET","questionCount":3,
+                     "childConditions":[{"from":1,"to":1,"nodeIds":["%s"]}]}]}]}]}
+                """.formatted(subject.code(), nodes.get(0)));
+        var input = builder.build(null, document);
+        var group = ((vn.unicom.thi360.exam.domain.solver.SolvePart.Fixed) input.parts().getFirst())
+                .sections().getFirst().groups().getFirst();
+        assertThat(input.candidates().filterCounts(group, 3, () -> false)).singleElement()
+                .extracting(count -> count.dimension())
+                .isEqualTo(vn.unicom.thi360.exam.application.SolverInputBuilder.SolverCandidates.FilterDimension.CHILD_CONDITION);
+
+        org.mockito.Mockito.clearInvocations(source);
+        java.util.concurrent.atomic.AtomicInteger polls = new java.util.concurrent.atomic.AtomicInteger();
+        // The deadline passes after the first look: nothing is counted and no relaxed pool is read.
+        assertThat(input.candidates().filterCounts(group, 3, () -> polls.incrementAndGet() > 1)).isEmpty();
+        org.mockito.Mockito.verify(source, org.mockito.Mockito.times(1))
+                .findCandidates(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt());
+        org.mockito.Mockito.clearInvocations(source);
+        assertThat(input.candidates().filterCounts(group, 3, () -> true)).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(source);
+    }
+
+    /**
+     * FU-BE12-2: a large configured flexible target with a positional filter and almost no supply is INVALID with
+     * SET_SHORTAGE, and no filter is blamed for a pool that could not compose the target either way.
+     */
+    @Test
+    void largeFlexibleTargetReportsSetShortage() throws Exception {
+        Subject subject = subject();
+        List<UUID> nodes = twoDisjointNodes();
+        flexibleSet(subject, 3, nodes.get(1));
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,scope,timing,question_count) "
+                + "VALUES (?,?,?,'Large','FULL','SHARED',1000)", id, id.toString(), id.toString());
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'large')", id, """
+                {"parts":[{"id":"p","questionCount":1000,"sections":[
+                  {"id":"s","subjectCode":"%s","questionCount":1000,"blocks":[
+                    {"id":"b","questionType":"QUESTION_SET","questionCount":1000,
+                     "childConditions":[{"from":1,"to":1,"nodeIds":["%s"]}]}]}]}]}
+                """.formatted(subject.code(), nodes.get(0)));
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                UUID.randomUUID(), id, "b", "p", "s", subject.id());
+        entityManager.clear();
+        JsonNode result = check(id);
+        assertThat(result.path("status").asText()).isEqualTo("INVALID");
+        assertThat(result.findValuesAsText("code")).contains("SET_SHORTAGE").doesNotContain("CHILD_CONDITION_SHORTAGE");
+    }
+
+    /**
+     * BE-13 R3-1 (FU-BE13-3): a V-ACT exam scored RAW that loads a review template keeps its scoring and the audit
+     * says scoringReset = false; a LINEAR one is reset as before.
+     */
+    @Test
+    void be13R31Regression() throws Exception {
+        JsonNode exam = mapper.readTree(mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\",\"durationMinutes\":45,"
+                                + "\"name\":\"R31\",\"code\":\"R31-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String id = exam.path("id").asText();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"practiceScoring\":\"RAW\",\"expectedRevision\":" + exam.path("revision").asLong() + "}"))
+                .andExpect(status().isOk());
+        long revision = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_VIEW))).andReturn().getResponse().getContentAsString())
+                .path("revision").asLong();
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", id).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"VACT_REVIEW\",\"confirmReplace\":true,\"overviewPolicy\":\"USE_TEMPLATE\","
+                                + "\"expectedRevision\":" + revision + "}"))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+        JsonNode loaded = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}", id)
+                .with(asUser(Permissions.EXAM_VIEW))).andReturn().getResponse().getContentAsString());
+        assertThat(loaded.path("practiceScoring").asText()).isEqualTo("RAW");
+        assertThat(jdbc.queryForList("SELECT payload->'after'->>'scoringReset' FROM shared.outbox_event "
+                + "WHERE topic='audit' AND payload->>'action'='EXAM.TEMPLATE_LOAD' AND payload->>'targetId'=?", String.class, id))
+                .containsExactly("false");
+    }
 }

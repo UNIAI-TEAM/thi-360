@@ -840,9 +840,18 @@ public final class ExamCheckRules {
                                    Integer slotIndex, Integer childPosition, String pathId,
                                    List<String> affectedCodes) { }
 
-    /** Null fact means unavailable, not false. Facts must describe a question in the proved witness. */
+    /**
+     * Null fact means unavailable, not false. Facts must describe a question in the proved witness.
+     * {@code statementPointsEven} is set only for a True/False question in a block that takes statements of equal points
+     * (SP2E scored per statement, FU-BE9-2): false when its statements do not each carry those points.
+     */
     public record WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
-                              Boolean hasScoringRule, Boolean attachmentsReadable) { }
+                              Boolean hasScoringRule, Boolean attachmentsReadable, Boolean statementPointsEven) {
+        public WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
+                           Boolean hasScoringRule, Boolean attachmentsReadable) {
+            this(location, questionCode, hasAnswerKey, hasScoringRule, attachmentsReadable, null);
+        }
+    }
 
     public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
 
@@ -858,6 +867,9 @@ public final class ExamCheckRules {
             }
             if (Boolean.FALSE.equals(fact.attachmentsReadable())) {
                 found.add(witnessIssue("ATTACHMENT_MISSING", fact));
+            }
+            if (Boolean.FALSE.equals(fact.statementPointsEven())) {
+                found.add(witnessIssue("STATEMENT_POINTS_UNEVEN", fact));
             }
         }
         return found;

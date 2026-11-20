@@ -412,6 +412,13 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                     + "(select 1 from jsonb_array_elements(v.snapshot #> '{body,blanks}') b "
                     + "where (b->>'points')::numeric <> :" + p + "points) else q.points = :" + p + "points end)");
         }
+        if (f.statementPoints() != null) {
+            // FU-BE9-2: every statement of a TRUE_FALSE question carries exactly this many points (SP2E, 0.2 each).
+            params.addValue(p + "statementPoints", f.statementPoints());
+            parts.add("(q.type <> 'TRUE_FALSE' or not exists (select 1 "
+                    + "from jsonb_array_elements(v.snapshot #> '{body,statements}') st "
+                    + "where coalesce((st->>'points')::numeric, -1) <> :" + p + "statementPoints))");
+        }
         if (f.audioRequirement() == AudioRequirement.REQUIRED) {
             parts.add(rootHasAudio());
         } else if (f.audioRequirement() == AudioRequirement.FORBIDDEN) {

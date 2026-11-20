@@ -104,7 +104,18 @@ public class SolverInputBuilder {
         /** Source counts in selection units, with one declared filter removed at a time. */
         public record FilterCount(FilterDimension dimension, int required, long withoutFilter, long withFilter) { }
 
-        public List<FilterCount> filterCounts(GroupQuota group, int required) {
+        /** Raised inside the optional counting when the check deadline has passed; the base shortage is kept (FU-BE12-1). */
+        private static final class DiagnosticStopped extends RuntimeException {
+            DiagnosticStopped() {
+                super(null, null, false, false);
+            }
+        }
+
+        /**
+         * The optional filter-shortage diagnostic: it only explains a shortage the solver already reported, so it stops
+         * at the check deadline ({@code stop}) and answers nothing, leaving the base shortage as it is (FU-BE12-1).
+         */
+        public List<FilterCount> filterCounts(GroupQuota group, int required, java.util.function.BooleanSupplier stop) {
             var filter = filters.get(group);
             if (filter == null || filter.subjectId() == null || required <= 0) return List.of();
             List<FilterDimension> dimensions = new ArrayList<>();
@@ -112,21 +123,29 @@ public class SolverInputBuilder {
             if (!filter.answerFormats().isEmpty()) dimensions.add(FilterDimension.ANSWER_FORMAT);
             if (!filter.childConditions().isEmpty()) dimensions.add(FilterDimension.CHILD_CONDITION);
             if (filter.audioRequirement() != QuestionSourcePort.AudioRequirement.ANY) dimensions.add(FilterDimension.AUDIO);
-            if (filter.requiredPointsPerQuestion() != null) dimensions.add(FilterDimension.POINTS);
-            if (dimensions.isEmpty()) return List.of();
-            var filtered = source.findCandidates(filter, fetchLimit);
-            // If the source was truncated, it cannot establish the exact shortfall.
-            if (filtered.size() >= fetchLimit) return List.of();
-            long available = eligibleUnits(group, filtered, required, true);
-            if (available >= required) return List.of();
-            List<FilterCount> counts = new ArrayList<>();
-            for (var dimension : dimensions) {
-                var relaxed = relaxed(filter, dimension);
-                long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required,
-                        dimension != FilterDimension.POINTS);
-                if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
+            if (filter.requiredPointsPerQuestion() != null || filter.statementPoints() != null) {
+                dimensions.add(FilterDimension.POINTS);
             }
-            return List.copyOf(counts);
+            if (dimensions.isEmpty()) return List.of();
+            try {
+                if (stop.getAsBoolean()) return List.of();
+                var filtered = source.findCandidates(filter, fetchLimit);
+                // If the source was truncated, it cannot establish the exact shortfall.
+                if (filtered.size() >= fetchLimit) return List.of();
+                long available = eligibleUnits(group, filtered, required, true, stop);
+                if (available >= required) return List.of();
+                List<FilterCount> counts = new ArrayList<>();
+                for (var dimension : dimensions) {
+                    if (stop.getAsBoolean()) return List.of();
+                    var relaxed = relaxed(filter, dimension);
+                    long without = eligibleUnits(group, source.findCandidates(relaxed, fetchLimit), required,
+                            dimension != FilterDimension.POINTS, stop);
+                    if (without >= required) counts.add(new FilterCount(dimension, required, without, available));
+                }
+                return List.copyOf(counts);
+            } catch (DiagnosticStopped stopped) {
+                return List.of();
+            }
         }
 
         /** The same filter with one declared dimension removed. */
@@ -142,7 +161,8 @@ public class SolverInputBuilder {
                     filter.additionalCompetencyGroups(), filter.everyChildInScope(),
                     filter.additionalEveryChildInScope(),
                     dimension == FilterDimension.AUDIO ? QuestionSourcePort.AudioRequirement.ANY
-                            : filter.audioRequirement());
+                            : filter.audioRequirement(),
+                    dimension == FilterDimension.POINTS ? null : filter.statementPoints());
         }
 
         /**
@@ -152,7 +172,8 @@ public class SolverInputBuilder {
          * only when the relaxed pool can actually compose the target.
          */
         private static long eligibleUnits(GroupQuota group, List<QuestionSourcePort.Candidate> candidates,
-                int required, boolean checkPoints) {
+                int required, boolean checkPoints, java.util.function.BooleanSupplier stop) {
+            if (stop.getAsBoolean()) throw new DiagnosticStopped();
             if (group.kind() != GroupQuota.GroupKind.FLEXIBLE_SET) {
                 return candidates.stream().filter(candidate -> eligible(group, candidate, checkPoints)).count();
             }
@@ -166,6 +187,7 @@ public class SolverInputBuilder {
             boolean[] reachable = new boolean[limit + 1];
             reachable[0] = true;
             for (var candidate : candidates) {
+                if (stop.getAsBoolean()) throw new DiagnosticStopped();
                 if (!eligible(group, candidate, checkPoints)) continue;
                 int size = candidate.units().size();
                 for (int sum = limit; sum >= size; sum--) {
@@ -202,6 +224,8 @@ public class SolverInputBuilder {
 
     /** As {@link #build(UUID, ExamStructureDocument)}, with the candidate fetch limit of {@code buildLimits}. */
     public SolverInput build(UUID examKindId, ExamStructureDocument document, SolverLimits buildLimits) {
+        String kindCode = examKindId == null ? null
+                : catalog.findItem(examKindId).map(CatalogItemView::code).orElse(null);
         List<CatalogItemView> knowledge = catalog.listActiveGroupItems("KNOWLEDGE");
         Map<UUID, CatalogItemView> knowledgeById = new HashMap<>();
         for (var item : knowledge) knowledgeById.put(item.id(), item);
@@ -226,11 +250,11 @@ public class SolverInputBuilder {
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .toList()) {
             List<SectionOnPath> common = sections(part.sections(), false, filters, knowledge,
-                    knowledgeById, descendants, subjects, examQuotas, setRowGroups);
+                    knowledgeById, descendants, subjects, examQuotas, setRowGroups, kindCode);
             if (part.codeSource() != null) {
                 Map<String, SectionOnPath> pool = new LinkedHashMap<>();
                 for (SectionOnPath section : sections(part.subjectPool(), false, filters, knowledge,
-                        knowledgeById, descendants, subjects, examQuotas, setRowGroups)) {
+                        knowledgeById, descendants, subjects, examQuotas, setRowGroups, kindCode)) {
                     pool.put(section.subjectCode(), section);
                 }
                 List<SolveOption> codeOptions = new ArrayList<>();
@@ -256,7 +280,7 @@ public class SolverInputBuilder {
             for (ExamPartOption option : part.options()) {
                 boolean choice = option.kind() == OptionKind.SUBJECT_CHOICE;
                 List<SectionOnPath> optionSections = new ArrayList<>(sections(option.sections(), choice,
-                        filters, knowledge, knowledgeById, descendants, subjects, examQuotas, setRowGroups));
+                        filters, knowledge, knowledgeById, descendants, subjects, examQuotas, setRowGroups, kindCode));
                 if (!option.blocks().isEmpty()) {
                     if (choice || option.kind() != OptionKind.SUBJECT) {
                         throw new IllegalArgumentException("Option-level blocks require a subject option");
@@ -265,7 +289,7 @@ public class SolverInputBuilder {
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
                     optionSections.addAll(sections(List.of(synthetic), false, filters, knowledge,
-                            knowledgeById, descendants, subjects, examQuotas, setRowGroups));
+                            knowledgeById, descendants, subjects, examQuotas, setRowGroups, kindCode));
                 }
                 if (choice) {
                     if (option.chooseSubjects() == null || option.countsByPick() == null) {
@@ -291,7 +315,7 @@ public class SolverInputBuilder {
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
             Map<String, UUID> subjects,
             Map<String, List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota>> examQuotas,
-            java.util.Set<GroupQuota> setRowGroups) {
+            java.util.Set<GroupQuota> setRowGroups, String kindCode) {
         List<SectionOnPath> result = new ArrayList<>();
         for (ExamSection section : sections) {
             UUID subject = subjects.computeIfAbsent(section.subjectCode(), code ->
@@ -333,7 +357,8 @@ public class SolverInputBuilder {
                             shape, answerFormats(block), conditions,
                             slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
                             slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())),
-                            audio(section.audioRequirement())));
+                            audio(section.audioRequirement()),
+                            evenStatementPoints(kindCode, block) ? SP2E_STATEMENT_POINTS : null));
                     groups.add(group);
                 }
             }
@@ -343,6 +368,42 @@ public class SolverInputBuilder {
                     section.choiceGroup() == null ? null : section.choiceGroup().name()));
         }
         return result;
+    }
+
+    /** SP2E scores a True/False question 0.2 a statement (UNI-2700, FU-BE9-2): the points each statement must carry. */
+    static final BigDecimal SP2E_STATEMENT_POINTS = new BigDecimal("0.2");
+
+    /**
+     * Whether the group takes only True/False questions that split their points evenly, 0.2 a statement: the exam kind
+     * is SP2E and the block itself is scored per statement. Both conditions are read: the kind alone does not decide
+     * (a COUNT_TABLE block of an SP2E exam keeps the approved table), and the scoring method alone does not either
+     * (the same question stays usable in THPTQG). Applied by the source filter and by the check.
+     */
+    static boolean evenStatementPoints(String kindCode, QuestionBlock block) {
+        return "SP2E".equals(kindCode) && block.questionType() == QuestionType.TRUE_FALSE
+                && block.expectedScoring() != null && "PER_STATEMENT".equals(block.expectedScoring().trueFalseMethod());
+    }
+
+    /** The ids of the blocks of a draft that take statements of equal points (see {@link #evenStatementPoints}); empty off SP2E. */
+    static java.util.Set<String> evenStatementBlockIds(String kindCode, ExamStructureDocument document) {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        if (!"SP2E".equals(kindCode)) return ids;
+        for (ExamPart part : document.parts()) {
+            List<ExamSection> sections = new ArrayList<>(part.sections());
+            sections.addAll(part.subjectPool());
+            for (ExamPartOption option : part.options()) {
+                sections.addAll(option.sections());
+                for (QuestionBlock block : option.blocks()) {
+                    if (evenStatementPoints(kindCode, block)) ids.add(block.id());
+                }
+            }
+            for (ExamSection section : sections) {
+                for (QuestionBlock block : section.blocks()) {
+                    if (evenStatementPoints(kindCode, block)) ids.add(block.id());
+                }
+            }
+        }
+        return ids;
     }
 
     static QuestionSourcePort.ItemShape shape(vn.unicom.thi360.exam.domain.ItemShape shape) {

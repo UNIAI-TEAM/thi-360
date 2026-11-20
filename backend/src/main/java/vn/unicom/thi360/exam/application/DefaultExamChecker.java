@@ -224,7 +224,9 @@ public class DefaultExamChecker implements ExamChecker {
         SolveOutcome outcome = computed.outcome();
         // A witnessed fact belongs to the unit proof that holds its question; units sharing a section differ in it.
         Map<ObjectNode, vn.unicom.thi360.exam.domain.solver.SubjectWitness> owners = new java.util.IdentityHashMap<>();
-        ExamCheckUnitEvidence.ownedWitnessFacts(source, attachments, snapshot.structure(), outcome.results(), combinations)
+        String kindCode = snapshot.exam().getKindItemId() == null ? null
+                : catalog.findItem(snapshot.exam().getKindItemId()).map(vn.unicom.thi360.catalog.spi.CatalogItemView::code).orElse(null);
+        ExamCheckUnitEvidence.ownedWitnessFacts(source, attachments, snapshot.structure(), outcome.results(), combinations, kindCode)
                 .forEach((path, owned) -> {
                     List<ObjectNode> found = new ArrayList<>();
                     for (var item : owned) for (ObjectNode issue : rules.witnessIssues(List.of(item.fact()))) {
@@ -236,7 +238,8 @@ public class DefaultExamChecker implements ExamChecker {
         Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> filterCounts = new LinkedHashMap<>();
         for (var path : outcome.results()) {
             if (path.status() != SolveStatus.INVALID) continue;
-            var evidence = filterEvidence(path, snapshot.structure(), input.candidates(), combinations, filterCounts);
+            var evidence = filterEvidence(path, snapshot.structure(), input.candidates(), combinations, filterCounts,
+                    () -> !clock.instant().isBefore(deadline));
             var specific = rules.filterIssues(evidence).stream()
                     .filter(issue -> inScope(issue, scope, requested)).toList();
             if (!specific.isEmpty()) {
@@ -255,7 +258,8 @@ public class DefaultExamChecker implements ExamChecker {
 
     private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,
             SolverInputBuilder.SolverCandidates candidates, Map<String, Map<String, List<String>>> combinations,
-            Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> cache) {
+            Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> cache,
+            java.util.function.BooleanSupplier stop) {
         List<ExamCheckRules.FilterEvidence> evidence = new ArrayList<>();
         List<vn.unicom.thi360.exam.domain.solver.SectionOnPath> sections = new ArrayList<>(result.path().sections());
         for (var picks : result.path().picks()) for (var pick : picks) sections.addAll(pick.resolvedSections());
@@ -278,7 +282,7 @@ public class DefaultExamChecker implements ExamChecker {
                         ? group.setCount() : group.questionCount() != null ? group.questionCount()
                         : section.questionCount() == null ? 0 : Math.max(0, section.questionCount() - fixed);
                 String cacheKey = section.sectionId() + "|" + group.groupId() + "|" + required;
-                var counts = cache.computeIfAbsent(cacheKey, ignored -> candidates.filterCounts(group, required));
+                var counts = cache.computeIfAbsent(cacheKey, ignored -> candidates.filterCounts(group, required, stop));
                 if (counts.isEmpty()) continue;
                 String blockId = group.groupId();
                 Integer slot = null;
