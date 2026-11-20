@@ -394,11 +394,13 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const blockLocked = template?.fixedBlockCounts === true && selection.scope === "SUBJECT" && selection.buildMode !== "REVIEW";
   const lockedCounts = template?.fixedCounts === true || blockLocked;
   const vact = selection.kind === "VACT";
+  /** Theo môn + Tự thiết lập: một dòng, Điểm tối đa là cột của bảng (UNI-2752). */
+  const reviewLayout = selection.scope === "SUBJECT" && selection.buildMode === "REVIEW";
   const showPartPercent = lockedCounts && vact && (template?.parts.length ?? 0) > 1;
   const showPercents = showPartPercent || (vact && selection.scope === "PART" && (template?.parts.some((part) => (part.sections?.length ?? 0) > 0) ?? false));
   // H-SCA Tiếng Anh: môn tách phần theo audio (Nghe, Đọc); tên dòng phần theo điều kiện audio để đúng ngôn ngữ.
   const audioSplit = selection.subjectCode ? subjectAudioParts(templates, selection.kind, selection.subjectCode).length > 0 : false;
-  const rowLabel = useCallback(
+  const baseRowLabel = useCallback(
     (row: OverviewRow): string | undefined =>
       overviewRowLabel(
         {
@@ -429,6 +431,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       ),
     [partNames, lookup, vact, template, audioSplit, editingSaved, existing, tStep],
   );
+  /** Bài ôn có một dòng mang tên môn đã chọn (đổi theo môn), không phải tên phần "Review" của mẫu; chỉ hiển thị, tên phần đã lưu không đổi. */
+  const rowLabel = (row: OverviewRow): string | undefined =>
+    reviewLayout && row.kind === "part" && selection.subjectCode ? subjectName(selection.subjectCode) : baseRowLabel(row);
   // H35, R-141: bài riêng của V-ACT, bài theo phần và bài ôn không có thời lượng mặc định (mẫu để trống) — lỗi đặt ở ô
   // thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung. Theo mẫu và phạm vi, không theo mã kỳ thi.
   const durationError = (() => {
@@ -474,7 +479,8 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   // ------------------------------------------------------------ đổi kỳ thi, phạm vi, phần, môn hoặc build_mode
 
-  const templateName = (loaded: ExamTemplate | undefined) => loaded?.name || loaded?.label || null;
+  const templateName = (loaded: ExamTemplate | undefined) =>
+    loaded?.buildMode === "REVIEW" ? tOverview("reviewTemplate", { kind: kindLabel(loaded.kind) }) : loaded?.name || loaded?.label || null;
 
   const selectionLabel = (next: ScopeSelection) => {
     const kind = kindLabel(next.kind);
@@ -831,7 +837,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               templatesStatus === "loading"
                 ? undefined
                 : templateName(template)
-                  ? tOverview("description", { template: templateName(template) ?? "" })
+                  ? tOverview(template?.buildMode === "REVIEW" ? "descriptionReview" : "description", { template: templateName(template) ?? "" })
                   : tOverview("descriptionNoTemplate")
             }
           >
@@ -870,6 +876,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               <ExamOverviewTable
                 rows={rows}
                 readOnly={lockScope || previewOnly}
+                reviewLayout={reviewLayout}
                 timing={values.timing}
                 showPoints={showPoints}
                 showPercents={showPercents}

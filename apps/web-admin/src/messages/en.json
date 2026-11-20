@@ -5911,6 +5911,8 @@
       "overview": {
         "title": "Overview structure",
         "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
+        "descriptionReview": "Numbers come from the {template}; edit them right on the row. Changing a number here does not reload the template.",
+        "reviewTemplate": "{kind} review template",
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
@@ -5929,7 +5931,8 @@
           "blockPoints": "Max points",
           "commands": "Prompts",
           "partRows": "Part and source rows",
-          "percentExamCustom": "Share of the exam"
+          "percentExamCustom": "Share of the exam",
+          "maxScore": "Maximum score"
         },
         "cell": {
           "questionCount": "Questions of {name}",

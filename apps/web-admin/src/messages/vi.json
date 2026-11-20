@@ -5911,6 +5911,8 @@
       "overview": {
         "title": "Cấu trúc tổng quan",
         "description": "Số lấy từ mẫu mặc định “{template}”, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
+        "descriptionReview": "Số lấy từ {template}, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
+        "reviewTemplate": "mẫu Bài ôn {kind}",
         "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
         "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
         "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
@@ -5929,7 +5931,8 @@
           "blockPoints": "Điểm tối đa",
           "commands": "Lệnh hỏi",
           "partRows": "Phần và dòng lấy câu",
-          "percentExamCustom": "Tỷ lệ trong bài"
+          "percentExamCustom": "Tỷ lệ trong bài",
+          "maxScore": "Điểm tối đa"
         },
         "cell": {
           "questionCount": "Số câu của {name}",

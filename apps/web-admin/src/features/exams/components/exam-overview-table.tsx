@@ -52,6 +52,11 @@ export interface ExamOverviewTableProps {
    * mẫu sắp nạp (đổi phạm vi ở Thông tin chung), chưa phải số của bài.
    */
   readOnly?: boolean;
+  /**
+   * Bài Theo môn + Tự thiết lập (UNI-2752): một dòng, Điểm tối đa là cột cạnh Thời lượng (cùng trường `maxScore`, cùng lỗi),
+   * không có hàng Tổng của bài và không có ô Điểm tối đa tách riêng dưới bảng.
+   */
+  reviewLayout?: boolean;
   /** Thời lượng chung chỉ để cộng vào hàng Tổng khi bảng không có ô nhập thời lượng chung (ô nằm ở biểu mẫu bên ngoài). */
   sharedTotal?: string;
 }
@@ -151,6 +156,30 @@ function FooterField({
   );
 }
 
+/** Ô Điểm tối đa của bài trong dòng của bảng (bài ôn): cùng trường và cùng lỗi với ô dưới bảng trước đây; `data-field` để Tóm tắt dẫn tới ô lỗi. */
+function MaxScoreCell({ state }: { state: OverviewNumberField }) {
+  const t = useTranslations("exams.create.overview");
+  const errorId = useId();
+  return (
+    <div data-field="maxScore">
+      <Input
+        {...NUMERIC}
+        value={state.value}
+        aria-label={t("maxScore")}
+        aria-invalid={Boolean(state.error)}
+        aria-describedby={state.error ? errorId : undefined}
+        className={cellInput}
+        onChange={(event) => state.onChange(event.target.value)}
+      />
+      {state.error && (
+        <p id={errorId} className="mt-1 text-caption text-danger">
+          {state.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 const PERCENT = { style: "percent", maximumFractionDigits: 1 } as const;
 
 /**
@@ -174,12 +203,14 @@ export function ExamOverviewTable({
   sharedDuration,
   maxScore,
   readOnly = false,
+  reviewLayout = false,
   sharedTotal,
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
   const format = useFormatter();
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? sharedTotal ?? "");
   const showDuration = timing === "PER_PART";
+  const maxScoreColumn = reviewLayout && maxScore !== undefined;
   // H-SCA, V-SAT: dòng lấy câu của mẫu (chỉ đọc) kèm cột Tỷ lệ trong phần, Lệnh hỏi (V-SAT) và Điểm tối đa; kỳ thi khác không có.
   const blockMode = rows.some((row) => row.kind === "block");
   const partPercentColumn = showPartPercent || blockMode;
@@ -227,6 +258,7 @@ export function ExamOverviewTable({
               {partPercentColumn && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.percentPart")}</th>}
               {showPercents && <th className="px-3 py-2 text-end font-medium text-text-secondary">{percentExamHeader ?? t("col.percentExam")}</th>}
               {showDuration && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.duration")}</th>}
+              {maxScoreColumn && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.maxScore")}</th>}
               {showPoints && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.points")}</th>}
               {commandColumn && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.commands")}</th>}
               {blockMode && <th className="px-3 py-2 text-end font-medium text-text-secondary">{t("col.blockPoints")}</th>}
@@ -333,6 +365,13 @@ export function ExamOverviewTable({
                       </div>
                     </td>
                   )}
+                  {maxScoreColumn && (
+                    <td className="px-3 py-2 align-top">
+                      <div className="flex justify-end">
+                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} /> : <span className="px-3 py-2 text-text-muted">—</span>}
+                      </div>
+                    </td>
+                  )}
                   {showPoints && (
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
@@ -358,6 +397,7 @@ export function ExamOverviewTable({
               );
             })}
           </tbody>
+          {!reviewLayout && (
           <tfoot>
             <tr className="border-t border-border bg-subtle font-medium">
               <td className="px-3 py-2">{t("total")}</td>
@@ -372,12 +412,13 @@ export function ExamOverviewTable({
               {blockMode && <td className="px-3 py-2 text-end">{totals.blockPoints ?? "—"}</td>}
             </tr>
           </tfoot>
+          )}
         </table>
       </ScrollableTable>
       {blockMode && !rows.some((row) => row.kind === "part" && row.lockedCount) && (
         <p className="border-t border-border px-3 py-2 text-caption text-text-muted">{t("blockRowsNote")}</p>
       )}
-      {maxScore && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" />}
+      {maxScore && !maxScoreColumn && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" />}
     </div>
   );
 }
