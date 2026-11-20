@@ -1,5 +1,7 @@
 package vn.unicom.thi360.attempt.application;
 
+import jakarta.persistence.EntityManager;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,28 +38,50 @@ public class AttemptPrepareService {
     private final EntitlementPort entitlementPort;
     private final PublishedExamPort publishedExamPort;
     private final AttemptRepository attemptRepository;
+    private final OverdueAttemptCloser overdueAttemptCloser;
     private final CatalogLookup catalogLookup;
     private final AttemptPathResolver pathResolver;
+    private final EntityManager entityManager;
+    private final Clock clock;
 
     public AttemptPrepareService(
             AttemptAccessGate accessGate,
             EntitlementPort entitlementPort,
             PublishedExamPort publishedExamPort,
             AttemptRepository attemptRepository,
+            OverdueAttemptCloser overdueAttemptCloser,
             CatalogLookup catalogLookup,
-            AttemptPathResolver pathResolver) {
+            AttemptPathResolver pathResolver,
+            EntityManager entityManager,
+            Clock clock) {
         this.accessGate = accessGate;
         this.entitlementPort = entitlementPort;
         this.publishedExamPort = publishedExamPort;
         this.attemptRepository = attemptRepository;
+        this.overdueAttemptCloser = overdueAttemptCloser;
         this.catalogLookup = catalogLookup;
         this.pathResolver = pathResolver;
+        this.entityManager = entityManager;
+        this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AttemptPrepareResponse prepare(UUID entitlementId) {
         UUID userId = accessGate.requireLearner();
         EntitlementDescription desc = entitlementPort.describe(userId, entitlementId);
+        Optional<Attempt> open = attemptRepository.findByUserIdAndExamIdAndStateIn(
+                userId, desc.examId(), OPEN_STATES);
+        if (open.isPresent() && open.get().getState() == AttemptState.IN_PROGRESS) {
+            UUID openId = open.get().getId();
+            entityManager.detach(open.get());
+            overdueAttemptCloser.closeIfOverdue(openId, clock.instant());
+            open = attemptRepository.findById(openId)
+                    .filter(a -> OPEN_STATES.contains(a.getState()));
+            if (open.isEmpty()) {
+                desc = entitlementPort.describe(userId, entitlementId);
+            }
+        }
+
         ServingExam serving = publishedExamPort
                 .findServing(desc.examId())
                 .orElseThrow(() -> new NotFoundException("EXAM_NOT_FOUND", null));
@@ -66,8 +90,6 @@ public class AttemptPrepareService {
                 pathResolver.buildPrepareStructure(serving, desc.optionCodes());
         PublishedVersion version = structure.representativeVersion();
 
-        Optional<Attempt> open = attemptRepository.findByUserIdAndExamIdAndStateIn(
-                userId, desc.examId(), OPEN_STATES);
         OpenAttemptView openView =
                 open.map(a -> new OpenAttemptView(a.getId(), a.getState())).orElse(null);
 

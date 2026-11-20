@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -91,6 +93,8 @@ public class AttemptStartService {
     private final AttemptEventRepository attemptEventRepository;
     private final GenerationExecutor generationExecutor;
     private final IdempotentCommand idempotentCommand;
+    private final OverdueAttemptCloser overdueAttemptCloser;
+    private final EntityManager entityManager;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate requiresNewTx;
     private final Clock clock;
@@ -128,6 +132,8 @@ public class AttemptStartService {
             AttemptEventRepository attemptEventRepository,
             GenerationExecutor generationExecutor,
             IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            EntityManager entityManager,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
             Clock clock) {
@@ -144,6 +150,8 @@ public class AttemptStartService {
         this.attemptEventRepository = attemptEventRepository;
         this.generationExecutor = generationExecutor;
         this.idempotentCommand = idempotentCommand;
+        this.overdueAttemptCloser = overdueAttemptCloser;
+        this.entityManager = entityManager;
         this.jdbcTemplate = jdbcTemplate;
         this.requiresNewTx = new TransactionTemplate(transactionManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -153,13 +161,28 @@ public class AttemptStartService {
     public ResponseEntity<StartAttemptResponse> startAttempt(
             String idempotencyKey, StartAttemptRequest request) {
         UUID userId = accessGate.requireLearner();
+        boolean[] newlyExecuted = {false};
         StartCommandResult commandResult =
                 idempotentCommand.execute(
                         idempotencyKey,
                         OPERATION,
                         request,
                         StartCommandResult.class,
-                        () -> executeStartOrResume(userId, request, idempotencyKey));
+                        () -> {
+                            newlyExecuted[0] = true;
+                            return executeStartOrResume(userId, request, idempotencyKey);
+                        });
+
+        if (newlyExecuted[0] && !commandResult.resumed()) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(
+                            new StartAttemptResponse(
+                                    commandResult.attemptId(),
+                                    AttemptState.STARTING,
+                                    false,
+                                    null,
+                                    false));
+        }
 
         Attempt current =
                 attemptRepository
@@ -173,11 +196,7 @@ public class AttemptStartService {
         StartAttemptResponse body =
                 new StartAttemptResponse(
                         current.getId(), currentState, commandResult.resumed(), abortReason, retryable);
-        HttpStatus status =
-                (!commandResult.resumed() && currentState == AttemptState.STARTING)
-                        ? HttpStatus.ACCEPTED
-                        : HttpStatus.OK;
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(HttpStatus.OK).body(body);
     }
 
     private StartCommandResult executeStartOrResume(
@@ -196,7 +215,16 @@ public class AttemptStartService {
                 attemptRepository.findByUserIdAndExamIdAndStateIn(
                         userId, desc.examId(), OPEN_STATES);
         if (existingOpen.isPresent()) {
-            return new StartCommandResult(existingOpen.get().getId(), true);
+            Attempt open = existingOpen.get();
+            if (open.getState() == AttemptState.IN_PROGRESS) {
+                UUID openId = open.getId();
+                entityManager.detach(open);
+                overdueAttemptCloser.closeIfOverdue(openId, clock.instant());
+                open = attemptRepository.findById(openId).orElse(null);
+            }
+            if (open != null && OPEN_STATES.contains(open.getState())) {
+                return new StartCommandResult(open.getId(), true);
+            }
         }
 
         ServingExam serving =
@@ -209,11 +237,14 @@ public class AttemptStartService {
         UUID attemptId = Ids.newId();
         UUID generationToken = Ids.newId();
         long seed = secureRandom.nextLong();
-        PublishedVersion version = plan.version();
-        AttemptTiming timing = AttemptTiming.valueOf(version.timing());
 
         EntitlementBenefits benefits =
                 entitlementPort.reserve(userId, request.entitlementId(), attemptId);
+        if (!Objects.equals(benefits.optionCodes(), desc.optionCodes())) {
+            plan = pathResolver.resolveStartPlan(serving, benefits.optionCodes(), request.preChoice());
+        }
+        PublishedVersion version = plan.version();
+        AttemptTiming timing = AttemptTiming.valueOf(version.timing());
         Instant now = clock.instant();
         Attempt attempt =
                 Attempt.start(
@@ -310,6 +341,10 @@ public class AttemptStartService {
             for (PlannedPart pp : job.plannedParts()) {
                 GeneratedPart gp = generatedByPartCode.get(pp.partCode());
                 if (gp == null) {
+                    if (job.partCodesToGenerate().contains(pp.partCode())) {
+                        throw new IllegalStateException(
+                                "Solver omitted requested part: " + pp.partCode());
+                    }
                     continue;
                 }
                 Map<String, Boolean> shuffleMap = buildShuffleMap(gp);

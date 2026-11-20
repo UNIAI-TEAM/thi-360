@@ -15,7 +15,7 @@ import vn.unicom.thi360.identity.spi.StudentLearningProvider;
  * Excludes {@code STARTING} and {@code ABORTED} attempts and returns {@link StudentLearningData#empty()}
  * when the user has none so {@code dataAvailable} remains {@code false}.
  */
-@Component
+@Component("attemptStudentLearningProvider")
 public class AttemptLearningProvider implements StudentLearningProvider {
 
     private static final List<AttemptState> EXCLUDED_STATES = List.of(

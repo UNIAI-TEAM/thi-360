@@ -72,7 +72,7 @@ public class AttemptStateService {
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AttemptStateResponse getState(UUID attemptId) {
         UUID userId = accessGate.requireLearner();
         Attempt attempt = attemptGuard.requireOwnedAttempt(attemptId, userId);
