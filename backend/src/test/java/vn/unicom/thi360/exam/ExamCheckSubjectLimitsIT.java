@@ -349,7 +349,7 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
             if ("ly-opt:blocks".equals(id)) {
                 collision(result, id);
                 assertThat(codes(result)).as(as).doesNotContain(SET_CODE, SHORT_CODE);
-                assertUncertifiable(base, result, "ly-opt");
+                assertUncertifiable(base, result, RULES_CHANGED_409, "ly-opt");
                 continue;
             }
             assertThat(result.path("status").asText()).as(as).isEqualTo("INVALID");
@@ -423,7 +423,7 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
             JsonNode result = check(base);
             collision(result, "ly-opt:blocks");
             assertThat(codes(result)).as(kind + " collision").doesNotContain(SET_CODE, SHORT_CODE);
-            assertUncertifiable(base, result, "ly-opt", "ly2-opt");
+            assertUncertifiable(base, result, RULES_CHANGED_409, "ly-opt", "ly2-opt");
         }
     }
 
@@ -455,7 +455,7 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
 
             JsonNode result = check(base);
             collision(result, "a-opt:blocks");
-            assertUncertifiable(base, result, "a-opt", "b-opt", "c-opt");
+            assertUncertifiable(base, result, RULES_CHANGED_409, "a-opt", "b-opt", "c-opt");
         }
     }
 
@@ -516,7 +516,7 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
         assertThat(pathResults(result).values()).as("no path is certified on the shared section: %s", result.path("paths"))
                 .doesNotContain("VALID");
         collision(result, "a-opt:blocks");
-        assertUncertifiable(base, result, "c-opt", "a-opt");
+        assertUncertifiable(base, result, RULES_CHANGED_409, "c-opt", "a-opt");
         assertThat(jdbc.queryForObject("SELECT checked_at FROM exam.exam_check_unit WHERE exam_id = ? AND unit_key = ?",
                 java.sql.Timestamp.class, id, unitKey)).as("the warm proof is never rewritten").isEqualTo(warmedAt);
     }
@@ -544,8 +544,26 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
             assertThat(pathResults(result).values()).as(kind + " no path certified: %s", result.path("paths"))
                     .doesNotContain("VALID");
             collision(result, "a-opt:blocks");
-            assertUncertifiable(base, result, "a-opt", "b-opt", "c-opt");
+            assertUncertifiable(base, result, RULES_CHANGED_409, "a-opt", "b-opt", "c-opt");
         }
+    }
+
+    /**
+     * R6-2: outside the R-12 population (BCA, subject ANH: no limit, no stamp requirement) the same collision leaves an
+     * INVALID run with no VALID path, so publishing is refused as the ordinary 422 PATH_NOT_VALID, not RULES_CHANGED.
+     */
+    @Test
+    void aCollisionOutsideTheLimitedSubjectsIsRefusedAsPathNotValid() throws Exception {
+        UUID id = sqlExam("BCA", """
+                [{"id":"p","questionCount":10,"participation":{"mode":"CHOICE","choose":1},"options":[
+                  {"id":"x-opt","kind":"SUBJECT","code":"ANH","sections":[
+                    {"id":"x-opt:blocks","subjectCode":"ANH","questionCount":10,"blocks":[
+                      {"id":"x-single","questionType":"SINGLE_CHOICE","questionCount":10}]}]}]}]
+                """);
+        String base = "/api/v1/admin/exams/" + id;
+        JsonNode result = check(base);
+        collision(result, "x-opt:blocks");
+        assertUncertifiable(base, result, PATH_NOT_VALID_422, "x-opt");
     }
 
     private void blockRef(UUID exam, String blockId, String sectionId, UUID subject) {
@@ -607,19 +625,19 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
             JsonNode result = check("/api/v1/admin/exams/" + id);
             assertThat(codes(result)).as(as).doesNotContain(COLLISION_CODE);
             java.util.Map<String, String> outcome = pathResults(result);
-            assertThat(outcome).as(as + " paths: %s", result.path("paths"))
-                    .containsEntry("safe-opt+codes:QD05", "VALID");
+            java.util.Map<String, java.util.Set<String>> codesByPath = new java.util.TreeMap<>();
             for (JsonNode path : result.path("paths")) {
                 java.util.Set<String> pathCodes = new java.util.TreeSet<>();
                 for (JsonNode list : path.findValues("issues")) for (JsonNode item : list) pathCodes.add(item.path("code").asText());
-                if ("safe-opt+codes:QD05".equals(path.path("pathId").asText())) {
-                    assertThat(pathCodes).as(as + ": the safe path owns neither authored error")
-                            .doesNotContain("OPTION_UNCONFIRMED", "SECTION_TOTAL_MISMATCH");
-                } else if ("codes:QD05+codes:QD05".equals(path.path("pathId").asText())) {
-                    assertThat(pathCodes).as(as + ": the authored path reports its error")
-                            .contains(isUnconfirmed ? "OPTION_UNCONFIRMED" : "SECTION_TOTAL_MISMATCH");
-                }
+                codesByPath.put(path.path("pathId").asText(), pathCodes);
             }
+            // Both paths must exist, or the assertions below would be skipped: the safe one and the authored one.
+            assertThat(outcome).as(as + " paths: %s", result.path("paths"))
+                    .containsEntry("safe-opt+codes:QD05", "VALID").containsKey("codes:QD05+codes:QD05");
+            assertThat(codesByPath.get("safe-opt+codes:QD05")).as(as + ": the safe path owns neither authored error")
+                    .doesNotContain("OPTION_UNCONFIRMED", "SECTION_TOTAL_MISMATCH");
+            assertThat(codesByPath.get("codes:QD05+codes:QD05")).as(as + ": the authored path reports its error")
+                    .contains(isUnconfirmed ? "OPTION_UNCONFIRMED" : "SECTION_TOTAL_MISMATCH");
             if (!isUnconfirmed) assertThat(outcome).as(as).containsEntry("codes:QD05+codes:QD05", "INVALID");
         }
     }
@@ -808,11 +826,18 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
         return item;
     }
 
+    /** The refusal of a publish of an uncertifiable draft: the unstamped HSA|QDA limited-subject run, or the plain INVALID run. */
+    private record Refusal(int status, String code, String reason) { }
+
+    private static final Refusal RULES_CHANGED_409 = new Refusal(409, "CHECK_REQUIRED", "RULES_CHANGED");
+    private static final Refusal PATH_NOT_VALID_422 = new Refusal(422, "PATH_NOT_VALID", null);
+
     /**
-     * Nothing of the exam is certifiable: the run is INVALID with no VALID path, every section INCOMPLETE, the run row
-     * carries no rules stamp, and publishing any of {@code pathIds} is refused with no version written.
+     * Nothing of the exam is certifiable: the run is INVALID with no VALID path and no witness, every section
+     * INCOMPLETE, the run row carries no rules stamp, and publishing any of {@code pathIds} is refused exactly as
+     * {@code refusal} says with no version written.
      */
-    private void assertUncertifiable(String base, JsonNode result, String... pathIds) throws Exception {
+    private void assertUncertifiable(String base, JsonNode result, Refusal refusal, String... pathIds) throws Exception {
         String examId = base.substring(base.lastIndexOf('/') + 1);
         assertThat(result.path("status").asText()).isEqualTo("INVALID");
         assertThat(pathResults(result).values()).as("no path is certified: %s", result.path("paths"))
@@ -823,18 +848,23 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
         }
         assertThat(jdbc.queryForObject("SELECT result->>'rulesStamp' FROM exam.exam_check_run WHERE exam_id = ?::uuid",
                 String.class, examId)).as("an uncertifiable run never stamps").isNull();
+        JsonNode witness = mapper.readTree(jdbc.queryForObject("SELECT witness::text FROM exam.exam_check_run WHERE exam_id = ?::uuid",
+                String.class, examId));
+        assertThat(witness.isArray() && witness.isEmpty()).as("the saved witness array is empty: %s", witness).isTrue();
         for (String pathId : pathIds) {
-            ObjectNode refusal = mapper.createObjectNode().put("expectedRevision",
+            ObjectNode request = mapper.createObjectNode().put("expectedRevision",
                     json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200).path("revision").asLong());
-            refusal.putArray("pathIds").add(pathId);
-            // An INVALID run with no VALID path is refused PATH_NOT_VALID (422); the unstamped run of an HSA|QDA exam
-            // with a limited subject is refused first as RULES_CHANGED, CHECK_REQUIRED (409). Either way nothing publishes.
+            request.putArray("pathIds").add(pathId);
             var response = mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                     .header("Idempotency-Key", UUID.randomUUID().toString())
-                    .contentType(MediaType.APPLICATION_JSON).content(refusal.toString())).andReturn().getResponse();
+                    .contentType(MediaType.APPLICATION_JSON).content(request.toString())).andReturn().getResponse();
             JsonNode refused = mapper.readTree(response.getContentAsString());
-            assertThat(response.getStatus()).as("publish of " + pathId).isIn(409, 422);
-            assertThat(refused.path("code").asText()).as("publish of " + pathId).isIn("CHECK_REQUIRED", "PATH_NOT_VALID");
+            assertThat(response.getStatus()).as("publish of " + pathId).isEqualTo(refusal.status());
+            assertThat(refused.path("code").asText()).as("publish of " + pathId).isEqualTo(refusal.code());
+            if (refusal.reason() != null) {
+                assertThat(refused.path("fieldErrors").path(0).path("code").asText()).as("reason of " + pathId)
+                        .isEqualTo(refusal.reason());
+            }
         }
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?::uuid",
                 Long.class, examId)).isZero();

@@ -4826,7 +4826,7 @@
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
         "SECTION_SET_COUNT_RANGE": "Subject {subject}: the number of sets must be 1 to 2, with 3 sub-questions per set.",
         "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required.",
-        "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the section that holds this id, then check again."
+        "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the item with this id, then check again."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",

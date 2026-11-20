@@ -369,6 +369,6 @@ describe("STORED_ID_COLLISION: id đã lưu trùng tên giữ chỗ của chùm 
     expect(vi).toContain('"a-opt:blocks"');
     expect(vi).toContain("đổi tên hoặc tạo lại mục");
     expect(en).toContain('"a-opt:blocks"');
-    expect(en).toContain("Rename or recreate the section");
+    expect(en).toContain("Rename or recreate the item with this id");
   });
 });
