@@ -46,26 +46,58 @@ test("sửa phần rồi chuyển phần: hộp thoại ba nút, Bỏ thay đổ
 });
 
 /**
- * `?block=` đi qua `navigation.ts` (FTM R-15): khi mọi dạng biểu mẫu theo môn đang tắt, đường dẫn tới một nhóm vẫn mở màn nhóm đầy đủ
- * như trước, không có dòng chữ "thiết lập đầy đủ". Bài HSA Toàn bài tạo bằng API; id nhóm lấy từ cấu trúc đã lưu.
+ * `?block=` đi qua `navigation.ts` (FTM R-15): khi cặp không có biểu mẫu theo môn (tất cả 75 cặp chuẩn đều đã bật qua CR-2/CR-3/CR-2H),
+ * đường dẫn tới một nhóm vẫn mở màn nhóm đầy đủ (`BlockEditor` MD), không mở `RowEditor` và không có dòng chữ "thiết lập đầy đủ".
+ * Dùng `QDA SUBJECT INFORMATICS` (cặp ngoài bảng đăng ký, `subjectFormFor === null` → `DEFAULT_FORM` `notice: false`) kèm một nhóm tạo qua `PUT`.
  */
-test("?block= mở màn nhóm đầy đủ khi biểu mẫu theo môn đang tắt", async ({ context, page }) => {
+test("?block= mở màn nhóm đầy đủ khi cặp không có biểu mẫu theo môn", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const admin = await adminApi();
   const created = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams`, {
     headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
-    data: { code: `HSA-B-E2E-${RUN_ID}`.toUpperCase(), name: `HSA nhóm ${RUN_ID}`, kind: "HSA", scope: "FULL" },
+    data: {
+      code: `QDA-MD-E2E-${RUN_ID}`.toUpperCase(),
+      name: `QDA MD nhóm ${RUN_ID}`,
+      kind: "QDA",
+      scope: "SUBJECT",
+      subjectCode: "INFORMATICS",
+      overview: [{ partCode: "Phần 1", questionCount: 5 }],
+    },
   });
   expect(created.status(), await created.text()).toBe(201);
   const { id } = (await created.json()) as { id: string };
-  const structure = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`);
-  expect(structure.status(), await structure.text()).toBe(200);
-  const { parts } = (await structure.json()) as { parts: Array<{ sections?: Array<{ blocks?: Array<{ id: string }> }> }> };
-  const blockId = parts.flatMap((part) => part.sections ?? []).flatMap((section) => section.blocks ?? [])[0]?.id;
+  const structureRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`, { headers: admin.headers });
+  expect(structureRes.status(), await structureRes.text()).toBe(200);
+  const structure = (await structureRes.json()) as {
+    revision: number;
+    parts: Array<{
+      id: string;
+      order?: number | null;
+      name?: string | null;
+      participation?: { mode: string; choose: null } | null;
+      sections?: Array<{ id: string; subjectCode: string; questionCount?: number | null; blocks?: Array<Record<string, unknown>> }>;
+    }>;
+    examQuotas?: unknown[];
+  };
+  const blockId = crypto.randomUUID();
+  const part = structure.parts[0]!;
+  part.order = part.order ?? 1;
+  part.name = part.name || "Phần 1";
+  part.participation = part.participation ?? { mode: "ALL", choose: null };
+  part.sections![0]!.blocks = [
+    { id: blockId, name: "Nhóm MD", questionType: "SINGLE_CHOICE", questionCount: 5, requiredPointsPerQuestion: 1 },
+  ];
+  const saved = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`, {
+    headers: admin.headers,
+    data: { parts: structure.parts, examQuotas: structure.examQuotas ?? [], expectedRevision: structure.revision },
+  });
+  expect(saved.status(), await saved.text()).toBe(200);
   expect(blockId).toBeTruthy();
 
   await page.goto(`${ADMIN_URL}/exams/${id}/structure?block=${blockId}`);
   await expect(page.getByRole("textbox", { name: "Tên nhóm" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Xóa nhóm/ })).toBeVisible();
+  await expect(page.locator("[data-form-row-editor]")).toHaveCount(0);
   await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
 });
 
