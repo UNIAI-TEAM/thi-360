@@ -6098,6 +6098,7 @@
               "label": "Phân bổ theo MAPID"
             }
           },
+          "countNotWhole": "{count, number} câu không chia được thành chùm {size, number} câu",
           "facts": {
             "formats": "định dạng đáp án {formats}",
             "line": "Theo mẫu: {facts}",
@@ -6113,6 +6114,8 @@
           },
           "lockedList": "Khóa của dòng",
           "position": "Dòng {position, number} / {total, number}",
+          "quantityPercent": "Số câu của dòng",
+          "split": "Tách dòng",
           "title": "Sửa dòng: {name}",
           "untitled": "Chưa đặt tên"
         },
@@ -6122,14 +6125,88 @@
         "reference": {
           "caption": "Phân bố {dimension} của {subject}",
           "cellAria": "{dimension}: {label}, số câu",
+          "cellPercentAria": "{dimension}: {label}, tỷ lệ",
+          "combined": {
+            "back": "Bỏ kết hợp",
+            "backDifficulties": "Theo độ khó: {values}",
+            "backGrades": "Theo khối lớp: {values}",
+            "caption": "Bảng kết hợp Khối lớp × Độ khó",
+            "cancel": "Hủy",
+            "cellAria": "{grade} × {difficulty}: số câu",
+            "cellPercentAria": "{grade} × {difficulty}: tỷ lệ",
+            "confirm": "Xác nhận chuyển",
+            "gradeHeader": "Khối lớp",
+            "percentError": "Tổng tỷ lệ {total, number}%, cần 100%",
+            "previewBackHint": "Tổng theo từng khối lớp và từng độ khó của bảng kết hợp hiện tại. Chỉ ghi khi bạn xác nhận.",
+            "previewBackTitle": "Xem trước: về riêng từng chiều",
+            "previewCaption": "Dữ liệu sẽ chuyển sang bảng kết hợp",
+            "previewEmpty": "Chưa có số nào để chuyển, bảng kết hợp bắt đầu trống. Chỉ ghi khi bạn xác nhận.",
+            "previewHint": "Số của hai chiều được chia vào các ô theo tích tỷ lệ. Chỉ ghi khi bạn xác nhận.",
+            "previewTitle": "Xem trước: sang bảng kết hợp",
+            "title": "Kết hợp Khối lớp × Độ khó",
+            "total": "Tổng {total, number}/{count, number} câu",
+            "totalNoCount": "Tổng {total, number} câu",
+            "totalPercent": "Tổng {total, number}%"
+          },
+          "conditions": {
+            "add": "Thêm điều kiện",
+            "addAria": "Thêm điều kiện của Phân bổ đối chiếu",
+            "added": "Đã thêm",
+            "combined": {
+              "hint": "Một bảng chung cho cả hai chiều; xem trước dữ liệu chuyển rồi xác nhận",
+              "label": "Kết hợp Lớp × Độ khó"
+            },
+            "menuLabel": "Điều kiện của Phân bổ đối chiếu"
+          },
           "declared": "Đã khai {total, number}/{count, number} câu",
           "declaredNoTotal": "Đã khai {total, number} câu",
+          "declaredPercent": "Đã khai {total, number}%",
           "difficultyTitle": "Độ khó",
           "dimensionTitle": "{dimension} của {subject}",
           "gradeTitle": "Khối lớp",
           "hint": "Mức áp dụng theo kỳ thi",
+          "percent": "Tỷ lệ (%)",
+          "percentTotal": "Tổng tỷ lệ {total, number}%, cần 100%",
           "questions": "Số câu",
-          "title": "Phân bổ đối chiếu"
+          "quotas": {
+            "basis": {
+              "POINTS": "Đơn vị: điểm",
+              "PROMPT": "Đơn vị: lệnh hỏi",
+              "QUESTION": "Đơn vị: câu"
+            },
+            "denominator": "Mẫu số: {subject} · {count, number} lệnh",
+            "difficulty": "độ khó",
+            "entryTitle": "Phân bố {dimension}",
+            "grade": "khối lớp",
+            "percentValue": "{label}: {value, number}%",
+            "title": "Phân bố cả môn: {subject}",
+            "unclassified": "Chưa phân loại",
+            "unclassifiedValue": "Chưa phân loại: {count, number} lệnh",
+            "value": "{label}: {value, number}"
+          },
+          "resolved": "Số câu quy ra",
+          "resolvedValue": "{count, number} câu",
+          "title": "Phân bổ đối chiếu",
+          "unit": {
+            "count": "Số câu",
+            "legend": "Đơn vị nhập",
+            "percent": "Tỷ lệ"
+          }
+        },
+        "split": {
+          "apply": "Tách",
+          "cancel": "Hủy",
+          "childAria": "Số {unit, select, set {chùm} other {câu}} của dòng con {index, number}",
+          "childSets": "chùm, mỗi chùm {size, number} câu ({count, number} câu)",
+          "childSingle": "câu",
+          "errors": {
+            "notPositive": "Dòng con {index, number} phải có ít nhất 1 {unit, select, set {chùm} other {câu}}",
+            "total": "Tổng các dòng con là {total, number}, dòng cha có {units, number} {unit, select, set {chùm} other {câu}}"
+          },
+          "hint": "Dòng cha ({units, number} {unit, select, set {chùm} other {câu}}) được thay bằng các dòng con; dòng con đầu giữ mã của dòng cha. Yêu cầu audio của mục không đổi.",
+          "partsLabel": "Số dòng sau khi tách",
+          "partsOption": "{count, number} dòng",
+          "title": "Tách dòng {name}"
         },
         "table": {
           "caption": "Các dòng lấy câu của {subject}",

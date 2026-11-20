@@ -62,7 +62,7 @@ interface KindRule {
   hideGrade: readonly string[];
   matrix: readonly string[];
   rows: readonly string[];
-  /** Cặp DS đã bật (B7): lát CR-3a bật HSA, QDA, BCA (`VAN`, `ANH`) và THPTQG; lát CR-3b bật phần còn lại. Cờ của MT thuộc CR-2. */
+  /** Cặp DS đã bật (B7): lát CR-3a bật HSA, QDA, BCA (`VAN`, `ANH`) và THPTQG; lát CR-3b bật V-ACT (`ANH`, `SCIENTIFIC_THINKING`), SP2E, SPT, H-SCA, V-SAT. Cờ của MT thuộc CR-2. */
   enabledRows?: readonly string[];
 }
 
@@ -119,6 +119,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: ["TOAN", "VIETNAMESE"],
     rows: ["ANH", "SCIENTIFIC_THINKING"],
+    enabledRows: ["ANH", "SCIENTIFIC_THINKING"],
   },
   SP2E: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -127,6 +128,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: SOCIAL_AND_ENGLISH,
     matrix: [],
     rows: ["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"],
+    enabledRows: ["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"],
   },
   SPT: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -135,6 +137,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: SOCIAL_AND_ENGLISH,
     matrix: [],
     rows: TWELVE_SUBJECTS,
+    enabledRows: TWELVE_SUBJECTS,
   },
   THPTQG: {
     enforcement: "DECLARED_REQUIRED",
@@ -152,6 +155,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: [],
     rows: ["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"],
+    enabledRows: ["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"],
   },
   VSAT: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -160,6 +164,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: ["DIA", "ANH", "VAN"],
     matrix: [],
     rows: ["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"],
+    enabledRows: ["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"],
   },
 };
 

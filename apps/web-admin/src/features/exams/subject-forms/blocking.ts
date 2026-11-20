@@ -2,6 +2,7 @@ import { sectionGroups } from "../components/exam-structure-draft";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 import type { RawInputEntry } from "./raw-input-store";
 import type { SubjectFormPins } from "./selection";
+import { rowFormBlockingRule } from "./row-blocking";
 
 /**
  * Lỗi chặn lưu của biểu mẫu MT/DS (FTM R-15, plan B1). Tính trên **bản nháp của mọi môn** cộng trạng thái nhập thô, không trên
@@ -26,10 +27,10 @@ export interface FormBlockingContext {
 export type FormBlockingRule = (section: ExamSection, context: FormBlockingContext) => BlockingIssue[];
 
 /**
- * Danh sách luật của sản phẩm. CR-2 (`matrix-blocking.ts`) và CR-3 mỗi task thêm một phần tử trỏ tới tệp luật của mình; chưa
- * có luật nào thì chỉ còn trạng thái nhập thô chặn lưu.
+ * Danh sách luật của sản phẩm. CR-2 (`matrix-blocking.ts`) và CR-3 mỗi task thêm một phần tử trỏ tới tệp luật của mình (CR-3:
+ * `row-blocking.ts`, số câu của dòng DS phải dương); ngoài luật còn trạng thái nhập thô chặn lưu.
  */
-export const FORM_BLOCKING_RULES: readonly FormBlockingRule[] = [];
+export const FORM_BLOCKING_RULES: readonly FormBlockingRule[] = [rowFormBlockingRule];
 
 const testRules: FormBlockingRule[] = [];
 

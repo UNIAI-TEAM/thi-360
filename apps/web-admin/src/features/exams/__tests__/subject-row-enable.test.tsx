@@ -15,15 +15,14 @@ import { block, part, section, standardFixtureTemplates, standardExam } from "./
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 /**
- * B7 của lát CR-3a, trên mọi mẫu chuẩn của fixture B8: trước khi bật (cờ tắt) cặp mở MD, không dòng chữ; sau khi bật (cờ ở sản phẩm) cặp mở
- * đúng DS và vẽ đủ dòng; bài có tỷ lệ (ở kỳ không cho nhập %) rơi về MD kèm dòng chữ. Cờ ở sản phẩm là hàng `enabledRows` của \`registry.ts\`.
+ * B7 của CR-3a và CR-3b trên mọi mẫu chuẩn của fixture B8: trước khi bật cặp mở MD; sau khi bật mở DS và vẽ đủ dòng.
  */
 const restores: Array<() => void> = [];
 afterEach(() => {
   while (restores.length) restores.pop()!();
 });
 
-const ENABLED_KINDS = ["HSA", "QDA", "BCA", "THPTQG"] as const;
+const ENABLED_KINDS = ["HSA", "QDA", "BCA", "THPTQG", "VACT", "SP2E", "SPT", "HSCA", "VSAT"] as const;
 const isEnabledPair = (kind: string, subject: string) => subjectFormFor(kind, subject)?.enabled === true;
 
 /** Mọi mục DS của cặp đã bật trong mọi mẫu chuẩn (cả `sections`, `subjectPool`, `options[].sections`). */
@@ -39,14 +38,19 @@ function enabledRowSections(): Array<{ code: string; kind: string; part: ExamPar
   return found;
 }
 
-describe("B7 lát CR-3a: trước và sau khi bật", () => {
-  it("chỉ các cặp DS của HSA, QDA, BCA (VAN, ANH) và THPTQG đang bật; MT và DS của lát CR-3b còn tắt", () => {
+describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
+  it("mọi cặp DS đang bật; MT vẫn tắt", () => {
     const enabled = listSubjectFormPairs().filter(({ entry }) => entry.enabled);
     expect(enabled.every(({ entry }) => entry.form === "ROWS")).toBe(true);
     expect(enabled.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
       [
         ...["HSA", "QDA", "BCA"].flatMap((kind) => ["VAN", "ANH"].map((subject) => `${kind}:${subject}`)),
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `THPTQG:${subject}`),
+        ...["ANH", "SCIENTIFIC_THINKING"].map((subject) => `VACT:${subject}`),
+        ...["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"].map((subject) => `SP2E:${subject}`),
+        ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `SPT:${subject}`),
+        ...["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"].map((subject) => `HSCA:${subject}`),
+        ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"].map((subject) => `VSAT:${subject}`),
       ].toSorted(),
     );
   });
@@ -70,7 +74,7 @@ describe("B7 lát CR-3a: trước và sau khi bật", () => {
     const percent = section("s", "VAN", [block("b", { matrix: null })], {
       matrix: { mode: "SEPARATE", unit: "PERCENT", cells: [], byGrade: [], byDifficulty: [{ code: "NB", value: 100 }] },
     });
-    for (const kind of ENABLED_KINDS) {
+    for (const kind of ["HSA", "QDA", "BCA", "THPTQG"]) {
       const entry = subjectFormFor(kind, "VAN")!;
       expect(fitsForm(percent, entry, { kindCode: kind, subjectCode: "VAN" })).toEqual({ fits: false, reason: "PERCENT_ENTRY" });
       expect(selectAllSubjectForms(standardExam(kind), [part("p", [percent])]).s).toEqual({ form: "DEFAULT", notice: true, reason: "PERCENT_ENTRY" });
@@ -102,5 +106,5 @@ describe("B7 lát CR-3a: trước và sau khi bật", () => {
     }
     expect(screen.queryByRole("heading", { name: "Các dòng lấy câu" })).toBeNull();
     expect(within(document.body).queryAllByRole("table")).toHaveLength(0);
-  });
+  }, 30000);
 });

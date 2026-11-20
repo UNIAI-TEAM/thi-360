@@ -19,6 +19,12 @@ import { LOCKED_FIELD } from "../components/locked-field";
 import { TopicQuotaTable, type TopicQuotaServerError } from "../components/topic-quota-table";
 import type { BlockMatrix, ExamSection, ExamTemplate, QuestionBlock } from "../types";
 import { LockReason } from "./lock-reason";
+import { CountPercentInput } from "./count-percent-input";
+import { percentToCount } from "./percent";
+import type { RawInputStore } from "./raw-input-store";
+import { COUNT_FIELD, SPLIT_FIELD } from "./row-fields";
+import { RowSplitPanel } from "./row-split-panel";
+import type { SplitState } from "./row-split";
 import type { SubjectFormEntry } from "./registry";
 import {
   blankMatrix,
@@ -39,6 +45,9 @@ const POSITION_PAIRS: Readonly<Record<string, "EDITABLE" | "TEMPLATE">> = { "SP2
 /** SP2E và SPT gọi phạm vi theo chủ đề là "Theo mạch kiến thức". */
 const STRAND_KINDS: readonly string[] = ["SP2E", "SPT"];
 
+/** Điều khiển nhận focus trong ô được điều hướng tới. */
+const CONTROLS = "input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled])";
+
 export interface RowEditorProps {
   block: QuestionBlock;
   section: ExamSection;
@@ -56,6 +65,14 @@ export interface RowEditorProps {
   onClose: () => void;
   /** Tăng mỗi lần điều hướng báo lại đúng dòng đang mở: màn đặt focus lại vào tiêu đề. */
   focusNonce: number;
+  /** Số câu của mục chứa dòng: mẫu số của tỷ lệ (R-9); `null` khi chưa biết. */
+  sectionCount: number | null;
+  rawInputs: RawInputStore;
+  /** Nút tách dòng (R-7): ẩn, khóa kèm lý do, hoặc mở. */
+  split: SplitState;
+  onSplit: (parts: number[]) => void;
+  /** Ô của màn sửa nhận focus khi điều hướng báo lỗi tại ô (`data-form-field`); `null`: tiêu đề của màn. */
+  focusField: string | null;
 }
 
 /**
@@ -64,7 +81,7 @@ export interface RowEditorProps {
  * đảo chùm và tạm bỏ qua theo mẫu. Trường do mẫu đặt hiện thành một dòng chữ chỉ đọc. Không có Lên, Xuống, Xóa dòng (R-13).
  * Khung gắn `data-form-row-editor`; mở màn thì focus vào tiêu đề để người dùng bàn phím không mất chỗ.
  */
-export function RowEditor({ block, section, kindCode, entry, position, total, context, template, axes, labels, reference, topicError, onChange, onClose, focusNonce }: RowEditorProps) {
+export function RowEditor({ block, section, kindCode, entry, position, total, context, template, axes, labels, reference, topicError, onChange, onClose, focusNonce, sectionCount, rawInputs, split, onSplit, focusField }: RowEditorProps) {
   const t = useTranslations("exams.subjectForm.rows.editor");
   const tBlock = useTranslations("exams.structure.block");
   const tForm = useTranslations("exams.structure.blockForm");
@@ -74,12 +91,20 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   const titleId = useId();
   const lockId = useId();
   const [droppedSlots, setDroppedSlots] = useState<number[]>([]);
+  const [splitOpen, setSplitOpen] = useState(() => rawInputs.get(section.id, block.id, SPLIT_FIELD) !== null);
+  const splitReasonId = useId();
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
 
   // Mở màn (bằng nút Sửa, `?block=`, bấm lỗi) thì focus vào tiêu đề: đích của điều hướng vẽ muộn hơn khung (R1-8), nên màn tự đặt focus.
   useEffect(() => {
-    headingRef.current?.focus();
-  }, [block.id, focusNonce]);
+    const field = focusField
+      ? document.querySelector<HTMLElement>(`[data-form-row-editor="${CSS.escape(block.id)}"] [data-form-field="${CSS.escape(focusField)}"]`)
+      : null;
+    const raw = rawInputs.get(section.id, block.id, COUNT_FIELD);
+    const percentTarget = focusField === COUNT_FIELD && (raw?.code.startsWith("PERCENT:") || raw?.code === "setNotWhole");
+    const control = field?.matches(CONTROLS) ? field : (field?.querySelector<HTMLElement>(percentTarget ? 'input[inputmode="decimal"]' : CONTROLS) ?? null);
+    (control ?? headingRef.current)?.focus();
+  }, [block.id, focusNonce, focusField, rawInputs, section.id]);
 
   const locks = rowLocks(block, context);
   const reasons = lockReasonsOf(locks);
@@ -202,6 +227,25 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
       : []),
   ];
 
+  // Nhập theo tỷ lệ (R-9): kỳ cho nhập % hiện ô Số câu / Tỷ lệ; số quy ra là số nguyên trên số câu của mục, lưu số câu (không giữ %).
+  const percentRows = entry.percentEntry === "COUNT_OR_PERCENT" && !locks.counts;
+  const tCount = useTranslations("exams.subjectForm.common.countPercent");
+  const rawCount = rawInputs.get(section.id, block.id, COUNT_FIELD);
+  const rawSource = rawCount?.code.startsWith("PERCENT:") || rawCount?.code === "setNotWhole" ? "PERCENT" : "COUNT";
+  const rawCode = rawCount?.code.replace(/^PERCENT:/, "");
+  const countRawError = rawCount
+    ? rawCode === "setCountNotWhole"
+      ? t("countNotWhole", { count: Number(rawCount.text), size: block.setSize ?? 0 })
+      : rawCode === "setNotWhole"
+        ? tCount("setNotWhole", { count: percentToCount(Number(rawCount.text.replace(",", ".")), sectionCount ?? 0), size: block.setSize ?? 0 })
+        : tCount("invalidNumber")
+    : undefined;
+  const trackRaw = (raw: { text: string; code: string; source?: "COUNT" | "PERCENT" } | null) => {
+    if (raw) rawInputs.set({ sectionId: section.id, blockId: block.id, field: COUNT_FIELD, text: raw.text, code: raw.source === "PERCENT" ? `PERCENT:${raw.code}` : raw.code });
+    else rawInputs.clear(section.id, block.id, COUNT_FIELD);
+  };
+  const countEntry = sectionCount !== null && sectionCount > 0 ? "COUNT_OR_PERCENT" : "NONE";
+  const splitReason = split.status === "LOCKED" && !["rowCounts", "answerType"].includes(split.reason) ? split.reason : null;
   // Dòng chữ chỉ đọc của các trường do mẫu đặt (R-7, R-13): loại câu, số ý, điểm mỗi câu, định dạng đáp án, cách chấm dự kiến.
   const number = (value: number) => format.number(value, { maximumFractionDigits: 4 });
   const factParts: string[] = [];
@@ -230,9 +274,24 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
             {audio && <AudioChip audio={audio} />}
           </p>
         </div>
-        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-          {t("close")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {split.status !== "HIDDEN" && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={split.status === "LOCKED"}
+              aria-expanded={split.status === "OPEN" ? splitOpen : undefined}
+              aria-describedby={splitReason ? splitReasonId : undefined}
+              onClick={() => setSplitOpen((open) => !open)}
+            >
+              {t("split")}
+            </Button>
+          )}
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            {t("close")}
+          </Button>
+        </div>
       </div>
 
       {reasons.length > 0 && (
@@ -243,6 +302,20 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
             </li>
           ))}
         </ul>
+      )}
+      {splitReason && <LockReason code={splitReason} id={splitReasonId} />}
+      {split.status === "OPEN" && splitOpen && (
+        <RowSplitPanel
+          block={block}
+          units={split.units}
+          sectionId={section.id}
+          rawInputs={rawInputs}
+          onApply={(parts) => {
+            setSplitOpen(false);
+            onSplit(parts);
+          }}
+          onCancel={() => setSplitOpen(false)}
+        />
       )}
 
       <div role="group" aria-labelledby={titleId} className="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-4">
@@ -274,13 +347,48 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
                 <BlockNumberInput {...controlProps} {...lockProps} data-field={anchor("setSize")} value={block.setSize ?? 0} onValueChange={(value) => setSets(block.setCount ?? 0, value)} />
               )}
             </FormField>
+            {percentRows && (
+              <CountPercentInput
+                label={t("quantityPercent")}
+                entry={countEntry}
+                total={sectionCount ?? 0}
+                count={questionCount}
+                setSize={block.setSize}
+                fieldName={COUNT_FIELD}
+                error={countRawError}
+                rawText={rawCount?.text}
+                rawSource={rawSource}
+                onRawInput={trackRaw}
+                onChange={({ count }) => {
+                  const size = block.setSize ?? 0;
+                  if (size > 0 && count % size === 0) setSets(count / size, size);
+                  else trackRaw({ text: String(count), code: "setCountNotWhole" });
+                }}
+              />
+            )}
           </>
         ) : (
-          <FormField label={flexible ? tForm("setMode.totalField") : tBlock("questionCount")} required error={countError}>
-            {(controlProps) => (
-              <BlockNumberInput {...controlProps} {...lockProps} data-field={anchor("questionCount")} value={questionCount} onValueChange={(value) => onChange({ questionCount: value })} />
-            )}
-          </FormField>
+          percentRows ? (
+            <CountPercentInput
+              label={flexible ? tForm("setMode.totalField") : tBlock("questionCount")}
+              entry={countEntry}
+              total={sectionCount ?? 0}
+              count={questionCount}
+              setSize={null}
+              fieldName={COUNT_FIELD}
+              error={countRawError ?? countError}
+              rawText={rawCount?.text}
+              rawSource={rawSource}
+              onRawInput={trackRaw}
+              onChange={({ count }) => onChange({ questionCount: count })}
+            />
+          ) : (
+            <FormField label={flexible ? tForm("setMode.totalField") : tBlock("questionCount")} required error={countError}>
+              {(controlProps) => (
+                <BlockNumberInput {...controlProps} {...lockProps} data-field={anchor("questionCount")} value={questionCount} onValueChange={(value) => onChange({ questionCount: value })} />
+              )}
+            </FormField>
+          )
         )}
       </div>
       {isSet && countError && <p className="text-caption text-danger">{countError}</p>}

@@ -125,16 +125,15 @@ const wireTemplate = (code: string, fields: Wire = {}, blocks: Wire[] = []): Wir
   structure: { parts: [{ id: null, order: 1, name: "Phan", durationMinutes: null, questionCount: 0, participation: { mode: "ALL" }, mode: "FIXED", sections: [{ id: null, subjectCode: "VAN", questionCount: 0, blocks }] }] },
 });
 
-const readOnlyCount = () => screen.getByRole("textbox", { name: /Số câu cần lấy/ });
+const readOnlyCount = () => screen.getByRole("textbox", { name: /^(Số câu cần lấy|Số câu)$/ });
 
 describe("Danh sách dòng: khóa theo nguồn (R-7)", () => {
   const hscaMath = (count = 25): Wire[] => oneSection(wireSection("sec-toan", "TOAN", [wireBlock("toan-b1", { name: "Trac nghiem", questionCount: count, templateGroupCode: "HSCA_TOAN_B1" })]));
 
-  it("locksBySource: khóa dòng (H42) chỉ ở bài SUBJECT từ mẫu fixedBlockCounts, bài PART cùng mẫu sửa được", async () => {
+  it.each(["HSCA", "VSAT"])("locksBySource: %s SUBJECT khóa dòng, PART cùng mẫu sửa được", async (kind) => {
     const user = userEvent.setup();
-    restores.push(patchSubjectFormEntry("HSCA", "TOAN", { enabled: true }));
-    const templates = [wireTemplate("HSCA_TOAN", { fixedBlockCounts: true })];
-    boot({ kind: "HSCA", parts: hscaMath(), templates, examOverrides: { scope: "SUBJECT", templateCode: "HSCA_TOAN" } });
+    const templates = [wireTemplate("EXAM_TOAN", { kindCode: kind, fixedBlockCounts: true })];
+    boot({ kind, parts: hscaMath(), templates, examOverrides: { scope: "SUBJECT", templateCode: "EXAM_TOAN" } });
     const subject = openStructure("?section=sec-toan");
     await subject.findByRole("heading", { name: "Các dòng lấy câu" });
     expect(screen.getAllByText("Theo mẫu đề chuẩn, không đổi số lượng").length).toBeGreaterThan(0);
@@ -145,7 +144,7 @@ describe("Danh sách dòng: khóa theo nguồn (R-7)", () => {
     subject.unmount();
 
     // Bài PART cắt từ cùng mẫu: cùng cặp, cùng mẫu, sửa được.
-    boot({ kind: "HSCA", parts: hscaMath(), templates, examOverrides: { scope: "PART", templateCode: "HSCA_TOAN" } });
+    boot({ kind, parts: hscaMath(), templates, examOverrides: { scope: "PART", templateCode: "EXAM_TOAN" } });
     const part = openStructure("?section=sec-toan");
     await part.findByRole("heading", { name: "Các dòng lấy câu" });
     expect(screen.queryByText("Theo mẫu đề chuẩn, không đổi số lượng")).toBeNull();
@@ -179,14 +178,14 @@ describe("Danh sách dòng: khóa theo nguồn (R-7)", () => {
     expect(readOnlyCount()).not.toHaveAttribute("readonly");
   });
 
-  it("locksBySource: khóa nhóm đã lược (H43, H49) không có công tắc bật lại; nhóm lược của SP2E không khóa", async () => {
+  it.each(["HSCA", "VSAT"])("locksBySource: nhóm Viết %s đã lược không bật lại; SP2E không khóa", async (kind) => {
     const user = userEvent.setup();
-    restores.push(patchSubjectFormEntry("HSCA", "VAN", { enabled: true }), patchSubjectFormEntry("SP2E", "VAN", { enabled: true }));
+    restores.push(patchSubjectFormEntry(kind, "VAN", { enabled: true }), patchSubjectFormEntry("SP2E", "VAN", { enabled: true }));
     const writing = wireBlock("write-1", { name: "Viet", questionType: "ESSAY", questionCount: 1, omitted: true, templateGroupCode: "VAN_WRITE" });
     const writingPart = (): Wire[] => oneSection(wireSection("sec-van", "VAN", [writing], { questionCount: 0 }));
     const omittedTemplate = (kindCode: string, omittedLocked: boolean) => wireTemplate(`${kindCode}_VAN`, { kindCode, omittedLocked }, [{ ...writing, id: null }]);
 
-    boot({ kind: "HSCA", parts: writingPart(), templates: [omittedTemplate("HSCA", true)], examOverrides: { scope: "SUBJECT", templateCode: "HSCA_VAN" } });
+    boot({ kind, parts: writingPart(), templates: [omittedTemplate(kind, true)], examOverrides: { scope: "SUBJECT", templateCode: `${kind}_VAN` } });
     const locked = openStructure("?section=sec-van");
     await locked.findByRole("heading", { name: "Các dòng lấy câu" });
     await user.click(within(rowOf("write-1")).getByRole("button", { name: /Sửa dòng Viet/ }));
@@ -230,6 +229,14 @@ describe("Danh sách dòng: ẩn khối lớp (R-11)", () => {
     ["THPTQG", "ECON_LAW", true, {}],
     ["THPTQG", "GDKTPL", true, {}],
     ["THPTQG", "ANH", true, {}],
+    ["SP2E", "SU", true, {}],
+    ["SP2E", "ECON_LAW", true, {}],
+    ["SP2E", "GDKTPL", true, {}],
+    ["SPT", "SU", true, {}],
+    ["SPT", "ECON_LAW", true, {}],
+    ["SPT", "GDKTPL", true, {}],
+    ["VSAT", "DIA", true, {}],
+    ["VSAT", "ANH", true, {}],
     ["THPTQG", "TOAN", false, {}],
     ["QDA", "ANH", false, {}],
     ["BCA", "VAN", false, {}],
@@ -271,6 +278,112 @@ describe("Danh sách dòng: ẩn khối lớp (R-11)", () => {
     expect(await screen.findByText(/Môn này đang dùng thiết lập đầy đủ/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Các dòng lấy câu" })).toBeNull();
   });
+});
+
+describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
+  it("promptStaysReference: phân bố 67 lệnh và nhiều môn khóa, không đổi đơn vị khi lưu", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { name: "Trac nghiem", questionCount: 25 })]));
+    const { server, state } = boot({ kind: "VSAT", parts: rows });
+    state.examQuotas = [
+      { id: "q1", name: "Theo lenh", dimension: "GRADE", basis: "PROMPT", enforcement: "REFERENCE", subjectCodes: ["TOAN"], buckets: [{ codes: ["G11"], count: 17 }, { codes: ["G12"], count: 50 }] },
+      { id: "q2", name: "Nhieu mon", dimension: "DIFFICULTY", basis: "QUESTION", enforcement: "REFERENCE", subjectCodes: ["TOAN", "LY"], buckets: [{ codes: ["NB"], count: 10 }] },
+    ];
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    expect(within(reference).getByText(/67 lệnh/)).toBeInTheDocument();
+    for (const id of ["q1", "q2"]) {
+      const quota = reference.querySelector<HTMLElement>(`[data-reference-quota="${id}"]`)!;
+      expect(within(quota).getByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeDisabled();
+      expect(quota.querySelector("[data-lock-reason]")).not.toBeNull();
+    }
+    await user.click(within(rowOf("r1")).getByRole("button", { name: /Sửa dòng/ }));
+    const name = screen.getByRole("textbox", { name: /Tên nhóm/ });
+    await user.clear(name);
+    await user.type(name, "Ten moi");
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(state.examQuotas[0]).toMatchObject({ basis: "PROMPT", enforcement: "REFERENCE" });
+  });
+  it("referenceWithApply: phân bố độ khó theo câu bật thành REQUIRED", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 25 })]));
+    const { server } = boot({ kind: "VSAT", parts: rows });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    const difficulty = reference.querySelector<HTMLElement>('[data-reference-dimension="DIFFICULTY"]')!;
+    await user.type(within(difficulty).getAllByRole("textbox", { name: /số câu/ })[0]!, "25");
+    await user.click(within(difficulty).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ basis: "QUESTION", difficultyEnforcement: "REQUIRED" });
+  });
+  it("referencePercentGuard: tổng 90% chặn PUT, đủ 100% lưu PERCENT và tải lại", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 40 })]));
+    const { server } = boot({ kind: "SP2E", parts: rows });
+    const view = openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    await user.click(within(within(reference).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" }));
+    const cells = within(reference).getAllByRole("textbox", { name: /Độ khó: .*tỷ lệ/ });
+    await user.type(cells[0]!, "90");
+    expect(within(reference).getByText("Tổng tỷ lệ 90%, cần 100%")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    expect(putCalls(server)).toHaveLength(0);
+    await user.clear(cells[0]!);
+    await user.type(cells[0]!, "100");
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const saved = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix as Wire;
+    expect(saved.unit).toBe("PERCENT");
+    expect(saved.byDifficulty).toEqual([{ code: "RECOGNITION", value: 100 }]);
+    view.unmount();
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reopened = await openReference(user);
+    expect(within(within(reopened).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" })).toBeChecked();
+  });
+
+  it("combinedOnlyVsatPartLevel: xem trước, hủy không đổi; xác nhận lưu bảng COMBINED", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 40 })]));
+    const { server } = boot({ kind: "VSAT", parts: rows, examOverrides: { scope: "PART" } });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    const openCombined = async () => {
+      await user.click(within(reference).getByRole("button", { name: "Thêm điều kiện của Phân bổ đối chiếu" }));
+      await user.click(screen.getByRole("menuitem", { name: /^Kết hợp Lớp × Độ khó/ }));
+    };
+    await openCombined();
+    expect(within(reference).getByRole("heading", { name: "Xem trước: sang bảng kết hợp" })).toBeInTheDocument();
+    await user.click(within(reference).getByRole("button", { name: /^Hủy$/ }));
+    expect(reference.querySelector("[data-reference-combined]")).toBeNull();
+    expect(putCalls(server)).toHaveLength(0);
+    await openCombined();
+    await user.click(within(reference).getByRole("button", { name: "Xác nhận chuyển" }));
+    expect(reference.querySelector("[data-reference-combined]")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "COMBINED" });
+  });
+
+  it.each([["HSA", "VAN"], ["SP2E", "TOAN"], ["THPTQG", "TOAN"]])(
+    "combinedOnlyVsatPartLevel: %s %s không có bảng kết hợp",
+    async (kind, subject) => {
+      const user = userEvent.setup();
+      const rows = oneSection(wireSection("sec-x", subject, [wireBlock("r1", { questionCount: 20 })]));
+      boot({ kind, parts: rows });
+      openStructure("?section=sec-x");
+      await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+      const reference = await openReference(user);
+      expect(within(reference).queryByRole("button", { name: "Thêm điều kiện của Phân bổ đối chiếu" })).toBeNull();
+      expect(reference.querySelector("[data-reference-combined]")).toBeNull();
+    },
+  );
 });
 
 describe("Danh sách dòng: số request, trường đã dọn (R-13)", () => {

@@ -18,7 +18,7 @@ export interface MatrixField {
 /** Đích điều hướng: ô của MT, dòng của DS, hoặc nhóm ở màn nhóm cũ (MD, ON). */
 export type FormTarget =
   | { kind: "MATRIX_FIELD"; field: MatrixField }
-  | { kind: "ROW"; blockId: string }
+  | { kind: "ROW"; blockId: string; /** Ô của màn sửa dòng nhận focus (`data-form-field`); bỏ trống: tiêu đề của màn sửa. */ field?: string }
   | { kind: "LEGACY_BLOCK"; blockId: string };
 
 /** Nơi cần tới: nhóm (kèm môn chứa nó), hoặc một lỗi mang môn, nhóm và tên ô nếu có. */
@@ -40,7 +40,8 @@ export function formTarget(selection: SubjectFormSelection, ref: FormTargetRef):
     return { kind: "MATRIX_FIELD", field: { sectionId: ref.sectionId, name: ref.field ?? MATRIX_DEFAULT_FIELD } };
   }
   if (!ref.blockId) return null;
-  return selection.form === "ROWS" ? { kind: "ROW", blockId: ref.blockId } : { kind: "LEGACY_BLOCK", blockId: ref.blockId };
+  if (selection.form !== "ROWS") return { kind: "LEGACY_BLOCK", blockId: ref.blockId };
+  return ref.field ? { kind: "ROW", blockId: ref.blockId, field: ref.field } : { kind: "ROW", blockId: ref.blockId };
 }
 
 /** Phần tử nhận focus của đích trong vùng biểu mẫu, hoặc `null` khi biểu mẫu chưa vẽ ô đó. */
@@ -64,7 +65,7 @@ export function focusFormTarget(root: ParentNode, target: FormTarget): boolean {
   const element = findFormTargetElement(root, target);
   if (!element) return false;
   if (target.kind === "ROW") {
-    const notHandled = element.dispatchEvent(new CustomEvent(ROW_TARGET_EVENT, { bubbles: true, cancelable: true, detail: { blockId: target.blockId } }));
+    const notHandled = element.dispatchEvent(new CustomEvent(ROW_TARGET_EVENT, { bubbles: true, cancelable: true, detail: { blockId: target.blockId, field: target.field ?? null } }));
     if (!notHandled) return true;
   }
   const control = element.matches(FOCUSABLE) ? element : (element.querySelector<HTMLElement>(FOCUSABLE) ?? element);

@@ -6098,6 +6098,7 @@
               "label": "Allocation by knowledge node"
             }
           },
+          "countNotWhole": "{count, number} questions cannot be divided into sets of {size, number}",
           "facts": {
             "formats": "answer format {formats}",
             "line": "From the template: {facts}",
@@ -6113,6 +6114,8 @@
           },
           "lockedList": "Row locks",
           "position": "Row {position, number} of {total, number}",
+          "quantityPercent": "Row question count",
+          "split": "Split row",
           "title": "Edit row: {name}",
           "untitled": "Untitled"
         },
@@ -6122,14 +6125,88 @@
         "reference": {
           "caption": "{dimension} distribution of {subject}",
           "cellAria": "{dimension}: {label}, question count",
+          "cellPercentAria": "{dimension}: {label}, percentage",
+          "combined": {
+            "back": "Remove combined table",
+            "backDifficulties": "By difficulty: {values}",
+            "backGrades": "By grade: {values}",
+            "caption": "Combined Grade × Difficulty table",
+            "cancel": "Cancel",
+            "cellAria": "{grade} × {difficulty}: question count",
+            "cellPercentAria": "{grade} × {difficulty}: percentage",
+            "confirm": "Confirm conversion",
+            "gradeHeader": "Grade",
+            "percentError": "Total percentage is {total, number}%, needs 100%",
+            "previewBackHint": "Totals by grade and by difficulty of the current combined table. Nothing is saved until you confirm.",
+            "previewBackTitle": "Preview: back to separate dimensions",
+            "previewCaption": "Data that will move to the combined table",
+            "previewEmpty": "There are no numbers to convert, so the combined table starts empty. Nothing is saved until you confirm.",
+            "previewHint": "The numbers of the two dimensions are spread over the cells by the product of their shares. Nothing is saved until you confirm.",
+            "previewTitle": "Preview: to the combined table",
+            "title": "Combined Grade × Difficulty",
+            "total": "Total {total, number}/{count, number} questions",
+            "totalNoCount": "Total {total, number} questions",
+            "totalPercent": "Total {total, number}%"
+          },
+          "conditions": {
+            "add": "Add condition",
+            "addAria": "Add a condition to the reference allocation",
+            "added": "Added",
+            "combined": {
+              "hint": "One table for both dimensions; preview the data to move, then confirm",
+              "label": "Combined Grade × Difficulty"
+            },
+            "menuLabel": "Reference allocation conditions"
+          },
           "declared": "Declared {total, number}/{count, number} questions",
           "declaredNoTotal": "Declared {total, number} questions",
+          "declaredPercent": "Declared {total, number}%",
           "difficultyTitle": "Difficulty",
           "dimensionTitle": "{dimension} of {subject}",
           "gradeTitle": "Grade",
           "hint": "Enforcement follows the exam kind",
+          "percent": "Percentage (%)",
+          "percentTotal": "Total percentage is {total, number}%, needs 100%",
           "questions": "Questions",
-          "title": "Reference allocation"
+          "quotas": {
+            "basis": {
+              "POINTS": "Unit: points",
+              "PROMPT": "Unit: prompts",
+              "QUESTION": "Unit: questions"
+            },
+            "denominator": "Denominator: {subject} · {count, number} prompts",
+            "difficulty": "difficulty",
+            "entryTitle": "{dimension} distribution",
+            "grade": "grade",
+            "percentValue": "{label}: {value, number}%",
+            "title": "Whole-subject distribution: {subject}",
+            "unclassified": "Unclassified",
+            "unclassifiedValue": "Unclassified: {count, number} prompts",
+            "value": "{label}: {value, number}"
+          },
+          "resolved": "Resolved questions",
+          "resolvedValue": "{count, number} questions",
+          "title": "Reference allocation",
+          "unit": {
+            "count": "Questions",
+            "legend": "Entry unit",
+            "percent": "Percentage"
+          }
+        },
+        "split": {
+          "apply": "Split",
+          "cancel": "Cancel",
+          "childAria": "{unit, select, set {Sets} other {Questions}} of child row {index, number}",
+          "childSets": "sets, {size, number} questions each ({count, number} questions)",
+          "childSingle": "questions",
+          "errors": {
+            "notPositive": "Child row {index, number} needs at least 1 {unit, select, set {set} other {question}}",
+            "total": "The child rows add up to {total, number}, the parent row has {units, number} {unit, select, set {sets} other {questions}}"
+          },
+          "hint": "The parent row ({units, number} {unit, select, set {sets} other {questions}}) is replaced by the child rows; the first child keeps the parent row identity. The audio requirement of the section does not change.",
+          "partsLabel": "Number of rows after the split",
+          "partsOption": "{count, number} rows",
+          "title": "Split row {name}"
         },
         "table": {
           "caption": "Question rows of {subject}",

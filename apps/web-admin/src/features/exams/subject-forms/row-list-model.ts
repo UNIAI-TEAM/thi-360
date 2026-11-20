@@ -1,6 +1,7 @@
 import type { QuestionType } from "@/features/content/types";
+import { applyTopicTotal, convertTopicEntry } from "../allocation";
 import { applyBlockPatch, blockCountsLocked } from "../components/block-form";
-import { isFlexibleSet, isSetBlock, type MatrixAxes, sum } from "../matrix";
+import { apportionByPercent, convertMatrixUnit, countsToPercents, isFlexibleSet, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { isTemplateOmittedGroup } from "../omitted-part";
 import type { BlockMatrix, ExamScope, ExamSection, ExamTemplate, QuestionBlock } from "../types";
 import type { LockReasonCode } from "./lock-reason";
@@ -182,8 +183,10 @@ export function dimensionDeclared(matrix: BlockMatrix | null, dimension: MatrixD
 /**
  * Ghi một ô của chiều ma trận (R-8). Ô để trống (`null`) bị bỏ khỏi chiều, ô nhập 0 giữ giá trị 0; chiều không còn ô nào ghi mảng
  * rỗng (đúng kiểu `BlockMatrix`), không `null`. Chiều kia, ô kết hợp, đơn vị và mức không đụng tới: lớp bị ẩn giữ nguyên dữ liệu
- * (R-11). `matrix = null` mở đầu bằng ma trận trống riêng từng chiều theo câu. Mức áp dụng chỉ ghi khi cặp đặt mức cố định
- * (`FIXED_REFERENCE` của BCA ghi `REFERENCE`); HSA có HSA-C, QDA và THPTQG để mặc định `REQUIRED` (trường thiếu).
+ * (R-11). `matrix = null` mở đầu bằng ma trận trống riêng từng chiều theo câu. Mức áp dụng chỉ ghi khi cặp đặt mức mặc định:
+ * `FIXED_REFERENCE` (BCA) ghi `REFERENCE` ở chiều vừa khai; `REFERENCE_WITH_APPLY` (V-ACT, SP2E, SPT, H-SCA, V-SAT, mặc định Chỉ đối chiếu)
+ * ghi `REFERENCE` cho cả hai chiều chưa có mức, để chiều chưa khai không bị coi là Bắt buộc; HSA có HSA-C, QDA và THPTQG để mặc định
+ * `REQUIRED` (trường thiếu).
  */
 export function setDimensionCell(
   matrix: BlockMatrix | null,
@@ -198,10 +201,63 @@ export function setDimensionCell(
   const current = base[keyOf(dimension)].filter((item) => item.code !== code);
   const added = value === null ? current : [...current, { code, value }];
   const ordered = [...added].sort((a, b) => codeOrder(codes, a.code) - codeOrder(codes, b.code));
+  const referenceDefault = enforcement === "REFERENCE_WITH_APPLY" && ordered.length > 0;
   return {
     ...base,
     [keyOf(dimension)]: ordered,
     ...(enforcement === "FIXED_REFERENCE" && ordered.length > 0 ? { [enforcementKeyOf(dimension)]: "REFERENCE" as const } : {}),
+    ...(referenceDefault ? { gradeEnforcement: base.gradeEnforcement ?? ("REFERENCE" as const), difficultyEnforcement: base.difficultyEnforcement ?? ("REFERENCE" as const) } : {}),
+  };
+}
+
+/** Ghi mức áp dụng của một chiều (`REFERENCE_WITH_APPLY`: công tắc "Áp dụng khi sinh đề"); ma trận kết hợp có một mức cho cả hai chiều (spec 3.2). */
+export function setDimensionEnforcement(matrix: BlockMatrix, dimension: MatrixDimensionKey, value: "REQUIRED" | "REFERENCE"): BlockMatrix {
+  if (matrix.mode === "COMBINED") return { ...matrix, gradeEnforcement: value, difficultyEnforcement: value };
+  return { ...matrix, [enforcementKeyOf(dimension)]: value };
+}
+
+/**
+ * Đổi đơn vị nhập của ma trận ở Phân bổ đối chiếu (R-9, `Số câu` ↔ `Tỷ lệ`): chỉ các ô đã khai đổi, chiều để trống giữ mảng rỗng và ô
+ * trống giữ trống (khác `convertMatrixUnit` của màn nhóm, vốn điền mọi mã). % → số câu theo phần dư lớn nhất trên `count`; số câu → %
+ * nguyên tổng 100. Ma trận kết hợp đi qua `convertMatrixUnit`. `count` không dương: chỉ đổi nhãn đơn vị, không quy đổi.
+ */
+export function convertReferenceUnit(matrix: BlockMatrix, unit: BlockMatrix["unit"], count: number, axes: MatrixAxes): BlockMatrix {
+  if (matrix.unit === unit) return matrix;
+  if (!(count > 0)) return { ...matrix, unit };
+  if (matrix.mode === "COMBINED") return convertMatrixUnit(matrix, unit, count, axes);
+  const convert = (items: BlockMatrix["byGrade"]) => {
+    const values = items.map((item) => item.value);
+    const next = unit === "COUNT" ? apportionByPercent(values, count).results : countsToPercents(values, count);
+    return items.map((item, index) => ({ code: item.code, value: next[index] ?? 0 }));
+  };
+  return { ...matrix, unit, byGrade: convert(matrix.byGrade), byDifficulty: convert(matrix.byDifficulty) };
+}
+
+/** Số câu quy ra của chiều nhập theo tỷ lệ (`null`: chưa đủ 100%, không quy ra số). */
+export function resolvedDimension(matrix: BlockMatrix | null, dimension: MatrixDimensionKey, count: number): number[] | null {
+  const items = matrix?.[keyOf(dimension)] ?? [];
+  if (matrix?.unit !== "PERCENT" || items.length === 0 || !(count > 0) || Math.abs(sum(items.map((item) => item.value)) - 100) > 1e-6) return null;
+  return apportionByPercent(items.map((item) => item.value), count).results;
+}
+
+/**
+ * "Áp dụng số mới" khi tổng của mục đổi (R-9, R-122 dòng 6): chỉ tiêu chủ đề nhập theo % tính lại số câu theo tổng mới và giữ % gốc; ma
+ * trận `PERCENT` tự quy ra số theo tổng mới ở máy chủ; dòng DS nhập theo số câu giữ số, đầu môn hiện thiếu hoặc vượt.
+ */
+export function applyNewTotal(section: ExamSection, total: number): ExamSection {
+  return { ...section, topicQuotas: applyTopicTotal(section.topicQuotas ?? [], total) };
+}
+
+/** "Giữ số cũ": các bảng nhập theo % đổi sang nhập theo số câu của tổng cũ `oldTotal`, rồi báo thiếu hoặc vượt. */
+export function keepOldTotal(section: ExamSection, oldTotal: number, axes: MatrixAxes): ExamSection {
+  const quotas = section.answerQuotas;
+  const counts = quotas?.unit === "PERCENT" ? apportionByPercent(quotas.items.map((item) => item.value), oldTotal).results : [];
+  const answerQuotas = quotas?.unit === "PERCENT" ? { unit: "COUNT" as const, items: quotas.items.map((item, index) => ({ ...item, value: counts[index] ?? 0 })) } : quotas;
+  return {
+    ...section,
+    matrix: section.matrix?.unit === "PERCENT" ? convertReferenceUnit(section.matrix, "COUNT", oldTotal, axes) : section.matrix,
+    answerQuotas,
+    topicQuotas: convertTopicEntry(applyTopicTotal(section.topicQuotas ?? [], oldTotal), "COUNT", oldTotal),
   };
 }
 
