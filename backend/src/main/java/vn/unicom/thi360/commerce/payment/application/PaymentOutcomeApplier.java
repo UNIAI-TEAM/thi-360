@@ -92,17 +92,21 @@ public class PaymentOutcomeApplier {
         // Xóa sạch L1 cache (phòng OpenEntityManagerInView đã giữ phiên bản cũ) trước khi SELECT FOR UPDATE.
         entityManager.clear();
 
-        // Chỉ đọc scalar UUID để thu thập chuỗi đơn liên quan trước khi khóa tất cả theo id ASC.
+        // Chỉ đọc scalar UUID để thu thập toàn bộ chuỗi đơn thay thế trước khi khóa tất cả theo thứ tự unsigned id ASC.
         UUID replacedByOrderId = purchaseOrderRepository.findReplacedByOrderIdById(orderId).orElse(null);
+        List<UUID> predecessorIds = purchaseOrderRepository.findAllPredecessorOrderIds(orderId);
+        List<UUID> replacementChainIds = replacedByOrderId == null
+                ? List.of()
+                : purchaseOrderRepository.findAllReplacementChainOrderIds(replacedByOrderId);
+
         Set<UUID> orderIdsToLock = new LinkedHashSet<>();
         orderIdsToLock.add(orderId);
-        orderIdsToLock.addAll(purchaseOrderRepository.findPaidPredecessorOrderIds(orderId));
-        if (replacedByOrderId != null) {
-            orderIdsToLock.addAll(
-                    purchaseOrderRepository.findPaidReplacementChainOrderIds(replacedByOrderId));
-        }
+        orderIdsToLock.addAll(predecessorIds);
+        orderIdsToLock.addAll(replacementChainIds);
 
-        List<UUID> sortedIds = orderIdsToLock.stream().sorted().toList();
+        List<UUID> sortedIds = orderIdsToLock.stream()
+                .sorted(PaymentOutcomeApplier::compareUuidUnsigned)
+                .toList();
         List<PurchaseOrder> lockedOrders = purchaseOrderRepository.lockAllByIdInOrderByIdAsc(sortedIds);
         PurchaseOrder order = lockedOrders.stream()
                 .filter(o -> o.getId().equals(orderId))
@@ -187,9 +191,9 @@ public class PaymentOutcomeApplier {
 
         // Ca B: PENDING_PAYMENT (kể cả quá hạn expires_at theo E12).
         if (order.getState() == OrderState.PENDING_PAYMENT) {
-            List<PurchaseOrder> paidPredecessors = findPaidPredecessorsFromLocked(order, lockedOrders);
+            List<PurchaseOrder> paidPredecessors = findPaidOrdersByIds(predecessorIds, orderId, lockedOrders);
             return acceptCountedPaymentAndMarkPaid(
-                    order, orderPayments, payment, paidPredecessors,
+                    order, orderPayments, payment, paidPredecessors, false,
                     vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, rawPayload, now,
                     "PAYMENT_SUCCEEDED:" + payment.getTxnRef());
         }
@@ -199,32 +203,29 @@ public class PaymentOutcomeApplier {
             if (order.getPromotionId() != null || order.getVoucherId() != null) {
                 promotionRedemptionService.reclaimByOrder(order.getId());
             }
+            List<PurchaseOrder> paidPredecessors = findPaidOrdersByIds(predecessorIds, orderId, lockedOrders);
             return acceptCountedPaymentAndMarkPaid(
-                    order, orderPayments, payment, List.of(),
+                    order, orderPayments, payment, paidPredecessors, false,
                     vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, rawPayload, now,
                     "LATE_PAYMENT_RECLAIMED:" + payment.getTxnRef());
         }
 
-        // Ca D2: REPLACED.
+        // Ca D2: REPLACED (TM 8.6, BS 14, AC-27, AC-48) -> vẫn là khoản được tính của đơn REPLACED, thu hồi
+        // khuyến mãi (tăng over_limit_count nếu vượt trần) và trả fulfillOrderId để cấp quyền "coi như mua thêm".
+        // Chỉ gắn needs_review = true (DOUBLE_CHARGE_REPLACED_ORDER) khi chuỗi thay thế đã có đơn trả tiền.
         if (order.getState() == OrderState.REPLACED) {
-            List<PurchaseOrder> paidChainOrders = findPaidChainFromLocked(order, lockedOrders);
-            if (!paidChainOrders.isEmpty()) {
-                // Chiều 2 thu trùng: đơn thay thế đã thu tiền -> thu thừa, gắn needs_review cả hai phía.
-                payment.markExcessSuccess(
-                        ExcessReason.AFTER_COUNTED,
-                        vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, now);
-                paymentRepository.save(payment);
-                flagDoubleCharge(order, paidChainOrders, now, payment.getTxnRef());
-                recordEvent(payment.getId(), PaymentEventSource.IPN, rawPayload, true, now, "DOUBLE_CHARGE_REPLACED_00");
-                return new ApplyResult("00", "Confirm Success", null);
-            }
             if (order.getPromotionId() != null || order.getVoucherId() != null) {
                 promotionRedemptionService.reclaimByOrder(order.getId());
             }
+            List<PurchaseOrder> paidPredecessors = findPaidOrdersByIds(predecessorIds, orderId, lockedOrders);
+            boolean hasPaidReplacement = hasPaidReplacement(order, replacementChainIds, lockedOrders);
+            String reason = hasPaidReplacement
+                    ? "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE:" + payment.getTxnRef()
+                    : "LATE_PAYMENT_REPLACED_RECLAIMED:" + payment.getTxnRef();
             return acceptCountedPaymentAndMarkPaid(
-                    order, orderPayments, payment, List.of(),
+                    order, orderPayments, payment, paidPredecessors, hasPaidReplacement,
                     vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, rawPayload, now,
-                    "LATE_PAYMENT_REPLACED_RECLAIMED:" + payment.getTxnRef());
+                    reason);
         }
 
         recordEvent(payment.getId(), PaymentEventSource.IPN, rawPayload, true, now, "UNHANDLED_ORDER_STATE_99");
@@ -249,8 +250,32 @@ public class PaymentOutcomeApplier {
             return new ApplyResult("02", "Order already confirmed", null);
         }
         if (alreadyHasCounted) {
-            if (payment.getLateSuccessReview() == null || payment.getLateSuccessReview() == LateSuccessReview.PENDING) {
-                payment.markAutoExcessFromPendingReview(now);
+            if (payment.getLateSuccessReview() == null) {
+                // Ca B thuần trên lần đã FAILED: chuyển SUCCEEDED (thu thừa AFTER_COUNTED), giữ nguyên late_success_review = null và lưu đủ tham số VNPAY.
+                payment.markExcessSuccess(
+                        ExcessReason.AFTER_COUNTED,
+                        vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, now);
+                paymentRepository.save(payment);
+                orderHistoryRepository.save(new OrderHistory(
+                        Ids.newId(),
+                        order.getId(),
+                        order.getState(),
+                        order.getState(),
+                        "VNPAY_IPN",
+                        "EXCESS_AFTER_COUNTED:" + payment.getTxnRef(),
+                        now));
+                auditRecorder.record(AuditEvent.builder("commerce", "PAYMENT_EXCESS_RECEIVED")
+                        .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
+                        .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
+                        .reason(ExcessReason.AFTER_COUNTED.name())
+                        .after(Map.of("txnRef", payment.getTxnRef(), "amountVnd", payment.getAmountVnd()))
+                        .build());
+                recordEvent(payment.getId(), PaymentEventSource.IPN, rawPayload, true, now, "EXCESS_AFTER_COUNTED_00");
+                return new ApplyResult("00", "Confirm Success", null);
+            }
+            if (payment.getLateSuccessReview() == LateSuccessReview.PENDING) {
+                payment.markAutoExcessFromPendingReview(
+                        vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, now);
                 paymentRepository.save(payment);
                 orderHistoryRepository.save(new OrderHistory(
                         Ids.newId(),
@@ -276,11 +301,9 @@ public class PaymentOutcomeApplier {
             recordEvent(payment.getId(), PaymentEventSource.IPN, rawPayload, true, now, "ALREADY_CONFIRMED_02");
             return new ApplyResult("02", "Order already confirmed", null);
         }
-        // Ca C (BS 14): giữ Payment ở FAILED, gắn PENDING để đối soát; không tự chuyển đơn sang PAID.
+        // Ca C (BS 14): giữ Payment ở FAILED, gắn PENDING để đối soát; không tự chuyển đơn sang PAID và không đặt needs_review trên đơn.
         payment.markLateSuccessPendingReview(vnpTxnNo, bankCode, cardType, payDate, responseCode, txnStatus, now);
         paymentRepository.save(payment);
-        order.flagNeedsReview("LATE_SUCCESS_ON_FAILED_PAYMENT", now);
-        purchaseOrderRepository.save(order);
         orderHistoryRepository.save(new OrderHistory(
                 Ids.newId(),
                 order.getId(),
@@ -304,6 +327,7 @@ public class PaymentOutcomeApplier {
             List<Payment> orderPayments,
             Payment countedPayment,
             List<PurchaseOrder> paidPredecessors,
+            boolean flagCurrentOrderDoubleCharge,
             String vnpTxnNo,
             String bankCode,
             String cardType,
@@ -326,10 +350,13 @@ public class PaymentOutcomeApplier {
         }
 
         order.markPaid(now);
-        if (!paidPredecessors.isEmpty()) {
-            flagDoubleCharge(order, paidPredecessors, now, countedPayment.getTxnRef());
+        if (flagCurrentOrderDoubleCharge) {
+            flagSingleOrderDoubleCharge(order, now, countedPayment.getTxnRef());
         } else {
             purchaseOrderRepository.save(order);
+        }
+        if (!paidPredecessors.isEmpty()) {
+            flagPredecessorsDoubleCharge(order, paidPredecessors, now);
         }
 
         orderHistoryRepository.save(new OrderHistory(
@@ -352,62 +379,69 @@ public class PaymentOutcomeApplier {
         return new ApplyResult("00", "Confirm Success", order.getId());
     }
 
-    private void flagDoubleCharge(
-            PurchaseOrder target, List<PurchaseOrder> relatedPaidOrders, Instant now, String txnRef) {
+    private void flagSingleOrderDoubleCharge(PurchaseOrder target, Instant now, String txnRef) {
+        recordDoubleChargeFlag(target, txnRef, Map.of("txnRef", txnRef), now);
+    }
+
+    private void flagPredecessorsDoubleCharge(
+            PurchaseOrder replacementOrder, List<PurchaseOrder> paidPredecessors, Instant now) {
+        for (PurchaseOrder pred : paidPredecessors) {
+            recordDoubleChargeFlag(
+                    pred, replacementOrder.getCode(), Map.of("replacementOrderCode", replacementOrder.getCode()), now);
+        }
+    }
+
+    private void recordDoubleChargeFlag(
+            PurchaseOrder target, String reasonSuffix, Map<String, Object> auditAfter, Instant now) {
         target.flagNeedsReview(DOUBLE_CHARGE_REASON, now);
         purchaseOrderRepository.save(target);
-        for (PurchaseOrder related : relatedPaidOrders) {
-            related.flagNeedsReview(DOUBLE_CHARGE_REASON, now);
-            purchaseOrderRepository.save(related);
-            orderHistoryRepository.save(new OrderHistory(
-                    Ids.newId(),
-                    related.getId(),
-                    related.getState(),
-                    related.getState(),
-                    "VNPAY_IPN",
-                    DOUBLE_CHARGE_REASON + ":" + target.getCode(),
-                    now));
-        }
         orderHistoryRepository.save(new OrderHistory(
                 Ids.newId(),
                 target.getId(),
                 target.getState(),
                 target.getState(),
                 "VNPAY_IPN",
-                DOUBLE_CHARGE_REASON + ":" + txnRef,
+                DOUBLE_CHARGE_REASON + ":" + reasonSuffix,
                 now));
         auditRecorder.record(AuditEvent.builder("commerce", DOUBLE_CHARGE_REASON)
                 .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
                 .target("PURCHASE_ORDER", target.getId().toString(), target.getCode())
                 .reason(DOUBLE_CHARGE_REASON)
-                .after(Map.of("txnRef", txnRef))
+                .after(auditAfter)
                 .build());
     }
 
-    private List<PurchaseOrder> findPaidPredecessorsFromLocked(
-            PurchaseOrder target, List<PurchaseOrder> lockedOrders) {
-        Set<UUID> predIds = new LinkedHashSet<>(purchaseOrderRepository.findPaidPredecessorOrderIds(target.getId()));
-        if (predIds.isEmpty()) {
+    private List<PurchaseOrder> findPaidOrdersByIds(
+            List<UUID> candidateIds, UUID currentOrderId, List<PurchaseOrder> lockedOrders) {
+        if (candidateIds == null || candidateIds.isEmpty()) {
             return List.of();
         }
+        Set<UUID> candidateSet = new LinkedHashSet<>(candidateIds);
         return lockedOrders.stream()
-                .filter(o -> !o.getId().equals(target.getId()) && predIds.contains(o.getId()))
+                .filter(o -> !o.getId().equals(currentOrderId)
+                        && candidateSet.contains(o.getId())
+                        && (o.getPaidAt() != null || isOrderAlreadyPaid(o.getState())))
                 .toList();
     }
 
-    private List<PurchaseOrder> findPaidChainFromLocked(
-            PurchaseOrder replacedOrder, List<PurchaseOrder> lockedOrders) {
+    private boolean hasPaidReplacement(
+            PurchaseOrder replacedOrder, List<UUID> preLockChainIds, List<PurchaseOrder> lockedOrders) {
         if (replacedOrder.getReplacedByOrderId() == null) {
-            return List.of();
+            return false;
         }
-        Set<UUID> chainIds = new LinkedHashSet<>(
-                purchaseOrderRepository.findPaidReplacementChainOrderIds(replacedOrder.getReplacedByOrderId()));
-        if (chainIds.isEmpty()) {
-            return List.of();
+        if (!findPaidOrdersByIds(preLockChainIds, replacedOrder.getId(), lockedOrders).isEmpty()) {
+            return true;
         }
-        return lockedOrders.stream()
-                .filter(o -> !o.getId().equals(replacedOrder.getId()) && chainIds.contains(o.getId()))
-                .toList();
+        // Nếu đơn vừa bị thay thế trong lúc chờ khóa thì kiểm tra trực tiếp chuỗi mới.
+        if (!preLockChainIds.contains(replacedOrder.getReplacedByOrderId())) {
+            return purchaseOrderRepository.existsPaidInReplacementChainStartingAt(replacedOrder.getReplacedByOrderId());
+        }
+        return false;
+    }
+
+    private static int compareUuidUnsigned(UUID a, UUID b) {
+        int msb = Long.compareUnsigned(a.getMostSignificantBits(), b.getMostSignificantBits());
+        return msb != 0 ? msb : Long.compareUnsigned(a.getLeastSignificantBits(), b.getLeastSignificantBits());
     }
 
     private static boolean hasCountedPayment(List<Payment> payments) {

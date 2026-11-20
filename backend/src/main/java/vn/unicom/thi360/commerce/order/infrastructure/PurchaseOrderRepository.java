@@ -44,6 +44,14 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
     Optional<PurchaseOrder> lockPendingByUserAndProduct(
             @Param("userId") UUID userId, @Param("productCode") String productCode);
 
+    @Query(value = """
+            SELECT id FROM commerce.purchase_order
+            WHERE user_id = :userId AND lower(product_code) = :productCodeNormalized AND state = 'PENDING_PAYMENT'
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<UUID> findPendingPaymentOrderId(
+            @Param("userId") UUID userId, @Param("productCodeNormalized") String productCodeNormalized);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM PurchaseOrder o WHERE o.id IN :ids ORDER BY o.id ASC")
     List<PurchaseOrder> lockAllByIdInOrderByIdAsc(@Param("ids") List<UUID> ids);
@@ -121,4 +129,34 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
             ORDER BY id ASC
             """, nativeQuery = true)
     List<UUID> findPaidPredecessorOrderIds(@Param("orderId") UUID orderId);
+
+    @Query(value = """
+            WITH RECURSIVE chain AS (
+                SELECT id, replaced_by_order_id
+                FROM commerce.purchase_order
+                WHERE id = :startId
+                UNION ALL
+                SELECT nxt.id, nxt.replaced_by_order_id
+                FROM commerce.purchase_order nxt
+                JOIN chain c ON nxt.id = c.replaced_by_order_id
+            )
+            SELECT id FROM chain
+            ORDER BY id ASC
+            """, nativeQuery = true)
+    List<UUID> findAllReplacementChainOrderIds(@Param("startId") UUID startId);
+
+    @Query(value = """
+            WITH RECURSIVE predecessors AS (
+                SELECT id
+                FROM commerce.purchase_order
+                WHERE replaced_by_order_id = :orderId
+                UNION ALL
+                SELECT prev.id
+                FROM commerce.purchase_order prev
+                JOIN predecessors p ON prev.replaced_by_order_id = p.id
+            )
+            SELECT id FROM predecessors
+            ORDER BY id ASC
+            """, nativeQuery = true)
+    List<UUID> findAllPredecessorOrderIds(@Param("orderId") UUID orderId);
 }

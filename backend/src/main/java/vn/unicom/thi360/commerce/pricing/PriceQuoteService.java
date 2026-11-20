@@ -1,7 +1,9 @@
 package vn.unicom.thi360.commerce.pricing;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.PricedProduct;
@@ -24,12 +26,22 @@ public class PriceQuoteService {
 
     private final StorefrontProductRepository storefrontProductRepository;
     private final PriceCalculator priceCalculator;
+    private final PendingPaymentOrderLookup pendingPaymentOrderLookup;
 
     public PriceQuoteService(
             StorefrontProductRepository storefrontProductRepository,
             PriceCalculator priceCalculator) {
-        this.storefrontProductRepository = storefrontProductRepository;
-        this.priceCalculator = priceCalculator;
+        this(storefrontProductRepository, priceCalculator, (userId, code) -> Optional.empty());
+    }
+
+    @Autowired
+    public PriceQuoteService(
+            StorefrontProductRepository storefrontProductRepository,
+            PriceCalculator priceCalculator,
+            PendingPaymentOrderLookup pendingPaymentOrderLookup) {
+        this.storefrontProductRepository = Objects.requireNonNull(storefrontProductRepository);
+        this.priceCalculator = Objects.requireNonNull(priceCalculator);
+        this.pendingPaymentOrderLookup = Objects.requireNonNull(pendingPaymentOrderLookup);
     }
 
     /** Resolves an on-sale product by code, throwing 404 for unknown/unavailable and 410 for discontinued (AC-35). */
@@ -56,8 +68,11 @@ public class PriceQuoteService {
 
         PricedProduct product = new PricedProduct(
                 stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
+        UUID pendingOrderId = pendingPaymentOrderLookup
+                .findPendingPaymentOrderId(userId, StorefrontSearchText.normalize(stored.code()))
+                .orElse(null);
         QuoteCalculation calc = priceCalculator.calculateQuote(
-                new QuoteRequest(product, userId, request.voucherCode(), null, null));
+                new QuoteRequest(product, userId, request.voucherCode(), pendingOrderId, null));
         boolean changed = (request.seenVersionNo() != null && !request.seenVersionNo().equals(stored.versionNo()))
                 || (request.seenPrice() != null && !request.seenPrice().equals(calc.finalPrice()));
         return PriceQuote.from(stored, calc, changed);

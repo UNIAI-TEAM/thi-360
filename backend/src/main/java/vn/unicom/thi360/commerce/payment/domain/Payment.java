@@ -129,10 +129,17 @@ public class Payment {
     }
 
     public void markAutoExcessFromPendingReview(Instant now) {
+        markAutoExcessFromPendingReview(null, null, null, null, null, null, now);
+    }
+
+    public void markAutoExcessFromPendingReview(
+            String vnpTransactionNo, String bankCode, String cardType, String payDate,
+            String responseCode, String transactionStatus, Instant now) {
         this.state = PaymentState.SUCCEEDED;
         this.duplicate = true;
         this.excessReason = ExcessReason.AFTER_COUNTED;
         this.lateSuccessReview = LateSuccessReview.AUTO_EXCESS;
+        applyVnpayMetadata(vnpTransactionNo, bankCode, cardType, payDate, responseCode, transactionStatus);
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
