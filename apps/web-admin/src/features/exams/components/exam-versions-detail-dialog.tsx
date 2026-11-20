@@ -2,10 +2,11 @@
 
 import { Badge, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton } from "@thi360/ui";
 import { useFormatter, useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { sortedParts } from "../check";
 import { useExamVersion } from "../review-queries";
 import type { ExamPartOption, ExamSection } from "../types";
-import { pathLabelCodes, useChoiceNameResolver, useLookup } from "./exam-review-shared";
+import { ExamName, pathLabelCodes, richNodes, useChoiceNameResolver, useLookup } from "./exam-review-shared";
 
 /** Xem cấu hình của một phiên bản đã công bố, chỉ đọc (bản chụp lúc công bố). */
 export function ExamVersionDetailDialog({
@@ -49,14 +50,21 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
     return <p className="text-body text-danger">{t("detail.error")}</p>;
   }
   const { row, parts } = query.data;
-  const optionName = (option: ExamPartOption) =>
-    option.kind === "BRANCH"
-      ? (option.name ?? option.code)
-      : option.kind === "COMBINATION"
-        ? `${option.code} · ${option.name ?? nameOf(option.kind, option.code)}`
-        : option.kind === "SUBJECT_CHOICE"
-          ? (option.name ?? t("detail.subjectChoice"))
-          : nameOf(option.kind, option.code);
+  // Tên nhánh, lựa chọn môn do mẫu đặt là nội dung đề (`ExamName`); tên tổ hợp, môn theo danh mục thì không.
+  const optionName = (option: ExamPartOption): ReactNode =>
+    option.kind === "BRANCH" ? (
+      <ExamName>{option.name ?? option.code}</ExamName>
+    ) : option.kind === "COMBINATION" ? (
+      `${option.code} · ${option.name ?? nameOf(option.kind, option.code)}`
+    ) : option.kind === "SUBJECT_CHOICE" ? (
+      option.name ? (
+        <ExamName>{option.name}</ExamName>
+      ) : (
+        t("detail.subjectChoice")
+      )
+    ) : (
+      nameOf(option.kind, option.code)
+    );
   return (
     <div className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1 scroll-shadows-y">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg bg-subtle px-3.5 py-3 text-body">
@@ -79,7 +87,7 @@ function DetailBody({ examId, version }: { examId: string; version: number }) {
         {sortedParts(parts).map((part) => (
           <li key={part.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <h3 className="font-semibold text-text">
-              {part.name}{" "}
+              <ExamName>{part.name}</ExamName>{" "}
               <span className="font-normal text-text-muted">
                 ·{" "}
                 {t("detail.partMeta", {
@@ -131,8 +139,8 @@ function SectionList({ sections }: { sections: ExamSection[] }) {
             {section.blocks.map((block) => (
               <li key={block.id}>
                 <Badge>
-                  {t("block", {
-                    name: block.name,
+                  {richNodes(t, "block", {
+                    name: <ExamName>{block.name}</ExamName>,
                     type: block.questionType ? types(block.questionType) : "",
                     hasType: block.questionType ? "yes" : "no",
                     count: block.questionCount ?? 0,

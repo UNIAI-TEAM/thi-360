@@ -505,6 +505,30 @@ JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100
 JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
 JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH';
 
+-- Item 12 (UNI-2700, UNI-1706 Q3): four stand-alone geography questions per resource tag, so a "tu lieu"
+-- condition on DIA_BAN_DO or DIA_ATLAT finds a match on the demo. Fixed ids and codes keep reruns idempotent.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-fu-dia-resource-' || t.code || '-' || n)::uuid,
+       'SEED-FU-DIA-' || t.code || '-' || n,
+       'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL, 0.25, '<p>Geography resource example ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM (VALUES ('DIA_BAN_DO'), ('DIA_ATLAT')) t(code)
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008' AND tag.code = t.code
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'DIA'
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+CROSS JOIN generate_series(1, 4) n;
+
+INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
+SELECT q.id, tag.id
+FROM seed_question_rows q
+JOIN catalog.catalog_item tag ON tag.group_id = '00000000-0000-7000-8100-000000000008'
+    AND tag.code IN ('DIA_BAN_DO', 'DIA_ATLAT') AND starts_with(q.code, 'SEED-FU-DIA-' || tag.code || '-')
+ON CONFLICT DO NOTHING;
+
 INSERT INTO seed_2b_question_tags (question_id, tag_item_id)
 SELECT q.id, tag.id
 FROM seed_question_rows q
@@ -861,6 +885,30 @@ JOIN catalog.catalog_item node ON node.group_id = '00000000-0000-7000-8100-00000
     AND node.code = (ARRAY['0D1-1-1', '0D1-1-2', '0D1-1-3'])[q.position + 1]
 WHERE q.parent_id IS NOT NULL AND starts_with(q.code, 'SEED-2B-MAPID-');
 
+-- FU (UNI-2700, V1-04): MAPID data for Vat li. Two READY single-choice questions per leaf node of the LY1/LY2 tree seeded in
+-- R__seed_catalog_dev_data.sql, so every selectable MAPID node of that subject finds questions. Fixed ids and codes keep reruns idempotent.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-fu-mapid-ly-' || node.code || '-' || n)::uuid, 'SEED-FU-MAPID-LY-' || node.code || '-' || n,
+       'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL, 0.25, '<p>Physics knowledge example ' || node.value || ' ' || n || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM catalog.catalog_item node
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = 'LY'
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G10'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH'
+CROSS JOIN generate_series(1, 2) n
+WHERE node.group_id = '00000000-0000-7000-8100-000000000009' AND node.depth = 3 AND node.code LIKE 'LY%';
+
+INSERT INTO seed_2b_knowledge (question_id, knowledge_item_id)
+SELECT q.id, node.id
+FROM seed_question_rows q
+JOIN catalog.catalog_item node ON node.group_id = '00000000-0000-7000-8100-000000000009'
+    AND node.depth = 3 AND node.code LIKE 'LY%'
+    AND starts_with(q.code, 'SEED-FU-MAPID-LY-' || node.code || '-')
+WHERE q.parent_id IS NULL;
+
 -- Three-child science passages across grade/difficulty cells complement the
 -- existing independent questions for the HSA, QDA and BCA subject matrices.
 WITH sets AS (
@@ -1139,7 +1187,8 @@ CREATE TEMP TABLE seed_dot2b_asset (
     object_key text NOT NULL,
     file_name text NOT NULL,
     size bigint NOT NULL,
-    sha256 bytea NOT NULL
+    sha256 bytea NOT NULL,
+    mime text NOT NULL DEFAULT 'audio/mpeg'
 ) ON COMMIT DROP;
 
 -- H-SCA Toan, Ly, Hoa, Sinh (spec 4.1): 0.25 per question, four options.
@@ -1157,7 +1206,10 @@ UNION ALL
 SELECT md5('thi360-hsca-' || s.code || '-sa-' || n)::uuid, 'SEED-HSCA-' || s.code || '-SA-' || lpad(n::text, 3, '0'),
        'SHORT_ANSWER', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        0.25, 'H-SCA ' || s.code || ' short answer ' || n,
-       jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'INTEGER', 'answers', jsonb_build_array(n::text), 'inputHint', '')
+       CASE WHEN s.code = 'HOA' THEN jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'TEXT', 'answers',
+                jsonb_build_array((ARRAY['Na+', 'K+', 'Ca2+', 'Mg2+', 'Fe3+', 'Cu2+', 'Zn2+', 'Al3+', 'Cl-', 'SO4 2-', 'NO3-', 'OH-'])[n]),
+                'inputHint', '')
+            ELSE jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'INTEGER', 'answers', jsonb_build_array(n::text), 'inputHint', '') END
 FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 12) n;
 
 -- H-SCA English listening, single questions (spec 4.3): audio on the question itself, one point.
@@ -1280,8 +1332,34 @@ FROM (VALUES
         ('set5', 4, 6264, 'ac0db8a9a176cdaeb30296ec334d86a45f21e69d84f306e0ad744966c5a208e1')
      ) a(kind, n, size, sha256);
 
+-- FU-BE10-ASSET (UNI-2700): the three BCA attachment questions of ADV:BE-10:1 (atomic-mass table, pedigree, chart) with
+-- a real image each. file_name is bca/<file>, so DevQuestionAssetSeeder reads db/devdata/assets/bca/<file> and puts the
+-- bytes under the object_key, as for the audio. Size and sha256 equal those files.
+INSERT INTO seed_question_rows
+SELECT md5('thi360-fu-bca-attachment-' || b.subject_code)::uuid, 'SEED-FU-BCA-ATTACH-' || b.subject_code,
+       'SINGLE_CHOICE', subject.id, grade.id, level.id, NULL, 1, '<p>' || b.content || '</p>',
+       jsonb_build_object('type', 'SINGLE_CHOICE', 'options',
+           jsonb_build_array(jsonb_build_object('id', 'a', 'content', '<p>One</p>', 'correct', true),
+                             jsonb_build_object('id', 'b', 'content', '<p>Two</p>', 'correct', false))),
+       NULL, NULL
+FROM (VALUES ('HOA', 'Read the atomic mass table in the attached image'),
+             ('SINH', 'Read the pedigree in the attached image'),
+             ('DIA', 'Read the chart in the attached image')) b(subject_code, content)
+JOIN catalog.catalog_item subject ON subject.group_id = '00000000-0000-7000-8100-000000000002' AND subject.code = b.subject_code
+JOIN catalog.catalog_item grade ON grade.group_id = '00000000-0000-7000-8100-000000000003' AND grade.code = 'G12'
+JOIN catalog.catalog_item level ON level.group_id = '00000000-0000-7000-8100-000000000004' AND level.code = 'TH';
+
+INSERT INTO seed_dot2b_asset (asset_id, question_id, object_key, file_name, size, sha256, mime)
+SELECT md5('thi360-fu-bca-asset-' || b.file)::uuid, md5('thi360-fu-bca-attachment-' || b.subject_code)::uuid,
+       'questions/dev-seed/bca/' || b.file, 'bca/' || b.file, b.size, decode(b.sha256, 'hex'), 'image/png'
+FROM (VALUES
+        ('HOA', 'hoa-atomic-mass-table.png', 323, 'a976e8abec968f3cdc3276daa6d44e359b6395671a139c99fc420c87e8d9d3d2'),
+        ('SINH', 'sinh-pedigree.png', 390, 'f772b0fd0e2f1c218802b8555b8abdfa7ad7aab425bd50487180e741f08976e8'),
+        ('DIA', 'dia-chart.png', 304, 'e07faa041d531b723205369a75c9a79b6d86f666fb3968566c85831a3c1d1046')
+     ) b(subject_code, file, size, sha256);
+
 INSERT INTO questionbank.question_asset (id, kind, object_key, file_name, mime, size, sha256)
-SELECT asset_id, 'ATTACHMENT', object_key, file_name, 'audio/mpeg', size, sha256 FROM seed_dot2b_asset
+SELECT asset_id, 'ATTACHMENT', object_key, file_name, mime, size, sha256 FROM seed_dot2b_asset
 ON CONFLICT DO NOTHING;
 
 INSERT INTO seed_question_rows
@@ -1557,6 +1635,32 @@ SET revision = questionbank.question_source_revision.revision + EXCLUDED.revisio
 DROP TABLE seed_dia_fix, seed_dia_legacy;
 
 DROP TABLE seed_be14_classification;
+
+-- FU item 9 (UNI-2700, DS:5): the 12 H-SCA Hoa short answers asked for an integer where a fill-in is an ion or a symbol. A database
+-- seeded earlier gets the strings too, only where the row is untouched: version 1 only, never edited or published again.
+WITH fixed AS (
+    SELECT q.id, q.code, q.subject_item_id,
+           jsonb_set(jsonb_set(v.snapshot, '{body,answerFormat}', '"TEXT"'), '{body,answers}',
+               jsonb_build_array((ARRAY['Na+', 'K+', 'Ca2+', 'Mg2+', 'Fe3+', 'Cu2+', 'Zn2+', 'Al3+', 'Cl-', 'SO4 2-', 'NO3-', 'OH-'])
+                   [substring(q.code from '[0-9]+$')::integer])) AS snapshot
+    FROM questionbank.question q
+    JOIN questionbank.question_version v ON v.question_id = q.id AND v.version_no = 1
+    WHERE q.code ~ '^SEED-HSCA-HOA-SA-0(0[1-9]|1[0-2])$' AND q.current_version_no = 1 AND q.working_version_no IS NULL
+      AND v.snapshot #>> '{body,answerFormat}' = 'INTEGER'
+      AND NOT EXISTS (SELECT 1 FROM questionbank.question_version o WHERE o.question_id = q.id AND o.version_no <> 1)
+), versions AS (
+    UPDATE questionbank.question_version v SET snapshot = f.snapshot FROM fixed f
+    WHERE v.question_id = f.id AND v.version_no = 1 RETURNING v.question_id
+), texts AS (
+    UPDATE questionbank.question q
+    SET content_text = pg_temp.seed_plain(f.snapshot ->> 'content', f.snapshot -> 'body'),
+        search_text = lower(f.code || ' ' || pg_temp.seed_plain(f.snapshot ->> 'content', f.snapshot -> 'body'))
+    FROM fixed f WHERE q.id = f.id AND EXISTS (SELECT 1 FROM versions x WHERE x.question_id = q.id) RETURNING q.subject_item_id
+)
+INSERT INTO questionbank.question_source_revision (subject_item_id, revision)
+SELECT subject_item_id, count(*) FROM texts GROUP BY subject_item_id
+ON CONFLICT (subject_item_id) DO UPDATE
+SET revision = questionbank.question_source_revision.revision + EXCLUDED.revision;
 
 -- Roots keep their audio reference even if an admin later edits them (version 1 stays referenced).
 INSERT INTO questionbank.question_asset_ref (asset_id, question_id, version_no)

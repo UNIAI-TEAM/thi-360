@@ -26,6 +26,7 @@ import vn.unicom.thi360.exam.domain.MatrixMode;
 import vn.unicom.thi360.exam.domain.MatrixUnit;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
+import vn.unicom.thi360.exam.domain.BlockCounts;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.domain.QuotaBasis;
 import vn.unicom.thi360.exam.domain.QuotaEnforcement;
@@ -115,22 +116,6 @@ public final class ExamCheckRules {
                 }
             }
         }
-    }
-
-    /** Static checks applicable to one resolved path, without validating unrelated options. */
-    public static List<ObjectNode> issuesForPath(ObjectMapper mapper, Exam exam,
-                                                 ExamStructureDocument document, PathResult result) {
-        ExamCheckRules rules = new ExamCheckRules(mapper, exam, document);
-        List<ObjectNode> found = new ArrayList<>(rules.common());
-        // An option-scoped issue belongs to (partId, optionId): a generated option of another part may share the id.
-        Set<vn.unicom.thi360.exam.domain.solver.ChosenOption> selected = new LinkedHashSet<>(result.path().chosen());
-        for (ObjectNode issue : rules.unrepresentable()) {
-            String optionId = issue.path("optionId").asText(null);
-            if (optionId == null || selected.contains(new vn.unicom.thi360.exam.domain.solver.ChosenOption(
-                    issue.path("partId").asText(null), optionId))) found.add(issue);
-        }
-        found.addAll(rules.path(result));
-        return dedupe(found);
     }
 
     List<ObjectNode> common() {
@@ -223,10 +208,10 @@ public final class ExamCheckRules {
         for (Slot<ExamPartOption> slot : pair(base.options(), part.options(), ExamPartOption::id,
                 ExamCheckRules::optionSignature, null, option -> 0)) {
             if (slot.current() == null) {
-                changed |= lockedSections(found, part, slot.locked().id(), slot.locked().sections(), List.of());
+                changed |= lockedSections(found, part, slot.locked().id(), optionSections(slot.locked()), List.of());
             } else {
-                List<ExamSection> expected = slot.locked() == null ? List.of() : slot.locked().sections();
-                changed |= lockedSections(found, part, slot.current().id(), expected, slot.current().sections());
+                List<ExamSection> expected = optionSections(slot.locked());
+                changed |= lockedSections(found, part, slot.current().id(), expected, optionSections(slot.current()));
             }
         }
         if (!changed && !Objects.equals(part.questionCount(), base.questionCount())) {
@@ -533,8 +518,8 @@ public final class ExamCheckRules {
             for (ExamPartOption option : part.options()) all.addAll(optionSections(option));
             for (ExamSection section : all) for (QuestionBlock block : section.blocks()) {
                 if (!Boolean.TRUE.equals(block.omitted()) || block.requiredPointsPerQuestion() == null) continue;
-                int count = block.questionCount() != null ? block.questionCount()
-                        : block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+                Integer configured = BlockCounts.configured(block);
+                int count = configured == null ? 0 : configured;
                 excluded = excluded.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
             }
             if (excluded.signum() > 0 && excluded.compareTo(gap) == 0) {
@@ -914,9 +899,18 @@ public final class ExamCheckRules {
                                    Integer slotIndex, Integer childPosition, String pathId,
                                    List<String> affectedCodes) { }
 
-    /** Null fact means unavailable, not false. Facts must describe a question in the proved witness. */
+    /**
+     * Null fact means unavailable, not false. Facts must describe a question in the proved witness.
+     * {@code statementPointsEven} is set only for a True/False question in a block that takes statements of equal points
+     * (SP2E scored per statement, FU-BE9-2): false when its statements do not each carry those points.
+     */
     public record WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
-                              Boolean hasScoringRule, Boolean attachmentsReadable) { }
+                              Boolean hasScoringRule, Boolean attachmentsReadable, Boolean statementPointsEven) {
+        public WitnessFact(EvidenceLocation location, String questionCode, Boolean hasAnswerKey,
+                           Boolean hasScoringRule, Boolean attachmentsReadable) {
+            this(location, questionCode, hasAnswerKey, hasScoringRule, attachmentsReadable, null);
+        }
+    }
 
     public enum FilterKind { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
 
@@ -932,6 +926,9 @@ public final class ExamCheckRules {
             }
             if (Boolean.FALSE.equals(fact.attachmentsReadable())) {
                 found.add(witnessIssue("ATTACHMENT_MISSING", fact));
+            }
+            if (Boolean.FALSE.equals(fact.statementPointsEven())) {
+                found.add(witnessIssue("STATEMENT_POINTS_UNEVEN", fact));
             }
         }
         return found;
@@ -1269,7 +1266,7 @@ public final class ExamCheckRules {
         matrix(found, context, null, section.matrix(), count, "SUBJECT_MATRIX_TOTAL_MISMATCH", countVaries, varies ? count : null);
         for (QuestionBlock block : section.blocks()) {
             if (Boolean.TRUE.equals(block.omitted())) continue;
-            int groupCount = block.questionCount() == null ? Math.max(0, count - fixed) : fixedCount(block);
+            int groupCount = BlockCounts.isRemainder(block) ? Math.max(0, count - fixed) : fixedCount(block);
             if (isSet(block) && block.questionCount() != null
                     && !(block.setCount() == null && block.setSize() == null)
                     && (block.setCount() == null || block.setSize() == null || block.setCount() * block.setSize() != block.questionCount())) {
@@ -1489,11 +1486,10 @@ public final class ExamCheckRules {
 
     private static void blockContext(ObjectNode issue, QuestionBlock block) { issue.put("blockId", block.id()); issue.put("blockName", block.name()); }
     private static boolean isChoice(ExamPart part) { return part.participation() != null && part.participation().mode() == ParticipationMode.CHOICE; }
-    private static boolean isSet(QuestionBlock block) { return block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE; }
+    private static boolean isSet(QuestionBlock block) { return BlockCounts.isSet(block); }
     private static int fixedCount(QuestionBlock block) {
-        if (Boolean.TRUE.equals(block.omitted())) return 0;
-        if (block.questionCount() != null) return block.questionCount();
-        return block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+        Integer count = BlockCounts.declared(block);
+        return count == null ? 0 : count;
     }
     private static List<ObjectNode> dedupe(List<ObjectNode> found) {
         Map<String, ObjectNode> result = new LinkedHashMap<>();

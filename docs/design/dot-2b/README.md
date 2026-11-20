@@ -33,6 +33,7 @@ Màn bước 1, khung bước 2, kiểm tra và sinh thử vẽ cả trang (1440
 4. **Phiên bản cũ SP2E Vật lí** ("Đề minh họa cũ", chia Phần I/II/III) là giả định của agent để minh họa ô chọn phiên bản; chip "Chờ chuyên gia xác nhận".
 5. **Làm thử như học viên** (2B H17) thuộc đợt 3 (FA-4), vẽ ở trang 20 (`docs/design/dot-3/`). Tab Xem trước của 2B không có nút này.
 6. **Tab "Thông tin bán"** (đợt 3, FA-1) không có trong dải tab của bản vẽ 2B. Khi làm cả hai đợt, dải tab theo `docs/design/dot-3/BaiThiThongTinBan.dc.html`.
+7. **Dải tab và nút Công bố của KiemTra2B (AD-106, đã chốt: giữ như ứng dụng).** Bản vẽ tách hai tab Kiểm tra và Xem trước, có nút "Công bố" ở đầu trang Kiểm tra. Ứng dụng giữ một tab "Kiểm tra và xem trước" có hai tab con; nút Công bố ở tab Phiên bản như hiện có. Đặc tả thắng bản vẽ.
 
 ## Do agent tự đặt (đổi được khi review)
 

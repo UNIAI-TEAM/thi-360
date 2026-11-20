@@ -292,6 +292,9 @@ describe("phạm vi riêng của chùm: hết MAPID thì kế thừa môn, khôn
     const latest = renderEditor(makeBlock({ knowledgeScope: { nodeIds: [nodeId], everyChildInScope: true } }), { ...review, subjectCode: "MATH" });
     await removeLastChip(user);
     expect(latest.block.knowledgeScope).toBeNull();
+    // Bỏ chip cuối: dữ liệu về phạm vi của môn nên ô chọn cũng về "Toàn môn" (FU-FE3AA-V1 V1-04), chọn lại "Theo chủ đề" để thêm MAPID.
+    expect(within(scopeBox()).getByRole("radio", { name: "Toàn môn" })).toBeChecked();
+    await user.click(within(scopeBox()).getByRole("radio", { name: "Theo chủ đề" }));
     await user.click(within(scopeBox()).getByRole("button", { name: "Chọn kiến thức" }));
     const dialog = await screen.findByRole("dialog");
     await user.click(await within(dialog).findByRole("checkbox", { name: /Mệnh đề và tập hợp/ }));

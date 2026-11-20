@@ -282,6 +282,31 @@ class ExamCheckDistributionTests {
         assertThat(branchChanged).hasSize(1);
     }
 
+    @Test
+    void optionDirectBlocksExcludeOmittedAndUseSetPrecedence() throws Exception {
+        var document = document("""
+                {"parts":[{"id":"p","name":"Part","questionCount":6,"participation":{"mode":"CHOICE","choose":1},
+                  "options":[{"id":"o1","kind":"SUBJECT","code":"EN","blocks":[
+                    {"id":"omit","questionType":"ESSAY","questionCount":3,"omitted":true,
+                     "matrix":{"mode":"SEPARATE","unit":"COUNT","byGrade":[{"code":"G10","value":3}],"gradeEnforcement":"REFERENCE"}},
+                    {"id":"set","questionType":"QUESTION_SET","questionCount":10,"setCount":2,"setSize":3}]}]}]}
+                """);
+        ExamCheckDistribution distribution = new ExamCheckDistribution(mapper, document);
+        assertThat(distribution.sectionQuestionCount("o1:blocks")).isEqualTo(6);
+
+        var group = GroupQuota.set("set", 2, 3, null);
+        var section = new SectionOnPath("EN", "o1:blocks", 6, null, List.of(group));
+        var result = new PathResult(SolvePath.of(0, List.of(section)), SolveStatus.VALID,
+                null, null, null, List.of(), List.of(), null);
+        var report = ExamCheckDistribution.analyze(document,
+                new ExamCheckDistribution.PathEvidence(result, "o1", List.of(),
+                        List.of(new ExamCheckDistribution.PickedUnit("EN", "o1:blocks", 6, true, "set",
+                                new QuestionSourcePort.Unit(UUID.randomUUID(), null, QuestionType.SINGLE_CHOICE,
+                                        "G12", "D", List.of(), List.of(), BigDecimal.ONE)))),
+                mapper);
+        assertThat(codes(report)).isEmpty();
+    }
+
     private static List<String> texts(ObjectNode issue, String field) {
         return StreamSupport.stream(issue.path(field).spliterator(), false).map(n -> n.asText()).toList();
     }

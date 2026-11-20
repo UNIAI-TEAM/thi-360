@@ -1,43 +1,11 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { sanitizeQuestionHtml } from "@thi360/ui/rich-text";
+import { sanitizeQuestionHtml } from "../sanitize";
 
-interface Sample {
-  name: string;
-  valid: boolean;
-  allowImages: boolean;
-  html: string;
-  violations?: { tag: string; attribute?: string }[];
-}
-
-const fixture = JSON.parse(
-  readFileSync(join(process.cwd(), "../../docs/specs/fixtures/rich-text-samples.json"), "utf8"),
-) as { samples: Sample[] };
-
-const invalidSamples = fixture.samples.filter((sample) => !sample.valid);
-
-function violationKey(violation: { tag: string; attribute?: string | null }) {
-  return violation.attribute === undefined || violation.attribute === null
-    ? violation.tag
-    : `${violation.tag}.${violation.attribute}`;
-}
-
-/** So vi phạm như tập hợp theo đúng quy ước của bảng mẫu: `tag` hoặc `tag.thuộc-tính`, không kể thứ tự. */
-function expectViolations(sample: Sample) {
-  const { violations } = sanitizeQuestionHtml(sample.html, { allowImages: sample.allowImages });
-  const actual = new Set(violations.map(violationKey));
-  const expected = new Set((sample.violations ?? []).map(violationKey));
-  expect(actual, `${sample.name}: ${JSON.stringify(violations)}`).toEqual(expected);
-}
-
-describe("sanitizeQuestionHtml với các mẫu vi phạm", () => {
-  for (const sample of invalidSamples) {
-    it(`reports the listed violations for ${sample.name}`, () => {
-      expectViolations(sample);
-    });
-  }
-
+/**
+ * Cách bộ lọc loại phần vi phạm khỏi html (giữ chữ, bỏ khối hoặc thuộc tính sai). Các mẫu vi phạm của bảng
+ * `rich-text-samples.json` đã nằm ở `fixtures.test.tsx`; ở đây là các ca về nội dung html còn lại sau khi lọc.
+ */
+describe("sanitizeQuestionHtml: phần bị loại", () => {
   describe("removes the offending parts", () => {
     it("keeps text but drops the violating figure/blockquote block", () => {
       const { html } = sanitizeQuestionHtml(

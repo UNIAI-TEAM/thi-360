@@ -3,14 +3,18 @@
 import { Button, Card, cn, focusRingInset, Skeleton } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
+import { useId } from "react";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import type { StructureIssue } from "../matrix";
+import { structureIssueBlockField } from "./block-form-fields";
 import type { ExamCheckResult } from "../review-types";
 import type { ExamPart, ExamStructureSummary, ExamStructureSummaryRow } from "../types";
 import { AllocationGap } from "./allocation-gap";
 import type { StructureSelection } from "./exam-structure-draft";
 import { issueTarget } from "./exam-structure-issues";
 import { ExamStructureCheckResult, type CheckResultNames } from "./exam-structure-check-result";
+import { requestBlockFieldFocus } from "./block-field-focus";
+import { ExamName, labelBeforeName } from "./exam-review-shared";
 
 export type SummaryLoad = "loading" | "ready" | "unavailable";
 
@@ -68,6 +72,14 @@ export function ExamStructureSummaryRegion({
   const t = useTranslations("exams.structure.summaryPanel");
   const structureT = useTranslations("exams.structure");
   const format = useFormatter();
+  const idBase = useId();
+
+  /** Mở chỗ sửa của lỗi; lỗi của một ô trong nhóm thì tiêu điểm vào đúng ô (màn nhóm MD nhận yêu cầu khi vẽ xong). */
+  const openIssue = (issue: StructureIssue) => {
+    const field = issue.code === "BLOCK" ? structureIssueBlockField(issue.issue) : null;
+    if (issue.code === "BLOCK" && field) requestBlockFieldFocus(issue.blockId, field);
+    onSelect(issueTarget(issue));
+  };
 
   const partRows = summary?.rows.filter((row) => row.partId && !row.sectionId && !row.blockId) ?? [];
   const headline =
@@ -132,7 +144,12 @@ export function ExamStructureSummaryRegion({
                 const level = row.blockId ? 2 : row.sectionId ? 1 : 0;
                 const difference = roundForDisplay((row.allocated ?? 0) - (row.target ?? 0));
                 // Dòng môn: máy chủ trả mã môn; tên môn lấy từ danh mục theo ngôn ngữ đang chọn (V-06). Dòng phần và nhóm giữ tên của mẫu.
-                const label = row.sectionId && !row.blockId && row.name ? names.subject(row.name) : (row.name ?? "");
+                const isSubject = Boolean(row.sectionId && !row.blockId && row.name);
+                const label = isSubject ? names.subject(row.name ?? "") : (row.name ?? "");
+                // Tên phần và nhóm do mẫu đặt là nội dung đề (`ExamName`); tên môn theo danh mục thì không.
+                const labelNode = isSubject ? label : <ExamName>{label}</ExamName>;
+                const buttonId = `${idBase}-go-${index}`;
+                const nameId = `${buttonId}-name`;
                 return (
                   <tr key={`${row.partId}-${row.sectionId}-${row.blockId}-${index}`}>
                     <th
@@ -144,8 +161,10 @@ export function ExamStructureSummaryRegion({
                     >
                       {target ? (
                         <button
+                          id={buttonId}
                           type="button"
-                          aria-label={t("rowGo", { name: label })}
+                          aria-label={labelBeforeName(t, "rowGo", "name")}
+                          aria-labelledby={`${buttonId} ${nameId}`}
                           onClick={() => onSelect(target)}
                           className={cn(
                             "min-h-9 w-full rounded-md px-2 text-left hover:bg-subtle",
@@ -154,10 +173,10 @@ export function ExamStructureSummaryRegion({
                             focusRingInset,
                           )}
                         >
-                          {label}
+                          <span id={nameId}>{labelNode}</span>
                         </button>
                       ) : (
-                        <span className="px-2">{label}</span>
+                        <span className="px-2">{labelNode}</span>
                       )}
                     </th>
                     <td className="border-b border-border px-2 py-1 text-right">
@@ -192,7 +211,7 @@ export function ExamStructureSummaryRegion({
             {issues.map((issue, index) => (
               <li key={index} className="flex flex-wrap items-start justify-between gap-2 text-body text-text">
                 <span className="min-w-0 flex-1">{issueText(issue)}</span>
-                <Button type="button" variant="link" size="sm" onClick={() => onSelect(issueTarget(issue))}>
+                <Button type="button" variant="link" size="sm" onClick={() => openIssue(issue)}>
                   {structureT("issueGo")}
                 </Button>
               </li>

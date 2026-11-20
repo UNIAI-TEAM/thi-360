@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   EmptyState,
-  FormField,
   LiveStatus,
   Select,
   Skeleton,
@@ -16,9 +15,10 @@ import {
 import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
+import { usePreviewMinutesLeft } from "../preview-retention";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
@@ -28,7 +28,8 @@ import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
-import { richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
+import { PreviewScopeCard } from "./exam-preview-scope-card";
+import { ExamName, richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
   exam: ExamDetail;
@@ -76,6 +77,7 @@ export function ExamPreviewPanel({
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
+  const scopeName = useId();
   const [liveMessage, setLiveMessage] = useState("");
   const [run, setRun] = useState(0);
   const [tab, setTab] = useState<"paper" | "allocation">("paper");
@@ -218,6 +220,7 @@ export function ExamPreviewPanel({
   };
 
   const data = generate.data;
+  const minutesLeft = usePreviewMinutesLeft(data?.expiresAt ?? null, PREVIEW_RETENTION_MINUTES);
   const shown = data?.status === "GENERATED" ? data : null;
   const expired = generate.isError && errorCodeOf(generate.error) === "PREVIEW_EXPIRED";
   const runStatus = data
@@ -311,7 +314,11 @@ export function ExamPreviewPanel({
               {t("resultMeta", {
                 questions: data.paper.totalQuestions,
                 seed: data.seed,
-                minutes: PREVIEW_RETENTION_MINUTES,
+                retention: t("retention", {
+                  minutes: PREVIEW_RETENTION_MINUTES,
+                  state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                  left: minutesLeft ?? 0,
+                }),
               })}
             </p>
           </div>
@@ -337,12 +344,6 @@ export function ExamPreviewPanel({
     );
   }
 
-  const kindOptions = [
-    ...(sectionOptions.length > 0 ? [{ value: "SECTION", label: t("scope.kind.SECTION") }] : []),
-    ...(choiceRequired ? [{ value: "PATH", label: t("scope.kind.PATH") }] : []),
-    { value: "EXAM", label: t("scope.kind.EXAM"), disabled: choiceRequired },
-  ];
-
   return (
     <section aria-labelledby="preview-title" className="flex flex-col gap-4">
       <h2 id="preview-title" className="sr-only">
@@ -365,52 +366,54 @@ export function ExamPreviewPanel({
       )}
 
       <Card padding="md" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <FormField label={t("scope.label")} className="min-w-0 flex-[1_1_14rem]">
-            {(controlProps) => (
-              <Select {...controlProps} value={kind} onValueChange={(value) => setPickedKind(value as ScopeKind)} options={kindOptions} />
-            )}
-          </FormField>
-          {kind === "PATH" && (
-            <FormField label={t("pathLabel")} className="min-w-0 flex-[1_1_18rem]">
-              {(controlProps) => (
+        <fieldset className="m-0 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(16.25rem,100%),1fr))] gap-2.5 border-0 p-0">
+          <legend className="sr-only">{t("scope.label")}</legend>
+          {sectionOptions.length > 0 && (
+            <PreviewScopeCard name={scopeName} value="SECTION" label={t("scope.kind.SECTION")} checked={kind === "SECTION"} onSelect={() => setPickedKind("SECTION")}>
+              {section && (
                 <Select
-                  {...controlProps}
-                  value={pathId ?? undefined}
-                  onValueChange={setSelected}
-                  disabled={options.length === 0}
-                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
-                />
-              )}
-            </FormField>
-          )}
-          {kind === "SECTION" && section && (
-            <FormField label={t("scope.section")} className="min-w-0 flex-[1_1_18rem]">
-              {(controlProps) => (
-                <Select
-                  {...controlProps}
+                  aria-label={t("scope.section")}
                   value={section.sectionId}
-                  onValueChange={setPickedSection}
+                  onValueChange={(value) => {
+                    setPickedKind("SECTION");
+                    setPickedSection(value);
+                  }}
                   options={sectionOptions.map((item) => ({
                     value: item.sectionId,
-                    label: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
+                    label: richNodes(t, "scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: <ExamName>{item.partName}</ExamName> }),
+                    textValue: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
                   }))}
                 />
               )}
-            </FormField>
-          )}
-          {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
-            <FormField label={t("scope.count")} className="min-w-0 flex-[0_1_12rem]">
-              {(controlProps) => (
+              {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
                 <Select
-                  {...controlProps}
+                  aria-label={t("scope.count")}
                   value={String(sectionCount)}
                   onValueChange={(value) => setPickedCount(Number(value))}
-                  options={section.counts!.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
+                  options={section.counts.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
                 />
               )}
-            </FormField>
+            </PreviewScopeCard>
           )}
+          {choiceRequired && (
+            <PreviewScopeCard name={scopeName} value="PATH" label={t("scope.kind.PATH")} checked={kind === "PATH"} onSelect={() => setPickedKind("PATH")}>
+              <Select
+                aria-label={t("pathLabel")}
+                value={pathId ?? undefined}
+                onValueChange={(value) => {
+                  setPickedKind("PATH");
+                  setSelected(value);
+                }}
+                disabled={options.length === 0}
+                options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
+              />
+            </PreviewScopeCard>
+          )}
+          <PreviewScopeCard name={scopeName} value="EXAM" label={t("scope.kind.EXAM")} checked={kind === "EXAM"} disabled={choiceRequired} onSelect={() => setPickedKind("EXAM")}>
+            {choiceRequired && <span className="text-caption">{t("scope.examBlocked")}</span>}
+          </PreviewScopeCard>
+        </fieldset>
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => start()} loading={generate.isPending} disabled={!canGenerate}>
             {data ? <RefreshCw /> : <Eye />}
             {data ? t("regenerate") : t("generate")}
@@ -421,11 +424,10 @@ export function ExamPreviewPanel({
               onClick={() => start({ basePreviewId: shown.previewId!, regeneratePartIds: keepIds, seed: shown.seed })}
               loading={generate.isPending}
             >
-              {t("keep.change", { parts: regeneratedParts.map((part) => part.name).join(", ") })}
+              {richNodes(t, "keep.change", { parts: <ExamName>{regeneratedParts.map((part) => part.name).join(", ")}</ExamName> })}
             </Button>
           )}
         </div>
-        {choiceRequired && <p className="text-caption text-text-muted">{t("scope.examBlocked")}</p>}
         {subjectOption && (
           <ExamPreviewSubjects
             option={subjectOption}
@@ -436,13 +438,13 @@ export function ExamPreviewPanel({
         {canKeep && shown && selectedPath && keptRange && regeneratedRange && (
           <p className="flex items-start gap-2 text-body text-text-secondary">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {t("keep.note", {
-              from: pathLabel(shown.path),
-              to: pathLabel(selectedPath),
-              kept: keptParts.map((part) => part.name).join(", "),
+            {richNodes(t, "keep.note", {
+              from: pathNode(shown.path),
+              to: pathNode(selectedPath),
+              kept: <ExamName>{keptParts.map((part) => part.name).join(", ")}</ExamName>,
               keptFirst: keptRange.first,
               keptLast: keptRange.last,
-              regenerated: regeneratedParts.map((part) => part.name).join(", "),
+              regenerated: <ExamName>{regeneratedParts.map((part) => part.name).join(", ")}</ExamName>,
               regeneratedFirst: regeneratedRange.first,
               regeneratedLast: regeneratedRange.last,
             })}

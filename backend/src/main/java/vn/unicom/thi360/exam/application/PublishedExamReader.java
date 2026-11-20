@@ -234,13 +234,16 @@ public class PublishedExamReader implements PublishedExamPort {
         addBlocks(target, section.path("blocks"), integer(section, "questionCount"), optionId, text(section, "id"));
     }
 
-    /** The count a block states itself: {@code questionCount}, else {@code setCount * setSize}; null when it states none. */
+    /**
+     * The count a block states itself, by the rule of {@code BlockCounts.configured}: {@code setCount * setSize} for a
+     * set that has a set shape, else {@code questionCount}; null when it states none.
+     */
     private static Integer ownCount(JsonNode block) {
-        if (block.path("questionCount").isIntegralNumber()) return block.path("questionCount").intValue();
-        if (block.path("setCount").isIntegralNumber() && block.path("setSize").isIntegralNumber()) {
+        if (isSet(block) && (block.path("setCount").isIntegralNumber() || block.path("setSize").isIntegralNumber())) {
+            if (!block.path("setCount").isIntegralNumber() || !block.path("setSize").isIntegralNumber()) return null;
             return block.path("setCount").intValue() * block.path("setSize").intValue();
         }
-        return null;
+        return block.path("questionCount").isIntegralNumber() ? block.path("questionCount").intValue() : null;
     }
 
     private static boolean isSet(JsonNode block) {

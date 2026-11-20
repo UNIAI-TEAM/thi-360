@@ -95,6 +95,11 @@ export type TableProps<TData> = {
   cards?: TableCards<TData>;
   /** Tên bảng cho trình đọc màn hình. Khi bảng tràn ngang, vùng cuộn bọc ngoài cũng mang tên này. */
   "aria-label": string;
+  /**
+   * Id của tiêu đề đặt tên cho bảng, thay cho `aria-label` khi có (vùng cuộn và danh sách thẻ cũng theo). Dùng khi một
+   * trang có nhiều bảng cùng loại: tên chung "Kết quả từng môn" lặp lại, còn tiêu đề của từng mục phân biệt được chúng.
+   */
+  "aria-labelledby"?: string;
   className?: string;
 };
 
@@ -232,6 +237,7 @@ export function Table<TData>({
   cards,
   className,
   "aria-label": ariaLabel,
+  "aria-labelledby": labelledBy,
 }: TableProps<TData>) {
   const [modeRef, cardMode] = useCardMode(cards !== undefined, cards?.breakpoint ?? 640);
   const selectAllId = useId();
@@ -301,7 +307,7 @@ export function Table<TData>({
   const tableView = (
     <div
       ref={scrollerRef}
-      {...(overflows ? { role: "region", "aria-label": ariaLabel, tabIndex: 0 } : null)}
+      {...(overflows ? { role: "region", ...(labelledBy ? { "aria-labelledby": labelledBy } : { "aria-label": ariaLabel }), tabIndex: 0 } : null)}
       data-overflows={overflows || undefined}
       className={cn(
         "overflow-x-auto",
@@ -312,7 +318,8 @@ export function Table<TData>({
       )}
     >
       <table
-        aria-label={ariaLabel}
+        aria-label={labelledBy ? undefined : ariaLabel}
+        aria-labelledby={labelledBy}
         aria-busy={loading || refreshing || undefined}
         className="w-full border-separate border-spacing-0"
       >
@@ -490,7 +497,8 @@ export function Table<TData>({
         </div>
       )}
       <CardList
-        aria-label={ariaLabel}
+        aria-label={labelledBy ? undefined : ariaLabel}
+        aria-labelledby={labelledBy}
         aria-busy={loading || refreshing || undefined}
         className={cn(
           "transition-opacity duration-150 motion-reduce:transition-none",
