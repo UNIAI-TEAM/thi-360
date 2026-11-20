@@ -220,7 +220,7 @@ export function ExamPreviewPanel({
   };
 
   const data = generate.data;
-  const minutesLeft = usePreviewMinutesLeft(data?.expiresAt ?? null);
+  const minutesLeft = usePreviewMinutesLeft(data?.expiresAt ?? null, PREVIEW_RETENTION_MINUTES);
   const shown = data?.status === "GENERATED" ? data : null;
   const expired = generate.isError && errorCodeOf(generate.error) === "PREVIEW_EXPIRED";
   const runStatus = data

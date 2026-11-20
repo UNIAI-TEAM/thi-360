@@ -41,7 +41,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await browser.close();
+  await browser?.close();
 });
 
 async function openCell(cell: MatrixCell): Promise<{ context: BrowserContext; page: Page }> {
@@ -73,8 +73,9 @@ test.describe("giao diện soạn đề 2B", () => {
         const count = await items.count();
         expect(count, "danh sách cấu trúc có mục").toBeGreaterThan(1);
         for (let index = 0; index < count; index += 1) {
-          await items.nth(index).click();
-          await page.waitForLoadState("networkidle");
+          const item = items.nth(index);
+          await item.click();
+          await expect(item).toHaveAttribute("aria-current", "true");
           await expectNoOverflow(page, `${cellLabel(cell)} mục ${index + 1}/${count}`);
         }
         // Mỗi bảng của màn có vùng cuộn đặt tên (nhãn bảng), tức đã bọc trong khung cuộn thay vì tràn ra trang.
@@ -87,7 +88,6 @@ test.describe("giao diện soạn đề 2B", () => {
     });
 
     test(`thẻ câu hỏi của đề xem trước không tràn ngang ở ${cellLabel(cell)}`, async () => {
-      test.skip(cell.mode === "dark" && cell.lang === "en", "một ô cho mỗi khổ đủ để đo thẻ câu hỏi; ô tối-en dùng chung bố cục");
       const { context, page } = await openCell(cell);
       try {
         await page.goto(`${ADMIN_URL}/exams/${examId}/review?tab=preview`);
@@ -137,7 +137,11 @@ test.describe("giao diện soạn đề 2B", () => {
     await page.getByRole("option", { name: /^16 câu/ }).click();
     await page.getByRole("button", { name: "Sinh đề xem trước" }).click();
 
-    await expect(page.getByText(/giữ trong 30 phút \(còn \d+ phút\)/)).toBeVisible({ timeout: 120_000 });
+    const retention = page.getByText(/giữ trong 30 phút \(còn \d+ phút\)/);
+    await expect(retention).toBeVisible({ timeout: 120_000 });
+    const left = Number((await retention.textContent())?.match(/còn (\d+) phút/)?.[1]);
+    expect(left).toBeGreaterThanOrEqual(1);
+    expect(left).toBeLessThanOrEqual(30);
     await expect(page.getByText(/\(\d+, đã bỏ 1 câu\)/).first()).toBeVisible();
   });
 });
