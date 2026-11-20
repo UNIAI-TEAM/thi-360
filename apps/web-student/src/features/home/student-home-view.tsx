@@ -4,9 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, EmptyState, SectionTitle, Skeleton } from "@thi360/ui";
 import { FileText, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { StudentHeader } from "@/components/student-header";
+import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
-import { StudentUserMenu, StudentUserMenuPlaceholder } from "./student-user-menu";
 
 export function StudentHomeView({
   loadCurrentSession = loadSession,
@@ -22,17 +21,15 @@ export function StudentHomeView({
     staleTime: 60_000,
   });
 
+  const account: HeaderAccount = sessionQuery.data
+    ? { kind: "user", session: sessionQuery.data }
+    : sessionQuery.isLoading
+      ? { kind: "loading" }
+      : { kind: "none" };
+
   return (
     <div className="min-h-screen bg-page text-text">
-      <StudentHeader
-        actions={
-          sessionQuery.data ? (
-            <StudentUserMenu session={sessionQuery.data} />
-          ) : sessionQuery.isLoading ? (
-            <StudentUserMenuPlaceholder />
-          ) : undefined
-        }
-      />
+      <StudentHeader account={account} />
 
       <main className="mx-auto flex max-w-[1170px] flex-col gap-6 px-6 py-10">
         {sessionQuery.isLoading && (

@@ -47,6 +47,8 @@ export interface BlockConditionsProps {
   kinds?: readonly ConditionKind[];
   /** Mục thêm vào cuối menu; mặc định không có. */
   extras?: readonly ExtraCondition[];
+  /** MAPID của nhóm do bảng Quy tắc MAPID của môn quyết định (môn HSA dùng ma trận): menu không có mục MAPID. */
+  mapidManaged?: boolean;
 }
 
 /** Điều kiện đang hiện: có giá trị, hoặc vừa thêm và chưa điền. MAPID nằm ở trường Phạm vi kiến thức, không ở đây. */
@@ -60,7 +62,7 @@ function initialShown(block: QuestionBlock): Set<ConditionKind> {
  * hình dạng câu, định dạng đáp án, điểm mỗi câu. Mỗi điều kiện thêm và bỏ riêng; mọi câu của nhóm phải thỏa các điều kiện.
  * Điều kiện không áp cho loại câu của nhóm (hình dạng câu, định dạng đáp án) bị khóa trong menu.
  */
-export function BlockConditions({ block, reference, onChange, onAddMapid, kinds = CONDITION_KINDS, extras = [] }: BlockConditionsProps) {
+export function BlockConditions({ block, reference, onChange, onAddMapid, kinds = CONDITION_KINDS, extras = [], mapidManaged = false }: BlockConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.conditions");
   const [shown, setShown] = useState(() => initialShown(block));
   const [shownExtras, setShownExtras] = useState<ReadonlySet<string>>(() => new Set(extras.filter((extra) => extra.state === "added").map((extra) => extra.key)));
@@ -109,7 +111,7 @@ export function BlockConditions({ block, reference, onChange, onAddMapid, kinds 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent aria-label={t("menuLabel")} className="w-80 max-w-[calc(100vw-2rem)]">
-            {kinds.map((kind) => {
+            {kinds.filter((kind) => !(mapidManaged && kind === "MAPID")).map((kind) => {
               const state = stateOf(kind);
               return (
                 <DropdownMenuItem

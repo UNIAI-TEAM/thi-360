@@ -33,7 +33,7 @@ public class ExamCatalogUsageProvider implements CatalogUsageProvider {
             case "EXAM" -> "e.kind_item_id = ?";
             case "SUBJECT" -> "e.subject_item_id = ? OR r.subject_item_id = ?";
             case "SUBJECT_COMBINATION" -> "r.combination_item_id = ?";
-            case "KNOWLEDGE" -> "? = ANY(r.knowledge_item_ids)";
+            case "KNOWLEDGE" -> "? = ANY(r.knowledge_item_ids) OR " + ruleNode("exam_structure") + " OR " + ruleNode("exam_version");
             case "QUESTION_TAG" -> "? = ANY(r.tag_item_ids)";
             case "COMPETENCY" -> "? = ANY(r.competency_item_ids)";
             default -> null;
@@ -41,7 +41,11 @@ public class ExamCatalogUsageProvider implements CatalogUsageProvider {
         if (predicate == null) {
             return List.of();
         }
-        Object[] args = "SUBJECT".equals(groupCode) ? new Object[] {itemId, itemId} : new Object[] {itemId};
+        Object[] args = switch (groupCode) {
+            case "SUBJECT" -> new Object[] {itemId, itemId};
+            case "KNOWLEDGE" -> new Object[] {itemId, itemId, itemId};
+            default -> new Object[] {itemId};
+        };
         List<Usage> usages = jdbc.query("SELECT DISTINCT e.id, e.code, e.status FROM exam.exam e "
                         + "LEFT JOIN exam.exam_block_ref r ON r.exam_id = e.id WHERE (" + predicate + ")",
                 (rs, row) -> new Usage(rs.getString("code"), rs.getString("status")), args);
@@ -51,6 +55,17 @@ public class ExamCatalogUsageProvider implements CatalogUsageProvider {
         boolean blocking = usages.stream().anyMatch(u -> !"DISCONTINUED".equals(u.status()));
         return List.of(new CatalogUsage(source(), "EXAM", usages.size(), blocking,
                 usages.stream().map(Usage::code).limit(5).toList()));
+    }
+
+    /**
+     * A MAPID rule names its nodes only inside the section JSON (UNI-2758); the block reference table holds the
+     * legacy scope. Working and published structures both keep the rules, so the node cannot be retired under them.
+     */
+    private static String ruleNode(String table) {
+        String alias = "exam_structure".equals(table) ? "s" : "v";
+        return "EXISTS (SELECT 1 FROM exam." + table + " " + alias + " WHERE " + alias + ".exam_id = e.id AND "
+                + "jsonb_path_exists(" + alias + ".parts, '$.**.mapidRules[*].nodeIds[*] ? (@ == $id)', "
+                + "jsonb_build_object('id', cast(? as text))))";
     }
 
     private record Usage(String code, String status) {

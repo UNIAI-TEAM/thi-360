@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -36,7 +37,27 @@ public class AvailableQuestionCountController {
 
     @Schema(name = "AvailableQuestionsKnowledgeScope", description = "Phạm vi kiến thức có hiệu lực của nhóm")
     public record KnowledgeScope(List<@NotNull UUID> nodeIds, List<String> competencyCodes,
-                                 Boolean everyChildInScope) {}
+                                 Boolean everyChildInScope,
+                                 @Schema(description = "MAPID nodes (and their descendants) the group must not draw from: "
+                                         + "ONLY_IN_GROUP of another group (UNI-2758)")
+                                 List<@NotNull UUID> excludedNodeIds,
+                                 @Schema(description = "SOURCE rules of a MAPID matrix: a set counts only when all its "
+                                         + "children carry the same node of a group (a descendant counts); applies to "
+                                         + "every entry of nodeGroups; stricter than everyChildInScope (UNI-2758)")
+                                 Boolean everyChildSameNode,
+                                 @Schema(description = "SOURCE rules that all apply: an AND of OR-groups, one group per "
+                                         + "applicable rule (the subject's and the group's); inside a group any node "
+                                         + "(or a descendant) matches. nodeIds keeps the legacy single scope (UNI-2758)")
+                                 List<@NotNull @Size(min = 1) List<@NotNull UUID>> nodeGroups) {
+        public KnowledgeScope(List<UUID> nodeIds, List<String> competencyCodes, Boolean everyChildInScope) {
+            this(nodeIds, competencyCodes, everyChildInScope, null, null, null);
+        }
+
+        public KnowledgeScope(List<UUID> nodeIds, List<String> competencyCodes, Boolean everyChildInScope,
+                List<UUID> excludedNodeIds, Boolean everyChildSameNode) {
+            this(nodeIds, competencyCodes, everyChildInScope, excludedNodeIds, everyChildSameNode, null);
+        }
+    }
 
     @Schema(name = "AvailableQuestionsItemShape")
     public record ItemShape(Integer statements, Integer leftItems, Integer rightItems, Integer options) {}
