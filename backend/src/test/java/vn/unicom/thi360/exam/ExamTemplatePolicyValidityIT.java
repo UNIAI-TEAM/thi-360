@@ -58,7 +58,8 @@ class ExamTemplatePolicyValidityIT extends AbstractIntegrationTest {
         assertStaleAndPublishRefused(id);
 
         JsonNode recheck = check(id);
-        assertThat(policy(id)).isEqualTo("{\"fixedCounts\": true}");
+        assertThat(mapper.readTree(policy(id)).fieldNames()).toIterable().containsExactlyInAnyOrder("fixedCounts", "lockHash");
+        assertThat(mapper.readTree(policy(id)).path("fixedCounts").asBoolean()).isTrue();
         assertThat(validity.assess(List.of(id)).get(id).status()).isEqualTo(recheck.path("status").asText());
     }
 
