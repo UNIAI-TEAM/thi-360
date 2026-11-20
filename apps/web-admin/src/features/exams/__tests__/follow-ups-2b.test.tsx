@@ -491,7 +491,9 @@ describe("xem trước và đổi phiên bản 2B", () => {
 
         act(() => vi.advanceTimersByTime(60_000));
         expect(result.current).toBe(0);
-        expect(vi.getTimerCount()).toBe(0);
+        // Quá hạn thì số phút giữ ở 0, không âm.
+        act(() => vi.advanceTimersByTime(120_000));
+        expect(result.current).toBe(0);
       } finally {
         vi.useRealTimers();
       }

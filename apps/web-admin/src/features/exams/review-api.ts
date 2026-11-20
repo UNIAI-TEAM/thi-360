@@ -1,5 +1,5 @@
 import type { ApiError, components, FieldError } from "@thi360/api-client";
-import type { MultipleChoiceRule, PersonRef, TrueFalseMethod } from "@/features/content/types";
+import type { PersonRef } from "@/features/content/types";
 import { QUESTION_TYPES, type QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
 import { createBrowserApiClient } from "@/lib/api/client";
@@ -54,17 +54,7 @@ import type {
   SubjectCheck,
 } from "./review-types";
 import { CHECK_GROUPS, CHECK_ISSUE_CODES } from "./review-types";
-import type {
-  AnswerQuotas,
-  BlockMatrix,
-  ChoiceGroup,
-  ExamDetail,
-  ExamPart,
-  ExamPartOption,
-  ExamSection,
-  ExamVersion,
-  QuestionBlock,
-} from "./types";
+import type { ExamDetail, ExamVersion } from "./types";
 
 /**
  * API của Kiểm tra cấu hình, Kiểm tra kỹ, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11): gọi API thật qua
