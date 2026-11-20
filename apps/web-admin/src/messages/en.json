@@ -6562,6 +6562,22 @@
           "setRange": "Sets must be between {min, number} and {max, number}",
           "shortAnswerMin": "At least {min, number} fill-in answers needed"
         },
+        "hsa": {
+          "allocationCount": "MAPID allocated: {allocated, number} / {total, number} questions · remaining free: {free, number} questions",
+          "allocationOver": "Exceeds the subject total by {over, number} questions",
+          "allocationUnknown": "MAPID allocated: {allocated, number} questions",
+          "gradeOptionalHint": "Optional for this subject.",
+          "material": {
+            "add": "Add source material condition",
+            "hint": "Material tag conditions apply only to the question set group.",
+            "remove": "Remove source material condition",
+            "title": "Source material condition"
+          },
+          "notApplied": "Not applied",
+          "orderNote": "Topic row order is for declaration only and does not fix question positions in the exam.",
+          "roleScopeLabel": "Source scope",
+          "strandTitle": "{subject} knowledge strands"
+        },
         "scope": {
           "addQuota": "Add topic quota",
           "addQuotaHint": "Opens the table of minimum questions per topic.",

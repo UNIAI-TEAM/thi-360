@@ -170,9 +170,9 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
 
 /**
  * Cờ `enabled` theo lát cắt (plan B7): cặp chỉ bật khi lát có đủ hành vi FTM yêu cầu cho nó. CR-2 bật MT của QDA, BCA, V-ACT (Toán,
- * Tiếng Việt); CR-3 bật toàn bộ DS; MT của HSA chờ CR-2H nên vẫn tắt và dùng MD.
+ * Tiếng Việt); CR-3 bật toàn bộ DS; CR-2H bật MT của HSA (`TOAN`, `LY`, `HOA`, `SINH`, `SU`, `DIA`).
  */
-const MATRIX_ENABLED_KINDS: readonly SubjectFormExamKind[] = ["QDA", "BCA", "VACT"];
+const MATRIX_ENABLED_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA", "BCA", "VACT"];
 
 /** Giới hạn R-12 của Khoa học HSA, QDA: 1–2 chùm, mỗi chùm 3 câu con; Lý, Hóa, Sinh có ít nhất 1 câu điền. */
 const SCIENCE_SET_COUNT = { min: 1, max: 2, size: 3 } as const;

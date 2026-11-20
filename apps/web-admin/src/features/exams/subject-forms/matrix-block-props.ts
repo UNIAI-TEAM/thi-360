@@ -46,3 +46,5 @@ export interface MatrixKindSlotOptions {
   placement?: "before-structure" | "after-structure";
   structureVariant?: "default" | "compact";
 }
+
+export type MatrixKindSlotOptionsResolver = MatrixKindSlotOptions | ((section: ExamSection) => MatrixKindSlotOptions);

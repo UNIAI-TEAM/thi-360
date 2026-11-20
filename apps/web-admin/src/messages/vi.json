@@ -6562,6 +6562,22 @@
           "setRange": "Số chùm từ {min, number} đến {max, number}",
           "shortAnswerMin": "Cần ít nhất {min, number} câu điền đáp án"
         },
+        "hsa": {
+          "allocationCount": "Đã phân bổ MAPID: {allocated, number} / {total, number} câu · còn tự do: {free, number} câu",
+          "allocationOver": "Đã vượt tổng số câu của môn {over, number} câu",
+          "allocationUnknown": "Đã phân bổ MAPID: {allocated, number} câu",
+          "gradeOptionalHint": "Không bắt buộc với môn này.",
+          "material": {
+            "add": "Thêm điều kiện tư liệu",
+            "hint": "Điều kiện nhãn tư liệu chỉ áp dụng cho nhóm câu chùm.",
+            "remove": "Bỏ điều kiện tư liệu",
+            "title": "Điều kiện tư liệu"
+          },
+          "notApplied": "Chưa áp dụng",
+          "orderNote": "Thứ tự các dòng chủ đề phục vụ việc khai báo, không ấn định vị trí câu trong đề.",
+          "roleScopeLabel": "Phạm vi nguồn",
+          "strandTitle": "Mạch kiến thức {subject}"
+        },
         "scope": {
           "addQuota": "Thêm chỉ tiêu chủ đề",
           "addQuotaHint": "Mở bảng số câu tối thiểu theo từng chủ đề.",
