@@ -928,6 +928,54 @@ class ExamPreviewIT extends AbstractIntegrationTest {
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PATH_NOT_FOUND"));
     }
 
+    /**
+     * R4-3 (AD-85): the ambiguous-id rejection applies only at the draft check boundary. A frozen published version
+     * whose snapshot carries the legacy collision (option "b" holds a real section named "a:blocks", the holder name of
+     * option "a"'s direct blocks) still previews as it was published, while the equivalent draft is refused: the
+     * check marks the path invalid and a draft preview of it fails.
+     */
+    @Test
+    void aFrozenLegacyVersionWithTheBlocksHolderIdStillPreviewsWhileTheEquivalentDraftIsRefused() throws Exception {
+        Subject first = subject();
+        Subject second = subject();
+        question(first, "SINGLE_CHOICE", "legacy first", false);
+        question(second, "SINGLE_CHOICE", "legacy second", false);
+        String parts = """
+                [{"id":"p","order":1,"name":"Choice","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                  "options":[
+                    {"id":"a","kind":"SUBJECT","code":"%s","blocks":[{"id":"ga","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"b","kind":"SUBJECT","code":"%s","sections":[{"id":"a:blocks","subjectCode":"%s",
+                      "questionCount":1,"blocks":[{"id":"gb","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]
+                """.formatted(first.code(), second.code(), second.code());
+        UUID id = exam(parts);
+        // The legacy frozen version, written directly as old code did: the snapshot holds the collision id.
+        jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
+                        + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['b'], array['b'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
+                UUID.randomUUID(), id, "{\"code\":\"OLD\",\"name\":\"Old\",\"scope\":\"FULL\",\"timing\":\"SHARED\",\"durationMinutes\":45,\"practiceScoring\":\"RAW\"}",
+                "{\"parts\":" + parts + "}", UUID.randomUUID(), UUID.randomUUID());
+
+        JsonNode frozen = preview(id, "{\"pathId\":\"b\",\"seed\":1,\"version\":1}");
+        assertThat(frozen.path("version").asInt()).isEqualTo(1);
+        assertThat(frozen.path("paper").path("parts").get(0).path("blocks").get(0).path("blockId").asText()).isEqualTo("gb");
+
+        // The equivalent draft: the preview of the path fails on the ambiguous id, and a fresh check marks the path.
+        mockMvc.perform(post("/api/v1/admin/exams/" + id + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"pathId\":\"b\",\"seed\":1}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"));
+        JsonNode check = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check")
+                        .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        boolean located = false;
+        for (JsonNode issue : check.path("groups").findValues("issues").stream()
+                .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false)).toList()) {
+            located |= "OPTION_EMPTY".equals(issue.path("code").asText()) && "b".equals(issue.path("optionId").asText());
+        }
+        assertThat(located).as("the draft check locates the ambiguity on option b: %s", check.path("groups")).isTrue();
+        for (JsonNode path : check.path("paths")) {
+            if ("b".equals(path.path("pathId").asText())) assertThat(path.path("result").asText()).isEqualTo("INVALID");
+        }
+    }
+
     @Test
     void publishedSectionPreviewRequiresAPathContainingThatSection() throws Exception {
         Subject allowed = subject();

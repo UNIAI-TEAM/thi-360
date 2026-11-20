@@ -70,8 +70,10 @@ public class ExamPreviewService {
         ExamStructureDocument validationDocument = request.version() == null ? document
                 : PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), validationDocument);
+        // The collision rejection belongs to the draft check boundary: a frozen version previews as it was published.
         List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), validationDocument, combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, validationDocument)).unrepresentable()
+                ExamCheckUnitCombinations.topicParents(catalog, validationDocument), ExamCheckRules.TemplateFacts.NONE,
+                null, request.version() == null).unrepresentable()
                 .stream().filter(issue -> {
                     String optionId = issue.path("optionId").asText(null);
                     return optionId == null || selectedIds.contains(optionId);
@@ -109,7 +111,7 @@ public class ExamPreviewService {
             PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
                     null, List.of(), List.of(), null);
             List<ObjectNode> staticIssues = ExamCheckRules.issuesForPath(mapper, snapshot.exam(),
-                    document, selectedPath);
+                    document, selectedPath, request.version() == null);
             if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
                 String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
                         ? "INVALID" : "UNCONFIRMED";

@@ -191,8 +191,10 @@ public final class ExamCheckRules {
 
     /** Static checks applicable to one resolved path, without validating unrelated options. */
     public static List<ObjectNode> issuesForPath(ObjectMapper mapper, Exam exam,
-                                                 ExamStructureDocument document, PathResult result) {
-        ExamCheckRules rules = new ExamCheckRules(mapper, exam, document);
+                                                 ExamStructureDocument document, PathResult result,
+                                                 boolean storedDraft) {
+        ExamCheckRules rules = new ExamCheckRules(mapper, exam, document, Map.of(), Map.of(), TemplateFacts.NONE,
+                null, storedDraft);
         List<ObjectNode> found = new ArrayList<>(rules.common());
         Set<String> selected = new LinkedHashSet<>();
         result.path().chosen().forEach(choice -> selected.add(choice.optionId()));
