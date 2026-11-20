@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CatalogOption, CombinationOption, ExamKindOption } from "@/features/content/types";
-import { questionHtmlText } from "@/components/rich-text/sanitize";
+import { questionHtmlText } from "@thi360/ui/rich-text";
 import { splitEvenly, sum } from "./matrix";
 import { isAllOmittedTemplatePart } from "./create-exam-overview";
 import type {
@@ -40,8 +40,8 @@ export const EXAM_NAME_MAX = 200;
 export const EXAM_CODE_MAX = 50;
 export const EXAM_DESCRIPTION_MAX = 1000;
 export const PART_NAME_MAX = 200;
-/** Ảnh giới thiệu: chỉ nhận ảnh, tối đa 5 MB (dữ liệu mẫu không tải lên). */
-export const COVER_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+/** Ảnh bìa bài thi: jpg, png hoặc webp, tối đa 2 MB (TM 6.2); máy chủ kiểm lại khi tải lên. */
+export const COVER_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9-]*$/;
 
 const ENGLISH = "ENGLISH";

@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -87,6 +88,7 @@ class MailTestApiIT extends AbstractIntegrationTest {
     /** Profile {@code e2e} cộng {@code api,worker,test} của lớp nền, như {@code E2eClockApiIT}. */
     @Nested
     @ActiveProfiles("e2e")
+    @TestPropertySource(properties = "thi360.devdata.published-exams.enabled=false")
     class UnderE2e {
 
         @Autowired

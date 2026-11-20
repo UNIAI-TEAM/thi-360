@@ -39,7 +39,8 @@ import vn.unicom.thi360.AbstractIntegrationTest;
         "thi360.identity.import-batch.scheduling.enabled=false",
         "thi360.questionbank.scheduling.enabled=false",
         "thi360.questionbank.assets.cleanup.scheduling.enabled=false",
-        "thi360.exam.scheduling.enabled=false"
+        "thi360.exam.scheduling.enabled=false",
+        "thi360.devdata.published-exams.enabled=false"
 })
 class E2eProfileDevDataIT extends AbstractIntegrationTest {
 

@@ -8,9 +8,8 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { QueryClient } from "@tanstack/react-query";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { createRichTextExtensions, MATH_BLOCK_NODE, MATH_INLINE_NODE } from "../../../extensions";
-import { stripTrailingEmptyParagraph } from "../../../html-contract";
-import { sanitizeQuestionHtml } from "../../../sanitize";
 import { INSERT_REGISTRY } from "../../registry";
 import ChemistryInsertDialog from "../dialog";
 

@@ -15,8 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.annotation.Order;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Profiles;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -41,10 +46,25 @@ import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.ids.Ids;
 
+/**
+ * Dev accounts always run under {@code dev}; under {@code e2e} they are enabled with the published-exam fixture.
+ */
 @Order(1)
 @Component
-@Profile("dev")
+@Profile({"dev", "e2e"})
+@Conditional(DevDataInitializer.SeedEnabled.class)
 public class DevDataInitializer implements ApplicationRunner {
+
+    static class SeedEnabled implements Condition {
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            var env = context.getEnvironment();
+            // Same canonical "true" match as the runners' @ConditionalOnProperty(havingValue = "true"):
+            // no Boolean conversion, so "on"/"1" keep both gates closed and typos never throw (R2-2).
+            return env.acceptsProfiles(Profiles.of("dev"))
+                    || "true".equalsIgnoreCase(env.getProperty("thi360.devdata.published-exams.enabled"));
+        }
+    }
 
     private static final Logger log = LoggerFactory.getLogger(DevDataInitializer.class);
     private static final String MODULE = "identity";

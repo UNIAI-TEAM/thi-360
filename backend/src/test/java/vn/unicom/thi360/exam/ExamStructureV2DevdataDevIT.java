@@ -8,7 +8,7 @@ import vn.unicom.thi360.identity.application.DevDataInitializer;
 
 /** Runs Flyway and the application with the dev profile on a fresh database. */
 @ActiveProfiles(value = {"api", "worker", "dev"}, inheritProfiles = false)
-@TestPropertySource(properties = "thi360.s3.mode=memory")
+@TestPropertySource(properties = {"thi360.s3.mode=memory", "thi360.devdata.published-exams.enabled=false"})
 class ExamStructureV2DevdataDevIT extends AbstractExamStructureV2DevdataIT {
     // Identity and classroom account seeds require Keycloak; Flyway exam devdata does not.
     @MockitoBean

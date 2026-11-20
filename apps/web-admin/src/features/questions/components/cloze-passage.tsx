@@ -1,6 +1,6 @@
 "use client";
 
-import { RichTextView } from "@/components/rich-text";
+import { RichTextView } from "@thi360/ui/rich-text";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 

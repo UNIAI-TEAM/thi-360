@@ -38,7 +38,38 @@ describe("Select", () => {
     render(<Select aria-label="Trạng thái" options={options} aria-invalid />);
     expect(screen.getByRole("combobox", { name: "Trạng thái" })).toBeInvalid();
   });
+  it("gõ tìm: nhãn nút khớp textValue trước chữ hiện, không textValue thì theo chữ ItemText; nhãn chuỗi khớp chính nó", async () => {
+    const onValueChange = vi.fn();
+    render(
+      <Select
+        aria-label="Đường"
+        onValueChange={onValueChange}
+        options={[
+          { value: "a", label: <span data-exam-content>KHTN – đường A</span> },
+          { value: "b", label: <span data-exam-content>Đường B · KHXH</span>, textValue: "Beta" },
+          { value: "c", label: "Đường C" },
+        ]}
+      />,
+    );
+    const user = userEvent.setup();
 
+    // "b" không đứng đầu chữ hiện ("Đường B · KHXH" bắt đầu bằng Đ): chỉ khớp được nhờ textValue.
+    await user.click(screen.getByRole("combobox", { name: "Đường" }));
+    await user.keyboard("b");
+    expect(screen.getByRole("option", { name: "Đường B · KHXH" })).toHaveAttribute("data-highlighted");
+    await user.keyboard("{Enter}");
+    expect(onValueChange).toHaveBeenCalledWith("b");
+
+    // Nhãn nút không textValue: gõ tìm theo chữ của ItemText.
+    await user.click(screen.getByRole("combobox", { name: "Đường" }));
+    await user.keyboard("K{Enter}");
+    expect(onValueChange).toHaveBeenLastCalledWith("a");
+
+    // Nhãn chuỗi: textValue mặc định là chính nhãn.
+    await user.click(screen.getByRole("combobox", { name: "Đường" }));
+    await user.keyboard("Đường C{Enter}");
+    expect(onValueChange).toHaveBeenLastCalledWith("c");
+  });
   it("mục trong danh sách tắt viền ngoài bằng outline-hidden để còn thấy ở chế độ tương phản cao", async () => {
     render(<Select aria-label="Trạng thái" options={options} />);
     await userEvent.click(screen.getByRole("combobox", { name: "Trạng thái" }));

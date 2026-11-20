@@ -24,7 +24,7 @@ import vn.unicom.thi360.shared.storage.ObjectStorage;
  * there as well.
  */
 @Component
-@Profile({"dev", "test"})
+@Profile({"dev", "test", "e2e"})
 public class DevQuestionAssetSeeder implements ApplicationRunner {
 
     /** Object-key prefix of the sample rows in the repeatable seed. */

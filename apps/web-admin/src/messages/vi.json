@@ -1270,7 +1270,9 @@
   },
   "nav": {
     "groups": {
+      "commerce": "Thương mại",
       "content": "Nội dung",
+      "learners": "Học viên",
       "overview": "Tổng quan",
       "system": "Hệ thống",
       "users": "Người dùng"
@@ -1311,6 +1313,22 @@
       "grading": {
         "description": "Lượt thi có câu tự luận chờ chấm và đã có điểm",
         "label": "Chấm tự luận"
+      },
+      "attempts": {
+        "description": "Lượt thi của học viên: trạng thái, điểm và thao tác vận hành",
+        "label": "Lượt thi"
+      },
+      "bundles": {
+        "description": "Bộ đề gồm nhiều bài thi, giá và công bố",
+        "label": "Bộ đề"
+      },
+      "orders": {
+        "description": "Đơn hàng, người mua, hoàn tiền và đối soát",
+        "label": "Đơn hàng"
+      },
+      "promotions": {
+        "description": "Khuyến mãi và voucher theo bài thi, kỳ thi",
+        "label": "Khuyến mãi"
       }
     }
   },
@@ -4556,6 +4574,159 @@
         }
       }
     },
+    "listing": {
+      "loading": "Đang tải thông tin bán",
+      "errorTitle": "Không tải được thông tin bán",
+      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "retry": "Thử lại",
+      "formLabel": "Thông tin bán",
+      "updatedAt": "Sửa lần cuối: {time}",
+      "effectNote": "Giá, số lượt và quyền lợi chỉ có hiệu lực khi công bố lại. Sửa thông tin bán không phải chạy lại kiểm tra cấu hình.",
+      "readOnly": "Bạn chỉ có quyền xem thông tin bán. Cần quyền sửa bài thi để thay đổi.",
+      "save": "Lưu",
+      "saved": "Đã lưu thông tin bán.",
+      "counter": "{count, number} / {max, number} ký tự",
+      "currency": "đ",
+      "sections": {
+        "intro": "Giới thiệu",
+        "price": "Giá và số lượt",
+        "benefit": "Quyền lợi sau khi mua",
+        "result": "Xem kết quả"
+      },
+      "fields": {
+        "summary": "Mô tả ngắn trên thẻ",
+        "description": "Mô tả",
+        "objectives": "Mục tiêu",
+        "audience": "Đối tượng phù hợp",
+        "price": "Giá bán",
+        "attempts": "Số lượt mỗi lần mua",
+        "benefitNote": "Giới hạn áp dụng của quyền lợi"
+      },
+      "hints": {
+        "description": "Bắt buộc khi công bố. Hiện ở trang chi tiết, cùng trường Mô tả ở tab Thông tin chung.",
+        "price": "Bắt buộc khi công bố. Đã gồm thuế, phí. Lớn hơn 0{hasMin, select, yes { và không thấp hơn {min} đ (mức tối thiểu của cổng thanh toán)} other {}}.",
+        "attempts": "Bắt buộc khi công bố. Từ {min, number} đến {max, number}. Mua thêm thì cộng vào lượt còn lại."
+      },
+      "cover": {
+        "label": "Ảnh bìa",
+        "alt": "Ảnh bìa bài thi",
+        "uploading": "Đang tải ảnh lên",
+        "current": "Ảnh bìa đang chọn",
+        "none": "Chưa có ảnh bìa",
+        "choose": "Chọn ảnh",
+        "replace": "Đổi ảnh",
+        "remove": "Bỏ ảnh",
+        "hint": "JPG, PNG hoặc WEBP · tối đa {max, number} MB · cạnh ngắn từ 480 px, tối đa 4.096 × 4.096 px. Không có ảnh thì thẻ dùng ảnh mặc định (chỉ là cảnh báo khi công bố).",
+        "keep": "Ảnh đang dùng được giữ nguyên.",
+        "errors": {
+          "type": "Tệp {name} không đúng định dạng. Chọn ảnh JPG, PNG hoặc WEBP.",
+          "tooLarge": "Ảnh lớn hơn {max, number} MB. Chọn ảnh nhỏ hơn.",
+          "empty": "Tệp {name} trống. Chọn tệp khác.",
+          "dimensionsSmall": "Cạnh ngắn của ảnh nhỏ hơn 480 px. Chọn ảnh lớn hơn.",
+          "dimensionsLarge": "Ảnh rộng hoặc cao hơn 4.096 px. Chọn ảnh nhỏ hơn.",
+          "corrupt": "Tệp {name} bị hỏng hoặc không đọc hết được. Chọn tệp khác.",
+          "forbidden": "Bạn không có quyền đổi ảnh bìa.",
+          "generic": "Không tải được ảnh lên. Thử lại."
+        }
+      },
+      "benefit": {
+        "legend": "Bao gồm",
+        "items": {
+          "benefitAiExplanation": {
+            "label": "Giải thích bằng AI",
+            "description": "Học viên hỏi AI vì sao đáp án đúng, sai sau khi có kết quả."
+          },
+          "benefitStrengthWeakness": {
+            "label": "Đánh giá điểm mạnh, điểm yếu",
+            "description": "Tổng hợp theo phần, môn và kiến thức của lượt thi."
+          },
+          "benefitPractice": {
+            "label": "Ôn luyện bổ sung",
+            "description": "Bộ câu ôn theo kiến thức còn yếu."
+          }
+        }
+      },
+      "result": {
+        "legend": "Sau khi chấm, học viên xem được",
+        "options": {
+          "SCORE": {
+            "label": "Chỉ điểm",
+            "description": "Điểm tổng, điểm theo phần và theo môn."
+          },
+          "SCORE_AND_ANSWERS": {
+            "label": "Điểm và đáp án",
+            "description": "Thêm đáp án đúng của từng câu."
+          },
+          "FULL_SOLUTION": {
+            "label": "Điểm, đáp án và lời giải",
+            "description": "Thêm lời giải chi tiết của từng câu."
+          }
+        },
+        "note": "Kết quả và lịch sử xem được mãi. Bài có câu tự luận thì điểm tổng hiện sau khi người chấm chấm xong."
+      },
+      "validation": {
+        "summaryMax": "Mô tả ngắn tối đa {max, number} ký tự.",
+        "descriptionMax": "Mô tả tối đa {max, number} ký tự.",
+        "objectivesMax": "Mục tiêu tối đa {max, number} ký tự.",
+        "audienceMax": "Đối tượng phù hợp tối đa {max, number} ký tự.",
+        "benefitNoteMax": "Giới hạn áp dụng tối đa {max, number} ký tự.",
+        "priceInvalid": "Giá bán là số nguyên từ 0 đồng trở lên.",
+        "attemptsRange": "Số lượt từ {min, number} đến {max, number}.",
+        "tooLong": "Dài tối đa {max, number} ký tự.",
+        "fieldInvalid": "Giá trị chưa hợp lệ."
+      },
+      "errors": {
+        "coverNotFound": "Ảnh bìa đã chọn không còn dùng được. Chọn lại ảnh rồi lưu.",
+        "invalid": "Thông tin bán chưa hợp lệ. Kiểm tra lại các ô rồi lưu.",
+        "saveFailed": "Chưa lưu được thông tin bán. Thử lại."
+      },
+      "conflict": {
+        "title": "Bài thi vừa được người khác sửa. Đã nạp lại bản mới nhất.",
+        "description": "Thay đổi của bạn chưa được lưu. Xem lại các trường rồi nhập lại phần cần sửa.",
+        "lastEdit": "Sửa gần nhất: {time}.",
+        "dismiss": "Đóng thông báo"
+      },
+      "strip": {
+        "title": "Giá đang bán: {price} · Sẽ đổi khi công bố",
+        "detail": "Bản làm việc khác bản đang bán ở: {fields}.{hasVersion, select, yes { Học viên vẫn mua theo bản v{version} cho tới khi công bố lại.} other { Học viên vẫn mua theo bản đang bán cho tới khi công bố lại.}}",
+        "compare": "So sánh với {hasVersion, select, yes {bản v{version}} other {bản đang bán}}",
+        "money": "{amount} đ",
+        "empty": "chưa có",
+        "fields": {
+          "listPriceVnd": "giá bán ({from} → {to})",
+          "attemptsGranted": "số lượt ({from} → {to})",
+          "resultView": "mức xem kết quả",
+          "benefits": "quyền lợi",
+          "description": "mô tả",
+          "summary": "mô tả ngắn",
+          "objectives": "mục tiêu",
+          "audience": "đối tượng phù hợp",
+          "coverAssetId": "ảnh bìa"
+        }
+      },
+      "preview": {
+        "title": "Xem trước thẻ",
+        "description": "Như học viên thấy ở danh mục sau khi công bố. Dùng giá gốc, chưa tính khuyến mãi.",
+        "money": "{amount} đ",
+        "noPrice": "Chưa có giá",
+        "meta": "{questions, number} câu · {minutes, number} phút{hasAttempts, select, yes { · {attempts, number} lượt} other {}}",
+        "buy": "Mua bài thi",
+        "detail": "Xem chi tiết",
+        "serving": "Đang bán{hasVersion, select, yes { (v{version})} other {}}",
+        "servingNone": "Đang bán",
+        "notPublished": "Chưa công bố",
+        "afterPublish": "Sau khi công bố",
+        "compareValue": "{price}{hasAttempts, select, yes { · {attempts, number} lượt} other {}}"
+      },
+      "check": {
+        "title": "Kiểm tra thông tin bán",
+        "ready": "Giá bán, số lượt, mô tả đủ để công bố",
+        "hasCover": "Đã có ảnh bìa",
+        "errorPrefix": "Lỗi: ",
+        "warningPrefix": "Cảnh báo: ",
+        "toReview": "Xem ở tab Kiểm tra"
+      }
+    },
     "review": {
       "title": "Kiểm tra và xem trước",
       "tabs": {
@@ -4660,7 +4831,7 @@
         "title": "{path}: kết quả theo bộ môn học viên chọn",
         "summary": "{total, number} trường hợp: {valid, number} hợp lệ, {invalid, number} không hợp lệ, {unconfirmed, number} chưa xác nhận được.",
         "rule": "Học viên chọn {choose, number} môn. Hai môn cùng nhóm (tự nhiên hoặc xã hội) nhận {high, number} câu mỗi môn, môn còn lại nhận {low, number} câu. Cả {choose, number} môn cùng nhóm thì một môn nhận {low, number} câu: bộ môn đó có {choose, number} cách chia và đều được kiểm tra.",
-        "tableLabel": "Kết quả kiểm tra từng bộ môn của đường {path}",
+        "tableLabel": "Kết quả kiểm tra từng bộ môn",
         "empty": "Đường này chưa có cách chọn môn nào",
         "columns": {
           "subjects": "Bộ môn và số câu mỗi môn",
@@ -4672,6 +4843,8 @@
         "affected": "Mã bị ảnh hưởng:",
         "blocked": "Chưa công bố được: {count, number} lỗi chặn công bố.",
         "codeGroup": "Mã {code}",
+        "listingBlocked": "Chưa công bố được: Thông tin bán có {count, number} lỗi.",
+        "listingUnconfirmed": "Chưa kết luận được: chưa kiểm tra được Thông tin bán.",
         "counters": {
           "errors": "Lỗi",
           "sections": "Môn đã kiểm tra",
@@ -4711,6 +4884,74 @@
         "warningsTitle": "Cảnh báo · không chặn công bố ({count, number})",
         "wholeExam": "Cả bài"
       },
+      "listing": {
+        "title": "Thông tin bán",
+        "description": "Kiểm riêng theo bản làm việc lúc mở tab, không dùng kết quả kiểm tra cấu hình đã lưu. Khi công bố, hệ thống kiểm lại một lần nữa.",
+        "edit": "Sửa thông tin bán",
+        "detailLink": "Xem chi tiết",
+        "status": {
+          "PASS": "Đạt",
+          "WARN": "{count, number} cảnh báo",
+          "FAIL": "{count, number} lỗi"
+        },
+        "rowStatus": {
+          "pass": "Đạt",
+          "error": "Lỗi",
+          "warning": "Cảnh báo"
+        },
+        "rows": {
+          "price": {
+            "name": "Giá bán",
+            "pass": "Đã có giá bán đủ điều kiện công bố."
+          },
+          "attempts": {
+            "name": "Số lượt mỗi lần mua",
+            "pass": "Đã có số lượt mỗi lần mua."
+          },
+          "description": {
+            "name": "Mô tả",
+            "pass": "Đã có mô tả hiện ở trang chi tiết."
+          },
+          "cover": {
+            "name": "Ảnh bìa",
+            "pass": "Đã có ảnh bìa."
+          }
+        },
+        "tilePass": "Giá bán, số lượt, mô tả và ảnh bìa đạt.",
+        "unavailableTitle": "Không tính được nhóm Thông tin bán",
+        "unavailable": "Không tải được kết quả kiểm tra thông tin bán.",
+        "retry": "Thử lại",
+        "issue": {
+          "LISTING_PRICE_MISSING": "Chưa nhập giá bán.",
+          "LISTING_PRICE_ZERO": "Giá bán phải lớn hơn 0 đồng. Bài thi chỉ miễn phí qua voucher.",
+          "LISTING_PRICE_BELOW_MIN": "Giá bán thấp hơn mức tối thiểu{hasMin, select, yes { {min} đ} other {}} của cổng thanh toán.",
+          "LISTING_ATTEMPTS_MISSING": "Chưa nhập số lượt mỗi lần mua.",
+          "LISTING_DESCRIPTION_MISSING": "Chưa có mô tả.",
+          "LISTING_COVER_MISSING": "Chưa có ảnh bìa; thẻ dùng ảnh mặc định. Không chặn công bố.",
+          "UNKNOWN": "Thông tin bán chưa đủ điều kiện công bố."
+        }
+      },
+      "manual": {
+        "title": "Có câu chấm tay",
+        "tag": "Cảnh báo · không chặn công bố",
+        "description": "Bài có câu tự luận. Điểm tổng hiện sau khi người chấm chấm xong.",
+        "caption": "Phần, môn và khối có câu tự luận",
+        "columns": {
+          "part": "Phần",
+          "subject": "Môn",
+          "block": "Khối",
+          "paths": "Đường lựa chọn",
+          "location": "Vị trí"
+        },
+        "badge": "Chấm tay",
+        "allPaths": "Mọi đường lựa chọn",
+        "openAria": "Mở khối {block} ở Cấu trúc và ma trận",
+        "openTooltip": "Mở khối",
+        "notes": {
+          "queue": "Câu tự luận có nội dung vào hàng chờ chấm tự luận; tự luận để trống được 0 điểm.",
+          "source": "Câu nguồn thiếu hướng dẫn chấm hoặc tiêu chí vẫn là lỗi chặn (nhóm Nguồn)."
+        }
+      },
       "groups": {
         "title": "Các nhóm kiểm tra",
         "passed": "Đạt",
@@ -4740,7 +4981,7 @@
         "title": "Chi tiết theo khối",
         "description": "Nguồn phù hợp đếm trước khi xử lý trùng giữa các chỉ tiêu, nên đủ nguồn từng dòng chưa chắc ghép được đề.",
         "tabsLabel": "Đường lựa chọn",
-        "tableLabel": "Chi tiết theo khối của đường {path}",
+        "tableLabel": "Chi tiết theo khối",
         "empty": "Đường này chưa có khối câu hỏi nào",
         "part": "Phần {order, number}",
         "requiredSets": "{questions, number} ({sets, number} bộ × {size, number})",
@@ -4805,7 +5046,7 @@
         "DISTRIBUTION_DEVIATION": "{block}: phân bố tham khảo{hasBucket, select, yes { {bucket}} other {}} lệch chỉ tiêu: tham khảo {required, number}, thực tế {available, number}.",
         "EXAM_QUOTA_DEVIATION": "Chỉ tiêu cấp bài tham khảo{hasBucket, select, yes { {bucket}} other {}} lệch: tham khảo {required, number}, thực tế {available, number}.",
         "ITEM_SHAPE_SHORTAGE": "Khối {block}: ngân hàng {hasCount, select, yes {chỉ có {available, number} câu} other {chưa đủ câu}} {shapeKind, select, MATCHING {ghép đôi đủ cấu trúc {left, number} ý trái – {right, number} lựa chọn phải} STATEMENTS {có đủ {statements, number} ý} other {đúng hình dạng yêu cầu}}{hasCount, select, yes {, khối cần {required, number} câu} other {}}.",
-        "MANUAL_GRADING_REQUIRED": "Khối {block} có câu tự luận: điểm phần này chỉ có sau khi chấm tay.",
+        "MANUAL_GRADING_REQUIRED": "Khối {block} có câu chấm tay. Điểm tổng hiện sau khi người chấm chấm xong.",
         "OMITTED_GROUPS_PRESENT": "Khối {block} đang tạm bỏ qua: điểm tối đa của bài đã trừ phần này.",
         "QUESTION_NOT_PLAYABLE": "Khối {block}: câu {codes} thiếu đáp án, thiếu quy tắc chấm hoặc tham chiếu tài nguyên không còn.",
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: phân bố bắt buộc chỉ tính theo số câu; đơn vị lệnh hỏi hoặc điểm chỉ dùng làm phân bố tham khảo.",
@@ -4884,7 +5125,19 @@
             "section": "Các môn"
           },
           "config": "Cấu hình bài thi",
+          "listing": "Thông tin bán",
           "field": {
+            "audience": "Đối tượng phù hợp",
+            "attemptsGranted": "Số lượt mỗi lần mua",
+            "benefitAiExplanation": "Quyền lợi: giải thích bằng AI",
+            "benefitNote": "Giới hạn áp dụng của quyền lợi",
+            "benefitPractice": "Quyền lợi: ôn luyện bổ sung",
+            "benefitStrengthWeakness": "Quyền lợi: đánh giá điểm mạnh, điểm yếu",
+            "coverAssetId": "Ảnh bìa",
+            "listPriceVnd": "Giá bán",
+            "objectives": "Mục tiêu",
+            "resultView": "Mức xem kết quả",
+            "summary": "Mô tả ngắn trên thẻ",
             "answerQuotas": "Chỉ tiêu dạng trả lời",
             "childAnswerType": "Dạng câu con",
             "choiceGroup": "Nhóm môn",
@@ -4979,6 +5232,7 @@
       "tabs": {
         "general": "Thông tin chung",
         "structure": "Cấu trúc và ma trận",
+        "listing": "Thông tin bán",
         "review": "Kiểm tra và xem trước",
         "versions": "Phiên bản và công bố"
       },
@@ -5289,6 +5543,15 @@
         "noteMax": "Ghi chú tối đa {max, number} ký tự."
       },
       "errors": {
+        "PUBLISH_ALL_PATHS_REQUIRED": "Bài này có lựa chọn sau khi bắt đầu thi nên phải công bố mọi đường cùng lúc.",
+        "allPaths": {
+          "PATH_SERVING_INVALID": "{path}: đang phục vụ nhưng không còn hợp lệ. Sửa cấu hình rồi kiểm tra lại.",
+          "PATH_SERVING_MISSING_FROM_CHECK": "{path}: đang phục vụ nhưng không còn trong lần kiểm tra. Kiểm tra lại cấu hình.",
+          "PATH_VALID_NOT_SELECTED": "{path}: hợp lệ nhưng chưa được chọn. Chọn đường này để công bố.",
+          "unknownPath": "Một đường lựa chọn"
+        },
+        "listing": "Thông tin bán chưa đủ để công bố:",
+        "listingLink": "Sửa thông tin bán",
         "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
         "checkRequired": {
           "NO_CHECK": "Bài thi chưa được kiểm tra. Kiểm tra cấu hình rồi công bố.",
