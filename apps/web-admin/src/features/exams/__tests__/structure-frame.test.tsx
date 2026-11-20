@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import { examTabHref } from "../editor-tabs";
+import { examEditHref, examTabHref } from "../editor-tabs";
 import { ExamStructureList } from "../components/exam-structure-list";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { defaultSelection } from "../components/exam-structure-draft";
@@ -372,16 +372,16 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("50");
   });
 
-  it("quay lại bước Thông tin chung ('Sửa thông tin tổng quan') cũng hỏi bằng hộp thoại ba nút; Bỏ thay đổi mới rời trang", async () => {
+  it("quay lại bước 1 ('Sửa thông tin tổng quan') cũng hỏi bằng hộp thoại ba nút; Bỏ thay đổi mới rời trang", async () => {
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
     await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
-    expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Bạn đang rời trang soạn bài thi\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examEditHref(QDA)));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
   });
 
@@ -410,7 +410,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examEditHref(QDA)));
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
   });
 

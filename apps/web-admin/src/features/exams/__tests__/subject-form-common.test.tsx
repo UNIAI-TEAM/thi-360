@@ -225,7 +225,7 @@ describe("Đầu môn dùng chung (R-7, R-15)", () => {
     expect(screen.getByRole("heading", { level: 2, name: /Vật lí/ })).toBeInTheDocument();
     expect(screen.getByText("Thiếu 3 câu")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Số câu/ })).toHaveAttribute("readonly");
-    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute("href", "/exams/e1");
+    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute("href", "/exams/new?exam=e1");
     expect(screen.getByRole("button", { name: "Kiểm tra môn" })).toBeInTheDocument();
   });
 

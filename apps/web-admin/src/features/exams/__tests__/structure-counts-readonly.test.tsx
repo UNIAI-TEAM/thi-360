@@ -19,7 +19,7 @@ vi.mock("@/features/content/api", async (importOriginal) => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
-const OVERVIEW_HREF = `/exams/${EXAM_ID}`;
+const OVERVIEW_HREF = `/exams/new?exam=${EXAM_ID}`;
 const LINK = "Sửa thông tin tổng quan";
 
 const reviewTemplate = {

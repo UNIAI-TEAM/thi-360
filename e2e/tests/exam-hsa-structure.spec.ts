@@ -44,7 +44,7 @@ test("HSA Tự thiết lập: chỉ số câu, thời lượng, thang điểm �
     await expect(field).toHaveValue(value);
     await expect(field).toHaveAttribute("readonly", "");
   }
-  await expect(page.getByRole("link", { name: "Sửa thông tin tổng quan" }).first()).toHaveAttribute("href", `/exams/${id}`);
+  await expect(page.getByRole("link", { name: "Sửa thông tin tổng quan" }).first()).toHaveAttribute("href", `/exams/new?exam=${id}`);
   // Mọi thứ khác (phạm vi, dạng câu, phân bố, câu chùm) nằm trong vùng đóng, không bắt buộc.
   await expect(page.locator("details").filter({ hasText: "Tùy chọn thêm (không bắt buộc)" }).first()).not.toHaveAttribute("open", "");
 
@@ -67,11 +67,11 @@ test("HSA dùng cấu trúc môn: số câu của phần và mục chỉ đọc,
   const list = page.getByRole("navigation", { name: "Cấu trúc" });
   await expect(list).toBeVisible();
 
-  // Màn môn: Số câu của mục chỉ đọc, đường dẫn Sửa thông tin tổng quan cạnh ô dẫn về tab Thông tin chung.
+  // Màn môn: Số câu của mục chỉ đọc, đường dẫn Sửa thông tin tổng quan cạnh ô dẫn về bước 1 (màn Tạo bài thi ở chế độ sửa).
   const sectionCount = page.getByRole("textbox", { name: "Số câu của mục" });
   await expect(sectionCount).toHaveAttribute("readonly", "");
   const link = sectionCount.locator("xpath=..").getByRole("link", { name: "Sửa thông tin tổng quan" });
-  await expect(link).toHaveAttribute("href", `/exams/${id}`);
+  await expect(link).toHaveAttribute("href", `/exams/new?exam=${id}`);
 
   // Màn phần: số câu phải làm và trên đề chỉ đọc. Mục đầu danh sách là "Tổng quan bài" (FE-3b), không phải phần.
   await list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]").first().click();

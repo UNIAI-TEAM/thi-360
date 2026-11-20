@@ -14,7 +14,7 @@ import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, nor
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
-import { examTabFromPathname, examTabHref } from "../editor-tabs";
+import { examEditHref, examTabFromPathname, examTabHref } from "../editor-tabs";
 import { addPoolSection } from "../coded-part";
 import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
@@ -651,7 +651,7 @@ function StructureEditor({
             )}
           </dl>
           <Button asChild variant="secondary">
-            <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
+            <Link href={examEditHref(exam.id)}>{t("summary.editOverview")}</Link>
           </Button>
         </div>
         <p className="text-caption text-text-muted">

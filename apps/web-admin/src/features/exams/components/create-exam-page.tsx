@@ -15,11 +15,11 @@ import {
   Skeleton,
   Textarea,
 } from "@thi360/ui";
-import { ArrowRight, ChevronLeft, Lock, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronLeft, Info, Lock, RefreshCw, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { RichTextEditor } from "@/components/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
@@ -55,30 +55,59 @@ import {
   validateOverview,
 } from "../create-exam-overview";
 import { overviewRowLabel } from "../create-exam-row-label";
+import { buildUpdateInfoRequest, examScope, examToFormValues, reloadPartRows } from "../create-exam-edit";
+import { overviewRowsFromParts } from "../create-exam-overview-structure";
+import { type PendingInfoSave, useExamInfoSave } from "../create-exam-save";
 import { examTabHref } from "../editor-tabs";
-import { useCreateExam, useExamTemplates, useSuggestedExamCode } from "../queries";
-import type { ExamTemplate } from "../types";
+import { useCreateExam, useExam, useExamStructure, useExamTemplates, useSuggestedExamCode } from "../queries";
+import type { ExamDetail, ExamStructure, ExamTemplate } from "../types";
 import { GenerateCodeButton, KindSelect, TemplateNotes, useExamInfoSchema, useKindLabel, usePartNames } from "./create-exam-fields";
 import { CreateExamScopeFields } from "./create-exam-scope-fields";
 import { CreateExamStepper } from "./create-exam-stepper";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { ExamOverviewTable } from "./exam-overview-table";
+import { blockCountsLocked } from "./block-form";
+import { ReloadStructureDialog } from "./reload-structure-dialog";
 
 const EXAMS_HREF = "/exams";
 /** Quyền tạo bài (cổng ở `app/(shell)/exams/new/layout.tsx`); chỉ để nêu trong thông báo khi máy chủ trả 403. */
 const CREATE_PERMISSION = "EXAM.MODIFY";
+
+/** Mã bài đang sửa (`/exams/new?exam=<id>`): `null` là tạo bài mới; `undefined` khi chưa đọc được (dựng trên máy chủ). */
+function subscribeToLocation(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+function useEditingExamId(): string | null | undefined {
+  return useSyncExternalStore(
+    subscribeToLocation,
+    () => new URLSearchParams(window.location.search).get("exam"),
+    () => undefined,
+  );
+}
+
+/** Bài đã tạo và cấu trúc đã lưu của nó, điền sẵn cho bước 1 ở chế độ sửa. */
+interface ExistingExam {
+  exam: ExamDetail;
+  structure: ExamStructure;
+}
 
 /**
  * Trang Tạo bài thi, bước 1 (`/exams/new`, 2B mục 5, 15.1; TaoBaiThi2B): Thông tin bài thi, Phạm vi (kỳ thi, phạm vi,
  * môn, phần, `build_mode`), Cấu trúc tổng quan (bảng sửa ngay trên dòng, có tổng). Không chọn phiên bản cấu trúc ở bước
  * 1 (K8): bảng lấy số của mẫu mặc định, phiên bản đổi ở bước 2. Sửa một ô không nạp lại mẫu (R-09); đổi kỳ thi, phạm
  * vi, môn, phần hoặc `build_mode` thì nạp lại bảng và hỏi xác nhận khi bảng đã sửa. Tạo xong mở bước 2 (Cấu trúc).
+ *
+ * `/exams/new?exam=<id>` là bước 1 của bài đã tạo (đường quay lại từ bước Cấu trúc, UNI-2751): cùng màn, điền sẵn theo bài
+ * và cấu trúc đã lưu; "Lưu và tiếp tục" ghi (cấu trúc rồi thông tin, như tab Thông tin chung) và về bước 2. Đổi kỳ thi,
+ * phạm vi, phần hoặc môn thì hỏi nạp lại cấu trúc trước khi lưu.
  */
 export function CreateExamPage() {
   const t = useTranslations("exams.create");
   const templatesQuery = useExamTemplates();
   const referenceQuery = useContentReference();
+  const editingId = useEditingExamId();
   const forbidden = [templatesQuery, referenceQuery].some((query) => query.isError && getErrorStatus(query.error) === 403);
 
   let body: ReactNode;
@@ -112,7 +141,7 @@ export function CreateExamPage() {
         />
       </Card>
     );
-  } else if (!referenceQuery.data) {
+  } else if (!referenceQuery.data || editingId === undefined) {
     body = (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-72" />
@@ -132,13 +161,20 @@ export function CreateExamPage() {
       : templatesQuery.isError && !templatesQuery.isFetching
         ? "error"
         : "loading";
+    const reference = referenceQuery.data;
     body = (
-      <CreateExamForm
-        templates={templatesQuery.data ?? NO_TEMPLATES}
-        templatesStatus={templatesStatus}
-        onRetryTemplates={() => void templatesQuery.refetch()}
-        reference={referenceQuery.data}
-      />
+      <ExistingExamGate examId={editingId}>
+        {(existing) => (
+          <CreateExamForm
+            key={existing?.exam.id ?? "new"}
+            templates={templatesQuery.data ?? NO_TEMPLATES}
+            templatesStatus={templatesStatus}
+            onRetryTemplates={() => void templatesQuery.refetch()}
+            reference={reference}
+            existing={existing}
+          />
+        )}
+      </ExistingExamGate>
     );
   }
 
@@ -146,19 +182,64 @@ export function CreateExamPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <Link
-          href={EXAMS_HREF}
+          href={editingId ? examTabHref(editingId, "structure") : EXAMS_HREF}
           className={cn(
             "inline-flex w-fit items-center gap-1 rounded-sm text-body font-medium text-text-secondary hover:text-text",
             focusRing,
           )}
         >
           <ChevronLeft aria-hidden className="size-4" />
-          {t("backToList")}
+          {t(editingId ? "backToStructure" : "backToList")}
         </Link>
         <PageHeader title={t("title")} description={t("description")} />
         {showStepper && <CreateExamStepper />}
       </div>
       {body}
+    </div>
+  );
+}
+
+/**
+ * Chế độ sửa (`?exam=<id>`): đọc bài và cấu trúc đã lưu rồi giao cho biểu mẫu; tạo mới (`examId = null`) giao ngay.
+ * Bài và cấu trúc đã có thì giữ nguyên khi tải lại nền (biểu mẫu không dựng lại giữa chừng).
+ */
+function ExistingExamGate({ examId, children }: { examId: string | null; children: (existing: ExistingExam | undefined) => ReactNode }) {
+  if (examId === null) return children(undefined);
+  return <EditExamLoader examId={examId}>{children}</EditExamLoader>;
+}
+
+function EditExamLoader({ examId, children }: { examId: string; children: (existing: ExistingExam | undefined) => ReactNode }) {
+  const t = useTranslations("exams.create");
+  const examQuery = useExam(examId);
+  const structureQuery = useExamStructure(examId);
+  if (examQuery.data && structureQuery.data) return children({ exam: examQuery.data, structure: structureQuery.data });
+  if (examQuery.isError || structureQuery.isError) {
+    return (
+      <Card padding="md">
+        <EmptyState
+          icon={<TriangleAlert />}
+          headingLevel={2}
+          title={t("loadErrorTitle")}
+          description={t("loadErrorDescription")}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void examQuery.refetch();
+                void structureQuery.refetch();
+              }}
+            >
+              {t("retry")}
+            </Button>
+          }
+        />
+      </Card>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true">
+      <Skeleton className="h-72" />
+      <Skeleton className="h-56" />
     </div>
   );
 }
@@ -187,13 +268,16 @@ interface CreateExamFormProps {
   templatesStatus: TemplatesStatus;
   onRetryTemplates: () => void;
   reference: ContentReference;
+  /** Bài đã tạo: bước 1 ở chế độ sửa, điền sẵn theo bài và cấu trúc đã lưu; bỏ trống là tạo bài mới. */
+  existing?: ExistingExam;
 }
 
-function CreateExamForm({ templates, templatesStatus, onRetryTemplates, reference }: CreateExamFormProps) {
+function CreateExamForm({ templates, templatesStatus, onRetryTemplates, reference, existing }: CreateExamFormProps) {
   const t = useTranslations("exams.create");
   const tStep = useTranslations("exams.create.step1");
   const tOverview = useTranslations("exams.create.overview");
   const router = useRouter();
+  const tGeneral = useTranslations("exams.general");
   const formId = useId();
   const lookup = useReferenceLookup(reference);
   const subjectName = lookup.subject;
@@ -212,10 +296,24 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const [takenCodes, setTakenCodes] = useState<ReadonlySet<string>>(() => new Set());
   const schema = useExamInfoSchema(takenCodes, kinds);
   const createExam = useCreateExam();
+  const exam = existing?.exam;
+  const savedScope = exam ? examScope(exam) : undefined;
+  const baseValues = exam ? examToFormValues(exam) : undefined;
+  /** Bài đã công bố: kỳ thi, phạm vi, phần, môn và cách dựng bài chỉ đọc (như tab Thông tin chung). */
+  const lockScope = exam !== undefined && exam.servingVersion !== null;
+  const appliedTemplate = exam ? templates.find((item) => item.code === exam.templateCode) : undefined;
+  const fixedCounts = appliedTemplate?.fixedCounts === true;
+  const countsLocked = exam ? fixedCounts || blockCountsLocked(appliedTemplate, exam.scope, appliedTemplate?.buildMode === "REVIEW") : false;
+  const [confirmReplace, setConfirmReplace] = useState<PendingInfoSave | null>(null);
+  const [saved, setSaved] = useState(false);
 
   /** Mẫu mặc định, dòng tổng quan và thời lượng, thang điểm của một lựa chọn (kỳ thi, phạm vi, môn, phần, `build_mode`). */
   const loadScope = useCallback(
     (selection: ScopeSelection): LoadedScope => {
+      // Chế độ sửa, lựa chọn đúng như đã lưu: dòng dựng từ cấu trúc đã lưu (số đang có), không phải số của mẫu.
+      if (existing && savedScope && sameSelection(selection, savedScope)) {
+        return { selection, template: appliedTemplate, rows: overviewRowsFromParts(existing.structure.parts, { fixedCounts, countsLocked }) };
+      }
       const template = scopeTemplate(templates, kinds, selection);
       if (template) return { selection, template, rows: overviewRowsFromTemplate(template, selection.scope, selection.partCode) };
       // Không có mẫu (bài ôn chưa có mẫu, môn chưa có mẫu): một dòng trống mang tên của phạm vi.
@@ -231,34 +329,34 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       }));
       return { selection, template: undefined, rows };
     },
-    [templates, kinds, subjectName, partLabel, kindLabel],
+    [existing, savedScope, appliedTemplate, fixedCounts, countsLocked, templates, kinds, subjectName, partLabel, kindLabel],
   );
 
   const [initial] = useState<LoadedScope>(() =>
     loadScope(
-      resolveScope(
-        templates,
-        kinds,
-        reference.subjects,
-        { kind: kinds[0]?.code ?? "", scope: "FULL", partCode: "", subjectCode: "" },
-        {},
-      ),
+      savedScope ??
+        resolveScope(
+          templates,
+          kinds,
+          reference.subjects,
+          { kind: kinds[0]?.code ?? "", scope: "FULL", partCode: "", subjectCode: "" },
+          {},
+        ),
     ),
   );
   const [selection, setSelection] = useState<ScopeSelection>(initial.selection);
   const [rows, setRows] = useState<OverviewRow[]>(initial.rows);
   const [pendingSelection, setPendingSelection] = useState<ScopeSelection | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [liveMessage, setLiveMessage] = useState("");
 
   const initialDefaults = scopeDefaults(initial.template, kindOptionFor(kinds, initial.selection.kind), initial.selection.scope, initial.selection.buildMode);
   // Chữ người dùng gõ ở hai ô số dưới bảng; giá trị số của biểu mẫu chỉ là bản đã phân tích để kiểm tra (R1-08).
-  const [sharedText, setSharedText] = useState(() => formatShared(initialDefaults.sharedDuration));
-  const [maxScoreText, setMaxScoreText] = useState(() => formatScore(initialDefaults.maxScore));
+  const [sharedText, setSharedText] = useState(() => formatShared((baseValues ?? initialDefaults).sharedDuration));
+  const [maxScoreText, setMaxScoreText] = useState(() => formatScore((baseValues ?? initialDefaults).maxScore));
   const form = useForm<ExamInfoFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
-    defaultValues: {
+    defaultValues: baseValues ?? {
       name: "",
       code: "",
       kind: initial.selection.kind,
@@ -277,12 +375,18 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   const { control, register, handleSubmit, setValue, setError, resetField, getFieldState, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
 
-  const template = useMemo(() => scopeTemplate(templates, kinds, selection), [templates, kinds, selection]);
+  // Chế độ sửa, lựa chọn vẫn như đã lưu: mẫu đã nạp của bài và số đang lưu; đổi lựa chọn thì như tạo mới (bảng xem trước của mẫu mới).
+  const editingSaved = savedScope !== undefined && sameSelection(selection, savedScope);
+  const previewOnly = exam !== undefined && !editingSaved;
+  const template = useMemo(
+    () => (editingSaved ? appliedTemplate : scopeTemplate(templates, kinds, selection)),
+    [editingSaved, appliedTemplate, templates, kinds, selection],
+  );
   const defaults = useMemo(
     () => scopeDefaults(template, kindOptionFor(kinds, selection.kind), selection.scope, selection.buildMode),
     [template, kinds, selection],
   );
-  const showPoints = defaults.pointsByPart;
+  const showPoints = editingSaved ? rows.some((row) => row.kind === "part" && row.base.maxPoints !== null) : defaults.pointsByPart;
   // H27: mẫu khóa số câu (V-ACT toàn bài) — ô số câu chỉ đọc, cột tỷ lệ hiện. Các cột tỷ lệ chỉ của V-ACT: mẫu
   // `fixedCounts` có "Tỷ lệ trong phần" + "Tỷ lệ toàn bài", bài riêng có tiểu mục có "Tỷ lệ trong bài" (R-118, R-123,
   // TaoBaiThiVact2B); kỳ thi khác không có cột tỷ lệ.
@@ -304,18 +408,26 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
             const name = lookup.subject(code);
             return name === code ? undefined : name;
           },
-          partSections: (partRow) => template?.parts[Number(partRow.key.slice(2))]?.sections ?? [],
+          partSections: (partRow) => {
+            const index = Number(partRow.key.slice(2));
+            if (editingSaved && existing) {
+              const part = existing.structure.parts[index];
+              return part?.mode === "FIXED" ? part.sections : [];
+            }
+            return template?.parts[index]?.sections ?? [];
+          },
           // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
-          audioLabel: audioSplit
-            ? (partRow) => {
-                const audio = templatePartAudio(template?.parts[Number(partRow.key.slice(2))]);
-                return audio ? tStep(audio === "REQUIRED" ? "skillListening" : "skillReading") : undefined;
-              }
-            : undefined,
+          audioLabel:
+            audioSplit && !editingSaved
+              ? (partRow) => {
+                  const audio = templatePartAudio(template?.parts[Number(partRow.key.slice(2))]);
+                  return audio ? tStep(audio === "REQUIRED" ? "skillListening" : "skillReading") : undefined;
+                }
+              : undefined,
         },
         row,
       ),
-    [partNames, lookup, vact, template, audioSplit, tStep],
+    [partNames, lookup, vact, template, audioSplit, editingSaved, existing, tStep],
   );
   // H35, R-141: bài riêng của V-ACT, bài theo phần và bài ôn không có thời lượng mặc định (mẫu để trống) — lỗi đặt ở ô
   // thời lượng với câu của thiết kế thay cho câu "phải là số dương" chung. Theo mẫu và phạm vi, không theo mã kỳ thi.
@@ -333,7 +445,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   // G2c "Trạng thái khác": gợi ý dưới ô thời lượng theo nguồn của giá trị — mẫu điền sẵn, bài theo phần tự nhập
   // (D24: không lấy thời lượng cả môn), mẫu để trống (D25/F-1).
   const durationHint = (() => {
-    if (values.timing !== "SHARED") return null;
+    if (values.timing !== "SHARED" || editingSaved) return null;
     if (defaults.sharedDuration > 0) return tStep("durationHintPrefilled");
     if (selection.scope === "PART" && template) return tStep("durationHintPartCut");
     if (selection.scope === "SUBJECT" && template && template.durationMinutes === null) return tStep("durationHintEmpty");
@@ -347,7 +459,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       partCode: selection.scope === "PART" ? selection.partCode : null,
       subjectCode: selection.scope === "SUBJECT" ? selection.subjectCode || null : null,
     },
-    true,
+    !exam,
   );
   useEffect(() => {
     if (suggestion.data && !getFieldState("code").isDirty) resetField("code", { defaultValue: suggestion.data });
@@ -378,36 +490,58 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
    * Bảng đã sửa (số câu, thời lượng, điểm, thời lượng chung hoặc thang điểm khác mẫu) thì đổi lựa chọn phải hỏi trước
    * khi nạp lại (2B 15.1); chưa sửa thì nạp luôn.
    */
+  const baselineShared = editingSaved && baseValues ? baseValues.sharedDuration : defaults.sharedDuration;
+  const baselineMaxScore = editingSaved && baseValues ? baseValues.maxScore : defaults.maxScore;
   const tableEdited =
     rowsDifferFromTemplate(rows) ||
-    (values.timing === "SHARED" && values.sharedDuration !== defaults.sharedDuration) ||
-    (!showPoints && values.maxScore !== defaults.maxScore);
-  const guard = useUnsavedChangesGuard((formState.isDirty || tableEdited) && !createExam.isSuccess);
+    (values.timing === "SHARED" && values.sharedDuration !== baselineShared) ||
+    (!showPoints && values.maxScore !== baselineMaxScore);
+  /** Chế độ sửa: bảng đang hiện số đã lưu của bài và người dùng đã sửa (không tính bảng xem trước của phạm vi mới). */
+  const overviewChanged = editingSaved && rowsDifferFromTemplate(rows);
+  const guard = useUnsavedChangesGuard((formState.isDirty || tableEdited) && !createExam.isSuccess && !saved);
+  const { update, structureUpdate, submitError, setSubmitError, save, saveOverviewThenInfo } = useExamInfoSave({
+    exam,
+    structure: existing?.structure,
+    rows,
+    formDirty: formState.isDirty,
+    lockScope,
+    setError,
+    onSaved: (message) => {
+      setConfirmReplace(null);
+      setLiveMessage(message);
+      setSaved(true);
+      if (exam) router.push(examTabHref(exam.id, "structure"));
+    },
+    onFailed: () => setConfirmReplace(null),
+  });
 
   /** Nạp lại lựa chọn mới; `markDirty = false` khi nạp vì mẫu vừa tải về (người dùng chưa sửa gì). */
   const applyScope = (next: ScopeSelection, markDirty = true) => {
     const loaded = loadScope(next);
     const nextDefaults = scopeDefaults(loaded.template, kindOptionFor(kinds, next.kind), next.scope, next.buildMode);
+    // Chế độ sửa: về đúng lựa chọn đã lưu thì lấy lại giá trị đang lưu của bài, không phải mặc định của mẫu.
+    const nextValues = baseValues && savedScope && sameSelection(next, savedScope) ? baseValues : { ...nextDefaults, yearsConfirmed: false };
     const dirty = markDirty ? ({ shouldDirty: true } as const) : {};
     setSelection(next);
     setRows(loaded.rows);
-    setSharedText(formatShared(nextDefaults.sharedDuration));
-    setMaxScoreText(formatScore(nextDefaults.maxScore));
+    setSharedText(formatShared(nextValues.sharedDuration));
+    setMaxScoreText(formatScore(nextValues.maxScore));
     setValue("kind", next.kind, dirty);
     setValue("scope", next.scope, dirty);
     setValue("buildMode", next.buildMode, dirty);
     setValue("partCode", next.partCode, { ...dirty, shouldValidate: formState.isSubmitted });
     setValue("subjectCode", next.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
-    setValue("timing", nextDefaults.timing, dirty);
-    setValue("sharedDuration", nextDefaults.sharedDuration, dirty);
-    setValue("maxScore", nextDefaults.maxScore, dirty);
-    setValue("yearsConfirmed", false, dirty);
+    setValue("timing", nextValues.timing, dirty);
+    setValue("sharedDuration", nextValues.sharedDuration, dirty);
+    setValue("maxScore", nextValues.maxScore, dirty);
+    setValue("yearsConfirmed", nextValues.yearsConfirmed, dirty);
     setPendingSelection(null);
     setLiveMessage(tStep("loaded", { name: selectionLabel(next) }));
   };
 
   const requestScope = (change: Partial<ScopeSelection>) => {
-    const next = resolveScope(templates, kinds, reference.subjects, selection, change);
+    // Chế độ sửa: máy chủ giữ cách dựng bài đã lưu khi phạm vi mới là Theo môn (như tab Thông tin chung).
+    const next = resolveScope(templates, kinds, reference.subjects, selection, exam ? { ...change, buildMode: exam.buildMode } : change);
     if (sameSelection(next, selection)) {
       setPendingSelection(null);
       return;
@@ -425,7 +559,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   // lựa chọn hiện tại; bảng đã sửa thì hỏi trước như mọi lần nạp lại.
   const templatesApplied = useRef(templatesStatus === "ready");
   const reloadForTemplates = useEffectEvent(() => {
-    const next = resolveScope(templates, kinds, reference.subjects, selection, {});
+    const next = resolveScope(templates, kinds, reference.subjects, selection, exam ? { buildMode: exam.buildMode } : {});
     if (tableEdited) setPendingSelection(next);
     else applyScope(next, false);
   });
@@ -475,9 +609,33 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    if (overviewIssues.length > 0) {
+    // Chế độ sửa chỉ chặn khi chính bảng của bài bị sửa sai; bảng xem trước của phạm vi mới do máy chủ nạp lại.
+    const blocking = overviewIssues.length > 0 && (exam === undefined || overviewChanged);
+    if (blocking) {
       const first = overviewIssues[0]!;
       focusField(`${first.rowKey}.${first.field}`);
+      return;
+    }
+    if (exam && savedScope) {
+      const changed = !sameSelection(savedScope, selection);
+      const request = buildUpdateInfoRequest({
+        exam,
+        submitted,
+        kinds,
+        appliedTemplate,
+        changed,
+        maxScore: changed && showPoints ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore,
+      });
+      const pending: PendingInfoSave = {
+        request,
+        parts: changed
+          ? reloadPartRows({ templates, kinds, combinations: reference.combinations, partName: partNames.partName, subjectName, next: selection })
+          : [],
+      };
+      if (changed) setConfirmReplace(pending);
+      else if (overviewChanged) void saveOverviewThenInfo(pending);
+      else if (formState.isDirty) save(pending);
+      else router.push(examTabHref(exam.id, "structure"));
       return;
     }
     const request = toCreateExamRequest({
@@ -494,11 +652,11 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       overview: overviewDiff(rows),
     });
     createExam.mutate(request, {
-      onSuccess: (exam) => {
-        const message = t("success", { code: exam.code });
+      onSuccess: (created) => {
+        const message = t("success", { code: created.code });
         notify.success(message);
         setLiveMessage(message);
-        router.push(examTabHref(exam.id, "structure"));
+        router.push(examTabHref(created.id, "structure"));
       },
       onError: (error) => {
         const status = getErrorStatus(error);
@@ -518,14 +676,14 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   });
 
   const submitButton = (
-    <Button type="submit" loading={createExam.isPending} disabled={templatesStatus === "loading"}>
+    <Button type="submit" loading={createExam.isPending || update.isPending || structureUpdate.isPending} disabled={templatesStatus === "loading"}>
       {t("submit")}
       <ArrowRight aria-hidden className="size-4" />
     </Button>
   );
   const cancelButton = (
     <Button asChild variant="secondary">
-      <Link href={EXAMS_HREF}>{t("cancel")}</Link>
+      <Link href={exam ? examTabHref(exam.id, "structure") : EXAMS_HREF}>{t("cancel")}</Link>
     </Button>
   );
 
@@ -533,6 +691,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   // dưới các nút.
   return (
     <div className="flex min-w-0 flex-col gap-5">
+      {exam && <p className="text-body text-text-secondary">{t("editing", { code: exam.code })}</p>}
       <div className="flex flex-wrap items-start gap-6">
         <form
           id={formId}
@@ -557,7 +716,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 </FormField>
               </div>
               <div data-field="kind">
-                <KindSelect kinds={kinds} value={selection.kind} onChange={(kind) => requestScope({ kind })} />
+                <KindSelect kinds={kinds} value={selection.kind} onChange={(kind) => requestScope({ kind })} disabled={lockScope} />
               </div>
             </div>
 
@@ -626,8 +785,18 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               templates={templates}
               selection={selection}
               errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
+              disabled={lockScope}
+              // Chế độ sửa: cách dựng bài chỉ đọc (máy chủ chưa nhận `buildMode` khi sửa); bài đã công bố nêu lý do.
+              buildModeLocked={exam !== undefined}
+              buildModeHint={lockScope ? tStep("buildModePublished") : undefined}
               onChange={requestScope}
             />
+            {lockScope && (
+              <p className="flex items-start gap-2 text-caption text-text-muted">
+                <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+                {tGeneral("scopeLocked")}
+              </p>
+            )}
 
             {pendingSelection && (
               <div
@@ -667,6 +836,8 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
             }
           >
             <TemplateNotes template={template} />
+            {previewOnly && <p className="text-body text-text-secondary">{tGeneral("overview.pendingDescription")}</p>}
+            {lockScope && <p className="text-body text-text-secondary">{tGeneral("overview.publishedReadOnly")}</p>}
             {lockedCounts && (
               <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
                 <Lock aria-hidden className="size-3.5" />
@@ -698,6 +869,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
             ) : (
               <ExamOverviewTable
                 rows={rows}
+                readOnly={lockScope || previewOnly}
                 timing={values.timing}
                 showPoints={showPoints}
                 showPercents={showPercents}
@@ -763,6 +935,20 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       </div>
 
       <UnsavedChangesDialog guard={guard} />
+      <ReloadStructureDialog
+        open={confirmReplace !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmReplace(null);
+        }}
+        title={tGeneral("replaceTitle")}
+        description={tGeneral("replaceDescription")}
+        parts={confirmReplace?.parts ?? []}
+        confirmLabel={tGeneral("replaceConfirm")}
+        loading={update.isPending}
+        onConfirm={() => {
+          if (confirmReplace) save(confirmReplace);
+        }}
+      />
       <LiveStatus message={liveMessage} />
     </div>
   );

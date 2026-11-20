@@ -22,7 +22,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
 const CHECK = `${EXAM_PATH}/check`;
-const OVERVIEW_HREF = `/exams/${EXAM_ID}`;
+const OVERVIEW_HREF = `/exams/new?exam=${EXAM_ID}`;
 
 const reviewTemplate = {
   code: "T_REVIEW",
