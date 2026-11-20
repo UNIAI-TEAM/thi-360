@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.exam.api.ExamTemplateResponse;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
+import vn.unicom.thi360.exam.domain.ExamTemplateCheckFacts;
 import vn.unicom.thi360.exam.infrastructure.ExamTemplateRepository;
 
 /** Đọc nguyên mẫu cấu trúc (exam_template) và chọn mẫu khớp phạm vi (spec 5.2). */
@@ -46,6 +47,33 @@ public class ExamTemplateService {
     ExamTemplate findProvenance(String templateCode) {
         if (templateCode == null || templateCode.isBlank()) return null;
         return templateRepository.findById(templateCode.trim()).orElse(null);
+    }
+
+    /**
+     * The template {@link #findBestMatch} would pick for the SUBJECT scope of a kind and subject, as its flag columns
+     * only (FU-BE15-R1-5). The order is the one of {@code findBestMatch}: default first, then the latest structure year,
+     * then the highest code; null when the subject has no active standard template.
+     */
+    @Transactional(readOnly = true)
+    public ExamTemplateCheckFacts findSubjectStandardFacts(String kindCode, String subjectCode) {
+        return templateRepository.findSubjectStandardFacts(kindCode, subjectCode).stream()
+                .max(Comparator.comparing(ExamTemplateCheckFacts::defaultTemplate)
+                        .thenComparing(facts -> facts.structureYear() == null ? 0 : facts.structureYear())
+                        .thenComparing(ExamTemplateCheckFacts::code))
+                .orElse(null);
+    }
+
+    /** The flag columns of the template an exam was loaded from, even when it is retired; null when it is unknown. */
+    @Transactional(readOnly = true)
+    public ExamTemplateCheckFacts findCheckFacts(String templateCode) {
+        if (templateCode == null || templateCode.isBlank()) return null;
+        return templateRepository.findCheckFacts(templateCode.trim()).orElse(null);
+    }
+
+    /** The structure JSON of one template: read only when a lock of that template applies to the exam being checked. */
+    @Transactional(readOnly = true)
+    public JsonNode readStructure(String templateCode) {
+        return templateRepository.findStructureByCode(templateCode).orElseThrow();
     }
 
     /** Select only the configured default; review templates are shared by subjects. */
