@@ -6,16 +6,19 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionRedemption;
 import vn.unicom.thi360.commerce.promotion.domain.RedemptionState;
 
-public interface PromotionRedemptionRepository extends JpaRepository<PromotionRedemption, UUID> {
+public interface PromotionRedemptionRepository
+        extends JpaRepository<PromotionRedemption, UUID>, JpaSpecificationExecutor<PromotionRedemption> {
 
     Optional<PromotionRedemption> findByPromotionIdAndOrderId(UUID promotionId, UUID orderId);
 
-    boolean existsByPromotionIdAndOrderIdAndState(UUID promotionId, UUID orderId, RedemptionState state);
+    boolean existsByPromotionIdAndUserIdAndOrderIdAndState(
+            UUID promotionId, UUID userId, UUID orderId, RedemptionState state);
 
     long countByPromotionIdAndState(UUID promotionId, RedemptionState state);
 
@@ -46,8 +49,10 @@ public interface PromotionRedemptionRepository extends JpaRepository<PromotionRe
     Page<PromotionRedemption> findByPromotionIdAndStateOrderByCreatedAtDescIdDesc(
             UUID promotionId, RedemptionState state, Pageable pageable);
 
-    List<PromotionRedemption> findByPromotionIdOrderByCreatedAtDescIdDesc(UUID promotionId);
+    @Query("SELECT DISTINCT r.userId FROM PromotionRedemption r WHERE r.promotionId = :promotionId")
+    List<UUID> findDistinctUserIdsByPromotionId(@Param("promotionId") UUID promotionId);
 
-    List<PromotionRedemption> findByPromotionIdAndStateOrderByCreatedAtDescIdDesc(
-            UUID promotionId, RedemptionState state);
+    @Query("SELECT DISTINCT r.userId FROM PromotionRedemption r WHERE r.promotionId = :promotionId AND r.state = :state")
+    List<UUID> findDistinctUserIdsByPromotionIdAndState(
+            @Param("promotionId") UUID promotionId, @Param("state") RedemptionState state);
 }

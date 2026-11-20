@@ -130,7 +130,7 @@ public class PromotionCapWarningService {
                     exam.name(),
                     exam.listPriceVnd(),
                     discountedPrice,
-                    minAmount));
+                    eval.promoPrice()));
         }
         warnings.sort(Comparator.comparing(CapWarning::examName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(CapWarning::examId));

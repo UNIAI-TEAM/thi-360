@@ -101,10 +101,10 @@ public class RealPriceCalculator implements PriceCalculator {
         Instant now = request.now() != null ? request.now() : clock.instant();
         PricedProduct product = request.product();
 
-        List<Promotion> activeAutos = request.excludedPendingOrderId() == null
-                ? promotionRepository.findActiveAutoPromotions(now)
-                : promotionRepository.findActiveAutoPromotionsExcludingPendingOrder(
-                        now, request.excludedPendingOrderId());
+        List<Promotion> activeAutos = (request.userId() != null && request.excludedPendingOrderId() != null)
+                ? promotionRepository.findActiveAutoPromotionsExcludingPendingOrder(
+                        now, request.userId(), request.excludedPendingOrderId())
+                : promotionRepository.findActiveAutoPromotions(now);
         Map<UUID, ScopeTargets> autoScopes = loadScopes(activeAutos);
         List<AutoCandidate> matchingAutos = matchingAutoCandidates(product, activeAutos, autoScopes);
 
@@ -175,9 +175,11 @@ public class RealPriceCalculator implements PriceCalculator {
         }
 
         if (promo.getTotalLimit() != null) {
-            boolean excludedOwn = request.excludedPendingOrderId() != null
-                    && redemptionRepository.existsByPromotionIdAndOrderIdAndState(
-                            promo.getId(), request.excludedPendingOrderId(), RedemptionState.RESERVED);
+            boolean excludedOwn = request.userId() != null
+                    && request.excludedPendingOrderId() != null
+                    && redemptionRepository.existsByPromotionIdAndUserIdAndOrderIdAndState(
+                            promo.getId(), request.userId(), request.excludedPendingOrderId(),
+                            RedemptionState.RESERVED);
             int effectiveUsed = Math.max(0, promo.getUsedCount() - (excludedOwn ? 1 : 0));
             if (effectiveUsed >= promo.getTotalLimit()) {
                 throw new BusinessRuleException("VOUCHER_EXHAUSTED");
@@ -232,14 +234,9 @@ public class RealPriceCalculator implements PriceCalculator {
         if (allowedClassIds.isEmpty()) {
             return false;
         }
-        try {
-            return classMembershipPort.getUserClasses(userId).currentClasses().stream()
-                    .anyMatch(c -> allowedClassIds.contains(c.classId()));
-        } catch (NotFoundException e) {
-            return classMembershipPort.findCurrentClassesByUserIds(List.of(userId))
-                    .getOrDefault(userId, List.of()).stream()
-                    .anyMatch(c -> allowedClassIds.contains(c.id()));
-        }
+        return classMembershipPort.findCurrentClassesByUserIds(List.of(userId))
+                .getOrDefault(userId, List.of()).stream()
+                .anyMatch(c -> allowedClassIds.contains(c.id()));
     }
 
     private Map<UUID, ScopeTargets> loadScopes(List<Promotion> promotions) {

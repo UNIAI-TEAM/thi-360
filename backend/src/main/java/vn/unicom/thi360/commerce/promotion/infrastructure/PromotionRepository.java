@@ -43,7 +43,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID>, Jpa
 
     /**
      * Active automatic promotions at {@code now}, also keeping promotions whose last slot is held by
-     * {@code excludedOrderId} in {@code RESERVED} state (TM 7.2 step 7, AC-15).
+     * {@code (userId, excludedOrderId)} in {@code RESERVED} state while excluding over-limit promotions (TM 7.2 step 7,
+     * AC-15, AC-18).
      */
     @Query("""
             SELECT p FROM Promotion p
@@ -54,12 +55,15 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID>, Jpa
               AND p.endsAt > :now
               AND (p.totalLimit IS NULL
                    OR p.usedCount < p.totalLimit
-                   OR EXISTS (SELECT 1 FROM PromotionRedemption r
-                              WHERE r.promotionId = p.id
-                                AND r.orderId = :excludedOrderId
-                                AND r.state = vn.unicom.thi360.commerce.promotion.domain.RedemptionState.RESERVED))
+                   OR ((p.usedCount - 1) < p.totalLimit
+                       AND EXISTS (SELECT 1 FROM PromotionRedemption r
+                                   WHERE r.promotionId = p.id
+                                     AND r.userId = :userId
+                                     AND r.orderId = :excludedOrderId
+                                     AND r.state = vn.unicom.thi360.commerce.promotion.domain.RedemptionState.RESERVED)))
             """)
     List<Promotion> findActiveAutoPromotionsExcludingPendingOrder(
             @Param("now") Instant now,
+            @Param("userId") UUID userId,
             @Param("excludedOrderId") UUID excludedOrderId);
 }

@@ -133,34 +133,46 @@ public final class PricingEngine {
 
         if (voucher.combinable()) {
             long base = promoPrice;
-            long rawAfter = Math.max(0L, base - computeRawDiscount(base, voucher.discountType(),
-                    voucher.discountValue(), voucher.maxDiscountVnd()));
-            long finalPrice = applyVoucherFloor(rawAfter, minAmount);
+            long rawVoucherDiscount = computeRawDiscount(base, voucher.discountType(),
+                    voucher.discountValue(), voucher.maxDiscountVnd());
+            long finalPrice = rawVoucherDiscount > 0L
+                    ? applyVoucherFloor(Math.max(0L, base - rawVoucherDiscount), minAmount)
+                    : base;
             long voucherDiscount = Math.max(0L, base - finalPrice);
 
+            if (voucherDiscount == 0L) {
+                if (bestAuto == null) {
+                    return new QuoteCalculation(safeList, base, null, 0L, null, 0L,
+                            DiscountApplied.NONE, false, false);
+                }
+                return new QuoteCalculation(safeList, promoPrice, toAppliedAuto(bestAuto), autoDiscount,
+                        null, 0L, DiscountApplied.PROMOTION_ONLY, true, floored);
+            }
             if (bestAuto == null) {
                 return new QuoteCalculation(safeList, finalPrice, null, 0L,
                         toAppliedVoucher(voucher, voucherDiscount), voucherDiscount,
                         DiscountApplied.VOUCHER_ONLY, false, false);
-            }
-            if (base == 0L) {
-                return new QuoteCalculation(safeList, 0L, toAppliedAuto(bestAuto), autoDiscount,
-                        null, 0L, DiscountApplied.PROMOTION_ONLY, true, floored);
             }
             return new QuoteCalculation(safeList, finalPrice, toAppliedAuto(bestAuto), autoDiscount,
                     toAppliedVoucher(voucher, voucherDiscount), voucherDiscount,
                     DiscountApplied.COMBINED, false, floored);
         }
 
-        long rawVoucherOnly = Math.max(0L, safeList - computeRawDiscount(safeList, voucher.discountType(),
-                voucher.discountValue(), voucher.maxDiscountVnd()));
-        long voucherOnlyPrice = applyVoucherFloor(rawVoucherOnly, minAmount);
+        long rawVoucherDiscount = computeRawDiscount(safeList, voucher.discountType(),
+                voucher.discountValue(), voucher.maxDiscountVnd());
+        long voucherOnlyPrice = rawVoucherDiscount > 0L
+                ? applyVoucherFloor(Math.max(0L, safeList - rawVoucherDiscount), minAmount)
+                : safeList;
         long voucherOnlyDiscount = Math.max(0L, safeList - voucherOnlyPrice);
 
-        if (bestAuto == null || voucherOnlyPrice < promoPrice) {
+        if (voucherOnlyDiscount > 0L && (bestAuto == null || voucherOnlyPrice < promoPrice)) {
             return new QuoteCalculation(safeList, voucherOnlyPrice, null, 0L,
                     toAppliedVoucher(voucher, voucherOnlyDiscount), voucherOnlyDiscount,
                     DiscountApplied.VOUCHER_ONLY, false, false);
+        }
+        if (bestAuto == null) {
+            return new QuoteCalculation(safeList, safeList, null, 0L, null, 0L,
+                    DiscountApplied.NONE, false, false);
         }
         return new QuoteCalculation(safeList, promoPrice, toAppliedAuto(bestAuto), autoDiscount,
                 null, 0L, DiscountApplied.PROMOTION_ONLY, true, floored);

@@ -16,8 +16,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -103,7 +105,9 @@ public class PromotionAdminService {
     private static final int MAX_CODE_LENGTH = 50;
     private static final int MAX_NAME_LENGTH = 200;
     private static final int MAX_DESCRIPTION_LENGTH = 2000;
+    private static final int REDEMPTION_USER_BATCH_SIZE = 500;
     private static final Sort DEFAULT_LIST_SORT = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+    private static final Sort DEFAULT_REDEMPTION_SORT = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PromotionRepository promotionRepository;
@@ -259,10 +263,20 @@ public class PromotionAdminService {
         TargetIds finalTargets = currentTargets;
 
         if (promo.getUsedCount() > 0) {
-            applyInUseUpdate(promo, request, currentTargets, now, actor);
+            InUseUpdate planned = planInUseUpdate(promo, request, currentTargets, now);
+            if (!planned.hasChanges()) {
+                return buildDetail(promo, existingScopeItems, existingAudiences,
+                        PageQuery.of(0, PageQuery.DEFAULT_SIZE, null, Set.of()), null, null);
+            }
+            promo.updateMetadata(planned.name(), planned.description(), planned.endsAt(),
+                    planned.totalLimit(), planned.status(), now, actor.id(), actor.username());
             promotionRepository.saveAndFlush(promo);
         } else {
             ValidatedSpec spec = mergeAndValidateUnusedUpdate(promo, request, currentTargets, now);
+            if (diffSnapshots(beforeSnapshot, snapshot(spec)).isEmpty()) {
+                return buildDetail(promo, existingScopeItems, existingAudiences,
+                        PageQuery.of(0, PageQuery.DEFAULT_SIZE, null, Set.of()), null, null);
+            }
             String previousNormalized = promo.getCodeNormalized();
             String nextNormalized = spec.code() == null ? null : PromotionCodeNormalizer.normalize(spec.code());
             if (spec.kind() == PromotionKind.VOUCHER && !Objects.equals(previousNormalized, nextNormalized)
@@ -300,6 +314,9 @@ public class PromotionAdminService {
         if (!Objects.equals(expectedRevision, promo.getRevision())) {
             throw new VersionConflictException();
         }
+        if (promo.getStatus() == PromotionStatus.STOPPED) {
+            return buildDetail(promo, PageQuery.of(0, PageQuery.DEFAULT_SIZE, null, Set.of()), null, null);
+        }
         PromotionStatus oldStatus = promo.getStatus();
         Instant now = clock.instant();
         CurrentUser actor = currentUserProvider.requireCurrentUser();
@@ -324,6 +341,9 @@ public class PromotionAdminService {
         Instant now = clock.instant();
         if (!now.isBefore(promo.getEndsAt())) {
             throw new ConflictException("PROMOTION_ENDED");
+        }
+        if (promo.getStatus() == PromotionStatus.ACTIVE) {
+            return buildDetail(promo, PageQuery.of(0, PageQuery.DEFAULT_SIZE, null, Set.of()), null, null);
         }
         PromotionStatus oldStatus = promo.getStatus();
         CurrentUser actor = currentUserProvider.requireCurrentUser();
@@ -379,8 +399,6 @@ public class PromotionAdminService {
         if (stored.saleState() != SaleState.ON_SALE) {
             throw new NotFoundException(StorefrontErrorCodes.PRODUCT_NOT_FOUND, null);
         }
-        promotionRepository.findByIdAndDeletedAtIsNull(request.promotionId())
-                .orElseThrow(() -> new NotFoundException("PROMOTION_NOT_FOUND", null));
 
         PricedProduct product = new PricedProduct(
                 stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
@@ -495,8 +513,8 @@ public class PromotionAdminService {
         return spec;
     }
 
-    private void applyInUseUpdate(
-            Promotion promo, UpdatePromotionRequest req, TargetIds currentTargets, Instant now, CurrentUser actor) {
+    private InUseUpdate planInUseUpdate(
+            Promotion promo, UpdatePromotionRequest req, TargetIds currentTargets, Instant now) {
         if (hasLockedFieldChange(promo, req, currentTargets)) {
             throw new ConflictException("PROMOTION_IN_USE");
         }
@@ -505,8 +523,8 @@ public class PromotionAdminService {
                 req.description(), Boolean.TRUE.equals(req.clearDescription()), promo.getDescription());
 
         Instant newEndsAt = promo.getEndsAt();
-        if (req.endsAt() != null) {
-            if (req.endsAt().isBefore(now) || !req.endsAt().isAfter(promo.getStartsAt())) {
+        if (req.endsAt() != null && !req.endsAt().equals(promo.getEndsAt())) {
+            if (!req.endsAt().isAfter(now) || !req.endsAt().isAfter(promo.getStartsAt())) {
                 throw new BusinessRuleException("PROMOTION_ENDS_AT_PAST");
             }
             newEndsAt = req.endsAt();
@@ -536,11 +554,15 @@ public class PromotionAdminService {
             throw new ConflictException("PROMOTION_ENDED");
         }
 
-        promo.updateMetadata(newName, newDescription, newEndsAt, newTotalLimit, newStatus, now,
-                actor.id(), actor.username());
+        boolean changed = !Objects.equals(newName, promo.getName())
+                || !Objects.equals(newDescription, promo.getDescription())
+                || !Objects.equals(newEndsAt, promo.getEndsAt())
+                || !Objects.equals(newTotalLimit, promo.getTotalLimit())
+                || newStatus != promo.getStatus();
+        return new InUseUpdate(newName, newDescription, newEndsAt, newTotalLimit, newStatus, changed);
     }
 
-    private static boolean hasLockedFieldChange(
+    private boolean hasLockedFieldChange(
             Promotion promo, UpdatePromotionRequest req, TargetIds currentTargets) {
         if (req.kind() != null && req.kind() != promo.getKind()) {
             return true;
@@ -575,21 +597,27 @@ public class PromotionAdminService {
         if (req.scope() != null && req.scope() != promo.getScope()) {
             return true;
         }
-        if (req.examKindIds() != null && !Set.copyOf(req.examKindIds()).equals(Set.copyOf(currentTargets.examKindIds()))) {
+        if (req.examKindIds() != null
+                && !Set.copyOf(deduplicateIds(req.examKindIds(), "examKindIds"))
+                        .equals(Set.copyOf(currentTargets.examKindIds()))) {
             return true;
         }
-        if (req.examIds() != null && !Set.copyOf(req.examIds()).equals(Set.copyOf(currentTargets.examIds()))) {
+        if (req.examIds() != null
+                && !Set.copyOf(deduplicateIds(req.examIds(), "examIds"))
+                        .equals(Set.copyOf(currentTargets.examIds()))) {
             return true;
         }
         if (req.audience() != null && req.audience() != promo.getAudience()) {
             return true;
         }
         if (req.audienceClassIds() != null
-                && !Set.copyOf(req.audienceClassIds()).equals(Set.copyOf(currentTargets.classIds()))) {
+                && !Set.copyOf(deduplicateIds(req.audienceClassIds(), "audienceClassIds"))
+                        .equals(Set.copyOf(currentTargets.classIds()))) {
             return true;
         }
         if (req.audienceUserIds() != null
-                && !Set.copyOf(req.audienceUserIds()).equals(Set.copyOf(currentTargets.userIds()))) {
+                && !Set.copyOf(deduplicateIds(req.audienceUserIds(), "audienceUserIds"))
+                        .equals(Set.copyOf(currentTargets.userIds()))) {
             return true;
         }
         return false;
@@ -681,6 +709,9 @@ public class PromotionAdminService {
                 if (classIds.isEmpty() && userIds.isEmpty()) {
                     throw fieldValidation("audienceClassIds", "EMPTY", "validation.promotion.audienceTargets.empty");
                 }
+                if (!userIds.isEmpty() && !allUsersExist(userIds)) {
+                    throw new BusinessRuleException("PROMOTION_SCOPE_INVALID");
+                }
             } else if (!classIds.isEmpty() || !userIds.isEmpty()) {
                 throw fieldValidation("audienceClassIds", "NOT_ALLOWED",
                         "validation.promotion.audienceTargets.notAllowed");
@@ -696,6 +727,17 @@ public class PromotionAdminService {
                 startsAt, endsAt, totalLimit, perUserLimit, resolvedCombinable, scope,
                 examKindIds, examIds, audience, classIds, userIds,
                 status == null ? PromotionStatus.ACTIVE : status);
+    }
+
+    private boolean allUsersExist(List<UUID> userIds) {
+        for (int i = 0; i < userIds.size(); i += REDEMPTION_USER_BATCH_SIZE) {
+            int end = Math.min(i + REDEMPTION_USER_BATCH_SIZE, userIds.size());
+            List<UUID> chunk = userIds.subList(i, end);
+            if (userDirectory.findByIds(chunk).size() != chunk.size()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void validateScopeTargets(PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds) {
@@ -762,7 +804,7 @@ public class PromotionAdminService {
     private String normalizeDescription(String rawDescription, boolean clear, String fallback) {
         if (clear) {
             if (rawDescription != null) {
-                throw fieldValidation("description", "INVALID", "validation.promotion.description.size");
+                throw fieldValidation("description", "INVALID", "validation.promotion.description.conflict");
             }
             return null;
         }
@@ -783,10 +825,13 @@ public class PromotionAdminService {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
+        String messageKey = ("audienceClassIds".equals(field) || "audienceUserIds".equals(field))
+                ? "validation.promotion.audienceItems.invalidItem"
+                : "validation.ids.invalidItem";
         Set<UUID> unique = new LinkedHashSet<>(ids.size());
         for (UUID id : ids) {
             if (id == null) {
-                throw fieldValidation(field, "INVALID", "validation.promotion.scopeItems.notAllowed");
+                throw fieldValidation(field, "INVALID", messageKey);
             }
             unique.add(id);
         }
@@ -892,26 +937,48 @@ public class PromotionAdminService {
 
     private static Map<String, Object> snapshot(
             Promotion p, List<UUID> examKindIds, List<UUID> examIds, List<UUID> classIds, List<UUID> userIds) {
+        return snapshot(
+                p.getKind(), p.getName(), p.getDescription(), p.getCode(), p.getDiscountType(),
+                p.getDiscountValue(), p.getMaxDiscountVnd(), p.getStartsAt(), p.getEndsAt(),
+                p.getTotalLimit(), p.getPerUserLimit(), p.getCombinable(), p.getScope(),
+                examKindIds, examIds, p.getAudience(), classIds, userIds, p.getStatus());
+    }
+
+    private static Map<String, Object> snapshot(ValidatedSpec spec) {
+        return snapshot(
+                spec.kind(), spec.name(), spec.description(), spec.code(), spec.discountType(),
+                spec.discountValue(), spec.maxDiscountVnd(), spec.startsAt(), spec.endsAt(),
+                spec.totalLimit(), spec.perUserLimit(), spec.combinable(), spec.scope(),
+                spec.examKindIds(), spec.examIds(), spec.audience(), spec.audienceClassIds(),
+                spec.audienceUserIds(), spec.status());
+    }
+
+    private static Map<String, Object> snapshot(
+            PromotionKind kind, String name, String description, String code,
+            DiscountType discountType, long discountValue, Long maxDiscountVnd,
+            Instant startsAt, Instant endsAt, Integer totalLimit, Integer perUserLimit,
+            Boolean combinable, PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds,
+            PromotionAudienceType audience, List<UUID> classIds, List<UUID> userIds, PromotionStatus status) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("kind", p.getKind().name());
-        map.put("name", p.getName());
-        map.put("description", p.getDescription());
-        map.put("code", p.getCode());
-        map.put("discountType", p.getDiscountType().name());
-        map.put("discountValue", p.getDiscountValue());
-        map.put("maxDiscountVnd", p.getMaxDiscountVnd());
-        map.put("startsAt", p.getStartsAt().toString());
-        map.put("endsAt", p.getEndsAt().toString());
-        map.put("totalLimit", p.getTotalLimit());
-        map.put("perUserLimit", p.getPerUserLimit());
-        map.put("combinable", p.getCombinable());
-        map.put("scope", p.getScope().name());
+        map.put("kind", kind.name());
+        map.put("name", name);
+        map.put("description", description);
+        map.put("code", code);
+        map.put("discountType", discountType.name());
+        map.put("discountValue", discountValue);
+        map.put("maxDiscountVnd", maxDiscountVnd);
+        map.put("startsAt", startsAt.toString());
+        map.put("endsAt", endsAt.toString());
+        map.put("totalLimit", totalLimit);
+        map.put("perUserLimit", perUserLimit);
+        map.put("combinable", combinable);
+        map.put("scope", scope.name());
         map.put("examKindIds", sortedUuidStrings(examKindIds));
         map.put("examIds", sortedUuidStrings(examIds));
-        map.put("audience", p.getAudience() == null ? null : p.getAudience().name());
+        map.put("audience", audience == null ? null : audience.name());
         map.put("audienceClassIds", sortedUuidStrings(classIds));
         map.put("audienceUserIds", sortedUuidStrings(userIds));
-        map.put("status", p.getStatus().name());
+        map.put("status", status.name());
         return map;
     }
 
@@ -1130,14 +1197,11 @@ public class PromotionAdminService {
         if (classIds.isEmpty()) {
             return List.of();
         }
-        Map<UUID, UUID> sampleUserByClass = new HashMap<>(classIds.size());
         Set<UUID> sampleUsers = new HashSet<>();
         for (UUID classId : classIds) {
             Set<UUID> members = classMembershipPort.findUserIdsInClass(classId);
             if (!members.isEmpty()) {
-                UUID sample = members.iterator().next();
-                sampleUserByClass.put(classId, sample);
-                sampleUsers.add(sample);
+                sampleUsers.add(members.iterator().next());
             }
         }
         Map<UUID, ClassRef> resolvedRefs = new HashMap<>(classIds.size());
@@ -1180,32 +1244,63 @@ public class PromotionAdminService {
                             promotionId, state, pageQuery.toPageable());
             Set<UUID> userIds = page.getContent().stream()
                     .map(PromotionRedemption::getUserId)
-                    .collect(java.util.stream.Collectors.toSet());
+                    .collect(Collectors.toSet());
             Map<UUID, UserSummary> users = userIds.isEmpty() ? Map.of() : userDirectory.findByIds(userIds);
             return PageResponse.from(page, r -> toRedemptionView(r, users.get(r.getUserId())));
         }
 
-        List<PromotionRedemption> all = state == null
-                ? redemptionRepository.findByPromotionIdOrderByCreatedAtDescIdDesc(promotionId)
-                : redemptionRepository.findByPromotionIdAndStateOrderByCreatedAtDescIdDesc(promotionId, state);
-        if (all.isEmpty()) {
-            return new PageResponse<>(List.of(), pageQuery.page(), pageQuery.size(), 0L, 0);
-        }
-        Set<UUID> userIds = all.stream()
-                .map(PromotionRedemption::getUserId)
-                .collect(java.util.stream.Collectors.toSet());
-        Map<UUID, UserSummary> users = userDirectory.findByIds(userIds);
         String needle = q.trim().toLowerCase(Locale.ROOT);
-        List<PromotionRedemptionView> matched = all.stream()
-                .map(r -> toRedemptionView(r, users.get(r.getUserId())))
-                .filter(v -> matchesRedemptionQuery(v, needle))
-                .toList();
+        String likePattern = likeContainsPattern(needle);
+        List<UUID> distinctUserIds = state == null
+                ? redemptionRepository.findDistinctUserIdsByPromotionId(promotionId)
+                : redemptionRepository.findDistinctUserIdsByPromotionIdAndState(promotionId, state);
+        Set<UUID> matchedUserIds = collectMatchedUserIds(distinctUserIds, needle);
 
-        long total = matched.size();
-        int from = (int) Math.min((long) pageQuery.page() * pageQuery.size(), total);
-        int to = (int) Math.min((long) from + pageQuery.size(), total);
-        int totalPages = total == 0 ? 0 : (int) ((total + pageQuery.size() - 1) / pageQuery.size());
-        return new PageResponse<>(matched.subList(from, to), pageQuery.page(), pageQuery.size(), total, totalPages);
+        Specification<PromotionRedemption> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("promotionId"), promotionId));
+            if (state != null) {
+                predicates.add(cb.equal(root.get("state"), state));
+            }
+            Predicate orderMatch = cb.like(
+                    cb.lower(cb.coalesce(root.get("orderCode"), "")), likePattern, '\\');
+            if (matchedUserIds.isEmpty()) {
+                predicates.add(orderMatch);
+            } else {
+                predicates.add(cb.or(orderMatch, root.get("userId").in(matchedUserIds)));
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+        Pageable pageable = PageQuery.of(
+                pageQuery.page(), pageQuery.size(), null, Set.of(), DEFAULT_REDEMPTION_SORT).toPageable();
+        Page<PromotionRedemption> page = redemptionRepository.findAll(spec, pageable);
+        Set<UUID> pageUserIds = page.getContent().stream()
+                .map(PromotionRedemption::getUserId)
+                .collect(Collectors.toSet());
+        Map<UUID, UserSummary> users = pageUserIds.isEmpty() ? Map.of() : userDirectory.findByIds(pageUserIds);
+        return PageResponse.from(page, r -> toRedemptionView(r, users.get(r.getUserId())));
+    }
+
+    private Set<UUID> collectMatchedUserIds(List<UUID> distinctUserIds, String needle) {
+        if (distinctUserIds.isEmpty()) {
+            return Set.of();
+        }
+        Set<UUID> matched = new HashSet<>();
+        for (int i = 0; i < distinctUserIds.size(); i += REDEMPTION_USER_BATCH_SIZE) {
+            int end = Math.min(i + REDEMPTION_USER_BATCH_SIZE, distinctUserIds.size());
+            List<UUID> chunk = distinctUserIds.subList(i, end);
+            Map<UUID, UserSummary> users = userDirectory.findByIds(chunk);
+            for (UUID uid : chunk) {
+                UserSummary user = users.get(uid);
+                boolean userMatches = uid.toString().toLowerCase(Locale.ROOT).contains(needle)
+                        || (user != null && (containsIgnoreCase(user.username(), needle)
+                                || containsIgnoreCase(user.fullName(), needle)));
+                if (userMatches) {
+                    matched.add(uid);
+                }
+            }
+        }
+        return matched;
     }
 
     private static PromotionRedemptionView toRedemptionView(PromotionRedemption r, UserSummary user) {
@@ -1222,13 +1317,6 @@ public class PromotionAdminService {
                 r.getUpdatedAt());
     }
 
-    private static boolean matchesRedemptionQuery(PromotionRedemptionView view, String needle) {
-        return containsIgnoreCase(view.orderCode(), needle)
-                || containsIgnoreCase(view.username(), needle)
-                || containsIgnoreCase(view.fullName(), needle)
-                || view.userId().toString().toLowerCase(Locale.ROOT).contains(needle);
-    }
-
     private static boolean containsIgnoreCase(String value, String needle) {
         return value != null && value.toLowerCase(Locale.ROOT).contains(needle);
     }
@@ -1239,6 +1327,16 @@ public class PromotionAdminService {
             sb.append(CODE_ALPHABET.charAt(RANDOM.nextInt(CODE_ALPHABET.length())));
         }
         return sb.toString();
+    }
+
+    private record InUseUpdate(
+            String name,
+            String description,
+            Instant endsAt,
+            Integer totalLimit,
+            PromotionStatus status,
+            boolean hasChanges
+    ) {
     }
 
     private record ValidatedSpec(

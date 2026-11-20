@@ -6,7 +6,6 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -137,12 +136,18 @@ public class PromotionRedemptionService {
             return List.of();
         }
         List<ReserveRequest> ordered = new ArrayList<>(requests);
-        ordered.sort(Comparator.comparing(ReserveRequest::promotionId));
+        ordered.sort((a, b) -> compareUuidUnsigned(a.promotionId(), b.promotionId()));
         List<RedemptionView> result = new ArrayList<>(ordered.size());
         for (ReserveRequest req : ordered) {
             result.add(reserve(req.promotionId(), userId, orderId, orderCode, req.discountVnd()));
         }
         return result;
+    }
+
+    /** Matches PostgreSQL {@code uuid} byte/ASC ordering (unsigned 128-bit big-endian). */
+    static int compareUuidUnsigned(UUID a, UUID b) {
+        int msb = Long.compareUnsigned(a.getMostSignificantBits(), b.getMostSignificantBits());
+        return msb != 0 ? msb : Long.compareUnsigned(a.getLeastSignificantBits(), b.getLeastSignificantBits());
     }
 
     /**

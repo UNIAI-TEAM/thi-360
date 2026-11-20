@@ -125,5 +125,9 @@ CREATE INDEX idx_promotion_redemption_promo_user_state
     ON commerce.promotion_redemption (promotion_id, user_id, state);
 CREATE INDEX idx_promotion_redemption_promo_state
     ON commerce.promotion_redemption (promotion_id, state);
+CREATE INDEX idx_promotion_redemption_promo_created
+    ON commerce.promotion_redemption (promotion_id, created_at DESC, id DESC);
+CREATE INDEX idx_promotion_redemption_promo_state_created
+    ON commerce.promotion_redemption (promotion_id, state, created_at DESC, id DESC);
 CREATE INDEX idx_promotion_redemption_order
     ON commerce.promotion_redemption (order_id);
