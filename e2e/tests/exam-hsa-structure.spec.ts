@@ -81,10 +81,13 @@ test("HSA dùng cấu trúc môn: màn môn không còn ô Số câu của mục
     await expect(page.getByRole("textbox", { name })).toHaveAttribute("readonly", "");
   }
 
-  // Nhóm lấy câu vẫn sửa được số câu.
+  // CR-2H / AD-129: `HSA SUBJECT TOAN` mở `MatrixFormHsa` (`Cấu trúc câu`); các ô vai trò sửa được, còn `Trắc nghiệm đơn` tự tính chỉ đọc.
   await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
-  await page.getByRole("button", { name: /^Mở nhóm/ }).first().click();
-  await expect(page.getByRole("textbox", { name: /^Số câu cần lấy/ })).not.toHaveAttribute("readonly", "");
+  await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+  for (const name of ["Trắc nghiệm", "Điền đáp án", "Số chùm"] as const) {
+    await expect(page.getByRole("textbox", { name, exact: true })).not.toHaveAttribute("readonly", "");
+  }
+  await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true })).toHaveAttribute("readonly", "");
 });
 
 test("HSA Văn: nhóm lấy câu mở và sửa qua danh sách dòng", async ({ context, page }) => {

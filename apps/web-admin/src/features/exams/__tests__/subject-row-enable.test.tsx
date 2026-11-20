@@ -42,7 +42,7 @@ function enabledRowSections(): Array<{ code: string; kind: string; part: ExamPar
 }
 
 describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
-  it("mọi cặp DS đang bật; MT của QDA, BCA, V-ACT bật cùng CR-2 (HSA MT chờ CR-2H)", () => {
+  it("mọi cặp DS và MT (HSA, QDA, BCA, V-ACT) đang bật", () => {
     const enabled = listSubjectFormPairs().filter(({ entry }) => entry.enabled);
     const enabledRows = enabled.filter(({ entry }) => entry.form === "ROWS");
     const enabledMatrix = enabled.filter(({ entry }) => entry.form === "MATRIX");
@@ -59,7 +59,7 @@ describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
     );
     expect(enabledMatrix.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
       [
-        ...["QDA", "BCA"].flatMap((kind) => ["TOAN", "LY", "HOA", "SINH", "SU", "DIA"].map((subject) => `${kind}:${subject}`)),
+        ...["HSA", "QDA", "BCA"].flatMap((kind) => ["TOAN", "LY", "HOA", "SINH", "SU", "DIA"].map((subject) => `${kind}:${subject}`)),
         "VACT:TOAN",
         "VACT:VIETNAMESE",
       ].toSorted(),

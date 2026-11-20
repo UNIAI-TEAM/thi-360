@@ -3,10 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useMemo, useSyncExternalStore, type ComponentType } from "react";
 import { useSubjectTotalChange } from "../components/subject-total-change";
+import { recomputeMapidRules } from "../mapid-rules";
 import { sectionCaseCounts } from "../subject-matrix";
 import type { SubjectFormRendererProps } from "./form-renderers";
-import type { MatrixBlockProps, MatrixKindSlotOptions } from "./matrix-block-props";
+import type { MatrixBlockProps, MatrixKindSlotOptionsResolver } from "./matrix-block-props";
 import { MatrixDistributionBlock } from "./matrix-distribution-block";
+import { HsaRoleScopeFooter, hsaMatrixSlotOptions, MatrixFormHsa } from "./matrix-form-hsa";
 import { structureOf } from "./matrix-form-model";
 import { MatrixScopeBlock } from "./matrix-scope-block";
 import { MatrixStructureBlock } from "./matrix-structure-block";
@@ -15,7 +17,7 @@ import { SubjectFormHeader } from "./subject-form-header";
 
 /**
  * Chỗ gắn phần riêng theo kỳ của MT (CR-2H, HSA). Màn vẽ phần này sau Cấu trúc câu, trước khối lớp và độ khó, với cùng dữ liệu của các khối
- * khác. Tra theo mã kỳ; kỳ không có phần riêng (QDA, BCA, V-ACT) không vẽ gì, và HSA chưa vẽ gì cho tới khi CR-2H đăng ký phần của mình.
+ * khác. Tra theo mã kỳ; kỳ không có phần riêng (QDA, BCA, V-ACT) không vẽ gì.
  * Phần gắn vào không đổi hành vi của QDA, BCA, V-ACT: nó chỉ được vẽ ở kỳ của mình.
  *
  * Hợp đồng của phần gắn: ghi vào bản nháp qua `onChange` của môn; đặt `data-form-field` / `data-form-block` lên ô của mình để `navigation.ts`
@@ -23,10 +25,12 @@ import { SubjectFormHeader } from "./subject-form-header";
  */
 export type MatrixKindSlot = ComponentType<MatrixBlockProps>;
 
-const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotOptions }> = {};
+const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotOptionsResolver }> = {
+  HSA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
+};
 
-/** Đăng ký phần riêng của một kỳ (CR-2H) kèm tuỳ chọn vị trí và biến thể Cấu trúc câu (`MatrixKindSlotOptions`); trả hàm gỡ. */
-export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, options: MatrixKindSlotOptions = {}): () => void {
+/** Đăng ký phần riêng của một kỳ (CR-2H) kèm tuỳ chọn vị trí và biến thể Cấu trúc câu (`MatrixKindSlotOptionsResolver`); trả hàm gỡ. */
+export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, options: MatrixKindSlotOptionsResolver = {}): () => void {
   const previous = kindSlots[kindCode];
   kindSlots[kindCode] = { slot, options };
   return () => {
@@ -65,9 +69,13 @@ export function MatrixForm(props: SubjectFormRendererProps) {
   if (!entry) return null;
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
-  const blockProps: MatrixBlockProps = { section, entry, kindCode, subjectName, total, axes, labels, reference, onChange, templateLocked, raw };
+  // Khi sửa Cấu trúc câu hay bất kỳ phần nào của HSA MT, tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
+  const handleChange: MatrixBlockProps["onChange"] =
+    entry.mapidFlow === "HSA_RULES" ? (update) => onChange((current) => recomputeMapidRules(update(current))) : onChange;
+  const blockProps: MatrixBlockProps = { section, entry, kindCode, subjectName, total, axes, labels, reference, onChange: handleChange, templateLocked, raw, topicError };
   const kindSlot = kindSlots[kindCode];
-  const beforeStructure = kindSlot?.options.placement === "before-structure";
+  const slotOptions = kindSlot ? (typeof kindSlot.options === "function" ? kindSlot.options(section) : kindSlot.options) : {};
+  const beforeStructure = slotOptions.placement === "before-structure";
 
   return (
     <SubjectFormHeader
@@ -81,9 +89,13 @@ export function MatrixForm(props: SubjectFormRendererProps) {
     >
       <div data-form-kind="MATRIX" className="flex flex-col gap-6">
         {totalChangeNotice}
-        {beforeStructure && <kindSlot.slot {...blockProps} />}
+        {beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <div ref={countRef}>
-          <MatrixStructureBlock {...blockProps} compact={kindSlot?.options.structureVariant === "compact"} />
+          <MatrixStructureBlock
+            {...blockProps}
+            compact={slotOptions.structureVariant === "compact"}
+            renderRoleFooter={entry.mapidFlow === "HSA_RULES" ? (block) => <HsaRoleScopeFooter section={section} block={block} reference={reference} /> : undefined}
+          />
         </div>
         {!beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <MatrixDistributionBlock {...blockProps} />
