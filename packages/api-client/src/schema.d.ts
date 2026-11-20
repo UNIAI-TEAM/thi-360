@@ -2529,8 +2529,8 @@ export interface components {
             examKind: components["schemas"]["ExamKindView"];
             /** @description Tên bài thi */
             examName: string;
-            /** @description Nguồn cấp quyền dùng */
-            grantSource: components["schemas"]["GrantSourceView"];
+            /** @description Nguồn cấp quyền dùng; null khi hết lượt */
+            grantSource?: components["schemas"]["GrantSourceView"];
             /** @description Hướng dẫn làm bài đã đóng băng theo phiên bản */
             instructions?: string;
             /**

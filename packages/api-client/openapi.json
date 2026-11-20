@@ -396,7 +396,7 @@
           },
           "grantSource" : {
             "$ref" : "#/components/schemas/GrantSourceView",
-            "description" : "Nguồn cấp quyền dùng"
+            "description" : "Nguồn cấp quyền dùng; null khi hết lượt"
           },
           "instructions" : {
             "description" : "Hướng dẫn làm bài đã đóng băng theo phiên bản",
@@ -451,7 +451,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "afterStartChoices", "attemptsLeft", "buildMode", "entitlementId", "examCode", "examId", "examKind", "examName", "grantSource", "navigationMode", "omittedGroups", "parts", "scope", "servingStatus", "timing" ],
+        "required" : [ "afterStartChoices", "attemptsLeft", "buildMode", "entitlementId", "examCode", "examId", "examKind", "examName", "navigationMode", "omittedGroups", "parts", "scope", "servingStatus", "timing" ],
         "type" : "object"
       },
       "AttemptQuestionBody" : {
