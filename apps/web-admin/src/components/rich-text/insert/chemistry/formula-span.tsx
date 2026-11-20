@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { renderMath } from "../../math-render";
+import { renderMath } from "@thi360/ui/rich-text";
 
 export interface FormulaSpanProps {
   /** Nội dung LaTeX (không kèm `\(`…`\)`), ví dụ `\ce{H2O}`. */

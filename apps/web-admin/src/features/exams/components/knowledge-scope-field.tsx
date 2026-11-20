@@ -7,7 +7,7 @@ import { useId, useMemo, useState } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
-import type { KnowledgeScope } from "../types";
+import type { KnowledgeScope, MapidMode } from "../types";
 
 const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [] };
 
@@ -199,6 +199,67 @@ export function KnowledgeScopeField({
           setPickerOpen(false);
         }}
       />
+    </fieldset>
+  );
+}
+
+export interface MapidModeFieldProps {
+  mode: MapidMode;
+  onModeChange: (mode: MapidMode) => void;
+  /** Số quy tắc đang nằm trong bản nháp; ở "Toàn bài" hiện ghi chú "N quy tắc tạm ngừng áp dụng". */
+  ruleCount: number;
+  /** Số quy tắc trỏ tới nhóm đã xóa; ở "Toàn bài" bảng bị ẩn nên báo ở đây rằng phải chuyển lại để sửa. */
+  invalidCount: number;
+  anchor?: string;
+}
+
+/**
+ * Phạm vi kiến thức của môn HSA dùng ma trận (UNI-1704 v2): "Toàn bài (không giới hạn MAPID)" hoặc "Theo ma trận MAPID".
+ * Toàn bài giữ quy tắc trong bản nháp nhưng không áp dụng. Thay cho `KnowledgeScopeField` ở các môn này.
+ */
+export function MapidModeField({ mode, onModeChange, ruleCount, invalidCount, anchor }: MapidModeFieldProps) {
+  const t = useTranslations("exams.mapidRules.mode");
+  const radioName = useId();
+  const options = [
+    { key: "all", value: "ALL" as const, label: t("all") },
+    { key: "matrix", value: "MATRIX" as const, label: t("matrix") },
+  ];
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
+      <legend className="px-1 text-label font-semibold text-text">{t("legend")}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option, index) => {
+          const checked = mode === option.value;
+          return (
+            <label
+              key={option.key}
+              className={cn(
+                "flex min-h-10 cursor-pointer items-center gap-2.5 rounded-md border px-3.5 transition-colors duration-150 motion-reduce:transition-none",
+                checked ? "border-primary-text bg-primary-50" : "border-border bg-surface hover:border-border-strong",
+              )}
+            >
+              <input
+                type="radio"
+                name={radioName}
+                checked={checked}
+                onChange={() => onModeChange(option.value)}
+                data-testid={`mapid-mode-${option.key}`}
+                data-field={index === 0 ? anchor : undefined}
+                className={cn("size-4 shrink-0 accent-primary-fill", focusRing)}
+              />
+              <span className={cn("font-semibold", checked ? "text-primary-text" : "text-text")}>{option.label}</span>
+            </label>
+          );
+        })}
+      </div>
+      <p className="text-caption text-text-muted">{t(mode === "ALL" ? "allHint" : "matrixHint")}</p>
+      {mode === "ALL" && ruleCount > 0 && (
+        <div data-testid="mapid-paused-note" className="flex flex-col gap-0.5 text-body">
+          <span className="font-medium text-text">{t("paused", { count: ruleCount })}</span>
+          <span className="text-caption text-text-muted">{t("pausedHint")}</span>
+          {invalidCount > 0 && <span className="text-caption text-danger">{t("pausedInvalid", { count: invalidCount })}</span>}
+        </div>
+      )}
     </fieldset>
   );
 }

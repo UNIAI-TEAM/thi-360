@@ -16,10 +16,22 @@ public record ExamSection(
         ChoiceGroup choiceGroup,
         List<QuestionBlock> blocks,
         List<TopicQuota> topicQuotas,
-        AudioRequirement audioRequirement) {
+        AudioRequirement audioRequirement,
+        MapidMode mapidMode,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<MapidRule> mapidRules) {
     public ExamSection {
         blocks = blocks == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(blocks));
         topicQuotas = topicQuotas == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(topicQuotas));
+        mapidRules = mapidRules == null ? List.of() : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(mapidRules));
+    }
+
+    /** Without {@code mapidMode} and {@code mapidRules}: legacy scope and quotas apply. */
+    public ExamSection(String id, String subjectCode, Integer questionCount,
+            KnowledgeScope knowledgeScope, AnswerQuotas answerQuotas, BlockMatrix matrix,
+            ChoiceGroup choiceGroup, List<QuestionBlock> blocks, List<TopicQuota> topicQuotas,
+            AudioRequirement audioRequirement) {
+        this(id, subjectCode, questionCount, knowledgeScope, answerQuotas, matrix, choiceGroup,
+                blocks, topicQuotas, audioRequirement, null, null);
     }
 
     public ExamSection(String id, String subjectCode, Integer questionCount,

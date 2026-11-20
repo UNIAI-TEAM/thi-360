@@ -1,4 +1,233 @@
 {
+  "account": {
+    "forgotPassword": {
+      "backToLogin": "Quay lại đăng nhập",
+      "cooldownEnd": "Bạn có thể gửi lại bây giờ.",
+      "cooldownStart": "Có thể gửi lại sau {time}.",
+      "createAccount": "Tạo tài khoản mới",
+      "description": "Nhập email đã đăng ký. Nếu email đã được xác minh, bạn sẽ nhận liên kết đặt lại mật khẩu.",
+      "emailInvalid": "Email chưa đúng định dạng.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Nhập email đã đăng ký",
+      "emailRequired": "Vui lòng nhập email.",
+      "errors": {
+        "RATE_LIMITED": "Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau ít phút.",
+        "generic": "Không gửi được yêu cầu. Vui lòng thử lại."
+      },
+      "resend": "Gửi lại",
+      "resendIn": "Gửi lại sau {time}",
+      "sentMessage": "Nếu email này đủ điều kiện khôi phục tài khoản, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.",
+      "sentNote1": "Liên kết có hiệu lực trong 1 giờ và chỉ dùng được một lần.",
+      "sentNote2": "Gửi yêu cầu mới thì liên kết cũ không còn dùng được.",
+      "sentNote3": "Không thấy thư? Kiểm tra mục thư rác.",
+      "sentTitle": "Hãy kiểm tra hộp thư",
+      "submit": "Gửi hướng dẫn",
+      "title": "Quên mật khẩu"
+    },
+    "profile": {
+      "avatar": {
+        "current": "Ảnh đại diện hiện tại",
+        "currentEmpty": "Chưa có ảnh đại diện, đang hiện chữ cái đầu tên",
+        "errors": {
+          "DIMENSIONS_EXCEEDED": "Ảnh lớn hơn 4.096 × 4.096 px. Hãy chọn ảnh nhỏ hơn.",
+          "INVALID_IMAGE": "Không đọc được ảnh. Hãy chọn tệp JPG, PNG hoặc WEBP hợp lệ.",
+          "TOO_LARGE": "Ảnh lớn hơn 5 MB. Hãy chọn ảnh nhỏ hơn.",
+          "TOO_LARGE_FILE": "Ảnh {name} nặng {size} MB, lớn hơn 5 MB. Hãy chọn ảnh nhỏ hơn.",
+          "generic": "Không cập nhật được ảnh đại diện. Ảnh hiện tại được giữ nguyên."
+        },
+        "hint": "JPG, PNG hoặc WEBP; tối đa 5 MB và 4.096 × 4.096 px. Ảnh được cắt vuông.",
+        "remove": "Xóa ảnh",
+        "removed": "Đã xóa ảnh đại diện.",
+        "title": "Ảnh đại diện",
+        "upload": "Tải ảnh lên",
+        "uploaded": "Đã cập nhật ảnh đại diện."
+      },
+      "email": {
+        "cancel": "Hủy",
+        "change": "Đổi email",
+        "changeErrors": {
+          "RATE_LIMITED": "Bạn gửi mã quá nhanh hoặc quá số lần cho phép. Vui lòng thử lại sau.",
+          "generic": "Không gửi được mã xác minh. Vui lòng thử lại."
+        },
+        "changeTitle": "Đổi email",
+        "changed": "Đã đổi email.",
+        "codeInvalid": "Mã chưa đúng. Bạn còn {count} lần thử.",
+        "codeLabel": "Mã xác minh",
+        "codePlaceholder": "6 chữ số",
+        "codeRequired": "Vui lòng nhập mã gồm 6 chữ số.",
+        "confirm": "Xác nhận",
+        "confirmErrors": {
+          "EMAIL_TAKEN": "Email này vừa thuộc về tài khoản khác. Hãy chọn email khác.",
+          "EXPIRED": "Mã này không còn dùng được. Bấm Gửi lại mã để nhận mã mới.",
+          "SYNC_FAILED": "Chưa đổi được email, email hiện tại giữ nguyên. Vui lòng thử lại sau.",
+          "generic": "Không xác nhận được email mới. Vui lòng thử lại."
+        },
+        "cooldownEnd": "Bạn có thể gửi lại mã bây giờ.",
+        "cooldownStart": "Có thể gửi lại mã sau {time}.",
+        "currentPasswordLabel": "Mật khẩu hiện tại",
+        "currentPasswordRequired": "Vui lòng nhập mật khẩu hiện tại.",
+        "newEmailInvalid": "Email chưa đúng định dạng.",
+        "newEmailLabel": "Email mới",
+        "newEmailRequired": "Vui lòng nhập email mới.",
+        "newEmailTaken": "Email này đã thuộc tài khoản khác.",
+        "none": "Tài khoản chưa có email.",
+        "passwordHide": "Ẩn mật khẩu hiện tại",
+        "passwordShow": "Hiện mật khẩu hiện tại",
+        "pendingBody": "Mã 6 số đã gửi tới địa chỉ mới, có hiệu lực trong 10 phút. Trong lúc chờ, email hiện tại vẫn dùng để khôi phục tài khoản. Mã hết hạn thì hồ sơ giữ email hiện tại.",
+        "pendingTitle": "Đang chờ xác minh email mới: {email}",
+        "resend": "Gửi lại mã",
+        "resendIn": "Gửi lại mã sau {time}",
+        "sendCode": "Gửi mã xác minh",
+        "sendCodeIn": "Gửi mã xác minh sau {time}",
+        "title": "Email",
+        "unverified": "Chưa xác minh",
+        "verified": "Đã xác minh",
+        "wrongPassword": "Mật khẩu hiện tại không đúng."
+      },
+      "errorDescription": "Đã có lỗi khi tải hồ sơ. Hãy thử lại.",
+      "errorTitle": "Không tải được hồ sơ",
+      "info": {
+        "cancel": "Hủy thay đổi",
+        "fullNameLabel": "Họ và tên",
+        "fullNameRequired": "Vui lòng nhập họ và tên.",
+        "fullNameTooLong": "Họ và tên tối đa 100 ký tự.",
+        "genericError": "Không lưu được thay đổi. Vui lòng thử lại.",
+        "phoneEmpty": "Bạn chưa nhập số điện thoại.",
+        "phoneInvalid": "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.",
+        "phoneLabel": "Số điện thoại (không bắt buộc)",
+        "phonePlaceholder": "Ví dụ 0912345678",
+        "save": "Lưu thay đổi",
+        "saved": "Đã lưu thông tin cá nhân.",
+        "title": "Thông tin cá nhân",
+        "usernameHint": "Tên đăng nhập không đổi được.",
+        "usernameLabel": "Tên đăng nhập"
+      },
+      "intro": "Đổi họ tên, email hay mật khẩu không ảnh hưởng tới bài đã mua, số lượt còn lại và kết quả của bạn.",
+      "password": {
+        "change": "Đổi mật khẩu",
+        "description": "Đổi mật khẩu ở trang riêng.",
+        "title": "Mật khẩu"
+      },
+      "title": "Hồ sơ",
+      "unverifiedBody": "Xác minh để dùng email này khôi phục tài khoản và nhận thư về đơn hàng.",
+      "unverifiedTitle": "Email chưa xác minh.",
+      "verifyEmail": "Xác minh email"
+    },
+    "register": {
+      "backHome": "Trang chủ",
+      "continueNote": "Sau khi đăng ký, bạn quay lại bước bạn đang làm dở.",
+      "emailHint": "Dùng để liên hệ và khôi phục tài khoản. Bạn sẽ nhận mã xác minh sau khi đăng ký.",
+      "emailInvalid": "Email chưa đúng định dạng.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Nhập email của bạn",
+      "emailRequired": "Vui lòng nhập email.",
+      "emailTaken": "Email này đã có tài khoản. Hãy đăng nhập hoặc dùng Quên mật khẩu.",
+      "errors": {
+        "RATE_LIMITED": "Có quá nhiều lượt đăng ký từ mạng này. Vui lòng thử lại sau ít phút.",
+        "generic": "Không thể đăng ký. Vui lòng thử lại."
+      },
+      "fullNameLabel": "Họ và tên",
+      "fullNamePlaceholder": "Nhập họ và tên",
+      "fullNameRequired": "Vui lòng nhập họ và tên.",
+      "haveAccount": "Đã có tài khoản?",
+      "intro": {
+        "feature1": "Bài thi được cấp cho chính tài khoản đang đăng nhập",
+        "feature2": "Đổi họ tên, email hay mật khẩu vẫn giữ nguyên bài đã mua và kết quả",
+        "feature3": "Email đã xác minh dùng để khôi phục tài khoản",
+        "headline": "Một tài khoản để mua bài, làm bài và xem kết quả",
+        "subtitle": "Tự đăng ký tài khoản học viên bằng tên đăng nhập và mật khẩu của bạn. Không cần chọn lớp hay đơn vị."
+      },
+      "loginLink": "Đăng nhập",
+      "password": {
+        "hide": "Ẩn mật khẩu",
+        "ruleDigit": "Có ít nhất một chữ số",
+        "ruleLength": "Từ 8 đến 64 ký tự",
+        "ruleLower": "Có ít nhất một chữ thường",
+        "ruleSpecial": "Có ít nhất một ký tự đặc biệt",
+        "ruleUpper": "Có ít nhất một chữ hoa",
+        "rulesLabel": "Yêu cầu mật khẩu",
+        "show": "Hiện mật khẩu"
+      },
+      "passwordLabel": "Mật khẩu",
+      "passwordRequired": "Vui lòng nhập mật khẩu.",
+      "passwordSameAsUsername": "Mật khẩu không được trùng tên đăng nhập.",
+      "passwordWeak": "Mật khẩu chưa đáp ứng đủ các điều kiện.",
+      "submit": "Đăng ký",
+      "termsBody": "[NỘI DUNG ĐIỀU KHOẢN SỬ DỤNG, BẢN TẠM CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+      "termsClose": "Đóng",
+      "termsDraft": "Bản tạm, chờ đơn vị vận hành xác nhận.",
+      "termsLabel": "Tôi đã đọc và đồng ý với Điều khoản sử dụng của Thi 360.",
+      "termsRequired": "Bạn cần đồng ý với Điều khoản sử dụng để đăng ký.",
+      "termsTitle": "Điều khoản sử dụng",
+      "termsView": "Xem Điều khoản sử dụng",
+      "title": "Đăng ký",
+      "usernameHint": "4–30 ký tự gồm chữ cái không dấu, chữ số và . @ _ -; bắt đầu bằng chữ cái hoặc chữ số. Không phân biệt chữ hoa, chữ thường.",
+      "usernameLabel": "Tên đăng nhập",
+      "usernamePattern": "Tên đăng nhập chưa đúng quy tắc. Xem hướng dẫn bên dưới ô nhập.",
+      "usernamePlaceholder": "Chọn tên đăng nhập",
+      "usernameRequired": "Vui lòng nhập tên đăng nhập.",
+      "usernameTaken": "Tên đăng nhập này đã được sử dụng. Hãy chọn tên khác."
+    },
+    "resetPassword": {
+      "backToLogin": "Quay lại đăng nhập",
+      "confirmMismatch": "Mật khẩu nhập lại chưa khớp.",
+      "confirmPasswordLabel": "Nhập lại mật khẩu mới",
+      "confirmRequired": "Vui lòng nhập lại mật khẩu mới.",
+      "description": "Nhập mật khẩu mới cho tài khoản của bạn.",
+      "footerNote": "Sau khi đặt lại, mọi phiên đăng nhập của tài khoản này kết thúc. Bạn đăng nhập lại bằng mật khẩu mới. Mật khẩu mới không được trùng tên đăng nhập.",
+      "genericError": "Không đặt lại được mật khẩu. Vui lòng thử lại.",
+      "invalidMessage": "Liên kết đặt lại mật khẩu đã hết hạn hoặc đã được dùng. Liên kết chỉ có hiệu lực trong 1 giờ và dùng được một lần. Hãy gửi yêu cầu mới.",
+      "invalidTitle": "Liên kết không còn dùng được",
+      "newPasswordLabel": "Mật khẩu mới",
+      "passwordRequired": "Vui lòng nhập mật khẩu mới.",
+      "passwordWeak": "Mật khẩu mới chưa đáp ứng đủ các điều kiện.",
+      "requestNew": "Gửi yêu cầu mới",
+      "rules": {
+        "ruleDigit": "Có ít nhất một chữ số",
+        "ruleLength": "Từ 8 đến 64 ký tự",
+        "ruleLower": "Có ít nhất một chữ thường",
+        "ruleSpecial": "Có ít nhất một ký tự đặc biệt",
+        "ruleUpper": "Có ít nhất một chữ hoa",
+        "rulesLabel": "Yêu cầu mật khẩu"
+      },
+      "submit": "Đặt mật khẩu mới",
+      "title": "Đặt lại mật khẩu",
+      "toggles": {
+        "confirmHide": "Ẩn mật khẩu nhập lại",
+        "confirmShow": "Hiện mật khẩu nhập lại",
+        "newHide": "Ẩn mật khẩu mới",
+        "newShow": "Hiện mật khẩu mới"
+      }
+    },
+    "verifyEmail": {
+      "alerts": {
+        "codeExpired": "Mã này không còn dùng được. Bấm Gửi lại mã để nhận mã mới.",
+        "generic": "Không xác minh được email. Vui lòng thử lại.",
+        "resendFailed": "Không gửi được mã mới. Vui lòng thử lại."
+      },
+      "alreadyVerified": "Email của bạn đã được xác minh.",
+      "codeInvalid": "Mã chưa đúng. Bạn còn {count} lần thử.",
+      "codeLabel": "Mã xác minh",
+      "codePlaceholder": "6 chữ số",
+      "codeRequired": "Vui lòng nhập mã gồm 6 chữ số.",
+      "codeResent": "Đã gửi mã mới. Mã cũ không còn dùng được.",
+      "continue": "Tiếp tục",
+      "cooldownEnd": "Bạn có thể gửi lại mã bây giờ.",
+      "cooldownStart": "Có thể gửi lại mã sau {time}.",
+      "dailyLimit": "Bạn đã gửi lại mã quá số lần cho phép. Thử lại sau {time}.",
+      "errorLoad": "Không tải được thông tin tài khoản. Hãy thử lại.",
+      "errorLoadTitle": "Không tải được trang",
+      "footnote": "Chưa xác minh bạn vẫn mua bài và làm bài được, nhưng chưa dùng email này để đặt lại mật khẩu. Bạn có thể xác minh lại ở <profile>Hồ sơ</profile>. Gửi lại mã tối đa 5 lần mỗi ngày.",
+      "later": "Để sau",
+      "notReceived": "Chưa nhận được mã?",
+      "resend": "Gửi lại mã",
+      "resendIn": "Gửi lại mã sau {time}",
+      "sentTo": "Chúng tôi đã gửi mã 6 số tới <strong>{email}</strong>. Mã có hiệu lực trong 10 phút.",
+      "submit": "Xác minh",
+      "title": "Xác minh email",
+      "verifiedContinue": "Email đã được xác minh. Bạn có thể tiếp tục."
+    }
+  },
   "changePassword": {
     "back": "Quay lại",
     "confirmPasswordLabel": "Nhập lại mật khẩu mới",
@@ -60,12 +289,26 @@
     "upstreamTimeout": "Máy chủ xử lý quá lâu. Hãy thử lại sau.",
     "upstreamUnavailable": "Không kết nối được tới máy chủ. Hãy thử lại sau."
   },
+  "footer": {
+    "note": "Luyện thi trực tuyến theo đúng cấu trúc đề"
+  },
   "forbidden": {
     "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "eyebrow": "MÃ LỖI 403",
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
+  },
+  "header": {
+    "login": "Đăng nhập",
+    "nav": {
+      "history": "Lịch sử",
+      "label": "Điều hướng chính",
+      "myExams": "Bài thi của tôi",
+      "orders": "Đơn của tôi",
+      "profile": "Hồ sơ"
+    },
+    "register": "Đăng ký"
   },
   "home": {
     "emptyDescription": "Danh mục bài thi, mua bài và làm bài sẽ có ở các đợt phát triển tiếp theo. Đợt này trang học viên chỉ có đăng nhập, đổi mật khẩu và đăng xuất.",
@@ -80,21 +323,107 @@
     "sectionTitle": "Bài thi của tôi"
   },
   "landing": {
-    "badge": "Luyện thi HSA · QDA",
-    "ctaHeader": "Đăng nhập",
-    "ctaHero": "Đăng nhập để bắt đầu",
-    "features": {
-      "analysisDescription": "Điểm từng phần, câu đúng, câu sai, câu bỏ trống hiển thị sau khi nộp.",
-      "analysisTitle": "Điểm và phân tích ngay",
-      "practiceDescription": "Gợi ý chủ đề cần củng cố và theo dõi tiến bộ qua từng lần làm.",
-      "practiceTitle": "Luyện đúng phần còn yếu",
-      "structureDescription": "Bài thi đầy đủ hoặc từng phần, thời gian tính theo máy chủ.",
-      "structureTitle": "Đề thi theo đúng cấu trúc"
+    "faq": {
+      "intro": "Số câu, thời lượng, số lượt và quyền lợi khác nhau giữa các bài. Hãy xem trang chi tiết của bài thi bạn chọn.",
+      "items": {
+        "attempts": {
+          "answer": "Số lượt của một lần mua ghi trên thẻ và trang chi tiết của từng bài. Còn lượt bạn vẫn mua thêm được; lượt mua thêm được cộng vào bài thi bạn đã có ở Bài thi của tôi.",
+          "question": "Một lần mua được làm bao nhiêu lượt? Mua thêm lượt thế nào?"
+        },
+        "formats": {
+          "answer": "Bài thi FULL gồm mọi phần của đề, làm liên tiếp trong một lượt. Bài thi theo phần chỉ gồm một phần, ví dụ Toán học và Xử lí số liệu của HSA. Bài thi theo môn dành cho kỳ thi tổ chức theo môn như SPT, SP2E, tốt nghiệp THPT. Phần hoặc môn của mỗi bài ghi trên thẻ.",
+          "question": "Bài thi FULL, theo phần, theo môn khác nhau thế nào?"
+        },
+        "otherAccount": {
+          "answer": "Quy định về việc mua cho tài khoản khác do đơn vị vận hành công bố. Cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ bên dưới.",
+          "question": "Tôi có thể mua cho tài khoản khác không?"
+        },
+        "paidNoExam": {
+          "answer": "Hãy giữ mã đơn và liên hệ hỗ trợ qua các kênh ở khối Bạn cần hỗ trợ bên dưới để được tra cứu. Bài đã được cấp cho tài khoản của bạn nằm ở trang Bài thi của tôi.",
+          "question": "Thanh toán thành công nhưng chưa thấy bài thì làm gì?"
+        },
+        "refund": {
+          "answer": "Việc hoàn tiền theo chính sách do đơn vị vận hành công bố. Cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ bên dưới.",
+          "question": "Khi nào được hoàn tiền?"
+        },
+        "voucher": {
+          "answer": "Nhập mã ở bước xác nhận mua, trước khi chuyển sang thanh toán. Hệ thống tính lại giá và cho bạn xem số tiền phải trả trước khi xác nhận.",
+          "question": "Mã giảm giá dùng thế nào?"
+        }
+      },
+      "title": "Câu hỏi thường gặp"
     },
-    "featuresTitle": "Thi 360 giúp bạn điều gì",
-    "footerNote": "Cổng luyện thi đánh giá năng lực HSA và QDA",
-    "heroDescription": "Thi 360 là cổng luyện thi trực tuyến cho kỳ thi đánh giá năng lực của ĐHQG Hà Nội (HSA) và Bộ Quốc phòng (QDA).",
-    "heroTitle": "Thi thử như thi thật, biết ngay mình cần luyện gì"
+    "hero": {
+      "cta": "Khám phá bài thi",
+      "description": "Làm đề đầy đủ để luyện theo thời gian thi hoặc chọn từng phần để tập trung vào nội dung bạn muốn cải thiện. Dành cho thí sinh chuẩn bị các kỳ thi đánh giá năng lực, tuyển sinh và tốt nghiệp THPT.",
+      "formats": {
+        "full": {
+          "description": "Các phần thi liên tiếp trong một lượt, đúng thời lượng của kỳ thi.",
+          "title": "Bài thi FULL"
+        },
+        "part": {
+          "description": "Luyện riêng một phần của đề, ví dụ Toán học và Xử lí số liệu của HSA.",
+          "title": "Bài thi theo phần"
+        },
+        "subject": {
+          "description": "Luyện một môn của kỳ thi theo môn, ví dụ Toán của SPT hoặc tốt nghiệp THPT.",
+          "title": "Bài thi theo môn"
+        }
+      },
+      "formatsTitle": "Ba hình thức luyện thi",
+      "kindsLabel": "Các kỳ thi",
+      "title": "Luyện thi trực tuyến theo đúng cấu trúc đề"
+    },
+    "steps": {
+      "cta": "Chọn bài thi",
+      "items": {
+        "choose": {
+          "description": "Xem cấu trúc, giá và quyền sử dụng của bài thi.",
+          "title": "Chọn bài"
+        },
+        "pay": {
+          "description": "Bài thi được cấp cho tài khoản đang đăng nhập. Thanh toán qua VNPAY.",
+          "title": "Đăng nhập và thanh toán"
+        },
+        "result": {
+          "description": "Xem điểm trực tiếp trên hệ thống sau khi bài được chấm.",
+          "title": "Xem kết quả"
+        },
+        "start": {
+          "description": "Mở bài thi đã mua tại Bài thi của tôi và bắt đầu khi bạn sẵn sàng.",
+          "title": "Vào làm bài"
+        }
+      },
+      "title": "Từ chọn bài đến xem kết quả"
+    },
+    "support": {
+      "contact": "Liên hệ hỗ trợ",
+      "description": "Liên hệ khi gặp lỗi mua bài, thanh toán hoặc truy cập bài đã mua. Với lỗi thanh toán, hãy chuẩn bị mã đơn (ví dụ DH261117AB12CD) hoặc mã giao dịch VNPAY để chúng tôi tra cứu nhanh.",
+      "labels": {
+        "email": "Email",
+        "hours": "Giờ hỗ trợ",
+        "phone": "Điện thoại"
+      },
+      "pending": "Thông tin liên hệ đang được cập nhật.",
+      "title": "Bạn cần hỗ trợ?"
+    },
+    "why": {
+      "items": {
+        "choose": {
+          "description": "Chọn bài thi FULL hoặc bài thi theo phần, theo môn phù hợp với mục tiêu của bạn.",
+          "title": "Chọn phần cần luyện"
+        },
+        "results": {
+          "description": "Xem điểm sau khi bài được chấm và theo dõi mọi lượt đã làm trong Lịch sử.",
+          "title": "Xem lại kết quả"
+        },
+        "structure": {
+          "description": "Làm bài theo số câu, thứ tự các phần và thời lượng đã công bố của từng kỳ thi.",
+          "title": "Luyện theo cấu trúc đề"
+        }
+      },
+      "title": "Vì sao luyện thi tại đây?"
+    }
   },
   "login": {
     "backHome": "Trang chủ",
@@ -108,23 +437,26 @@
     "feature1": "Thi thử theo đúng cấu trúc đề",
     "feature2": "Biết điểm ngay sau khi nộp bài",
     "feature3": "Xem lời giải và phần cần luyện thêm",
-    "forgotNote": "Quên mật khẩu? Liên hệ quản trị viên để được cấp lại. Sau 5 lần nhập sai liên tiếp, đăng nhập bị tạm khóa 15 phút.",
+    "forgotLink": "Quên mật khẩu?",
     "headline": "Luyện thi đánh giá năng lực HSA và QDA",
     "hidePassword": "Ẩn mật khẩu",
     "identifierLabel": "Tên đăng nhập hoặc email",
     "identifierPlaceholder": "Nhập tên đăng nhập hoặc email",
     "identifierRequired": "Vui lòng nhập tên đăng nhập hoặc email.",
+    "noAccount": "Chưa có tài khoản?",
     "passwordLabel": "Mật khẩu",
     "passwordPlaceholder": "Nhập mật khẩu",
     "passwordRequired": "Vui lòng nhập mật khẩu.",
+    "registerLink": "Đăng ký",
+    "resetDone": "Đã đặt lại mật khẩu. Hãy đăng nhập bằng mật khẩu mới.",
     "showPassword": "Hiện mật khẩu",
     "submit": "Đăng nhập",
     "subtitle": "Một tài khoản dùng cho cả trang học viên và trang quản trị. Sau khi đăng nhập, bạn được đưa tới đúng nơi theo vai trò của mình.",
     "title": "Đăng nhập"
   },
   "metadata": {
-    "description": "Cổng luyện thi đánh giá năng lực HSA và QDA",
-    "title": "Thi 360 — Luyện thi HSA, QDA",
+    "description": "Luyện thi trực tuyến theo đúng cấu trúc đề: HSA, QDA, BCA, V-ACT, SPT, SP2E, tốt nghiệp THPT",
+    "title": "Thi 360 — Luyện thi trực tuyến",
     "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
@@ -132,12 +464,174 @@
     "eyebrow": "MÃ LỖI 404",
     "title": "Không tìm thấy trang"
   },
+  "storefront": {
+    "access": {
+      "adminNote": "Tài khoản quản trị không có nút mua hay vào bài thi. Chỉ xem thông tin công khai.",
+      "attemptsLeft": "{count, plural, other {Còn # lượt}}",
+      "buy": "Mua bài thi",
+      "buyAgain": "Mua lại",
+      "buyMore": "Mua thêm lượt",
+      "checking": "Đang kiểm tra",
+      "checkingNote": "Mã đơn {orderCode}. Bạn không cần thanh toán lại. Nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ và gửi kèm mã đơn này.",
+      "continue": "Tiếp tục",
+      "continueNote": "Bạn có một lượt đang làm dở.",
+      "enter": "Vào bài thi",
+      "exhaustedNote": "Bạn đã dùng hết lượt của bài thi này.",
+      "loadError": "Chưa xác định được quyền của tài khoản.",
+      "loading": "Đang tải quyền",
+      "pendingTopUp": "Đơn mua thêm lượt {orderCode} đang được kiểm tra. Bạn không cần thanh toán lại.",
+      "reload": "Tải lại quyền",
+      "viewDetail": "Xem chi tiết"
+    },
+    "catalog": {
+      "clearFilters": "Xóa bộ lọc",
+      "emptyTitle": "Hiện chưa có bài thi nào đang mở bán",
+      "errorMessage": "Chưa tải được danh mục bài thi. Bộ lọc của bạn vẫn được giữ.",
+      "filtersLabel": "Tìm và lọc bài thi",
+      "formatAll": "Tất cả hình thức",
+      "formatHint": "Bài thi FULL gồm các phần thi liên tiếp trong một lượt. Bài thi theo phần hoặc theo môn giúp bạn luyện riêng phần hoặc môn ghi trên thẻ.",
+      "formatHintLabel": "Hình thức:",
+      "formatLabel": "Hình thức",
+      "kindAll": "Tất cả kỳ thi",
+      "kindLabel": "Kỳ thi",
+      "loading": "Đang tải danh mục",
+      "noResultsDescription": "Thử từ khóa khác hoặc bỏ bớt bộ lọc.",
+      "noResultsTitle": "Không tìm thấy bài thi phù hợp",
+      "paginationLabel": "Phân trang danh mục",
+      "partAll": "Tất cả phần, môn",
+      "partLabel": "Phần/môn",
+      "searchLabel": "Tìm theo tên hoặc mã",
+      "searchPlaceholder": "Ví dụ: HSA FULL hoặc HSA-FULL-01",
+      "showing": "Hiển thị {from}–{to} trong {total} bài thi đang mở bán",
+      "sort": {
+        "NEWEST": "Mới công bố",
+        "PRICE_ASC": "Giá tăng dần",
+        "PRICE_DESC": "Giá giảm dần"
+      },
+      "sortLabel": "Sắp xếp",
+      "title": "Chọn bài thi"
+    },
+    "detail": {
+      "answerType": {
+        "CLOZE": "Điền khuyết",
+        "ESSAY": "Tự luận",
+        "MATCHING": "Ghép đôi",
+        "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
+        "QUESTION_SET": "Chùm câu hỏi",
+        "SHORT_ANSWER": "Trả lời ngắn",
+        "SINGLE_CHOICE": "Trắc nghiệm một đáp án",
+        "TRUE_FALSE": "Đúng/Sai"
+      },
+      "answerTypeCount": "{type}: {count}",
+      "attemptsPerPurchase": "{count, plural, other {# lượt thi mỗi lần mua}}",
+      "audience": "Đối tượng phù hợp",
+      "breadcrumbCatalog": "Chọn bài thi",
+      "breadcrumbHome": "Trang chủ",
+      "breadcrumbLabel": "Vị trí trang",
+      "choicesTitle": "Phần được chọn trong phạm vi mua",
+      "chooseSubjects": "Chọn {count} trong {total} môn",
+      "codeLabel": "Mã sản phẩm",
+      "columns": {
+        "duration": "Thời lượng",
+        "maxPoints": "Điểm tối đa",
+        "nature": "Tính chất",
+        "order": "Thứ tự",
+        "part": "Phần",
+        "questions": "Số câu"
+      },
+      "countsByPick": "Số câu mỗi môn theo số môn đã chọn: {counts}",
+      "guestHint": "Bạn cần đăng nhập để mua. Sau khi đăng nhập, bạn quay lại đúng bài thi này ở bước xác nhận mua. Chưa có tài khoản?",
+      "how": {
+        "answerTypes": "Dạng câu hỏi",
+        "essayNote": "Phần tự luận chấm tay. Điểm tổng có sau khi chấm xong.",
+        "maxScore": "{score} điểm",
+        "noEssay": "Không có phần tự luận:",
+        "points": "{value} điểm",
+        "scoring": "Thang điểm",
+        "switching": "Chuyển phần",
+        "switchingValue": "Làm tuần tự. Hết giờ hoặc nộp sớm thì phần sau mở ngay; không quay lại phần đã đóng.",
+        "timing": "Thời gian",
+        "timingPER_PART": "Tính giờ từng phần. Đồng hồ tính theo máy chủ.",
+        "timingSHARED": "Một đồng hồ chung cho cả bài. Đồng hồ tính theo máy chủ."
+      },
+      "howTitle": "Cách làm và cách chấm",
+      "includesTax": "Đã gồm thuế, phí",
+      "objectives": "Mục tiêu",
+      "optional": "Tự chọn",
+      "perAttempt": "{questions} câu · {minutes} phút mỗi lượt",
+      "policy": {
+        "contactLine": "Gửi yêu cầu qua: {contact}",
+        "contactPending": "Thông tin liên hệ đang được cập nhật.",
+        "hoursLine": "Giờ hỗ trợ: {hours}",
+        "priceNote": "Giá bán bằng VND, đã gồm thuế, phí.",
+        "refund": "Hoàn tiền khi lỗi hệ thống: {policy}",
+        "refundPending": "theo chính sách do đơn vị vận hành công bố; cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ trên trang chủ.",
+        "title": "Giá và chính sách"
+      },
+      "priceHeading": "Giá bán",
+      "promoEnds": "Kết thúc {date}",
+      "required": "Bắt buộc",
+      "rights": {
+        "afterEssay": "Sau khi người chấm chấm xong",
+        "afterGrading": "Ngay sau khi chấm xong",
+        "ai": "Giải thích bằng AI",
+        "attempts": "Số lượt",
+        "no": "Không",
+        "noteLabel": "Ghi chú:",
+        "practice": "Ôn luyện bổ sung",
+        "resultTiming": "Thời điểm xem kết quả",
+        "resultView": "Mức xem kết quả",
+        "resultViews": {
+          "FULL_SOLUTION": "Điểm, đáp án và lời giải",
+          "SCORE": "Chỉ điểm",
+          "SCORE_AND_ANSWERS": "Điểm và đáp án"
+        },
+        "strengths": "Đánh giá điểm mạnh, điểm yếu",
+        "title": "Quyền sau khi mua",
+        "yes": "Có"
+      },
+      "structureCaption": "Các phần theo thứ tự làm bài",
+      "structureTitle": "Cấu trúc bài thi",
+      "structureTotal": "{questions} câu · {minutes} phút",
+      "subjectAnswerTypes": "<examContent>{subject}</examContent>: {types}"
+    },
+    "discount": "Giảm {percent}%",
+    "format": {
+      "FULL": "Bài thi FULL",
+      "PART": "Bài thi theo phần",
+      "SUBJECT": "Bài thi theo môn"
+    },
+    "gone": {
+      "descriptionTail": "không còn mở bán. Bạn có thể chọn bài thi khác trong danh mục.",
+      "eyebrow": "MÃ LỖI 410",
+      "myExams": "Bài thi của tôi",
+      "owned": "Nếu đã mua bài này, quyền và số lượt còn lại của bạn vẫn ở Bài thi của tôi.",
+      "title": "Bài thi đã ngừng bán",
+      "toCatalog": "Về danh mục bài thi"
+    },
+    "listPriceLabel": "Giá gốc",
+    "notFound": {
+      "description": "Đường dẫn không đúng hoặc bài thi chưa được công bố.",
+      "eyebrow": "MÃ LỖI 404",
+      "title": "Không tìm thấy bài thi",
+      "toCatalog": "Về danh mục bài thi"
+    },
+    "price": "{amount, number} đ",
+    "promoEnds": "Kết thúc {date}",
+    "review": "Bài ôn",
+    "units": {
+      "attempts": "{count, plural, other {# lượt}}",
+      "minutes": "{value} phút",
+      "questions": "{value} câu"
+    }
+  },
   "userMenu": {
     "adminPortal": "Trang quản trị",
     "changePassword": "Đổi mật khẩu",
     "logout": "Đăng xuất",
     "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
     "menuLabel": "Tài khoản",
+    "profile": "Hồ sơ",
     "studentPortal": "Trang học viên",
     "trigger": "Menu tài khoản"
   }

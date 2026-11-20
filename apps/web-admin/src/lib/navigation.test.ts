@@ -2,6 +2,7 @@ import { Home } from "lucide-react";
 import { describe, expect, it } from "vitest";
 import {
   filterNavigation,
+  HIDDEN_NAV_ITEMS,
   isActivePath,
   NAVIGATION,
   type NavGroup,
@@ -100,8 +101,8 @@ describe("resolveBreadcrumb", () => {
 });
 
 describe("NAVIGATION của đợt 1", () => {
-  it("có đủ bốn nhóm Tổng quan, Người dùng, Nội dung, Hệ thống và mục Cấu hình chung", () => {
-    expect(NAVIGATION.map((g) => g.id)).toEqual(["overview", "users", "content", "system"]);
+  it("có đủ sáu nhóm Tổng quan, Người dùng, Nội dung, Thương mại, Học viên, Hệ thống và mục Cấu hình chung", () => {
+    expect(NAVIGATION.map((g) => g.id)).toEqual(["overview", "users", "content", "commerce", "learners", "system"]);
     const contentGroup = NAVIGATION.find((g) => g.id === "content");
     expect(contentGroup?.items).toEqual(
       expect.arrayContaining([
@@ -200,5 +201,66 @@ describe("mục dữ liệu mẫu của đợt 2", () => {
     expect(contentIds(["QUESTION.VIEW", "EXAM.VIEW", "GRADING.VIEW"], none)).toEqual(["questions", "exams", "grading"]);
     expect(contentIds(["EXAM.VIEW"], none)).toEqual(["exams"]);
     expect(contentIds(["QUESTION.VIEW"], { grading: true })).toEqual(["questions", "grading"]);
+  });
+});
+
+describe("menu của đợt 3 (FA-1)", () => {
+  const none = { grading: false };
+  /** Bỏ danh sách ẩn để kiểm quyền của từng mục; danh sách ẩn có ca riêng ở dưới. */
+  const visible = (granted: string[]) => filterNavigation(NAVIGATION, new Set(granted), none, []);
+  const idsOf = (groups: readonly NavGroup[], groupId: string) =>
+    groups.find((group) => group.id === groupId)?.items.map((item) => item.id);
+
+  it("menu thương mại theo quyền: mỗi mục chỉ hiện khi có đúng quyền của mục, kể cả vai trò tùy chỉnh", () => {
+    const commerce = NAVIGATION.find((group) => group.id === "commerce");
+    expect(commerce?.items.map((item) => [item.id, item.permission])).toEqual([
+      ["promotions", "PROMOTION.VIEW"],
+      ["orders", "ORDER.VIEW"],
+      ["bundles", "EXAM.VIEW"],
+    ]);
+
+    expect(idsOf(visible(["PROMOTION.VIEW"]), "commerce")).toEqual(["promotions"]);
+    expect(idsOf(visible(["ORDER.VIEW"]), "commerce")).toEqual(["orders"]);
+    expect(idsOf(visible(["EXAM.VIEW"]), "commerce")).toEqual(["bundles"]);
+    expect(idsOf(visible(["PROMOTION.VIEW", "EXAM.VIEW"]), "commerce")).toEqual(["promotions", "bundles"]);
+    // Quyền sửa không thay quyền xem; quyền của mục khác không mở mục này.
+    expect(idsOf(visible(["PROMOTION.MODIFY", "ORDER.REFUND", "USER.VIEW"]), "commerce")).toBeUndefined();
+    expect(idsOf(visible([]), "commerce")).toBeUndefined();
+  });
+
+  it("nhóm Học viên: chứa mục Lượt thi (ATTEMPT.VIEW), ẩn khi vai trò không có quyền đó", () => {
+    const learners = NAVIGATION.find((group) => group.id === "learners");
+    expect(learners?.items).toEqual([
+      expect.objectContaining({ id: "attempts", href: "/attempts", permission: "ATTEMPT.VIEW" }),
+    ]);
+
+    expect(idsOf(visible(["ATTEMPT.VIEW"]), "learners")).toEqual(["attempts"]);
+    expect(idsOf(visible(["ATTEMPT.MODIFY", "GRADING.VIEW", "USER.VIEW"]), "learners")).toBeUndefined();
+    // Lượt thi không còn nằm trong nhóm Người dùng.
+    expect(idsOf(visible(["ATTEMPT.VIEW", "USER.VIEW"]), "users")).toEqual(["accounts"]);
+    expect(resolveBreadcrumb(NAVIGATION, "/attempts/abc")?.group.id).toBe("learners");
+  });
+
+  it("danh sách ẩn: promotions, orders, bundles, attempts không hiện ở sidebar và lối tắt dù đủ quyền; nhóm hết mục thì bỏ", () => {
+    expect([...HIDDEN_NAV_ITEMS].sort()).toEqual(["attempts", "bundles", "orders", "promotions"]);
+
+    const everything = new Set(["PROMOTION.VIEW", "ORDER.VIEW", "EXAM.VIEW", "ATTEMPT.VIEW", "USER.VIEW"]);
+    const groups = filterNavigation(NAVIGATION, everything, none);
+    const shown = groups.flatMap((group) => group.items.map((item) => item.id));
+    for (const id of HIDDEN_NAV_ITEMS) expect(shown).not.toContain(id);
+    expect(groups.map((group) => group.id)).not.toContain("commerce");
+    expect(groups.map((group) => group.id)).not.toContain("learners");
+    // Mục khác trong cùng bộ quyền vẫn hiện: Bài thi (EXAM.VIEW) ở nhóm Nội dung.
+    expect(idsOf(groups, "content")).toEqual(["exams"]);
+
+    const shortcuts = shortcutItems(NAVIGATION, everything).map((item) => item.id);
+    for (const id of HIDDEN_NAV_ITEMS) expect(shortcuts).not.toContain(id);
+    expect(shortcuts).toContain("exams");
+  });
+
+  it("bỏ một dòng ẩn thì mục đó hiện lại, các mục còn ẩn vẫn ẩn; nhóm hiện khi còn một mục", () => {
+    const granted = new Set(["PROMOTION.VIEW", "ORDER.VIEW"]);
+    const groups = filterNavigation(NAVIGATION, granted, none, ["orders", "bundles", "attempts"]);
+    expect(idsOf(groups, "commerce")).toEqual(["promotions"]);
   });
 });

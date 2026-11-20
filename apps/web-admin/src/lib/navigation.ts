@@ -5,8 +5,12 @@ import {
   GraduationCap,
   LayoutDashboard,
   List,
+  Package,
+  Receipt,
   Shield,
   SlidersVertical,
+  Tag,
+  Timer,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -105,6 +109,40 @@ export const NAVIGATION: readonly NavGroup[] = [
     ],
   },
   {
+    id: "commerce",
+    items: [
+      {
+        id: "promotions",
+        href: "/promotions",
+        icon: Tag,
+        permission: "PROMOTION.VIEW",
+      },
+      {
+        id: "orders",
+        href: "/orders",
+        icon: Receipt,
+        permission: "ORDER.VIEW",
+      },
+      {
+        id: "bundles",
+        href: "/bundles",
+        icon: Package,
+        permission: "EXAM.VIEW",
+      },
+    ],
+  },
+  {
+    id: "learners",
+    items: [
+      {
+        id: "attempts",
+        href: "/attempts",
+        icon: Timer,
+        permission: "ATTEMPT.VIEW",
+      },
+    ],
+  },
+  {
     id: "system",
     items: [
       {
@@ -123,6 +161,12 @@ export const NAVIGATION: readonly NavGroup[] = [
   },
 ];
 
+/**
+ * Mục đã có trong menu nhưng trang chưa có: ẩn ở sidebar và lối tắt ở Bảng điều khiển dù người dùng đủ quyền
+ * (plan B8). Lane làm trang đó bỏ dòng của mình: Khuyến mãi (FA-2), Đơn hàng (FA-3), Lượt thi (FA-4), Bộ đề (FB).
+ */
+export const HIDDEN_NAV_ITEMS: readonly string[] = ["promotions", "orders", "bundles", "attempts"];
+
 export interface MockFlags {
   readonly grading: boolean;
 }
@@ -137,16 +181,20 @@ function isVisible(item: NavItem, granted: ReadonlySet<string>, flags: MockFlags
   return item.permission === null || hasPermission(granted, item.permission);
 }
 
-/** Giữ các mục người dùng có quyền; nhóm không còn mục nào thì bỏ. */
+/**
+ * Giữ các mục người dùng có quyền và không nằm trong danh sách ẩn; nhóm không còn mục nào thì bỏ. `hiddenItems`
+ * mặc định là `HIDDEN_NAV_ITEMS`.
+ */
 export function filterNavigation(
   groups: readonly NavGroup[],
   granted: ReadonlySet<string>,
   mockFlags: MockFlags = currentMockFlags(),
+  hiddenItems: readonly string[] = HIDDEN_NAV_ITEMS,
 ): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => isVisible(item, granted, mockFlags)),
+      items: group.items.filter((item) => !hiddenItems.includes(item.id) && isVisible(item, granted, mockFlags)),
     }))
     .filter((group) => group.items.length > 0);
 }

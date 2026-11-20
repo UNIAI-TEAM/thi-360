@@ -43,13 +43,28 @@ public class AvailableQuestionCountService {
     private QuestionSourcePort.Filter filter(AvailableQuestionCountController.Query query, UUID subjectId) {
         var scope = query.knowledgeScope();
         List<List<UUID>> groups = null;
-        if (scope != null && scope.nodeIds() != null && !scope.nodeIds().isEmpty()) {
+        List<UUID> excluded = List.of();
+        List<List<List<UUID>>> additionalGroups = List.of();
+        List<Boolean> additionalSameNode = List.of();
+        List<Boolean> additionalEveryChild = List.of();
+        boolean scoped = scope != null && scope.nodeIds() != null && !scope.nodeIds().isEmpty();
+        boolean excluding = scope != null && scope.excludedNodeIds() != null && !scope.excludedNodeIds().isEmpty();
+        boolean grouped = scope != null && scope.nodeGroups() != null && !scope.nodeGroups().isEmpty();
+        if (scoped || excluding || grouped) {
             List<CatalogItemView> nodes = catalog.listActiveGroupItems("KNOWLEDGE");
-            groups = scope.nodeIds().stream().map(id -> {
-                var root = nodes.stream().filter(node -> node.id().equals(id)).findFirst();
-                return root.map(item -> nodes.stream().filter(node -> node.path().startsWith(item.path()))
-                        .map(CatalogItemView::id).toList()).orElse(List.of());
-            }).toList();
+            if (scoped) groups = scope.nodeIds().stream().map(id -> subtree(nodes, id)).toList();
+            // The same expansion generation uses (SolverInputBuilder.withDescendants).
+            if (excluding) excluded = scope.excludedNodeIds().stream().flatMap(id -> subtree(nodes, id).stream())
+                    .distinct().toList();
+            if (grouped) {
+                // One AND condition per SOURCE rule, A|B|C inside it an OR, exactly as generation builds them.
+                additionalGroups = scope.nodeGroups().stream()
+                        .map(group -> group.stream().map(id -> subtree(nodes, id)).toList()).toList();
+                boolean sameNode = Boolean.TRUE.equals(scope.everyChildSameNode());
+                additionalSameNode = java.util.Collections.nCopies(additionalGroups.size(), sameNode);
+                additionalEveryChild = java.util.Collections.nCopies(additionalGroups.size(),
+                        sameNode || Boolean.TRUE.equals(scope.everyChildInScope()));
+            }
         }
         List<String> competencies = query.competencyCodes();
         if (competencies == null && scope != null) competencies = scope.competencyCodes();
@@ -60,8 +75,18 @@ public class AvailableQuestionCountService {
         return new QuestionSourcePort.Filter(subjectId, groups, query.answerTypes(), query.questionType(),
                 null, query.childAnswerType(), query.tagCodes(), competencies,
                 query.requiredPointsPerQuestion(), itemShape(query.itemShape()), query.answerFormats(),
-                childConditions, List.of(), List.of(), List.of(),
-                scope == null ? null : scope.everyChildInScope(), List.of(), query.audioRequirement());
+                childConditions, List.of(), additionalGroups, List.of(),
+                scope == null ? null : scope.everyChildInScope(), additionalEveryChild,
+                query.audioRequirement(), excluded,
+                scope == null ? null : scope.everyChildSameNode(), additionalSameNode);
+    }
+
+    /** The node and every descendant; an unknown node is empty, as for generation. */
+    private static List<UUID> subtree(List<CatalogItemView> nodes, UUID id) {
+        return nodes.stream().filter(node -> node.id().equals(id)).findFirst()
+                .map(root -> nodes.stream().filter(node -> node.path().startsWith(root.path()))
+                        .map(CatalogItemView::id).toList())
+                .orElse(List.of());
     }
 
     private static QuestionSourcePort.ItemShape itemShape(AvailableQuestionCountController.ItemShape shape) {

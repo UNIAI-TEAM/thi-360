@@ -106,7 +106,9 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/v3/api-docs",
-                                "/v3/api-docs/**").permitAll()
+                                "/v3/api-docs/**",
+                                // CM-1 (TM 10.2): the public storefront; /api/v1/public/** is limited per IP by RateLimitFilter.
+                                "/api/v1/public/**").permitAll()
                         // /api/v1/test/**: chỉ profile e2e có handler (shared/testapi), nên chuỗi này chỉ thấy
                         // tiền tố ở profile e2e (ẩn danh gọi được). Profile khác do chuỗi riêng
                         // TestApiAbsentSecurityConfig trả 404 trước khi xét xác thực.

@@ -16,18 +16,19 @@ import {
 import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { enumeratePaths, issueStructureHref } from "../check";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
-import type { ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
+import type { CheckIssue, ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
 import type { ExamDetail, ExamPartOption } from "../types";
+import { ExamContentText } from "./exam-content-text";
 import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
-import { useChoiceNameResolver, useIssueText, useLookup, usePathLabel } from "./exam-review-shared";
+import { richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
   exam: ExamDetail;
@@ -71,6 +72,7 @@ export function ExamPreviewPanel({
   const format = useFormatter();
   const lookup = useLookup();
   const pathLabel = usePathLabel(exam.id);
+  const pathNode = usePathNode(exam.id);
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
@@ -200,7 +202,15 @@ export function ExamPreviewPanel({
     start();
   });
 
-  const optionLabel = (option: PathOption) => {
+  /** Tên đường trong ô chọn: tên lựa chọn của mẫu nằm trong `ExamName`, chữ "(không sinh được)" ở ngoài. */
+  const optionLabel = (option: PathOption): ReactNode => {
+    const label = pathNode(option.path);
+    if (option.result === "INVALID") return richNodes(t, "pathOptionInvalid", { path: label });
+    if (option.result === "UNCONFIRMED") return richNodes(t, "pathOptionUnconfirmed", { path: label });
+    return label;
+  };
+  /** Cùng nhãn nhưng là chữ thuần, để Radix gõ tìm trong danh sách (`SelectOption.textValue`). */
+  const optionText = (option: PathOption): string => {
     const label = pathLabel(option.path);
     if (option.result === "INVALID") return t("pathOptionInvalid", { path: label });
     if (option.result === "UNCONFIRMED") return t("pathOptionUnconfirmed", { path: label });
@@ -369,7 +379,7 @@ export function ExamPreviewPanel({
                   value={pathId ?? undefined}
                   onValueChange={setSelected}
                   disabled={options.length === 0}
-                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option) }))}
+                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
                 />
               )}
             </FormField>
@@ -467,6 +477,7 @@ function PreviewFailure({
 }) {
   const t = useTranslations("exams.preview");
   const issueText = useIssueText(exam);
+  const issueContent = useIssueText(exam, true);
   const invalid = result.reason === "INVALID";
   const fixHref = result.issues.map((issue) => issueStructureHref(exam.id, issue)).find((href) => href !== null) ?? null;
   const Icon = invalid ? CircleX : CircleHelp;
@@ -481,7 +492,7 @@ function PreviewFailure({
         </h3>
         <ul className="flex flex-col gap-1 text-body text-text">
           {result.issues.map((issue) => (
-            <li key={issue.key}>{issueText(issue)}</li>
+            <PreviewIssueItem key={issue.key} examId={exam.id} issue={issue} text={issueText(issue)} content={issueContent(issue)} />
           ))}
         </ul>
         <p className="text-body text-text-secondary">{t("failNote")}</p>
@@ -502,5 +513,23 @@ function PreviewFailure({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Một vấn đề của lần sinh thử; vấn đề nêu quy tắc MAPID có thêm liên kết tới dòng quy tắc ở trang Cấu trúc. */
+export function PreviewIssueItem({ examId, issue, text, content = text }: { examId: string; issue: CheckIssue; text: string; content?: string }) {
+  const tMapid = useTranslations("exams.mapidRules.issue");
+  const href = issueRuleHref(examId, issue);
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-2">
+      <span><ExamContentText text={content} /></span>
+      {href && (
+        <Button asChild variant="link" size="sm">
+          <Link href={href} aria-label={tMapid("goToRuleAria", { issue: text })}>
+            {tMapid("goToRule")}
+          </Link>
+        </Button>
+      )}
+    </li>
   );
 }

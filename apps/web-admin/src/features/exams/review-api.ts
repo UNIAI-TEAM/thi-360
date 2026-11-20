@@ -26,6 +26,8 @@ import type {
   ExamVersionList,
   ExamVersionRow,
   ExamWorkingCopy,
+  ListingCheckGroup,
+  ListingCheckIssue,
   GeneratePreviewRequest,
   PathCheck,
   PathCheckResult,
@@ -474,6 +476,14 @@ export function mapIssue(issue: ApiIssue): CheckIssue {
     slotIndex: issue.location?.slotIndex ?? null,
     childPosition: issue.location?.childPosition ?? null,
     segmentCode: "segmentCode" in issue ? (issue.segmentCode ?? null) : null,
+    // Trường của quy tắc MAPID (UNI-2758) chỉ có khi máy chủ gửi: vấn đề khác giữ nguyên hình dạng cũ.
+    ...(issue.ruleId ? { ruleId: issue.ruleId } : {}),
+    ...(issue.nodeIds?.length ? { nodeIds: issue.nodeIds } : {}),
+    ...("ruleIds" in issue && issue.ruleIds?.length ? { ruleIds: issue.ruleIds } : {}),
+    ...("conflictKind" in issue && issue.conflictKind ? { conflictKind: issue.conflictKind } : {}),
+    ...("requiredSets" in issue && issue.requiredSets != null ? { requiredSets: issue.requiredSets } : {}),
+    ...("availableSets" in issue && issue.availableSets != null ? { availableSets: issue.availableSets } : {}),
+    ...("availableSingles" in issue && issue.availableSingles != null ? { availableSingles: issue.availableSingles } : {}),
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
@@ -590,6 +600,34 @@ function mapGroup(group: ApiCheckGroup): CheckGroupResult {
   };
 }
 
+type ApiListingCheckGroup = Schema["ExamListingCheckGroup"];
+type ApiListingCheckIssue = Schema["ExamListingCheckIssue"];
+
+function mapListingIssue(issue: ApiListingCheckIssue): ListingCheckIssue {
+  const code = issue.code ?? "";
+  return {
+    key: issue.key ?? `LISTING:${code}`,
+    code,
+    severity: issue.severity === "WARNING" ? "WARNING" : "ERROR",
+    field: issue.field ?? null,
+    minPriceVnd: issue.minPriceVnd ?? null,
+  };
+}
+
+/** Nhóm "Thông tin bán" của máy chủ (`listingCheck`, `ExamListing.checkIssues`); `null` khi máy chủ không gửi. */
+export function mapListingCheck(group: ApiListingCheckGroup | undefined | null): ListingCheckGroup | null {
+  if (!group) return null;
+  return {
+    status: group.status === "PASS" || group.status === "WARN" ? group.status : "FAIL",
+    issues: (group.issues ?? []).map(mapListingIssue),
+  };
+}
+
+/** Vấn đề tính riêng của `ExamListing.checkIssues` (không có nhóm bọc). */
+export function mapListingCheckIssues(issues: readonly ApiListingCheckIssue[] | undefined): ListingCheckIssue[] {
+  return (issues ?? []).map(mapListingIssue);
+}
+
 function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
   return {
     examId: result.examId ?? "",
@@ -607,6 +645,7 @@ function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
     issueCount: result.issueCount ?? 0,
     paths: (result.paths ?? []).map(mapCheckPath),
     groups: (result.groups ?? []).map(mapGroup),
+    listingCheck: mapListingCheck(result.listingCheck),
     partCount: result.partCount ?? 0,
     totalPoints: result.totalPoints ?? 0,
     printedQuestions: result.printedQuestions ?? 0,

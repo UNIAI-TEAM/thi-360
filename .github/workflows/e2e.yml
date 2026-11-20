@@ -69,6 +69,12 @@ jobs:
           # the per-IP login rate limit (thi360.security.rate-limit.login-per-ip-limit)
           # so the suite's platform logins cannot trip RateLimitFilter.
           THI360_SECURITY_RATELIMIT_LOGINPERIPLIMIT: "200"
+          # Same path for the per-IP register limits (E19: 30/hour, 100/day) and forgot/reset limits (E16: 60/min):
+          # the account-* specs create a fresh account per test.
+          THI360_REGISTER_IP_HOUR_LIMIT: "1000"
+          THI360_REGISTER_IP_DAY_LIMIT: "5000"
+          THI360_FORGOT_PER_IP_LIMIT: "600"
+          THI360_RESET_PER_IP_LIMIT: "600"
           # Same path for the per-user live-session cap
           # (thi360.security.session.max-per-user, default 5): the suite logs
           # `platform` in more times than that and the oldest session is evicted.

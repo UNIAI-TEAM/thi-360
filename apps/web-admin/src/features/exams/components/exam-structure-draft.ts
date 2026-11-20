@@ -167,12 +167,20 @@ export function addBlock(parts: readonly ExamPart[], location: DraftLocation, bl
   return updateSection(parts, location, (section) => ({ ...section, blocks: [...section.blocks, block] }));
 }
 
+/**
+ * Xóa nhóm. Quy tắc MAPID của môn trỏ tới nhóm đó được giữ lại (máy chủ từ chối `groupId` lạ nên bản lưu bị chặn cho tới khi người
+ * dùng sửa hoặc xóa quy tắc) và mang tên nhóm vừa xóa để thông báo gọi đúng tên.
+ */
 export function removeBlock(parts: readonly ExamPart[], blockId: string): ExamPart[] {
   const context = findBlock(parts, blockId);
   if (!context) return [...parts];
+  const name = context.block.name.trim();
   return updateSection(parts, context.location, (section) => ({
     ...section,
     blocks: section.blocks.filter((block) => block.id !== blockId),
+    ...(name && section.mapidRules?.some((rule) => rule.groupId === blockId)
+      ? { mapidRules: section.mapidRules.map((rule) => (rule.groupId === blockId ? { ...rule, deletedGroupName: name } : rule)) }
+      : {}),
   }));
 }
 

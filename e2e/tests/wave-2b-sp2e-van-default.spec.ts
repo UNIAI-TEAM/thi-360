@@ -52,7 +52,8 @@ test("SP2E Ngữ văn theo môn, mẫu mặc định: 30 câu, không có cảnh
 
   // Tab Kiểm tra cấu hình hiện kết quả vừa nhận và không có câu cảnh báo chấm tay.
   await expectValidPaths(page, 1, 1);
-  await expect(page.getByText(/có câu tự luận: điểm phần này chỉ có sau khi chấm tay/)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Có câu chấm tay" })).toHaveCount(0);
+  await expect(page.getByText(/có câu chấm tay\. Điểm tổng hiện sau khi người chấm chấm xong/)).toHaveCount(0);
 
   const { result, panel } = await generateInUi(page, id);
   expectWellFormedPaper(result);

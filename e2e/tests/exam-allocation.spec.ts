@@ -39,6 +39,8 @@ test("QDA FULL: phần 3 liệt kê đủ 6 môn từ mẫu, thêm chỉ tiêu c
   await subjects.getByRole("button", { name: /^Thiết lập môn/ }).first().click();
   await page.getByRole("button", { name: "Thêm chỉ tiêu chủ đề" }).click();
   await expect(page.getByText("Chờ mapping")).toBeVisible();
+  // Mọi dạng biểu mẫu theo môn đang tắt (FTM B7): môn mở bằng màn mặc định, không có dòng chữ "thiết lập đầy đủ".
+  await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
   await page.getByRole("button", { name: "Lưu", exact: true }).click();
   await expect(page.getByText("Có thay đổi chưa lưu")).toHaveCount(0);
 
@@ -70,4 +72,6 @@ test("bài ôn HSA 10 câu: màn rút gọn ba trường", async ({ context, pag
   await page.getByText("Tùy chọn thêm (không bắt buộc)").click();
   await expect(page.getByText(/Phân bố khối lớp và độ khó/)).toBeVisible();
   await expect(page.getByText(/^Câu chùm/)).toBeVisible();
+  // Bài ôn không bao giờ ra MT/DS và không có dòng chữ của MD (FTM R-1).
+  await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
 });

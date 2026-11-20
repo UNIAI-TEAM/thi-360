@@ -1,4 +1,233 @@
 {
+  "account": {
+    "forgotPassword": {
+      "backToLogin": "Back to sign in",
+      "cooldownEnd": "You can send it again now.",
+      "cooldownStart": "You can send it again in {time}.",
+      "createAccount": "Create a new account",
+      "description": "Enter your registered email. If the email is verified, you will receive a link to reset your password.",
+      "emailInvalid": "Email format is not valid.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your registered email",
+      "emailRequired": "Please enter your email.",
+      "errors": {
+        "RATE_LIMITED": "You are sending requests too fast. Please try again in a few minutes.",
+        "generic": "Unable to send the request. Please try again."
+      },
+      "resend": "Send again",
+      "resendIn": "Send again in {time}",
+      "sentMessage": "If this email is eligible for account recovery, you will receive instructions to reset your password.",
+      "sentNote1": "The link is valid for 1 hour and can be used only once.",
+      "sentNote2": "Sending a new request invalidates the previous link.",
+      "sentNote3": "Cannot find the email? Check your spam folder.",
+      "sentTitle": "Check your inbox",
+      "submit": "Send instructions",
+      "title": "Forgot password"
+    },
+    "profile": {
+      "avatar": {
+        "current": "Current profile picture",
+        "currentEmpty": "No profile picture, showing name initials",
+        "errors": {
+          "DIMENSIONS_EXCEEDED": "The image is larger than 4,096 × 4,096 px. Please choose a smaller image.",
+          "INVALID_IMAGE": "The image cannot be read. Please choose a valid JPG, PNG or WEBP file.",
+          "TOO_LARGE": "The image is larger than 5 MB. Please choose a smaller image.",
+          "TOO_LARGE_FILE": "The image {name} is {size} MB, larger than 5 MB. Please choose a smaller image.",
+          "generic": "Unable to update the profile picture. Your current picture is unchanged."
+        },
+        "hint": "JPG, PNG or WEBP; up to 5 MB and 4,096 × 4,096 px. The image is cropped to a square.",
+        "remove": "Remove picture",
+        "removed": "Profile picture removed.",
+        "title": "Profile picture",
+        "upload": "Upload picture",
+        "uploaded": "Profile picture updated."
+      },
+      "email": {
+        "cancel": "Cancel",
+        "change": "Change email",
+        "changeErrors": {
+          "RATE_LIMITED": "You requested codes too fast or too many times. Please try again later.",
+          "generic": "Unable to send the verification code. Please try again."
+        },
+        "changeTitle": "Change email",
+        "changed": "Email changed.",
+        "codeInvalid": "Incorrect code. You have {count} attempts left.",
+        "codeLabel": "Verification code",
+        "codePlaceholder": "6 digits",
+        "codeRequired": "Please enter the 6-digit code.",
+        "confirm": "Confirm",
+        "confirmErrors": {
+          "EMAIL_TAKEN": "This email has just been taken by another account. Please choose a different email.",
+          "EXPIRED": "This code can no longer be used. Click Resend code to get a new one.",
+          "SYNC_FAILED": "Unable to change the email; your current email is unchanged. Please try again later.",
+          "generic": "Unable to confirm the new email. Please try again."
+        },
+        "cooldownEnd": "You can resend the code now.",
+        "cooldownStart": "You can resend the code in {time}.",
+        "currentPasswordLabel": "Current password",
+        "currentPasswordRequired": "Please enter your current password.",
+        "newEmailInvalid": "Email format is not valid.",
+        "newEmailLabel": "New email",
+        "newEmailRequired": "Please enter the new email.",
+        "newEmailTaken": "This email already belongs to another account.",
+        "none": "This account has no email.",
+        "passwordHide": "Hide current password",
+        "passwordShow": "Show current password",
+        "pendingBody": "A 6-digit code was sent to the new address and is valid for 10 minutes. Meanwhile your current email is still used to recover your account. If the code expires, your profile keeps the current email.",
+        "pendingTitle": "Waiting to verify the new email: {email}",
+        "resend": "Resend code",
+        "resendIn": "Resend code in {time}",
+        "sendCode": "Send verification code",
+        "sendCodeIn": "Send verification code in {time}",
+        "title": "Email",
+        "unverified": "Not verified",
+        "verified": "Verified",
+        "wrongPassword": "Current password is incorrect."
+      },
+      "errorDescription": "An error occurred while loading your profile. Please try again.",
+      "errorTitle": "Unable to load profile",
+      "info": {
+        "cancel": "Discard changes",
+        "fullNameLabel": "Full name",
+        "fullNameRequired": "Please enter your full name.",
+        "fullNameTooLong": "Full name is up to 100 characters.",
+        "genericError": "Unable to save changes. Please try again.",
+        "phoneEmpty": "You have not entered a phone number.",
+        "phoneInvalid": "Phone number has 10 digits and starts with 0.",
+        "phoneLabel": "Phone number (optional)",
+        "phonePlaceholder": "For example 0912345678",
+        "save": "Save changes",
+        "saved": "Personal information saved.",
+        "title": "Personal information",
+        "usernameHint": "The username cannot be changed.",
+        "usernameLabel": "Username"
+      },
+      "intro": "Changing your name, email or password does not affect purchased exams, remaining attempts or your results.",
+      "password": {
+        "change": "Change password",
+        "description": "Change your password on a separate page.",
+        "title": "Password"
+      },
+      "title": "Profile",
+      "unverifiedBody": "Verify it to use this email for account recovery and order emails.",
+      "unverifiedTitle": "Email not verified.",
+      "verifyEmail": "Verify email"
+    },
+    "register": {
+      "backHome": "Home",
+      "continueNote": "After you register, you will return to the step you were working on.",
+      "emailHint": "Used for contact and account recovery. You will receive a verification code after registering.",
+      "emailInvalid": "Email format is not valid.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "emailRequired": "Please enter your email.",
+      "emailTaken": "This email already has an account. Sign in or use Forgot password.",
+      "errors": {
+        "RATE_LIMITED": "Too many registrations from this network. Please try again in a few minutes.",
+        "generic": "Unable to register. Please try again."
+      },
+      "fullNameLabel": "Full name",
+      "fullNamePlaceholder": "Enter your full name",
+      "fullNameRequired": "Please enter your full name.",
+      "haveAccount": "Already have an account?",
+      "intro": {
+        "feature1": "Exams are granted to the account that is signed in",
+        "feature2": "Changing your name, email or password keeps purchased exams and results",
+        "feature3": "A verified email is used to recover your account",
+        "headline": "One account to buy exams, take them and see results",
+        "subtitle": "Register a student account with your own username and password. No class or organization needed."
+      },
+      "loginLink": "Sign in",
+      "password": {
+        "hide": "Hide password",
+        "ruleDigit": "At least one digit",
+        "ruleLength": "8 to 64 characters",
+        "ruleLower": "At least one lowercase letter",
+        "ruleSpecial": "At least one special character",
+        "ruleUpper": "At least one uppercase letter",
+        "rulesLabel": "Password requirements",
+        "show": "Show password"
+      },
+      "passwordLabel": "Password",
+      "passwordRequired": "Please enter a password.",
+      "passwordSameAsUsername": "Password must not match the username.",
+      "passwordWeak": "Password does not meet all the requirements.",
+      "submit": "Register",
+      "termsBody": "[TERMS OF USE TEXT, DRAFT PENDING CONFIRMATION BY THE OPERATOR]",
+      "termsClose": "Close",
+      "termsDraft": "Draft text, pending confirmation by the operator.",
+      "termsLabel": "I have read and agree to the Terms of Use of Thi 360.",
+      "termsRequired": "You must agree to the Terms of Use to register.",
+      "termsTitle": "Terms of Use",
+      "termsView": "View the Terms of Use",
+      "title": "Register",
+      "usernameHint": "4–30 characters: unaccented letters, digits and . @ _ -; starts with a letter or digit. Not case-sensitive.",
+      "usernameLabel": "Username",
+      "usernamePattern": "The username does not follow the rules. See the guidance below the field.",
+      "usernamePlaceholder": "Choose a username",
+      "usernameRequired": "Please enter a username.",
+      "usernameTaken": "This username is already taken. Please choose another."
+    },
+    "resetPassword": {
+      "backToLogin": "Back to sign in",
+      "confirmMismatch": "Passwords do not match.",
+      "confirmPasswordLabel": "Confirm new password",
+      "confirmRequired": "Please confirm your new password.",
+      "description": "Enter a new password for your account.",
+      "footerNote": "After the reset, all sign-in sessions of this account end. Sign in again with your new password. The new password must not match the username.",
+      "genericError": "Unable to reset the password. Please try again.",
+      "invalidMessage": "The password reset link has expired or has already been used. A link is valid for 1 hour and can be used only once. Please send a new request.",
+      "invalidTitle": "This link can no longer be used",
+      "newPasswordLabel": "New password",
+      "passwordRequired": "Please enter a new password.",
+      "passwordWeak": "The new password does not meet all the requirements.",
+      "requestNew": "Send a new request",
+      "rules": {
+        "ruleDigit": "At least one digit",
+        "ruleLength": "8 to 64 characters",
+        "ruleLower": "At least one lowercase letter",
+        "ruleSpecial": "At least one special character",
+        "ruleUpper": "At least one uppercase letter",
+        "rulesLabel": "Password requirements"
+      },
+      "submit": "Set new password",
+      "title": "Reset password",
+      "toggles": {
+        "confirmHide": "Hide confirmed password",
+        "confirmShow": "Show confirmed password",
+        "newHide": "Hide new password",
+        "newShow": "Show new password"
+      }
+    },
+    "verifyEmail": {
+      "alerts": {
+        "codeExpired": "This code can no longer be used. Click Resend code to get a new one.",
+        "generic": "Unable to verify the email. Please try again.",
+        "resendFailed": "Unable to send a new code. Please try again."
+      },
+      "alreadyVerified": "Your email is already verified.",
+      "codeInvalid": "Incorrect code. You have {count} attempts left.",
+      "codeLabel": "Verification code",
+      "codePlaceholder": "6 digits",
+      "codeRequired": "Please enter the 6-digit code.",
+      "codeResent": "A new code was sent. The previous code no longer works.",
+      "continue": "Continue",
+      "cooldownEnd": "You can resend the code now.",
+      "cooldownStart": "You can resend the code in {time}.",
+      "dailyLimit": "You have resent the code too many times. Try again after {time}.",
+      "errorLoad": "Unable to load account details. Please try again.",
+      "errorLoadTitle": "Unable to load page",
+      "footnote": "Until verified you can still buy and take exams, but this email cannot be used to reset your password. You can verify it again in your <profile>Profile</profile>. You can resend the code up to 5 times a day.",
+      "later": "Later",
+      "notReceived": "Did not get the code?",
+      "resend": "Resend code",
+      "resendIn": "Resend code in {time}",
+      "sentTo": "We sent a 6-digit code to <strong>{email}</strong>. The code is valid for 10 minutes.",
+      "submit": "Verify",
+      "title": "Verify email",
+      "verifiedContinue": "Your email is verified. You can continue."
+    }
+  },
   "changePassword": {
     "back": "Back",
     "confirmPasswordLabel": "Confirm new password",
@@ -60,12 +289,26 @@
     "upstreamTimeout": "The server took too long to respond. Please try again later.",
     "upstreamUnavailable": "Unable to connect to the server. Please try again later."
   },
+  "footer": {
+    "note": "Online practice that follows the real exam structure"
+  },
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
     "eyebrow": "ERROR 403",
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
+  },
+  "header": {
+    "login": "Sign in",
+    "nav": {
+      "history": "History",
+      "label": "Main navigation",
+      "myExams": "My exams",
+      "orders": "My orders",
+      "profile": "Profile"
+    },
+    "register": "Register"
   },
   "home": {
     "emptyDescription": "Exam catalog, purchases, and test taking will arrive in upcoming waves. This release includes sign-in, password change, and sign-out.",
@@ -80,21 +323,107 @@
     "sectionTitle": "My exams"
   },
   "landing": {
-    "badge": "HSA · QDA Prep",
-    "ctaHeader": "Sign in",
-    "ctaHero": "Sign in to start",
-    "features": {
-      "analysisDescription": "Section scores, correct, incorrect, and skipped items shown right after submission.",
-      "analysisTitle": "Instant scores and breakdown",
-      "practiceDescription": "Targeted topic recommendations and progress tracking across attempts.",
-      "practiceTitle": "Focus on weak areas",
-      "structureDescription": "Full-length or section practice exams with server-tracked timing.",
-      "structureTitle": "Authentic exam structure"
+    "faq": {
+      "intro": "Question counts, durations, attempts and benefits differ between exams. See the detail page of the exam you choose.",
+      "items": {
+        "attempts": {
+          "answer": "The number of attempts per purchase is shown on the card and on the detail page of each exam. While you still have attempts you can buy more; the extra attempts are added to the exam you already have in My exams.",
+          "question": "How many attempts does one purchase give? How do I buy more?"
+        },
+        "formats": {
+          "answer": "A FULL exam has every section of the paper, taken one after another in one attempt. A section exam has a single section, for example HSA Mathematics and Data Processing. A subject exam is for exams organized by subject, such as SPT, SP2E and the high school graduation exam. The section or subject of each exam is shown on its card.",
+          "question": "How do FULL, section and subject exams differ?"
+        },
+        "otherAccount": {
+          "answer": "Rules about buying for another account are published by the operating unit. If you need help, contact support through the channels in the Need help? block below.",
+          "question": "Can I buy for another account?"
+        },
+        "paidNoExam": {
+          "answer": "Keep your order code and contact support through the channels in the Need help? block below so we can look it up. Exams already granted to your account are in My exams.",
+          "question": "My payment succeeded but I cannot see the exam. What now?"
+        },
+        "refund": {
+          "answer": "Refunds follow the policy published by the operating unit. If you need help, contact support through the channels in the Need help? block below.",
+          "question": "When can I get a refund?"
+        },
+        "voucher": {
+          "answer": "Enter the code at the purchase confirmation step, before you go to payment. The system recalculates the price and shows the amount to pay before you confirm.",
+          "question": "How do I use a discount code?"
+        }
+      },
+      "title": "Frequently asked questions"
     },
-    "featuresTitle": "How Thi 360 helps you prepare",
-    "footerNote": "Online practice portal for HSA and QDA exams",
-    "heroDescription": "Thi 360 is the online exam preparation portal for the VNU Hanoi (HSA) and Ministry of Defense (QDA) aptitude tests.",
-    "heroTitle": "Practice like the real exam, see what to improve right away"
+    "hero": {
+      "cta": "Explore exams",
+      "description": "Take a full paper to practice under exam timing, or pick single sections to focus on what you want to improve. For candidates preparing for aptitude, admission and high school graduation exams.",
+      "formats": {
+        "full": {
+          "description": "All sections in one attempt, with the real exam duration.",
+          "title": "FULL exam"
+        },
+        "part": {
+          "description": "Practice one section of the paper, for example HSA Mathematics and Data Processing.",
+          "title": "Section exam"
+        },
+        "subject": {
+          "description": "Practice one subject of a subject-based exam, for example Mathematics in SPT or the graduation exam.",
+          "title": "Subject exam"
+        }
+      },
+      "formatsTitle": "Three ways to practice",
+      "kindsLabel": "Exams",
+      "title": "Online practice that follows the real exam structure"
+    },
+    "steps": {
+      "cta": "Choose an exam",
+      "items": {
+        "choose": {
+          "description": "See the structure, price and access rights of the exam.",
+          "title": "Choose an exam"
+        },
+        "pay": {
+          "description": "The exam is granted to the account you are signed in with. Pay through VNPAY.",
+          "title": "Sign in and pay"
+        },
+        "result": {
+          "description": "See your score on the platform once the exam is graded.",
+          "title": "See your result"
+        },
+        "start": {
+          "description": "Open the exam you bought in My exams and start when you are ready.",
+          "title": "Take the exam"
+        }
+      },
+      "title": "From choosing an exam to seeing your result"
+    },
+    "support": {
+      "contact": "Contact support",
+      "description": "Contact us if you have trouble buying, paying or opening an exam you bought. For payment issues, have your order code (for example DH261117AB12CD) or the VNPAY transaction code ready so we can look it up quickly.",
+      "labels": {
+        "email": "Email",
+        "hours": "Support hours",
+        "phone": "Phone"
+      },
+      "pending": "Contact information is being updated.",
+      "title": "Need help?"
+    },
+    "why": {
+      "items": {
+        "choose": {
+          "description": "Pick a FULL exam, or a section or subject exam that fits your goal.",
+          "title": "Practice the part you need"
+        },
+        "results": {
+          "description": "See your score after grading and follow every attempt in History.",
+          "title": "Review your results"
+        },
+        "structure": {
+          "description": "Take exams with the question counts, section order and durations published for each exam.",
+          "title": "Follow the exam structure"
+        }
+      },
+      "title": "Why practice here?"
+    }
   },
   "login": {
     "backHome": "Home",
@@ -108,23 +437,26 @@
     "feature1": "Practice exams matching official structure",
     "feature2": "Instant scoring upon submission",
     "feature3": "Detailed solutions and weak-area focus",
-    "forgotNote": "Forgot password? Contact an administrator for a reset. After 5 consecutive failed attempts, sign-in is locked for 15 minutes.",
+    "forgotLink": "Forgot password?",
     "headline": "HSA & QDA Aptitude Exam Preparation",
     "hidePassword": "Hide password",
     "identifierLabel": "Username or email",
     "identifierPlaceholder": "Enter username or email",
     "identifierRequired": "Please enter your username or email.",
+    "noAccount": "No account yet?",
     "passwordLabel": "Password",
     "passwordPlaceholder": "Enter password",
     "passwordRequired": "Please enter your password.",
+    "registerLink": "Register",
+    "resetDone": "Your password has been reset. Sign in with your new password.",
     "showPassword": "Show password",
     "submit": "Sign in",
     "subtitle": "One account for both the student portal and the admin portal. After signing in, you are directed to the right place for your role.",
     "title": "Sign in"
   },
   "metadata": {
-    "description": "Online practice portal for HSA and QDA aptitude exams",
-    "title": "Thi 360 — HSA & QDA Exam Prep",
+    "description": "Online practice that follows the real exam structure: HSA, QDA, BCA, V-ACT, SPT, SP2E, high school graduation",
+    "title": "Thi 360 — Online exam practice",
     "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
@@ -132,12 +464,174 @@
     "eyebrow": "ERROR 404",
     "title": "Page not found"
   },
+  "storefront": {
+    "access": {
+      "adminNote": "Administrator accounts have no buy or start buttons. Public information only.",
+      "attemptsLeft": "{count, plural, one {# attempt left} other {# attempts left}}",
+      "buy": "Buy exam",
+      "buyAgain": "Buy again",
+      "buyMore": "Buy more attempts",
+      "checking": "Checking",
+      "checkingNote": "Order {orderCode}. You do not need to pay again. If the exam still does not show up, contact support and include this order code.",
+      "continue": "Continue",
+      "continueNote": "You have an attempt in progress.",
+      "enter": "Start exam",
+      "exhaustedNote": "You have used all attempts of this exam.",
+      "loadError": "Could not determine your access to this exam.",
+      "loading": "Loading access",
+      "pendingTopUp": "Your top-up order {orderCode} is being checked. You do not need to pay again.",
+      "reload": "Reload access",
+      "viewDetail": "View details"
+    },
+    "catalog": {
+      "clearFilters": "Clear filters",
+      "emptyTitle": "No exams are on sale right now",
+      "errorMessage": "Could not load the exam catalog. Your filters are kept.",
+      "filtersLabel": "Search and filter exams",
+      "formatAll": "All formats",
+      "formatHint": "A FULL exam has all sections in one attempt. A section or subject exam lets you practice only the section or subject shown on the card.",
+      "formatHintLabel": "Format:",
+      "formatLabel": "Format",
+      "kindAll": "All exams",
+      "kindLabel": "Exam",
+      "loading": "Loading catalog",
+      "noResultsDescription": "Try another keyword or remove some filters.",
+      "noResultsTitle": "No matching exams found",
+      "paginationLabel": "Catalog pagination",
+      "partAll": "All sections, subjects",
+      "partLabel": "Section/subject",
+      "searchLabel": "Search by name or code",
+      "searchPlaceholder": "For example: HSA FULL or HSA-FULL-01",
+      "showing": "Showing {from}–{to} of {total} exams on sale",
+      "sort": {
+        "NEWEST": "Newest",
+        "PRICE_ASC": "Price: low to high",
+        "PRICE_DESC": "Price: high to low"
+      },
+      "sortLabel": "Sort by",
+      "title": "Choose an exam"
+    },
+    "detail": {
+      "answerType": {
+        "CLOZE": "Fill in the blank",
+        "ESSAY": "Essay",
+        "MATCHING": "Matching",
+        "MULTIPLE_CHOICE": "Multiple choice",
+        "QUESTION_SET": "Question set",
+        "SHORT_ANSWER": "Short answer",
+        "SINGLE_CHOICE": "Single choice",
+        "TRUE_FALSE": "True/False"
+      },
+      "answerTypeCount": "{type}: {count}",
+      "attemptsPerPurchase": "{count, plural, one {# attempt per purchase} other {# attempts per purchase}}",
+      "audience": "Who it is for",
+      "breadcrumbCatalog": "Choose an exam",
+      "breadcrumbHome": "Home",
+      "breadcrumbLabel": "Breadcrumb",
+      "choicesTitle": "Options within the purchase",
+      "chooseSubjects": "Choose {count} of {total} subjects",
+      "codeLabel": "Product code",
+      "columns": {
+        "duration": "Duration",
+        "maxPoints": "Max points",
+        "nature": "Type",
+        "order": "Order",
+        "part": "Section",
+        "questions": "Questions"
+      },
+      "countsByPick": "Questions per subject by number of subjects chosen: {counts}",
+      "guestHint": "You need to sign in to buy. After signing in you return to this exam at the purchase confirmation step. No account yet?",
+      "how": {
+        "answerTypes": "Question types",
+        "essayNote": "Essay sections are graded by hand. The total score is available once grading is finished.",
+        "maxScore": "{score} points",
+        "noEssay": "No essay section:",
+        "points": "{value} points",
+        "scoring": "Scoring",
+        "switching": "Moving between sections",
+        "switchingValue": "Taken in order. When time runs out or you submit early, the next section opens right away; you cannot go back to a closed section.",
+        "timing": "Timing",
+        "timingPER_PART": "Timed per section. The clock runs on the server.",
+        "timingSHARED": "One shared clock for the whole exam. The clock runs on the server."
+      },
+      "howTitle": "How it works and how it is graded",
+      "includesTax": "Tax and fees included",
+      "objectives": "Objectives",
+      "optional": "Optional",
+      "perAttempt": "{questions} questions · {minutes} minutes per attempt",
+      "policy": {
+        "contactLine": "Send a request via: {contact}",
+        "contactPending": "Contact information is being updated.",
+        "hoursLine": "Support hours: {hours}",
+        "priceNote": "Prices are in VND, tax and fees included.",
+        "refund": "Refund for system errors: {policy}",
+        "refundPending": "per the policy published by the operating unit; if you need help, contact support through the channels in the Need help? block on the home page.",
+        "title": "Price and policy"
+      },
+      "priceHeading": "Price",
+      "promoEnds": "Ends {date}",
+      "required": "Required",
+      "rights": {
+        "afterEssay": "After the grader finishes grading",
+        "afterGrading": "Right after grading is done",
+        "ai": "AI explanations",
+        "attempts": "Attempts",
+        "no": "No",
+        "noteLabel": "Note:",
+        "practice": "Extra practice",
+        "resultTiming": "When you can see the result",
+        "resultView": "Result detail",
+        "resultViews": {
+          "FULL_SOLUTION": "Score, answers and solutions",
+          "SCORE": "Score only",
+          "SCORE_AND_ANSWERS": "Score and answers"
+        },
+        "strengths": "Strengths and weaknesses report",
+        "title": "What you get after buying",
+        "yes": "Yes"
+      },
+      "structureCaption": "Sections in the order you take them",
+      "structureTitle": "Exam structure",
+      "structureTotal": "{questions} questions · {minutes} minutes",
+      "subjectAnswerTypes": "<examContent>{subject}</examContent>: {types}"
+    },
+    "discount": "{percent}% off",
+    "format": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "gone": {
+      "descriptionTail": "is no longer on sale. You can pick another exam from the catalog.",
+      "eyebrow": "ERROR 410",
+      "myExams": "My exams",
+      "owned": "If you already bought this exam, your access and remaining attempts are still in My exams.",
+      "title": "This exam is no longer on sale",
+      "toCatalog": "Back to the exam catalog"
+    },
+    "listPriceLabel": "List price",
+    "notFound": {
+      "description": "The link is wrong or the exam has not been published.",
+      "eyebrow": "ERROR 404",
+      "title": "Exam not found",
+      "toCatalog": "Back to the exam catalog"
+    },
+    "price": "{amount, number} VND",
+    "promoEnds": "Ends {date}",
+    "review": "Review exam",
+    "units": {
+      "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+      "minutes": "{value} minutes",
+      "questions": "{value} questions"
+    }
+  },
   "userMenu": {
     "adminPortal": "Admin portal",
     "changePassword": "Change password",
     "logout": "Sign out",
     "logoutFailed": "Unable to sign out. Please try again.",
     "menuLabel": "Account",
+    "profile": "Profile",
     "studentPortal": "Student portal",
     "trigger": "Account menu"
   }

@@ -119,6 +119,11 @@ thi360:
       forgot-per-ip-window: PT1M
       reset-per-ip-limit: ${THI360_RESET_PER_IP_LIMIT:60}
       reset-per-ip-window: PT1M
+      # CM-1 (TM 10.2): GET /api/v1/public/** gets 120 requests per minute per IP. exempt-ips lists the web servers that render
+      # the public pages from one IP (comma separated IPs or CIDRs, plan B6); empty means nobody is exempt.
+      public-per-ip-limit: 120
+      public-per-ip-window: PT1M
+      exempt-ips: ${THI360_SECURITY_RATELIMIT_EXEMPTIPS:}
   s3:
     mode: ${THI360_S3_MODE:s3}
     endpoint: ${THI360_S3_ENDPOINT:http://localhost:${THI360_S3_PORT:9360}}
@@ -174,6 +179,7 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
+      max-mapid-rules: ${THI360_EXAM_MAX_MAPID_RULES:20}
     listing:
       # Giá bán thấp nhất khi công bố bài thi; cùng biến với mức tối thiểu của VNPAY (TM E26).
       min-price-vnd: ${THI360_VNPAY_MIN_AMOUNT:5000}
@@ -224,6 +230,7 @@ spring:
       - classpath:db/devdata
 
 thi360:
+  devdata.published-exams.enabled: true
   keycloak:
     realm: ${THI360_KC_REALM:thi-360}
   ctx:
@@ -321,6 +328,7 @@ spring:
 # C-0b: giá trị công khai, chỉ dùng cho E2E trên CI và máy dev (plan B6); bản demo dùng giá trị riêng trong .env.
 # Cùng khóa thi360.token.pepper với TokenPepperProperties (C-0).
 thi360:
+  devdata.published-exams.enabled: true
   token:
     pepper: ${THI360_TOKEN_PEPPER:dev-only-e2e-token-pepper-not-a-secret}
   mail:

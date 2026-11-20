@@ -63,6 +63,12 @@ final class ExamCheckSources {
         return cutShort;
     }
 
+    /** Singles matching the group's source nodes (UNI-2758); -1 when unknown (deadline or truncated pool). */
+    long singles(GroupQuota group) {
+        if (!clock.instant().isBefore(deadline)) return -1;
+        return candidates.singlesFor(group);
+    }
+
     Pool pool(GroupQuota group) {
         return pools.computeIfAbsent(group, key -> {
             loaded = null;
