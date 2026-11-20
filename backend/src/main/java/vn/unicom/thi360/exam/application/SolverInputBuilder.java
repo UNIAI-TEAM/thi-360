@@ -464,16 +464,12 @@ public class SolverInputBuilder {
     }
 
     private static int fixedBlockCount(QuestionBlock block) {
-        if (Boolean.TRUE.equals(block.omitted())) return 0;
-        if (block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE) {
-            if (block.setCount() == null && block.setSize() == null && block.questionCount() != null) {
-                return block.questionCount();
-            }
-            if (block.setCount() == null || block.setSize() == null) throw new IllegalArgumentException("Set size is missing");
-            return Math.multiplyExact(block.setCount(), block.setSize());
+        Integer count = vn.unicom.thi360.exam.domain.BlockCounts.declared(block);
+        if (count == null) {
+            throw new IllegalArgumentException(
+                    vn.unicom.thi360.exam.domain.BlockCounts.isSet(block) ? "Set size is missing" : "Group count is missing");
         }
-        if (block.questionCount() == null) throw new IllegalArgumentException("Group count is missing");
-        return block.questionCount();
+        return count;
     }
 
     /**

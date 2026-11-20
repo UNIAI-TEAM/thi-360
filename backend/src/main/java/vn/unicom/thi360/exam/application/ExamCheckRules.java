@@ -26,6 +26,7 @@ import vn.unicom.thi360.exam.domain.MatrixMode;
 import vn.unicom.thi360.exam.domain.MatrixUnit;
 import vn.unicom.thi360.exam.domain.OptionKind;
 import vn.unicom.thi360.exam.domain.ParticipationMode;
+import vn.unicom.thi360.exam.domain.BlockCounts;
 import vn.unicom.thi360.exam.domain.QuestionBlock;
 import vn.unicom.thi360.exam.domain.QuotaBasis;
 import vn.unicom.thi360.exam.domain.QuotaEnforcement;
@@ -195,10 +196,10 @@ public final class ExamCheckRules {
         for (Slot<ExamPartOption> slot : pair(base.options(), part.options(), ExamPartOption::id,
                 ExamCheckRules::optionSignature, null, option -> 0)) {
             if (slot.current() == null) {
-                changed |= lockedSections(found, part, slot.locked().id(), slot.locked().sections(), List.of());
+                changed |= lockedSections(found, part, slot.locked().id(), optionSections(slot.locked()), List.of());
             } else {
-                List<ExamSection> expected = slot.locked() == null ? List.of() : slot.locked().sections();
-                changed |= lockedSections(found, part, slot.current().id(), expected, slot.current().sections());
+                List<ExamSection> expected = optionSections(slot.locked());
+                changed |= lockedSections(found, part, slot.current().id(), expected, optionSections(slot.current()));
             }
         }
         if (!changed && !Objects.equals(part.questionCount(), base.questionCount())) {
@@ -505,8 +506,8 @@ public final class ExamCheckRules {
             for (ExamPartOption option : part.options()) all.addAll(optionSections(option));
             for (ExamSection section : all) for (QuestionBlock block : section.blocks()) {
                 if (!Boolean.TRUE.equals(block.omitted()) || block.requiredPointsPerQuestion() == null) continue;
-                int count = block.questionCount() != null ? block.questionCount()
-                        : block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+                Integer configured = BlockCounts.configured(block);
+                int count = configured == null ? 0 : configured;
                 excluded = excluded.add(block.requiredPointsPerQuestion().multiply(BigDecimal.valueOf(count)));
             }
             if (excluded.signum() > 0 && excluded.compareTo(gap) == 0) {
@@ -1166,7 +1167,7 @@ public final class ExamCheckRules {
         matrix(found, context, null, section.matrix(), count, "SUBJECT_MATRIX_TOTAL_MISMATCH", countVaries, varies ? count : null);
         for (QuestionBlock block : section.blocks()) {
             if (Boolean.TRUE.equals(block.omitted())) continue;
-            int groupCount = block.questionCount() == null ? Math.max(0, count - fixed) : fixedCount(block);
+            int groupCount = BlockCounts.isRemainder(block) ? Math.max(0, count - fixed) : fixedCount(block);
             if (isSet(block) && block.questionCount() != null
                     && !(block.setCount() == null && block.setSize() == null)
                     && (block.setCount() == null || block.setSize() == null || block.setCount() * block.setSize() != block.questionCount())) {
@@ -1321,11 +1322,10 @@ public final class ExamCheckRules {
 
     private static void blockContext(ObjectNode issue, QuestionBlock block) { issue.put("blockId", block.id()); issue.put("blockName", block.name()); }
     private static boolean isChoice(ExamPart part) { return part.participation() != null && part.participation().mode() == ParticipationMode.CHOICE; }
-    private static boolean isSet(QuestionBlock block) { return block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE; }
+    private static boolean isSet(QuestionBlock block) { return BlockCounts.isSet(block); }
     private static int fixedCount(QuestionBlock block) {
-        if (Boolean.TRUE.equals(block.omitted())) return 0;
-        if (block.questionCount() != null) return block.questionCount();
-        return block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+        Integer count = BlockCounts.declared(block);
+        return count == null ? 0 : count;
     }
     private static List<ObjectNode> dedupe(List<ObjectNode> found) {
         Map<String, ObjectNode> result = new LinkedHashMap<>();
