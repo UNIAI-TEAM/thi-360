@@ -39,6 +39,7 @@ class ExamSeedR12IT extends AbstractIntegrationTest {
     private static final String FIRST_NEW_BLOCK = "00000000-0000-7000-8800-000000000080";
     private static final String LAST_NEW_BLOCK = "00000000-0000-7000-8800-000000000087";
     private static final String REMOVED_BLOCK = "00000000-0000-7000-8800-000000000044";
+    private static final String HOLDER_SECTION = "00000000-0000-7000-8800-000000000040";
     private static final List<String> FILL_SUBJECTS = List.of("LY", "HOA", "SINH");
 
     @Autowired private JdbcTemplate jdbc;
@@ -226,6 +227,49 @@ class ExamSeedR12IT extends AbstractIntegrationTest {
         assertThat(blockRefCount(REMOVED_BLOCK)).as("the ref of the removed block is not brought back").isZero();
         assertThat(hash()).isEqualTo(savedHash);
         assertThat(parts()).isEqualTo(savedParts);
+    }
+
+    /**
+     * R3-3: a normal save may remove a seeded block and give its freed id to another node (here the section that held
+     * it). Only a member of a blocks[] array is a block, so the rerun of the seed must not write the removed block's
+     * ref again because the id still occurs elsewhere in the structure.
+     */
+    @Test
+    void rerunDoesNotBringBackTheRefOfARemovedBlockWhoseIdNowNamesAnotherNode() throws Exception {
+        String url = "/api/v1/admin/exams/" + EXAM + "/structure";
+        JsonNode current = mapper.readTree(mockMvc.perform(get(url).with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        ObjectNode edited = current.deepCopy();
+        assertThat(removeBlock(edited.path("parts"), REMOVED_BLOCK)).as("the block is in the seeded structure").isTrue();
+        assertThat(renameNode(edited.path("parts"), HOLDER_SECTION, REMOVED_BLOCK)).as("the section that held it").isTrue();
+        ObjectNode body = mapper.createObjectNode().put("expectedRevision", current.path("revision").asLong());
+        body.set("parts", edited.path("parts"));
+        if (edited.has("examQuotas")) body.set("examQuotas", edited.path("examQuotas"));
+        mockMvc.perform(put(url).with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                .content(body.toString())).andExpect(status().isOk());
+
+        List<UUID> rewritten = jdbc.queryForList("SELECT id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL",
+                UUID.class, EXAM);
+        assertThat(blockRefCount(REMOVED_BLOCK)).as("the edit removed that block's ref").isZero();
+        String savedParts = parts();
+        assertThat(savedParts).as("the freed id now names the section").contains("\"" + REMOVED_BLOCK + "\"");
+
+        runSeed();
+
+        assertThat(blockRefCount(REMOVED_BLOCK)).as("the ref of the removed block is not brought back").isZero();
+        assertThat(jdbc.queryForList("SELECT id FROM exam.exam_block_ref WHERE exam_id = ? AND version_no IS NULL", UUID.class, EXAM))
+                .as("the projector's refs survive, none is added").containsExactlyInAnyOrderElementsOf(rewritten);
+        assertThat(parts()).isEqualTo(savedParts);
+    }
+
+    /** Gives the first object whose id is {@code from} the id {@code to}. */
+    private static boolean renameNode(JsonNode node, String from, String to) {
+        if (node.isObject() && from.equals(node.path("id").asText())) {
+            ((ObjectNode) node).put("id", to);
+            return true;
+        }
+        for (JsonNode child : node) if (renameNode(child, from, to)) return true;
+        return false;
     }
 
     private static boolean removeBlock(JsonNode node, String blockId) {

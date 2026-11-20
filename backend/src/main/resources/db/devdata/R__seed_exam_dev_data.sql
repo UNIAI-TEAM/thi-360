@@ -87,6 +87,10 @@ FROM (VALUES
   ('00000000-0000-7000-8900-000000000021','00000000-0000-7000-8700-000000000001',NULL,'00000000-0000-7000-8800-000000000083','00000000-0000-7000-8800-000000000003','SCIENCE','00000000-0000-7000-8800-000000000053','00000000-0000-7000-8200-000000000207','QUESTION_SET','{QUESTION_SET}',NULL,NULL,true,NULL,NULL,1,NULL),
   ('00000000-0000-7000-8900-000000000022','00000000-0000-7000-8700-000000000001',NULL,'00000000-0000-7000-8800-000000000084','00000000-0000-7000-8800-000000000003','SCIENCE','00000000-0000-7000-8800-000000000054','00000000-0000-7000-8200-000000000208','QUESTION_SET','{QUESTION_SET}',NULL,NULL,true,NULL,NULL,1,NULL)
 ) AS v(id, exam_id, version_no, block_id, part_id, option_code, section_id, subject_item_id, question_type, answer_types, knowledge_item_ids, knowledge_mode, knowledge_inherited, tag_item_ids, competency_item_ids, required_points, combination_item_id)
+-- UNI-2762 (R3-3, as scripts/generate_test_exam_seed.py FU-BE13-2): only an id that is a member of a blocks[] array counts as a block; a part, section or option that took the id of a block an edit removed must not bring that block's ref back.
 WHERE EXISTS (SELECT 1 FROM exam.exam_structure s WHERE s.exam_id = v.exam_id::uuid
-  AND jsonb_path_exists(s.parts, '$.** ? (@.id == $block)', jsonb_build_object('block', v.block_id)))
+  AND (jsonb_path_exists(s.parts, '$.parts.sections.blocks ? (@.id == $block)', jsonb_build_object('block', v.block_id))
+    OR jsonb_path_exists(s.parts, '$.parts.subjectPool.blocks ? (@.id == $block)', jsonb_build_object('block', v.block_id))
+    OR jsonb_path_exists(s.parts, '$.parts.options.sections.blocks ? (@.id == $block)', jsonb_build_object('block', v.block_id))
+    OR jsonb_path_exists(s.parts, '$.parts.options.blocks ? (@.id == $block)', jsonb_build_object('block', v.block_id))))
 ON CONFLICT DO NOTHING;
