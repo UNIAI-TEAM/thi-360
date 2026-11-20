@@ -56,6 +56,7 @@ import {
   REVIEW_LISTING_ANCHOR,
   useListingStatusText,
 } from "./exam-review-listing";
+import { ExamEditorActions } from "./exam-editor-actions";
 import { ExamReviewFindings } from "./exam-review-findings";
 
 export interface ExamReviewCheckProps {
@@ -163,6 +164,7 @@ export function ExamReviewCheck({ exam, onPreview, active = true, deps }: ExamRe
         blocksRef={blocksRef}
         blockTab={blockTab}
         onBlockTabChange={setBlockTab}
+        showActions={active}
       />
     );
   }
@@ -190,6 +192,8 @@ interface CheckResultViewProps {
   blocksRef: RefObject<HTMLHeadingElement | null>;
   blockTab: string | null;
   onBlockTabChange: (pathId: string) => void;
+  /** Nút Kiểm tra lại nằm ở hàng tiêu đề của bài, chỉ khi tab Kiểm tra đang mở. */
+  showActions: boolean;
 }
 
 function CheckResultView({
@@ -206,6 +210,7 @@ function CheckResultView({
   blocksRef,
   blockTab,
   onBlockTabChange,
+  showActions,
 }: CheckResultViewProps) {
   const t = useTranslations("exams.review");
   const format = useFormatter();
@@ -246,24 +251,26 @@ function CheckResultView({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {hasUnconfirmed && (
-            <Button
-              variant="outline"
-              onClick={deep.start}
-              loading={deepRunning}
-              disabled={running}
-              aria-label={deepRunning ? t("deep.runningLabel") : undefined}
-            >
-              <SearchCheck />
-              {deepRunning ? t("deep.runningLabel") : t("deep.start")}
+        {showActions && (
+          <ExamEditorActions>
+            {hasUnconfirmed && (
+              <Button
+                variant="outline"
+                onClick={deep.start}
+                loading={deepRunning}
+                disabled={running}
+                aria-label={deepRunning ? t("deep.runningLabel") : undefined}
+              >
+                <SearchCheck />
+                {deepRunning ? t("deep.runningLabel") : t("deep.start")}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
+              <RefreshCw />
+              {t("rerun")}
             </Button>
-          )}
-          <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
-            <RefreshCw />
-            {t("rerun")}
-          </Button>
-        </div>
+          </ExamEditorActions>
+        )}
       </Card>
       <DeepCheckStatus deep={deep} />
 
@@ -333,10 +340,6 @@ function CheckResultView({
       />
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
-          <RefreshCw />
-          {t("rerun")}
-        </Button>
         <Button variant="outline" onClick={() => onPreview(null)}>
           <Eye />
           {t("toPreview")}
