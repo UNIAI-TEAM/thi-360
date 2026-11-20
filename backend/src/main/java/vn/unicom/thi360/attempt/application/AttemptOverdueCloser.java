@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
@@ -23,9 +24,12 @@ import vn.unicom.thi360.attempt.infrastructure.AttemptRepository;
 @Component
 public class AttemptOverdueCloser implements OverdueAttemptCloser {
 
+    private static final int OVERDUE_CLOSE_TIMEOUT_SECONDS = 15;
+
     private final AttemptRepository attemptRepository;
     private final AttemptPartRepository attemptPartRepository;
     private final ObjectProvider<AttemptLifecycleService> lifecycleServiceProvider;
+    private final TransactionTemplate requiredTx;
     private final TransactionTemplate requiresNewTx;
 
     @Autowired
@@ -37,8 +41,12 @@ public class AttemptOverdueCloser implements OverdueAttemptCloser {
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.lifecycleServiceProvider = Objects.requireNonNull(lifecycleServiceProvider);
-        this.requiresNewTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
+        PlatformTransactionManager txManager = Objects.requireNonNull(transactionManager);
+        this.requiredTx = new TransactionTemplate(txManager);
+        this.requiredTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        this.requiresNewTx = new TransactionTemplate(txManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.requiresNewTx.setTimeout(OVERDUE_CLOSE_TIMEOUT_SECONDS);
     }
 
     @Override
@@ -50,7 +58,13 @@ public class AttemptOverdueCloser implements OverdueAttemptCloser {
         if (!attemptRepository.hasOverdueDeadline(attemptId, now)) {
             return;
         }
-        requiresNewTx.executeWithoutResult(
+        // Reuse an active read-write outer transaction (getState, prepare, start) to avoid
+        // opening a second HikariCP connection; use a bounded REQUIRES_NEW tx otherwise.
+        boolean reuseOuterTx =
+                TransactionSynchronizationManager.isActualTransactionActive()
+                        && !TransactionSynchronizationManager.isCurrentTransactionReadOnly();
+        TransactionTemplate tx = reuseOuterTx ? requiredTx : requiresNewTx;
+        tx.executeWithoutResult(
                 status -> {
                     // Blocking FOR UPDATE so synchronous caller never sees stale IN_PROGRESS past deadline.
                     Optional<Attempt> locked = attemptRepository.findByIdForUpdate(attemptId);

@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.util.UUID;
@@ -14,5 +15,6 @@ public record FinalAnswerChange(
         @Positive(message = "{validation.attempt.finalAnswer.seq.positive}")
         @Schema(description = "Số thứ tự tăng dần của câu", requiredMode = Schema.RequiredMode.REQUIRED)
         long seq,
+        @Valid
         @Schema(description = "Nội dung câu trả lời; null để xóa đáp án", nullable = true)
         AnswerValue answer) {}

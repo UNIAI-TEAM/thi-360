@@ -127,8 +127,32 @@
       },
       "AnswerValue" : {
         "discriminator" : {
+          "mapping" : {
+            "CLOZE" : "#/components/schemas/ClozeAnswer",
+            "ESSAY" : "#/components/schemas/EssayAnswer",
+            "MATCHING" : "#/components/schemas/MatchingAnswer",
+            "MULTIPLE_CHOICE" : "#/components/schemas/MultipleChoiceAnswer",
+            "SHORT_ANSWER" : "#/components/schemas/ShortAnswerValue",
+            "SINGLE_CHOICE" : "#/components/schemas/SingleChoiceAnswer",
+            "TRUE_FALSE" : "#/components/schemas/TrueFalseAnswer"
+          },
           "propertyName" : "type"
         },
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/SingleChoiceAnswer"
+        }, {
+          "$ref" : "#/components/schemas/MultipleChoiceAnswer"
+        }, {
+          "$ref" : "#/components/schemas/ShortAnswerValue"
+        }, {
+          "$ref" : "#/components/schemas/ClozeAnswer"
+        }, {
+          "$ref" : "#/components/schemas/TrueFalseAnswer"
+        }, {
+          "$ref" : "#/components/schemas/MatchingAnswer"
+        }, {
+          "$ref" : "#/components/schemas/EssayAnswer"
+        } ],
         "properties" : {
           "type" : {
             "type" : "string"
@@ -228,21 +252,7 @@
       "AttemptItemView" : {
         "properties" : {
           "answer" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/Cloze"
-            }, {
-              "$ref" : "#/components/schemas/Essay"
-            }, {
-              "$ref" : "#/components/schemas/Matching"
-            }, {
-              "$ref" : "#/components/schemas/MultipleChoice"
-            }, {
-              "$ref" : "#/components/schemas/ShortAnswer"
-            }, {
-              "$ref" : "#/components/schemas/SingleChoice"
-            }, {
-              "$ref" : "#/components/schemas/TrueFalse"
-            } ]
+            "$ref" : "#/components/schemas/AnswerValue"
           },
           "answerSeq" : {
             "format" : "int64",
@@ -2423,18 +2433,6 @@
       },
       "Cloze" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "blanks" : {
-              "additionalProperties" : {
-                "type" : "string"
-              },
-              "type" : "object"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -2450,6 +2448,21 @@
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "ClozeAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "blanks" : {
+              "additionalProperties" : {
+                "type" : "string"
+              },
+              "type" : "object"
             }
           },
           "type" : "object"
@@ -3722,19 +3735,6 @@
       },
       "Essay" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "html" : {
-              "type" : "string"
-            },
-            "wordCount" : {
-              "format" : "int32",
-              "type" : "integer"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -3743,6 +3743,22 @@
               "type" : "string"
             },
             "wordLimit" : {
+              "format" : "int32",
+              "type" : "integer"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "EssayAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "html" : {
+              "type" : "string"
+            },
+            "wordCount" : {
               "format" : "int32",
               "type" : "integer"
             }
@@ -6672,22 +6688,8 @@
         "description" : "Thay đổi câu trả lời cuối cùng gửi kèm khi hoàn thành phần hoặc nộp bài (LT §6.3, §7.1)",
         "properties" : {
           "answer" : {
-            "description" : "Nội dung câu trả lời; null để xóa đáp án",
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/Cloze"
-            }, {
-              "$ref" : "#/components/schemas/Essay"
-            }, {
-              "$ref" : "#/components/schemas/Matching"
-            }, {
-              "$ref" : "#/components/schemas/MultipleChoice"
-            }, {
-              "$ref" : "#/components/schemas/ShortAnswer"
-            }, {
-              "$ref" : "#/components/schemas/SingleChoice"
-            }, {
-              "$ref" : "#/components/schemas/TrueFalse"
-            } ]
+            "$ref" : "#/components/schemas/AnswerValue",
+            "description" : "Nội dung câu trả lời; null để xóa đáp án"
           },
           "itemId" : {
             "description" : "Id câu hỏi trong lượt",
@@ -6737,6 +6739,8 @@
             "items" : {
               "$ref" : "#/components/schemas/FinalAnswerChange"
             },
+            "maxItems" : 500,
+            "minItems" : 0,
             "type" : "array"
           }
         },
@@ -7367,18 +7371,6 @@
       },
       "Matching" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "pairs" : {
-              "additionalProperties" : {
-                "type" : "string"
-              },
-              "type" : "object"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -7400,6 +7392,21 @@
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "MatchingAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "pairs" : {
+              "additionalProperties" : {
+                "type" : "string"
+              },
+              "type" : "object"
             }
           },
           "type" : "object"
@@ -7550,18 +7557,6 @@
       },
       "MultipleChoice" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "optionIds" : {
-              "items" : {
-                "type" : "string"
-              },
-              "type" : "array"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -7577,6 +7572,21 @@
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "MultipleChoiceAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "optionIds" : {
+              "items" : {
+                "type" : "string"
+              },
+              "type" : "array"
             }
           },
           "type" : "object"
@@ -10683,15 +10693,6 @@
       },
       "ShortAnswer" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "text" : {
-              "type" : "string"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -10735,6 +10736,18 @@
           "type" : "object"
         } ]
       },
+      "ShortAnswerValue" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "text" : {
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
       "SideView" : {
         "properties" : {
           "content" : {
@@ -10748,15 +10761,6 @@
       },
       "SingleChoice" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "optionId" : {
-              "type" : "string"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -10768,6 +10772,18 @@
             },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "SingleChoiceAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "optionId" : {
               "type" : "string"
             }
           },
@@ -11109,6 +11125,8 @@
             "items" : {
               "$ref" : "#/components/schemas/FinalAnswerChange"
             },
+            "maxItems" : 500,
+            "minItems" : 0,
             "type" : "array"
           }
         },
@@ -11279,18 +11297,6 @@
       },
       "TrueFalse" : {
         "allOf" : [ {
-          "$ref" : "#/components/schemas/AnswerValue"
-        }, {
-          "properties" : {
-            "statements" : {
-              "additionalProperties" : {
-                "type" : "boolean"
-              },
-              "type" : "object"
-            }
-          },
-          "type" : "object"
-        }, {
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
@@ -11303,6 +11309,21 @@
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "TrueFalseAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AnswerValue"
+        }, {
+          "properties" : {
+            "statements" : {
+              "additionalProperties" : {
+                "type" : "boolean"
+              },
+              "type" : "object"
             }
           },
           "type" : "object"
@@ -37868,9 +37889,10 @@
             "type" : "string"
           }
         }, {
+          "description" : "Khóa chống gửi lặp bắt buộc cho thao tác nộp bài",
           "in" : "header",
           "name" : "Idempotency-Key",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "string"
           }

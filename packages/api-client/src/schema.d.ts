@@ -2544,7 +2544,7 @@ export interface components {
         };
         AnswerValue: {
             type: string;
-        };
+        } & (components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["ClozeAnswer"] | components["schemas"]["TrueFalseAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["EssayAnswer"]);
         /** @description Định dạng lỗi chuẩn của API */
         ApiError: {
             /**
@@ -2607,7 +2607,7 @@ export interface components {
             version: number;
         };
         AttemptItemView: {
-            answer?: components["schemas"]["Cloze"] | components["schemas"]["Essay"] | components["schemas"]["Matching"] | components["schemas"]["MultipleChoice"] | components["schemas"]["ShortAnswer"] | components["schemas"]["SingleChoice"] | components["schemas"]["TrueFalse"];
+            answer?: components["schemas"]["AnswerValue"];
             /** Format: int64 */
             answerSeq?: number;
             blockId?: string;
@@ -3846,18 +3846,29 @@ export interface components {
              */
             version: number;
         };
-        Cloze: {
-            type: "Cloze";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            blanks?: {
-                [key: string]: string;
-            };
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        Cloze: components["schemas"]["AttemptQuestionBody"] & {
             blanks?: components["schemas"]["ClozeBlankView"][];
             passage?: string;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
-        });
+        };
+        ClozeAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            blanks?: {
+                [key: string]: string;
+            };
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "CLOZE";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "CLOZE";
+        };
         ClozeBlank: {
             answers?: string[];
             id?: string;
@@ -4463,18 +4474,29 @@ export interface components {
              */
             code: string;
         };
-        Essay: {
-            type: "Essay";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            html?: string;
-            /** Format: int32 */
-            wordCount?: number;
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        Essay: components["schemas"]["AttemptQuestionBody"] & {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
             /** Format: int32 */
             wordLimit?: number;
-        });
+        };
+        EssayAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            html?: string;
+            /** Format: int32 */
+            wordCount?: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "ESSAY";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "ESSAY";
+        };
         EssayBody: {
             type: "EssayBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -5660,7 +5682,7 @@ export interface components {
         /** @description Thay đổi câu trả lời cuối cùng gửi kèm khi hoàn thành phần hoặc nộp bài (LT §6.3, §7.1) */
         FinalAnswerChange: {
             /** @description Nội dung câu trả lời; null để xóa đáp án */
-            answer?: components["schemas"]["Cloze"] | components["schemas"]["Essay"] | components["schemas"]["Matching"] | components["schemas"]["MultipleChoice"] | components["schemas"]["ShortAnswer"] | components["schemas"]["SingleChoice"] | components["schemas"]["TrueFalse"];
+            answer?: components["schemas"]["AnswerValue"];
             /**
              * Format: uuid
              * @description Id câu hỏi trong lượt
@@ -6047,19 +6069,30 @@ export interface components {
             /** @enum {string} */
             type?: "PRESENT" | "COUNT" | "ONLY_IN_GROUP" | "SOURCE";
         };
-        Matching: {
-            type: "Matching";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            pairs?: {
-                [key: string]: string;
-            };
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        Matching: components["schemas"]["AttemptQuestionBody"] & {
             left?: components["schemas"]["SideView"][];
             reuseRight?: boolean;
             right?: components["schemas"]["SideView"][];
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
-        });
+        };
+        MatchingAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            pairs?: {
+                [key: string]: string;
+            };
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "MATCHING";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "MATCHING";
+        };
         MatchingBody: {
             type: "MatchingBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -6130,16 +6163,27 @@ export interface components {
              */
             version?: number;
         };
-        MultipleChoice: {
-            type: "MultipleChoice";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            optionIds?: string[];
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        MultipleChoice: components["schemas"]["AttemptQuestionBody"] & {
             options?: components["schemas"]["OptionView"][];
             scoringRule?: string;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
-        });
+        };
+        MultipleChoiceAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            optionIds?: string[];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "MULTIPLE_CHOICE";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "MULTIPLE_CHOICE";
+        };
         MultipleChoiceBody: {
             type: "MultipleChoiceBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -7762,16 +7806,12 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         };
-        ShortAnswer: {
-            type: "ShortAnswer";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            text?: string;
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        ShortAnswer: components["schemas"]["AttemptQuestionBody"] & {
             answerFormat?: string;
             inputHint?: string;
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
-        });
+        };
         ShortAnswerBody: {
             type: "ShortAnswerBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -7782,19 +7822,45 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
+        ShortAnswerValue: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            text?: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "SHORT_ANSWER";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "SHORT_ANSWER";
+        };
         SideView: {
             content?: string;
             id?: string;
         };
-        SingleChoice: {
-            type: "SingleChoice";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            optionId?: string;
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        SingleChoice: components["schemas"]["AttemptQuestionBody"] & {
             options?: components["schemas"]["OptionView"][];
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
-        });
+        };
+        SingleChoiceAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            optionId?: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "SINGLE_CHOICE";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "SINGLE_CHOICE";
+        };
         SingleChoiceBody: {
             type: "SingleChoiceBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -8036,17 +8102,28 @@ export interface components {
              */
             userId: string;
         };
-        TrueFalse: {
-            type: "TrueFalse";
-        } & (Omit<components["schemas"]["AnswerValue"], "type"> & {
-            statements?: {
-                [key: string]: boolean;
-            };
-        } & components["schemas"]["AttemptQuestionBody"] & {
+        TrueFalse: components["schemas"]["AttemptQuestionBody"] & {
             statements?: components["schemas"]["StatementView"][];
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
-        });
+        };
+        TrueFalseAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            statements?: {
+                [key: string]: boolean;
+            };
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "TRUE_FALSE";
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "TRUE_FALSE";
+        };
         TrueFalseBody: {
             type: "TrueFalseBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -29945,8 +30022,9 @@ export interface operations {
     submit: {
         parameters: {
             query?: never;
-            header?: {
-                "Idempotency-Key"?: string;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác nộp bài */
+                "Idempotency-Key": string;
                 "X-Attempt-Session"?: string;
             };
             path: {

@@ -2,9 +2,11 @@ package vn.unicom.thi360.attempt.application;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,8 @@ public class AttemptDeadlineWorker {
 
     private static final Logger jobLog = LoggerFactory.getLogger("thi360.job");
     private static final int MAX_ATTEMPTS_PER_SWEEP = 200;
+    private static final int MAX_BATCHES_PER_TICK = 10;
+    private static final int ATTEMPT_SWEEP_TX_TIMEOUT_SECONDS = 15;
 
     private final AttemptRepository attemptRepository;
     private final AttemptPartRepository attemptPartRepository;
@@ -49,27 +53,47 @@ public class AttemptDeadlineWorker {
         this.attemptLifecycleService = Objects.requireNonNull(attemptLifecycleService);
         this.requiresNewTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.requiresNewTx.setTimeout(ATTEMPT_SWEEP_TX_TIMEOUT_SECONDS);
         this.clock = Objects.requireNonNull(clock);
     }
 
-    /** Processes up to {@value #MAX_ATTEMPTS_PER_SWEEP} overdue attempts in isolated transactions. */
+    /** Drains up to {@value #MAX_BATCHES_PER_TICK} batches of {@value #MAX_ATTEMPTS_PER_SWEEP} overdue attempts. */
     public int sweepOverdue() {
-        Instant now = clock.instant();
-        List<UUID> candidateIds =
-                attemptRepository.findOverdueAttemptIds(now, MAX_ATTEMPTS_PER_SWEEP);
         int progressed = 0;
-        for (UUID attemptId : candidateIds) {
-            try {
-                Boolean mutated = requiresNewTx.execute(status -> processAttemptById(attemptId));
-                if (Boolean.TRUE.equals(mutated)) {
-                    progressed++;
+        Set<UUID> attemptedInTick = new HashSet<>();
+        for (int batch = 0; batch < MAX_BATCHES_PER_TICK; batch++) {
+            Instant now = clock.instant();
+            List<UUID> candidateIds =
+                    attemptRepository.findOverdueAttemptIdsExcluding(
+                            now, attemptedInTick, MAX_ATTEMPTS_PER_SWEEP);
+            if (candidateIds.isEmpty()) {
+                break;
+            }
+            for (UUID attemptId : candidateIds) {
+                attemptedInTick.add(attemptId);
+                try {
+                    Boolean mutated = requiresNewTx.execute(status -> processAttemptById(attemptId));
+                    if (Boolean.TRUE.equals(mutated)) {
+                        progressed++;
+                    }
+                } catch (RuntimeException ex) {
+                    jobLog.atError()
+                            .addKeyValue("job", "attempt-deadline")
+                            .addKeyValue("attemptId", attemptId)
+                            .setCause(ex)
+                            .log("Failed to close overdue attempt/part; continuing sweep");
                 }
-            } catch (RuntimeException ex) {
-                jobLog.atError()
+            }
+            if (candidateIds.size() < MAX_ATTEMPTS_PER_SWEEP) {
+                break;
+            }
+            if (batch == MAX_BATCHES_PER_TICK - 1) {
+                jobLog.atWarn()
                         .addKeyValue("job", "attempt-deadline")
-                        .addKeyValue("attemptId", attemptId)
-                        .setCause(ex)
-                        .log("Failed to close overdue attempt/part; continuing sweep");
+                        .addKeyValue("batches", MAX_BATCHES_PER_TICK)
+                        .addKeyValue("attemptedCount", attemptedInTick.size())
+                        .addKeyValue("progressedCount", progressed)
+                        .log("Attempt deadline worker reached max batches per tick cap");
             }
         }
         return progressed;

@@ -1,6 +1,8 @@
 package vn.unicom.thi360.attempt.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -38,6 +40,11 @@ public class AttemptLifecycleController {
     @Operation(summary = "Nộp bài và kết thúc lượt thi")
     public SubmitAttemptResponse submit(
             @PathVariable UUID attemptId,
+            @Parameter(
+                    in = ParameterIn.HEADER,
+                    name = "Idempotency-Key",
+                    required = true,
+                    description = "Khóa chống gửi lặp bắt buộc cho thao tác nộp bài")
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestHeader(value = "X-Attempt-Session", required = false) UUID sessionId,
             @Valid @RequestBody(required = false) SubmitAttemptRequest request) {

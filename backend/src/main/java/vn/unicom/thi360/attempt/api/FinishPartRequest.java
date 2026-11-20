@@ -3,10 +3,14 @@ package vn.unicom.thi360.attempt.api;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Schema(description = "Yêu cầu hoàn thành phần hiện tại của lượt thi tuần tự (LT §6.3)")
 public record FinishPartRequest(
+        @Size(max = 500, message = "{validation.attempt.finalAnswers.max}")
         @Schema(description = "Các câu trả lời cuối cùng của phần trước khi đóng", nullable = true)
         List<
                         @NotNull(message = "{validation.attempt.finalAnswer.required}")
@@ -15,6 +19,10 @@ public record FinishPartRequest(
                 finalAnswers) {
 
     public FinishPartRequest {
-        finalAnswers = finalAnswers == null ? List.of() : List.copyOf(finalAnswers);
+        // Keep null elements intact so Bean Validation reports @NotNull field errors instead of failing in Jackson.
+        finalAnswers =
+                finalAnswers == null
+                        ? List.of()
+                        : Collections.unmodifiableList(new ArrayList<>(finalAnswers));
     }
 }

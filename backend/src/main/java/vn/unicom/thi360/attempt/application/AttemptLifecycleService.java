@@ -12,6 +12,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.FinalAnswerChange;
 import vn.unicom.thi360.attempt.api.FinalAnswerResult;
@@ -149,12 +150,20 @@ public class AttemptLifecycleService {
 
         List<FinalAnswerChange> safeFinalAnswers =
                 request == null ? List.of() : request.finalAnswers();
-        Instant now = clock.instant();
         // Lazy-close in REQUIRES_NEW before opening our tx so overdue closes survive 409 throws below.
-        overdueAttemptCloser.closeIfOverdue(attemptId, now);
+        overdueAttemptCloser.closeIfOverdue(attemptId, clock.instant());
 
-        return txTemplate.execute(
-                status -> executeFinishPart(attemptId, userId, partId, sessionId, safeFinalAnswers, now));
+        try {
+            return txTemplate.execute(
+                    status ->
+                            executeFinishPart(
+                                    attemptId, userId, partId, sessionId, safeFinalAnswers));
+        } catch (ConflictException ex) {
+            // If a deadline expired between pre-tx closeIfOverdue and acquiring FOR UPDATE,
+            // ensure the overdue close commits outside the rolled-back transaction (R1-11).
+            overdueAttemptCloser.closeIfOverdue(attemptId, clock.instant());
+            throw ex;
+        }
     }
 
     private FinishPartResponse executeFinishPart(
@@ -162,8 +171,7 @@ public class AttemptLifecycleService {
             UUID userId,
             UUID partId,
             UUID sessionId,
-            List<FinalAnswerChange> finalAnswers,
-            Instant now) {
+            List<FinalAnswerChange> finalAnswers) {
         Attempt attempt =
                 attemptRepository
                         .findByIdForUpdate(attemptId)
@@ -190,10 +198,12 @@ public class AttemptLifecycleService {
         AttemptPart part = parts.get(partIdx);
         AttemptPart nextPart = parts.get(partIdx + 1);
 
-        advanceOverdueInLock(attempt, parts, now);
+        // Re-sample clock strictly after acquiring FOR UPDATE locks to avoid stale pre-lock timestamps.
+        Instant lockNow = clock.instant();
+        advanceOverdueInLock(attempt, parts, lockNow);
 
         if (part.getState() == PartState.CLOSED) {
-            return buildFinishPartResponse(now, attempt, part, nextPart, List.of());
+            return buildFinishPartResponse(lockNow, attempt, part, nextPart, List.of());
         }
         if (attempt.getState() != AttemptState.IN_PROGRESS) {
             if (attempt.getEndReason() == EndReason.TIME_UP) {
@@ -206,9 +216,9 @@ public class AttemptLifecycleService {
         }
 
         List<FinalAnswerResult> results =
-                safeResults(finalAnswerWriter.writeFinalAnswers(attempt, part, finalAnswers, now));
+                safeResults(finalAnswerWriter.writeFinalAnswers(attempt, part, finalAnswers, lockNow));
 
-        part.close(PartCloseReason.FINISHED, now);
+        part.close(PartCloseReason.FINISHED, lockNow);
         attemptEventRepository.save(
                 new AttemptEvent(
                         Ids.newId(),
@@ -216,15 +226,15 @@ public class AttemptLifecycleService {
                         AttemptEventType.PART_CLOSED,
                         sessionId,
                         part.getId(),
-                        now,
-                        buildPartClosedData(part, PartCloseReason.FINISHED, now, finalAnswers)));
+                        lockNow,
+                        buildPartClosedData(part, PartCloseReason.FINISHED, lockNow, finalAnswers)));
 
         if (nextPart.getState() == PartState.PENDING) {
             if (requiresAfterStartChoice(attempt, nextPart)) {
-                partTransitionHook.onPartClosedBeforeChoice(attempt, part, nextPart, now);
+                partTransitionHook.onPartClosedBeforeChoice(attempt, part, nextPart, lockNow);
             } else {
-                Instant nextDeadline = resolveNextPartDeadline(attempt, nextPart, now);
-                nextPart.open(now, nextDeadline);
+                Instant nextDeadline = resolveNextPartDeadline(attempt, nextPart, lockNow);
+                nextPart.open(lockNow, nextDeadline);
                 attemptEventRepository.save(
                         new AttemptEvent(
                                 Ids.newId(),
@@ -232,13 +242,13 @@ public class AttemptLifecycleService {
                                 AttemptEventType.PART_OPENED,
                                 sessionId,
                                 nextPart.getId(),
-                                now,
-                                buildPartOpenedData(nextPart, now)));
+                                lockNow,
+                                buildPartOpenedData(nextPart, lockNow)));
             }
         }
 
         attemptPartRepository.saveAllAndFlush(parts);
-        return buildFinishPartResponse(now, attempt, part, nextPart, results);
+        return buildFinishPartResponse(lockNow, attempt, part, nextPart, results);
     }
 
     /** Submits an open attempt idempotently, writing final answers before closing if on time. */
@@ -254,25 +264,30 @@ public class AttemptLifecycleService {
                 request == null
                         ? new SubmitAttemptRequest(List.of())
                         : new SubmitAttemptRequest(request.finalAnswers());
-        Instant now = clock.instant();
         // Lazy-close in REQUIRES_NEW before idempotent tx so overdue close commits even on 409 PART_NOT_LAST.
-        overdueAttemptCloser.closeIfOverdue(attemptId, now);
+        overdueAttemptCloser.closeIfOverdue(attemptId, clock.instant());
 
-        return idempotentCommand.execute(
-                idempotencyKey,
-                SUBMIT_OPERATION,
-                attemptId,
-                normalized,
-                SubmitAttemptResponse.class,
-                () -> executeSubmit(attemptId, userId, sessionId, normalized, now));
+        try {
+            return idempotentCommand.execute(
+                    idempotencyKey,
+                    SUBMIT_OPERATION,
+                    attemptId,
+                    normalized,
+                    SubmitAttemptResponse.class,
+                    () -> executeSubmit(attemptId, userId, sessionId, normalized));
+        } catch (ConflictException ex) {
+            // If a deadline expired between pre-tx closeIfOverdue and acquiring FOR UPDATE,
+            // ensure the overdue close commits outside the rolled-back transaction (R1-11).
+            overdueAttemptCloser.closeIfOverdue(attemptId, clock.instant());
+            throw ex;
+        }
     }
 
     private SubmitAttemptResponse executeSubmit(
             UUID attemptId,
             UUID userId,
             UUID sessionId,
-            SubmitAttemptRequest normalized,
-            Instant now) {
+            SubmitAttemptRequest normalized) {
         Attempt attempt =
                 attemptRepository
                         .findByIdForUpdate(attemptId)
@@ -288,13 +303,15 @@ public class AttemptLifecycleService {
         }
 
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAscForUpdate(attemptId);
+        // Re-sample clock strictly after acquiring FOR UPDATE locks to avoid stale pre-lock timestamps.
+        Instant lockNow = clock.instant();
         if (attempt.getState() != AttemptState.IN_PROGRESS) {
-            return buildSubmitResponse(now, attempt, parts, List.of());
+            return buildSubmitResponse(lockNow, attempt, parts, List.of());
         }
 
-        advanceOverdueInLock(attempt, parts, now);
+        advanceOverdueInLock(attempt, parts, lockNow);
         if (attempt.getState() != AttemptState.IN_PROGRESS) {
-            return buildSubmitResponse(now, attempt, parts, List.of());
+            return buildSubmitResponse(lockNow, attempt, parts, List.of());
         }
 
         if (attempt.getNavigationMode() == NavigationMode.SEQUENTIAL && hasUnfinishedPartForSubmit(parts)) {
@@ -306,11 +323,11 @@ public class AttemptLifecycleService {
                         attempt,
                         parts,
                         EndReason.SUBMITTED,
-                        now,
+                        lockNow,
                         sessionId,
                         normalized.finalAnswers(),
-                        now);
-        return buildSubmitResponse(now, closed.attempt(), closed.parts(), closed.results());
+                        lockNow);
+        return buildSubmitResponse(lockNow, closed.attempt(), closed.parts(), closed.results());
     }
 
     /** Public shared close entry point for AT-2b ({@code CHOICE_TIMEOUT}), AT-5 ({@code FAULT_CLOSED}), and tests. */
@@ -353,12 +370,33 @@ public class AttemptLifecycleService {
      *
      * @return {@code true} if at least one part or the attempt transitioned state.
      */
-    public boolean advanceOverdueInLock(Attempt attempt, List<AttemptPart> parts, Instant now) {
+    boolean advanceOverdueInLock(Attempt attempt, List<AttemptPart> parts, Instant now) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("advanceOverdueInLock requires an active transaction");
+        }
         if (attempt.getState() != AttemptState.IN_PROGRESS) {
             return false;
         }
         if (attempt.getTiming() == AttemptTiming.SHARED) {
-            if (attempt.getDeadlineAt() != null && !now.isBefore(attempt.getDeadlineAt())) {
+            AttemptPart awaitingExpired = findOverdueAwaitingChoice(parts, now);
+            boolean sharedTimeUp =
+                    attempt.getDeadlineAt() != null && !now.isBefore(attempt.getDeadlineAt());
+            if (awaitingExpired != null
+                    && (!sharedTimeUp
+                            || awaitingExpired
+                                    .getChoiceDeadlineAt()
+                                    .isBefore(attempt.getDeadlineAt()))) {
+                closeAttemptInLock(
+                        attempt,
+                        parts,
+                        EndReason.CHOICE_TIMEOUT,
+                        awaitingExpired.getChoiceDeadlineAt(),
+                        null,
+                        List.of(),
+                        now);
+                return true;
+            }
+            if (sharedTimeUp) {
                 closeAttemptInLock(
                         attempt,
                         parts,
@@ -456,10 +494,15 @@ public class AttemptLifecycleService {
         }
 
         List<FinalAnswerResult> results = List.of();
+        AttemptPart targetPart = null;
         if (endReason == EndReason.SUBMITTED) {
-            AttemptPart targetPart = resolveSubmitTargetPart(attempt, parts);
+            targetPart = resolveSubmitTargetPart(attempt, parts);
             Instant effectiveDeadline = resolveEffectiveDeadline(attempt, targetPart);
-            if (effectiveDeadline != null && !finishedAt.isBefore(effectiveDeadline)) {
+            boolean overdue =
+                    findOverdueAwaitingChoice(parts, finishedAt) != null
+                            || (effectiveDeadline != null
+                                    && !finishedAt.isBefore(effectiveDeadline));
+            if (overdue) {
                 advanceOverdueInLock(attempt, parts, finishedAt);
                 return new CloseAttemptResult(
                         attempt,
@@ -476,6 +519,12 @@ public class AttemptLifecycleService {
         for (AttemptPart part : parts) {
             if (part.getState() == PartState.OPEN) {
                 part.close(partCloseReason, finishedAt);
+                List<FinalAnswerChange> partAuditChanges =
+                        endReason == EndReason.SUBMITTED
+                                        && targetPart != null
+                                        && part.getId().equals(targetPart.getId())
+                                ? safeChanges
+                                : List.of();
                 attemptEventRepository.save(
                         new AttemptEvent(
                                 Ids.newId(),
@@ -485,10 +534,7 @@ public class AttemptLifecycleService {
                                 part.getId(),
                                 now,
                                 buildPartClosedData(
-                                        part,
-                                        partCloseReason,
-                                        finishedAt,
-                                        endReason == EndReason.SUBMITTED ? safeChanges : List.of())));
+                                        part, partCloseReason, finishedAt, partAuditChanges)));
             } else if (part.getState() != PartState.CLOSED && part.getState() != PartState.SKIPPED) {
                 part.skip(partCloseReason, finishedAt);
             }
@@ -538,7 +584,13 @@ public class AttemptLifecycleService {
         return publishedExamPort
                 .loadVersion(attempt.getExamId(), attempt.getExamVersionNo())
                 .map(v -> AttemptPathResolver.isAfterStartChoicePart(v, nextPart.getPartCode()))
-                .orElse(false);
+                .orElseThrow(
+                        () ->
+                                new IllegalStateException(
+                                        "Missing published exam version examId="
+                                                + attempt.getExamId()
+                                                + " versionNo="
+                                                + attempt.getExamVersionNo()));
     }
 
     private static Instant resolveNextPartDeadline(
