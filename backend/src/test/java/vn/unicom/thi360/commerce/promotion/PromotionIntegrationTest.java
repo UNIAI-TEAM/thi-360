@@ -59,7 +59,7 @@ abstract class PromotionIntegrationTest extends AbstractIntegrationTest {
     protected Promotion saveVoucher(Integer totalLimit, Integer perUserLimit) {
         Instant now = Instant.now();
         UUID id = trackPromotion(Ids.newId());
-        String code = "VCH" + id.toString().replace("-", "").substring(0, 8).toUpperCase();
+        String code = "VCH" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         Promotion voucher = Promotion.voucher(
                 id,
                 "Voucher " + code,

@@ -50,6 +50,7 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
     @Autowired private OutboxRelay outboxRelay;
 
     private final List<UUID> examIds = new ArrayList<>();
+    private final List<UUID> classIds = new ArrayList<>();
     private final List<UUID> userIds = new ArrayList<>();
     private final Set<UUID> actorIds = ConcurrentHashMap.newKeySet();
 
@@ -59,7 +60,13 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
             jdbc.update("DELETE FROM commerce.storefront_product WHERE exam_id = ?", examId);
         }
         examIds.clear();
+        for (UUID classId : classIds) {
+            jdbc.update("DELETE FROM classroom.class_member WHERE class_id = ?", classId);
+            jdbc.update("DELETE FROM classroom.class_room WHERE id = ?", classId);
+        }
+        classIds.clear();
         for (UUID userId : userIds) {
+            jdbc.update("DELETE FROM classroom.class_member WHERE user_id = ?", userId);
             jdbc.update("DELETE FROM identity.user_account WHERE id = ?", userId);
         }
         userIds.clear();
@@ -116,6 +123,19 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("PROMOTION_IN_USE"));
         }
+
+        // Null items inside ID arrays on in-use PATCH must fail with 400 VALIDATION_FAILED, never 500 NPE (R1-7..R1-9)
+        for (String arrayField : List.of("examIds", "examKindIds", "audienceClassIds", "audienceUserIds")) {
+            List<UUID> withNull = new ArrayList<>();
+            withNull.add(null);
+            Map<String, Object> nullItemPatch = new LinkedHashMap<>();
+            nullItemPatch.put("expectedRevision", nextRev);
+            nullItemPatch.put(arrayField, withNull);
+            patchJson(voucher.getId(), nullItemPatch, adminAll())
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value(arrayField));
+        }
     }
 
     @Test
@@ -131,11 +151,52 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("PROMOTION_ENDS_AT_PAST"));
 
+        // Changing endsAt to now (or before now) is rejected because endsAt must be strictly future (R1-22)
+        patchJson(voucher.getId(), Map.of(
+                        "expectedRevision", rev,
+                        "endsAt", Instant.now().toString()), adminAll())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PROMOTION_ENDS_AT_PAST"));
+
         patchJson(voucher.getId(), Map.of(
                         "expectedRevision", rev,
                         "totalLimit", 1), adminAll())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("PROMOTION_TOTAL_LIMIT_BELOW_USED"));
+
+        // Editing name on an ended in-use promotion while echoing unchanged past endsAt succeeds (R1-22)
+        Instant now = Instant.now();
+        Instant pastEnd = now.minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MICROS);
+        UUID endedUsedId = trackPromotion(Ids.newId());
+        String endedCode = "EUS" + shortToken();
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                endedUsedId, "Ended Used Old", null, endedCode, DiscountType.AMOUNT, 10_000L, null,
+                now.minus(3, ChronoUnit.DAYS), pastEnd, 5, null, false,
+                PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, now, null, null));
+        jdbc.update("UPDATE commerce.promotion SET used_count = 1 WHERE id = ?", endedUsedId);
+        long endedRev = reloadRevision(endedUsedId);
+
+        JsonNode endedUpdated = mapper.readTree(patchJson(endedUsedId, Map.of(
+                        "expectedRevision", endedRev,
+                        "name", "Ended Used Renamed",
+                        "endsAt", pastEnd.toString()), adminAll())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ended Used Renamed"))
+                .andExpect(jsonPath("$.endsAt").value(pastEnd.toString()))
+                .andReturn().getResponse().getContentAsString());
+        long endedRev2 = endedUpdated.path("revision").asLong();
+        assertThat(endedRev2).isGreaterThan(endedRev);
+
+        // Exact no-op PATCH does not bump revision or add empty history row (R1-22)
+        patchJson(endedUsedId, Map.of(
+                        "expectedRevision", endedRev2,
+                        "name", "Ended Used Renamed",
+                        "endsAt", pastEnd.toString()), adminAll())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(endedRev2));
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM commerce.promotion_change_log WHERE promotion_id = ?",
+                Long.class, endedUsedId)).isEqualTo(1L);
     }
 
     @Test
@@ -516,6 +577,88 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                 .andExpect(jsonPath("$.redemptions.items[0].username").isNotEmpty())
                 .andExpect(jsonPath("$.redemptions.items[0].discountVnd").value(20_000))
                 .andExpect(jsonPath("$.redemptions.items[0].state").value("RESERVED"));
+
+        // Add more redemptions across CONFIRMED / RELEASED and distinct users to test state, search & paging (R1-19, R1-21)
+        UUID learner2 = createActiveLearnerWithDetails("alpha." + tag.toLowerCase(), "Nguyen Minh " + tag);
+        UUID learner3 = createActiveLearnerWithDetails("beta." + tag.toLowerCase(), "Tran Thu " + tag);
+        UUID order2 = UUID.randomUUID();
+        UUID order3 = UUID.randomUUID();
+        UUID order4 = UUID.randomUUID();
+        redemptionService.reserve(runningAutoId, learner2, order2, "DH-ORD2-" + tag, 20_000L);
+        redemptionService.confirm(runningAutoId, order2);
+        redemptionService.reserve(runningAutoId, learner3, order3, "DH-ORD3-" + tag, 20_000L);
+        redemptionService.release(runningAutoId, order3);
+        redemptionService.reserve(runningAutoId, learner3, order4, "DH-ORD4-" + tag, 20_000L);
+        redemptionService.confirm(runningAutoId, order4);
+
+        mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionState", "CONFIRMED")
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(2))
+                .andExpect(jsonPath("$.redemptions.items[0].state").value("CONFIRMED"))
+                .andExpect(jsonPath("$.redemptions.items[1].state").value("CONFIRMED"));
+
+        mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionState", "RELEASED")
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(1))
+                .andExpect(jsonPath("$.redemptions.items[0].orderCode").value("DH-ORD3-" + tag));
+
+        // Search by orderCode, username, fullName, and userId
+        mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionQ", "dh-ord2-" + tag.toLowerCase())
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(1))
+                .andExpect(jsonPath("$.redemptions.items[0].orderCode").value("DH-ORD2-" + tag));
+
+        mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionQ", "ALPHA." + tag)
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(1))
+                .andExpect(jsonPath("$.redemptions.items[0].userId").value(learner2.toString()));
+
+        mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionQ", "tran thu " + tag.toLowerCase())
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(2));
+
+        mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionState", "CONFIRMED")
+                        .param("redemptionQ", "tran thu " + tag.toLowerCase())
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(1))
+                .andExpect(jsonPath("$.redemptions.items[0].orderCode").value("DH-ORD4-" + tag));
+
+        // Multi-page redemptionPage / redemptionSize with non-overlapping pages
+        JsonNode page0 = mapper.readTree(mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionPage", "0")
+                        .param("redemptionSize", "2")
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.totalItems").value(4))
+                .andExpect(jsonPath("$.redemptions.totalPages").value(2))
+                .andExpect(jsonPath("$.redemptions.items.length()").value(2))
+                .andReturn().getResponse().getContentAsString());
+        JsonNode page1 = mapper.readTree(mockMvc.perform(get(BASE + "/" + runningAutoId)
+                        .param("redemptionPage", "1")
+                        .param("redemptionSize", "2")
+                        .with(adminAll()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.redemptions.items.length()").value(2))
+                .andReturn().getResponse().getContentAsString());
+        Set<String> page0Ids = Set.of(
+                page0.at("/redemptions/items/0/id").asText(),
+                page0.at("/redemptions/items/1/id").asText());
+        Set<String> page1Ids = Set.of(
+                page1.at("/redemptions/items/0/id").asText(),
+                page1.at("/redemptions/items/1/id").asText());
+        assertThat(page0Ids).doesNotContainAnyElementsOf(page1Ids);
     }
 
     @Test
@@ -549,6 +692,99 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                 .andExpect(jsonPath("$.finalPrice").value(160_000L))
                 .andExpect(jsonPath("$.promotion.id").value(promoId.toString()))
                 .andExpect(jsonPath("$.changed").value(false));
+
+        // Combinable and non-combinable VOUCHER preview alongside active AUTO promo (R1-18)
+        UUID stackVoucherId = trackPromotion(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                stackVoucherId, "Stack 10%", null, "PRVS" + shortToken(), DiscountType.PERCENT, 10, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, true,
+                PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, now, null, null));
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("examId", examId, "promotionId", stackVoucherId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.discountApplied").value("COMBINED"))
+                .andExpect(jsonPath("$.promotion.discountVnd").value(40_000L))
+                .andExpect(jsonPath("$.voucher.discountVnd").value(16_000L))
+                .andExpect(jsonPath("$.finalPrice").value(144_000L));
+
+        UUID betterVoucherId = trackPromotion(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                betterVoucherId, "Better 50k", null, "PRVB" + shortToken(), DiscountType.AMOUNT, 50_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
+                PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, now, null, null));
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("examId", examId, "promotionId", betterVoucherId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.discountApplied").value("VOUCHER_ONLY"))
+                .andExpect(jsonPath("$.voucher.discountVnd").value(50_000L))
+                .andExpect(jsonPath("$.finalPrice").value(150_000L))
+                .andExpect(jsonPath("$.voucherNotBetter").value(false));
+
+        UUID worseVoucherId = trackPromotion(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                worseVoucherId, "Worse 10k", null, "PRVW" + shortToken(), DiscountType.AMOUNT, 10_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
+                PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, now, null, null));
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("examId", examId, "promotionId", worseVoucherId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.discountApplied").value("PROMOTION_ONLY"))
+                .andExpect(jsonPath("$.voucher").isEmpty())
+                .andExpect(jsonPath("$.voucherNotBetter").value(true))
+                .andExpect(jsonPath("$.finalPrice").value(160_000L));
+
+        // Out-of-scope AUTO promo preview yields NONE at full listPrice
+        UUID qdaKindId = catalogLookup.findActiveItem("EXAM", "QDA").orElseThrow().id();
+        UUID outOfScopeId = trackPromotion(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.auto(
+                outOfScopeId, "QDA Only", null, DiscountType.AMOUNT, 50_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null,
+                PromotionScope.EXAM_KIND, PromotionStatus.ACTIVE, now, null, null));
+        jdbc.update("""
+                INSERT INTO commerce.promotion_scope_item (id, promotion_id, exam_item_id)
+                VALUES (?, ?, ?)
+                """, Ids.newId(), outOfScopeId, qdaKindId);
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("examId", examId, "promotionId", outOfScopeId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.discountApplied").value("NONE"))
+                .andExpect(jsonPath("$.finalPrice").value(200_000L));
+
+        // Discontinued exam -> 410 PRODUCT_DISCONTINUED; unknown exam / promotion -> 404 (R1-18)
+        ExamRow discontinued = insertProduct("HSA", "DISCONTINUED", 150_000L);
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "examId", discontinued.examId(), "promotionId", promoId))))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value("PRODUCT_DISCONTINUED"))
+                .andExpect(jsonPath("$.product.code").value(discontinued.code()))
+                .andExpect(jsonPath("$.product.name").value(discontinued.name()));
+
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "examId", UUID.randomUUID(), "promotionId", promoId))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+
+        mockMvc.perform(post(BASE + "/price-preview")
+                        .with(adminAll())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "examId", examId, "promotionId", UUID.randomUUID()))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROMOTION_NOT_FOUND"));
     }
 
     @Test
@@ -669,6 +905,155 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
         assertThat(created.path("id").asText()).isNotBlank();
     }
 
+    @Test
+    void crudScopeAudienceAndUnusedPatch() throws Exception {
+        UUID actor = trackActor();
+        UUID hsaKindId = catalogLookup.findActiveItem("EXAM", "HSA").orElseThrow().id();
+        UUID mathSubjectId = catalogLookup.findActiveItem("SUBJECT", "TOAN").orElseThrow().id();
+        UUID onSaleExamId = insertOnSaleExam("HSA", 200_000L);
+        ExamRow discontinuedExam = insertProduct("HSA", "DISCONTINUED", 180_000L);
+        UUID directLearner = createActiveLearner();
+        UUID classLearner = createActiveLearner();
+        UUID classId = createClassRoom();
+        addClassMember(classId, classLearner);
+        Instant now = Instant.now();
+
+        // 1. EXAM_KIND scope: valid HSA item succeeds; non-EXAM or unknown item fails with 422 PROMOTION_SCOPE_INVALID
+        Map<String, Object> validKindBody = voucherPayload("Kind Scope", "KND" + shortToken(), 15_000L);
+        validKindBody.put("scope", "EXAM_KIND");
+        validKindBody.put("examKindIds", List.of(hsaKindId));
+        JsonNode kindCreated = createPromo(validKindBody, "k-" + UUID.randomUUID(), adminAs(actor));
+        assertThat(kindCreated.at("/scopeItems/0/type").asText()).isEqualTo("EXAM_KIND");
+        assertThat(kindCreated.at("/scopeItems/0/id").asText()).isEqualTo(hsaKindId.toString());
+        assertThat(kindCreated.at("/scopeItems/0/code").asText()).isEqualTo("HSA");
+
+        for (UUID badKindId : List.of(UUID.randomUUID(), mathSubjectId)) {
+            Map<String, Object> badKindBody = voucherPayload("Bad Kind", "BKD" + shortToken(), 15_000L);
+            badKindBody.put("scope", "EXAM_KIND");
+            badKindBody.put("examKindIds", List.of(badKindId));
+            mockMvc.perform(post(BASE)
+                            .with(adminAs(actor))
+                            .header("Idempotency-Key", "k-" + UUID.randomUUID())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(badKindBody)))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("PROMOTION_SCOPE_INVALID"));
+        }
+
+        // 2. DISCONTINUED exam in EXAM scope is rejected with 422 PROMOTION_SCOPE_INVALID
+        Map<String, Object> discontinuedScopeBody = voucherPayload("Discontinued Scope", "DSC" + shortToken(), 10_000L);
+        discontinuedScopeBody.put("scope", "EXAM");
+        discontinuedScopeBody.put("examIds", List.of(discontinuedExam.examId()));
+        mockMvc.perform(post(BASE)
+                        .with(adminAs(actor))
+                        .header("Idempotency-Key", "k-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(discontinuedScopeBody)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PROMOTION_SCOPE_INVALID"));
+
+        // 3. SELECTED audience: valid user & class resolved; unknown user -> 422; null item -> 400
+        Map<String, Object> selectedBody = voucherPayload("Selected Aud", "SEL" + shortToken(), 20_000L);
+        selectedBody.put("audience", "SELECTED");
+        selectedBody.put("audienceClassIds", List.of(classId));
+        selectedBody.put("audienceUserIds", List.of(directLearner));
+        JsonNode selectedCreated = createPromo(selectedBody, "k-" + UUID.randomUUID(), adminAs(actor));
+        assertThat(selectedCreated.at("/audienceClasses/0/id").asText()).isEqualTo(classId.toString());
+        assertThat(selectedCreated.at("/audienceClasses/0/code").asText()).isNotBlank();
+        assertThat(selectedCreated.at("/audienceUsers/0/id").asText()).isEqualTo(directLearner.toString());
+        assertThat(selectedCreated.at("/audienceUsers/0/username").asText()).isNotBlank();
+
+        Map<String, Object> unknownUserBody = voucherPayload("Unknown Aud", "UNK" + shortToken(), 20_000L);
+        unknownUserBody.put("audience", "SELECTED");
+        unknownUserBody.put("audienceUserIds", List.of(UUID.randomUUID()));
+        mockMvc.perform(post(BASE)
+                        .with(adminAs(actor))
+                        .header("Idempotency-Key", "k-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(unknownUserBody)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("PROMOTION_SCOPE_INVALID"));
+
+        List<UUID> nullUserList = new ArrayList<>();
+        nullUserList.add(null);
+        Map<String, Object> nullUserBody = voucherPayload("Null Aud", "NUL" + shortToken(), 20_000L);
+        nullUserBody.put("audience", "SELECTED");
+        nullUserBody.put("audienceUserIds", nullUserList);
+        mockMvc.perform(post(BASE)
+                        .with(adminAs(actor))
+                        .header("Idempotency-Key", "k-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(nullUserBody)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("audienceUserIds"));
+
+        // 4. Unused-promotion PATCH: replace scope & audience, rename code, duplicate code -> 409, ended -> 409
+        Promotion otherVoucher = createRandomVoucher(null, null);
+        String originalCode = "UPD" + shortToken();
+        JsonNode unusedCreated = createPromo(voucherPayload("Unused Mutate", originalCode, 25_000L),
+                "k-" + UUID.randomUUID(), adminAs(actor));
+        UUID unusedId = UUID.fromString(unusedCreated.path("id").asText());
+        long rev1 = unusedCreated.path("revision").asLong();
+
+        Map<String, Object> patchToKindAndSelected = new LinkedHashMap<>();
+        patchToKindAndSelected.put("expectedRevision", rev1);
+        patchToKindAndSelected.put("scope", "EXAM_KIND");
+        patchToKindAndSelected.put("examKindIds", List.of(hsaKindId));
+        patchToKindAndSelected.put("audience", "SELECTED");
+        patchToKindAndSelected.put("audienceUserIds", List.of(directLearner));
+        JsonNode patched1 = mapper.readTree(patchJson(unusedId, patchToKindAndSelected, adminAs(actor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scope").value("EXAM_KIND"))
+                .andExpect(jsonPath("$.scopeItems[0].id").value(hsaKindId.toString()))
+                .andExpect(jsonPath("$.audience").value("SELECTED"))
+                .andExpect(jsonPath("$.audienceUsers[0].id").value(directLearner.toString()))
+                .andReturn().getResponse().getContentAsString());
+        long rev2 = patched1.path("revision").asLong();
+
+        String renamedCode = "RNM" + shortToken();
+        Map<String, Object> patchToExamAndAll = new LinkedHashMap<>();
+        patchToExamAndAll.put("expectedRevision", rev2);
+        patchToExamAndAll.put("code", renamedCode);
+        patchToExamAndAll.put("scope", "EXAM");
+        patchToExamAndAll.put("examIds", List.of(onSaleExamId));
+        patchToExamAndAll.put("audience", "ALL");
+        JsonNode patched2 = mapper.readTree(patchJson(unusedId, patchToExamAndAll, adminAs(actor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(renamedCode))
+                .andExpect(jsonPath("$.scope").value("EXAM"))
+                .andExpect(jsonPath("$.scopeItems[0].id").value(onSaleExamId.toString()))
+                .andExpect(jsonPath("$.audience").value("ALL"))
+                .andExpect(jsonPath("$.audienceUsers").isEmpty())
+                .andReturn().getResponse().getContentAsString());
+        long rev3 = patched2.path("revision").asLong();
+
+        // clearDescription=true + non-null description -> 400 VALIDATION_FAILED (R1-31)
+        patchJson(unusedId, Map.of(
+                        "expectedRevision", rev3,
+                        "clearDescription", true,
+                        "description", "Conflicting text"), adminAs(actor))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("description"));
+
+        // Renaming voucher code to an already-taken code -> 409 VOUCHER_CODE_TAKEN
+        patchJson(unusedId, Map.of(
+                        "expectedRevision", rev3,
+                        "code", otherVoucher.getCode().toLowerCase()), adminAs(actor))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("VOUCHER_CODE_TAKEN"));
+
+        // Re-activating ended stopped promotion via PATCH -> 409 PROMOTION_ENDED
+        Promotion endedStopped = saveEndedStoppedVoucher();
+        patchJson(endedStopped.getId(), Map.of(
+                        "expectedRevision", endedStopped.getRevision(),
+                        "status", "ACTIVE",
+                        "endsAt", now.minusSeconds(30).toString()), adminAs(actor))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROMOTION_ENDED"));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private int postCreateStatus(UUID actor, String code) throws Exception {
@@ -761,36 +1146,67 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
     }
 
     private UUID insertOnSaleExam(String kindCode, long listPriceVnd) {
+        return insertProduct(kindCode, "ON_SALE", listPriceVnd).examId();
+    }
+
+    private ExamRow insertProduct(String kindCode, String saleState, long listPriceVnd) {
         UUID examId = UUID.randomUUID();
         UUID kindId = catalogLookup.findActiveItem("EXAM", kindCode).orElseThrow().id();
         String code = "PA" + shortToken();
+        String name = "Exam " + code;
         jdbc.update("""
                 INSERT INTO commerce.storefront_product
                     (id, exam_id, code, code_normalized, version_no, sale_state, name, search_text, exam_item_id,
                      kind_code, scope, question_count, question_count_max, duration_minutes, duration_minutes_max,
                      build_mode, list_price_vnd, attempts_granted, card, detail, projection_hash, published_at, updated_at)
-                VALUES (?, ?, ?, ?, 1, 'ON_SALE', ?, ?, ?, ?, 'FULL', 50, 50, 75, 75, 'STANDARD', ?, 3,
+                VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 'FULL', 50, 50, 75, 75, 'STANDARD', ?, 3,
                         '{}'::jsonb, '{}'::jsonb, 'test', now(), now())
-                """, UUID.randomUUID(), examId, code, code.toLowerCase(), "Exam " + code,
-                ("exam " + code).toLowerCase(), kindId, kindCode, listPriceVnd);
+                """, UUID.randomUUID(), examId, code, code.toLowerCase(), saleState, name,
+                name.toLowerCase(), kindId, kindCode, listPriceVnd);
         examIds.add(examId);
-        return examId;
+        return new ExamRow(examId, code, name);
     }
 
     private UUID createActiveLearner() {
+        String token = shortToken().toLowerCase();
+        return createActiveLearnerWithDetails("pau." + token, "Redemption Buyer " + token);
+    }
+
+    private UUID createActiveLearnerWithDetails(String username, String fullName) {
         UUID userId = UUID.randomUUID();
         Long seq = jdbc.queryForObject("SELECT nextval('identity.user_code_seq')", Long.class);
-        String username = "pau." + userId.toString().substring(0, 8);
         Timestamp now = Timestamp.from(Instant.now());
         jdbc.update("""
                 INSERT INTO identity.user_account
                     (id, code, username, username_normalized, full_name, email, email_normalized,
                      source, status, must_change_password, created_at, created_by, updated_at, updated_by, version)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 1, 2, false, ?, ?, ?, ?, 0)
-                """, userId, String.format("U%06d", seq), username, username, "Redemption Buyer",
+                """, userId, String.format("U%06d", seq), username, username.toLowerCase(), fullName,
                 userId + "@test.local", userId + "@test.local", now, userId, now, userId);
         userIds.add(userId);
         return userId;
+    }
+
+    private UUID createClassRoom() {
+        UUID classId = UUID.randomUUID();
+        String code = "PAC" + shortToken();
+        jdbc.update("""
+                INSERT INTO classroom.class_room
+                    (id, code, code_normalized, name, status, created_at, updated_at, version)
+                VALUES (?, ?, ?, ?, 1, now(), now(), 0)
+                """, classId, code, code.toLowerCase(), "Class " + code);
+        classIds.add(classId);
+        return classId;
+    }
+
+    private void addClassMember(UUID classId, UUID userId) {
+        jdbc.update("""
+                INSERT INTO classroom.class_member (class_id, user_id, joined_at, added_by)
+                VALUES (?, ?, now(), ?)
+                """, classId, userId, userId);
+    }
+
+    private record ExamRow(UUID examId, String code, String name) {
     }
 
     private void drainOutbox() {

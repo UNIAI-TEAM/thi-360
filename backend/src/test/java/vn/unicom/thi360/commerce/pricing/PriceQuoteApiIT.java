@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.AbstractIntegrationTest;
@@ -47,6 +48,7 @@ import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
  * AC-34, AC-35, and AC-36.
  */
 @Import(PricingTestClockConfig.class)
+@TestPropertySource(properties = "thi360.commerce.vnpay-min-amount=5000")
 class PriceQuoteApiIT extends AbstractIntegrationTest {
 
     private static final String QUOTE_PATH = "/api/v1/me/price-quote";
@@ -396,6 +398,56 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.finalPrice").value(200_000L));
+    }
+
+    @Test
+    void minimumPaymentFloorAndZeroingThroughHttp() throws Exception {
+        UUID userId = createLearner(2, false);
+        TestProduct autoProduct = insertOnSaleProduct("HSA", 10_000L, 3, 1);
+        TestProduct voucherProduct = insertOnSaleProduct("QDA", 10_000L, 3, 1);
+        Instant now = Instant.now();
+
+        // Auto -7,000 on 10,000 VND HSA exam clamps at vnpayMinAmount = 5,000 VND
+        Promotion autoPromo = saveAuto("E26 Auto Floor " + shortToken(), DiscountType.AMOUNT, 7_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null,
+                PromotionScope.EXAM, PromotionStatus.ACTIVE);
+        scopeItemRepository.saveAndFlush(PromotionScopeItem.forExam(Ids.newId(), autoPromo.getId(), autoProduct.examId()));
+
+        JsonNode flooredAuto = quoteSuccess(userId, autoProduct.code(), null, null, null);
+        assertThat(flooredAuto.path("discountApplied").asText()).isEqualTo("PROMOTION_ONLY");
+        assertThat(flooredAuto.path("finalPrice").asLong()).isEqualTo(5_000L);
+        assertThat(flooredAuto.path("promotion").path("discountVnd").asLong()).isEqualTo(5_000L);
+
+        // Voucher dropping 10,000 -> 4,999 becomes 0 VND; 10,000 -> 5,000 stays 5,000 VND
+        Promotion belowMinVoucher = saveVoucher("E26Z" + shortToken(), DiscountType.AMOUNT, 5_001L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
+                PromotionScope.EXAM, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, null);
+        scopeItemRepository.saveAndFlush(
+                PromotionScopeItem.forExam(Ids.newId(), belowMinVoucher.getId(), voucherProduct.examId()));
+
+        JsonNode zeroedQuote = quoteSuccess(userId, voucherProduct.code(), belowMinVoucher.getCode(), null, null);
+        assertThat(zeroedQuote.path("discountApplied").asText()).isEqualTo("VOUCHER_ONLY");
+        assertThat(zeroedQuote.path("finalPrice").asLong()).isZero();
+        assertThat(zeroedQuote.path("voucher").path("discountVnd").asLong()).isEqualTo(10_000L);
+
+        Promotion exactMinVoucher = saveVoucher("E26M" + shortToken(), DiscountType.AMOUNT, 5_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
+                PromotionScope.EXAM, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, null);
+        scopeItemRepository.saveAndFlush(
+                PromotionScopeItem.forExam(Ids.newId(), exactMinVoucher.getId(), voucherProduct.examId()));
+
+        JsonNode exactMinQuote = quoteSuccess(userId, voucherProduct.code(), exactMinVoucher.getCode(), null, null);
+        assertThat(exactMinQuote.path("discountApplied").asText()).isEqualTo("VOUCHER_ONLY");
+        assertThat(exactMinQuote.path("finalPrice").asLong()).isEqualTo(5_000L);
+        assertThat(exactMinQuote.path("voucher").path("discountVnd").asLong()).isEqualTo(5_000L);
+
+        // PriceQuoteRequest @Size(max = 100) validation on code & voucherCode (R1-31)
+        mockMvc.perform(post(QUOTE_PATH)
+                        .with(learner(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(quoteBody("X".repeat(101), "V".repeat(101), null, null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
     // ------------------------------------------------------------------ helpers

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.commerce.pricing.CommercePricingProperties;
@@ -28,10 +31,12 @@ import vn.unicom.thi360.commerce.pricing.PriceCalculator;
 import vn.unicom.thi360.commerce.promotion.api.CapWarning;
 import vn.unicom.thi360.commerce.promotion.api.PromotionDetail;
 import vn.unicom.thi360.commerce.promotion.api.PromotionSummary;
+import vn.unicom.thi360.commerce.promotion.api.UpdatePromotionRequest;
 import vn.unicom.thi360.commerce.promotion.application.PromotionAdminService;
 import vn.unicom.thi360.commerce.promotion.application.PromotionCapWarningService;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
 import vn.unicom.thi360.commerce.promotion.domain.Promotion;
+import vn.unicom.thi360.commerce.promotion.domain.PromotionAudienceType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionChangeAction;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScopeItem;
@@ -45,15 +50,21 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.identity.spi.UserDirectory;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.security.Access;
+import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.security.PermissionSet;
+import vn.unicom.thi360.shared.security.Realm;
 import vn.unicom.thi360.shared.web.AppMessages;
 
 /**
  * Integration tests for promotion admin derived data & audit history (BS §10, AC-41, AC-42, AC-43).
  */
+@TestPropertySource(properties = "thi360.commerce.vnpay-min-amount=5000")
 class PromotionAdminDataIT extends PromotionIntegrationTest {
 
     private static final String BASE = "/api/v1/admin/promotions";
@@ -74,6 +85,7 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
     @Autowired private CurrentUserProvider currentUserProvider;
     @Autowired private AppMessages messages;
     @Autowired private Clock clock;
+    @Autowired private TransactionTemplate transactionTemplate;
 
     private final List<UUID> examIds = new ArrayList<>();
     private final List<UUID> actorIds = new ArrayList<>();
@@ -120,6 +132,8 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
         assertThat(summaryWarnings.get(0).path("listPrice").asLong()).isEqualTo(10_000L);
         assertThat(summaryWarnings.get(0).path("discountedPrice").asLong()).isEqualTo(3_000L);
         assertThat(summaryWarnings.get(0).path("floorPrice").asLong()).isEqualTo(5_000L);
+        assertThat(summaryWarnings.get(0).path("floorPrice").asLong())
+                .isLessThanOrEqualTo(summaryWarnings.get(0).path("listPrice").asLong());
 
         JsonNode detailRes = mapper.readTree(mockMvc.perform(get(BASE + "/" + promoId)
                         .with(asUser(Permissions.PROMOTION_VIEW)))
@@ -128,6 +142,32 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
         JsonNode detailWarnings = detailRes.path("capWarnings");
         assertThat(detailWarnings).hasSize(1);
         assertThat(detailWarnings.get(0)).isEqualTo(summaryWarnings.get(0));
+
+        // VOUCHER on the same 10,000 VND exam produces empty capWarnings (only AUTO promos generate cap warnings)
+        UUID voucherId = trackPromotion(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                voucherId, "Voucher No Cap Warning " + tag, null, "CAPV" + tag,
+                DiscountType.AMOUNT, 7_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
+                PromotionScope.EXAM, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, now, null, null));
+        scopeItemRepository.saveAndFlush(PromotionScopeItem.forExam(Ids.newId(), voucherId, flooredExam));
+
+        mockMvc.perform(get(BASE + "/" + voucherId).with(asUser(Permissions.PROMOTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.capWarnings").isEmpty());
+
+        // When vnpayMinAmount exceeds listPrice, floorPrice is clamped to eval.promoPrice() (<= listPrice)
+        PromotionCapWarningService highFloorWarnings = new PromotionCapWarningService(
+                storefrontProductRepository, scopeItemRepository, new CommercePricingProperties(15_000L, null));
+        Promotion auto = promotionRepository.findByIdAndDeletedAtIsNull(promoId).orElseThrow();
+        List<CapWarning> clampedWarnings = highFloorWarnings.computeForOne(
+                auto, scopeItemRepository.findByPromotionId(promoId));
+        assertThat(clampedWarnings).extracting(CapWarning::examId).contains(flooredExam);
+        CapWarning flooredWarning = clampedWarnings.stream()
+                .filter(w -> w.examId().equals(flooredExam))
+                .findFirst().orElseThrow();
+        assertThat(flooredWarning.floorPrice()).isEqualTo(10_000L);
+        assertThat(flooredWarning.floorPrice()).isLessThanOrEqualTo(flooredWarning.listPrice());
     }
 
     @Test
@@ -234,11 +274,38 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
                 .andReturn().getResponse().getContentAsString());
         long rev3 = stopped.path("revision").asLong();
 
-        mockMvc.perform(post(BASE + "/" + promoId + "/resume")
+        // Repeated /stop is a no-op: revision unchanged and no duplicate STOPPED -> STOPPED history row (R1-22)
+        mockMvc.perform(post(BASE + "/" + promoId + "/stop")
                         .with(auth)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of("expectedRevision", rev3))))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("STOPPED"))
+                .andExpect(jsonPath("$.revision").value(rev3));
+
+        JsonNode resumed = mapper.readTree(mockMvc.perform(post(BASE + "/" + promoId + "/resume")
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("expectedRevision", rev3))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        long rev4 = resumed.path("revision").asLong();
+
+        // Repeated /resume and no-op PATCH also leave revision and history untouched (R1-22)
+        mockMvc.perform(post(BASE + "/" + promoId + "/resume")
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("expectedRevision", rev4))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.revision").value(rev4));
+
+        mockMvc.perform(patch(BASE + "/" + promoId)
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("expectedRevision", rev4, "name", "History V2"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(rev4));
 
         JsonNode detail = mapper.readTree(mockMvc.perform(get(BASE + "/" + promoId).with(auth))
                 .andExpect(status().isOk())
@@ -306,6 +373,45 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
         long logCount = jdbc.queryForObject(
                 "SELECT count(*) FROM commerce.promotion_change_log WHERE promotion_id = ?", Long.class, promoId);
         assertThat(logCount).isEqualTo(1L);
+    }
+
+    @Test
+    void inUseUpdateRejectsEndsAtEqualToCurrentInstant() {
+        Instant fixedNow = Instant.parse("2026-11-21T12:00:00Z");
+        Clock fixedClock = Clock.fixed(fixedNow, ZoneOffset.UTC);
+        CurrentUser fixedActor = new CurrentUser(
+                UUID.randomUUID(), "fixed.admin", Realm.APP, Access.MANAGE, PermissionSet.all());
+        CurrentUserProvider fixedUserProvider = new CurrentUserProvider() {
+            @Override
+            public CurrentUser requireCurrentUser() {
+                return fixedActor;
+            }
+        };
+        PromotionAdminService fixedClockService = new PromotionAdminService(
+                promotionRepository, scopeItemRepository, audienceRepository, redemptionRepository,
+                changeLogRepository, storefrontProductRepository,
+                new PromotionCapWarningService(storefrontProductRepository, scopeItemRepository,
+                        new CommercePricingProperties(5_000L, null)),
+                priceCalculator, catalogLookup, publishedExamPort, classMembershipPort, userDirectory,
+                idempotentCommand, auditRecorder, fixedUserProvider, messages, fixedClock);
+
+        UUID promoId = trackPromotion(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                promoId, "Exact Now Boundary", null, "EXN" + shortToken(),
+                DiscountType.AMOUNT, 10_000L, null,
+                fixedNow.minus(1, ChronoUnit.HOURS), fixedNow.plus(1, ChronoUnit.DAYS),
+                10, null, false, PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE,
+                fixedNow.minus(1, ChronoUnit.HOURS), null, null));
+        jdbc.update("UPDATE commerce.promotion SET used_count = 1 WHERE id = ?", promoId);
+
+        UpdatePromotionRequest reqAtExactNow = new UpdatePromotionRequest(
+                1L, null, null, null, null, null, null, null, null, null, null,
+                fixedNow, null, null, null, null, null, null, null, null, null, null, null, null);
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(() ->
+                transactionTemplate.executeWithoutResult(status -> fixedClockService.updatePromotion(promoId, reqAtExactNow))))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo("PROMOTION_ENDS_AT_PAST");
     }
 
     private UUID insertOnSaleExam(String name, long listPriceVnd) {

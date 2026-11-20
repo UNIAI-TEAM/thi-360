@@ -20,9 +20,11 @@ import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteRequest;
 import vn.unicom.thi360.commerce.promotion.application.PromotionRedemptionService;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
 import vn.unicom.thi360.commerce.promotion.domain.Promotion;
+import vn.unicom.thi360.commerce.promotion.domain.PromotionAudience;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionAudienceType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionStatus;
+import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionAudienceRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.ids.Ids;
@@ -38,6 +40,9 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
 
     @Autowired
     private PromotionRepository promotionRepository;
+
+    @Autowired
+    private PromotionAudienceRepository audienceRepository;
 
     @Autowired
     private PromotionRedemptionService redemptionService;
@@ -137,6 +142,73 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
                 new QuoteRequest(product, userB, null, null, now));
         assertThat(autoForOtherUser.promotion()).isNull();
         assertThat(autoForOtherUser.finalPrice()).isEqualTo(200_000L);
+
+        // 4. Passing userA's pending orderA on a quote for userB (or anonymous user) does NOT unlock voucher or auto
+        assertThatThrownBy(() -> priceCalculator.calculateQuote(
+                new QuoteRequest(product, userB, voucherCode, orderA, now)))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo("VOUCHER_EXHAUSTED");
+
+        QuoteCalculation autoOtherUserWithOrderA = priceCalculator.calculateQuote(
+                new QuoteRequest(product, userB, null, orderA, now));
+        assertThat(autoOtherUserWithOrderA.promotion()).isNull();
+        assertThat(autoOtherUserWithOrderA.finalPrice()).isEqualTo(200_000L);
+
+        QuoteCalculation autoAnonymousWithOrderA = priceCalculator.calculateQuote(
+                new QuoteRequest(product, null, null, orderA, now));
+        assertThat(autoAnonymousWithOrderA.promotion()).isNull();
+        assertThat(autoAnonymousWithOrderA.finalPrice()).isEqualTo(200_000L);
+    }
+
+    @Test
+    void overLimitAutoPromotionIsNotQuotedForPendingOrder() {
+        Instant now = Instant.now();
+        PricedProduct product = new PricedProduct(UUID.randomUUID(), UUID.randomUUID(), 200_000L);
+        UUID userA = UUID.randomUUID();
+        UUID userB = UUID.randomUUID();
+        UUID orderA = UUID.randomUUID();
+        UUID orderB = UUID.randomUUID();
+
+        UUID autoId = track(Ids.newId());
+        promotionRepository.saveAndFlush(Promotion.auto(
+                autoId, "Over Limit Auto", null, DiscountType.AMOUNT, 50_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS),
+                1, PromotionScope.ALL, PromotionStatus.ACTIVE, now, null, null));
+
+        // orderB reserves and releases, then orderA takes the slot, then late reclaim on orderB pushes used_count = 2
+        redemptionService.reserve(autoId, userB, orderB, "DH-B", 50_000L);
+        redemptionService.release(autoId, orderB);
+        redemptionService.reserve(autoId, userA, orderA, "DH-A", 50_000L);
+        redemptionService.reclaim(autoId, orderB);
+
+        // Even when quoting for orderA, used_count (2) exceeds total_limit (1) so auto promo must NOT apply
+        QuoteCalculation quote = priceCalculator.calculateQuote(
+                new QuoteRequest(product, userA, null, orderA, now));
+        assertThat(quote.promotion()).isNull();
+        assertThat(quote.promotionDiscount()).isZero();
+        assertThat(quote.finalPrice()).isEqualTo(200_000L);
+    }
+
+    @Test
+    void selectedClassVoucherForUnknownUserThrowsNotEligibleWithoutRollbackPoisoning() {
+        Instant now = Instant.now();
+        PricedProduct product = new PricedProduct(UUID.randomUUID(), UUID.randomUUID(), 200_000L);
+        UUID voucherId = track(Ids.newId());
+        String code = "CLS" + voucherId.toString().substring(0, 6).toUpperCase();
+        promotionRepository.saveAndFlush(Promotion.voucher(
+                voucherId, "Class Only Voucher", null, code, DiscountType.AMOUNT, 25_000L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS),
+                null, null, false, PromotionScope.ALL, PromotionAudienceType.SELECTED, PromotionStatus.ACTIVE,
+                now, null, null));
+        audienceRepository.saveAndFlush(PromotionAudience.forClass(Ids.newId(), voucherId, UUID.randomUUID()));
+
+        UUID unknownUser = UUID.randomUUID();
+        assertThatThrownBy(() -> priceCalculator.calculateQuote(
+                new QuoteRequest(product, unknownUser, code, null, now)))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(e -> ((BusinessRuleException) e).getCode())
+                .isEqualTo("VOUCHER_NOT_ELIGIBLE");
     }
 
     private UUID track(UUID id) {

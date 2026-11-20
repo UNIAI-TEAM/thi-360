@@ -4,8 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.bind.PropertySourcesPlaceholdersResolver;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.DiscountApplied;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteCalculation;
 import vn.unicom.thi360.commerce.pricing.PricingEngine.AutoCandidate;
@@ -245,5 +254,61 @@ class PriceCalculatorTest {
                 20_000L, List.of(), voucherAmount("V19999", 19_999L, false), 0L);
         assertThat(floorDisabled.finalPrice()).isEqualTo(1L);
         assertThat(floorDisabled.voucherDiscount()).isEqualTo(19_999L);
+    }
+
+    @Test
+    void zeroDiscountVoucherIsNotRecorded() {
+        // R1-25/R1-26: minAmount = 0, promoPrice = 50, 1% combinable voucher -> raw discount = 0 -> voucher == null
+        QuoteCalculation combinedZero = PricingEngine.calculate(
+                100L,
+                List.of(autoAmount("Auto 50", 50L, T1)),
+                voucherPercent("TINY1", 1, null, true),
+                0L);
+        assertThat(combinedZero.discountApplied()).isEqualTo(DiscountApplied.PROMOTION_ONLY);
+        assertThat(combinedZero.voucher()).isNull();
+        assertThat(combinedZero.voucherDiscount()).isZero();
+        assertThat(combinedZero.voucherNotBetter()).isTrue();
+        assertThat(combinedZero.finalPrice()).isEqualTo(50L);
+
+        // Without auto promotion: 1% on 50 VND yields 0 -> NONE, voucher == null, no E26 zeroing
+        QuoteCalculation combinableAloneZero = PricingEngine.calculate(
+                50L, List.of(), voucherPercent("TINY1B", 1, null, true), 5_000L);
+        assertThat(combinableAloneZero.discountApplied()).isEqualTo(DiscountApplied.NONE);
+        assertThat(combinableAloneZero.voucher()).isNull();
+        assertThat(combinableAloneZero.voucherDiscount()).isZero();
+        assertThat(combinableAloneZero.finalPrice()).isEqualTo(50L);
+
+        QuoteCalculation nonCombinableZero = PricingEngine.calculate(
+                50L, List.of(), voucherPercent("TINY1C", 1, null, false), 5_000L);
+        assertThat(nonCombinableZero.discountApplied()).isEqualTo(DiscountApplied.NONE);
+        assertThat(nonCombinableZero.voucher()).isNull();
+        assertThat(nonCombinableZero.voucherDiscount()).isZero();
+        assertThat(nonCombinableZero.finalPrice()).isEqualTo(50L);
+    }
+
+    @Test
+    void commercePricingPropertiesBindsDefaultAndOverrides() throws Exception {
+        List<PropertySource<?>> yamlSources = new YamlPropertySourceLoader()
+                .load("application", new ClassPathResource("application.yml"));
+        MutablePropertySources defaultSources = new MutablePropertySources();
+        defaultSources.addLast(yamlSources.getFirst());
+        Binder defaultBinder = new Binder(
+                ConfigurationPropertySources.from(defaultSources),
+                new PropertySourcesPlaceholdersResolver(defaultSources));
+        CommercePricingProperties boundDefault = defaultBinder
+                .bind("thi360.commerce", CommercePricingProperties.class).get();
+        assertThat(boundDefault.vnpayMinAmount()).isEqualTo(5_000L);
+
+        for (long override : List.of(10_000L, 0L)) {
+            MutablePropertySources customSources = new MutablePropertySources();
+            customSources.addFirst(new MapPropertySource("override", Map.of("THI360_VNPAY_MIN_AMOUNT", override)));
+            customSources.addLast(yamlSources.getFirst());
+            Binder customBinder = new Binder(
+                    ConfigurationPropertySources.from(customSources),
+                    new PropertySourcesPlaceholdersResolver(customSources));
+            CommercePricingProperties boundOverride = customBinder
+                    .bind("thi360.commerce", CommercePricingProperties.class).get();
+            assertThat(boundOverride.vnpayMinAmount()).isEqualTo(override);
+        }
     }
 }
