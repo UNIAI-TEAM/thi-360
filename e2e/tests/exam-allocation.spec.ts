@@ -53,6 +53,12 @@ test("QDA FULL: phần 3 liệt kê đủ 6 môn từ mẫu, thêm chỉ tiêu c
 test("bài ôn HSA 10 câu: màn rút gọn ba trường", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const admin = await adminApi();
+  const templatesRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exam-templates`, { headers: admin.headers });
+  expect(templatesRes.status(), await templatesRes.text()).toBe(200);
+  const templates = (await templatesRes.json()) as Array<{ code: string; parts?: Array<{ partId?: string | null }> }>;
+  const partId = templates.find((template) => template.code === "HSA_REVIEW")?.parts?.[0]?.partId;
+  expect(partId).toBeTruthy();
+
   const id = await createExam(admin, {
     code: `HSA-R-E2E-${RUN_ID}`.toUpperCase(),
     name: `HSA bài ôn ${RUN_ID}`,
@@ -60,8 +66,8 @@ test("bài ôn HSA 10 câu: màn rút gọn ba trường", async ({ context, pag
     scope: "SUBJECT",
     subjectCode: "TOAN",
     buildMode: "REVIEW",
-    // `ExamOverview.apply` khớp hàng theo `partId`; mẫu HSA_REVIEW có một phần `HSA_REVIEW_PART` và số câu của phần chạy xuống môn duy nhất.
-    overview: [{ partId: "HSA_REVIEW_PART", questionCount: 10 }],
+    // `ExamOverview.apply` khớp hàng theo `partId`; sau FU (V202611200712), `partId` của `HSA_REVIEW` là UUID nên đọc động từ `/exam-templates`.
+    overview: [{ partId, questionCount: 10 }],
     durationMinutes: 15,
   });
 

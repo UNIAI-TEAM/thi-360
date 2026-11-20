@@ -205,7 +205,8 @@ describe("trang Tạo bài thi, nhánh thật: mẫu mặc định và phạm vi
     await pickKind(user, "SPT");
     expect(await screen.findByRole("radio", { name: /Dùng cấu trúc môn SPT/ })).toBeChecked();
     await user.click(screen.getByRole("radio", { name: /Tự thiết lập bài ôn/ }));
-    expect(await screen.findByText("Bài ôn")).toBeInTheDocument();
+    // UNI-2752: dòng duy nhất của bài ôn mang tên môn đã chọn, không phải tên phần "Bài ôn" của mẫu.
+    expect(await screen.findByRole("textbox", { name: "Số câu của Toán" })).toBeInTheDocument();
     // Mẫu bài ôn khớp môn bất kỳ: không báo "không có mẫu", dòng phần mang partId của mẫu.
     expect(screen.queryByText(/Không có mẫu/)).toBeNull();
     const count = screen.getByRole("textbox", { name: /^Số câu của/ });

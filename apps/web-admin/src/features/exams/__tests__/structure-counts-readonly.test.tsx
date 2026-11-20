@@ -19,7 +19,7 @@ vi.mock("@/features/content/api", async (importOriginal) => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
-const OVERVIEW_HREF = `/exams/${EXAM_ID}`;
+const OVERVIEW_HREF = `/exams/new?exam=${EXAM_ID}`;
 const LINK = "Sửa thông tin tổng quan";
 
 const reviewTemplate = {
@@ -94,10 +94,21 @@ describe("Bước 2, bài thường: số câu chỉ đọc", () => {
     expect(within(table).getByRole("link", { name: LINK })).toHaveAttribute("href", OVERVIEW_HREF);
   });
 
-  it("mục (môn): Số câu của mục chỉ đọc kèm đường dẫn; số câu của nhóm vẫn sửa được", async () => {
+  it("mục (môn): không còn ô Số câu của mục, đầu màn vẫn nêu số câu và Đã phân bổ, đường dẫn đầu màn vẫn về bước 1; số câu của nhóm sửa được", async () => {
     bootStandard();
     const view = open("?section=sec-1");
-    expectReadOnlyWithLink(await screen.findByRole("textbox", { name: "Số câu của mục" }));
+    const title = await screen.findByRole("heading", { name: /^Môn / });
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Số câu của mục")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Số câu lấy từ thông tin tổng quan/)).not.toBeInTheDocument();
+    // Tiêu đề màn môn và dòng số câu bên dưới, "Đã phân bổ a / N câu" ở bên phải.
+    const header = title.closest("div")!.parentElement!;
+    expect(within(header).getByText("6 câu")).toBeInTheDocument();
+    expect(within(header).getByText(/^Đã phân bổ/)).toBeInTheDocument();
+    // Đường dẫn "Sửa thông tin tổng quan" ở đầu màn Cấu trúc vẫn mở bước 1; trong màn môn không còn bản thứ hai.
+    const summary = screen.getByLabelText("Tổng hợp cấu trúc");
+    expect(within(summary.parentElement!).getByRole("link", { name: LINK })).toHaveAttribute("href", OVERVIEW_HREF);
+    expect(screen.getAllByRole("link", { name: LINK })).toHaveLength(1);
     view.unmount();
 
     open("?block=blk-sec-1");

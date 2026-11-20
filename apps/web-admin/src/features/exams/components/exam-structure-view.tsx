@@ -15,7 +15,7 @@ import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, nor
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
-import { examTabFromPathname, examTabHref } from "../editor-tabs";
+import { examEditHref, examTabFromPathname, examTabHref } from "../editor-tabs";
 import { addPoolSection } from "../coded-part";
 import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
@@ -81,7 +81,7 @@ function readSelectionFromUrl(): StructureSelection | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const blockId = params.get(SELECTION_PARAMS.block);
-  if (params.get(SELECTION_PARAMS.exam)) return { kind: "exam" };
+  if (params.get(SELECTION_PARAMS.exam) === "1") return { kind: "exam" };
   if (blockId) return { kind: "block", blockId };
   const sectionId = params.get(SELECTION_PARAMS.section);
   if (sectionId) return { kind: "section", sectionId };
@@ -671,7 +671,7 @@ function StructureEditor({
             )}
           </dl>
           <Button asChild variant="secondary">
-            <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
+            <Link href={examEditHref(exam.id)}>{t("summary.editOverview")}</Link>
           </Button>
         </div>
         <p className="text-caption text-text-muted">

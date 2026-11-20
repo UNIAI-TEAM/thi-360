@@ -105,7 +105,11 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
     expect(Boolean(section.matrix), `mẫu QDA_FULL: môn ${name} khai chỉ tiêu khối lớp`).toBe(matrix);
     await nav.getByRole("button", { name: new RegExp(`^${name}`) }).click();
     await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
-    await expect(page.getByRole("textbox", { name: /^Số câu của mục/ }), `môn ${name}`).toHaveValue(String(count));
+    // Số câu của mục không còn ô riêng (UNI-2753): dòng "N câu" ngay dưới tiêu đề môn nêu số câu của mục.
+    await expect(
+      page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }).locator("xpath=..").getByText(new RegExp(`^${count} câu`)),
+      `môn ${name}`,
+    ).toBeVisible();
     // Mẫu không khai chỉ tiêu dạng trả lời: màn nói rõ cho cả sáu môn.
     await expect(page.getByText("Môn không kiểm soát số câu theo dạng trả lời."), `môn ${name}`).toBeVisible();
     if (matrix) {

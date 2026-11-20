@@ -219,8 +219,8 @@ export interface MapidModeFieldProps {
 }
 
 /**
- * Phạm vi kiến thức của môn HSA dùng ma trận (UNI-1704 v2): "Toàn bài (không giới hạn MAPID)" hoặc "Theo ma trận MAPID".
- * Toàn bài giữ quy tắc trong bản nháp nhưng không áp dụng. Thay cho `KnowledgeScopeField` ở các môn này.
+ * Phạm vi kiến thức của môn HSA dùng ma trận (UNI-1704 v2): "Không giới hạn MAPID" hoặc "Theo ma trận MAPID".
+ * Chế độ Không giới hạn MAPID giữ quy tắc trong bản nháp nhưng không áp dụng. Thay cho `KnowledgeScopeField` ở các môn này.
  */
 export function MapidModeField({ mode, onModeChange, ruleCount, invalidCount, anchor }: MapidModeFieldProps) {
   const t = useTranslations("exams.mapidRules.mode");

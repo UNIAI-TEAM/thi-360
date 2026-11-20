@@ -33,13 +33,13 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(new Set(TABLE.map(([kind, subject]) => `${kind}:${subject}`)).size).toBe(75);
   });
 
-  // CR-2 enables MATRIX for QDA, BCA, VACT (HSA MATRIX waits for CR-2H); CR-3 enables all ROWS pairs.
-  it("subjectFormFor trả đúng dạng cho đúng 75 cặp canonical; cờ bật đúng các cặp DS và MT của QDA, BCA, V-ACT", () => {
+  // CR-2 enables MATRIX for QDA, BCA, VACT; CR-2H enables MATRIX for HSA; CR-3 enables all ROWS pairs.
+  it("subjectFormFor trả đúng dạng cho đúng 75 cặp canonical; cờ bật đúng tất cả 75 cặp MT và DS", () => {
     for (const [kind, subject, form] of TABLE) {
       const entry = subjectFormFor(kind, subject);
       expect(entry, `${kind}:${subject}`).not.toBeNull();
       expect(entry!.form, `${kind}:${subject}`).toBe(form === "M" ? "MATRIX" : "ROWS");
-      expect(entry!.enabled, `${kind}:${subject} enabled`).toBe(form === "D" || (form === "M" && (kind === "QDA" || kind === "BCA" || kind === "VACT")));
+      expect(entry!.enabled, `${kind}:${subject} enabled`).toBe(form === "D" || form === "M");
     }
     const listed = listSubjectFormPairs().map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`);
     expect(listed.toSorted()).toEqual(TABLE.map(([kind, subject]) => `${kind}:${subject}`).toSorted());
@@ -119,11 +119,11 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(Object.values(entry)).not.toContain("ECON_LAW");
   });
 
-  it("chỗ cắm kiểm thử bật một mục rồi trả lại như cũ; không đụng mục khác", () => {
-    const restore = patchSubjectFormEntry("HSA", "LY", { enabled: true });
-    expect(subjectFormFor("HSA", "LY")!.enabled).toBe(true);
-    expect(subjectFormFor("HSA", "HOA")!.enabled).toBe(false);
-    restore();
+  it("chỗ cắm kiểm thử tắt một mục rồi trả lại như cũ; không đụng mục khác", () => {
+    const restore = patchSubjectFormEntry("HSA", "LY", { enabled: false });
     expect(subjectFormFor("HSA", "LY")!.enabled).toBe(false);
+    expect(subjectFormFor("HSA", "HOA")!.enabled).toBe(true);
+    restore();
+    expect(subjectFormFor("HSA", "LY")!.enabled).toBe(true);
   });
 });
