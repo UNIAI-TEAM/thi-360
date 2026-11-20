@@ -65,14 +65,40 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
     /** The system clock plus an offset the test moves once to cross a check deadline at a chosen moment. */
     static final class JumpingClock extends Clock {
         private volatile java.time.Duration offset = java.time.Duration.ZERO;
+        private volatile java.time.Duration expireOnCheckerSample = null;
+        private volatile int checkerSamples;
 
         void jump(java.time.Duration by) { offset = by; }
-        void reset() { offset = java.time.Duration.ZERO; }
+        void reset() { offset = java.time.Duration.ZERO; expireOnCheckerSample = null; checkerSamples = 0; }
         boolean jumped() { return !offset.isZero(); }
+
+        /**
+         * Expires the clock at the second sample the checker body itself takes: the first is the guard before solving,
+         * the second the final guard after the result was assembled. Samples taken by the unit engine, the assembler,
+         * the source reads or the topic evidence run in other classes and never count, so nothing before the final
+         * guard sees the expired clock.
+         */
+        void expireOnLastSampleOfTheChecker(java.time.Duration by) { checkerSamples = 0; expireOnCheckerSample = by; }
+
+        private static boolean takenByTheCheckerBody() {
+            for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
+                String type = frame.getClassName();
+                if (type.equals("java.lang.Thread") || type.equals(JumpingClock.class.getName())) continue;
+                return type.endsWith(".DefaultExamChecker") && frame.getMethodName().equals("check");
+            }
+            return false;
+        }
 
         @Override public ZoneId getZone() { return ZoneOffset.UTC; }
         @Override public Clock withZone(ZoneId zone) { return this; }
-        @Override public Instant instant() { return Instant.now().plus(offset); }
+        @Override public Instant instant() {
+            java.time.Duration armed = expireOnCheckerSample;
+            if (armed != null && takenByTheCheckerBody() && ++checkerSamples == 2) {
+                offset = armed;
+                expireOnCheckerSample = null;
+            }
+            return Instant.now().plus(offset);
+        }
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -383,6 +409,46 @@ class ExamPublishRulesChangedIT extends AbstractExamPublishIT {
         assertThat(latestReason(exam)).isNull();
         // QDA codes are chosen after the attempt starts (E24): the publish names every valid path of the check.
         publish(exam, "codes:QD02", "codes:QD04", "codes:QD05").andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+    }
+
+    /**
+     * R4-4: the deadline passes only AFTER the whole result was proofed and rendered: every proof is reused, no pool is
+     * read late and no earlier step sees the expired clock; only the checker's own last sample, after assembly, does.
+     * That sample alone keeps the run from vouching for the rules: no stamp, GET and publish keep RULES_CHANGED, no
+     * version is written, although every path was rendered in time. The unarmed control stamps.
+     */
+    @Test
+    void aDeadlineThatPassesOnlyAfterFullRenderingKeepsTheOldResultUnstamped() throws Exception {
+        UUID exam = qdaExamWithPhysicsThreeSets();
+        String base = "/api/v1/admin/exams/" + exam;
+        JsonNode old = check(base, "{}");
+        assertThat(old.path("status").asText()).as("old check: %s", old.path("groups")).isEqualTo("VALID");
+        removeStamp(exam);
+        jdbc.update("UPDATE exam.exam SET build_mode = 'STANDARD' WHERE id = ?", exam);
+        entityManager.clear();
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD02");
+
+        org.mockito.Mockito.clearInvocations(units);
+        clock.expireOnLastSampleOfTheChecker(java.time.Duration.ofSeconds(125));
+        JsonNode late = check(base, "{}");
+        org.mockito.Mockito.verify(units, org.mockito.Mockito.never()).solveUnit(any(), any(), any());
+        assertThat(clock.jumped()).as("the checker's last sample saw the expired clock").isTrue();
+        java.util.Map<String, String> outcome = new java.util.TreeMap<>();
+        for (JsonNode path : late.path("paths")) outcome.put(path.path("pathId").asText(), path.path("result").asText());
+        assertThat(outcome).as("every path was rendered in time, none was cut short")
+                .containsEntry("codes:QD02", "VALID").containsEntry("codes:QD04", "VALID")
+                .containsEntry("codes:QD05", "VALID").doesNotContainValue("UNCONFIRMED");
+        assertThat(stamp(exam)).as("an expired run never stamps, whatever was rendered").isNull();
+        assertThat(latestReason(exam)).isEqualTo("RULES_CHANGED");
+        publishRefusedWith(exam, "RULES_CHANGED", "codes:QD02");
+        assertThat(versions(exam)).isZero();
+
+        // Control: the same run in time stamps.
+        clock.reset();
+        JsonNode complete = check(base, "{}");
+        assertThat(complete.path("status").asText()).isEqualTo("INVALID");
+        assertThat(stamp(exam)).isEqualTo("FTM_R12");
+        assertThat(latestReason(exam)).isNull();
     }
 
     // ---- not affected -------------------------------------------------------------------------------------
