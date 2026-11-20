@@ -6604,6 +6604,194 @@
           "singleAutoHint": "Calculated: multiple choice minus the sub-questions of the sets",
           "title": "Question structure"
         }
+      },
+      "rows": {
+        "editor": {
+          "close": "Back to the list",
+          "conditions": {
+            "difficulty": {
+              "hint": "Difficulty distribution by the row question count",
+              "label": "Difficulty"
+            },
+            "grade": {
+              "hint": "Grade distribution by the row question count",
+              "label": "Grade"
+            },
+            "positions": {
+              "hint": "Knowledge-node condition for each child position of a set",
+              "label": "By child position",
+              "template": "Set by the template; this condition cannot be added",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "scope": {
+              "hint": "Only take questions under the selected knowledge nodes",
+              "label": "Knowledge nodes (filter)"
+            },
+            "slots": {
+              "hint": "Own tags or knowledge nodes for each set",
+              "label": "Conditions per set",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "topicQuotas": {
+              "hint": "Minimum questions per knowledge node, inside the row question count",
+              "label": "Allocation by knowledge node"
+            }
+          },
+          "countNotWhole": "{count, plural, one {# question} other {# questions}} cannot be divided into sets of {size, number}",
+          "facts": {
+            "formats": "answer format {formats}",
+            "line": "From the template: {facts}",
+            "matching": "matching {left, number} left, {right, number} right choices",
+            "options": "{count, plural, one {# option} other {# options}}",
+            "points": "{count, plural, one {{points} point per question} other {{points} points per question}}",
+            "rule": {
+              "ALL_OR_NOTHING": "all correct or nothing",
+              "PARTIAL": "partial credit"
+            },
+            "statements": "{count, plural, one {# statement} other {# statements}}",
+            "trueFalseTable": "points by number of correct statements {table}"
+          },
+          "lockedList": "Row locks",
+          "position": "Row {position, number} of {total, number}",
+          "quantityPercent": "Row question count",
+          "split": "Split row",
+          "title": "Edit row: {name}",
+          "untitled": "Untitled"
+        },
+        "notice": {
+          "ESSAY_SKIPPED": "Essay – skipped for now. This part has nothing to edit."
+        },
+        "reference": {
+          "caption": "{dimension} distribution of {subject}",
+          "cellAria": "{dimension}: {label}, question count",
+          "cellPercentAria": "{dimension}: {label}, percentage",
+          "combined": {
+            "back": "Remove combined table",
+            "backDifficulties": "By difficulty: {values}",
+            "backGrades": "By grade: {values}",
+            "cancel": "Cancel",
+            "caption": "Combined Grade × Difficulty table",
+            "cellAria": "{grade} × {difficulty}: question count",
+            "cellPercentAria": "{grade} × {difficulty}: percentage",
+            "confirm": "Confirm conversion",
+            "gradeHeader": "Grade",
+            "percentError": "Total percentage is {total, number}%, needs 100%",
+            "previewBackEmpty": "The combined table has no numbers yet, so both separate dimensions will start empty. Nothing is saved until you confirm.",
+            "previewBackHint": "Totals by grade and by difficulty of the current combined table. Nothing is saved until you confirm.",
+            "previewBackTitle": "Preview: back to separate dimensions",
+            "previewCaption": "Data that will move to the combined table",
+            "previewEmpty": "There are no numbers to convert, so the combined table starts empty. Nothing is saved until you confirm.",
+            "previewHint": "The numbers of the two dimensions are spread over the cells by the product of their shares. Nothing is saved until you confirm.",
+            "previewTitle": "Preview: to the combined table",
+            "title": "Combined Grade × Difficulty",
+            "total": "Total {total, number}/{count, number} questions",
+            "totalNoCount": "Total {total, number} questions",
+            "totalPercent": "Total {total, number}%"
+          },
+          "conditions": {
+            "add": "Add condition",
+            "addAria": "Add a condition to the reference allocation",
+            "added": "Added",
+            "combined": {
+              "hint": "One table for both dimensions; preview the data to move, then confirm",
+              "label": "Combined Grade × Difficulty"
+            },
+            "menuLabel": "Reference allocation conditions"
+          },
+          "declared": "Declared {total, number}/{count, number} questions",
+          "declaredNoTotal": "Declared {total, number} questions",
+          "declaredPercent": "Declared {total, number}%",
+          "difficultyTitle": "Difficulty",
+          "dimensionTitle": "{dimension} of {subject}",
+          "gradeTitle": "Grade",
+          "hint": "Enforcement follows the exam kind",
+          "percent": "Percentage (%)",
+          "percentTotal": "Total percentage is {total, number}%, needs 100%",
+          "questions": "Questions",
+          "quotas": {
+            "basis": {
+              "POINTS": "Unit: points",
+              "PROMPT": "Unit: prompts",
+              "QUESTION": "Unit: questions"
+            },
+            "denominator": "Denominator: {subject} · {count, number} prompts",
+            "difficulty": "difficulty",
+            "entryTitle": "{dimension} distribution",
+            "grade": "grade",
+            "percentValue": "{label}: {value, number}%",
+            "title": "Whole-subject distribution: {subject}",
+            "unclassified": "Unclassified",
+            "unclassifiedValue": "Unclassified: {count, number} prompts",
+            "value": "{label}: {value, number}"
+          },
+          "resolved": "Resolved questions",
+          "resolvedValue": "{count, number} questions",
+          "title": "Reference allocation",
+          "unit": {
+            "count": "Questions",
+            "legend": "Entry unit",
+            "percent": "Percentage"
+          }
+        },
+        "split": {
+          "apply": "Split",
+          "cancel": "Cancel",
+          "childAria": "{unit, select, set {Sets of child row {index, number}} other {Questions of child row {index, number}}}",
+          "childSets": "sets, {size, number} questions each ({count, number} questions)",
+          "childSingle": "questions",
+          "errors": {
+            "notPositive": "Child row {index, number} needs at least {unit, select, set {1 set} other {1 question}}",
+            "total": "The child rows add up to {total, number}, the parent row has {unit, select, set {{units, number} sets} other {{units, number} questions}}"
+          },
+          "hint": "The parent row ({unit, select, set {{units, number} sets} other {{units, number} questions}}) is replaced by the child rows; the first child keeps the parent row identity. The audio requirement of the section does not change.",
+          "partsLabel": "Number of rows after the split",
+          "partsOption": "{count, number} rows",
+          "title": "Split row {name}"
+        },
+        "table": {
+          "caption": "Question rows of {subject}",
+          "columns": {
+            "actions": "Actions",
+            "conditions": "Conditions",
+            "name": "Name",
+            "order": "Order",
+            "quantity": "Quantity"
+          },
+          "conditions": {
+            "difficulty": "Difficulty",
+            "grade": "Grade",
+            "none": "None",
+            "positions": "By position: {count, number}",
+            "scope": "Knowledge nodes: {count, number}",
+            "slots": "Per set: {count, number}",
+            "tags": "Tags: {count, number}",
+            "topicQuotas": "Node allocation: {count, plural, one {# row} other {# rows}}"
+          },
+          "countsLocked": "Quantity locked by the template",
+          "edit": "Edit",
+          "editAria": "Edit row {name}",
+          "empty": "This subject has no question rows.",
+          "figures": {
+            "plainPoints": "{count, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}}",
+            "trueFalse": "{count, plural, one {# true/false question} other {# true/false questions}}{hasStatements, select, yes { · {statements, plural, one {# statement} other {# statements}}} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
+          },
+          "kind": {
+            "set": "Set",
+            "setOf": "Set · {type}",
+            "single": "Single",
+            "singleOf": "Single · {type}"
+          },
+          "quantity": {
+            "flexible": "{count, plural, one {# question} other {# questions}} (flexible-size set)",
+            "sets": "{sets, plural, one {# set} other {# sets}} × {size, number} ({count, plural, one {# question} other {# questions}})",
+            "single": "{count, plural, one {# question} other {# questions}}"
+          },
+          "range": "Q{from, number}{same, select, yes {} other {–{to, number}}}",
+          "slot": "Set {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · nodes {nodes, number}}}",
+          "slotsLabel": "Conditions per set of {name}",
+          "title": "Question rows",
+          "untitled": "Untitled"
+        }
       }
     }
   },
