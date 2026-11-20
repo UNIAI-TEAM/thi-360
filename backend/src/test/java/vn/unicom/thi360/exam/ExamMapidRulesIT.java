@@ -114,6 +114,51 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void subjectExactAndShortAnswerMinimumOnSameNodePreviewWithinThreeSeconds() throws Exception {
+        arrange();
+        String[] grades = {"G11", "G12"};
+        String[] levels = {"NB", "TH", "VD", "VDC"};
+        for (int i = 0; i < 150; i++) {
+            UUID[] knowledge = i < 30 ? new UUID[]{nodes.get(0)} : new UUID[0];
+            for (String type : List.of("SINGLE_CHOICE", "SHORT_ANSWER")) {
+                UUID id = single(type, knowledge);
+                setDimensions(id, grades[(i / 4) % 2], levels[i % 4]);
+            }
+        }
+        for (int i = 0; i < 4; i++) {
+            setDimensions(set(List.of(), List.of(), List.of()), "G10", "TH");
+        }
+        String base = section(50, "MATRIX", "[" + count("exact", null, "EXACT", 3, a()) + ","
+                + count("minimum", "sa", "AT_LEAST", 2, a()) + "]",
+                block("sc", "SINGLE_CHOICE", 32), block("sa", "SHORT_ANSWER", 15), setBlock("set", 1, 3));
+        String dimensions = "\"answerQuotas\":{\"unit\":\"COUNT\",\"items\":["
+                + "{\"answerType\":\"SINGLE_CHOICE\",\"value\":35},{\"answerType\":\"SHORT_ANSWER\",\"value\":15}]},"
+                + "\"matrix\":{\"mode\":\"SEPARATE\",\"unit\":\"COUNT\",\"basis\":\"QUESTION\","
+                + "\"gradeEnforcement\":\"REQUIRED\",\"difficultyEnforcement\":\"REQUIRED\","
+                + "\"byGrade\":[{\"code\":\"G10\",\"value\":3},{\"code\":\"G11\",\"value\":20},"
+                + "{\"code\":\"G12\",\"value\":27}],\"byDifficulty\":[{\"code\":\"NB\",\"value\":2},"
+                + "{\"code\":\"TH\",\"value\":21},{\"code\":\"VD\",\"value\":20},{\"code\":\"VDC\",\"value\":7}]},";
+        UUID exam = exam(base.replace("\"mapidMode\":", dimensions + "\"mapidMode\":"));
+        long start = System.nanoTime();
+        JsonNode response = previewResponse(exam, 1);
+        long millis = (System.nanoTime() - start) / 1_000_000;
+        assertThat(millis).as("preview wall time in milliseconds").isLessThan(3000);
+        assertThat(carriers(questionIds(response.path("paper")), nodes.get(0))).isEqualTo(3);
+        assertThat(carriers(blockQuestionIds(response.path("paper"), "sa"), nodes.get(0))).isGreaterThanOrEqualTo(2);
+    }
+
+    private void setDimensions(UUID id, String grade, String level) {
+        jdbc.update("""
+                update questionbank.question set
+                    grade_item_id = (select id from catalog.catalog_item where group_id =
+                        '00000000-0000-7000-8100-000000000003' and code = ?),
+                    level_item_id = (select id from catalog.catalog_item where group_id =
+                        '00000000-0000-7000-8100-000000000004' and code = ?)
+                where id = ?
+                """, grade, level, id);
+    }
+
     // ---- AC-4 ------------------------------------------------------------------------------------------------
 
     @Test
