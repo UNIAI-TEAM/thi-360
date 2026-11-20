@@ -65,6 +65,29 @@ function firstProductCode(): Promise<string> {
   return firstProduct;
 }
 
+let partNameForms: Promise<Set<string>> | undefined;
+
+/** Dạng chữ hợp lệ của tên phần (PART) theo bộ lọc trang dùng: `name` và `kindCode · name`. */
+function knownPartNameForms(): Promise<Set<string>> {
+  partNameForms ??= (async () => {
+    const api = await playwrightRequest.newContext();
+    try {
+      const response = await api.get(`${API_URL}/api/v1/public/storefront/filters`);
+      expect(response.status(), "API bộ lọc danh mục phải trả được").toBe(200);
+      const data = (await response.json()) as { parts: Array<{ kindCode: string; name: string }> };
+      const forms = new Set<string>();
+      for (const part of data.parts) {
+        forms.add(part.name);
+        forms.add(`${part.kindCode} · ${part.name}`);
+      }
+      return forms;
+    } finally {
+      await api.dispose();
+    }
+  })();
+  return partNameForms;
+}
+
 async function settle(page: Page): Promise<void> {
   // Phần theo phiên chạy phía trình duyệt: chờ hết khung giữ chỗ trước khi đo.
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
@@ -108,11 +131,24 @@ async function check(
     await page.goto(`${WEB_URL}${path}`);
     await ready(page);
     await settle(page);
-    // Tiêu đề tài liệu mang tên bài như lưu (AC-17): nội dung đề theo DESIGN mục 8 nhưng `<title>` không gắn
-    // được `data-exam-content`, nên bỏ qua đúng giá trị tiêu đề ở phép kiểm lẫn ngôn ngữ.
-    const allowLanguage = options.allowDocumentTitle
-      ? [new RegExp(`^${escapeRegExp(await page.title())}$`)]
-      : undefined;
+    // `<select aria-hidden>` của Radix (visual-4 F2) mang chữ option trần; chỉ miễn option bằng văn một chuỗi
+    // nội dung đề: chữ trong `[data-exam-content]` đang có trên trang hoặc tên phần (PART) theo bộ lọc
+    // (DESIGN mục 8). Nhãn giao diện trong select ẩn vẫn bị phép kiểm lẫn ngôn ngữ xử.
+    // Tiêu đề tài liệu mang tên bài như lưu (AC-17) nhưng `<title>` không gắn được `data-exam-content`: miễn đúng
+    // giá trị tiêu đề khi ô cờ `allowDocumentTitle`.
+    const { optionTexts, examContentTexts } = await page.evaluate(() => ({
+      optionTexts: [...document.querySelectorAll<HTMLOptionElement>('select[aria-hidden="true"] option')].map(
+        (option) => option.text.replace(/\s+/g, " ").trim(),
+      ),
+      examContentTexts: [...document.querySelectorAll("[data-exam-content]")].map((element) =>
+        (element.textContent ?? "").replace(/\s+/g, " ").trim(),
+      ),
+    }));
+    const examContent = new Set([...examContentTexts, ...(await knownPartNameForms())]);
+    const allowLanguage = [
+      ...optionTexts.filter((text) => examContent.has(text)),
+      ...(options.allowDocumentTitle ? [await page.title()] : []),
+    ].map((text) => new RegExp(`^${escapeRegExp(text)}$`));
     await expectMatrixClean(page, screen, cell, {
       elementOverflow: { allowAccessibleScroller: true },
       allowLanguage,
