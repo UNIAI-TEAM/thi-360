@@ -6203,7 +6203,7 @@
       "editAria": "Edit rule: {sentence}",
       "empty": "No rules yet. Positions you do not declare are drawn at random from the exam structure.",
       "group": {
-        "allMode": "The subject is set to Whole exam: this group has no MAPID limit.",
+        "allMode": "The subject is set to No MAPID limit: this group has no MAPID limit.",
         "managed": "The group's knowledge scope and topic quotas are set by the subject's MAPID rules.",
         "none": "No MAPID rule applies to this group yet.",
         "open": "Open the MAPID rules table",
@@ -6220,7 +6220,7 @@
       },
       "limit": "The limit of {max, number} rules is reached.",
       "mode": {
-        "all": "Whole exam (no MAPID limit)",
+        "all": "No MAPID limit",
         "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",
         "legend": "Knowledge scope",
         "matrix": "By MAPID matrix",
@@ -6583,7 +6583,23 @@
           "percentTotal": "Total {total}%, needs 100%",
           "setMin": "At least 1 set",
           "setRange": "Sets must be between {min, number} and {max, number}",
-          "shortAnswerMin": "At least {min, number} fill-in answers needed"
+          "shortAnswerMin": "At least {min, plural, one {# fill-in answer} other {# fill-in answers}} needed"
+        },
+        "hsa": {
+          "allocationCount": "MAPID allocated: {allocated, number} / {total, plural, one {# question} other {# questions}} · remaining free: {free, plural, one {# question} other {# questions}}",
+          "allocationOver": "Exceeds the subject total by {over, plural, one {# question} other {# questions}}",
+          "allocationUnknown": "MAPID allocated: {allocated, plural, one {# question} other {# questions}}",
+          "gradeOptionalHint": "Optional for this subject.",
+          "material": {
+            "add": "Add source material condition",
+            "hint": "Material tag conditions apply only to the question set group.",
+            "remove": "Remove source material condition",
+            "title": "Source material condition"
+          },
+          "notApplied": "Not applied",
+          "orderNote": "Topic row order is for declaration only and does not fix question positions in the exam.",
+          "roleScopeLabel": "Source scope",
+          "strandTitle": "{subject} knowledge strands"
         },
         "scope": {
           "addQuota": "Add topic quota",

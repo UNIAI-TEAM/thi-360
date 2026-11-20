@@ -282,7 +282,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); vào `develop`: PR #126 (`fd67d223`) |
 | HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | vào `develop`: PR #147 (`e6b3b71d`); forward-merge PR #148 (`5bd43aff`) |
 | HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | merge PR #131 (`cf789ed9`); vào `develop`: PR #132 (`9b8a7e2e`) |
-| HSA-F | UNI-2749 (2751, 2752, 2753, 2755, 2756) | 1697, 1698, 1699, 1701, 1702 | BA vòng 2 HSA: quay lại bước 1 sửa thông tin và đổi chế độ dựng bài, gộp Xem trước, làm gọn thẻ môn và bảng phân bổ | merge PR #158 (`4ab461eb`), đang cập nhật demo |
+| HSA-F | UNI-2749 (2751, 2752, 2753, 2755, 2756) | 1697, 1698, 1699, 1701, 1702 | BA vòng 2 HSA: quay lại bước 1 sửa thông tin và đổi chế độ dựng bài, gộp Xem trước, làm gọn thẻ môn và bảng phân bổ | merge PR #158 (`4ab461eb`), demo đã cập nhật |
 | HSA-G | UNI-2770 | 1707 | Điều chỉnh form Thêm quy tắc MAPID theo phạm vi và kiểm tra xung đột giữa các dòng | vào `develop`: PR #152 (`c69484fb`), demo đã cập nhật; forward-merge PR #153 (`ada02513`) |
 
 **Ngoài plan, thay đổi theo yêu cầu (AD-34):** khóa giá trị hệ thống của danh mục, issue UniAI **UNI-2759**.
@@ -294,8 +294,8 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | CR-4 | UNI-2762 | Form theo môn: luật máy chủ giới hạn chùm và câu điền môn Khoa học HSA, QDA (4 điểm, sóng 1, nộp sau EX-1) | merge PR #150 (`d66469eb`) |
 | CR-2 | UNI-2763 | Form theo môn: Ma trận môn QDA, BCA, V-ACT (3 điểm, sóng 2) | merge PR #151 (`6600d6c4`) |
 | CR-3 | UNI-2764 | Form theo môn: Danh sách dòng lấy câu (6 điểm, sóng 2) | merge PR #154 (`31cc852e`) |
-| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | đang làm (cty) |
-| CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | chưa mở |
+| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | merge PR #159 (`ac0f96d8`), đang cập nhật demo |
+| CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | đang làm (bro) |
 
 Đặc tả `docs/specs/2026-11-19-form-theo-mon.md` và plan `docs/plans/2026-11-19-form-theo-mon.md` (bản 4, 24 điểm, báo riêng ngoài mẫu số 138).
 

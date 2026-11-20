@@ -355,3 +355,107 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
     expect(set.setSize ?? null).toBeNull();
   });
 });
+
+/**
+ * CR-2H AC-9 (FTM AC 6, AC 40, B4, B7 cho HSA): mọi mẫu HSA dùng MT mở MT không dirty nháp, qua tải rồi lưu không đổi wire;
+ * HSA có dữ liệu cũ chuyển đổi chỉ qua HSA-D `convertLegacySection`; tắt cờ HSA:TOAN mở MD không banner cảnh báo.
+ */
+describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9, B7)", () => {
+  beforeEach(() => restore());
+
+  it("hsaMatrixSaveIsIdentity: mọi mẫu chuẩn HSA (FULL, PART, SUBJECT của TOAN, LY, HOA, SINH, SU, DIA) mở MT không dirty và qua get->put giữ nguyên wire", async () => {
+    const covered: string[] = [];
+    const mapped = new Map(standardFixtureTemplates().map((template) => [template.code, template]));
+    for (const template of standardTemplates.templates.filter((item) => item.kindCode === "HSA")) {
+      const targets = mapped
+        .get(template.code)!
+        .parts.flatMap((item) => sectionGroups(item).flatMap((group) => group.sections))
+        .filter((candidate) => {
+          const entry = subjectFormFor("HSA", candidate.subjectCode);
+          return entry?.enabled === true && entry.form === "MATRIX";
+        });
+      if (targets.length === 0) continue;
+      const wireParts = template.structure.parts as unknown as Wire[];
+      const { server } = boot({ kind: "HSA", parts: wireParts });
+      const view = openStructure(`?section=${targets[0]!.id}`);
+      await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+      expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
+      expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
+      expect(screen.queryByTestId("full-form-notice"), template.code).toBeNull();
+      view.unmount();
+
+      const loaded = await getExamStructure(EXAM_ID);
+      await updateExamStructure(EXAM_ID, { parts: loaded.parts, examQuotas: loaded.examQuotas ?? [], expectedRevision: loaded.revision });
+      const sent = putCalls(server)[0]!.body as { parts: Wire[] };
+      expect(diffWire(wireParts, sent.parts), template.code).toEqual([]);
+      covered.push(template.code);
+    }
+    expect(covered).toEqual(
+      expect.arrayContaining([
+        "HSA_FULL",
+        "HSA_PART_MATH",
+        "HSA_PART_SCIENCE",
+        "HSA_SUBJECT_TOAN",
+        "HSA_SUBJECT_LY",
+        "HSA_SUBJECT_HOA",
+        "HSA_SUBJECT_SINH",
+        "HSA_SUBJECT_SU",
+        "HSA_SUBJECT_DIA",
+      ]),
+    );
+  }, 180_000);
+
+  it("hsaLegacyOnlyHsaDConversion: HSA Toán dữ liệu cũ chuyển đổi được mở MT (không về MD), lưu nguyên quy tắc HSA-D tạo ra không tự biến đổi thêm", async () => {
+    const user = userEvent.setup();
+    const legacy = [
+      wirePart([
+        wireSection(
+          "sec-toan",
+          "TOAN",
+          [
+            wireBlock("b1", { name: "Đơn", questionType: "SINGLE_CHOICE", questionCount: 32, templateGroupCode: "HSA_MATH_SINGLE" }),
+            wireBlock("b2", { name: "Điền", questionType: "SHORT_ANSWER", questionCount: 15, templateGroupCode: "HSA_MATH_SINGLE" }),
+            wireBlock("b3", { name: "Chùm", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3, templateGroupCode: "HSA_MATH_CONTEXT" }),
+          ],
+          {
+            knowledgeScope: { nodeIds: ["kn-0D1"], everyChildInScope: true },
+            topicQuotas: [{ id: "tq1", name: "Hàm số", nodeIds: ["kn-0D1-1"], count: 5, enforcement: "REQUIRED", basis: "QUESTION" }],
+          },
+        ),
+      ]),
+    ];
+    const { server } = boot({ kind: "HSA", parts: legacy });
+    openStructure("?section=sec-toan");
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(screen.getByTestId("mapid-rules-table")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const saved = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!;
+    expect(saved.mapidMode).toBe("MATRIX");
+    expect((saved.mapidRules as Wire[]).length).toBeGreaterThanOrEqual(2);
+    expect(saved.knowledgeScope ?? null).toBeNull();
+    expect((saved.topicQuotas as unknown[] | null) ?? []).toEqual([]);
+  });
+
+  it("B7 cờ enabled: khi tắt HSA:TOAN mở MD không full-form-notice; bật lại mở MT không full-form-notice", async () => {
+    const template = standardTemplates.templates.find((item) => item.code === "HSA_SUBJECT_TOAN")!;
+    const wireParts = template.structure.parts as unknown as Wire[];
+    const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
+
+    const undo = patchSubjectFormEntry("HSA", "TOAN", { enabled: false });
+    try {
+      boot({ kind: "HSA", parts: wireParts });
+      const offView = openStructure(`?section=${sectionId}`);
+      expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
+      expect(screen.queryByTestId("full-form-notice")).toBeNull();
+      offView.unmount();
+    } finally {
+      undo();
+    }
+
+    boot({ kind: "HSA", parts: wireParts });
+    openStructure(`?section=${sectionId}`);
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(screen.queryByTestId("full-form-notice")).toBeNull();
+  });
+});

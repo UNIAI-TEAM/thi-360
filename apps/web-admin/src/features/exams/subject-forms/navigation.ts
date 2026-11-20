@@ -1,3 +1,4 @@
+import { focusMapidRule, mapidRuleAnchor } from "../mapid-rules";
 import type { SubjectFormSelection } from "./selection";
 
 /**
@@ -18,6 +19,8 @@ export interface MatrixField {
    * (Trắc nghiệm, Số chùm, Điền đáp án). Không có ô của nhóm thì dùng ô `name`.
    */
   blockId?: string;
+  /** Quy tắc MAPID đích của HSA MT (`data-field="mapid-rule-<id>"`). */
+  ruleId?: string;
 }
 
 /** Đích điều hướng: ô của MT, dòng của DS, hoặc nhóm ở màn nhóm cũ (MD, ON). */
@@ -31,10 +34,17 @@ export interface FormTargetRef {
   sectionId: string;
   blockId?: string | null;
   field?: string | null;
+  ruleId?: string | null;
+  issueCode?: string | null;
 }
 
 /** Tên ô mặc định của MT khi lỗi không nêu ô: khối Cấu trúc câu (R-3). */
 export const MATRIX_DEFAULT_FIELD = "STRUCTURE";
+
+/** Tên vùng Quy tắc MAPID của HSA MT (FTM B9, CR-2H AC-10). */
+export const MATRIX_MAPID_RULES_FIELD = "MAPID_RULES";
+
+const MAPID_RULE_ISSUE_CODES = new Set(["MAPID_RULE_CONFLICT", "MAPID_RULE_GROUP_MISSING"]);
 
 /**
  * Đích của một nơi cần tới theo biểu mẫu đã ghim của môn chứa nó. `null`: không có ô hay dòng cụ thể, chỉ mở môn
@@ -42,9 +52,16 @@ export const MATRIX_DEFAULT_FIELD = "STRUCTURE";
  */
 export function formTarget(selection: SubjectFormSelection, ref: FormTargetRef): FormTarget | null {
   if (selection.form === "MATRIX") {
+    const mapidTarget = Boolean(ref.ruleId) || (ref.issueCode ? MAPID_RULE_ISSUE_CODES.has(ref.issueCode) : false);
+    const name = ref.field ?? (mapidTarget ? MATRIX_MAPID_RULES_FIELD : MATRIX_DEFAULT_FIELD);
     return {
       kind: "MATRIX_FIELD",
-      field: { sectionId: ref.sectionId, name: ref.field ?? MATRIX_DEFAULT_FIELD, ...(ref.field || !ref.blockId ? {} : { blockId: ref.blockId }) },
+      field: {
+        sectionId: ref.sectionId,
+        name,
+        ...(ref.field || !ref.blockId || mapidTarget ? {} : { blockId: ref.blockId }),
+        ...(ref.ruleId ? { ruleId: ref.ruleId } : {}),
+      },
     };
   }
   if (!ref.blockId) return null;
@@ -56,6 +73,19 @@ export function formTarget(selection: SubjectFormSelection, ref: FormTargetRef):
 export function findFormTargetElement(root: ParentNode, target: FormTarget): HTMLElement | null {
   if (target.kind === "LEGACY_BLOCK") return null;
   if (target.kind === "MATRIX_FIELD") {
+    if (target.field.ruleId) {
+      return (
+        root.querySelector<HTMLElement>(`[data-field="${CSS.escape(mapidRuleAnchor(target.field.ruleId))}"]`) ??
+        root.querySelector<HTMLElement>('[data-testid="mapid-rules-table"]') ??
+        root.querySelector<HTMLElement>(`[data-form-field="${CSS.escape(MATRIX_MAPID_RULES_FIELD)}"]`)
+      );
+    }
+    if (target.field.name === MATRIX_MAPID_RULES_FIELD) {
+      return (
+        root.querySelector<HTMLElement>('[data-testid="mapid-rules-table"]') ??
+        root.querySelector<HTMLElement>(`[data-form-field="${CSS.escape(MATRIX_MAPID_RULES_FIELD)}"]`)
+      );
+    }
     const own = target.field.blockId ? root.querySelector<HTMLElement>(`[data-form-block="${CSS.escape(target.field.blockId)}"]`) : null;
     return own ?? root.querySelector<HTMLElement>(`[data-form-field="${CSS.escape(target.field.name)}"]`);
   }
@@ -73,6 +103,17 @@ export const ROW_TARGET_EVENT = "thi360:form-row-target";
 
 /** Đặt focus vào phần tử đích; phần tử không nhận focus thì vào điều khiển đầu tiên bên trong, không có thì vào chính nó. */
 export function focusFormTarget(root: ParentNode, target: FormTarget): boolean {
+  if (target.kind === "MATRIX_FIELD" && (target.field.ruleId || target.field.name === MATRIX_MAPID_RULES_FIELD)) {
+    if (target.field.ruleId && focusMapidRule(target.field.ruleId, root)) return true;
+    const element = findFormTargetElement(root, target);
+    if (!element) return false;
+    const control = element.matches(`[data-form-field="${CSS.escape(MATRIX_MAPID_RULES_FIELD)}"]`)
+      ? (element.querySelector<HTMLElement>(FOCUSABLE) ?? element)
+      : element;
+    if (!control.matches(FOCUSABLE)) control.tabIndex = -1;
+    control.focus();
+    return true;
+  }
   const element = findFormTargetElement(root, target);
   if (!element) return false;
   if (target.kind === "ROW") {

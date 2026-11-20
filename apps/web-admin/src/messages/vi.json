@@ -6203,7 +6203,7 @@
       "editAria": "Sửa quy tắc: {sentence}",
       "empty": "Chưa có quy tắc nào. Các vị trí không khai báo được lấy ngẫu nhiên theo cấu trúc đề.",
       "group": {
-        "allMode": "Môn đang ở chế độ Toàn bài: không giới hạn MAPID cho nhóm này.",
+        "allMode": "Môn đang ở chế độ Không giới hạn MAPID: không giới hạn MAPID cho nhóm này.",
         "managed": "Phạm vi kiến thức và chỉ tiêu chủ đề của nhóm do các quy tắc MAPID của môn quyết định.",
         "none": "Chưa có quy tắc MAPID nào áp dụng cho nhóm này.",
         "open": "Mở bảng Quy tắc MAPID",
@@ -6220,7 +6220,7 @@
       },
       "limit": "Đã đủ {max, number} quy tắc.",
       "mode": {
-        "all": "Toàn bài (không giới hạn MAPID)",
+        "all": "Không giới hạn MAPID",
         "allHint": "Lấy ngẫu nhiên từ toàn bộ nguồn hợp lệ của môn. Câu chưa gắn MAPID vẫn có thể được chọn.",
         "legend": "Phạm vi kiến thức",
         "matrix": "Theo ma trận MAPID",
@@ -6584,6 +6584,22 @@
           "setMin": "Ít nhất 1 chùm",
           "setRange": "Số chùm từ {min, number} đến {max, number}",
           "shortAnswerMin": "Cần ít nhất {min, number} câu điền đáp án"
+        },
+        "hsa": {
+          "allocationCount": "Đã phân bổ MAPID: {allocated, number} / {total, number} câu · còn tự do: {free, number} câu",
+          "allocationOver": "Đã vượt tổng số câu của môn {over, number} câu",
+          "allocationUnknown": "Đã phân bổ MAPID: {allocated, number} câu",
+          "gradeOptionalHint": "Không bắt buộc với môn này.",
+          "material": {
+            "add": "Thêm điều kiện tư liệu",
+            "hint": "Điều kiện nhãn tư liệu chỉ áp dụng cho nhóm câu chùm.",
+            "remove": "Bỏ điều kiện tư liệu",
+            "title": "Điều kiện tư liệu"
+          },
+          "notApplied": "Chưa áp dụng",
+          "orderNote": "Thứ tự các dòng chủ đề phục vụ việc khai báo, không ấn định vị trí câu trong đề.",
+          "roleScopeLabel": "Phạm vi nguồn",
+          "strandTitle": "Mạch kiến thức {subject}"
         },
         "scope": {
           "addQuota": "Thêm chỉ tiêu chủ đề",

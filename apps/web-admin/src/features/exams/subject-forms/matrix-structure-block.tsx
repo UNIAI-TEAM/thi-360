@@ -2,12 +2,13 @@
 
 import { cn, FormField, Input } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { parseNumberText } from "../components/block-number-input";
 import { LOCKED_FIELD } from "../components/locked-field";
 import { CountPercentInput } from "./count-percent-input";
 import { LockReason } from "./lock-reason";
 import { MatrixCell } from "./matrix-cell";
+import type { QuestionBlock } from "../types";
 import type { MatrixBlockProps } from "./matrix-block-props";
 import { MATRIX_FIELDS, MATRIX_ISSUE_CODES, matrixBlockingIssues } from "./matrix-blocking";
 import { structureOf, writeStructure, type StructureInput } from "./matrix-form-model";
@@ -18,12 +19,13 @@ import { subjectFormLimits } from "./limits";
 type RowKey = "CHOICE" | "SINGLE" | "SETS" | "CHILDREN" | "FILL";
 
 /** Ô nhập số câu của một dòng; `data-form-block` cho đích `?block=` của nhóm tương ứng. */
-function ReadOnlyCount({ label, value, hint }: { label: string; value: number; hint: string }) {
+function ReadOnlyCount({ label, value, hint, footer }: { label: string; value: number; hint: string; footer?: ReactNode }) {
   return (
     <div className="flex max-w-xs flex-col gap-1.5">
       <FormField label={label} hint={hint}>
         {(controlProps) => <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />}
       </FormField>
+      {footer}
     </div>
   );
 }
@@ -33,7 +35,7 @@ function ReadOnlyCount({ label, value, hint }: { label: string; value: number; h
  * Mỗi vai trò chỉ hiện khi bài có nhóm của vai trò đó. V-ACT nhập hai cột Số câu / Tỷ lệ cho từng vai trò (R-9): tỷ lệ chỉ quy ra
  * số khi các vai trò cộng đủ 100%, chưa đủ thì giữ ở kho nhập thô và chặn lưu.
  */
-export function MatrixStructureBlock({ compact = false, ...props }: MatrixBlockProps & { compact?: boolean }) {
+export function MatrixStructureBlock({ compact = false, renderRoleFooter, ...props }: MatrixBlockProps & { compact?: boolean; renderRoleFooter?: (block: QuestionBlock) => ReactNode }) {
   const { section, entry, kindCode, total, raw, onChange, templateLocked } = props;
   const t = useTranslations("exams.subjectForm.matrix.structure");
   const tErrors = useTranslations("exams.subjectForm.matrix.errors");
@@ -150,19 +152,26 @@ export function MatrixStructureBlock({ compact = false, ...props }: MatrixBlockP
             {locked && <LockReason code="templateTotal" />}
           </>
         ) : (
-          <CountPercentInput
-            label={label}
-            entry="NONE"
-            total={key === "SETS" ? 0 : (total ?? 0)}
-            count={valueOf(key)}
-            fieldName={field}
-            onChange={(next) => writeCount(key, next.count)}
-            onRawInput={rawInputOf(field)}
-            rawText={raw.get(field)?.code === "invalidNumber" ? raw.get(field)?.text : undefined}
-            error={errorOf(field)}
-          />
+          <div className="flex flex-col gap-1.5">
+            <span aria-hidden="true" className="text-field-label font-medium text-text-secondary">
+              {label}
+            </span>
+            <CountPercentInput
+              label={label}
+              entry="NONE"
+              total={key === "SETS" ? 0 : (total ?? 0)}
+              count={valueOf(key)}
+              fieldName={field}
+              onChange={(next) => writeCount(key, next.count)}
+              onRawInput={rawInputOf(field)}
+              rawText={raw.get(field)?.code === "invalidNumber" ? raw.get(field)?.text : undefined}
+              error={errorOf(field)}
+            />
+          </div>
         )}
         {hint && <p className="text-caption text-text-muted">{hint}</p>}
+        {(key === "SETS" || key === "CHILDREN") && set && renderRoleFooter?.(set)}
+        {key === "FILL" && fill && renderRoleFooter?.(fill)}
       </div>
     );
   };
@@ -195,7 +204,7 @@ export function MatrixStructureBlock({ compact = false, ...props }: MatrixBlockP
           </>
         )}
       </div>
-      {!twoColumns && single && <ReadOnlyCount label={t("singleAuto")} value={structure.single} hint={t("singleAutoHint")} />}
+      {!twoColumns && single && <ReadOnlyCount label={t("singleAuto")} value={structure.single} hint={t("singleAutoHint")} footer={renderRoleFooter?.(single)} />}
       {twoColumns && (single || set) && <ReadOnlyCount label={t("choiceTotal")} value={structure.choice} hint={t("choiceTotalHint")} />}
       {structureError && (
         <p role="alert" className="text-caption text-danger">
