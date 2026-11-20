@@ -6076,7 +6076,6 @@
         "REQUIRED": "Required",
         "REFERENCE": "Reference",
         "basisLocked": "A required distribution must count questions. Change the unit to questions first.",
-        "fixedRequired": "HSA exam: papers are always generated from the matrix",
         "expertPending": "Waiting for expert confirmation: the English grade split is for reference only.",
         "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply.",
         "undeclared": "This distribution is not declared, so it does not constrain generation."
