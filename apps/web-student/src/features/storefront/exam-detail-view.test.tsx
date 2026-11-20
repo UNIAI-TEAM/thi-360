@@ -19,10 +19,11 @@ vi.mock("@/features/session/api", async () => {
   return { ...actual, loadOptionalSession: async () => mocks.session.current };
 });
 
-/** Lời gọi `exam-access` đi qua `fetch` thật của `loadExamAccess`; `mocks.access` quyết định phản hồi. */
+/** Lời gọi `exam-access` đi qua `loadExamAccess` (api-client); `mocks.access` quyết định phản hồi. */
 async function stubbedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  expect(String(input)).toBe("/api/v1/me/exam-access/query");
-  const body: { codes: string[] } = JSON.parse(String(init?.body));
+  const request = input instanceof Request ? input : new Request(input, init);
+  expect(new URL(request.url).pathname).toBe("/api/v1/me/exam-access/query");
+  const body: { codes: string[] } = await request.json();
   const result = await mocks.access(body.codes);
   if (result.kind === "forbidden") return new Response("{}", { status: 403 });
   return new Response(JSON.stringify({ items: result.rows }), {

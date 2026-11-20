@@ -1,54 +1,29 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { readCookieValue, XSRF_COOKIE_NAME, XSRF_HEADER_NAME } from "@thi360/web-kit/client";
+import type { components } from "@thi360/api-client";
 import type { OptionalSessionLoader } from "@/features/session/api";
 import { useOptionalSession } from "@/features/session/use-optional-session";
-import { ApiStatusError } from "@/lib/api/client";
+import { createBrowserApiClient, toApiStatusError } from "@/lib/api/client";
 
-export const EXAM_ACCESS_STATES = ["IN_PROGRESS", "CAN_START", "CHECKING", "EXHAUSTED", "NONE"] as const;
-export type ExamAccessState = (typeof EXAM_ACCESS_STATES)[number];
-
-/**
- * LOCAL STUB of CM-4b (UNI-2715) `POST /api/v1/me/exam-access/query` (operationId `queryMyExamAccess`), shape frozen
- * in CM-4b:2 (c7e19d75): request `{codes}` (0..48), response `{items: ExamAccessItem[]}`, 403 for MANAGE and other
- * non-EXAM accounts, 401 without a session. CM-4b is not merged, so `schema.d.ts` has no such path: types and the call
- * are hand-written here. After CM-4b merges and the api-client is regenerated, replace this stub with the generated
- * types and client (`components["schemas"]["ExamAccessItem"]`) and delete the hand-written fetch.
- */
-export interface ExamAccessRow {
-  code: string;
-  state: ExamAccessState;
-  attemptsLeft: number;
-  entitlementId: string | null;
-  activeAttemptId: string | null;
-  hasPendingFulfillment: boolean;
-  pendingOrderCode: string | null;
-}
+/** Một dòng quyền dùng của CM-4b `POST /api/v1/me/exam-access/query` (operationId `queryMyExamAccess`). */
+export type ExamAccessRow = components["schemas"]["ExamAccessItem"];
 
 /** `forbidden`: tài khoản quản trị (API trả 403); trang không có nút chính. */
 export type ExamAccessResult = { kind: "rows"; rows: ExamAccessRow[] } | { kind: "forbidden" };
 export type ExamAccessLoader = (codes: readonly string[]) => Promise<ExamAccessResult>;
 
-export const EXAM_ACCESS_ENDPOINT = "/api/v1/me/exam-access/query";
-
 export async function loadExamAccess(codes: readonly string[]): Promise<ExamAccessResult> {
-  const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
-  const xsrf = typeof document === "undefined" ? null : readCookieValue(document.cookie, XSRF_COOKIE_NAME);
-  if (xsrf) headers[XSRF_HEADER_NAME] = xsrf;
-
-  const response = await fetch(EXAM_ACCESS_ENDPOINT, {
-    method: "POST",
-    headers,
-    credentials: "same-origin",
-    body: JSON.stringify({ codes }),
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/me/exam-access/query", {
+    body: { codes: [...codes] },
   });
   // Tài khoản quản trị nhận 403: đây là kết quả, không phải lỗi, nên không đi qua luồng 403 toàn cục của query-provider.
   if (response.status === 403) return { kind: "forbidden" };
-  if (!response.ok) throw new ApiStatusError(response.status);
-
-  const body: { items: ExamAccessRow[] } = await response.json();
-  return { kind: "rows", rows: body.items };
+  if (!response.ok || !data) {
+    throw toApiStatusError(response.status, error);
+  }
+  return { kind: "rows", rows: data.items };
 }
 
 /** Điều nút mua cần biết về một sản phẩm (TM 11.3). */
