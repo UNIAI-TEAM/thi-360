@@ -31,6 +31,7 @@ import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.application.AttemptLifecycleService;
+import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
 import vn.unicom.thi360.attempt.application.CloseAttemptResult;
 import vn.unicom.thi360.attempt.application.FinalAnswerWriter;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
@@ -45,6 +46,7 @@ import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 
 /**
@@ -60,10 +62,11 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
     @MockitoSpyBean private FinalAnswerWriter finalAnswerWriter;
     @MockitoSpyBean private EntitlementPort entitlementPort;
     @MockitoSpyBean private OutboxPublisher outboxPublisher;
+    @MockitoSpyBean private AttemptSessionChecker attemptSessionChecker;
 
     @AfterEach
     void resetSpies() {
-        reset(finalAnswerWriter, entitlementPort, outboxPublisher);
+        reset(finalAnswerWriter, entitlementPort, outboxPublisher, attemptSessionChecker);
     }
 
     @Test
@@ -554,5 +557,181 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
             String rawData = objectMapper.writeValueAsString(evt.getData());
             assertThat(rawData).doesNotContain(sentinel);
         }
+    }
+
+    @Test
+    void directCloseSubmittedPastAwaitingChoiceDeadlineSkipsWriter() throws Exception {
+        UUID userId = createStudent("direct-awaiting-choice");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "dir-ac", line.entitlementId(), null);
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId()).getFirst().getId();
+
+        mutableClock.advance(Duration.ofMinutes(1));
+        assertThat(
+                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        Instant choiceDeadline = mutableClock.instant().plus(Duration.ofMinutes(10));
+        jdbc.update(
+                "UPDATE attempt.attempt_part SET state = 'CLOSED', close_reason = 'FINISHED', closed_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(mutableClock.instant()),
+                parts.get(1).getId());
+        jdbc.update(
+                "UPDATE attempt.attempt_part SET state = 'AWAITING_CHOICE', choice_deadline_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(choiceDeadline),
+                parts.get(2).getId());
+        clearInvocations(finalAnswerWriter);
+
+        CloseAttemptResult res =
+                lifecycleService.closeAttempt(
+                        attempt.getId(),
+                        EndReason.SUBMITTED,
+                        choiceDeadline.plusSeconds(10),
+                        null,
+                        List.of(
+                                new FinalAnswerChange(
+                                        itemId, 1L, new AnswerValue.SingleChoice("late"))));
+        assertThat(res.closedNow()).isTrue();
+        assertThat(res.attempt().getState()).isEqualTo(AttemptState.GRADING);
+        assertThat(res.attempt().getEndReason()).isEqualTo(EndReason.CHOICE_TIMEOUT);
+        assertThat(res.attempt().getFinishedAt()).isEqualTo(choiceDeadline);
+        verifyNoInteractions(finalAnswerWriter);
+    }
+
+    @Test
+    void freeModeSubmitAttachesFinalAnswersOnlyToSubmittedEvent() throws Exception {
+        UUID userId = createStudent("free-mode-dedup");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "free-dedup", line.entitlementId(), null);
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId()).getFirst().getId();
+
+        jdbc.update("UPDATE attempt.attempt SET navigation_mode = 'FREE' WHERE id = ?", attempt.getId());
+        jdbc.update(
+                "UPDATE attempt.attempt_part SET state = 'OPEN', started_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(mutableClock.instant()),
+                parts.get(1).getId());
+
+        UUID sessionId = UUID.randomUUID();
+        Instant closeAt = mutableClock.instant().plusSeconds(30);
+        CloseAttemptResult res =
+                lifecycleService.closeAttempt(
+                        attempt.getId(),
+                        EndReason.SUBMITTED,
+                        closeAt,
+                        sessionId,
+                        List.of(
+                                new FinalAnswerChange(
+                                        itemId, 5L, new AnswerValue.SingleChoice("opt-1"))));
+        assertThat(res.closedNow()).isTrue();
+
+        List<AttemptEvent> events =
+                attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId());
+        List<AttemptEvent> partClosedEvents =
+                events.stream().filter(e -> e.getType() == AttemptEventType.PART_CLOSED).toList();
+        assertThat(partClosedEvents).hasSize(2);
+        for (AttemptEvent partClosed : partClosedEvents) {
+            assertThat(partClosed.getData()).doesNotContainKey("finalAnswers");
+        }
+        AttemptEvent submittedEvent =
+                events.stream()
+                        .filter(e -> e.getType() == AttemptEventType.SUBMITTED)
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(submittedEvent.getData()).containsKey("finalAnswers");
+    }
+
+    @Test
+    void forwardsAttemptSessionIdAndRejectsRevokedSession() throws Exception {
+        UUID userId = createStudent("session-checker");
+        GrantOrderResult.Line line = grant(userId, "DS-BCA-FULL-MINI", 3, List.of());
+        Attempt attempt =
+                startAndAwaitOpen(
+                        userId, "sess-ok", line.entitlementId(), new PreChoiceInput("CA2", null));
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        UUID activeSessionId = UUID.randomUUID();
+        clearInvocations(attemptSessionChecker);
+
+        assertThat(
+                        performFinishPart(
+                                        userId,
+                                        attempt.getId(),
+                                        parts.get(0).getId(),
+                                        activeSessionId,
+                                        null)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+        assertThat(
+                        performFinishPart(
+                                        userId,
+                                        attempt.getId(),
+                                        parts.get(1).getId(),
+                                        activeSessionId,
+                                        null)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+        assertThat(
+                        performSubmit(
+                                        userId,
+                                        attempt.getId(),
+                                        "sess-sub-ok",
+                                        activeSessionId,
+                                        null)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        verify(attemptSessionChecker, times(3))
+                .requireEditSession(argThat(a -> a.getId().equals(attempt.getId())), eq(activeSessionId));
+
+        List<AttemptEvent> events =
+                attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId());
+        assertThat(events)
+                .filteredOn(e -> e.getType() == AttemptEventType.PART_CLOSED)
+                .isNotEmpty()
+                .allSatisfy(e -> assertThat(e.getSessionId()).isEqualTo(activeSessionId));
+        assertThat(events)
+                .filteredOn(
+                        e ->
+                                e.getType() == AttemptEventType.PART_OPENED
+                                        && !parts.get(0).getId().equals(e.getPartId()))
+                .hasSize(2)
+                .allSatisfy(e -> assertThat(e.getSessionId()).isEqualTo(activeSessionId));
+        assertThat(events)
+                .filteredOn(e -> e.getType() == AttemptEventType.SUBMITTED)
+                .hasSize(1)
+                .allSatisfy(e -> assertThat(e.getSessionId()).isEqualTo(activeSessionId));
+
+        // Revoked session -> 409 ATTEMPT_SESSION_REVOKED without mutating state
+        Attempt a2 =
+                startAndAwaitOpen(
+                        userId, "sess-rev", line.entitlementId(), new PreChoiceInput("CA2", null));
+        List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
+        UUID revokedSessionId = UUID.randomUUID();
+        doThrow(new ConflictException("ATTEMPT_SESSION_REVOKED"))
+                .when(attemptSessionChecker)
+                .requireEditSession(argThat(a -> a.getId().equals(a2.getId())), eq(revokedSessionId));
+
+        MvcResult finRev =
+                performFinishPart(
+                        userId, a2.getId(), a2Parts.get(0).getId(), revokedSessionId, null);
+        assertThat(finRev.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(finRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+        assertThat(attemptPartRepository.findById(a2Parts.get(0).getId()).orElseThrow().getState())
+                .isEqualTo(PartState.OPEN);
+        assertThat(attemptPartRepository.findById(a2Parts.get(1).getId()).orElseThrow().getState())
+                .isEqualTo(PartState.PENDING);
+
+        MvcResult subRev =
+                performSubmit(userId, a2.getId(), "sess-sub-rev", revokedSessionId, null);
+        assertThat(subRev.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(subRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+        assertThat(attemptRepository.findById(a2.getId()).orElseThrow().getState())
+                .isEqualTo(AttemptState.IN_PROGRESS);
     }
 }

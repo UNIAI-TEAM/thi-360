@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
@@ -26,9 +27,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.attempt.api.FinalAnswerChange;
+import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.application.AttemptDeadlineWorker;
 import vn.unicom.thi360.attempt.application.FinalAnswerWriter;
 import vn.unicom.thi360.attempt.application.OverdueAttemptCloser;
+import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
@@ -48,6 +54,7 @@ import vn.unicom.thi360.commerce.spi.EntitlementPort;
 class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
 
     @Autowired private AttemptDeadlineWorker worker;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     @MockitoSpyBean private EntitlementPort entitlementPort;
     @MockitoSpyBean private OverdueAttemptCloser overdueCloser;
@@ -137,7 +144,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             Future<MvcResult> submitFutureB =
                     pool.submit(() -> performSubmit(uB, aB.getId(), "race-b-sub", null, null));
             assertThat(submitEnteredCloser.await(15, TimeUnit.SECONDS)).isTrue();
-            Thread.sleep(75);
+            awaitAttemptRowLockWait();
             releaseWorker.countDown();
 
             assertThat(workerFuture.get(15, TimeUnit.SECONDS)).isEqualTo(1);
@@ -272,5 +279,144 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    void stalePreLockClockUsesPostLockTime() throws Exception {
+        UUID userId = createStudent("stale-prelock-clock");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 3, List.of());
+
+        // 1. Submit blocked on FOR UPDATE while clock advances past deadline -> re-sampled lockNow rejects late submit as TIME_UP
+        Attempt a1 = startAndAwaitOpen(userId, "stale-sub", line.entitlementId(), null);
+        AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).getFirst();
+        UUID item1 = attemptItemRepository.findByPartIdOrderByOrdAsc(p1.getId()).getFirst().getId();
+        Instant deadline1 = p1.getDeadlineAt();
+        clearInvocations(entitlementPort, overdueCloser, finalAnswerWriter);
+
+        mutableClock.setAt(deadline1.minusSeconds(1));
+        CountDownLatch lockHeld1 = new CountDownLatch(1);
+        CountDownLatch releaseLock1 = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> lockHolder1 =
+                    pool.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                status -> {
+                                                    attemptRepository.findByIdForUpdate(a1.getId()).orElseThrow();
+                                                    lockHeld1.countDown();
+                                                    try {
+                                                        assertThat(releaseLock1.await(15, TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException ex) {
+                                                        Thread.currentThread().interrupt();
+                                                        throw new IllegalStateException(ex);
+                                                    }
+                                                });
+                                return null;
+                            });
+            assertThat(lockHeld1.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> submitFuture =
+                    pool.submit(
+                            () ->
+                                    performSubmit(
+                                            userId,
+                                            a1.getId(),
+                                            "stale-sub-k",
+                                            null,
+                                            new SubmitAttemptRequest(
+                                                    List.of(
+                                                            new FinalAnswerChange(
+                                                                    item1,
+                                                                    1L,
+                                                                    new AnswerValue.SingleChoice(
+                                                                            "late"))))));
+            awaitAttemptRowLockWait();
+
+            // Advance clock past deadline while submit waits on FOR UPDATE
+            mutableClock.setAt(deadline1.plusSeconds(5));
+            releaseLock1.countDown();
+            lockHolder1.get(15, TimeUnit.SECONDS);
+
+            MvcResult subRes = submitFuture.get(15, TimeUnit.SECONDS);
+            assertThat(subRes.getResponse().getStatus()).isEqualTo(200);
+            JsonNode subJson = json(subRes);
+            assertThat(subJson.path("state").asText()).isEqualTo("GRADING");
+            assertThat(subJson.path("endReason").asText()).isEqualTo("TIME_UP");
+            assertThat(Instant.parse(subJson.path("finishedAt").asText())).isEqualTo(deadline1);
+            Attempt reloaded1 = attemptRepository.findById(a1.getId()).orElseThrow();
+            assertThat(reloaded1.getFinishedAt()).isAfterOrEqualTo(reloaded1.getStartedAt());
+            verifyNoInteractions(finalAnswerWriter);
+
+            // 2. Finish throwing 409 ATTEMPT_PART_IS_LAST after clock crosses deadline during FOR UPDATE still commits overdue close
+            mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+            Attempt a2 = startAndAwaitOpen(userId, "stale-fin-409", line.entitlementId(), null);
+            AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).getFirst();
+            Instant deadline2 = p2.getDeadlineAt();
+
+            mutableClock.setAt(deadline2.minusSeconds(1));
+            CountDownLatch lockHeld2 = new CountDownLatch(1);
+            CountDownLatch releaseLock2 = new CountDownLatch(1);
+            Future<Void> lockHolder2 =
+                    pool.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                status -> {
+                                                    attemptRepository.findByIdForUpdate(a2.getId()).orElseThrow();
+                                                    lockHeld2.countDown();
+                                                    try {
+                                                        assertThat(releaseLock2.await(15, TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException ex) {
+                                                        Thread.currentThread().interrupt();
+                                                        throw new IllegalStateException(ex);
+                                                    }
+                                                });
+                                return null;
+                            });
+            assertThat(lockHeld2.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> finishFuture =
+                    pool.submit(() -> performFinishPart(userId, a2.getId(), p2.getId(), null, null));
+            awaitAttemptRowLockWait();
+            mutableClock.setAt(deadline2.plusSeconds(5));
+            releaseLock2.countDown();
+            lockHolder2.get(15, TimeUnit.SECONDS);
+
+            MvcResult finRes = finishFuture.get(15, TimeUnit.SECONDS);
+            assertThat(finRes.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(finRes).path("code").asText()).isEqualTo("ATTEMPT_PART_IS_LAST");
+            Attempt reloaded2 = attemptRepository.findById(a2.getId()).orElseThrow();
+            assertThat(reloaded2.getState()).isEqualTo(AttemptState.GRADING);
+            assertThat(reloaded2.getEndReason()).isEqualTo(EndReason.TIME_UP);
+            assertThat(reloaded2.getFinishedAt()).isEqualTo(deadline2);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private void awaitAttemptRowLockWait() throws InterruptedException {
+        long deadlineNanos = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            Integer waiting =
+                    jdbc.queryForObject(
+                            """
+                            SELECT COUNT(*) FROM pg_stat_activity
+                            WHERE datname = current_database()
+                              AND pid <> pg_backend_pid()
+                              AND state = 'active'
+                              AND wait_event_type = 'Lock'
+                              AND query ILIKE '%attempt.attempt%'
+                            """,
+                            Integer.class);
+            if (waiting != null && waiting > 0) {
+                return;
+            }
+            Thread.sleep(10);
+        }
+        throw new AssertionError("Timed out waiting for PostgreSQL FOR UPDATE lock contention");
     }
 }

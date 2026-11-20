@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -49,6 +50,7 @@ import vn.unicom.thi360.exam.application.ExamListingService;
 import vn.unicom.thi360.exam.application.ExamPublishService;
 import vn.unicom.thi360.exam.application.ExamService;
 import vn.unicom.thi360.identity.spi.UserDirectory;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
 import vn.unicom.thi360.shared.security.Access;
@@ -527,6 +529,96 @@ class AttemptFlowIT extends AbstractAttemptDsIT {
         assertThat(json(finLastSingle).path("code").asText()).isEqualTo("ATTEMPT_PART_IS_LAST");
         assertThat(attemptRepository.findById(single.getId()).orElseThrow().getState())
                 .isEqualTo(AttemptState.IN_PROGRESS);
+    }
+
+    @Test
+    void finishAndSubmitRejectInvalidAttemptAndPartStates() throws Exception {
+        UUID userId = createStudent("flow-guards");
+        GrantOrderResult.Line hsaLine = grant(userId, "DS-HSA-FULL-MINI", 3, List.of());
+        Attempt hsa = startAndAwaitOpen(userId, "grd-hsa", hsaLine.entitlementId(), null);
+        List<AttemptPart> hsaParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(hsa.getId());
+
+        // 1. Finish on PENDING Part 1 while Part 0 is OPEN -> 409 PART_CLOSED without invoking FinalAnswerWriter
+        AtomicInteger writerCalls = new AtomicInteger();
+        FinalAnswerWriter countingWriter =
+                (attempt, part, changes, now) -> {
+                    writerCalls.incrementAndGet();
+                    return List.of();
+                };
+        AttemptLifecycleService guardedLifecycle =
+                new AttemptLifecycleService(
+                        accessGate,
+                        attemptRepository,
+                        attemptPartRepository,
+                        attemptItemRepository,
+                        attemptEventRepository,
+                        publishedExamPort,
+                        entitlementPort,
+                        outboxPublisher,
+                        idempotentCommand,
+                        overdueAttemptCloser,
+                        attemptSessionChecker,
+                        countingWriter,
+                        PartTransitionHook.NOOP,
+                        transactionManager,
+                        mutableClock);
+        assertThatThrownBy(
+                        () ->
+                                runAsStudent(
+                                        userId,
+                                        () ->
+                                                guardedLifecycle.finishPart(
+                                                        hsa.getId(),
+                                                        hsaParts.get(1).getId(),
+                                                        null,
+                                                        null)))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "PART_CLOSED");
+        assertThat(writerCalls.get()).isZero();
+        MvcResult pendingFin = performFinishPart(userId, hsa.getId(), hsaParts.get(1).getId(), null, null);
+        assertThat(pendingFin.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(pendingFin).path("code").asText()).isEqualTo("PART_CLOSED");
+
+        // 2. Finish with foreign partId belonging to another attempt -> 404 NOT_FOUND
+        GrantOrderResult.Line bcaLine = grant(userId, "DS-BCA-FULL-MINI", 3, List.of());
+        Attempt bca =
+                startAndAwaitOpen(
+                        userId, "grd-bca", bcaLine.entitlementId(), new PreChoiceInput("CA2", null));
+        List<AttemptPart> bcaParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(bca.getId());
+
+        MvcResult foreignFin = performFinishPart(userId, hsa.getId(), bcaParts.get(0).getId(), null, null);
+        assertThat(foreignFin.getResponse().getStatus()).isEqualTo(404);
+        assertThat(json(foreignFin).path("code").asText()).isEqualTo("NOT_FOUND");
+
+        // 3. Finish on SKIPPED Part 1 (non-final) after SHARED TIME_UP -> 409 TIME_UP
+        mutableClock.setAt(bca.getDeadlineAt().plusSeconds(10));
+        MvcResult skippedFin = performFinishPart(userId, bca.getId(), bcaParts.get(1).getId(), null, null);
+        assertThat(skippedFin.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(skippedFin).path("code").asText()).isEqualTo("TIME_UP");
+
+        // 4. Finish and submit on STARTING and ABORTED attempts -> 409 ATTEMPT_NOT_OPEN
+        mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+        GrantOrderResult.Line singleLine = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        Attempt single = startAndAwaitOpen(userId, "grd-start-abort", singleLine.entitlementId(), null);
+        AttemptPart singleP0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(single.getId()).getFirst();
+
+        jdbc.update("UPDATE attempt.attempt SET state = 'STARTING' WHERE id = ?", single.getId());
+        MvcResult startingFin = performFinishPart(userId, single.getId(), singleP0.getId(), null, null);
+        assertThat(startingFin.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(startingFin).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        MvcResult startingSub = performSubmit(userId, single.getId(), "grd-st-sub", null, null);
+        assertThat(startingSub.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(startingSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+
+        jdbc.update(
+                "UPDATE attempt.attempt SET state = 'ABORTED', abort_reason = 'GENERATION_FAILED' WHERE id = ?",
+                single.getId());
+        MvcResult abortedFin = performFinishPart(userId, single.getId(), singleP0.getId(), null, null);
+        assertThat(abortedFin.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(abortedFin).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        MvcResult abortedSub = performSubmit(userId, single.getId(), "grd-ab-sub", null, null);
+        assertThat(abortedSub.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(abortedSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
     }
 
     private UUID publishThptqgMath2025Exam() {

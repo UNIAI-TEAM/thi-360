@@ -15,6 +15,8 @@ import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
+import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
@@ -196,5 +198,92 @@ class AttemptSubmitIdempotencyIT extends AbstractAttemptDsIT {
         MvcResult strSub = performSubmit(stranger, attempt.getId(), "str-sub", null, null);
         assertThat(strSub.getResponse().getStatus()).isEqualTo(404);
         assertThat(json(strSub).path("code").asText()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void finishAndSubmitValidateFinalAnswers() throws Exception {
+        UUID userId = createStudent("life-val");
+        GrantOrderResult.Line hsaLine = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt hsa = startAndAwaitOpen(userId, "val-fin", hsaLine.entitlementId(), null);
+        AttemptPart hsaP0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(hsa.getId()).getFirst();
+
+        GrantOrderResult.Line singleLine = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        Attempt single = startAndAwaitOpen(userId, "val-sub", singleLine.entitlementId(), null);
+        AttemptPart singleP0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(single.getId()).getFirst();
+
+        String finishUrl = "/api/v1/me/attempts/" + hsa.getId() + "/parts/" + hsaP0.getId() + "/finish";
+        String submitUrl = "/api/v1/me/attempts/" + single.getId() + "/submit";
+
+        StringBuilder tooMany = new StringBuilder("{\"finalAnswers\":[");
+        UUID dummyItemId = UUID.randomUUID();
+        for (int i = 0; i < 501; i++) {
+            if (i > 0) {
+                tooMany.append(',');
+            }
+            tooMany.append("{\"itemId\":\"").append(dummyItemId).append("\",\"seq\":1}");
+        }
+        tooMany.append("]}");
+
+        List<String> payloads =
+                List.of(
+                        "{\"finalAnswers\":[null]}",
+                        "{\"finalAnswers\":[{\"itemId\":null,\"seq\":1}]}",
+                        "{\"finalAnswers\":[{\"itemId\":\"" + dummyItemId + "\",\"seq\":0}]}",
+                        tooMany.toString());
+
+        for (int idx = 0; idx < payloads.size(); idx++) {
+            String body = payloads.get(idx);
+            // Default Vietnamese locale
+            MvcResult finRes =
+                    mockMvc.perform(
+                                    post(finishUrl)
+                                            .with(AttemptTestFixtures.asExamUser(userId, "learner"))
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content(body))
+                            .andReturn();
+            assertThat(finRes.getResponse().getStatus()).isEqualTo(400);
+            JsonNode finJson = json(finRes);
+            assertThat(finJson.path("code").asText()).isEqualTo("VALIDATION_FAILED");
+            assertThat(finJson.path("fieldErrors")).isNotEmpty();
+            if (idx == 0) {
+                assertThat(finJson.path("fieldErrors").get(0).path("message").asText())
+                        .isEqualTo("Mục câu trả lời cuối cùng không được để trống");
+            } else if (idx == 3) {
+                assertThat(finJson.path("fieldErrors").get(0).path("message").asText())
+                        .isEqualTo("Số lượng câu trả lời cuối cùng tối đa là 500");
+            }
+
+            // English locale on [null] + submit payloads
+            var subReq =
+                    post(submitUrl)
+                            .with(AttemptTestFixtures.asExamUser(userId, "learner"))
+                            .header("Idempotency-Key", "val-sub-" + idx)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body);
+            if (idx == 0) {
+                subReq = subReq.header("Accept-Language", "en");
+            }
+            MvcResult subRes = mockMvc.perform(subReq).andReturn();
+            assertThat(subRes.getResponse().getStatus()).isEqualTo(400);
+            JsonNode subJson = json(subRes);
+            assertThat(subJson.path("code").asText()).isEqualTo("VALIDATION_FAILED");
+            assertThat(subJson.path("fieldErrors")).isNotEmpty();
+            if (idx == 0) {
+                assertThat(subJson.path("fieldErrors").get(0).path("message").asText())
+                        .isEqualTo("Final answer item must not be null");
+            }
+        }
+
+        // Neither attempt nor part mutated after validation rejections
+        assertThat(attemptRepository.findById(hsa.getId()).orElseThrow().getState())
+                .isEqualTo(AttemptState.IN_PROGRESS);
+        assertThat(attemptPartRepository.findById(hsaP0.getId()).orElseThrow().getState())
+                .isEqualTo(PartState.OPEN);
+        assertThat(attemptRepository.findById(single.getId()).orElseThrow().getState())
+                .isEqualTo(AttemptState.IN_PROGRESS);
+        assertThat(attemptPartRepository.findById(singleP0.getId()).orElseThrow().getState())
+                .isEqualTo(PartState.OPEN);
+        assertThat(countEntitlementUsage(single.getId(), "RESERVED")).isEqualTo(1);
+        assertThat(countOutboxEvents(single.getId(), "attempt.finished")).isZero();
     }
 }
