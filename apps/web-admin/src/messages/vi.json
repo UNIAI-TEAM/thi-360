@@ -4742,7 +4742,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
         "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
-        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố."
+        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "RULES_CHANGED": "Quy tắc kiểm tra đã đổi sau lần kiểm tra này. Kiểm tra lại cả bài trước khi công bố."
       },
       "runError": "Không chạy được kiểm tra. Thử lại.",
       "live": {
@@ -5064,6 +5065,9 @@
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "SECTION_SET_COUNT_RANGE": "Môn {subject}: số chùm phải từ 1 đến 2 và mỗi chùm có 3 câu con.",
+        "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu Điền đáp án (loại Trả lời ngắn).",
+        "STORED_ID_COLLISION": "Id đã lưu \"{id}\" trùng tên giữ chỗ cho chùm trực tiếp của một tùy chọn (id tùy chọn cộng :blocks), nên không đường nào của bài thi này kiểm tra hay công bố được. Hãy đổi tên hoặc tạo lại mục mang id này, rồi kiểm tra lại.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
         "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc."
       },
@@ -5564,6 +5568,7 @@
           "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "RULES_CHANGED": "Quy tắc kiểm tra đã được cập nhật sau lần kiểm tra gần nhất. Kiểm tra lại cả bài rồi công bố.",
           "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
           "UNKNOWN": "Cấu hình cần được kiểm tra lại trước khi công bố."
         },

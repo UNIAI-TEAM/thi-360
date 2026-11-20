@@ -108,7 +108,7 @@ public class ExamCheckOrchestrator {
         result.put("timeLimitSeconds", budget.toSeconds());
         result.putNull("invalidReason");
         return completion.complete(snapshot.persistenceInput(), runId, result, evaluation.witness(),
-                evaluation.units(), scope, finished, durationMs, actor, traceId);
+                evaluation.units(), evaluation.rulesEvaluated(), scope, finished, durationMs, actor, traceId);
     }
 
     private static void restore(String key, String value) {

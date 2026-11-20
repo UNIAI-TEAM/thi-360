@@ -40,8 +40,8 @@ public class ExamCheckCompletion {
 
     @Transactional
     public Completion complete(ExamCheckResultStore.Input input, UUID runId, ObjectNode result,
-            JsonNode witness, List<ExamCheckUnitStore.Unit> unitResults, ExamCheckScope scope, Instant checkedAt,
-            long durationMs, Actor actor, String traceId) {
+            JsonNode witness, List<ExamCheckUnitStore.Unit> unitResults, boolean rulesEvaluated, ExamCheckScope scope,
+            Instant checkedAt, long durationMs, Actor actor, String traceId) {
         // The same order as startOrGet: exam first, then job, avoiding a claim/completion deadlock.
         if (runId != null) {
             List<UUID> exam = jdbc.queryForList("SELECT id FROM exam.exam WHERE id = ? FOR UPDATE",
@@ -65,7 +65,7 @@ public class ExamCheckCompletion {
         boolean saved;
         if (scope.kind() == ExamCheckScope.Kind.EXAM) {
             saved = results.save(input, completed.path("status").asText(), completed.path("issueCount").asInt(),
-                    checkedAt, durationMs, completed, witness);
+                    checkedAt, durationMs, completed, witness, rulesEvaluated);
             if (saved && !units.save(input.examId(), input.examRevision(), unitResults)) {
                 throw new IllegalStateException("Exam revision changed while saving check units");
             }

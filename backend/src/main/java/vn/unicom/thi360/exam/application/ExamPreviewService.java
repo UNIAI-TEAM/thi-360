@@ -23,6 +23,7 @@ import vn.unicom.thi360.exam.domain.solver.*;
 import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
+import vn.unicom.thi360.shared.api.NotFoundException;
 
 /** Seeded generation for one requested path, using serving question snapshots only. */
 @Service
@@ -66,16 +67,28 @@ public class ExamPreviewService {
                 ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
                 : null;
         if (sectionTarget != null) document = sectionTarget.document();
-        var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         ExamStructureDocument validationDocument = request.version() == null ? document
                 : PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), validationDocument);
-        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), validationDocument, combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, validationDocument)).unrepresentable()
-                .stream().filter(issue -> {
-                    String optionId = issue.path("optionId").asText(null);
-                    return optionId == null || selectedIds.contains(optionId);
-                }).toList();
+        List<ObjectNode> draftIssues = new ArrayList<>();
+        // ADV:CR-4:21: the ambiguity rule belongs to the draft check boundary. A draft with a stored id that equals the
+        // "{option}:blocks" holder name of any option previews no path; a frozen version previews as it was published.
+        if (request.version() == null) {
+            ExamStoredIdCollision.find(validationDocument)
+                    .ifPresent(storedId -> draftIssues.add(ExamStoredIdCollision.issue(mapper, storedId)));
+        }
+        // An option belongs to (partId, optionId): an option of another part may share the id (a generated "partId:CODE"
+        // option and an authored one), so neither the issue filter nor the masking below may match the bare id.
+        java.util.Set<ChosenOption> chosen = selectedOptions(document, request.pathId());
+        if (draftIssues.isEmpty()) {
+            new ExamCheckRules(mapper, snapshot.exam(), validationDocument, combinations,
+                    ExamCheckUnitCombinations.topicParents(catalog, validationDocument)).unrepresentable()
+                    .stream().filter(issue -> {
+                        String optionId = issue.path("optionId").asText(null);
+                        return optionId == null
+                                || chosen.contains(new ChosenOption(issue.path("partId").asText(null), optionId));
+                    }).forEach(draftIssues::add);
+        }
         if (!draftIssues.isEmpty()) {
             PathRef path = PreviewPathResolver.resolveDraft(document, request.pathId(), request.subjectCodes());
             return new PreviewResult(id, path, request.version(), request.seed(), Instant.now(clock), "FAILED", null,
@@ -86,7 +99,7 @@ public class ExamPreviewService {
         SolverInputBuilder.SolverInput input;
         try {
             ExamStructureDocument solverDocument = validationDocument;
-            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(solverDocument, request.pathId()));
+            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(solverDocument, chosen));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");
         }
@@ -402,14 +415,26 @@ public class ExamPreviewService {
                 .map(TopicAssignment::quotaId).distinct().toList();
     }
 
+    /**
+     * The (part, option) pairs the requested path takes from the draft. A path that does not exist selects nothing here:
+     * the resolver reports it with the rest of the request.
+     */
+    private static java.util.Set<ChosenOption> selectedOptions(ExamStructureDocument document, String pathId) {
+        try {
+            return new java.util.HashSet<>(PreviewPathResolver.selectedOptions(document, pathId));
+        } catch (NotFoundException ex) {
+            return java.util.Set.of();
+        }
+    }
+
     /** Keep unrelated incomplete draft options from preventing the requested path being built. */
-    private static ExamStructureDocument maskUnselectedOptions(ExamStructureDocument document, String pathId) {
-        var selected = new java.util.HashSet<>(List.of(pathId.split("\\+", -1)));
+    private static ExamStructureDocument maskUnselectedOptions(ExamStructureDocument document,
+                                                              java.util.Set<ChosenOption> selected) {
         List<ExamPart> parts = new ArrayList<>(document.parts().size());
         for (ExamPart part : document.parts()) {
             List<ExamPartOption> options = new ArrayList<>(part.options().size());
             for (ExamPartOption option : part.options()) {
-                options.add(selected.contains(option.id()) ? option
+                options.add(selected.contains(new ChosenOption(part.id(), option.id())) ? option
                         : new ExamPartOption(option.id(), OptionKind.SUBJECT, option.code(), option.name(),
                                 null, null, List.of(), List.of(), option.expertConfirmed()));
             }
