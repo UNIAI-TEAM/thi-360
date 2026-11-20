@@ -443,7 +443,7 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   const structureNav = page.getByRole("navigation", { name: "Cấu trúc" });
   const partTwoSectionButton = structureNav
     .locator(":scope > ol > li")
-    .filter({ has: page.locator(":scope > button[data-list-item]", { hasText: /Phần II/ }) })
+    .filter({ has: page.locator(":scope > button[data-list-item]", { hasText: /^Phần II\b/ }) })
     .locator("ol button[data-list-item]");
   await partTwoSectionButton.click();
   await expect(partTwoSectionButton).toHaveAttribute("aria-current", "true");
