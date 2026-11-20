@@ -7,7 +7,6 @@ import {
   ConfirmDialog,
   EmptyState,
   LiveStatus,
-  PageHeader,
   Skeleton,
   notify,
 } from "@thi360/ui";
@@ -19,6 +18,7 @@ import {
   Pencil,
   PlayCircle,
   Trash2,
+  WifiOff,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -27,6 +27,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { usePermissions } from "@/features/session/session-provider";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
+import { ApiStatusError } from "@/lib/api/query-client";
 import { pickName } from "@thi360/web-kit/i18n";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 
@@ -40,7 +41,7 @@ import {
   useResumePromotionMutation,
   useStopPromotionMutation,
 } from "../queries";
-import type { RedemptionStateFilter } from "../types";
+import type { PromotionDetail, RedemptionStateFilter } from "../types";
 import { PromotionCapWarningCard } from "./promotion-cap-warning-card";
 import { PromotionHistoryCard } from "./promotion-history-card";
 import { PromotionPricePreviewCard } from "./promotion-price-preview";
@@ -65,9 +66,13 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
   const [debouncedQ, setDebouncedQ] = useState("");
 
   const [dialog, setDialog] = useState<ActiveDetailDialog>(null);
-  const [dialogError, setDialogError] = useState<string | null>(null);
-  const [conflictAlert, setConflictAlert] = useState<string | null>(null);
+  const [dialogError, setDialogError] = useState<unknown>(null);
+  const [conflictAlert, setConflictAlert] = useState<unknown>(null);
   const [liveMessage, setLiveMessage] = useState("");
+  const [retainedDetail, setRetainedDetail] = useState<{
+    id: string;
+    data: PromotionDetail;
+  } | null>(null);
   const searchTimerRef = useRef<number | null>(null);
   const deleteReasonId = useId();
 
@@ -104,13 +109,27 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
     redemptionQ: debouncedQ,
   });
 
-  const detail = detailQuery.data;
+  if (detailQuery.data && detailQuery.data.id === promotionId) {
+    if (retainedDetail?.id !== promotionId || retainedDetail.data !== detailQuery.data) {
+      setRetainedDetail({ id: promotionId, data: detailQuery.data });
+    }
+  } else if (retainedDetail && retainedDetail.id !== promotionId) {
+    setRetainedDetail(null);
+  }
+
+  const detail =
+    detailQuery.data ??
+    (retainedDetail?.id === promotionId ? retainedDetail.data : undefined);
   useSetBreadcrumbLeaf(detail ? detail.name : t("detail.title"));
 
   const hasNullClassMetadata = Boolean(
     detail?.audienceClasses.some((cls) => !cls.name && !cls.code),
   );
-  const classesLookupQuery = useClassPickerQuery("", Boolean(detail && hasNullClassMetadata && canViewClasses));
+  const classesLookupQuery = useClassPickerQuery(
+    "",
+    Boolean(detail && hasNullClassMetadata && canViewClasses),
+    100,
+  );
 
   const classLookupMap = useMemo(() => {
     const map: Record<string, { code?: string; name?: string }> = {};
@@ -125,7 +144,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
   const deleteMutation = useDeletePromotionMutation();
   const mutating = stopMutation.isPending || resumeMutation.isPending || deleteMutation.isPending;
 
-  if (detailQuery.isLoading) {
+  if (detailQuery.isLoading && !detail) {
     return (
       <div className="flex flex-col gap-5" aria-busy="true">
         <Skeleton className="h-10 w-72" />
@@ -140,16 +159,31 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
     );
   }
 
-  if (detailQuery.isError || !detail) {
-    const code = promotionErrorCode(detailQuery.error);
-    const notFound = code === "PROMOTION_NOT_FOUND" || code === "NOT_FOUND";
+  const errCode = detailQuery.error ? promotionErrorCode(detailQuery.error) : undefined;
+  const notFound =
+    errCode === "PROMOTION_NOT_FOUND" ||
+    errCode === "NOT_FOUND" ||
+    (detailQuery.error instanceof ApiStatusError && detailQuery.error.status === 404);
+  const isInitialOffline = !detail && detailQuery.fetchStatus === "paused" && !detailQuery.isError;
+
+  if (!detail || notFound) {
     return (
       <EmptyState
-        title={notFound ? t("detail.notFoundTitle") : t("detail.errorTitle")}
+        headingLevel={1}
+        icon={isInitialOffline ? <WifiOff /> : undefined}
+        title={
+          isInitialOffline
+            ? t("list.offlineTitle")
+            : notFound
+              ? t("detail.notFoundTitle")
+              : t("detail.errorTitle")
+        }
         description={
-          notFound
-            ? t("detail.notFoundDescription")
-            : resolvePromotionErrorMessage(detailQuery.error, tErrors)
+          isInitialOffline
+            ? t("list.offlineDescription")
+            : notFound
+              ? t("detail.notFoundDescription")
+              : resolvePromotionErrorMessage(detailQuery.error, tErrors)
         }
         action={
           notFound ? (
@@ -165,6 +199,10 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
       />
     );
   }
+
+  const isRedemptionsOffline =
+    detailQuery.fetchStatus === "paused" && detailQuery.isPlaceholderData;
+  const redemptionsError = detailQuery.isError ? detailQuery.error : null;
 
   const label = detail.code ?? detail.name;
   const canToggleStatus = detail.state !== "ENDED";
@@ -190,10 +228,9 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
             setLiveMessage(msg);
           },
           onError: (err) => {
-            const msg = resolvePromotionErrorMessage(err, tErrors);
-            setDialogError(msg);
+            setDialogError(err);
             if (promotionErrorCode(err) === "VERSION_CONFLICT") {
-              setConflictAlert(msg);
+              setConflictAlert(err);
               void detailQuery.refetch();
             }
           },
@@ -213,10 +250,12 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
             setLiveMessage(msg);
           },
           onError: (err) => {
-            const msg = resolvePromotionErrorMessage(err, tErrors);
-            setDialogError(msg);
-            if (promotionErrorCode(err) === "VERSION_CONFLICT") {
-              setConflictAlert(msg);
+            setDialogError(err);
+            const code = promotionErrorCode(err);
+            if (code === "VERSION_CONFLICT" || code === "PROMOTION_ENDED") {
+              if (code === "VERSION_CONFLICT") {
+                setConflictAlert(err);
+              }
               void detailQuery.refetch();
             }
           },
@@ -233,16 +272,23 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
           router.push("/promotions");
         },
         onError: (err) => {
+          setDialogError(err);
           if (promotionErrorCode(err) === "PROMOTION_IN_USE") {
-            setDialogError(t("dialogs.delete.errorInUse"));
             void detailQuery.refetch();
-            return;
           }
-          setDialogError(resolvePromotionErrorMessage(err, tErrors));
         },
       });
     }
   };
+
+  const renderedDialogError = dialogError
+    ? promotionErrorCode(dialogError) === "PROMOTION_IN_USE"
+      ? t("dialogs.delete.errorInUse")
+      : resolvePromotionErrorMessage(dialogError, tErrors)
+    : undefined;
+  const renderedConflictAlert = conflictAlert
+    ? resolvePromotionErrorMessage(conflictAlert, tErrors)
+    : null;
 
   const dialogConfig =
     dialog === "stop"
@@ -300,61 +346,63 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
           : t("audienceLabels.ALL");
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       <LiveStatus message={liveMessage} />
 
       <div className="flex flex-col gap-3">
-        <PageHeader
-          title={detail.name}
-          description={
-            detail.kind === "VOUCHER" && detail.code
-              ? t("detail.subtitleVoucher", { code: detail.code })
-              : t("detail.subtitleAuto")
-          }
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" asChild>
-                <Link href="/promotions">
-                  <ArrowLeft />
-                  <span>{t("actions.backToList")}</span>
-                </Link>
-              </Button>
+        <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0 max-w-full">
+            <h1 data-exam-content className="text-page-title font-bold wrap-break-word text-text">
+              {detail.name}
+            </h1>
+            <p className="mt-1 text-body wrap-break-word text-text-muted">
+              {detail.kind === "VOUCHER" && detail.code
+                ? t("detail.subtitleVoucher", { code: detail.code })
+                : t("detail.subtitleAuto")}
+            </p>
+          </div>
+          <div data-slot="page-actions" className="flex max-w-full flex-wrap items-center gap-3">
+            <Button variant="secondary" asChild>
+              <Link href="/promotions">
+                <ArrowLeft />
+                <span>{t("actions.backToList")}</span>
+              </Link>
+            </Button>
 
-              {canModify && (
-                <>
-                  <Button variant="secondary" asChild>
-                    <Link href={`/promotions/${detail.id}/edit`}>
-                      <Pencil />
-                      <span>{t("actions.edit")}</span>
-                    </Link>
-                  </Button>
+            {canModify && (
+              <>
+                <Button variant="secondary" asChild>
+                  <Link href={`/promotions/${detail.id}/edit`}>
+                    <Pencil />
+                    <span>{t("actions.edit")}</span>
+                  </Link>
+                </Button>
 
-                  {canToggleStatus && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => openDialog(isStopped ? "resume" : "stop")}
-                    >
-                      {isStopped ? <PlayCircle /> : <PauseCircle />}
-                      <span>{isStopped ? t("actions.resume") : t("actions.stop")}</span>
-                    </Button>
-                  )}
-
+                {canToggleStatus && (
                   <Button
-                    variant="danger"
-                    disabled={!canDelete}
-                    aria-describedby={!canDelete ? deleteReasonId : undefined}
-                    onClick={() => {
-                      if (canDelete) openDialog("delete");
-                    }}
+                    variant="secondary"
+                    onClick={() => openDialog(isStopped ? "resume" : "stop")}
                   >
-                    <Trash2 />
-                    <span>{t("actions.delete")}</span>
+                    {isStopped ? <PlayCircle /> : <PauseCircle />}
+                    <span>{isStopped ? t("actions.resume") : t("actions.stop")}</span>
                   </Button>
-                </>
-              )}
-            </div>
-          }
-        />
+                )}
+
+                <Button
+                  variant="danger"
+                  disabled={!canDelete}
+                  aria-describedby={!canDelete ? deleteReasonId : undefined}
+                  onClick={() => {
+                    if (canDelete) openDialog("delete");
+                  }}
+                >
+                  <Trash2 />
+                  <span>{t("actions.delete")}</span>
+                </Button>
+              </>
+            )}
+          </div>
+        </header>
 
         <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted">
           <PromotionStatusChip status={detail.status} state={detail.state} />
@@ -373,14 +421,14 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
         )}
       </div>
 
-      {conflictAlert && (
+      {renderedConflictAlert && (
         <div
           role="alert"
-          className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-4 text-danger sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-4 text-danger @xl:flex-row @xl:items-center @xl:justify-between"
         >
           <div className="flex items-start gap-2.5">
             <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
-            <p className="text-body">{conflictAlert}</p>
+            <p className="text-body">{renderedConflictAlert}</p>
           </div>
           <Button
             variant="secondary"
@@ -395,7 +443,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
       )}
 
       {/* 4 Metrics strip */}
-      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid grid-cols-1 gap-4 @md:grid-cols-2 @4xl:grid-cols-4">
         <Card className="flex flex-col gap-1 p-4">
           <dt className="text-caption text-text-muted">{t("detail.metrics.usage")}</dt>
           <dd className="text-title font-semibold text-text tabular-nums">
@@ -440,17 +488,17 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
       {/* Cap warnings card */}
       <PromotionCapWarningCard warnings={detail.capWarnings} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-5">
+      <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:items-start">
+        <div className="@container flex min-w-0 flex-col gap-5">
           {/* Config info card */}
           <Card className="flex flex-col gap-4 p-5">
             <h2 className="text-title font-semibold text-text">{t("detail.info.title")}</h2>
 
-            <dl className="grid grid-cols-1 gap-4 text-body sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-4 text-body @md:grid-cols-2">
               {detail.kind === "VOUCHER" && detail.code && (
                 <div className="flex flex-col gap-1">
                   <dt className="text-caption text-text-muted">{t("detail.info.code")}</dt>
-                  <dd data-exam-content className="font-mono font-semibold text-text">
+                  <dd data-exam-content className="font-mono font-semibold wrap-anywhere text-text">
                     {detail.code}
                   </dd>
                 </div>
@@ -482,24 +530,26 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
               )}
 
               {detail.kind === "AUTO" && (
-                <div className="flex flex-col gap-1 sm:col-span-2">
+                <div className="flex flex-col gap-1 @md:col-span-2">
                   <dt className="text-caption text-text-muted">{t("detail.info.combinable")}</dt>
                   <dd className="text-caption text-text-secondary">{t("detail.info.stackingNote")}</dd>
                 </div>
               )}
 
-              <div className="flex flex-col gap-1 sm:col-span-2">
+              <div className="flex flex-col gap-1 @md:col-span-2">
                 <dt className="text-caption text-text-muted">{t("detail.info.description")}</dt>
-                <dd className="text-text">
+                <dd className="wrap-anywhere text-text">
                   {detail.description ? (
-                    <span data-exam-content>{detail.description}</span>
+                    <span data-exam-content className="wrap-anywhere">
+                      {detail.description}
+                    </span>
                   ) : (
                     <span className="text-text-muted">{t("common.noDescription")}</span>
                   )}
                 </dd>
               </div>
 
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <div className="flex flex-col gap-1.5 @md:col-span-2">
                 <dt className="text-caption text-text-muted">{t("detail.info.scope")}</dt>
                 <dd className="flex flex-col gap-2">
                   <span className="font-medium text-text">{scopeLabel}</span>
@@ -512,15 +562,25 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
                             item.code ||
                             item.id.slice(0, 8);
                           return (
-                            <Chip key={item.id} variant="tag">
-                              <span>{kindText}</span>
+                            <Chip
+                              key={item.id}
+                              variant="tag"
+                              className="h-auto max-w-full whitespace-normal py-1"
+                            >
+                              <span className="wrap-anywhere">{kindText}</span>
                             </Chip>
                           );
                         }
                         const text = item.name ?? item.code ?? item.id.slice(0, 8);
                         return (
-                          <Chip key={item.id} variant="tag">
-                            <span data-exam-content>{text}</span>
+                          <Chip
+                            key={item.id}
+                            variant="tag"
+                            className="h-auto max-w-full whitespace-normal py-1"
+                          >
+                            <span data-exam-content className="wrap-anywhere">
+                              {text}
+                            </span>
                           </Chip>
                         );
                       })}
@@ -529,7 +589,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
                 </dd>
               </div>
 
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <div className="flex flex-col gap-1.5 @md:col-span-2">
                 <dt className="text-caption text-text-muted">{t("detail.info.audience")}</dt>
                 <dd className="flex flex-col gap-2">
                   <span className="font-medium text-text">{audienceSummaryText}</span>
@@ -544,8 +604,14 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
                             ? `${code} - ${name}`
                             : (name ?? code ?? t("audienceLabels.unknownClass", { id: cls.id.slice(0, 8) }));
                         return (
-                          <Chip key={cls.id} variant="tag">
-                            <span data-exam-content>{clsLabel}</span>
+                          <Chip
+                            key={cls.id}
+                            variant="tag"
+                            className="h-auto max-w-full whitespace-normal py-1"
+                          >
+                            <span data-exam-content className="wrap-anywhere">
+                              {clsLabel}
+                            </span>
                           </Chip>
                         );
                       })}
@@ -557,8 +623,14 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
                               usr.username ??
                               t("audienceLabels.unknownUser", { id: usr.id.slice(0, 8) }));
                         return (
-                          <Chip key={usr.id} variant="tag">
-                            <span data-exam-content>{usrLabel}</span>
+                          <Chip
+                            key={usr.id}
+                            variant="tag"
+                            className="h-auto max-w-full whitespace-normal py-1"
+                          >
+                            <span data-exam-content className="wrap-anywhere">
+                              {usrLabel}
+                            </span>
                           </Chip>
                         );
                       })}
@@ -579,6 +651,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
               setRedemptionPage(1);
             }}
             searchInput={searchInput}
+            debouncedQ={debouncedQ}
             onSearchInputChange={handleSearchInputChange}
             onClearFilters={() => {
               if (searchTimerRef.current !== null) {
@@ -590,15 +663,16 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
               setDebouncedQ("");
               setRedemptionPage(1);
             }}
-            refreshing={detailQuery.isFetching && !detailQuery.isLoading}
-            error={detailQuery.error}
+            refreshing={detailQuery.isFetching && !detailQuery.isLoading && !isRedemptionsOffline}
+            error={redemptionsError}
+            isOffline={isRedemptionsOffline}
             onRetry={() => void detailQuery.refetch()}
           />
 
           <PromotionHistoryCard history={detail.history} discountType={detail.discountType} />
         </div>
 
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-4">
+        <aside className="flex flex-col gap-4 @4xl:sticky @4xl:top-4">
           <PromotionPricePreviewCard
             promotionId={detail.id}
             scopeItems={detail.scopeItems}
@@ -622,7 +696,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
           cancelLabel={t("actions.cancel")}
           tone={dialogConfig.tone}
           loading={mutating}
-          error={dialogError}
+          error={renderedDialogError}
           onConfirm={handleConfirmDialog}
         />
       )}

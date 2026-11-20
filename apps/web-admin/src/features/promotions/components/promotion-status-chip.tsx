@@ -9,6 +9,7 @@ export function resolvePromotionBadgeKey(
   status: PromotionStatus,
   state: PromotionState,
 ): "STOPPED" | "RUNNING" | "UPCOMING" | "ENDED" {
+  if (state === "ENDED") return "ENDED";
   if (status === "STOPPED") return "STOPPED";
   return state;
 }

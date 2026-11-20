@@ -13,7 +13,7 @@ import {
 import { Eye, MoreHorizontal, PauseCircle, Pencil, PlayCircle, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { promotionErrorCode, resolvePromotionErrorMessage } from "../errors";
 import {
@@ -29,10 +29,12 @@ export function PromotionRowActions({
   promotion,
   onAnnounce,
   onMutationConflict,
+  onDeleted,
 }: {
   promotion: PromotionSummary;
   onAnnounce: (message: string) => void;
   onMutationConflict?: () => void;
+  onDeleted?: () => void;
 }) {
   const t = useTranslations("promotions");
   const tErrors = useTranslations("promotions.errors");
@@ -41,7 +43,8 @@ export function PromotionRowActions({
   const resumeMutation = useResumePromotionMutation();
   const deleteMutation = useDeletePromotionMutation();
   const [dialog, setDialog] = useState<ActiveDialog>(null);
-  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [dialogError, setDialogError] = useState<unknown>(null);
+  const deleteReasonId = useId();
 
   const openDialog = (next: Exclude<ActiveDialog, null>) => {
     setDialogError(null);
@@ -66,9 +69,9 @@ export function PromotionRowActions({
             onAnnounce(msg);
           },
           onError: (err) => {
-            const msg = resolvePromotionErrorMessage(err, tErrors);
-            setDialogError(msg);
-            if (promotionErrorCode(err) === "VERSION_CONFLICT") {
+            setDialogError(err);
+            const code = promotionErrorCode(err);
+            if (code === "VERSION_CONFLICT" || code === "PROMOTION_ENDED") {
               onMutationConflict?.();
             }
           },
@@ -88,9 +91,9 @@ export function PromotionRowActions({
             onAnnounce(msg);
           },
           onError: (err) => {
-            const msg = resolvePromotionErrorMessage(err, tErrors);
-            setDialogError(msg);
-            if (promotionErrorCode(err) === "VERSION_CONFLICT") {
+            setDialogError(err);
+            const code = promotionErrorCode(err);
+            if (code === "VERSION_CONFLICT" || code === "PROMOTION_ENDED") {
               onMutationConflict?.();
             }
           },
@@ -106,20 +109,25 @@ export function PromotionRowActions({
           const msg = t("form.toast.deleted");
           notify.success(msg);
           onAnnounce(msg);
+          onDeleted?.();
         },
         onError: (err) => {
+          setDialogError(err);
           if (promotionErrorCode(err) === "PROMOTION_IN_USE") {
-            setDialogError(t("dialogs.delete.errorInUse"));
             onMutationConflict?.();
-            return;
           }
-          setDialogError(resolvePromotionErrorMessage(err, tErrors));
         },
       });
     }
   };
 
   const pending = stopMutation.isPending || resumeMutation.isPending || deleteMutation.isPending;
+
+  const renderedDialogError = dialogError
+    ? promotionErrorCode(dialogError) === "PROMOTION_IN_USE"
+      ? t("dialogs.delete.errorInUse")
+      : resolvePromotionErrorMessage(dialogError, tErrors)
+    : undefined;
 
   const dialogConfig =
     dialog === "stop"
@@ -177,6 +185,7 @@ export function PromotionRowActions({
             <DropdownMenuItem
               destructive
               disabled={!canDelete}
+              aria-describedby={!canDelete ? deleteReasonId : undefined}
               onSelect={() => {
                 if (canDelete) openDialog("delete");
               }}
@@ -184,6 +193,14 @@ export function PromotionRowActions({
               <Trash2 />
               {t("actions.delete")}
             </DropdownMenuItem>
+            {!canDelete && (
+              <p
+                id={deleteReasonId}
+                className="max-w-56 whitespace-normal px-3 pb-1.5 text-caption text-text-muted"
+              >
+                {t("actions.deleteDisabledUsed")}
+              </p>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -203,7 +220,7 @@ export function PromotionRowActions({
           cancelLabel={t("actions.cancel")}
           tone={dialogConfig.tone}
           loading={pending}
-          error={dialogError}
+          error={renderedDialogError}
           onConfirm={handleConfirm}
         />
       )}

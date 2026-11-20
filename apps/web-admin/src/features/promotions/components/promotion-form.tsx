@@ -20,7 +20,7 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useId, useMemo, useRef, useState } from "react";
-import { Controller, type FieldPath, useForm, useWatch } from "react-hook-form";
+import { type FieldErrors, Controller, type FieldPath, useForm, useWatch } from "react-hook-form";
 
 import { withIdempotencyKey } from "@/features/content/idempotency";
 
@@ -56,6 +56,46 @@ import {
   ExamKindPicker,
   ExamScopePicker,
 } from "./promotion-target-pickers";
+import { handleRadioGroupKeyDown } from "./radio-group-key";
+
+const KIND_OPTIONS = ["AUTO", "VOUCHER"] as const;
+const SCOPE_OPTIONS = ["ALL", "EXAM_KIND", "EXAM"] as const;
+const AUDIENCE_OPTIONS = ["ALL", "NEW_ACCOUNT", "SELECTED"] as const;
+
+const FIELD_FOCUS_ORDER: readonly (keyof PromotionFormValues)[] = [
+  "name",
+  "code",
+  "description",
+  "startsAt",
+  "endsAt",
+  "discountValue",
+  "maxDiscountVnd",
+  "totalLimit",
+  "perUserLimit",
+  "examKindIds",
+  "examIds",
+  "audienceClassIds",
+  "audienceUserIds",
+];
+
+function mergeDescribedBy(...ids: (string | undefined | false)[]): string | undefined {
+  const joined = ids.filter(Boolean).join(" ");
+  return joined || undefined;
+}
+
+function focusSectionControl(containerId: string) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.scrollIntoView?.();
+  const target = container.querySelector<HTMLElement>(
+    'input:not(:disabled), button[role="checkbox"]:not(:disabled), [role="checkbox"]:not([aria-disabled="true"]), [tabindex="0"]:not(:disabled)',
+  );
+  if (target) {
+    target.focus();
+  } else {
+    container.focus();
+  }
+}
 
 const SERVER_FIELD_SET = new Set<FieldPath<PromotionFormValues>>([
   "kind",
@@ -82,40 +122,36 @@ const SERVER_FIELD_SET = new Set<FieldPath<PromotionFormValues>>([
 function mapBackendFieldError(
   field: string,
   code: string | undefined,
-  tFieldErrors: (key: string) => string,
-  tErrors: (key: string) => string,
   discountType: PromotionDiscountType,
 ): string {
   switch (field) {
     case "name":
-      return code === "REQUIRED" ? tFieldErrors("nameRequired") : tFieldErrors("nameTooLong");
+      return code === "REQUIRED" ? "field:nameRequired" : "field:nameTooLong";
     case "description":
-      return tFieldErrors("descriptionTooLong");
+      return "field:descriptionTooLong";
     case "code":
-      return code === "REQUIRED" ? tFieldErrors("codeRequired") : tFieldErrors("codeFormat");
+      return code === "REQUIRED" ? "field:codeRequired" : "field:codeFormat";
     case "discountValue":
-      return discountType === "PERCENT"
-        ? tFieldErrors("discountPercentRange")
-        : tFieldErrors("discountAmountMin");
+      return discountType === "PERCENT" ? "field:discountPercentRange" : "field:discountAmountMin";
     case "maxDiscountVnd":
-      return tFieldErrors("maxDiscountMin");
+      return "field:maxDiscountMin";
     case "startsAt":
-      return tFieldErrors("startsAtRequired");
+      return "field:startsAtRequired";
     case "endsAt":
-      return code === "FUTURE" ? tFieldErrors("endsAtFuture") : tFieldErrors("endsAfterStarts");
+      return code === "FUTURE" ? "field:endsAtFuture" : "field:endsAfterStarts";
     case "totalLimit":
-      return tFieldErrors("totalLimitMin");
+      return code === "MAX" ? "field:totalLimitMax" : "field:totalLimitMin";
     case "perUserLimit":
-      return tFieldErrors("perUserLimitMin");
+      return code === "MAX" ? "field:perUserLimitMax" : "field:perUserLimitMin";
     case "examKindIds":
-      return tFieldErrors("scopeKindsRequired");
+      return "field:scopeKindsRequired";
     case "examIds":
-      return tFieldErrors("scopeExamsRequired");
+      return "field:scopeExamsRequired";
     case "audienceClassIds":
     case "audienceUserIds":
-      return tFieldErrors("audienceTargetsRequired");
+      return "field:audienceTargetsRequired";
     default:
-      return tErrors("VALIDATION_FAILED");
+      return "error:VALIDATION_FAILED";
   }
 }
 
@@ -143,11 +179,11 @@ export function PromotionForm({
 
   const schema = useMemo(
     () =>
-      buildPromotionFormSchema((k) => tFieldErrors(k), {
+      buildPromotionFormSchema((k) => k, {
         mode,
         usedCount,
       }),
-    [mode, tFieldErrors, usedCount],
+    [mode, usedCount],
   );
 
   const defaultValues = useMemo(
@@ -173,10 +209,18 @@ export function PromotionForm({
 
   const formInstanceScope = useId();
   const formId = useId();
+  const inUseBannerId = useId();
+  const bundleNoticeId = useId();
+  const codeFieldId = useId();
+  const codeHintId = `${codeFieldId}-hint`;
+  const codeErrorId = `${codeFieldId}-error`;
+  const kindLabelId = useId();
+  const scopePickerId = useId();
+  const audiencePickerId = useId();
 
   const createMutation = useCreatePromotionMutation();
   const updateMutation = useUpdatePromotionMutation(initialDetail?.id ?? "");
-  const [formBannerError, setFormBannerError] = useState<string | null>(null);
+  const [formBannerError, setFormBannerError] = useState<unknown>(null);
   const [suggestingCode, setSuggestingCode] = useState(false);
   const submittingRef = useRef(false);
 
@@ -191,6 +235,19 @@ export function PromotionForm({
   const scopeSectionId = useId();
   const audienceSectionId = useId();
 
+  const renderFieldError = (rawKey: string | undefined): string | undefined => {
+    if (!rawKey) return undefined;
+    if (rawKey.startsWith("error:")) {
+      const errKey = rawKey.slice("error:".length);
+      if (errKey === "PROMOTION_TOTAL_LIMIT_BELOW_USED") {
+        return tErrors("PROMOTION_TOTAL_LIMIT_BELOW_USED", { used: usedCount });
+      }
+      return tErrors(errKey);
+    }
+    const fieldKey = rawKey.startsWith("field:") ? rawKey.slice("field:".length) : rawKey;
+    return tFieldErrors(fieldKey);
+  };
+
   const handleSuggestCode = async () => {
     if (isUsed || values.kind !== "VOUCHER") return;
     setSuggestingCode(true);
@@ -203,7 +260,7 @@ export function PromotionForm({
         shouldTouch: true,
       });
     } catch {
-      setError("code", { type: "manual", message: tFieldErrors("suggestCodeFailed") });
+      setError("code", { type: "manual", message: "field:suggestCodeFailed" });
     } finally {
       setSuggestingCode(false);
     }
@@ -238,7 +295,7 @@ export function PromotionForm({
         if (onConflict) {
           await onConflict("version");
         } else {
-          setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+          setFormBannerError(err);
         }
         return;
       }
@@ -247,38 +304,37 @@ export function PromotionForm({
         if (onConflict) {
           await onConflict("in_use");
         } else {
-          setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+          setFormBannerError(err);
         }
         return;
       }
 
       if (errCode === "VOUCHER_CODE_TAKEN") {
-        const msg = tErrors("VOUCHER_CODE_TAKEN");
-        setError("code", { type: "server", message: msg });
+        setError("code", { type: "server", message: "error:VOUCHER_CODE_TAKEN" });
         setFocus("code");
         return;
       }
 
       if (errCode === "PROMOTION_TOTAL_LIMIT_BELOW_USED") {
-        const msg = resolvePromotionErrorMessage(err, tErrors, { usedCount });
-        setError("totalLimit", { type: "server", message: msg });
+        setError("totalLimit", { type: "server", message: "error:PROMOTION_TOTAL_LIMIT_BELOW_USED" });
         setFocus("totalLimit");
         return;
       }
 
       if (errCode === "PROMOTION_ENDS_AT_PAST") {
-        const msg = tErrors("PROMOTION_ENDS_AT_PAST");
-        setError("endsAt", { type: "server", message: msg });
+        setError("endsAt", { type: "server", message: "error:PROMOTION_ENDS_AT_PAST" });
         setFocus("endsAt");
         return;
       }
 
       if (errCode === "PROMOTION_SCOPE_INVALID") {
-        setFormBannerError(tErrors("PROMOTION_SCOPE_INVALID"));
+        setFormBannerError(err);
         if (submittedValues.scope === "EXAM_KIND") {
-          setError("examKindIds", { type: "server", message: tErrors("PROMOTION_SCOPE_INVALID") });
+          setError("examKindIds", { type: "server", message: "error:PROMOTION_SCOPE_INVALID" });
+          focusSectionControl(scopePickerId);
         } else if (submittedValues.scope === "EXAM") {
-          setError("examIds", { type: "server", message: tErrors("PROMOTION_SCOPE_INVALID") });
+          setError("examIds", { type: "server", message: "error:PROMOTION_SCOPE_INVALID" });
+          focusSectionControl(scopePickerId);
         }
         return;
       }
@@ -289,31 +345,44 @@ export function PromotionForm({
         for (const fe of srvFieldErrors) {
           if (SERVER_FIELD_SET.has(fe.field as FieldPath<PromotionFormValues>)) {
             const path = fe.field as FieldPath<PromotionFormValues>;
-            const msg = mapBackendFieldError(
+            const msgKey = mapBackendFieldError(
               fe.field,
               fe.code,
-              (k) => tFieldErrors(k),
-              (k) => tErrors(k),
               submittedValues.discountType,
             );
-            setError(path, { type: "server", message: msg });
+            setError(path, { type: "server", message: msgKey });
             if (!focused) {
               focused = true;
-              try {
-                setFocus(path);
-              } catch {
-                // ignore focus on custom pickers
+              if (path === "examKindIds" || path === "examIds") {
+                focusSectionControl(scopePickerId);
+              } else if (path === "audienceClassIds" || path === "audienceUserIds") {
+                focusSectionControl(audiencePickerId);
+              } else {
+                try {
+                  setFocus(path);
+                } catch {
+                  // ignore focus on custom pickers
+                }
               }
             }
           }
         }
-        setFormBannerError(tErrors("VALIDATION_FAILED"));
+        setFormBannerError(err);
         return;
       }
 
-      setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+      setFormBannerError(err);
     } finally {
       submittingRef.current = false;
+    }
+  };
+
+  const onInvalid = (invalidErrors: FieldErrors<PromotionFormValues>) => {
+    const firstPath = FIELD_FOCUS_ORDER.find((field) => Boolean(invalidErrors[field]));
+    if (firstPath === "examKindIds" || firstPath === "examIds") {
+      focusSectionControl(scopePickerId);
+    } else if (firstPath === "audienceClassIds" || firstPath === "audienceUserIds") {
+      focusSectionControl(audiencePickerId);
     }
   };
 
@@ -322,7 +391,7 @@ export function PromotionForm({
       event.preventDefault();
       return;
     }
-    void handleSubmit(onSubmit)(event);
+    void handleSubmit(onSubmit, onInvalid)(event);
   };
 
   const todoItems = useMemo(() => {
@@ -331,6 +400,7 @@ export function PromotionForm({
       label: string;
       anchor: string;
       focusField?: FieldPath<PromotionFormValues>;
+      focusContainerId?: string;
     }[] = [];
     if (!values.name.trim()) {
       items.push({
@@ -395,6 +465,7 @@ export function PromotionForm({
         key: "scopeTargets",
         label: t("form.aside.todoItems.scopeTargets"),
         anchor: `#${scopeSectionId}`,
+        focusContainerId: scopePickerId,
       });
     }
     if (values.scope === "EXAM" && values.examIds.length === 0) {
@@ -402,6 +473,7 @@ export function PromotionForm({
         key: "scopeTargets",
         label: t("form.aside.todoItems.scopeTargets"),
         anchor: `#${scopeSectionId}`,
+        focusContainerId: scopePickerId,
       });
     }
     if (
@@ -414,15 +486,18 @@ export function PromotionForm({
         key: "audienceTargets",
         label: t("form.aside.todoItems.audienceTargets"),
         anchor: `#${audienceSectionId}`,
+        focusContainerId: audiencePickerId,
       });
     }
     return items;
   }, [
+    audiencePickerId,
     audienceSectionId,
     isUsed,
     limitsSectionId,
     nameSectionId,
     scheduleSectionId,
+    scopePickerId,
     scopeSectionId,
     t,
     values,
@@ -444,12 +519,18 @@ export function PromotionForm({
   const startIsoPreview = vietnamDatetimeLocalToIso(values.startsAt);
   const endIsoPreview = vietnamDatetimeLocalToIso(values.endsAt);
 
+  const renderedFormBannerError = formBannerError
+    ? resolvePromotionErrorMessage(formBannerError, tErrors, { usedCount })
+    : null;
+  const codeErrorText = renderFieldError(errors.code?.message);
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       {conflictBanner}
 
       {isUsed && (
         <div
+          id={inUseBannerId}
           role="status"
           className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning-bg p-4 text-warning"
         >
@@ -461,7 +542,7 @@ export function PromotionForm({
         </div>
       )}
 
-      {formBannerError && (
+      {renderedFormBannerError && (
         <div
           role="alert"
           className="flex items-start gap-3 rounded-lg border border-danger/40 bg-danger-bg p-4 text-danger"
@@ -469,17 +550,17 @@ export function PromotionForm({
           <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0" />
           <div className="flex flex-col gap-0.5">
             <p className="text-body font-semibold">{t("form.banner.formErrorTitle")}</p>
-            <p className="text-caption">{formBannerError}</p>
+            <p className="text-caption">{renderedFormBannerError}</p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:items-start">
         <form
           id={formId}
           onSubmit={handleFormSubmit}
           noValidate
-          className="flex min-w-0 flex-col gap-5"
+          className="@container flex min-w-0 flex-col gap-5"
         >
           {/* 1. General info */}
           <Card id={nameSectionId} className="flex flex-col gap-4 p-5">
@@ -487,15 +568,18 @@ export function PromotionForm({
 
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <Label>{t("form.fields.kind")}</Label>
+                <span id={kindLabelId} className="text-field-label font-medium text-text-secondary">
+                  {t("form.fields.kind")}
+                </span>
                 {(mode === "edit" || isUsed) && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
               </div>
               <div
-                className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                className="grid grid-cols-1 gap-3 @md:grid-cols-2"
                 role="radiogroup"
-                aria-label={t("form.fields.kind")}
+                aria-labelledby={kindLabelId}
+                aria-describedby={isUsed ? inUseBannerId : undefined}
               >
-                {(["AUTO", "VOUCHER"] as const).map((option) => {
+                {KIND_OPTIONS.map((option, index) => {
                   const selected = values.kind === option;
                   const kindDisabled = mode === "edit";
                   return (
@@ -504,10 +588,19 @@ export function PromotionForm({
                       type="button"
                       role="radio"
                       aria-checked={selected}
+                      tabIndex={selected ? 0 : -1}
                       disabled={kindDisabled}
+                      aria-describedby={isUsed ? inUseBannerId : undefined}
                       onClick={() => {
                         if (!kindDisabled) {
                           setValue("kind", option, { shouldDirty: true, shouldValidate: true });
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (!kindDisabled) {
+                          handleRadioGroupKeyDown(event, KIND_OPTIONS, index, (next) =>
+                            setValue("kind", next, { shouldDirty: true, shouldValidate: true }),
+                          );
                         }
                       }}
                       className={cn(
@@ -529,7 +622,7 @@ export function PromotionForm({
               </div>
             </div>
 
-            <FormField label={t("form.fields.name")} required error={errors.name?.message}>
+            <FormField label={t("form.fields.name")} required error={renderFieldError(errors.name?.message)}>
               {(controlProps) => (
                 <Input
                   {...controlProps}
@@ -542,57 +635,69 @@ export function PromotionForm({
 
             {values.kind === "VOUCHER" && (
               <div className="flex flex-col gap-1.5">
-                {isUsed && (
-                  <div>
-                    <Chip variant="tag">{t("form.lockedChip")}</Chip>
-                  </div>
-                )}
-                <FormField
-                  label={t("form.fields.code")}
-                  required
-                  hint={t("form.fields.codeHint")}
-                  error={errors.code?.message}
-                >
-                  {(controlProps) => (
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Controller
-                        control={control}
-                        name="code"
-                        render={({ field }) => (
-                          <Input
-                            {...controlProps}
-                            disabled={isUsed}
-                            maxLength={PROMOTION_CODE_MAX_LENGTH}
-                            autoComplete="off"
-                            autoCapitalize="characters"
-                            spellCheck={false}
-                            placeholder={t("form.fields.codePlaceholder")}
-                            className="font-mono uppercase"
-                            name={field.name}
-                            ref={field.ref}
-                            value={field.value}
-                            onBlur={field.onBlur}
-                            onChange={(event) => field.onChange(event.target.value.toUpperCase())}
-                          />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Label htmlFor={codeFieldId} required>
+                    {t("form.fields.code")}
+                  </Label>
+                  {isUsed && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
+                </div>
+                <div className="flex flex-col gap-2 @sm:flex-row">
+                  <Controller
+                    control={control}
+                    name="code"
+                    render={({ field }) => (
+                      <Input
+                        id={codeFieldId}
+                        aria-required="true"
+                        aria-invalid={codeErrorText ? true : undefined}
+                        aria-describedby={mergeDescribedBy(
+                          codeErrorText && codeErrorId,
+                          codeHintId,
+                          isUsed && inUseBannerId,
                         )}
+                        disabled={isUsed}
+                        maxLength={PROMOTION_CODE_MAX_LENGTH}
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        placeholder={t("form.fields.codePlaceholder")}
+                        className="font-mono uppercase"
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(event) => field.onChange(event.target.value.toUpperCase())}
                       />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={isUsed || suggestingCode}
-                        onClick={() => void handleSuggestCode()}
-                        className="shrink-0"
-                      >
-                        <Sparkles />
-                        <span>{suggestingCode ? t("actions.suggestingCode") : t("actions.suggestCode")}</span>
-                      </Button>
-                    </div>
-                  )}
-                </FormField>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={suggestingCode}
+                    disabled={isUsed}
+                    aria-describedby={isUsed ? inUseBannerId : undefined}
+                    onClick={() => void handleSuggestCode()}
+                    className="shrink-0"
+                  >
+                    <Sparkles />
+                    <span>{t("actions.suggestCode")}</span>
+                  </Button>
+                </div>
+                <p id={codeHintId} className="text-caption text-text-muted">
+                  {t("form.fields.codeHint")}
+                </p>
+                {codeErrorText && (
+                  <p id={codeErrorId} role="alert" className="text-caption text-danger">
+                    {codeErrorText}
+                  </p>
+                )}
               </div>
             )}
 
-            <FormField label={t("form.fields.description")} error={errors.description?.message}>
+            <FormField
+              label={t("form.fields.description")}
+              error={renderFieldError(errors.description?.message)}
+            >
               {(controlProps) => (
                 <Textarea
                   {...controlProps}
@@ -631,15 +736,19 @@ export function PromotionForm({
               <h2 className="text-title font-semibold text-text">{t("form.sections.schedule")}</h2>
               {isUsed && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
               <FormField
                 label={t("form.fields.startsAt")}
                 required={!isUsed}
-                error={errors.startsAt?.message}
+                error={renderFieldError(errors.startsAt?.message)}
               >
                 {(controlProps) => (
                   <Input
                     {...controlProps}
+                    aria-describedby={mergeDescribedBy(
+                      controlProps["aria-describedby"],
+                      isUsed && inUseBannerId,
+                    )}
                     type="datetime-local"
                     disabled={isUsed}
                     {...register("startsAt")}
@@ -647,7 +756,11 @@ export function PromotionForm({
                 )}
               </FormField>
 
-              <FormField label={t("form.fields.endsAt")} required error={errors.endsAt?.message}>
+              <FormField
+                label={t("form.fields.endsAt")}
+                required
+                error={renderFieldError(errors.endsAt?.message)}
+              >
                 {(controlProps) => (
                   <Input {...controlProps} type="datetime-local" {...register("endsAt")} />
                 )}
@@ -662,7 +775,7 @@ export function PromotionForm({
               {isUsed && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
               <FormField label={t("form.fields.discountType")}>
                 {(controlProps) => (
                   <Controller
@@ -671,6 +784,10 @@ export function PromotionForm({
                     render={({ field }) => (
                       <Select
                         {...controlProps}
+                        aria-describedby={mergeDescribedBy(
+                          controlProps["aria-describedby"],
+                          isUsed && inUseBannerId,
+                        )}
                         disabled={isUsed}
                         value={field.value}
                         onValueChange={(next) => {
@@ -705,7 +822,7 @@ export function PromotionForm({
                       })
                     : undefined
                 }
-                error={errors.discountValue?.message}
+                error={renderFieldError(errors.discountValue?.message)}
               >
                 {(controlProps) => (
                   <Controller
@@ -714,6 +831,10 @@ export function PromotionForm({
                     render={({ field }) => (
                       <Input
                         {...controlProps}
+                        aria-describedby={mergeDescribedBy(
+                          controlProps["aria-describedby"],
+                          isUsed && inUseBannerId,
+                        )}
                         type="text"
                         inputMode="numeric"
                         disabled={isUsed}
@@ -737,7 +858,7 @@ export function PromotionForm({
                     ? formatVnd(parseDigits(values.maxDiscountVnd), locale)
                     : t("common.unlimited"),
                 })}
-                error={errors.maxDiscountVnd?.message}
+                error={renderFieldError(errors.maxDiscountVnd?.message)}
               >
                 {(controlProps) => (
                   <Controller
@@ -746,6 +867,10 @@ export function PromotionForm({
                     render={({ field }) => (
                       <Input
                         {...controlProps}
+                        aria-describedby={mergeDescribedBy(
+                          controlProps["aria-describedby"],
+                          isUsed && inUseBannerId,
+                        )}
                         type="text"
                         inputMode="numeric"
                         disabled={isUsed}
@@ -762,7 +887,7 @@ export function PromotionForm({
               </FormField>
             )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
               <FormField
                 label={t("form.fields.totalLimit")}
                 hint={
@@ -770,7 +895,7 @@ export function PromotionForm({
                     ? t("form.fields.totalLimitHint", { used: usedCount })
                     : t("form.fields.totalLimitHintUnlimited")
                 }
-                error={errors.totalLimit?.message}
+                error={renderFieldError(errors.totalLimit?.message)}
               >
                 {(controlProps) => (
                   <Controller
@@ -798,7 +923,7 @@ export function PromotionForm({
                 <FormField
                   label={t("form.fields.perUserLimit")}
                   hint={t("form.fields.perUserLimitHint")}
-                  error={errors.perUserLimit?.message}
+                  error={renderFieldError(errors.perUserLimit?.message)}
                 >
                   {(controlProps) => (
                     <Controller
@@ -807,6 +932,10 @@ export function PromotionForm({
                       render={({ field }) => (
                         <Input
                           {...controlProps}
+                          aria-describedby={mergeDescribedBy(
+                            controlProps["aria-describedby"],
+                            isUsed && inUseBannerId,
+                          )}
                           type="text"
                           inputMode="numeric"
                           maxLength={10}
@@ -836,6 +965,7 @@ export function PromotionForm({
                         id="promo-combinable"
                         checked={field.value}
                         disabled={isUsed}
+                        aria-describedby={isUsed ? inUseBannerId : undefined}
                         onCheckedChange={(checked) => field.onChange(checked === true)}
                       />
                     )}
@@ -855,14 +985,17 @@ export function PromotionForm({
           </Card>
 
           {/* 4. Scope */}
-          <Card id={scopeSectionId} className="flex flex-col gap-4 p-5">
+          <Card id={scopeSectionId} tabIndex={-1} className="flex flex-col gap-4 p-5">
             <div className="flex items-center gap-2">
               <h2 className="text-title font-semibold text-text">{t("form.sections.scope")}</h2>
               {scopeDisabled && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
             </div>
 
             {isBundleScope && (
-              <div className="flex flex-col gap-2 rounded-md border border-border bg-subtle p-3">
+              <div
+                id={bundleNoticeId}
+                className="flex flex-col gap-2 rounded-md border border-border bg-subtle p-3"
+              >
                 <p className="flex items-center gap-1.5 text-caption font-medium text-text-secondary">
                   <Lock aria-hidden className="size-3.5 shrink-0 text-text-muted" />
                   <span>{t("form.fields.scopeBundleNotice")}</span>
@@ -870,8 +1003,14 @@ export function PromotionForm({
                 {initialDetail?.scopeItems && initialDetail.scopeItems.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {initialDetail.scopeItems.map((item) => (
-                      <Chip key={item.id} variant="tag">
-                        <span data-exam-content>{item.name ?? item.code ?? item.id.slice(0, 8)}</span>
+                      <Chip
+                        key={item.id}
+                        variant="tag"
+                        className="h-auto max-w-full whitespace-normal py-1"
+                      >
+                        <span data-exam-content className="wrap-anywhere">
+                          {item.name ?? item.code ?? item.id.slice(0, 8)}
+                        </span>
                       </Chip>
                     ))}
                   </div>
@@ -880,11 +1019,15 @@ export function PromotionForm({
             )}
 
             <div
-              className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+              className="grid grid-cols-1 gap-3 @lg:grid-cols-3"
               role="radiogroup"
               aria-label={t("form.fields.scope")}
+              aria-describedby={mergeDescribedBy(
+                isUsed && inUseBannerId,
+                isBundleScope && bundleNoticeId,
+              )}
             >
-              {(["ALL", "EXAM_KIND", "EXAM"] as const).map((option) => {
+              {SCOPE_OPTIONS.map((option, index) => {
                 const selected = values.scope === option;
                 return (
                   <button
@@ -892,11 +1035,24 @@ export function PromotionForm({
                     type="button"
                     role="radio"
                     aria-checked={selected}
+                    tabIndex={selected ? 0 : -1}
                     disabled={scopeDisabled}
+                    aria-describedby={mergeDescribedBy(
+                      isUsed && inUseBannerId,
+                      isBundleScope && bundleNoticeId,
+                    )}
                     onClick={() => {
                       if (!scopeDisabled) {
                         setValue("scope", option, { shouldDirty: true, shouldValidate: true });
                         clearErrors(["examKindIds", "examIds"]);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (!scopeDisabled) {
+                        handleRadioGroupKeyDown(event, SCOPE_OPTIONS, index, (next) => {
+                          setValue("scope", next, { shouldDirty: true, shouldValidate: true });
+                          clearErrors(["examKindIds", "examIds"]);
+                        });
                       }
                     }}
                     className={cn(
@@ -918,52 +1074,59 @@ export function PromotionForm({
             </div>
 
             {values.scope === "EXAM_KIND" && (
-              <Controller
-                control={control}
-                name="examKindIds"
-                render={({ field }) => (
-                  <ExamKindPicker
-                    selectedIds={field.value}
-                    onChange={field.onChange}
-                    disabled={isUsed}
-                    initialScopeItems={initialDetail?.scopeItems}
-                    error={errors.examKindIds?.message}
-                  />
-                )}
-              />
+              <div id={scopePickerId} tabIndex={-1} className="outline-hidden">
+                <Controller
+                  control={control}
+                  name="examKindIds"
+                  render={({ field }) => (
+                    <ExamKindPicker
+                      selectedIds={field.value}
+                      onChange={field.onChange}
+                      disabled={isUsed}
+                      initialScopeItems={initialDetail?.scopeItems}
+                      error={renderFieldError(errors.examKindIds?.message)}
+                      inUseDescriptionId={isUsed ? inUseBannerId : undefined}
+                    />
+                  )}
+                />
+              </div>
             )}
 
             {values.scope === "EXAM" && (
-              <Controller
-                control={control}
-                name="examIds"
-                render={({ field }) => (
-                  <ExamScopePicker
-                    selectedIds={field.value}
-                    onChange={field.onChange}
-                    disabled={isUsed}
-                    initialScopeItems={initialDetail?.scopeItems}
-                    error={errors.examIds?.message}
-                  />
-                )}
-              />
+              <div id={scopePickerId} tabIndex={-1} className="outline-hidden">
+                <Controller
+                  control={control}
+                  name="examIds"
+                  render={({ field }) => (
+                    <ExamScopePicker
+                      selectedIds={field.value}
+                      onChange={field.onChange}
+                      disabled={isUsed}
+                      initialScopeItems={initialDetail?.scopeItems}
+                      error={renderFieldError(errors.examIds?.message)}
+                      inUseDescriptionId={isUsed ? inUseBannerId : undefined}
+                    />
+                  )}
+                />
+              </div>
             )}
           </Card>
 
           {/* 5. Audience (VOUCHER only) */}
           {values.kind === "VOUCHER" && (
-            <Card id={audienceSectionId} className="flex flex-col gap-4 p-5">
+            <Card id={audienceSectionId} tabIndex={-1} className="flex flex-col gap-4 p-5">
               <div className="flex items-center gap-2">
                 <h2 className="text-title font-semibold text-text">{t("form.sections.audience")}</h2>
                 {isUsed && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
               </div>
 
               <div
-                className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+                className="grid grid-cols-1 gap-3 @lg:grid-cols-3"
                 role="radiogroup"
                 aria-label={t("form.fields.audience")}
+                aria-describedby={isUsed ? inUseBannerId : undefined}
               >
-                {(["ALL", "NEW_ACCOUNT", "SELECTED"] as const).map((option) => {
+                {AUDIENCE_OPTIONS.map((option, index) => {
                   const selected = values.audience === option;
                   return (
                     <button
@@ -971,11 +1134,21 @@ export function PromotionForm({
                       type="button"
                       role="radio"
                       aria-checked={selected}
+                      tabIndex={selected ? 0 : -1}
                       disabled={isUsed}
+                      aria-describedby={isUsed ? inUseBannerId : undefined}
                       onClick={() => {
                         if (!isUsed) {
                           setValue("audience", option, { shouldDirty: true, shouldValidate: true });
                           clearErrors(["audienceClassIds", "audienceUserIds"]);
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (!isUsed) {
+                          handleRadioGroupKeyDown(event, AUDIENCE_OPTIONS, index, (next) => {
+                            setValue("audience", next, { shouldDirty: true, shouldValidate: true });
+                            clearErrors(["audienceClassIds", "audienceUserIds"]);
+                          });
                         }
                       }}
                       className={cn(
@@ -997,31 +1170,36 @@ export function PromotionForm({
               </div>
 
               {values.audience === "SELECTED" && (
-                <AudienceTargetsPicker
-                  selectedClassIds={values.audienceClassIds}
-                  selectedUserIds={values.audienceUserIds}
-                  onChangeClasses={(next) => {
-                    setValue("audienceClassIds", next, { shouldDirty: true, shouldValidate: true });
-                    clearErrors(["audienceClassIds", "audienceUserIds"]);
-                  }}
-                  onChangeUsers={(next) => {
-                    setValue("audienceUserIds", next, { shouldDirty: true, shouldValidate: true });
-                    clearErrors(["audienceClassIds", "audienceUserIds"]);
-                  }}
-                  disabled={isUsed}
-                  initialClasses={initialDetail?.audienceClasses}
-                  initialUsers={initialDetail?.audienceUsers}
-                  error={errors.audienceClassIds?.message ?? errors.audienceUserIds?.message}
-                />
+                <div id={audiencePickerId} tabIndex={-1} className="outline-hidden">
+                  <AudienceTargetsPicker
+                    selectedClassIds={values.audienceClassIds}
+                    selectedUserIds={values.audienceUserIds}
+                    onChangeClasses={(next) => {
+                      setValue("audienceClassIds", next, { shouldDirty: true, shouldValidate: true });
+                      clearErrors(["audienceClassIds", "audienceUserIds"]);
+                    }}
+                    onChangeUsers={(next) => {
+                      setValue("audienceUserIds", next, { shouldDirty: true, shouldValidate: true });
+                      clearErrors(["audienceClassIds", "audienceUserIds"]);
+                    }}
+                    disabled={isUsed}
+                    initialClasses={initialDetail?.audienceClasses}
+                    initialUsers={initialDetail?.audienceUsers}
+                    error={renderFieldError(
+                      errors.audienceClassIds?.message ?? errors.audienceUserIds?.message,
+                    )}
+                    inUseDescriptionId={isUsed ? inUseBannerId : undefined}
+                  />
+                </div>
               )}
             </Card>
           )}
         </form>
 
         {/* Sticky Sidebar Aside */}
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-4">
+        <aside className="flex flex-col gap-4 @4xl:sticky @4xl:top-4">
           <Card className="flex flex-col gap-3 p-4">
-            <h3 className="text-body font-semibold text-text">{t("form.aside.summaryTitle")}</h3>
+            <h2 className="text-body font-semibold text-text">{t("form.aside.summaryTitle")}</h2>
             <dl className="flex flex-col gap-2 text-caption">
               <div className="flex justify-between gap-2">
                 <dt className="text-text-muted">{t("form.aside.summaryKind")}</dt>
@@ -1057,15 +1235,10 @@ export function PromotionForm({
               <Button
                 type="submit"
                 form={formId}
-                disabled={pending}
-                aria-busy={pending || undefined}
+                loading={pending}
                 className="w-full"
               >
-                {pending
-                  ? t("actions.saving")
-                  : mode === "create"
-                    ? t("actions.create")
-                    : t("actions.save")}
+                {mode === "create" ? t("actions.create") : t("actions.save")}
               </Button>
               <Button type="button" variant="secondary" asChild className="w-full">
                 <Link href={initialDetail ? `/promotions/${initialDetail.id}` : "/promotions"}>
@@ -1076,11 +1249,11 @@ export function PromotionForm({
           </Card>
 
           <Card className="flex flex-col gap-2.5 p-4">
-            <h3 className="text-body font-semibold text-text">
+            <h2 className="text-body font-semibold text-text">
               {todoItems.length === 0
                 ? t("form.aside.todoTitle")
                 : t("form.aside.todoRemaining", { count: todoItems.length })}
-            </h3>
+            </h2>
             {todoItems.length === 0 ? (
               <p className="flex items-center gap-1.5 text-caption text-success">
                 <CheckCircle2 aria-hidden className="size-4 shrink-0" />
@@ -1100,9 +1273,15 @@ export function PromotionForm({
                           } catch {
                             document.querySelector(item.anchor)?.scrollIntoView();
                           }
+                        } else if (item.focusContainerId) {
+                          event.preventDefault();
+                          focusSectionControl(item.focusContainerId);
                         }
                       }}
-                      className={cn("text-primary-text hover:underline", focusRing)}
+                      className={cn(
+                        "relative inline-block text-primary-text hover:underline pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
+                        focusRing,
+                      )}
                     >
                       • {item.label}
                     </a>

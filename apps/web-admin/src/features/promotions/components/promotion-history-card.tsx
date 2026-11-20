@@ -122,6 +122,19 @@ function formatHistoryValue(
   return String(value);
 }
 
+function buildEntriesWithTypes(
+  sortedHistory: readonly PromotionChangeLogView[],
+  discountType?: PromotionDiscountType,
+) {
+  let activeType: PromotionDiscountType | undefined = discountType;
+  return sortedHistory.map((entry) => {
+    const oldDiscountType = resolveDiscountTypeForChange(entry.changes, "oldValue", activeType);
+    const newDiscountType = resolveDiscountTypeForChange(entry.changes, "newValue", activeType);
+    activeType = oldDiscountType;
+    return { entry, oldDiscountType, newDiscountType };
+  });
+}
+
 export function PromotionHistoryCard({
   history,
   discountType,
@@ -138,6 +151,8 @@ export function PromotionHistoryCard({
     return Number.isNaN(diff) ? 0 : diff;
   });
 
+  const entriesWithTypes = buildEntriesWithTypes(sortedHistory, discountType);
+
   return (
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex flex-col gap-0.5">
@@ -145,19 +160,18 @@ export function PromotionHistoryCard({
         <p className="text-caption text-text-muted">{t("description")}</p>
       </div>
 
-      {sortedHistory.length === 0 ? (
+      {entriesWithTypes.length === 0 ? (
         <EmptyState
+          headingLevel={3}
           icon={<History />}
           title={t("emptyTitle")}
           description={t("emptyDescription")}
         />
       ) : (
         <ol className="divide-y divide-border">
-          {sortedHistory.map((entry) => {
+          {entriesWithTypes.map(({ entry, oldDiscountType, newDiscountType }) => {
             const tone = ACTION_TONE[entry.action] ?? "neutral";
             const actionLabel = t(`actions.${entry.action}`);
-            const oldDiscountType = resolveDiscountTypeForChange(entry.changes, "oldValue", discountType);
-            const newDiscountType = resolveDiscountTypeForChange(entry.changes, "newValue", discountType);
             return (
               <li key={entry.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
                 <div className="flex flex-wrap items-center justify-between gap-2">

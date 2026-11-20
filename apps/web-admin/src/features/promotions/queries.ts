@@ -63,18 +63,18 @@ export function useExamKindOptionsQuery(enabled = true) {
   });
 }
 
-export function useExamPickerQuery(q: string, enabled: boolean) {
+export function useExamPickerQuery(q: string, enabled: boolean, size = 20) {
   return useQuery({
-    queryKey: promotionKeys.examPicker(q),
-    queryFn: ({ signal }) => searchPublishedExams(q, signal),
+    queryKey: promotionKeys.examPicker(q, size),
+    queryFn: ({ signal }) => searchPublishedExams(q, signal, size),
     enabled,
   });
 }
 
-export function useClassPickerQuery(q: string, enabled: boolean) {
+export function useClassPickerQuery(q: string, enabled: boolean, size = 20) {
   return useQuery({
-    queryKey: promotionKeys.classPicker(q),
-    queryFn: ({ signal }) => searchClasses(q, signal),
+    queryKey: promotionKeys.classPicker(q, size),
+    queryFn: ({ signal }) => searchClasses(q, signal, size),
     enabled,
   });
 }

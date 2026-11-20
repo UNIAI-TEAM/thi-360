@@ -21,7 +21,7 @@ import {
   cn,
   focusRing,
 } from "@thi360/ui";
-import { Plus, Search, Tag, X } from "lucide-react";
+import { Plus, Search, Tag, WifiOff, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -37,6 +37,7 @@ import type { PromotionKind, PromotionStateFilter, PromotionSummary } from "../t
 import { PromotionCapWarningInline } from "./promotion-cap-warning-inline";
 import { PromotionRowActions } from "./promotion-row-actions";
 import { PromotionStatusChip } from "./promotion-status-chip";
+import { handleRadioGroupKeyDown } from "./radio-group-key";
 
 const PAGE_SIZE = 20;
 const STATE_FILTER_OPTIONS: readonly PromotionStateFilter[] = [
@@ -84,6 +85,9 @@ export function PromotionListView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const searchParamsKey = searchParams.toString();
+  const [prevSearchKey, setPrevSearchKey] = useState(searchParamsKey);
+
   const [kind, setKind] = useState<PromotionKind>(() => parseInitialKind(searchParams.get("kind")));
   const [stateFilter, setStateFilter] = useState<PromotionStateFilter>(() =>
     parseInitialStateFilter(searchParams.get("state")),
@@ -92,7 +96,30 @@ export function PromotionListView() {
   const [debouncedQ, setDebouncedQ] = useState<string>(() => searchParams.get("q") ?? "");
   const [page, setPage] = useState<number>(() => parseInitialPage(searchParams.get("page")));
   const [liveMessage, setLiveMessage] = useState<string>("");
+  const [deleteFocusSeq, setDeleteFocusSeq] = useState(0);
   const searchTimerRef = useRef<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  if (searchParamsKey !== prevSearchKey) {
+    setPrevSearchKey(searchParamsKey);
+    const nextKind = parseInitialKind(searchParams.get("kind"));
+    const nextState = parseInitialStateFilter(searchParams.get("state"));
+    const nextQ = searchParams.get("q") ?? "";
+    const nextPage = parseInitialPage(searchParams.get("page"));
+    setKind(nextKind);
+    setStateFilter(nextState);
+    setSearchInput(nextQ);
+    setDebouncedQ(nextQ);
+    setPage(nextPage);
+    setLiveMessage("");
+  }
+
+  const cancelPendingSearch = useCallback(() => {
+    if (searchTimerRef.current !== null) {
+      window.clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
+  }, []);
 
   const syncUrl = useCallback(
     (nextKind: PromotionKind, nextState: PromotionStateFilter, nextQ: string, nextPage: number) => {
@@ -108,18 +135,19 @@ export function PromotionListView() {
   );
 
   useEffect(() => {
-    return () => {
-      if (searchTimerRef.current !== null) {
-        window.clearTimeout(searchTimerRef.current);
-      }
-    };
-  }, []);
+    cancelPendingSearch();
+    return cancelPendingSearch;
+  }, [cancelPendingSearch, searchParamsKey]);
+
+  useEffect(() => {
+    if (deleteFocusSeq > 0) {
+      searchInputRef.current?.focus();
+    }
+  }, [deleteFocusSeq]);
 
   const handleSearchChange = (nextValue: string) => {
-    if (searchTimerRef.current !== null) {
-      window.clearTimeout(searchTimerRef.current);
-      searchTimerRef.current = null;
-    }
+    cancelPendingSearch();
+    setLiveMessage("");
     setSearchInput(nextValue);
     if (nextValue === "") {
       setDebouncedQ("");
@@ -142,25 +170,49 @@ export function PromotionListView() {
     page: page - 1,
     size: PAGE_SIZE,
   });
+  const refetchList = listQuery.refetch;
+  const isOffline =
+    listQuery.fetchStatus === "paused" && (listQuery.isPlaceholderData || !listQuery.data);
+
+  const maxPage =
+    !isOffline && listQuery.data && !listQuery.isPlaceholderData
+      ? Math.max(1, Math.ceil(listQuery.data.totalItems / PAGE_SIZE))
+      : null;
+
+  if (maxPage !== null && page > maxPage) {
+    setPage(maxPage);
+  }
+
+  const prevPageRef = useRef(page);
+  useEffect(() => {
+    if (maxPage !== null && prevPageRef.current > maxPage && page <= maxPage) {
+      syncUrl(kind, stateFilter, debouncedQ, page);
+    }
+    prevPageRef.current = page;
+  }, [debouncedQ, kind, maxPage, page, stateFilter, syncUrl]);
 
   const handleTabChange = (value: string) => {
+    cancelPendingSearch();
+    setLiveMessage("");
     const nextKind: PromotionKind = value === "VOUCHER" ? "VOUCHER" : "AUTO";
     setKind(nextKind);
+    setDebouncedQ(searchInput);
     setPage(1);
-    syncUrl(nextKind, stateFilter, debouncedQ, 1);
+    syncUrl(nextKind, stateFilter, searchInput, 1);
   };
 
   const handleStateFilterChange = (nextState: PromotionStateFilter) => {
+    cancelPendingSearch();
+    setLiveMessage("");
     setStateFilter(nextState);
+    setDebouncedQ(searchInput);
     setPage(1);
-    syncUrl(kind, nextState, debouncedQ, 1);
+    syncUrl(kind, nextState, searchInput, 1);
   };
 
   const handleClearFilters = () => {
-    if (searchTimerRef.current !== null) {
-      window.clearTimeout(searchTimerRef.current);
-      searchTimerRef.current = null;
-    }
+    cancelPendingSearch();
+    setLiveMessage("");
     setStateFilter("ALL");
     setSearchInput("");
     setDebouncedQ("");
@@ -169,9 +221,19 @@ export function PromotionListView() {
   };
 
   const handlePageChange = (nextPage: number) => {
+    cancelPendingSearch();
+    setLiveMessage("");
     setPage(nextPage);
     syncUrl(kind, stateFilter, debouncedQ, nextPage);
   };
+
+  const handleMutationConflict = useCallback(() => {
+    void refetchList();
+  }, [refetchList]);
+
+  const handleRowDeleted = useCallback(() => {
+    setDeleteFocusSeq((seq) => seq + 1);
+  }, []);
 
   const scopeSummaryText = useCallback(
     (item: PromotionSummary) => {
@@ -318,14 +380,23 @@ export function PromotionListView() {
           <PromotionRowActions
             promotion={row.original}
             onAnnounce={setLiveMessage}
-            onMutationConflict={() => void listQuery.refetch()}
+            onMutationConflict={handleMutationConflict}
+            onDeleted={handleRowDeleted}
           />
         ),
       });
     }
 
     return baseCols;
-  }, [audienceSummaryText, canModify, listQuery, locale, scopeSummaryText, t]);
+  }, [
+    audienceSummaryText,
+    canModify,
+    handleMutationConflict,
+    handleRowDeleted,
+    locale,
+    scopeSummaryText,
+    t,
+  ]);
 
   const cards = useMemo<TableCards<PromotionSummary>>(
     () => ({
@@ -358,7 +429,8 @@ export function PromotionListView() {
               <PromotionRowActions
                 promotion={item}
                 onAnnounce={setLiveMessage}
-                onMutationConflict={() => void listQuery.refetch()}
+                onMutationConflict={handleMutationConflict}
+                onDeleted={handleRowDeleted}
               />
             ) : undefined
           }
@@ -380,25 +452,44 @@ export function PromotionListView() {
         </ListCard>
       ),
     }),
-    [audienceSummaryText, canModify, listQuery, locale, scopeSummaryText, t],
+    [
+      audienceSummaryText,
+      canModify,
+      handleMutationConflict,
+      handleRowDeleted,
+      locale,
+      scopeSummaryText,
+      t,
+    ],
   );
 
-  const items = listQuery.data?.items ?? [];
-  const totalItems = listQuery.data?.totalItems ?? 0;
+  const items = isOffline ? [] : (listQuery.data?.items ?? []);
+  const totalItems = isOffline ? 0 : (listQuery.data?.totalItems ?? 0);
   const isFiltered = stateFilter !== "ALL" || debouncedQ.trim() !== "";
 
   const statusAnnouncement = liveMessage
     ? liveMessage
-    : listQuery.isLoading || listQuery.isPlaceholderData || listQuery.isError
+    : listQuery.isLoading || listQuery.isPlaceholderData || listQuery.isError || isOffline
       ? ""
       : t("list.summaryCount", { total: totalItems });
 
-  const errorNode = listQuery.isError ? (
+  const errorNode = isOffline ? (
+    <EmptyState
+      icon={<WifiOff />}
+      title={t("list.offlineTitle")}
+      description={t("list.offlineDescription")}
+      action={
+        <Button variant="secondary" onClick={() => void refetchList()}>
+          {t("actions.retry")}
+        </Button>
+      }
+    />
+  ) : listQuery.isError ? (
     <EmptyState
       title={t("list.errorTitle")}
       description={resolvePromotionErrorMessage(listQuery.error, tErrors)}
       action={
-        <Button variant="secondary" onClick={() => void listQuery.refetch()}>
+        <Button variant="secondary" onClick={() => void refetchList()}>
           {t("actions.retry")}
         </Button>
       }
@@ -446,6 +537,7 @@ export function PromotionListView() {
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
             />
             <Input
+              ref={searchInputRef}
               value={searchInput}
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={t("list.searchPlaceholder")}
@@ -455,10 +547,10 @@ export function PromotionListView() {
             {searchInput && (
               <button
                 type="button"
-                aria-label={t("actions.clearFilters")}
+                aria-label={t("actions.clearSearch")}
                 onClick={() => handleSearchChange("")}
                 className={cn(
-                  "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text",
+                  "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
                   focusRing,
                 )}
               >
@@ -472,7 +564,7 @@ export function PromotionListView() {
             aria-label={t("list.stateGroupAria")}
             className="flex flex-wrap items-center gap-1.5"
           >
-            {STATE_FILTER_OPTIONS.map((option) => {
+            {STATE_FILTER_OPTIONS.map((option, index) => {
               const selected = stateFilter === option;
               return (
                 <button
@@ -480,9 +572,13 @@ export function PromotionListView() {
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => handleStateFilterChange(option)}
+                  onKeyDown={(event) =>
+                    handleRadioGroupKeyDown(event, STATE_FILTER_OPTIONS, index, handleStateFilterChange)
+                  }
                   className={cn(
-                    "inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 motion-reduce:transition-none",
+                    "relative inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 motion-reduce:transition-none",
                     selected
                       ? "border-primary-fill bg-primary-fill text-on-primary"
                       : "border-border bg-surface text-text-secondary hover:bg-subtle",
@@ -496,7 +592,7 @@ export function PromotionListView() {
           </div>
         </div>
 
-        {!listQuery.isLoading && !listQuery.isError && (
+        {!listQuery.isLoading && !listQuery.isError && !isOffline && (
           <p className="text-caption text-text-muted tabular-nums">
             {t("list.summaryCount", { total: totalItems })}
           </p>
@@ -510,7 +606,7 @@ export function PromotionListView() {
           getRowId={(row) => row.id}
           loading={listQuery.isLoading}
           loadingRows={PAGE_SIZE}
-          refreshing={listQuery.isFetching && !listQuery.isLoading}
+          refreshing={listQuery.isFetching && !listQuery.isLoading && !isOffline}
           error={errorNode}
           empty={emptyNode}
           cards={cards}
@@ -519,7 +615,7 @@ export function PromotionListView() {
         />
       </div>
 
-      {totalItems > PAGE_SIZE && (
+      {!isOffline && !listQuery.isError && totalItems > PAGE_SIZE && (
         <div className="border-t border-border p-4">
           <Pagination
             page={page}

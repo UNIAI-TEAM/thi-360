@@ -10,8 +10,8 @@ export const promotionKeys = {
   detail: (id: string, params: PromotionDetailQueryParams) =>
     [...promotionKeys.detailBase(id), params] as const,
   examKinds: () => [...promotionKeys.all, "exam-kinds"] as const,
-  examPicker: (q: string) => [...promotionKeys.all, "exam-picker", q] as const,
-  classPicker: (q: string) => [...promotionKeys.all, "class-picker", q] as const,
+  examPicker: (q: string, size = 20) => [...promotionKeys.all, "exam-picker", q, size] as const,
+  classPicker: (q: string, size = 20) => [...promotionKeys.all, "class-picker", q, size] as const,
   userPicker: (q: string) => [...promotionKeys.all, "user-picker", q] as const,
   pricePreviewsFor: (promotionId: string) =>
     [...promotionKeys.all, "price-preview", promotionId] as const,

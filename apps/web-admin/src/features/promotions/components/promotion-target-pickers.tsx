@@ -1,11 +1,11 @@
 "use client";
 
-import { Checkbox, Chip, Input, Label, cn, focusRing } from "@thi360/ui";
+import { Button, Checkbox, Chip, Input, Label, cn, focusRing } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { Search, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { usePermissions } from "@/features/session/session-provider";
 
@@ -65,16 +65,19 @@ export function ExamKindPicker({
   disabled,
   initialScopeItems = [],
   error,
+  inUseDescriptionId,
 }: {
   selectedIds: readonly string[];
   onChange: (nextIds: string[]) => void;
   disabled?: boolean;
   initialScopeItems?: readonly PromotionScopeItemView[];
   error?: string;
+  inUseDescriptionId?: string;
 }) {
   const t = useTranslations("promotions");
   const uiLocale = normalizeUiLocale(useLocale());
   const query = useExamKindOptionsQuery(true);
+  const labelId = useId();
 
   const options = useMemo(() => {
     const map = new Map<string, ExamKindOption>();
@@ -95,17 +98,34 @@ export function ExamKindPicker({
   }, [initialScopeItems, query.data]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      aria-describedby={disabled && inUseDescriptionId ? inUseDescriptionId : undefined}
+      className="flex flex-col gap-2"
+    >
       <div className="flex items-center gap-2">
-        <Label>{t("form.fields.examKindsLabel")}</Label>
+        <span id={labelId} className="text-field-label font-medium text-text-secondary">
+          {t("form.fields.examKindsLabel")}
+        </span>
         {disabled && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
       </div>
 
       {query.isLoading && <p className="text-caption text-text-muted">{t("common.loading")}</p>}
-      {query.isError && <p className="text-caption text-danger">{t("form.picker.error")}</p>}
+      {query.isError && (
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-caption text-danger">
+          <span>{t("form.picker.error")}</span>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void query.refetch()}>
+            {t("actions.retry")}
+          </Button>
+        </div>
+      )}
+      {!query.isLoading && !query.isError && options.length === 0 && (
+        <p className="text-caption text-text-muted">{t("form.picker.empty")}</p>
+      )}
 
       {options.length > 0 && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
           {options.map((item) => {
             const checked = selectedIds.includes(item.id);
             const displayName =
@@ -117,7 +137,7 @@ export function ExamKindPicker({
                 htmlFor={checkboxId}
                 aria-disabled={disabled || undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md border px-3 py-2 text-body transition-colors duration-150 motion-reduce:transition-none",
+                  "flex items-center gap-2.5 rounded-md border px-3 py-2 text-body transition-colors duration-150 pointer-coarse:min-h-11 motion-reduce:transition-none",
                   checked ? "border-primary-600 bg-primary-50" : "border-border bg-surface",
                   disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-subtle",
                 )}
@@ -126,6 +146,7 @@ export function ExamKindPicker({
                   id={checkboxId}
                   checked={checked}
                   disabled={disabled}
+                  aria-describedby={disabled && inUseDescriptionId ? inUseDescriptionId : undefined}
                   onCheckedChange={() => {
                     if (!disabled) onChange(toggleId(selectedIds, item.id));
                   }}
@@ -154,20 +175,25 @@ export function ExamScopePicker({
   disabled,
   initialScopeItems = [],
   error,
+  inUseDescriptionId,
 }: {
   selectedIds: readonly string[];
   onChange: (nextIds: string[]) => void;
   disabled?: boolean;
   initialScopeItems?: readonly PromotionScopeItemView[];
   error?: string;
+  inUseDescriptionId?: string;
 }) {
   const t = useTranslations("promotions");
   const { can } = usePermissions();
   const canViewExams = can("EXAM.VIEW");
   const { searchText, debouncedQ, handleChange } = useDebouncedSearch();
   const [cachedLabels, setCachedLabels] = useState<Record<string, ExamPickerOption>>({});
+  const headingId = useId();
+  const searchInputId = useId();
+  const showSearch = canViewExams && !disabled;
 
-  const query = useExamPickerQuery(debouncedQ, canViewExams && !disabled);
+  const query = useExamPickerQuery(debouncedQ, showSearch);
 
   const labelMap = useMemo(() => {
     const map: Record<string, ExamPickerOption> = { ...cachedLabels };
@@ -187,16 +213,30 @@ export function ExamScopePicker({
   }, [cachedLabels, initialScopeItems, query.data]);
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div
+      role="group"
+      aria-labelledby={headingId}
+      aria-describedby={disabled && inUseDescriptionId ? inUseDescriptionId : undefined}
+      className="flex flex-col gap-2.5"
+    >
       <div className="flex items-center gap-2">
-        <Label>{t("form.fields.examsLabel")}</Label>
+        {showSearch ? (
+          <Label id={headingId} htmlFor={searchInputId}>
+            {t("form.fields.examsLabel")}
+          </Label>
+        ) : (
+          <span id={headingId} className="text-field-label font-medium text-text-secondary">
+            {t("form.fields.examsLabel")}
+          </span>
+        )}
         {disabled && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
       </div>
 
       {selectedIds.length > 0 && (
         <div
-          className="flex flex-wrap gap-1.5"
+          role="group"
           aria-label={t("form.fields.examsSelected", { count: selectedIds.length })}
+          className="flex flex-wrap gap-1.5"
         >
           {selectedIds.map((id) => {
             const info = labelMap[id];
@@ -215,7 +255,7 @@ export function ExamScopePicker({
                     aria-label={t("form.picker.removeItem", { label })}
                     onClick={() => onChange(selectedIds.filter((item) => item !== id))}
                     className={cn(
-                      "inline-flex size-4 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text",
+                      "relative inline-flex size-4 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-3.5",
                       focusRing,
                     )}
                   >
@@ -234,7 +274,7 @@ export function ExamScopePicker({
         </p>
       )}
 
-      {canViewExams && !disabled && (
+      {showSearch && (
         <div className="flex flex-col gap-2 rounded-md border border-border p-3">
           <div className="relative">
             <Search
@@ -242,15 +282,36 @@ export function ExamScopePicker({
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
             />
             <Input
+              id={searchInputId}
               value={searchText}
               onChange={(event) => handleChange(event.target.value)}
               placeholder={t("form.fields.examsPlaceholder")}
-              className="pl-9"
+              className={cn("pl-9", searchText && "pr-9")}
             />
+            {searchText && (
+              <button
+                type="button"
+                aria-label={t("actions.clearSearch")}
+                onClick={() => handleChange("")}
+                className={cn(
+                  "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
+                  focusRing,
+                )}
+              >
+                <X aria-hidden className="size-4" />
+              </button>
+            )}
           </div>
 
           {query.isLoading && <p className="text-caption text-text-muted">{t("form.picker.loading")}</p>}
-          {query.isError && <p className="text-caption text-danger">{t("form.picker.error")}</p>}
+          {query.isError && (
+            <div role="alert" className="flex flex-wrap items-center gap-2 text-caption text-danger">
+              <span>{t("form.picker.error")}</span>
+              <Button type="button" variant="secondary" size="sm" onClick={() => void query.refetch()}>
+                {t("actions.retry")}
+              </Button>
+            </div>
+          )}
           {!query.isLoading && !query.isError && (query.data?.length ?? 0) === 0 && (
             <p className="text-caption text-text-muted">{t("form.picker.empty")}</p>
           )}
@@ -258,7 +319,7 @@ export function ExamScopePicker({
           {(query.data?.length ?? 0) > 0 && (
             <ul
               role="list"
-              className="max-h-48 divide-y divide-border overflow-y-auto rounded-md border border-border"
+              className="scroll-shadows-y max-h-48 divide-y divide-border overflow-y-auto rounded-md border border-border"
             >
               {query.data!.map((exam) => {
                 const checked = selectedIds.includes(exam.id);
@@ -267,7 +328,7 @@ export function ExamScopePicker({
                   <li key={exam.id}>
                     <label
                       htmlFor={itemId}
-                      className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-body hover:bg-subtle"
+                      className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-body hover:bg-subtle pointer-coarse:min-h-11"
                     >
                       <Checkbox
                         id={itemId}
@@ -312,6 +373,7 @@ export function AudienceTargetsPicker({
   initialClasses = [],
   initialUsers = [],
   error,
+  inUseDescriptionId,
 }: {
   selectedClassIds: readonly string[];
   selectedUserIds: readonly string[];
@@ -321,6 +383,7 @@ export function AudienceTargetsPicker({
   initialClasses?: readonly PromotionAudienceClassView[];
   initialUsers?: readonly PromotionAudienceUserView[];
   error?: string;
+  inUseDescriptionId?: string;
 }) {
   const t = useTranslations("promotions");
   const { can } = usePermissions();
@@ -332,11 +395,21 @@ export function AudienceTargetsPicker({
   const [cachedClasses, setCachedClasses] = useState<Record<string, ClassPickerOption>>({});
   const [cachedUsers, setCachedUsers] = useState<Record<string, UserPickerOption>>({});
 
+  const classHeadingId = useId();
+  const classSearchId = useId();
+  const userHeadingId = useId();
+  const userSearchId = useId();
+
+  const showClassSearch = canViewClasses && !disabled;
+  const showUserSearch = canViewUsers && !disabled;
+  const hasNullClassMetadata = initialClasses.some((c) => !c.name && !c.code);
+
   const classQuery = useClassPickerQuery(
     classSearch.debouncedQ,
-    canViewClasses && (!disabled || initialClasses.some((c) => !c.name)),
+    canViewClasses && (!disabled || hasNullClassMetadata),
+    hasNullClassMetadata ? 100 : 20,
   );
-  const userQuery = useUserPickerQuery(userSearch.debouncedQ, canViewUsers && !disabled);
+  const userQuery = useUserPickerQuery(userSearch.debouncedQ, showUserSearch);
 
   const classById = useMemo(() => {
     const map: Record<string, ClassPickerOption> = { ...cachedClasses };
@@ -377,13 +450,28 @@ export function AudienceTargetsPicker({
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div
+      aria-describedby={disabled && inUseDescriptionId ? inUseDescriptionId : undefined}
+      className="flex flex-col gap-3"
+    >
+      <div className="grid grid-cols-1 gap-4 @lg:grid-cols-2">
         {/* Classes */}
-        <div className="flex flex-col gap-2">
-          <Label>{t("form.fields.classesLabel")}</Label>
+        <div role="group" aria-labelledby={classHeadingId} className="flex flex-col gap-2">
+          {showClassSearch ? (
+            <Label id={classHeadingId} htmlFor={classSearchId}>
+              {t("form.fields.classesLabel")}
+            </Label>
+          ) : (
+            <span id={classHeadingId} className="text-field-label font-medium text-text-secondary">
+              {t("form.fields.classesLabel")}
+            </span>
+          )}
           {selectedClassIds.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div
+              role="group"
+              aria-label={t("form.fields.classesSelected", { count: selectedClassIds.length })}
+              className="flex flex-wrap gap-1.5"
+            >
               {selectedClassIds.map((id) => {
                 const clsLabel = classLabelFor(id);
                 return (
@@ -400,7 +488,7 @@ export function AudienceTargetsPicker({
                         aria-label={t("form.picker.removeItem", { label: clsLabel })}
                         onClick={() => onChangeClasses(selectedClassIds.filter((item) => item !== id))}
                         className={cn(
-                          "inline-flex size-4 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text",
+                          "relative inline-flex size-4 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-3.5",
                           focusRing,
                         )}
                       >
@@ -418,7 +506,7 @@ export function AudienceTargetsPicker({
               {t("form.fields.classesNoPermission")}
             </p>
           ) : (
-            !disabled && (
+            showClassSearch && (
               <div className="flex flex-col gap-2 rounded-md border border-border p-3">
                 <div className="relative">
                   <Search
@@ -426,17 +514,41 @@ export function AudienceTargetsPicker({
                     className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
                   />
                   <Input
+                    id={classSearchId}
                     value={classSearch.searchText}
                     onChange={(event) => classSearch.handleChange(event.target.value)}
                     placeholder={t("form.fields.classesPlaceholder")}
-                    className="pl-9"
+                    className={cn("pl-9", classSearch.searchText && "pr-9")}
                   />
+                  {classSearch.searchText && (
+                    <button
+                      type="button"
+                      aria-label={t("actions.clearSearch")}
+                      onClick={() => classSearch.handleChange("")}
+                      className={cn(
+                        "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
+                        focusRing,
+                      )}
+                    >
+                      <X aria-hidden className="size-4" />
+                    </button>
+                  )}
                 </div>
                 {classQuery.isLoading && (
                   <p className="text-caption text-text-muted">{t("form.picker.loading")}</p>
                 )}
                 {classQuery.isError && (
-                  <p className="text-caption text-danger">{t("form.picker.error")}</p>
+                  <div role="alert" className="flex flex-wrap items-center gap-2 text-caption text-danger">
+                    <span>{t("form.picker.error")}</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void classQuery.refetch()}
+                    >
+                      {t("actions.retry")}
+                    </Button>
+                  </div>
                 )}
                 {!classQuery.isLoading && !classQuery.isError && (classQuery.data?.length ?? 0) === 0 && (
                   <p className="text-caption text-text-muted">{t("form.picker.empty")}</p>
@@ -444,7 +556,7 @@ export function AudienceTargetsPicker({
                 {(classQuery.data?.length ?? 0) > 0 && (
                   <ul
                     role="list"
-                    className="max-h-40 divide-y divide-border overflow-y-auto rounded-md border border-border"
+                    className="scroll-shadows-y max-h-40 divide-y divide-border overflow-y-auto rounded-md border border-border"
                   >
                     {classQuery.data!.map((cls) => {
                       const checked = selectedClassIds.includes(cls.id);
@@ -453,7 +565,7 @@ export function AudienceTargetsPicker({
                         <li key={cls.id}>
                           <label
                             htmlFor={id}
-                            className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-caption hover:bg-subtle"
+                            className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-caption hover:bg-subtle pointer-coarse:min-h-11"
                           >
                             <Checkbox
                               id={id}
@@ -478,10 +590,22 @@ export function AudienceTargetsPicker({
         </div>
 
         {/* Users */}
-        <div className="flex flex-col gap-2">
-          <Label>{t("form.fields.usersLabel")}</Label>
+        <div role="group" aria-labelledby={userHeadingId} className="flex flex-col gap-2">
+          {showUserSearch ? (
+            <Label id={userHeadingId} htmlFor={userSearchId}>
+              {t("form.fields.usersLabel")}
+            </Label>
+          ) : (
+            <span id={userHeadingId} className="text-field-label font-medium text-text-secondary">
+              {t("form.fields.usersLabel")}
+            </span>
+          )}
           {selectedUserIds.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div
+              role="group"
+              aria-label={t("form.fields.usersSelected", { count: selectedUserIds.length })}
+              className="flex flex-wrap gap-1.5"
+            >
               {selectedUserIds.map((id) => {
                 const usrLabel = userLabelFor(id);
                 return (
@@ -498,7 +622,7 @@ export function AudienceTargetsPicker({
                         aria-label={t("form.picker.removeItem", { label: usrLabel })}
                         onClick={() => onChangeUsers(selectedUserIds.filter((item) => item !== id))}
                         className={cn(
-                          "inline-flex size-4 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text",
+                          "relative inline-flex size-4 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-3.5",
                           focusRing,
                         )}
                       >
@@ -516,7 +640,7 @@ export function AudienceTargetsPicker({
               {t("form.fields.usersNoPermission")}
             </p>
           ) : (
-            !disabled && (
+            showUserSearch && (
               <div className="flex flex-col gap-2 rounded-md border border-border p-3">
                 <div className="relative">
                   <Search
@@ -524,17 +648,41 @@ export function AudienceTargetsPicker({
                     className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
                   />
                   <Input
+                    id={userSearchId}
                     value={userSearch.searchText}
                     onChange={(event) => userSearch.handleChange(event.target.value)}
                     placeholder={t("form.fields.usersPlaceholder")}
-                    className="pl-9"
+                    className={cn("pl-9", userSearch.searchText && "pr-9")}
                   />
+                  {userSearch.searchText && (
+                    <button
+                      type="button"
+                      aria-label={t("actions.clearSearch")}
+                      onClick={() => userSearch.handleChange("")}
+                      className={cn(
+                        "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
+                        focusRing,
+                      )}
+                    >
+                      <X aria-hidden className="size-4" />
+                    </button>
+                  )}
                 </div>
                 {userQuery.isLoading && (
                   <p className="text-caption text-text-muted">{t("form.picker.loading")}</p>
                 )}
                 {userQuery.isError && (
-                  <p className="text-caption text-danger">{t("form.picker.error")}</p>
+                  <div role="alert" className="flex flex-wrap items-center gap-2 text-caption text-danger">
+                    <span>{t("form.picker.error")}</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void userQuery.refetch()}
+                    >
+                      {t("actions.retry")}
+                    </Button>
+                  </div>
                 )}
                 {!userQuery.isLoading && !userQuery.isError && (userQuery.data?.length ?? 0) === 0 && (
                   <p className="text-caption text-text-muted">{t("form.picker.empty")}</p>
@@ -542,7 +690,7 @@ export function AudienceTargetsPicker({
                 {(userQuery.data?.length ?? 0) > 0 && (
                   <ul
                     role="list"
-                    className="max-h-40 divide-y divide-border overflow-y-auto rounded-md border border-border"
+                    className="scroll-shadows-y max-h-40 divide-y divide-border overflow-y-auto rounded-md border border-border"
                   >
                     {userQuery.data!.map((usr) => {
                       const checked = selectedUserIds.includes(usr.id);
@@ -551,7 +699,7 @@ export function AudienceTargetsPicker({
                         <li key={usr.id}>
                           <label
                             htmlFor={id}
-                            className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-caption hover:bg-subtle"
+                            className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-caption hover:bg-subtle pointer-coarse:min-h-11"
                           >
                             <Checkbox
                               id={id}

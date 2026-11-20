@@ -195,7 +195,11 @@ export async function fetchExamKindOptions(signal?: AbortSignal): Promise<ExamKi
   }));
 }
 
-export async function searchPublishedExams(q: string, signal?: AbortSignal): Promise<ExamPickerOption[]> {
+export async function searchPublishedExams(
+  q: string,
+  signal?: AbortSignal,
+  size = 20,
+): Promise<ExamPickerOption[]> {
   const client = createBrowserApiClient();
   const trimmed = q.trim();
   const { data, error, response } = await client.GET("/api/v1/admin/exams", {
@@ -203,7 +207,7 @@ export async function searchPublishedExams(q: string, signal?: AbortSignal): Pro
       query: {
         status: "PUBLISHED",
         page: 0,
-        size: 20,
+        size,
         ...(trimmed ? { q: trimmed } : {}),
       },
     },
@@ -219,14 +223,18 @@ export async function searchPublishedExams(q: string, signal?: AbortSignal): Pro
   }));
 }
 
-export async function searchClasses(q: string, signal?: AbortSignal): Promise<ClassPickerOption[]> {
+export async function searchClasses(
+  q: string,
+  signal?: AbortSignal,
+  size = 20,
+): Promise<ClassPickerOption[]> {
   const client = createBrowserApiClient();
   const trimmed = q.trim();
   const { data, error, response } = await client.GET("/api/v1/admin/classes", {
     params: {
       query: {
         page: 0,
-        size: 20,
+        size,
         ...(trimmed ? { q: trimmed } : {}),
       },
     },

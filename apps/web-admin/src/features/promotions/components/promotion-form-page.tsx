@@ -1,15 +1,16 @@
 "use client";
 
 import { Button, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
+import { ApiStatusError } from "@/lib/api/query-client";
 
-import { resolvePromotionErrorMessage } from "../errors";
+import { promotionErrorCode, resolvePromotionErrorMessage } from "../errors";
 import { usePromotionDetailQuery } from "../queries";
 import { PromotionForm } from "./promotion-form";
 
@@ -73,14 +74,42 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
   }
 
   if (query.isError || !query.data) {
+    const isOffline = query.fetchStatus === "paused" && !query.isError;
+    const code = promotionErrorCode(query.error);
+    const notFound =
+      code === "PROMOTION_NOT_FOUND" ||
+      code === "NOT_FOUND" ||
+      (query.error instanceof ApiStatusError && query.error.status === 404);
     return (
       <EmptyState
-        title={t("edit.errorTitle")}
-        description={query.error ? resolvePromotionErrorMessage(query.error, tErrors) : t("edit.errorDescription")}
+        headingLevel={1}
+        icon={isOffline ? <WifiOff /> : undefined}
+        title={
+          isOffline
+            ? t("list.offlineTitle")
+            : notFound
+              ? t("detail.notFoundTitle")
+              : t("edit.errorTitle")
+        }
+        description={
+          isOffline
+            ? t("list.offlineDescription")
+            : notFound
+              ? t("detail.notFoundDescription")
+              : query.error
+                ? resolvePromotionErrorMessage(query.error, tErrors)
+                : t("edit.errorDescription")
+        }
         action={
-          <Button variant="secondary" onClick={() => void query.refetch()}>
-            {t("actions.retry")}
-          </Button>
+          notFound ? (
+            <Button variant="secondary" asChild>
+              <Link href="/promotions">{t("actions.backToList")}</Link>
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={() => void query.refetch()}>
+              {t("actions.retry")}
+            </Button>
+          )
         }
       />
     );
@@ -90,7 +119,7 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
   const conflictBanner = conflictReason ? (
     <div
       role="alert"
-      className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-4 text-danger sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-4 text-danger @xl:flex-row @xl:items-center @xl:justify-between"
     >
       <div className="flex items-start gap-3">
         <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
@@ -119,7 +148,7 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
   ) : null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       <PageHeader
         title={t("edit.title")}
         description={t("edit.description")}
@@ -127,7 +156,7 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
           <Button variant="secondary" asChild>
             <Link href={`/promotions/${detail.id}`}>
               <ArrowLeft />
-              <span>{t("actions.backToList")}</span>
+              <span>{t("actions.backToDetail")}</span>
             </Link>
           </Button>
         }

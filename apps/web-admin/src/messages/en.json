@@ -7762,9 +7762,11 @@
   },
   "promotions": {
     "actions": {
+      "backToDetail": "Back to details",
       "backToList": "Back to list",
       "cancel": "Cancel",
       "clearFilters": "Clear filters",
+      "clearSearch": "Clear search",
       "create": "Create promotion",
       "createVoucher": "Create voucher",
       "delete": "Delete",
@@ -7784,7 +7786,7 @@
     "audienceLabels": {
       "ALL": "All students",
       "NEW_ACCOUNT": "New accounts",
-      "SELECTED": "Selected ({classes} classes, {users} students)",
+      "SELECTED": "Selected ({classes, plural, one {# class} other {# classes}}, {users, plural, one {# student} other {# students}})",
       "SELECTEDClasses": "By classes ({count})",
       "SELECTEDUsers": "By students ({count})",
       "unknownClass": "Class #{id}",
@@ -7951,7 +7953,7 @@
         "formErrorTitle": "Unable to save promotion",
         "inUseConflictDescription": "The latest promotion details were reloaded automatically and restricted fields are now locked.",
         "inUseConflictTitle": "Promotion just received redemptions",
-        "inUseDescription": "This promotion already has {count} redemptions. To protect active checkouts and reservations, type, voucher code, discount rules, start time, combinable setting, scope, and audience are locked. You can still update name, description, end time, total limit, or status.",
+        "inUseDescription": "This promotion already has {count, plural, one {# redemption} other {# redemptions}}. To protect active checkouts and reservations, type, voucher code, discount rules, start time, combinable setting, scope, and audience are locked. You can still update name, description, end time, total limit, or status.",
         "inUseTitle": "Locked fields due to existing redemptions"
       },
       "fields": {
@@ -7968,7 +7970,7 @@
         "classesLabel": "Select classes",
         "classesNoPermission": "Your account lacks CLASS.VIEW permission. Existing assigned classes are preserved or can be removed.",
         "classesPlaceholder": "Search class name or code...",
-        "classesSelected": "Selected ({count} classes)",
+        "classesSelected": "Selected ({count, plural, one {# class} other {# classes}})",
         "code": "Voucher code",
         "codeHint": "Uppercase letters, numbers, and hyphens (-). Automatically uppercased.",
         "codePlaceholder": "e.g. SUMMER2026",
@@ -7988,7 +7990,7 @@
         "examsLabel": "Select published exams",
         "examsNoPermission": "Your account lacks EXAM.VIEW permission to browse exams.",
         "examsPlaceholder": "Search exam title or code...",
-        "examsSelected": "Selected ({count} exams)",
+        "examsSelected": "Selected ({count, plural, one {# exam} other {# exams}})",
         "kind": "Promotion type",
         "kindAuto": "Automatic promotion",
         "kindAutoHint": "Automatically deducted when students view or buy matching exams.",
@@ -8024,7 +8026,7 @@
         "usersLabel": "Select students",
         "usersNoPermission": "Your account lacks USER.VIEW permission. Existing assigned students are preserved or can be removed.",
         "usersPlaceholder": "Name, username, or email",
-        "usersSelected": "Selected ({count} students)"
+        "usersSelected": "Selected ({count, plural, one {# student} other {# students}})"
       },
       "lockedChip": "Locked",
       "picker": {
@@ -8142,6 +8144,8 @@
       "emptyTitle": "No promotions yet",
       "errorDescription": "Failed to load promotions. Please try again.",
       "errorTitle": "Unable to load list",
+      "offlineDescription": "You are offline, so latest data could not be loaded. It reloads automatically when the connection returns, or select Retry.",
+      "offlineTitle": "No network connection",
       "scopeSummary": {
         "ALL": "All exams",
         "BUNDLE": "Exam bundles",
@@ -8158,7 +8162,7 @@
         "UPCOMING": "Upcoming"
       },
       "stateGroupAria": "Filter by status",
-      "summaryCount": "{total} promotions",
+      "summaryCount": "{total, plural, one {# promotion} other {# promotions}}",
       "tabs": {
         "AUTO": "Automatic",
         "VOUCHER": "Vouchers"
@@ -8182,6 +8186,8 @@
       "loadingQuote": "Calculating preview price...",
       "noDiscountReason": "No additional discount applies to this exam.",
       "saveFirstReason": "Save the promotion first to preview real pricing with floor price rules.",
+      "searchAria": "Search exams for price preview",
+      "searchPlaceholder": "Search exam by title or code...",
       "title": "Exam price preview",
       "voucherTag": "Voucher"
     },

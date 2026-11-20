@@ -7762,9 +7762,11 @@
   },
   "promotions": {
     "actions": {
+      "backToDetail": "Quay lại chi tiết",
       "backToList": "Quay lại danh sách",
       "cancel": "Hủy",
       "clearFilters": "Xóa bộ lọc",
+      "clearSearch": "Xóa từ khóa tìm kiếm",
       "create": "Tạo khuyến mãi",
       "createVoucher": "Tạo voucher",
       "delete": "Xóa",
@@ -7784,7 +7786,7 @@
     "audienceLabels": {
       "ALL": "Tất cả học viên",
       "NEW_ACCOUNT": "Tài khoản mới",
-      "SELECTED": "Chỉ định ({classes} lớp, {users} học viên)",
+      "SELECTED": "Chỉ định ({classes, plural, other {# lớp}}, {users, plural, other {# học viên}})",
       "SELECTEDClasses": "Theo lớp ({count})",
       "SELECTEDUsers": "Theo học viên ({count})",
       "unknownClass": "Lớp #{id}",
@@ -7951,7 +7953,7 @@
         "formErrorTitle": "Không thể lưu khuyến mãi",
         "inUseConflictDescription": "Hệ thống đã tự động tải lại dữ liệu mới nhất và khóa các trường không thể sửa sau khi phát sinh lượt sử dụng.",
         "inUseConflictTitle": "Khuyến mãi vừa phát sinh lượt sử dụng",
-        "inUseDescription": "Khuyến mãi này đã có {count} lượt sử dụng. Để tránh sai lệch đơn hàng và giữ chỗ, các trường loại, mã ưu đãi, mức giảm, thời điểm bắt đầu, cộng dồn, phạm vi và đối tượng đều bị khóa. Bạn chỉ có thể sửa tên, mô tả, gia hạn kết thúc, tăng tổng lượt tối đa hoặc dừng/tiếp tục.",
+        "inUseDescription": "Khuyến mãi này đã có {count, plural, other {# lượt sử dụng}}. Để tránh sai lệch đơn hàng và giữ chỗ, các trường loại, mã ưu đãi, mức giảm, thời điểm bắt đầu, cộng dồn, phạm vi và đối tượng đều bị khóa. Bạn chỉ có thể sửa tên, mô tả, gia hạn kết thúc, tăng tổng lượt tối đa hoặc dừng/tiếp tục.",
         "inUseTitle": "Một số trường đã bị khóa do đã có lượt sử dụng"
       },
       "fields": {
@@ -7968,7 +7970,7 @@
         "classesLabel": "Chọn lớp học",
         "classesNoPermission": "Tài khoản hiện tại không có quyền xem danh sách lớp (CLASS.VIEW). Chỉ có thể giữ nguyên hoặc bỏ bớt lớp đã gắn.",
         "classesPlaceholder": "Tìm tên hoặc mã lớp...",
-        "classesSelected": "Đã chọn ({count} lớp)",
+        "classesSelected": "Đã chọn ({count, plural, other {# lớp}})",
         "code": "Mã ưu đãi",
         "codeHint": "Chữ in hoa, số và gạch ngang (-). Hệ thống tự chuyển sang chữ hoa.",
         "codePlaceholder": "VD: SUMMER2026",
@@ -7988,7 +7990,7 @@
         "examsLabel": "Chọn bài thi đang bán",
         "examsNoPermission": "Tài khoản hiện tại không có quyền xem danh sách bài thi (EXAM.VIEW).",
         "examsPlaceholder": "Tìm tên hoặc mã bài thi...",
-        "examsSelected": "Đã chọn ({count} bài thi)",
+        "examsSelected": "Đã chọn ({count, plural, other {# bài thi}})",
         "kind": "Loại khuyến mãi",
         "kindAuto": "Khuyến mãi tự động",
         "kindAutoHint": "Tự động trừ vào giá khi học viên xem hoặc mua bài thi phù hợp.",
@@ -8024,7 +8026,7 @@
         "usersLabel": "Chọn học viên",
         "usersNoPermission": "Tài khoản hiện tại không có quyền xem danh sách học viên (USER.VIEW). Chỉ có thể giữ nguyên hoặc bỏ bớt học viên đã gắn.",
         "usersPlaceholder": "Tên, tài khoản hoặc email",
-        "usersSelected": "Đã chọn ({count} học viên)"
+        "usersSelected": "Đã chọn ({count, plural, other {# học viên}})"
       },
       "lockedChip": "Đã khóa",
       "picker": {
@@ -8142,6 +8144,8 @@
       "emptyTitle": "Chưa có khuyến mãi",
       "errorDescription": "Không tải được danh sách khuyến mãi. Vui lòng thử lại.",
       "errorTitle": "Không tải được danh sách",
+      "offlineDescription": "Máy đang mất kết nối nên chưa tải được dữ liệu mới. Danh sách tự tải lại khi có mạng, hoặc bấm Thử lại.",
+      "offlineTitle": "Mất kết nối mạng",
       "scopeSummary": {
         "ALL": "Tất cả bài thi",
         "BUNDLE": "Gói đề thi",
@@ -8158,7 +8162,7 @@
         "UPCOMING": "Sắp diễn ra"
       },
       "stateGroupAria": "Lọc theo trạng thái hiệu lực",
-      "summaryCount": "{total} khuyến mãi",
+      "summaryCount": "{total, plural, other {# khuyến mãi}}",
       "tabs": {
         "AUTO": "Khuyến mãi tự động",
         "VOUCHER": "Mã ưu đãi"
@@ -8182,6 +8186,8 @@
       "loadingQuote": "Đang tính giá xem trước...",
       "noDiscountReason": "Không giảm thêm giá trên bài thi này.",
       "saveFirstReason": "Hãy lưu khuyến mãi trước để hệ thống xem trước giá thực tế kèm giá sàn.",
+      "searchAria": "Tìm bài thi để xem trước giá",
+      "searchPlaceholder": "Tìm bài thi theo tên hoặc mã...",
       "title": "Xem trước giá bài thi",
       "voucherTag": "Mã ưu đãi"
     },

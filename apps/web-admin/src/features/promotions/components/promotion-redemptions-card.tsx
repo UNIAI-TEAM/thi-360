@@ -15,7 +15,7 @@ import {
   cn,
   focusRing,
 } from "@thi360/ui";
-import { Search, Ticket, X } from "lucide-react";
+import { Search, Ticket, WifiOff, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
@@ -27,6 +27,7 @@ import type {
   PromotionRedemptionView,
   RedemptionStateFilter,
 } from "../types";
+import { handleRadioGroupKeyDown } from "./radio-group-key";
 
 const REDEMPTION_FILTERS: readonly RedemptionStateFilter[] = [
   "ALL",
@@ -48,10 +49,12 @@ export function PromotionRedemptionsCard({
   stateFilter,
   onStateFilterChange,
   searchInput,
+  debouncedQ,
   onSearchInputChange,
   onClearFilters,
   refreshing,
   error,
+  isOffline = false,
   onRetry,
 }: {
   redemptions: PromotionDetail["redemptions"];
@@ -60,17 +63,19 @@ export function PromotionRedemptionsCard({
   stateFilter: RedemptionStateFilter;
   onStateFilterChange: (nextState: RedemptionStateFilter) => void;
   searchInput: string;
+  debouncedQ: string;
   onSearchInputChange: (nextQ: string) => void;
   onClearFilters: () => void;
   refreshing: boolean;
   error: unknown;
+  isOffline?: boolean;
   onRetry: () => void;
 }) {
   const t = useTranslations("promotions");
   const tErrors = useTranslations("promotions.errors");
   const locale = useLocale();
 
-  const isFiltered = stateFilter !== "ALL" || searchInput.trim() !== "";
+  const isFiltered = stateFilter !== "ALL" || debouncedQ.trim() !== "";
 
   const columns = useMemo<ColumnDef<PromotionRedemptionView>[]>(
     () => [
@@ -100,7 +105,7 @@ export function PromotionRedemptionsCard({
         header: t("redemptions.columns.orderCode"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="font-mono text-caption text-text">
+          <span className="font-mono text-caption wrap-anywhere text-text">
             {row.original.orderCode ?? row.original.orderId.slice(0, 8)}
           </span>
         ),
@@ -167,20 +172,33 @@ export function PromotionRedemptionsCard({
     [locale, t],
   );
 
-  const errorNode = error ? (
-    <EmptyState
-      title={t("redemptions.errorTitle")}
-      description={resolvePromotionErrorMessage(error, tErrors)}
-      action={
-        <Button variant="secondary" onClick={onRetry}>
-          {t("actions.retry")}
-        </Button>
-      }
-    />
-  ) : undefined;
+  const errorNode =
+    isOffline || error ? (
+      <EmptyState
+        headingLevel={3}
+        icon={isOffline ? <WifiOff /> : undefined}
+        title={isOffline ? t("list.offlineTitle") : t("redemptions.errorTitle")}
+        description={
+          isOffline ? t("list.offlineDescription") : resolvePromotionErrorMessage(error, tErrors)
+        }
+        action={
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button variant="secondary" onClick={onRetry}>
+              {t("actions.retry")}
+            </Button>
+            {isFiltered && (
+              <Button variant="secondary" onClick={onClearFilters}>
+                {t("actions.clearFilters")}
+              </Button>
+            )}
+          </div>
+        }
+      />
+    ) : undefined;
 
   const emptyNode = isFiltered ? (
     <EmptyState
+      headingLevel={3}
       icon={<Search />}
       title={t("redemptions.emptyFilteredTitle")}
       description={t("redemptions.emptyFilteredDescription")}
@@ -192,6 +210,7 @@ export function PromotionRedemptionsCard({
     />
   ) : (
     <EmptyState
+      headingLevel={3}
       icon={<Ticket />}
       title={t("redemptions.emptyNeverUsedTitle")}
       description={t("redemptions.emptyNeverUsedDescription")}
@@ -222,10 +241,10 @@ export function PromotionRedemptionsCard({
             {searchInput && (
               <button
                 type="button"
-                aria-label={t("actions.clearFilters")}
+                aria-label={t("actions.clearSearch")}
                 onClick={() => onSearchInputChange("")}
                 className={cn(
-                  "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text",
+                  "absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-text-muted hover:bg-subtle hover:text-text pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
                   focusRing,
                 )}
               >
@@ -239,7 +258,7 @@ export function PromotionRedemptionsCard({
             aria-label={t("redemptions.columns.state")}
             className="flex flex-wrap items-center gap-1.5"
           >
-            {REDEMPTION_FILTERS.map((option) => {
+            {REDEMPTION_FILTERS.map((option, index) => {
               const selected = stateFilter === option;
               return (
                 <button
@@ -247,9 +266,13 @@ export function PromotionRedemptionsCard({
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => onStateFilterChange(option)}
+                  onKeyDown={(event) =>
+                    handleRadioGroupKeyDown(event, REDEMPTION_FILTERS, index, onStateFilterChange)
+                  }
                   className={cn(
-                    "inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 motion-reduce:transition-none",
+                    "relative inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 motion-reduce:transition-none",
                     selected
                       ? "border-primary-fill bg-primary-fill text-on-primary"
                       : "border-border bg-surface text-text-secondary hover:bg-subtle",
@@ -275,7 +298,7 @@ export function PromotionRedemptionsCard({
         aria-label={t("redemptions.title")}
       />
 
-      {redemptions.totalItems > redemptions.size && (
+      {!errorNode && redemptions.totalItems > redemptions.size && (
         <div className="border-t border-border p-4">
           <Pagination
             page={page}
