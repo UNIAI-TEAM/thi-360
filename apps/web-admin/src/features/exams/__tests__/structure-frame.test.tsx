@@ -9,7 +9,7 @@ import { defaultSelection } from "../components/exam-structure-draft";
 import { ExamEditorActionsSlot } from "../components/exam-editor-actions";
 import type { ExamPart, ExamSection } from "../types";
 import checkHsa from "./fixtures/check-hsa-f-001.json";
-import { ExamsBackend } from "./fake-exams-backend";
+import { examFixture, ExamsBackend } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -543,5 +543,46 @@ describe("Khung bước 2: nút kiểm tra", () => {
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
     backend.server.release("PUT", api(QDA, "structure"));
     await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
+  });
+});
+
+describe("Khung bước 2: đọc lựa chọn từ URL (?exam=)", () => {
+  function seedExam1(over: Partial<ReturnType<typeof examFixture>> = {}) {
+    const base = examFixture(HSA);
+    backend.seedExam({ ...base, ...over, id: "exam-1" });
+  }
+
+  it("?exam=<uuid> (chuyển trang từ /exams/new?exam=<uuid>): mở môn mặc định, không mở Tổng quan bài", async () => {
+    seedExam1();
+    window.history.replaceState(null, "", "/exams/exam-1/structure?exam=01a1f9da-798b-7c95-83ed-0deb9e963179");
+    renderWithProviders(<ExamStructureView examId="exam-1" />);
+    expect(await screen.findByRole("heading", { level: 2, name: /^Môn / })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: /^Tổng quan bài · / })).not.toBeInTheDocument();
+  });
+
+  it("?exam=<uuid> trên bài ôn (buildMode: REVIEW): mở Bài ôn, không mở Tổng quan bài", async () => {
+    const base = examFixture("ex-hsa-l-toan-001");
+    const firstPart = base.parts[0]!;
+    const firstSection = firstPart.sections[0]!;
+    const firstBlock = { ...firstSection.blocks[0]!, questionType: "SINGLE_CHOICE" as const, questionCount: firstPart.questionCount };
+    seedExam1({
+      ...base,
+      scope: "SUBJECT",
+      partCode: null,
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      parts: [{ ...firstPart, sections: [{ ...firstSection, blocks: [firstBlock] }] }],
+    });
+    window.history.replaceState(null, "", "/exams/exam-1/structure?exam=01a1f9da-798b-7c95-83ed-0deb9e963179");
+    renderWithProviders(<ExamStructureView examId="exam-1" />);
+    expect(await screen.findByRole("heading", { level: 2, name: /^Bài ôn · / })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: /^Tổng quan bài · / })).not.toBeInTheDocument();
+  });
+
+  it("?exam=1: vẫn mở Tổng quan bài", async () => {
+    seedExam1();
+    window.history.replaceState(null, "", "/exams/exam-1/structure?exam=1");
+    renderWithProviders(<ExamStructureView examId="exam-1" />);
+    expect(await screen.findByRole("heading", { level: 2, name: /^Tổng quan bài · / })).toBeInTheDocument();
   });
 });
