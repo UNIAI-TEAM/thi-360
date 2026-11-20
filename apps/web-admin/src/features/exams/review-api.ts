@@ -26,6 +26,8 @@ import type {
   ExamVersionList,
   ExamVersionRow,
   ExamWorkingCopy,
+  ListingCheckGroup,
+  ListingCheckIssue,
   GeneratePreviewRequest,
   PathCheck,
   PathCheckResult,
@@ -589,6 +591,34 @@ function mapGroup(group: ApiCheckGroup): CheckGroupResult {
   };
 }
 
+type ApiListingCheckGroup = Schema["ExamListingCheckGroup"];
+type ApiListingCheckIssue = Schema["ExamListingCheckIssue"];
+
+function mapListingIssue(issue: ApiListingCheckIssue): ListingCheckIssue {
+  const code = issue.code ?? "";
+  return {
+    key: issue.key ?? `LISTING:${code}`,
+    code,
+    severity: issue.severity === "WARNING" ? "WARNING" : "ERROR",
+    field: issue.field ?? null,
+    minPriceVnd: issue.minPriceVnd ?? null,
+  };
+}
+
+/** Nhóm "Thông tin bán" của máy chủ (`listingCheck`, `ExamListing.checkIssues`); `null` khi máy chủ không gửi. */
+export function mapListingCheck(group: ApiListingCheckGroup | undefined | null): ListingCheckGroup | null {
+  if (!group) return null;
+  return {
+    status: group.status === "PASS" || group.status === "WARN" ? group.status : "FAIL",
+    issues: (group.issues ?? []).map(mapListingIssue),
+  };
+}
+
+/** Vấn đề tính riêng của `ExamListing.checkIssues` (không có nhóm bọc). */
+export function mapListingCheckIssues(issues: readonly ApiListingCheckIssue[] | undefined): ListingCheckIssue[] {
+  return (issues ?? []).map(mapListingIssue);
+}
+
 function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
   return {
     examId: result.examId ?? "",
@@ -606,6 +636,7 @@ function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
     issueCount: result.issueCount ?? 0,
     paths: (result.paths ?? []).map(mapCheckPath),
     groups: (result.groups ?? []).map(mapGroup),
+    listingCheck: mapListingCheck(result.listingCheck),
     partCount: result.partCount ?? 0,
     totalPoints: result.totalPoints ?? 0,
     printedQuestions: result.printedQuestions ?? 0,

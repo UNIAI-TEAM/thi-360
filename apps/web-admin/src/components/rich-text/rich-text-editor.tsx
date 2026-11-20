@@ -8,16 +8,14 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import katex from "katex";
-import { deferUntilMhchem } from "./math-render";
+import { deferUntilMhchem, hasUnbalancedMath, sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import "katex/dist/katex.min.css";
 import { useTranslations } from "next-intl";
 import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type AriaAttributes, type Ref } from "react";
 import { createRichTextExtensions } from "./extensions";
 import { MathInputRule } from "./extensions/math-input-rule";
 import { SlashMenu } from "./extensions/slash-menu";
-import { stripTrailingEmptyParagraph } from "./html-contract";
 import { INSERT_REGISTRY, registryEditorPlugins, slashMenuEntries, toolbarInsertEntries, type FieldContext, type InsertDialogModule, type InsertEntry } from "./insert/registry";
-import { hasUnbalancedMath, sanitizeQuestionHtml } from "./sanitize";
 import { RichTextToolbar } from "./toolbar/toolbar";
 import "./rich-text.css";
 

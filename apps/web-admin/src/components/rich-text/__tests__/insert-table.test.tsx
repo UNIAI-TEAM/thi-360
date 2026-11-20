@@ -6,8 +6,8 @@ import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
+import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { createRichTextExtensions } from "../extensions";
-import { stripTrailingEmptyParagraph } from "../html-contract";
 import TableInsertDialog from "../insert/table/dialog";
 import {
   createDraft,
@@ -22,7 +22,6 @@ import {
   setHeaderRow,
   unwrapFigure,
 } from "../insert/table/table-model";
-import { sanitizeQuestionHtml } from "../sanitize";
 
 interface Sample {
   name: string;

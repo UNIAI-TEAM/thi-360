@@ -4,7 +4,7 @@ import { Badge, Chip, cn } from "@thi360/ui";
 import { CircleCheck, CircleX, PenLine } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode } from "react";
-import { questionHtmlText, RichTextView } from "@/components/rich-text";
+import { questionHtmlText, RichTextView } from "@thi360/ui/rich-text";
 import { ClozePassage } from "./cloze-passage";
 import { blankNumberStartOf, type QuestionBody, type QuestionDetail } from "../types";
 import { optionLetter, statementLetter } from "./question-editor-shared";

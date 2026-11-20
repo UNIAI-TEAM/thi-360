@@ -385,6 +385,24 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
   });
 
+  it("rời Cấu trúc sang tab Thông tin bán: hộp thoại gọi đúng tên tab (không rỗng) và 'Bỏ thay đổi' mới chuyển tới /listing", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${QDA}/structure?part=part-42`);
+    renderWithProviders(
+      <>
+        <ExamStructureView examId={QDA} />
+        <a href={examTabHref(QDA, "listing")}>tab-listing</a>
+      </>,
+    );
+    await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
+    await user.click(screen.getByRole("link", { name: "tab-listing" }));
+    const dialog = await screen.findByRole("dialog", { name: dialogName });
+    expect(within(dialog).getByText(/Bạn đang chuyển sang tab Thông tin bán\./)).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${QDA}/listing`));
+  });
+
   it("rời trang bằng 'Lưu và chuyển': lưu xong mới chuyển", async () => {
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");

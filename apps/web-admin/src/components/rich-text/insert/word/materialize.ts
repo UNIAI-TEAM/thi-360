@@ -3,10 +3,9 @@
  * `<span class="math-inline">\( … \)</span>` (hoặc `span.math-block` khi cả đoạn cấp đầu chỉ có một công thức dòng riêng),
  * rồi đi qua đúng bộ lọc và schema của trình soạn nên khớp từng byte với dạng mà trình soạn xuất ra.
  */
+import { stripTrailingEmptyParagraph, sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 import { Editor } from "@tiptap/core";
 import { createRichTextExtensions } from "../../extensions";
-import { stripTrailingEmptyParagraph } from "../../html-contract";
-import { sanitizeQuestionHtml } from "../../sanitize";
 import { FORMULA_ATTRIBUTE, RETYPE_ATTRIBUTE } from "./parse";
 
 export interface ResolvedFormula {

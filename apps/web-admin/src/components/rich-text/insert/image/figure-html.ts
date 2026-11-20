@@ -1,4 +1,4 @@
-import { FIGURE_WIDTHS } from "../../html-contract";
+import { FIGURE_WIDTHS } from "@thi360/ui/rich-text";
 
 export type FigureWidth = "small" | "medium" | "full";
 
