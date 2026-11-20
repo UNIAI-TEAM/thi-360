@@ -107,7 +107,7 @@ public class MyExamsService {
                         entitlement.examId());
                 continue;
             }
-            cards.add(card(product, entitlement, rangeScope(grants.getOrDefault(entitlement.id(), List.of())),
+            cards.add(card(product, entitlement, rangeGrant(grants.getOrDefault(entitlement.id(), List.of())),
                     provider.findOpenAttempt(userId, entitlement.id()).orElse(null),
                     provider.findLatestResultAttempt(userId, entitlement.id()).orElse(null),
                     pendingByExam.get(entitlement.examId()), serving));
@@ -115,7 +115,7 @@ public class MyExamsService {
         return cards;
     }
 
-    private MyExamCard card(ProductRef product, EntitlementRow entitlement, List<Set<String>> grantOptions,
+    private MyExamCard card(ProductRef product, EntitlementRow entitlement, Set<String> grantOptionCodes,
             OpenAttempt open, ResultAttempt result, String pendingOrderCode,
             Function<UUID, Optional<ServingExam>> serving) {
         ProductCard stored = read(product.card());
@@ -130,7 +130,7 @@ public class MyExamsService {
         IntRange minutes = stored.durationMinutes();
         Optional<ServingExam> servingExam = serving.apply(product.examId());
         if (servingExam.isPresent()) {
-            List<ServingPath> paths = eligiblePaths(servingExam.get().servingPaths(), grantOptions);
+            List<ServingPath> paths = eligiblePaths(servingExam.get().servingPaths(), grantOptionCodes);
             // Nothing the buyer can be given (E25): no range, and not the public catalog range either.
             questions = paths.isEmpty() ? null : orElse(range(paths, ServingPath::questionCount), questions);
             minutes = paths.isEmpty() ? null : orElse(range(paths, ServingPath::durationMinutes), minutes);
@@ -160,32 +160,33 @@ public class MyExamsService {
     }
 
     /**
-     * The grants whose serving paths the card shows (LT 5.1, E21): the grants that still have a usable attempt, as
-     * {@code prepare} picks its FIFO grant from them; when none has one left, the newest grant (the next purchase of
-     * attempts is the one that counts). Each entry is the option codes of one grant.
+     * The option codes of the grant whose serving paths the card shows (LT 5.1, E21): the oldest grant that still has
+     * a usable attempt — the FIFO grant {@code prepare} takes the next attempt from, never a union of the usable
+     * grants; when none has one left, the newest grant (the last purchase is what a top-up adds to). A grant without
+     * option codes serves every path; an entitlement without grants serves none.
      */
-    private static List<Set<String>> rangeScope(List<GrantOptions> grants) {
-        List<Set<String>> usable = grants.stream().filter(GrantOptions::usable).map(GrantOptions::optionCodes).toList();
-        if (!usable.isEmpty() || grants.isEmpty()) {
-            return usable;
+    private static Set<String> rangeGrant(List<GrantOptions> grants) {
+        for (GrantOptions grant : grants) {
+            if (grant.usable()) {
+                return grant.optionCodes();
+            }
         }
-        return List.of(grants.get(grants.size() - 1).optionCodes());
+        return grants.isEmpty() ? Set.of() : grants.get(grants.size() - 1).optionCodes();
     }
 
     /**
-     * The serving paths one of the given grants can be served (E25): a path with choices is eligible for a grant when
-     * every choice is among that grant's option codes; a path with none is eligible for every grant. {@code null}
-     * grants (a paid order with no entitlement yet) keep every serving path. Empty when nothing is eligible.
+     * The serving paths the one given grant can be served (E25): a path with choices is eligible when every choice is
+     * among the grant's purchased option codes; a path with none is eligible for every grant. {@code null} option
+     * codes (a paid order with no entitlement yet) keep every serving path. Empty when nothing is eligible.
      */
-    private static List<ServingPath> eligiblePaths(List<ServingPath> servingPaths, List<Set<String>> grantOptions) {
-        if (grantOptions == null) {
+    private static List<ServingPath> eligiblePaths(List<ServingPath> servingPaths, Set<String> purchasedOptionCodes) {
+        if (purchasedOptionCodes == null) {
             return servingPaths;
         }
-        List<Set<String>> normalized = grantOptions.stream().map(MyExamsService::normalizeCodes).toList();
+        Set<String> purchased = normalizeCodes(purchasedOptionCodes);
         return servingPaths.stream()
-                .filter(path -> normalized.stream().anyMatch(purchased -> path.choices().stream()
-                        .allMatch(choice -> choice.code() != null
-                                && purchased.contains(choice.code().trim().toLowerCase(Locale.ROOT)))))
+                .filter(path -> path.choices().stream().allMatch(choice -> choice.code() != null
+                        && purchased.contains(choice.code().trim().toLowerCase(Locale.ROOT))))
                 .toList();
     }
 

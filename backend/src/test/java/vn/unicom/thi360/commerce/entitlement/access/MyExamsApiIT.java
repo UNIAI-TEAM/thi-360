@@ -263,6 +263,46 @@ class MyExamsApiIT extends AbstractExamAccessIT {
     }
 
     @Test
+    void rangeFollowsTheOldestUsableGrantOnly() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        examPort.serve(ServingExams.serving(product.examId(), product.code(), "PUBLISHED",
+                ServingExams.optionPath("a", "A00", 48, 60), ServingExams.optionPath("b", "B00", 50, 75)));
+        // Older grant A (path a) and newer grant B (path b) both still have an attempt: prepare takes A's next attempt
+        // first (E21 FIFO), so the card ranges over A's paths only, never the union.
+        grant(userId, product.examId(), 1, List.of("A00"), 1);
+        grant(userId, product.examId(), 1, List.of("B00"), 1);
+
+        JsonNode card = only(myExams(learner(userId)));
+
+        assertThat(card.get("attemptsLeft").asInt()).isEqualTo(2);
+        assertThat(card.get("questionCount").get("min").asInt()).isEqualTo(48);
+        assertThat(card.get("questionCount").get("max").asInt())
+                .as("grant B's 50 is not in the next attempt's scope").isEqualTo(48);
+        assertThat(card.get("durationMinutes").get("min").asInt()).isEqualTo(60);
+        assertThat(card.get("durationMinutes").get("max").asInt()).isEqualTo(60);
+    }
+
+    @Test
+    void fifoGrantWithoutServingPathGivesNoRange() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        // The path grant A bought was removed on republication; grant B still has an attempt on the served path.
+        examPort.serve(ServingExams.serving(product.examId(), product.code(), "PUBLISHED",
+                ServingExams.optionPath("b", "B00", 50, 75)));
+        grant(userId, product.examId(), 1, List.of("A00"), 1);
+        grant(userId, product.examId(), 1, List.of("B00"), 1);
+
+        JsonNode card = only(myExams(learner(userId)));
+
+        assertThat(card.get("questionCount").isNull())
+                .as("the next attempt is taken from grant A, which has no serving path; B's metrics do not show")
+                .isTrue();
+        assertThat(card.get("durationMinutes").isNull()).isTrue();
+        assertThat(card.get("state").asText()).isEqualTo("CAN_START");
+    }
+
+    @Test
     void noEligibleServingPathGivesNoRangeNotTheCatalogOne() throws Exception {
         UUID userId = activeAccount();
         Product product = onSale();
