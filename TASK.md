@@ -295,7 +295,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | CR-2 | UNI-2763 | Form theo môn: Ma trận môn QDA, BCA, V-ACT (3 điểm, sóng 2) | merge PR #151 (`6600d6c4`) |
 | CR-3 | UNI-2764 | Form theo môn: Danh sách dòng lấy câu (6 điểm, sóng 2) | merge PR #154 (`31cc852e`) |
 | CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | merge PR #159 (`ac0f96d8`), demo đã cập nhật |
-| CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | đang làm (bro) |
+| CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | merge PR #162 (`7fd21bf8`), hoàn tất 24/24 điểm FTM |
 
 Đặc tả `docs/specs/2026-11-19-form-theo-mon.md` và plan `docs/plans/2026-11-19-form-theo-mon.md` (bản 4, 24 điểm, báo riêng ngoài mẫu số 138).
 
