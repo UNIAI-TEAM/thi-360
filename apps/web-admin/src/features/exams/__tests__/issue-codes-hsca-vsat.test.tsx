@@ -333,3 +333,42 @@ describe("bấm vào lỗi của mã mới dẫn tới đúng dòng ở bước 
     expect(errors.getByRole("link", { name: /một phân đoạn có 3 lệnh/ })).toHaveAttribute("href", `${structure}?part=part-1`);
   });
 });
+
+describe("STORED_ID_COLLISION: id đã lưu trùng tên giữ chỗ của chùm trực tiếp (ADV:CR-4:21)", () => {
+  it("web biết mã đúng một lần và giữ nguyên khi đọc từ máy chủ, id nằm ở blockId", async () => {
+    expect(CHECK_ISSUE_CODES.filter((item) => item === "STORED_ID_COLLISION")).toHaveLength(1);
+    new FakeServer()
+      .on("GET", `${EXAM_PATH}/check`, {
+        status: 200,
+        body: {
+          ...checkResultWire("INVALID"),
+          paths: [
+            {
+              pathId: "default",
+              result: "INVALID",
+              issues: [
+                { code: "STORED_ID_COLLISION", severity: "ERROR", group: "STRUCTURE", blockId: "a-opt:blocks", location: { blockId: "a-opt:blocks" } },
+              ],
+            },
+          ],
+        },
+      })
+      .install();
+
+    const issue = (await getExamCheck({ examId: EXAM_ID }))?.paths[0]?.issues[0];
+
+    expect(issue).toMatchObject({ code: "STORED_ID_COLLISION", blockId: "a-opt:blocks", partId: null, sectionId: null, optionId: null });
+  });
+
+  it("câu chữ nêu id bị trùng và việc phải làm, bằng tiếng Việt và tiếng Anh", async () => {
+    const collision = issueOf({ code: "STORED_ID_COLLISION", group: "STRUCTURE", subjectCode: null, blockName: null, blockId: "a-opt:blocks" });
+
+    const vi = await textOf(collision);
+    const en = await textOf(collision, "en");
+
+    expect(vi).toContain('"a-opt:blocks"');
+    expect(vi).toContain("đổi tên hoặc tạo lại mục");
+    expect(en).toContain('"a-opt:blocks"');
+    expect(en).toContain("Rename or recreate the item with this id");
+  });
+});

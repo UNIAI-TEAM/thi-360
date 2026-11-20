@@ -18,8 +18,11 @@ import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.OptionKind;
+import vn.unicom.thi360.exam.domain.solver.ChosenOption;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
+import vn.unicom.thi360.exam.domain.solver.SolveOption;
 import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
+import vn.unicom.thi360.exam.domain.solver.SolvePart;
 import vn.unicom.thi360.exam.domain.solver.SolveReason;
 import vn.unicom.thi360.exam.domain.solver.SolveStats;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
@@ -59,10 +62,21 @@ public class DefaultExamChecker implements ExamChecker {
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), snapshot.structure());
         var rules = new ExamCheckRules(mapper, snapshot.exam(), snapshot.structure(), combinations,
                 ExamCheckUnitCombinations.topicParents(catalog, snapshot.structure()),
-                templateFacts.of(snapshot.exam()));
+                templateFacts.of(snapshot.exam()), templateFacts.kindCode(snapshot.exam()));
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());
+        var assembler = new ExamCheckAssembler(mapper, clock, limits);
+        // ADV:CR-4:21: a stored node id equal to the "{option}:blocks" holder name of any option makes the draft
+        // ambiguous. Nothing is certifiable then, whatever the scope: one exam-level blocking structure error, no
+        // solving, no unit proof read or written, and (assembled without proofs) no rules stamp.
+        var collision = ExamStoredIdCollision.find(snapshot.structure());
+        if (collision.isPresent()) {
+            common.add(ExamStoredIdCollision.issue(mapper, collision.get()));
+            return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
+                    new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
+                    deadline, budget, common, rules::path);
+        }
         if (scope.kind() == ExamCheckScope.Kind.EXAM && snapshot.servingCombinations() != null
                 && snapshot.servingCombinations().isArray()) {
             List<ExamCheckRules.CombinationContent> served = new ArrayList<>();
@@ -98,7 +112,6 @@ public class DefaultExamChecker implements ExamChecker {
         List<ObjectNode> allInvalid = withSiblingLocks(rules.unrepresentable(), rules, scope, requested);
         List<ObjectNode> invalid = allInvalid.stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList();
-        var assembler = new ExamCheckAssembler(mapper, clock, limits);
         if (scope.kind() == ExamCheckScope.Kind.PART && requested.isEmpty()) {
             ExamPart part = snapshot.structure().parts().stream()
                     .filter(candidate -> scope.targetId().equals(candidate.id())).findFirst().orElseThrow();
@@ -111,7 +124,9 @@ public class DefaultExamChecker implements ExamChecker {
                 return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
             }
         }
-        Map<String, List<ObjectNode>> invalidOptions = new LinkedHashMap<>();
+        // Option-scoped errors are keyed by (partId, optionId): a generated option in another part may share the
+        // optionId of a flagged authored option and must not inherit its error (R4-2).
+        Map<ChosenOption, List<ObjectNode>> invalidOptions = new LinkedHashMap<>();
         Map<String, Set<String>> missingCodes = new LinkedHashMap<>();
         boolean commonInvalid = false;
         for (ObjectNode issue : invalid) {
@@ -120,13 +135,15 @@ public class DefaultExamChecker implements ExamChecker {
                 String partId = issue.path("partId").asText();
                 for (var code : issue.path("affectedCodes")) {
                     missingCodes.computeIfAbsent(partId, ignored -> new java.util.LinkedHashSet<>()).add(code.asText());
-                    invalidOptions.computeIfAbsent(partId + ":" + code.asText(), ignored -> new ArrayList<>()).add(issue);
+                    invalidOptions.computeIfAbsent(new ChosenOption(partId, partId + ":" + code.asText()),
+                            ignored -> new ArrayList<>()).add(issue);
                 }
                 continue;
             }
             String optionId = issue.path("optionId").asText(null);
             if (optionId == null) commonInvalid = true;
-            else invalidOptions.computeIfAbsent(optionId, ignored -> new ArrayList<>()).add(issue);
+            else invalidOptions.computeIfAbsent(new ChosenOption(issue.path("partId").asText(), optionId),
+                    ignored -> new ArrayList<>()).add(issue);
         }
         if (commonInvalid || scope.kind() != ExamCheckScope.Kind.EXAM && !invalid.isEmpty()) {
             common.addAll(invalid);
@@ -144,7 +161,7 @@ public class DefaultExamChecker implements ExamChecker {
             }
             found.addAll(witnessIssues.getOrDefault(path.path().pathIndex(), List.of()));
             path.path().chosen().forEach(choice ->
-                    found.addAll(invalidOptions.getOrDefault(choice.optionId(), List.of())));
+                    found.addAll(invalidOptions.getOrDefault(choice, List.of())));
             return found;
         };
         if (!clock.instant().isBefore(deadline)) {
@@ -154,7 +171,7 @@ public class DefaultExamChecker implements ExamChecker {
                     deadline, budget, common, rules::path);
         }
         Set<String> maskedSections = new java.util.HashSet<>();
-        Set<String> maskedOptions = new java.util.HashSet<>(invalidOptions.keySet());
+        Set<ChosenOption> maskedOptions = new java.util.HashSet<>(invalidOptions.keySet());
         Set<String> ignoredParts = new java.util.HashSet<>();
         Set<String> requestedSubjects = new java.util.HashSet<>();
         if (scope.kind() != ExamCheckScope.Kind.EXAM) {
@@ -171,12 +188,13 @@ public class DefaultExamChecker implements ExamChecker {
                 if (sectionId != null) {
                     maskedSections.add(sectionId);
                 } else if (optionId != null) {
-                    if (optionContains(snapshot.structure(), optionId, requested)
-                            || optionSharesSubjectOnPath(snapshot.structure(), optionId, requested, requestedSubjects)) {
+                    String partId = issue.path("partId").asText(null);
+                    if (optionContains(snapshot.structure(), partId, optionId, requested)
+                            || optionSharesSubjectOnPath(snapshot.structure(), partId, optionId, requested, requestedSubjects)) {
                         common.add(issue);
                         return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
                     }
-                    maskedOptions.add(optionId);
+                    maskedOptions.add(new ChosenOption(partId, optionId));
                 } else {
                     String partId = issue.path("partId").asText(null);
                     var part = snapshot.structure().parts().stream().filter(p -> p.id().equals(partId)).findFirst().orElse(null);
@@ -213,8 +231,7 @@ public class DefaultExamChecker implements ExamChecker {
                     var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), null,
                             new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
                             deadline, budget, common, rules::path);
-                    return new Evaluation(evaluation.result(), evaluation.witness(),
-                            units.invalidUnits(snapshot, input, scope, related));
+                    return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, related));
                 }
             } catch (ExamCheckUnitPlanner.TooManyPaths | ExamCheckUnitPlanner.TooManyChoiceSubjects ignored) {
                 // The unit engine reports the solver limit without attempting these units.
@@ -234,6 +251,7 @@ public class DefaultExamChecker implements ExamChecker {
                     witnessIssues.put(path, found);
                 });
         Map<String, List<SolverInputBuilder.SolverCandidates.FilterCount>> filterCounts = new LinkedHashMap<>();
+        boolean topicCutShort = false;
         for (var path : outcome.results()) {
             if (path.status() != SolveStatus.INVALID) continue;
             var evidence = filterEvidence(path, snapshot.structure(), input.candidates(), combinations, filterCounts);
@@ -242,15 +260,50 @@ public class DefaultExamChecker implements ExamChecker {
             if (!specific.isEmpty()) {
                 witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(specific);
             }
-            var topicIssues = ExamCheckUnitTopicEvidence.issues(path, snapshot.structure(), input.candidates(),
+            var topic = ExamCheckUnitTopicEvidence.issues(path, snapshot.structure(), input.candidates(),
                     rules, clock, deadline, limits.maxCandidatesPerBlock());
-            if (!topicIssues.isEmpty()) {
-                witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(topicIssues);
+            topicCutShort |= topic.cutShort();
+            if (!topic.issues().isEmpty()) {
+                witnessIssues.computeIfAbsent(path.path().pathIndex(), ignored -> new ArrayList<>()).addAll(topic.issues());
             }
         }
-        var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues);
-        return new Evaluation(evaluation.result(), evaluation.witness(),
-                markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
+        // The result vouches for the rules only when every unit proof is terminal AND its assembly was not cut short
+        // by the deadline or a limit (pool and scoring reads of the renderer, topic evidence reads above).
+        var assembled = assembler.assemble(snapshot.exam(), snapshot.structure(), input, outcome, deadline, budget, common, pathIssues)
+                .withProofsTerminal(computed.complete());
+        var evaluation = topicCutShort ? assembled.withAssemblyCutShort() : assembled;
+        if (scope.kind() == ExamCheckScope.Kind.EXAM && evaluation.rulesEvaluated()) {
+            // Pool entries whose subject is on no evaluated path belong to the saved structure, but not to any serving
+            // path (a subject kept only by combinations that lack another pool subject is on none).
+            // Report their R-12 errors at the whole-exam level without making unrelated paths ineligible.
+            for (ObjectNode issue : rules.unusedPoolLimits(evaluatedSubjects(input))) {
+                for (var group : evaluation.result().withArray("groups")) {
+                    if (!issue.path("group").asText().equals(group.path("group").asText())) continue;
+                    ((ObjectNode) group).withArray("issues").add(issue);
+                    ((ObjectNode) group).put("status", "FAIL");
+                    evaluation.result().put("issueCount", evaluation.result().path("issueCount").asInt() + 1);
+                    evaluation.result().put("status", "INVALID");
+                    break;
+                }
+            }
+        }
+        var completed = evaluation.withUnits(markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
+        // Include time spent outside deadline-aware pool reads and in final assembly: an expired run cannot stamp.
+        return clock.instant().isBefore(deadline) ? completed : completed.withAssemblyCutShort();
+    }
+
+    /** The subjects of the sections the solver received for the options of each part: placeholder options hold none. */
+    private static Map<String, Set<String>> evaluatedSubjects(SolverInputBuilder.SolverInput input) {
+        Map<String, Set<String>> subjects = new LinkedHashMap<>();
+        for (SolvePart part : input.parts()) {
+            if (!(part instanceof SolvePart.Choice choice)) continue;
+            for (SolveOption option : choice.options()) {
+                if (!(option instanceof SolveOption.Sections sections)) continue;
+                sections.sections().forEach(section -> subjects
+                        .computeIfAbsent(choice.partId(), ignored -> new java.util.LinkedHashSet<>()).add(section.subjectCode()));
+            }
+        }
+        return subjects;
     }
 
     private static List<ExamCheckRules.FilterEvidence> filterEvidence(PathResult result, ExamStructureDocument document,
@@ -362,19 +415,19 @@ public class DefaultExamChecker implements ExamChecker {
                 deadline, budget, common, rules::path);
         if (scope.kind() == ExamCheckScope.Kind.EXAM) return evaluation;
         Set<String> sections = new java.util.HashSet<>();
-        Set<String> options = new java.util.HashSet<>();
+        Set<ChosenOption> options = new java.util.HashSet<>();
         Set<String> parts = new java.util.HashSet<>();
         for (var issue : allInvalid) {
             if (issue.hasNonNull("sectionId")) sections.add(issue.path("sectionId").asText());
-            else if (issue.hasNonNull("optionId")) options.add(issue.path("optionId").asText());
-            else if (issue.hasNonNull("partId")) parts.add(issue.path("partId").asText());
+            else if (issue.hasNonNull("optionId")) {
+                options.add(new ChosenOption(issue.path("partId").asText(), issue.path("optionId").asText()));
+            } else if (issue.hasNonNull("partId")) parts.add(issue.path("partId").asText());
         }
         var document = ExamCheckDraftInputs.withoutParts(
                 maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), sections), options), parts);
         try {
             var input = builder.build(snapshot.exam().getKindItemId(), document);
-            return new Evaluation(evaluation.result(), evaluation.witness(),
-                    units.invalidUnits(snapshot, input, scope, common));
+            return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, common));
         } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
                 | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
             // A draft without a representable unit is reflected directly by structural section states.
@@ -407,19 +460,20 @@ public class DefaultExamChecker implements ExamChecker {
                 && scope.targetId().equals(issue.path("partId").asText());
     }
 
-    private static boolean optionContains(ExamStructureDocument document, String optionId, Set<String> requested) {
+    private static boolean optionContains(ExamStructureDocument document, String partId, String optionId,
+                                          Set<String> requested) {
         for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
-            if (!optionId.equals(option.id())) continue;
+            if (!part.id().equals(partId) || !optionId.equals(option.id())) continue;
             if (requested.contains(option.id() + ":blocks")) return true;
             return option.sections().stream().anyMatch(section -> requested.contains(section.id()));
         }
         return false;
     }
 
-    static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String optionId,
+    static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String partId, String optionId,
                                                       Set<String> requested, Set<String> subjects) {
         for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
-            if (!optionId.equals(option.id())) continue;
+            if (!part.id().equals(partId) || !optionId.equals(option.id())) continue;
             boolean sharesSubject = subjects.contains(option.code()) || option.sections().stream()
                     .anyMatch(section -> subjects.contains(section.subjectCode()));
             if (!sharesSubject) return false;
@@ -505,13 +559,13 @@ public class DefaultExamChecker implements ExamChecker {
     }
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */
-    static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<String> invalid) {
+    static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<ChosenOption> invalid) {
         if (invalid.isEmpty()) return document;
         List<ExamPart> parts = new ArrayList<>(document.parts().size());
         for (ExamPart part : document.parts()) {
             List<ExamPartOption> options = new ArrayList<>(part.options().size());
             for (ExamPartOption option : part.options()) {
-                options.add(invalid.contains(option.id())
+                options.add(invalid.contains(new ChosenOption(part.id(), option.id()))
                         ? new ExamPartOption(option.id(), OptionKind.SUBJECT, option.code(), option.name(),
                                 null, null, List.of(), List.of(), option.expertConfirmed())
                         : option);

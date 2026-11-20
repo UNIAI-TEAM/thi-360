@@ -44,6 +44,7 @@ final class ExamCheckAssembler {
         }
         ObjectNode result = mapper.createObjectNode();
         ArrayNode paths = result.putArray("paths");
+        boolean cutShort = false;
         ArrayNode witnesses = mapper.createArrayNode();
         if (input != null) {
             ExamCheckSources sources = new ExamCheckSources(input.candidates(), clock, deadline,
@@ -82,6 +83,7 @@ final class ExamCheckAssembler {
                 if ("VALID".equals(rendered.path("result").asText())) witnesses.add(mapper.valueToTree(path));
                 rendered.path("issues").forEach(issue -> add(all, (ObjectNode) issue));
             }
+            cutShort = sources.cutShort();
         }
         ArrayNode groups = result.putArray("groups");
         for (String name : ExamCheckIssues.GROUPS) {
@@ -105,7 +107,10 @@ final class ExamCheckAssembler {
         result.set("totalPoints", paths.isEmpty() ? mapper.valueToTree(BigDecimal.ZERO) : paths.get(0).path("totalPoints"));
         result.put("printedQuestions", document.parts().stream().mapToInt(ExamCheckAssembler::printedQuestions).sum());
         if (exam.getMaxScore() == null) result.putNull("maxScore"); else result.put("maxScore", exam.getMaxScore());
-        return new ExamChecker.Evaluation(result, witnesses, List.of());
+        // Whether the unit proofs are terminal is the unit engine's to say (before they fold into paths), so a result
+        // assembled without that knowledge never vouches for the rules. Whether this assembly itself was cut short
+        // (a pool or a scoring comparison read after the deadline or beyond the candidate limit) is known here.
+        return new ExamChecker.Evaluation(result, witnesses, List.of(), false, !cutShort);
     }
 
     private static int printedQuestions(ExamPart part) {

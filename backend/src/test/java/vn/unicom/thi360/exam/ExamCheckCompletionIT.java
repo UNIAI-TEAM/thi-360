@@ -42,7 +42,7 @@ class ExamCheckCompletionIT extends AbstractIntegrationTest {
         var result = mapper.createObjectNode().put("status", "VALID").put("issueCount", 0);
 
         var completed = completion.complete(input, start.runId(), result, mapper.createObjectNode(),
-                List.of(), ExamCheckScope.from(null, null, null), Instant.now(), 42,
+                List.of(), true, ExamCheckScope.from(null, null, null), Instant.now(), 42,
                 new ExamCheckCompletion.Actor(actorId, "tester", AuditActorType.USER), "trace-test");
 
         assertThat(completed.accepted()).isTrue();
@@ -70,7 +70,7 @@ class ExamCheckCompletionIT extends AbstractIntegrationTest {
         var result = mapper.createObjectNode().put("status", "VALID").put("issueCount", 0);
 
         var completed = completion.complete(input, start.runId(), result, empty,
-                List.of(), ExamCheckScope.from(null, null, null), Instant.now(), 42,
+                List.of(), true, ExamCheckScope.from(null, null, null), Instant.now(), 42,
                 new ExamCheckCompletion.Actor(actorId, "tester", AuditActorType.USER), "trace-test");
 
         assertThat(completed.accepted()).isFalse();
@@ -91,7 +91,7 @@ class ExamCheckCompletionIT extends AbstractIntegrationTest {
         var empty = mapper.createObjectNode();
         var input = new ExamCheckResultStore.Input(examId, 0, "hash", empty, 1L, 1L, "fingerprint", empty);
         var result = mapper.createObjectNode().put("status", "VALID").put("issueCount", 0);
-        var completed = completion.complete(input, start.runId(), result, empty, List.of(),
+        var completed = completion.complete(input, start.runId(), result, empty, List.of(), true,
                 ExamCheckScope.from(null, null, null), Instant.now(), 151_000,
                 new ExamCheckCompletion.Actor(actorId, "tester", AuditActorType.USER), "late-trace");
         assertThat(completed.accepted()).isFalse();
