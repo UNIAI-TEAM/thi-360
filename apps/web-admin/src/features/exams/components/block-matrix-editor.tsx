@@ -160,6 +160,36 @@ export function BlockMatrixEditor({
   const totalText = (value: number) => (percent ? t("percentValue", { value: number(value) }) : number(value));
   const input = combinedGrid(matrix, axes);
 
+  // Cùng một danh sách báo lỗi cho cả hai nhánh: cơ sở không phải câu vẫn bị chặn lưu khi tổng % lệch, nên lỗi phải hiện.
+  const issueMessages = issues.map((issue) => {
+      const dimension =
+        "dimension" in issue && issue.dimension !== "COMBINED"
+          ? issue.dimension === "GRADE"
+            ? t("byGradeCaption")
+            : issue.dimension === "COMPETENCY"
+              ? t("byCompetencyCaption")
+              : t("byDifficultyCaption")
+          : null;
+      if (issue.code === "INVALID_VALUE") return { text: t("issues.invalidValue"), over: false };
+      if (issue.code === "PERCENT_TOTAL") {
+        return {
+          text: t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) }),
+          over: issue.actual > 100,
+        };
+      }
+      if (issue.code === "ALLOCATION_TOTAL") {
+        return {
+          text: t("issues.allocationTotal", {
+            dimension: dimension ?? t("matrixName"),
+            actual: issue.actual,
+            expected: issue.expected,
+          }),
+          over: issue.actual > issue.expected,
+        };
+      }
+      return { text: "", over: false };
+  });
+
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-4">
       <h3 id={titleId} className="text-title font-semibold text-text">
@@ -510,40 +540,25 @@ export function BlockMatrixEditor({
                 ]),
             ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
           ]}
-          messages={issues.map((issue) => {
-            const dimension =
-              "dimension" in issue && issue.dimension !== "COMBINED"
-                ? issue.dimension === "GRADE"
-                  ? t("byGradeCaption")
-                  : issue.dimension === "COMPETENCY"
-                    ? t("byCompetencyCaption")
-                    : t("byDifficultyCaption")
-                : null;
-            if (issue.code === "INVALID_VALUE") return { text: t("issues.invalidValue"), over: false };
-            if (issue.code === "PERCENT_TOTAL") {
-              return {
-                text: t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) }),
-                over: issue.actual > 100,
-              };
-            }
-            if (issue.code === "ALLOCATION_TOTAL") {
-              return {
-                text: t("issues.allocationTotal", {
-                  dimension: dimension ?? t("matrixName"),
-                  actual: issue.actual,
-                  expected: issue.expected,
-                }),
-                over: issue.actual > issue.expected,
-              };
-            }
-            return { text: "", over: false };
-          })}
+          messages={issueMessages}
           declared={declared}
         />
       ) : (
-        <p className="text-body text-text-secondary">
-          {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
-        </p>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-body text-text-secondary">
+            {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
+          </p>
+          {issueMessages.length > 0 && (
+            <ul className="flex flex-col gap-1">
+              {issueMessages.map((message) => (
+                <li key={message.text} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
+                  <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  {message.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </section>
   );

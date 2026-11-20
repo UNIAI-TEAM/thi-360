@@ -29,6 +29,13 @@ export const BLOCK_FIELDS = [
 
 export type BlockField = (typeof BLOCK_FIELDS)[number];
 
+/** Ô của nhóm chứa lỗi cấu trúc trên màn (`validateBlock`); lỗi của bảng ma trận không có ô riêng nên chỉ mở nhóm. */
+export function structureIssueBlockField(issue: { code: string }): BlockField | null {
+  if (issue.code === "COUNT_NOT_POSITIVE") return "questionCount";
+  if (issue.code === "SET_SIZE_MISMATCH") return "setCount";
+  return null;
+}
+
 export function blockFieldAnchor(blockId: string, field: BlockField): string {
   return `block-${blockId}-${field}`;
 }

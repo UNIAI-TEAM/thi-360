@@ -74,7 +74,7 @@ describe("ExamReviewView", () => {
 
   it("duong Khoa hoc hien ket qua tung bo mon hoc vien chon kem so cau tung mon, bo ba mon tu nhien co ba cach chia", async () => {
     renderWithProviders(<ExamReviewView examId={HSA} />);
-    const table = await screen.findByRole("table", { name: "Kết quả kiểm tra từng bộ môn" });
+    const table = await screen.findByRole("table", { name: /kết quả theo bộ môn học viên chọn/ });
     // Tên môn lấy từ danh mục: đợi tải xong.
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(13));
     const rowOf = (text: string) => within(table).getByText(text).closest("tr")!;

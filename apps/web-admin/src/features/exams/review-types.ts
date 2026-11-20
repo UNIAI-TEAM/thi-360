@@ -560,6 +560,8 @@ interface PreviewBase {
   version: number | null;
   seed: number;
   generatedAt: string;
+  /** Hạn giữ đề thử (`generatedAt` + 30 phút) để đếm ngược; `null` khi sinh thử lỗi. */
+  expiresAt: string | null;
 }
 
 /** Một dòng bảng Yêu cầu / Thực tế của đề đã sinh (2B mục 8): mọi tiêu chí kể cả tham khảo. */
@@ -577,6 +579,10 @@ export interface PreviewCompliance {
   independent: boolean;
   /** Ghi chú của máy chủ (`dropped N`: đã bỏ N câu của chỉ tiêu 17 câu); `null` khi không có. */
   note: string | null;
+  /** Số yêu cầu trước khi trừ phần đóng góp của câu bỏ ("16 (17, đã bỏ 1 câu)"); `null` khi dòng không bỏ câu nào. */
+  originalRequired: number | null;
+  /** Tên chủ đề của dòng `TOPIC:*` (tên chỉ tiêu, không có thì tên kiến thức tiếng Việt: nội dung đề); `null` ở dòng khác. */
+  topicName: string | null;
 }
 
 /** Phạm vi sinh thử (2B mục 8): một môn, một đường (mã, nhánh, bộ ba môn), hoặc cả bài không có lựa chọn. */

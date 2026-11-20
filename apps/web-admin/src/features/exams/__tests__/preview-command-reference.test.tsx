@@ -10,6 +10,7 @@ import type { PreviewCompliance, PreviewPaper, PreviewSubject } from "../review-
 import type { ExamScope } from "../types";
 import { EXAM_ID, examDetailWire } from "./fake-exams-server";
 import { paperOf, partOf } from "./preview-paper-fixtures";
+import { byTextContent } from "./text-content";
 
 // Nhà máy của `vi.mock` được nâng lên đầu tệp nên không dùng được import tĩnh cho dữ liệu mẫu (cùng cách các test khác).
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -27,6 +28,8 @@ const row = (criterion: string, required: number | null, actual: number, over: P
   basis: "PROMPT",
   independent: false,
   note: null,
+  originalRequired: null,
+  topicName: null,
   ...over,
 });
 
@@ -93,7 +96,7 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
   it("bài theo phần: mẫu số nêu phần thay cho 'cả môn'", async () => {
     renderTable([row("DIFFICULTY:RECOGNITION", 2, 2), row("DIFFICULTY:COMPREHENSION", 4, 4)], "PART");
 
-    expect(await screen.findByText("Mẫu số: Toán · Phan II · 6 lệnh")).toBeInTheDocument();
+    expect(await screen.findByText(byTextContent("Mẫu số: Toán · Phan II · 6 lệnh"))).toBeInTheDocument();
   });
 
   it("có dòng Chưa phân loại ở cả khối lớp và độ khó, kết quả Thiếu nhãn, không hiện mã thô", async () => {

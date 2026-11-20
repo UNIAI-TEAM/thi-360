@@ -9,6 +9,7 @@ import type { ExamDetail, ExamPart, ExamSection, ExamTemplate, QuestionBlock } f
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
 import { sp2eVanExam } from "./sp2e-van-fixture";
+import { byTextContent } from "./text-content";
 
 /**
  * UNI-2751: tab Thông tin chung có "Cấu trúc tổng quan" như bước 1, dựng từ cấu trúc đã lưu. Lưu ghi cấu trúc trước
@@ -479,7 +480,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     await user.click(screen.getByRole("button", { name: SAVE }));
     const dialog = await screen.findByRole("dialog");
     // Hộp nạp lại liệt kê đúng phần và số câu của bản xem trước (P1, 12 câu), không phải "0 câu".
-    expect(within(dialog).getByText("1. P1 Trac nghiem")).toBeInTheDocument();
+    expect(within(dialog).getByText(byTextContent("1. P1 Trac nghiem"))).toBeInTheDocument();
     expect(within(dialog).getByText("12 câu · thời lượng chung")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
 

@@ -150,11 +150,14 @@ export function buildTopicQuotaIndex(structure: ExamStructure | undefined): Topi
 
 /**
  * Dòng chỉ tiêu chủ đề `REFERENCE` chưa gắn MAPID (H31): chờ mapping nên không có dữ liệu đối chiếu và không tính là
- * lệch; chỉ tiêu của dòng tra theo id (`TOPIC:<id>`) trong cấu trúc bài. `undefined` khi chưa tải được cấu trúc.
+ * lệch; chỉ tiêu của dòng tra theo id (`TOPIC:<id>`) trong cấu trúc bài. `unavailable`: cấu trúc bài đang tải hoặc tải lỗi,
+ * mọi dòng chỉ tiêu chủ đề `REFERENCE` hiện trung tính thay vì đoán.
  */
-export function topicQuotaPending(row: PreviewCompliance, quotas: TopicQuotaIndex | undefined): boolean {
+export function topicQuotaPending(row: PreviewCompliance, quotas: TopicQuotaIndex | undefined, unavailable = false): boolean {
   const ref = parseCriterion(row.criterion);
   if (ref.kind !== "TOPIC" || row.enforcement !== "REFERENCE") return false;
+  // Cấu trúc đang tải hoặc không tải được: chưa biết dòng đã gắn MAPID chưa, nên không tính là lệch (hiện trung tính).
+  if (unavailable) return true;
   const quota = quotas?.get(ref.code);
   return quota !== undefined && quota.enforcement === "REFERENCE" && quota.nodeIds.length === 0;
 }

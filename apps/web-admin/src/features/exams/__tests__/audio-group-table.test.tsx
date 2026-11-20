@@ -7,6 +7,7 @@ import type { ContentReference } from "@/features/content/types";
 import { BlockEditor } from "../components/block-editor";
 import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-panel";
 import type { AudioRequirement, ExamPart, ExamSection, QuestionBlock } from "../types";
+import { byTextContent } from "./text-content";
 
 /**
  * FE-7 vòng 4, F1: bảng nhóm của môn thuộc phần có audio theo bản vẽ `NhomAudio2B`: Nhãn audio, Số lượng, Tổng câu, Tỷ lệ
@@ -114,7 +115,7 @@ describe("bảng nhóm của môn thuộc phần Nghe (F1)", () => {
 
   it("dòng tóm tắt phần Nghe: tên phần, số câu, nhãn Có audio, điều kiện đặt theo phần", () => {
     renderPanel(section("REQUIRED"));
-    expect(screen.getByText("Phần Nghe · 35 câu")).toBeInTheDocument();
+    expect(screen.getByText(byTextContent("Phần Nghe · 35 câu"))).toBeInTheDocument();
     expect(screen.getAllByText("Có audio").length).toBeGreaterThan(1);
     expect(screen.getByText("Điều kiện audio đặt theo phần, không đổi ở từng dòng.")).toBeInTheDocument();
   });
@@ -160,7 +161,7 @@ describe("bảng nhóm của môn thuộc phần Nghe (F1)", () => {
   it("phần Đọc: nhãn Không có audio ở từng dòng và ở dòng tóm tắt", () => {
     renderPanel(section("FORBIDDEN"));
     expect(cells(rowOf("Dòng 1 · Câu đơn"))[2]).toBe("Không có audio");
-    expect(screen.getByText("Phần Nghe · 35 câu").parentElement).toHaveTextContent("Không có audio");
+    expect(screen.getByText(byTextContent("Phần Nghe · 35 câu")).parentElement).toHaveTextContent("Không có audio");
     expect(screen.getByRole("rowheader", { name: "Tổng phần Nghe" })).toBeInTheDocument();
   });
 
@@ -174,7 +175,7 @@ describe("bảng nhóm của môn thuộc phần Nghe (F1)", () => {
     renderPanel(section("REQUIRED"), { english: true });
     const headers = within(table()).getAllByRole("columnheader").map((cell) => cell.textContent);
     expect(headers).toEqual(expect.arrayContaining(["Audio label", "Quantity", "Total questions", "Share of the part", "Available source"]));
-    expect(screen.getByText("Part Nghe · 35 questions")).toBeInTheDocument();
+    expect(screen.getByText(byTextContent("Part Nghe · 35 questions"))).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "Part Nghe total" })).toBeInTheDocument();
     expect(within(table()).getByText("3 sets × 4 sub-questions")).toBeInTheDocument();
   });

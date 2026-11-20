@@ -143,7 +143,7 @@ describe("bước 2 trong màn cấu trúc (FE-7)", () => {
 
     setup("PART");
     openStructure("?section=sec-en");
-    await waitFor(() => expect(screen.getByText("Phần Nghe")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Phần Nghe").length).toBeGreaterThan(0));
     expect(screen.queryByRole("table", { name: /Mạch đối chiếu/ })).toBeNull();
     expect(screen.queryByText("Mạch đối chiếu theo lệnh")).toBeNull();
   }, 30_000);

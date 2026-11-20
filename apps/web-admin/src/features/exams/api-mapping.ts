@@ -27,6 +27,7 @@ import type {
   MatrixDimensionValue,
   QuestionBlock,
   TopicQuota,
+  TypeCount,
 } from "./types";
 
 /**
@@ -57,11 +58,8 @@ export function mapSectionStates(
   }));
 }
 
-/**
- * Hàng của `structure/summary` như BE-5 thật trả: cây phần → môn → nhóm qua `children`. OpenAPI chưa khai `children`
- * (springdoc bỏ trường tự tham chiếu) nên kiểu sinh chỉ có các trường phẳng; thêm lại ở đây cho đến khi hợp đồng sửa.
- */
-type ApiSummaryRow = Schemas["ExamStructureSummaryRow"] & { children?: ApiSummaryRow[] | null };
+/** Hàng của `structure/summary`: cây phần → môn → nhóm qua `children` (kiểu sinh từ OpenAPI có đủ trường tự tham chiếu). */
+type ApiSummaryRow = Schemas["ExamStructureSummaryRow"];
 
 function flattenSummary(rows: readonly ApiSummaryRow[] | null | undefined, into: ExamStructureSummaryRow[]) {
   for (const row of rows ?? []) {
@@ -522,7 +520,11 @@ function templateOption(option: ExamPartOption): TemplateOption {
   };
 }
 
-function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): ExamTemplatePart {
+function mapTypeCounts(counts: readonly Schemas["ExamTemplateQuestionTypeCount"][] | undefined): TypeCount[] {
+  return (counts ?? []).map((item) => ({ questionType: item.questionType as TypeCount["questionType"], questionCount: item.questionCount }));
+}
+
+function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined, summary: Schemas["ExamTemplatePartSummary"] | undefined): ExamTemplatePart {
   const sections = part.sections.map((section, sectionIndex) => {
     const omittedBlocks = (raw?.sections?.[sectionIndex]?.blocks ?? [])
       .filter((block) => block.omitted)
@@ -547,12 +549,13 @@ function templatePart(part: ExamPart, index: number, raw: ApiPart | undefined): 
     ...(sections.length ? { sections } : {}),
     ...(part.mode === "CHOICE" ? { options: part.options.map(templateOption) } : {}),
     ...(part.displaySegments?.length ? { displaySegments: structuredClone(part.displaySegments) } : {}),
+    ...(summary?.questionTypes?.length ? { questionTypes: mapTypeCounts(summary.questionTypes) } : {}),
   };
 }
 
 /** Mẫu cấu trúc; máy chủ không trả tên nên `name` để trống, giao diện dựng tên theo ngôn ngữ (`useExamTemplates`). */
 export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): ExamTemplate {
-  const document = (response.structure ?? {}) as { parts?: ApiPart[] };
+  const document = response.structure;
   return {
     code: response.code,
     kind: response.kindCode,
@@ -574,6 +577,14 @@ export function mapExamTemplate(response: Schemas["ExamTemplateResponse"]): Exam
     fixedCounts: nullable(response.fixedCounts),
     fixedBlockCounts: nullable(response.fixedBlockCounts),
     omittedLocked: nullable(response.omittedLocked),
-    parts: mapParts(document.parts).map((part, index) => templatePart(part, index, document.parts?.[index])),
+    parts: mapParts(document.parts).map((part, index) =>
+      templatePart(
+        part,
+        index,
+        document.parts?.[index],
+        // Cùng phần theo id khi mẫu đã gán id, không thì theo vị trí.
+        response.parts.find((summary) => summary.partId && summary.partId === part.id) ?? response.parts[index],
+      ),
+    ),
   };
 }

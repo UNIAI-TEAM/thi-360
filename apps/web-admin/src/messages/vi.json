@@ -3863,7 +3863,10 @@
       "close": "Đóng",
       "partChange": "{before} → {after}",
       "partNone": "chưa có",
-      "partWithMeta": "{name} · {meta}"
+      "partWithMeta": "{name} · {meta}",
+      "typeAny": "Dạng câu chưa ghi",
+      "typeChange": "{type}: {from, number} → {to, number} câu",
+      "typeNew": "{type}: {count, number} câu"
     },
     "structure": {
       "title": "Cấu trúc và ma trận",
@@ -3985,7 +3988,9 @@
           "blockRemoved": "Xóa nhóm {name} khỏi {subject}.",
           "blockRenamed": "Đổi tên nhóm {from} thành {to}.",
           "blockSettings": "{name}: đổi cấu hình nhóm.",
+          "blocksReordered": "{subject}: đổi thứ tự các nhóm.",
           "empty": "chưa đặt",
+          "partAdded": "Thêm phần {name}.",
           "partNumber": {
             "durationMinutes": "{part}: thời lượng {from} → {to}.",
             "maxPoints": "{part}: điểm tối đa {from} → {to}.",
@@ -3993,10 +3998,14 @@
             "questionCountOnPaper": "{part}: số câu trên đề {from} → {to}.",
             "questionCountRequired": "{part}: số câu phải làm {from} → {to}."
           },
+          "partRemoved": "Xóa phần {name}.",
           "partRenamed": "Đổi tên phần {from} thành {to}.",
           "partSettings": "{part}: đổi thiết lập phần.",
+          "sectionAdded": "Thêm môn {subject}.",
           "sectionCount": "{subject}: số câu {from} → {to}.",
-          "sectionSettings": "{subject}: đổi chỉ tiêu cấp môn."
+          "sectionRemoved": "Xóa môn {subject}.",
+          "sectionSettings": "{subject}: đổi chỉ tiêu cấp môn.",
+          "structureChanged": "Đổi thứ tự hoặc thiết lập khác của cấu trúc."
         },
         "changesIntro": "Còn thay đổi chưa lưu:",
         "changesMore": "và {count, number} thay đổi khác.",
@@ -5482,6 +5491,7 @@
         "requiredNone": "—",
         "requiredAtLeast": "ít nhất {value}",
         "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
+        "requiredOriginal": "{value} ({original}, đã bỏ {count, number} câu)",
         "result": {
           "MISSING_LABEL": "Thiếu nhãn",
           "OK": "Đạt",
@@ -5492,6 +5502,7 @@
         "scope": {
           "EXAM": "Cả bài"
         },
+        "structureUnavailable": "Chưa tải được cấu trúc bài nên các dòng chỉ tiêu chủ đề tham khảo chưa đối chiếu được.",
         "tableLabel": "Yêu cầu và thực tế của đề thử",
         "title": "Yêu cầu / Thực tế / Chênh lệch",
         "unit": {

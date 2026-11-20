@@ -476,6 +476,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
       <Card padding="none" className="overflow-hidden">
         <Table
           aria-label={t("tableLabel")}
+          aria-labelledby={titleId}
           columns={columns}
           data={path.selections}
           getRowId={(selection) => `${selection.subjectCodes.join("+")}:${selection.counts.join("/")}`}

@@ -27,7 +27,7 @@ import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
-import { richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
+import { ExamName, richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
   exam: ExamDetail;
@@ -392,7 +392,8 @@ export function ExamPreviewPanel({
                   onValueChange={setPickedSection}
                   options={sectionOptions.map((item) => ({
                     value: item.sectionId,
-                    label: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
+                    label: richNodes(t, "scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: <ExamName>{item.partName}</ExamName> }),
+                    textValue: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
                   }))}
                 />
               )}
@@ -420,7 +421,7 @@ export function ExamPreviewPanel({
               onClick={() => start({ basePreviewId: shown.previewId!, regeneratePartIds: keepIds, seed: shown.seed })}
               loading={generate.isPending}
             >
-              {t("keep.change", { parts: regeneratedParts.map((part) => part.name).join(", ") })}
+              {richNodes(t, "keep.change", { parts: <ExamName>{regeneratedParts.map((part) => part.name).join(", ")}</ExamName> })}
             </Button>
           )}
         </div>
@@ -435,13 +436,13 @@ export function ExamPreviewPanel({
         {canKeep && shown && selectedPath && keptRange && regeneratedRange && (
           <p className="flex items-start gap-2 text-body text-text-secondary">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {t("keep.note", {
-              from: pathLabel(shown.path),
-              to: pathLabel(selectedPath),
-              kept: keptParts.map((part) => part.name).join(", "),
+            {richNodes(t, "keep.note", {
+              from: pathNode(shown.path),
+              to: pathNode(selectedPath),
+              kept: <ExamName>{keptParts.map((part) => part.name).join(", ")}</ExamName>,
               keptFirst: keptRange.first,
               keptLast: keptRange.last,
-              regenerated: regeneratedParts.map((part) => part.name).join(", "),
+              regenerated: <ExamName>{regeneratedParts.map((part) => part.name).join(", ")}</ExamName>,
               regeneratedFirst: regeneratedRange.first,
               regeneratedLast: regeneratedRange.last,
             })}

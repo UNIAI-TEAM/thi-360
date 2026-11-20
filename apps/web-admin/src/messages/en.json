@@ -3863,7 +3863,10 @@
       "close": "Close",
       "partChange": "{before} → {after}",
       "partNone": "none yet",
-      "partWithMeta": "{name} · {meta}"
+      "partWithMeta": "{name} · {meta}",
+      "typeAny": "Question type not set",
+      "typeChange": "{type}: {from, number} → {to, plural, one {# question} other {# questions}}",
+      "typeNew": "{type}: {count, plural, one {# question} other {# questions}}"
     },
     "structure": {
       "title": "Structure and matrix",
@@ -3985,7 +3988,9 @@
           "blockRemoved": "Removed group {name} from {subject}.",
           "blockRenamed": "Renamed group {from} to {to}.",
           "blockSettings": "{name}: group settings changed.",
+          "blocksReordered": "{subject}: group order changed.",
           "empty": "not set",
+          "partAdded": "Added part {name}.",
           "partNumber": {
             "durationMinutes": "{part}: duration {from} → {to}.",
             "maxPoints": "{part}: maximum points {from} → {to}.",
@@ -3993,10 +3998,14 @@
             "questionCountOnPaper": "{part}: questions on paper {from} → {to}.",
             "questionCountRequired": "{part}: questions to answer {from} → {to}."
           },
+          "partRemoved": "Removed part {name}.",
           "partRenamed": "Renamed part {from} to {to}.",
           "partSettings": "{part}: part settings changed.",
+          "sectionAdded": "Added subject {subject}.",
           "sectionCount": "{subject}: questions {from} → {to}.",
-          "sectionSettings": "{subject}: subject targets changed."
+          "sectionRemoved": "Removed subject {subject}.",
+          "sectionSettings": "{subject}: subject targets changed.",
+          "structureChanged": "Order or other settings of the structure changed."
         },
         "changesIntro": "Unsaved changes:",
         "changesMore": "and {count, plural, one {# more change} other {# more changes}}.",
@@ -5482,6 +5491,7 @@
         "requiredNone": "—",
         "requiredAtLeast": "at least {value}",
         "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
+        "requiredOriginal": "{value} ({original}, dropped {count, plural, one {# question} other {# questions}})",
         "result": {
           "MISSING_LABEL": "Missing label",
           "OK": "Met",
@@ -5492,6 +5502,7 @@
         "scope": {
           "EXAM": "Whole exam"
         },
+        "structureUnavailable": "The exam structure could not be loaded, so reference topic rows cannot be compared yet.",
         "tableLabel": "Required and actual values of the trial paper",
         "title": "Required / Actual / Difference",
         "unit": {

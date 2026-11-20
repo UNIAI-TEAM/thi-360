@@ -73,6 +73,8 @@ describe("AC-1: bảng đối chiếu Yêu cầu / Thực tế / Chênh lệch",
       basis: "QUESTION",
       independent: false,
       note: null,
+      originalRequired: null,
+      topicName: null,
     });
     renderWithProviders(
       <ExamPreviewCompliance

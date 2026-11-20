@@ -4,6 +4,7 @@ import { FormField, notify, Select, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { matchingTemplates } from "../create-exam-schema";
+import { partTypeCounts } from "../part-type-counts";
 import { useApplyExamTemplate } from "../queries";
 import { ExamsApiError } from "../review-api";
 import type { ExamDetail, ExamPart, ExamTemplate, StructureOverviewPolicy } from "../types";
@@ -31,12 +32,14 @@ function rowsOf(template: ExamTemplate, currentParts: readonly ExamPart[]): Relo
       questionCount: part.questionCount,
       durationMinutes: part.durationMinutes,
       shared: template.timing === "SHARED",
+      typeCounts: part.questionTypes,
       before: before
         ? {
             name: before.name,
             questionCount: before.questionCount,
             durationMinutes: before.durationMinutes,
             shared: before.durationMinutes === null,
+            typeCounts: partTypeCounts(before),
           }
         : null,
     };

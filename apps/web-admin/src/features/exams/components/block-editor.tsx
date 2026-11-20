@@ -18,9 +18,11 @@ import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock 
 import { useAvailableQuestions } from "../queries";
 import type { ExamSection, ExamTemplate, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, droppedSlotIndexes, rateSetMismatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
-import { blockFieldAnchor, type BlockField } from "./block-form-fields";
+import { blockFieldAnchor, focusBlockField, type BlockField } from "./block-form-fields";
+import { blockFieldFromUrl, clearBlockFieldFromUrl, consumeBlockFieldRequest, useBlockFieldRequest } from "./block-field-focus";
 import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
+import { ExamName, richNodes } from "./exam-review-shared";
 import { BlockNumberInput, parseNumberText } from "./block-number-input";
 import { BlockRadioGroup } from "./block-radio-group";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
@@ -140,6 +142,20 @@ export function BlockEditor({
         }
       : {};
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
+
+  // Bấm lỗi: tiêu điểm vào đúng ô của lỗi, từ vùng tổng hợp (yêu cầu trong bộ nhớ) hoặc từ tab Kiểm tra (`?block=&field=`).
+  const fieldRequest = useBlockFieldRequest(block.id);
+  useEffect(() => {
+    const field = fieldRequest?.field ?? blockFieldFromUrl(window.location.search, block.id);
+    if (!field) return;
+    // Đợi một khung hình để ô của nhóm vừa mở vẽ xong rồi mới đặt tiêu điểm.
+    const frame = requestAnimationFrame(() => {
+      focusBlockField(block.id, field);
+      if (fieldRequest) consumeBlockFieldRequest();
+      clearBlockFieldFromUrl();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [block.id, fieldRequest]);
 
   const isSet = isSetBlock(block);
   const flexible = isFlexibleSet(block);
@@ -273,7 +289,7 @@ export function BlockEditor({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 id={titleId} className="flex flex-wrap items-center gap-2 text-h3 font-bold wrap-break-word text-text">
-            {t("title", { name: block.name || t("untitled") })}
+            {richNodes(t, "title", { name: block.name ? <ExamName>{block.name}</ExamName> : t("untitled") })}
             {range && <Badge className="font-medium">{tForm("positionRange", { from: range.from, to: range.to, same: range.from === range.to ? "yes" : "no" })}</Badge>}
             {block.questionType === "ESSAY" && <Badge className="font-medium">{t("manualGrading")}</Badge>}
             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}

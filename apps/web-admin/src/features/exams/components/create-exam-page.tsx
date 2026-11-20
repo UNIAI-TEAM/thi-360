@@ -304,11 +304,11 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
             const name = lookup.subject(code);
             return name === code ? undefined : name;
           },
-          partSections: (partRow) => template?.parts[Number(partRow.key.slice(2))]?.sections ?? [],
+          partSections: (partRow) => partRow.partIndex === undefined ? [] : (template?.parts[partRow.partIndex]?.sections ?? []),
           // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
           audioLabel: audioSplit
             ? (partRow) => {
-                const audio = templatePartAudio(template?.parts[Number(partRow.key.slice(2))]);
+                const audio = templatePartAudio(partRow.partIndex === undefined ? undefined : template?.parts[partRow.partIndex]);
                 return audio ? tStep(audio === "REQUIRED" ? "skillListening" : "skillReading") : undefined;
               }
             : undefined,

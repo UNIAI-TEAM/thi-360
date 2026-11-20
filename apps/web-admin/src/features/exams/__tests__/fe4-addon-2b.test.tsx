@@ -39,6 +39,8 @@ const row = (over: Partial<PreviewCompliance>): PreviewCompliance => ({
   basis: "QUESTION",
   independent: false,
   note: null,
+  originalRequired: null,
+  topicName: null,
   ...over,
 });
 
@@ -370,8 +372,10 @@ describe("chỉ tiêu REFERENCE chưa gắn MAPID", () => {
     );
 
     await screen.findByRole("table", { name: "Yêu cầu và thực tế của đề thử" });
-    // Đợi truy vấn cấu trúc xong trước khi lấy dòng: bảng vẽ lại khi chỉ số chủ đề tải xong.
-    expect(await screen.findByText("Chờ mapping")).toBeInTheDocument();
+    // Đợi truy vấn cấu trúc xong trước khi lấy dòng: bảng vẽ lại khi chỉ số chủ đề tải xong. Trong lúc tải mọi dòng chủ đề
+    // tham khảo cũng hiện "Chờ mapping" (FU-FE4A-R1-7), nên chữ này chưa đủ làm mốc: chờ tên chủ đề của cấu trúc.
+    await screen.findByText("Chính tả, từ vựng và ngữ nghĩa · Nhận biết");
+    expect(screen.getByText("Chờ mapping")).toBeInTheDocument();
     const only = within(screen.getByRole("table", { name: "Yêu cầu và thực tế của đề thử" })).getAllByRole("row")[1]!;
     expect(within(only).getAllByText("Chưa có dữ liệu đối chiếu")).toHaveLength(2);
     expect(within(only).getByText("Chính tả, từ vựng và ngữ nghĩa · Nhận biết")).toBeInTheDocument();

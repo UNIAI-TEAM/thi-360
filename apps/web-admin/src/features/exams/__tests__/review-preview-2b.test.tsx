@@ -18,6 +18,7 @@ import type {
   PreviewQuestion,
 } from "../review-types";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, type Recorded } from "./fake-exams-server";
+import { byTextContent } from "./text-content";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -119,6 +120,8 @@ const row = (over: Partial<PreviewCompliance>): PreviewCompliance => ({
   basis: "QUESTION",
   independent: false,
   note: null,
+  originalRequired: null,
+  topicName: null,
   ...over,
 });
 
@@ -673,7 +676,9 @@ describe("BCA đổi mã trên cùng đề thử", () => {
     await pick(user, "Đường lựa chọn", /CA2/);
     expect(
       await screen.findByText(
-        "Đề thử đang dùng CA1. Đổi sang CA2 giữ nguyên Part 1, Part 2 (câu 1–65), chỉ sinh lại Part 3 (câu 66–80). Sinh đề thử mới sinh lại cả bài với hạt giống mới.",
+        byTextContent(
+          "Đề thử đang dùng CA1. Đổi sang CA2 giữ nguyên Part 1, Part 2 (câu 1–65), chỉ sinh lại Part 3 (câu 66–80). Sinh đề thử mới sinh lại cả bài với hạt giống mới.",
+        ),
       ),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Đổi mã, sinh lại Part 3" }));

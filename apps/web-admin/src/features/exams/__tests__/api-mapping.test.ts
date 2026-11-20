@@ -21,6 +21,7 @@ function template(parts: unknown[]): Template {
     timing: "SHARED",
     durationMinutes: 180,
     structure: { parts } as unknown as Template["structure"],
+    parts: [],
   };
 }
 

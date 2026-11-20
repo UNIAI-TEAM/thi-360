@@ -243,7 +243,7 @@ function ExamGeneralForm({
           return name === code ? undefined : name;
         },
         partSections: (partRow) => {
-          const part = structure?.parts[Number(partRow.key.slice(2))];
+          const part = partRow.partIndex === undefined ? undefined : structure?.parts[partRow.partIndex];
           return part?.mode === "FIXED" ? part.sections : [];
         },
       },
