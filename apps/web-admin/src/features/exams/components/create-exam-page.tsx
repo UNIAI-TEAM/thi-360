@@ -261,11 +261,13 @@ function EditExamLoader({ examId, templatesQuery, referenceQuery, catalogErrorBo
   const examQuery = useExam(examId);
   const structureQuery = useExamStructure(examId);
   // Giữ lại lỗi vừa gặp trong lúc bấm Thử lại (vì TanStack Query đưa status về pending khi data còn trống) để nút báo đang tải và tránh nhấp nháy thanh bước.
+  // Khi đã có đủ dữ liệu bài và cấu trúc (`hasExamData`), bỏ qua mọi lỗi refetch nền hoặc `retriedError` cũ để không hủy biểu mẫu giữa lúc lưu hoặc làm mất nội dung đang sửa.
   const [retriedError, setRetriedError] = useState<unknown>(null);
 
-  const liveExamError = examQuery.isError ? examQuery.error : structureQuery.isError ? structureQuery.error : null;
+  const hasExamData = Boolean(examQuery.data && structureQuery.data);
+  const liveExamError = hasExamData ? null : examQuery.isError ? examQuery.error : structureQuery.isError ? structureQuery.error : null;
   const isExamFetching = examQuery.isFetching || structureQuery.isFetching;
-  const examError = liveExamError ?? (isExamFetching ? retriedError : null);
+  const examError = hasExamData ? null : (liveExamError ?? (isExamFetching ? retriedError : null));
   const examForbidden = getErrorStatus(examError) === 403;
   const examNotFound = getErrorStatus(examError) === 404;
   const hasLoadError = Boolean(catalogErrorBody || examError);

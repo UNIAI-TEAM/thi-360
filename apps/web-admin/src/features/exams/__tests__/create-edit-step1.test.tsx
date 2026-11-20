@@ -7,7 +7,7 @@ import { CreateExamPage } from "../components/create-exam-page";
 import { EXAMS_QUERY_KEYS } from "../keys";
 import type { ExamDetail, ExamPart, QuestionBlock } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
-import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
+import { ExamsBackend, toWireExam, toWireTemplate } from "./fake-exams-backend";
 import { examDetailWire } from "./fake-exams-server";
 import { byTextContent } from "./text-content";
 
@@ -533,5 +533,68 @@ describe("Bước 1 ở chế độ sửa (/exams/new?exam=<id>, UNI-2751)", () 
 
     await screen.findByRole("form", { name: "Tạo bài thi" });
     expect(screen.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue("HSA sau retry");
+  }, 30_000);
+
+  it("R2-1/R2-2: sau khi Thử lại tải bài thành công, lưu không làm hiện lại lỗi tải bài và chuyển sang bước 2", async () => {
+    setup({}, (server) => {
+      server.server.on(
+        "GET",
+        EXAM_PATH,
+        { status: 500, body: { code: "INTERNAL" } },
+        () => ({ status: 200, body: toWireExam(server.app(EXAM_ID)) }),
+      );
+    });
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/new?exam=${EXAM_ID}`);
+    renderWithProviders(<CreateExamPage />);
+    expect(await screen.findByRole("heading", { name: "Không tải được bài thi" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await screen.findByRole("form", { name: "Tạo bài thi" });
+
+    const name = screen.getByRole("textbox", { name: /Tên bài thi/ });
+    await user.clear(name);
+    await user.type(name, "HSA sau retry vẫn lưu được");
+
+    backend.server.hold("GET", EXAM_PATH);
+    try {
+      await user.click(screen.getAllByRole("button", { name: CONTINUE })[0]!);
+      await waitFor(() => expect(backend.calls("GET", EXAM_PATH)).toHaveLength(3));
+      expect(screen.queryByRole("heading", { name: "Không tải được bài thi" })).not.toBeInTheDocument();
+      expect(screen.getByRole("form", { name: "Tạo bài thi" })).toBeInTheDocument();
+    } finally {
+      backend.server.release("GET", EXAM_PATH);
+    }
+
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
+    expect(screen.queryByRole("heading", { name: "Không tải được bài thi" })).not.toBeInTheDocument();
+    expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1);
+    expect(backend.app(EXAM_ID).name).toBe("HSA sau retry vẫn lưu được");
+  }, 30_000);
+
+  it("R2-3: tải lại nền gặp lỗi 500 khi đã có dữ liệu giữ nguyên biểu mẫu và nội dung đang sửa dở", async () => {
+    setup({}, (server) => {
+      server.server.on(
+        "GET",
+        EXAM_PATH,
+        () => ({ status: 200, body: toWireExam(server.app(EXAM_ID)) }),
+        { status: 500, body: { code: "INTERNAL" } },
+      );
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const user = userEvent.setup();
+    await open(client);
+
+    const name = screen.getByRole("textbox", { name: /Tên bài thi/ });
+    await user.clear(name);
+    await user.type(name, "Tên đang sửa dở");
+
+    await client.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.detail(EXAM_ID) });
+    await waitFor(() => expect(backend.calls("GET", EXAM_PATH)).toHaveLength(2));
+    await waitFor(() => expect(client.getQueryState(EXAMS_QUERY_KEYS.detail(EXAM_ID))?.status).toBe("error"));
+
+    expect(screen.queryByRole("heading", { name: "Không tải được bài thi" })).not.toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Tạo bài thi" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue("Tên đang sửa dở");
   }, 30_000);
 });
