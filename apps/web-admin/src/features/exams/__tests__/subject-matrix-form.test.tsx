@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { registerMatrixKindSlot } from "../subject-forms/matrix-form";
 import { patchSubjectFormEntry } from "../subject-forms/registry";
 import type { FakeServer } from "./fake-exams-server";
 import { boot, checkCalls, openStructure, putCalls, requestLog, sectionsOf, wireBlock, wirePart, wireSection, type Wire } from "./subject-form-harness";
@@ -350,6 +351,44 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
     expect(single).toEqual(expect.objectContaining({ id: seeded[0]!.id, tagCodes: [] }));
     expect(fill).toEqual(expect.objectContaining({ id: seeded[2]!.id, tagCodes: [] }));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.knowledgeScope ?? null).toBeNull();
+  });
+});
+
+describe("MT: chỗ gắn theo kỳ (ADV:CR-2:2; R-3, R-15)", () => {
+  const slotBlock = () => <section data-testid="kind-slot" aria-label="Phần thử theo kỳ" />;
+
+  it("slot trước Cấu trúc câu với biến thể gọn: phần thử đứng trên khối Cấu trúc câu, khối mang data-structure-variant compact, gỡ đăng ký khôi phục", async () => {
+    const unregister = registerMatrixKindSlot("QDA", slotBlock, { placement: "before-structure", structureVariant: "compact" });
+    try {
+      await openSection("sec-ly", lyParts());
+      const slot = screen.getByTestId("kind-slot");
+      const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]');
+      expect(structure).not.toBeNull();
+      expect(slot.compareDocumentPosition(structure!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+      expect(structure).toHaveAttribute("data-structure-variant", "compact");
+      // Bản gọn: ô xếp ngang, không câu nhắc; vẫn giữ toàn bộ ô và lỗi như bản mặc định.
+      expect(within(structure!).queryByText(/Nhập số câu của từng dạng/), "hint paragraph hidden in compact").toBeNull();
+    } finally {
+      unregister();
+    }
+    await openSection("sec-hoa", lyParts());
+    expect(screen.queryByTestId("kind-slot")).toBeNull();
+    expect(document.querySelector('[data-form-field="STRUCTURE"]')).not.toHaveAttribute("data-structure-variant");
+  });
+
+  it("slot không tuỳ chọn giữ vị trí mặc định: đứng sau Cấu trúc câu, trước Khối lớp và Độ khó, khối không mang biến thể", async () => {
+    const unregister = registerMatrixKindSlot("QDA", slotBlock);
+    try {
+      await openSection("sec-ly", lyParts());
+      const slot = screen.getByTestId("kind-slot");
+      const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]');
+      const distribution = screen.getByRole("heading", { level: 4, name: "Độ khó" }).closest("[data-form-field]");
+      expect(slot.compareDocumentPosition(structure!) & Node.DOCUMENT_POSITION_PRECEDING).not.toBe(0);
+      expect(distribution!.compareDocumentPosition(slot) & Node.DOCUMENT_POSITION_PRECEDING).not.toBe(0);
+      expect(structure).not.toHaveAttribute("data-structure-variant");
+    } finally {
+      unregister();
+    }
   });
 });
 

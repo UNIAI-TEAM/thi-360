@@ -33,7 +33,7 @@ function ReadOnlyCount({ label, value, hint }: { label: string; value: number; h
  * Mỗi vai trò chỉ hiện khi bài có nhóm của vai trò đó. V-ACT nhập hai cột Số câu / Tỷ lệ cho từng vai trò (R-9): tỷ lệ chỉ quy ra
  * số khi các vai trò cộng đủ 100%, chưa đủ thì giữ ở kho nhập thô và chặn lưu.
  */
-export function MatrixStructureBlock(props: MatrixBlockProps) {
+export function MatrixStructureBlock({ compact = false, ...props }: MatrixBlockProps & { compact?: boolean }) {
   const { section, entry, kindCode, total, raw, onChange, templateLocked } = props;
   const t = useTranslations("exams.subjectForm.matrix.structure");
   const tErrors = useTranslations("exams.subjectForm.matrix.errors");
@@ -169,12 +169,17 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
 
   const structureError = errorOf(MATRIX_FIELDS.structure);
   return (
-    <section aria-label={t("title")} data-form-field={MATRIX_FIELDS.structure} className="flex flex-col gap-4 rounded-md border border-border p-4">
+    <section
+      aria-label={t("title")}
+      data-form-field={MATRIX_FIELDS.structure}
+      data-structure-variant={compact ? "compact" : undefined}
+      className="flex flex-col gap-4 rounded-md border border-border p-4"
+    >
       <div className="flex flex-col gap-0.5">
         <h3 className="text-title font-semibold text-text">{t("title")}</h3>
-        <p className="text-caption text-text-muted">{t("hint")}</p>
+        {!compact && <p className="text-caption text-text-muted">{t("hint")}</p>}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={compact ? "flex flex-wrap items-start gap-4" : "grid gap-4 sm:grid-cols-2"}>
         {twoColumns ? (
           <>
             {single && row("SINGLE", MATRIX_FIELDS.single, t("single"))}

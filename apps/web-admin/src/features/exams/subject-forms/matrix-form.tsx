@@ -5,7 +5,7 @@ import { useMemo, useSyncExternalStore, type ComponentType } from "react";
 import { useSubjectTotalChange } from "../components/subject-total-change";
 import { sectionCaseCounts } from "../subject-matrix";
 import type { SubjectFormRendererProps } from "./form-renderers";
-import type { MatrixBlockProps } from "./matrix-block-props";
+import type { MatrixBlockProps, MatrixKindSlotOptions } from "./matrix-block-props";
 import { MatrixDistributionBlock } from "./matrix-distribution-block";
 import { structureOf } from "./matrix-form-model";
 import { MatrixScopeBlock } from "./matrix-scope-block";
@@ -23,12 +23,12 @@ import { SubjectFormHeader } from "./subject-form-header";
  */
 export type MatrixKindSlot = ComponentType<MatrixBlockProps>;
 
-const kindSlots: Record<string, MatrixKindSlot> = {};
+const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotOptions }> = {};
 
-/** Đăng ký phần riêng của một kỳ (CR-2H); trả hàm gỡ dùng khi kiểm thử. */
-export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot): () => void {
+/** Đăng ký phần riêng của một kỳ (CR-2H) kèm tuỳ chọn vị trí và biến thể Cấu trúc câu (`MatrixKindSlotOptions`); trả hàm gỡ. */
+export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, options: MatrixKindSlotOptions = {}): () => void {
   const previous = kindSlots[kindCode];
-  kindSlots[kindCode] = slot;
+  kindSlots[kindCode] = { slot, options };
   return () => {
     if (previous) kindSlots[kindCode] = previous;
     else delete kindSlots[kindCode];
@@ -66,7 +66,8 @@ export function MatrixForm(props: SubjectFormRendererProps) {
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
   const blockProps: MatrixBlockProps = { section, entry, kindCode, subjectName, total, axes, labels, reference, onChange, templateLocked, raw };
-  const KindSlot = kindSlots[kindCode];
+  const kindSlot = kindSlots[kindCode];
+  const beforeStructure = kindSlot?.options.placement === "before-structure";
 
   return (
     <SubjectFormHeader
@@ -80,10 +81,11 @@ export function MatrixForm(props: SubjectFormRendererProps) {
     >
       <div data-form-kind="MATRIX" className="flex flex-col gap-6">
         {totalChangeNotice}
+        {beforeStructure && <kindSlot.slot {...blockProps} />}
         <div ref={countRef}>
-          <MatrixStructureBlock {...blockProps} />
+          <MatrixStructureBlock {...blockProps} compact={kindSlot?.options.structureVariant === "compact"} />
         </div>
-        {KindSlot && <KindSlot {...blockProps} />}
+        {!beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <MatrixDistributionBlock {...blockProps} />
         {/* QDA, BCA, V-ACT dùng Phạm vi và Chỉ tiêu chủ đề (R-6); HSA dùng Quy tắc MAPID của HSA-D (R-5) qua chỗ gắn. */}
         {entry.mapidFlow === "SCOPE_AND_QUOTA" && <MatrixScopeBlock {...blockProps} topicError={topicError} />}

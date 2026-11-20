@@ -33,3 +33,16 @@ export interface MatrixBlockProps {
   templateLocked: boolean;
   raw: MatrixRawFields;
 }
+/**
+ * Tuỳ chọn của chỗ gắn theo kỳ (`matrix-form.tsx`, `registerMatrixKindSlot`; chỗ gắn riêng theo kỳ của CR-2H).
+ *
+ * - `placement`: `"after-structure"` (mặc định, giữ đúng hành vi QDA, BCA, V-ACT: phần riêng nằm sau Cấu trúc câu, trước Khối lớp và
+ *   Độ khó); `"before-structure"` vẽ phần riêng trước Cấu trúc câu, dưới thông báo tổng đổi (dành cho Mạch kiến thức của HSA Sử,
+ *   Địa theo UNI-1706 §4-5).
+ * - `structureVariant`: `"default"` giữ khối Cấu trúc câu hiện tại; `"compact"` cho bản gọn (câu đơn, chùm × câu con trên một khối
+ *   gọn, không câu nhắc, các ô xếp ngang) — chỉ khi kỳ cần phần riêng đứng trước nó.
+ */
+export interface MatrixKindSlotOptions {
+  placement?: "before-structure" | "after-structure";
+  structureVariant?: "default" | "compact";
+}
