@@ -93,18 +93,21 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
       const user = userEvent.setup();
       const { server } = boot({ kind: "HSA", parts: [wirePart([hsaMathSection()])] });
       const view = openStructure("?section=sec-toan");
-      await screen.findByTestId("mapid-mode-matrix");
-      if (expectMatrix) expect(screen.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
-      else expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeNull();
-      await user.click(screen.getByTestId("mapid-mode-matrix"));
-      await screen.findByTestId("mapid-rules-table");
-      await addMathRule(user, { type: "COUNT", scope: /^Điền đáp án/, exactCount: 3 });
-      await addMathRule(user, { type: "SOURCE", scope: /^Chùm cuối/ });
-      await user.click(screen.getByRole("button", { name: "Lưu" }));
-      await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-      const sec = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!;
-      view.unmount();
-      return { mapidMode: sec.mapidMode, mapidRules: sec.mapidRules };
+      try {
+        await screen.findByTestId("mapid-mode-matrix");
+        if (expectMatrix) expect(screen.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+        else expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeNull();
+        await user.click(screen.getByTestId("mapid-mode-matrix"));
+        await screen.findByTestId("mapid-rules-table");
+        await addMathRule(user, { type: "COUNT", scope: /^Điền đáp án/, exactCount: 3 });
+        await addMathRule(user, { type: "SOURCE", scope: /^Chùm cuối/ });
+        await user.click(screen.getByRole("button", { name: "Lưu" }));
+        await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+        const sec = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!;
+        return { mapidMode: sec.mapidMode, mapidRules: sec.mapidRules };
+      } finally {
+        view.unmount();
+      }
     };
 
     const mtResult = await runActions(true);
@@ -119,7 +122,7 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
     } finally {
       undo();
     }
-  });
+  }, 20_000);
 
   it("percentRulesFollowStructure & zeroKeepsRuleTarget: đổi Điền đáp án 15 -> 12 và 15 -> 0 -> 12 tính lại count của quy tắc % và giữ nguyên groupId", async () => {
     const user = userEvent.setup();

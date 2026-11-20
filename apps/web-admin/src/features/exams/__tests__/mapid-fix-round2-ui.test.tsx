@@ -10,6 +10,7 @@ import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-
 import { ExamStructureView } from "../components/exam-structure-view";
 import { useMapidRuleText } from "../components/mapid-rules-table";
 import { HsaExamContext } from "../hsa-enforcement";
+import { patchSubjectFormEntry } from "../subject-forms/registry";
 import type { ExamPart, ExamSection, MapidRule, QuestionBlock } from "../types";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
@@ -279,17 +280,23 @@ describe("R1-F4: xóa nhóm có quy tắc rồi Lưu", () => {
       .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
       .install();
     const u = user();
-    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?block=blk-2`);
-    renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
-    await u.click(await screen.findByRole("button", { name: "Xóa nhóm Trả lời ngắn" }));
-    const confirm = await screen.findByRole("dialog", { name: /Xóa nhóm Trả lời ngắn\?/ });
-    await u.click(within(confirm).getByRole("button", { name: "Xóa nhóm" }));
-    await u.click(screen.getByRole("button", { name: "Lưu" }));
-    const messages = await screen.findAllByText(/Chưa lưu được: quy tắc/);
-    expect(messages[0]).toHaveTextContent("Trả lời ngắn (đã xóa) · Đúng 3 câu thuộc Mệnh đề và tập hợp");
-    expect(messages[0]).toHaveTextContent("nhóm «Trả lời ngắn»");
-    expect(screen.queryByText(/bảng phân bổ còn lỗi/)).not.toBeInTheDocument();
-    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(0));
+    // Ca R1-F4 do nút "Xóa nhóm" trên MD (khi HSA:TOAN mở MD hoặc dùng bài cũ không khớp MT).
+    const restore = patchSubjectFormEntry("HSA", "TOAN", { enabled: false });
+    try {
+      window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?block=blk-2`);
+      renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
+      await u.click(await screen.findByRole("button", { name: "Xóa nhóm Trả lời ngắn" }));
+      const confirm = await screen.findByRole("dialog", { name: /Xóa nhóm Trả lời ngắn\?/ });
+      await u.click(within(confirm).getByRole("button", { name: "Xóa nhóm" }));
+      await u.click(screen.getByRole("button", { name: "Lưu" }));
+      const messages = await screen.findAllByText(/Chưa lưu được: quy tắc/);
+      expect(messages[0]).toHaveTextContent("Trả lời ngắn (đã xóa) · Đúng 3 câu thuộc Mệnh đề và tập hợp");
+      expect(messages[0]).toHaveTextContent("nhóm «Trả lời ngắn»");
+      expect(screen.queryByText(/bảng phân bổ còn lỗi/)).not.toBeInTheDocument();
+      await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(0));
+    } finally {
+      restore();
+    }
   });
 });
 
