@@ -5,7 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, type ReactNode } from "react";
 import { indexKnowledge, knowledgeName, knowledgePath } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
-import { RichTextView } from "@/components/rich-text";
+import { RichTextView } from "@thi360/ui/rich-text";
 import { useQuestion } from "../queries";
 import type { QuestionDetail } from "../types";
 import { QuestionBodyView } from "./question-detail-body";

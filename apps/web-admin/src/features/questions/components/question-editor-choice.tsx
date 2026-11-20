@@ -5,7 +5,7 @@ import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { questionHtmlText } from "@/components/rich-text";
+import { questionHtmlText } from "@thi360/ui/rich-text";
 import { choiceHtmlOfPhrase, phraseTextByLabel } from "@/components/rich-text/insert/underline-label/labels";
 import { MULTIPLE_CHOICE_RULES } from "@/features/content/types";
 import { emptyOption, isDraftRowId, type QuestionEditorValues } from "../editor-form";

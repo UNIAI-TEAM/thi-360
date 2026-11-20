@@ -1,5 +1,5 @@
-/** Bốn tab của trang soạn bài thi, là trang con riêng (NavTabs, DESIGN.md 5.5). */
-export const EXAM_EDITOR_TABS = ["general", "structure", "review", "versions"] as const;
+/** Năm tab của trang soạn bài thi, là trang con riêng (NavTabs, DESIGN.md 5.5); Thông tin bán nằm giữa Cấu trúc và Kiểm tra. */
+export const EXAM_EDITOR_TABS = ["general", "structure", "listing", "review", "versions"] as const;
 export type ExamEditorTab = (typeof EXAM_EDITOR_TABS)[number];
 
 export function examTabHref(examId: string, tab: ExamEditorTab): string {

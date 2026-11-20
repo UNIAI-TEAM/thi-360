@@ -6,9 +6,8 @@ import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import type * as QuestionsApi from "@/features/questions/api";
 import { uploadQuestionAsset } from "@/features/questions/api";
+import { RichTextView, hasUnbalancedMath, sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 import { RichTextEditor } from "../rich-text-editor";
-import { RichTextView } from "../view/rich-text-view";
-import { hasUnbalancedMath, sanitizeQuestionHtml } from "../sanitize";
 
 vi.mock("mathlive", () => import("./mathlive-mock").then((module) => module.mathliveModule));
 vi.mock("@/features/questions/api", async (importOriginal) => {

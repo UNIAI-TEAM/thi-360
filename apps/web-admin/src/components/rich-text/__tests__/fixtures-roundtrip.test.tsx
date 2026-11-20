@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
+import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { createRichTextExtensions } from "../extensions";
-import { stripTrailingEmptyParagraph } from "../html-contract";
-import { sanitizeQuestionHtml } from "../sanitize";
 
 interface Sample {
   name: string;

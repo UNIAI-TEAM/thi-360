@@ -3,7 +3,7 @@
 import { Card } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useMemo, type ReactNode } from "react";
-import { RichTextView } from "@/components/rich-text";
+import { RichTextView } from "@thi360/ui/rich-text";
 import { indexKnowledge, knowledgeName } from "@/features/content/knowledge-tree";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { QuestionVersion } from "../editor-types";

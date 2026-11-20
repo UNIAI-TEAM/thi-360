@@ -1,11 +1,11 @@
 "use client";
 
 import { Button, Checkbox, cn, Input } from "@thi360/ui";
+import { sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 import { Merge, Minus, Plus, Split } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { DATA_TABLE_NODE } from "../../extensions";
-import { sanitizeQuestionHtml } from "../../sanitize";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";
 import { selectedAtom, upsertAtom } from "../shared/upsert-atom";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MULTIPLE_CHOICE_RULES, QUESTION_TYPES, TRUE_FALSE_METHODS } from "@/features/content/types";
-import { questionHtmlText } from "@/components/rich-text/sanitize";
+import { questionHtmlText } from "@thi360/ui/rich-text";
 import {
   countBlankMarkers,
   isBlankNumberStart,

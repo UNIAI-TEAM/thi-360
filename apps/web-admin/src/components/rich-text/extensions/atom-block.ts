@@ -1,6 +1,6 @@
 import type { Attribute } from "@tiptap/core";
 import type { DOMOutputSpec } from "@tiptap/pm/model";
-import { renderMath } from "../math-render";
+import { renderMath } from "@thi360/ui/rich-text";
 
 /**
  * Thuộc tính `html`: toàn bộ innerHTML của khối (bảng, hình, đoạn trích). Node là atom nên
