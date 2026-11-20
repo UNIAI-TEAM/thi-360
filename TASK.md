@@ -235,21 +235,21 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | merge PR #155 (`858cb28c`) |
 | EX-1 | UNI-2706 | Module `exam`: thông tin bán, ảnh bìa (kèm dọn ảnh bỏ), kiểm tra khi công bố, quy tắc E24, sự kiện, `PublishedExamPort`, đọc giờ qua `Clock` | G0b, TS | C-0b | 4 | merge PR #140 (`ba90c125`) |
 | EX-2 | UNI-2707 | Module `exam`: `PaperSolverPort` trên mô hình 2B, `PreviewPaperPort`, đo hiệu năng | G0b, TS |  | 2 | merge PR #138 (`f77deccb`) |
-| DS | UNI-2708 | Bộ dữ liệu bài đã công bố cho 9 kỳ thi, dùng cho test, dev, E2E | EX-1 | EX-2 | 4 | đang làm (bro) |
+| DS | UNI-2708 | Bộ dữ liệu bài đã công bố cho 9 kỳ thi, dùng cho test, dev, E2E | EX-1 | EX-2 | 4 | merge PR #145 (`9389da7f`) |
 | VP-1 | UNI-2709 | Thử VNPAY sandbox trước khi làm cổng thật; vector chữ ký thật | G2 |  | 1 | đã merge vào `integration/dot-3` (PR #121, `171ee506`, 2026-11-19); AC-3, AC-12 chờ VNPAY (Q9), VP-2 đo lại |
 | ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | merge PR #137 (`9c73a563`) |
 | ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | merge PR #139 (`1250752a`) |
 | CM-1 | UNI-2712 | Bảng chiếu sản phẩm, API công khai | C-0, C-0b, EX-1 | DS | 3 | merge PR #141 (`25e2e8f7`) |
 | CM-2 | UNI-2713 | Khuyến mãi, voucher, tính giá, cảnh báo giá sàn, tổng tiền đã giảm, lịch sử thay đổi | CM-1 |  | 5 | merge PR #156 (`e82928eb`) |
 | CM-4a | UNI-2714 | Bảng quyền dùng, `EntitlementPort`, cấp quyền nội bộ | C-0 |  | 2 | merge PR #128 (`55994db7`) |
-| CM-4b | UNI-2715 | `exam-access`, `/me/exams` | CM-1, CM-4a |  | 2 | đang làm (cty) |
+| CM-4b | UNI-2715 | `exam-access`, `/me/exams` | CM-1, CM-4a |  | 2 | merge PR #146 (`9ce34f90`) |
 | CM-3a | UNI-2716 | Đơn hàng, cổng giả lập, IPN, trang quay lại, đơn 0 đồng, cấp quyền sau thu tiền, quy tắc một khoản được tính mỗi đơn | CM-2, CM-4b, ML |  | 5 | đang làm (cty) |
 | CM-3b | UNI-2717 | Cổng VNPAY thật, `querydr`, đơn hết hạn, tiền về muộn sau hết hạn | CM-3a | VP-1 | 3 | chưa mở |
 | CM-5 | UNI-2718 | Quản lý đơn, người mua, hoàn tiền, tiếp tục cấp quyền, đối soát, xử lý tiền về trên lần đã ghi thất bại | CM-3a |  | 5 | chưa mở |
 | VP-2 | UNI-2719 | Luồng VNPAY sandbox thật có IPN, qua bản demo | CM-3b, FS-3, FA-3, DS, G2 |  | 1 | chưa mở |
 | CM-6 | UNI-2720 | Bộ đề: bảng, công bố, bảng chiếu, đơn nhiều bài, cấp quyền từng bài, hoàn tiền, voucher phạm vi bộ | CM-1, CM-3a, CM-4b, DS | CM-5 | 3 | chưa mở |
-| AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | đang làm (bro) |
-| AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | chưa mở |
+| AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | merge PR #157 (`11527568`) |
+| AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | đang làm (bro) |
 | AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | chưa mở |
 | AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | chưa mở |
 | AT-4 | UNI-2725 | Chấm tự động, tổng hợp, kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | AT-2a | AT-2b, AT-3 | 5 | chưa mở |
@@ -257,7 +257,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | AT-6 | UNI-2727 | Phát audio có giới hạn lần nghe, kiểm tệp audio khi mở lượt | AT-2a, AT-3 |  | 3 | chưa mở |
 | AT-7 | UNI-2728 | Chấm H-SCA, V-SAT, kết quả theo phân đoạn | AT-4 | AT-5 | 2 | chưa mở |
 | AT-8 | UNI-2729 | THPTQG chuyển tự do giữa các phần | AT-2a | AT-3, AT-6 | 2 | chưa mở |
-| FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | đang làm (cty) |
+| FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | merge PR #149 (`1e49a9e5`) |
 | FS-2 | UNI-2731 | Web học viên: đăng ký, xác minh, quên mật khẩu, hồ sơ | ID-1, ID-2 | FS-1 | 3 | merge PR #142 (`db46d807`) |
 | FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | chưa mở |
 | FS-4 | UNI-2733 | `packages/ui`: thành phần 8 dạng câu (làm bài và chỉ đọc); đưa bộ hiển thị nội dung (`RichTextView`, mọi loại nút, KaTeX, mhchem) vào `packages/ui` |  |  | 3 | đang làm |
@@ -265,7 +265,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | FS-6 | UNI-2735 | Web học viên: kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | FS-4, AT-4, FS-1, CM-3a |  | 3 | chưa mở |
 | FS-7 | UNI-2736 | Web học viên: audio, phân đoạn, nhập ký hiệu và kết quả của H-SCA, V-SAT | FS-5, FS-6, AT-6, AT-7 |  | 3 | chưa mở |
 | FB | UNI-2737 | Bộ đề trên web: màn admin "Bộ đề"; thẻ, chi tiết, mua bộ và nhóm thẻ theo bộ ở web học viên | CM-6, FS-1, FS-3, FA-1 | FA-3 | 2 | chưa mở |
-| FA-1 | UNI-2738 | Web admin: tab Thông tin bán, ảnh bìa, cảnh báo chấm tay, menu của đợt | EX-1, FS-4 | DS | 2 | đang làm (máy Windows chính) |
+| FA-1 | UNI-2738 | Web admin: tab Thông tin bán, ảnh bìa, cảnh báo chấm tay, menu của đợt | EX-1, FS-4 | DS | 2 | merge PR #144 (`ac60b21d`) |
 | FA-2 | UNI-2739 | Web admin: Khuyến mãi | CM-2, FA-1 |  | 3 | đang làm (máy Windows chính) |
 | FA-3 | UNI-2740 | Web admin: Đơn hàng, người mua, hoàn tiền, đối soát tiền về muộn | CM-5, FA-1 |  | 4 | chưa mở |
 | FA-4 | UNI-2741 | Web admin: hàng chờ chấm thật, vận hành lượt, làm thử như học viên (phần web) | AT-5, FA-1, FS-4, FS-5, FS-6 |  | 3 | chưa mở |
@@ -282,7 +282,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); vào `develop`: PR #126 (`fd67d223`) |
 | HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | vào `develop`: PR #147 (`e6b3b71d`); forward-merge PR #148 (`5bd43aff`) |
 | HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | merge PR #131 (`cf789ed9`); vào `develop`: PR #132 (`9b8a7e2e`) |
-| HSA-F | UNI-2749 (2751) | 1697 (bổ sung) | Tab Thông tin chung sửa trực tiếp chế độ xây dựng bài thi và đồng bộ cấu trúc | đang làm (bro) |
+| HSA-F | UNI-2749 (2751, 2752, 2753, 2755, 2756) | 1697, 1698, 1699, 1701, 1702 | BA vòng 2 HSA: quay lại bước 1 sửa thông tin và đổi chế độ dựng bài, gộp Xem trước, làm gọn thẻ môn và bảng phân bổ | merge PR #158 (`4ab461eb`), đang cập nhật demo |
 | HSA-G | UNI-2770 | 1707 | Điều chỉnh form Thêm quy tắc MAPID theo phạm vi và kiểm tra xung đột giữa các dòng | vào `develop`: PR #152 (`c69484fb`), demo đã cập nhật; forward-merge PR #153 (`ada02513`) |
 
 **Ngoài plan, thay đổi theo yêu cầu (AD-34):** khóa giá trị hệ thống của danh mục, issue UniAI **UNI-2759**.
