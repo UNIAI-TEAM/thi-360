@@ -45,7 +45,7 @@ const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp";
 
 const PHONE_PATTERN = /^0\d{9}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const FULL_NAME_MAX = 100;
+const FULL_NAME_MAX = 200;
 
 const CARD_CLASS = "flex flex-col gap-4 rounded-xl border border-border bg-surface p-6";
 
