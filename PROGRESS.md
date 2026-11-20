@@ -247,12 +247,29 @@
   - EX-1 (UNI-2706, PR #140, `ba90c125`): thông tin bán và ảnh bìa, kiểm tra công bố có thông tin bán, chặn công bố theo E24 (AD-60a), `PublishedExamPort` theo phiên bản phục vụ, job dọn ảnh bìa. Migration `V202611192324`, `V202611192325`. Cloud 1.028 unit + 1.429 IT, web 2.929; Advisor chạy lại 198 IT + 13 unit trên kết quả merge. Tiến độ 27/138.
   - CM-1 (UNI-2712, PR #141, `25e2e8f7`): bảng chiếu sản phẩm và API công khai (danh mục, lọc Kỳ thi/Hình thức/Phần-môn, ETag); `PublishedExamPort` thêm tóm tắt dạng trả lời theo phần (AD-77, AD-78). Cloud 1.030 unit + 1.472 IT; Advisor chạy lại 101 IT + 7 unit. Tiến độ 30/138.
   - FS-2 (UNI-2731, PR #142, `db46d807`): web học viên đăng ký, xác minh email, quên mật khẩu, hồ sơ. Advisor chạy lại typecheck, test web-student 145/145, lint trên kết quả merge. Tiến độ 33/138.
-- **Đang chạy:** DS, CR-4 (bro); HSA-D, CM-4b, FS-1, CR-3 (cty); FA-1 (máy Windows chính). Chờ máy: CR-2, FU, CM-2.
+- **Đã merge vào `integration/dot-3` (2026-11-20):**
+  - FA-1 (PR #144, `ac60b21d`): Advisor chạy lại typecheck, web-admin 2.446/2.449 (3 test quá giờ do máy bận, chạy riêng tệp 108/108), `@thi360/ui` 520/520, lint.
+  - DS (PR #145, `9389da7f`): cloud backend 2.531 + web 3.178; Advisor chạy lại 15 lớp IT (68 test) + ModularityTest trên bro, 0 lỗi.
+  - CM-4b (UNI-2715, PR #146, `9ce34f90`): quyền dùng bài thi và `/me/exams`; Advisor chạy lại unit 1.031, IT 90, 0 lỗi.
+  - HSA-D (UNI-2758, uniworkos UNI-1704, luật MAPID): vào `develop` qua PR #147 (`e6b3b71d`, Advisor chạy lại unit 108, IT 134), demo cập nhật lên `e6b3b71d`, uniworkos 1704 sang In review; đưa sang nhánh tích hợp qua PR #148 (`5bd43aff`, unit 103, IT 228).
+  - FS-1 (UNI-2730, PR #149, `1e49a9e5`): trang giới thiệu, danh mục, chi tiết bài thi; Advisor chạy lại typecheck, lint, 271 test web-student trên kết quả merge.
+- **Tạm dừng (2026-11-20 ~13:40 UTC+7, M.Trường yêu cầu "dừng tất cả các lane nhé, đặt check point"):** tắt lịch Advisor, đặt cờ `automation/STOP`. Năm lane dừng ở điểm an toàn, mọi commit đã push, mỗi lane có checkpoint kèm các bước chạy lại:
+
+  | Lane | Issue | Head | Còn lại khi chạy lại |
+  |---|---|---|---|
+  | CR-4 | UNI-2762 | `0992d21a` | Kiểm tra lại sau khi gộp 1e49a9e5, cloud, đo hiệu năng, PR |
+  | CR-2 | UNI-2763 | `c1dc52d0` | Chờ CR-4 merge, gộp, cloud lần cuối, PR |
+  | CR-3 | UNI-2764 | `4382b8b4` | Sửa F1/F2, cloud, E2E, visual, review, PR |
+  | FU | UNI-2700 | `ba4948de` | Gộp 1e49a9e5, visual, review, PR |
+  | HSA-F (ngoài plan, BA vòng 2: 1697, 1698, 1699, 1701, 1702) | UNI-2749 | `fec7e690` | Phần nối giao diện đổi cách tạo đề (1697) còn trong worktree chưa commit; sau đó cloud, visual, review, PR, lên `develop` và demo |
+
+  Bàn giao và cách chạy lại: `.thi360-dev/dot-3/reports/handover-2026-11-20-pause.md`. Chưa mở: CR-2H (UNI-2765, gồm phạm vi uniworkos UNI-1706), CM-2 và các task sau.
+- **Sự cố 2026-11-20 13:05:** Advisor dọn worktree đã merge trên máy cty làm xóa nhầm worktree của CR-2, CR-3 đang chạy (AD-108). Commit đều đã nằm trên origin; đã dựng lại worktree, chỉ mất một lần gộp chưa commit và một lượt E2E.
 - **Form theo môn (FTM):** đặc tả và plan bản 4 qua 3 vòng review Codex, `plan-lint` 0 lỗi; 6 task, 24 điểm, issue UNI-2761 … UNI-2766. M.Trường 2026-11-19: "Còn plan thì cứ làm hết rồi deploy", Advisor coi là duyệt G2. Mở CR-1 và CR-4 trước; FTM lên `develop` cùng đợt 3. CR-1 merge PR #143 (`52168620`, 2026-11-20): bảng đăng ký 75 cặp môn (đều tắt), chọn biểu mẫu, điều hướng, chặn lưu; Advisor chạy lại typecheck, 1.036 test web-admin, lint trên kết quả merge.
 - **Ngoài plan:** năm lane sửa lỗi HSA (uniworkos UNI-1695, UniAI UNI-2749), bảng ở `TASK.md`. Xong lane nào thì merge vào `integration/dot-3`, cherry-pick sang hotfix từ `develop`, PR vào `develop` và dựng lại bản demo (M.Trường đồng ý 2026-11-19). 2026-11-19 17:46 (UTC+7): HSA-C merge PR #125 (`ed52d43e`); Advisor chạy lại typecheck, lint, test web phần đề thi trên `27573141` (5 test quá giờ do máy bận, chạy lại 4 tệp: 102/102); cherry-pick vào `develop` là PR #126, đã merge (`fd67d223`, web 2200/2200), demo đã cập nhật lên `fd67d223`. 18:25: HSA-A merge PR #129 (`8c9eb3e6`); Advisor chạy lại typecheck, lint, test đề thi 901/901; vào `develop` qua PR #130 (`e0240ffd`, web 2235/2235), demo cập nhật theo. 18:50: HSA-E merge PR #131 (`cf789ed9`); Advisor chạy lại typecheck, lint, test đề thi 906/906; vào `develop` qua PR #132 (`9b8a7e2e`, web 2240/2240); demo chạy `develop` `9b8a7e2e`. 19:37: HSA-B merge PR #133 (`469c034e`); Advisor chạy lại typecheck, lint, test đề thi 938/938 trên kết quả merge; vào `develop` qua PR #134 (`12ec91a8`, backend verify trên bro 1805/0, web 2272/2272); demo chạy `develop` `12ec91a8`, Flyway thêm `202611190100`. Còn lại của UNI-1695: HSA-D (UNI-1704) tạm dừng, gộp vào đặc tả form theo môn. Mở HSA-E (UNI-2760, uniworkos UNI-1705: cột lệch ở bước Kiểm tra và Xem trước) trên cty.
-- **Advisor:** từ 16:15 ngày 2026-11-19 chuyển sang phiên chat mới theo yêu cầu của M.Trường; checkpoint bàn giao ở `.thi360-dev/dot-3/reports/handover-2026-11-19.md`.
-- **Vướng:** Q9, Q14 chờ VNPAY (M.Trường hỏi). VPS bro tải cao (load5 khoảng 9), chưa đặt lane mới lên bro.
-- **Tiến độ:** 33/138 điểm (23,9%); FTM 6/24.
+- **Advisor:** từ 16:15 ngày 2026-11-19 chuyển sang phiên chat mới theo yêu cầu của M.Trường; checkpoint bàn giao ở `.thi360-dev/dot-3/reports/handover-2026-11-19.md`, checkpoint tạm dừng ở `handover-2026-11-20-pause.md`.
+- **Vướng:** Q9, Q14 chờ VNPAY (M.Trường hỏi). Câu hỏi mở: có bỏ Anthropic (Sonnet 5.5) khỏi chuỗi model dự phòng của worker trên cty và bro không (lỗi 429 làm CR-3 dừng).
+- **Tiến độ:** 44/138 điểm (31,9%), đang tạm dừng.
 
 ### Nhật ký đợt 1
 

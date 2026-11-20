@@ -11,6 +11,7 @@ import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import { EXAMS_QUERY_KEYS } from "../keys";
 import { useExamStructure } from "../queries";
 import {
+  buildMapidRuleIndex,
   buildTopicQuotaIndex,
   commandDenominators,
   competencyName,
@@ -18,8 +19,10 @@ import {
   complianceLevel,
   droppedCount,
   examQuotaNames,
+  isAtLeastRow,
   isUnclassifiedRow,
   parseCriterion,
+  resolveMapidRow,
   parseScope,
   topicAssignments,
   topicQuotaPending,
@@ -27,7 +30,9 @@ import {
 } from "../review-compliance";
 import type { ExamDetail } from "../types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "../review-types";
+import { ExamContentText } from "./exam-content-text";
 import { ExamName, richNodes, useLookup } from "./exam-review-shared";
+import { useMapidRuleText } from "./mapid-rules-table";
 
 const LEVEL_TONE: Record<ComplianceLevel, StatusTone> = {
   OK: "success",
@@ -65,6 +70,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   const quotas = useMemo(() => buildTopicQuotaIndex(structure), [structure]);
   // Chưa có cấu trúc để biết dòng chủ đề nào chờ mapping: trung tính trong lúc tải, kèm lời nhắn khi tải lỗi.
   const structureUnavailable = Boolean(examId) && structure === undefined;
+  const rules = useMemo(() => buildMapidRuleIndex(structure), [structure]);
+  const { sentence } = useMapidRuleText(reference);
   const { columns, cards } = useMemo(() => {
     const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
     const blocks = new Map(paper.parts.flatMap((part) => part.blocks).map((block) => [block.blockId, block]));
@@ -97,6 +104,17 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         }
         case "EXAM":
           return t("criterion.EXAM", { names: examQuotaNames(ref.codes, reference).join(" + ") });
+        case "MAPID": {
+          // Quy tắc của dòng gọi bằng câu mô tả của nó; "Chỉ xuất hiện ở nhóm này" có hai dòng (ngoài nhóm, số câu trong nhóm).
+          const found = rules ? resolveMapidRow(row, rules) : null;
+          if (!found) return t("criterion.MAPID_UNKNOWN", { id: ref.ruleId });
+          const text = sentence(found.section, found.rule, true);
+          const label =
+            found.rule.type !== "ONLY_IN_GROUP"
+              ? t("criterion.MAPID", { sentence: text })
+              : t(ref.count ? "criterion.MAPID_COUNT" : "criterion.MAPID_OUTSIDE", { sentence: text });
+          return <ExamContentText text={label} />;
+        }
         default:
           return ref.raw;
       }
@@ -120,7 +138,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       t("level", { enforcement: t(`enforcement.${row.enforcement}`), unit: t(`unit.${row.basis}`) });
     const required = (row: PreviewCompliance) => {
       if (isUnclassifiedRow(row) || row.required === null) return t("requiredNone");
-      const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
+      const atLeast = isAtLeastRow(row, rules);
       const removed = droppedCount(row.note);
       // Dòng đã bỏ câu: hiện cả số yêu cầu gốc của chỉ tiêu ("16 (17, đã bỏ 1 câu)"); máy chủ chưa gửi số gốc thì chỉ nêu số câu bỏ.
       const value =
@@ -152,7 +170,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         );
       }
       if (topicQuotaPending(row, quotas, structureUnavailable)) return <StatusChip tone="neutral">{t("result.PENDING")}</StatusChip>;
-      const value = complianceLevel(row);
+      const value = complianceLevel(row, rules);
       return <StatusChip tone={LEVEL_TONE[value]}>{t(`result.${value}`)}</StatusChip>;
     };
 
@@ -181,11 +199,13 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       ),
     };
     return { columns, cards };
-  }, [t, tContent, format, lookup, reference, paper, assigned, quotas, structureUnavailable]);
+  }, [t, tContent, format, lookup, reference, paper, assigned, quotas, structureUnavailable, rules, sentence]);
 
   if (compliance.length === 0 && dropped.length === 0) return null;
-  const deviations = compliance.filter((row) => !topicQuotaPending(row, quotas, structureUnavailable) && complianceLevel(row) !== "OK");
-  const blocking = deviations.some((row) => complianceLevel(row) === "REQUIRED_DEVIATION");
+  const deviations = compliance.filter(
+    (row) => !topicQuotaPending(row, quotas, structureUnavailable) && complianceLevel(row, rules) !== "OK",
+  );
+  const blocking = deviations.some((row) => complianceLevel(row, rules) === "REQUIRED_DEVIATION");
 
   return (
     <section aria-labelledby="preview-compliance-title" className="flex flex-col gap-3">

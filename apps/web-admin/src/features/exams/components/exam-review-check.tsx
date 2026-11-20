@@ -405,7 +405,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
   const t = useTranslations("exams.review.selections");
   const tReview = useTranslations("exams.review");
   const lookup = useLookup();
-  const issueNode = useIssueNode();
+  const issueNode = useIssueNode(exam, true);
   const pathNode = usePathNode(exam.id);
   const choice = path.choices.find((item) => item.kind === "SUBJECT_CHOICE");
   const option = exam.parts
@@ -605,7 +605,7 @@ function PathsSection({
   const t = useTranslations("exams.review");
   const pathNode = usePathNode(exam.id);
   const pathSub = usePathSub();
-  const issueNode = useIssueNode();
+  const issueNode = useIssueNode(exam, true);
   const partsList = [...exam.parts]
     .sort((a, b) => a.order - b.order)
     .map((part) => part.order)
@@ -739,7 +739,7 @@ function Legend() {
 
 function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckResult }) {
   const t = useTranslations("exams.review");
-  const issueWithPath = useIssueWithPath(result.paths);
+  const issueWithPath = useIssueWithPath(result.paths, exam, true);
   const first = result.paths[0];
   const listingStatusText = useListingStatusText();
   const listingIssueText = useListingIssueText();
@@ -915,7 +915,7 @@ function BlockLocation({ examId, block, nameId }: { examId: string; block: Block
 function BlockTable({ exam, path }: { exam: ExamDetail; path: PathCheck }) {
   const t = useTranslations("exams.review");
   const format = useFormatter();
-  const issueNode = useIssueNode();
+  const issueNode = useIssueNode(exam, true);
 
   const { columns, cards } = useMemo(() => {
     const required = (block: BlockCheck) =>

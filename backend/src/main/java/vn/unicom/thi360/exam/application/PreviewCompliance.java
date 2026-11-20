@@ -94,14 +94,17 @@ final class PreviewCompliance {
                 }
             }
             matrix(result, "SECTION:" + section.id(), section.matrix(), units);
-            topics(result, "SECTION:" + section.id(), section.topicQuotas(), units, knowledgeById);
+            // With a MAPID mode the rules, not the declared topic quotas, are the topic criteria (UNI-2758).
+            boolean legacyTopics = section.mapidMode() == null;
+            if (legacyTopics) topics(result, "SECTION:" + section.id(), section.topicQuotas(), units, knowledgeById);
             for (QuestionBlock block : section.blocks()) {
                 if (!Boolean.TRUE.equals(block.omitted())) {
                     matrix(result, "BLOCK:" + block.id(), block.matrix(), perBlock.getOrDefault(block.id(), List.of()));
-                    topics(result, "BLOCK:" + block.id(), block.topicQuotas(),
+                    if (legacyTopics) topics(result, "BLOCK:" + block.id(), block.topicQuotas(),
                             perBlock.getOrDefault(block.id(), List.of()), knowledgeById);
                 }
             }
+            mapidRules(result, section, units, perBlock, knowledgeById);
         }
         examQuotas(result, document.examQuotas(), data);
         return List.copyOf(result);
@@ -233,9 +236,15 @@ final class PreviewCompliance {
         if ((!quota.gradeCodes().isEmpty() && !contains(quota.gradeCodes(), datum.unit().gradeCode()))
                 || (!quota.difficultyCodes().isEmpty() && !contains(quota.difficultyCodes(), datum.unit().difficultyCode()))
                 || (!quota.groupIds().isEmpty() && !contains(quota.groupIds(), datum.blockId()))) return false;
+        return carries(datum, quota.nodeIds(), knowledge);
+    }
+
+    /** The unit carries one of the nodes or a descendant of one (D23), as every MAPID rule counts it. */
+    private static boolean carries(Datum datum, List<java.util.UUID> nodes,
+            Map<java.util.UUID, CatalogItemView> knowledge) {
         if (datum.unit().mapidIds() == null) return false;
         for (var node : datum.unit().mapidIds()) {
-            for (var root : quota.nodeIds()) {
+            for (var root : nodes) {
                 if (root.equals(node)) return true;
                 CatalogItemView parent = knowledge.get(root);
                 CatalogItemView child = knowledge.get(node);
@@ -244,6 +253,49 @@ final class PreviewCompliance {
             }
         }
         return false;
+    }
+
+    /**
+     * One row per PRESENT, COUNT and ONLY_IN_GROUP rule of a section in MATRIX mode (UNI-2758): {@code required}
+     * is what the compiler made of the rule, {@code actual} the units of its scope that carry its nodes (a set
+     * counts per child). PRESENT and COUNT report the subject ({@code SECTION:}) or the group ({@code BLOCK:});
+     * ONLY_IN_GROUP reports what carries the node outside its group, required 0, and a rule with a number adds
+     * {@code MAPID:<id>:COUNT} on its group. SOURCE rules are filters, not counts, and have no row.
+     */
+    private static void mapidRules(List<Compliance> result, ExamSection declared, List<Datum> units,
+            Map<String, List<Datum>> perBlock, Map<java.util.UUID, CatalogItemView> knowledge) {
+        if (declared.mapidMode() != MapidMode.MATRIX) return;
+        CompiledMapidRules compiled = MapidRuleCompiler.compile(declared);
+        Map<String, Integer> minimums = new HashMap<>();
+        compiled.effectiveSection().topicQuotas().forEach(quota -> minimums.put(quota.id(), quota.count()));
+        compiled.effectiveSection().blocks().forEach(block ->
+                block.topicQuotas().forEach(quota -> minimums.put(quota.id(), quota.count())));
+        Map<String, Integer> exacts = new HashMap<>();
+        compiled.caps().forEach(cap -> exacts.put(cap.ruleId(), cap.max()));
+        for (MapidRule rule : declared.mapidRules()) {
+            if (rule.type() == MapidRuleType.SOURCE) continue;
+            if (rule.groupId() != null && declared.blocks().stream().noneMatch(block -> rule.groupId().equals(block.id()))) continue;
+            BigDecimal number = BigDecimal.valueOf(exacts.containsKey(rule.id())
+                    ? exacts.get(rule.id()) : minimums.getOrDefault(rule.id(), 0));
+            Predicate<Datum> carries = datum -> carries(datum, rule.nodeIds(), knowledge);
+            String sectionScope = "SECTION:" + declared.id();
+            if (rule.type() == MapidRuleType.ONLY_IN_GROUP) {
+                addRow(result, "MAPID:" + rule.id(), sectionScope, BigDecimal.ZERO, QuotaEnforcement.REQUIRED,
+                        QuotaBasis.QUESTION, units, datum -> !Objects.equals(rule.groupId(), datum.blockId())
+                                && carries.test(datum));
+                if (rule.count() != null || rule.percent() != null) {
+                    addRow(result, "MAPID:" + rule.id() + ":COUNT", "BLOCK:" + rule.groupId(), number,
+                            QuotaEnforcement.REQUIRED, QuotaBasis.QUESTION,
+                            perBlock.getOrDefault(rule.groupId(), List.of()), carries);
+                }
+                continue;
+            }
+            BigDecimal required = rule.type() == MapidRuleType.PRESENT ? BigDecimal.ONE : number;
+            boolean subject = rule.groupId() == null;
+            addRow(result, "MAPID:" + rule.id(), subject ? sectionScope : "BLOCK:" + rule.groupId(), required,
+                    QuotaEnforcement.REQUIRED, QuotaBasis.QUESTION,
+                    subject ? units : perBlock.getOrDefault(rule.groupId(), List.of()), carries);
+        }
     }
 
     private static void examQuotas(List<Compliance> result, List<ExamQuota> quotas, List<Datum> all) {

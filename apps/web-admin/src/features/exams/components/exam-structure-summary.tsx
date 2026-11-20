@@ -8,7 +8,7 @@ import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import type { StructureIssue } from "../matrix";
 import { structureIssueBlockField } from "./block-form-fields";
 import type { ExamCheckResult } from "../review-types";
-import type { ExamStructureSummary, ExamStructureSummaryRow } from "../types";
+import type { ExamPart, ExamStructureSummary, ExamStructureSummaryRow } from "../types";
 import { AllocationGap } from "./allocation-gap";
 import type { StructureSelection } from "./exam-structure-draft";
 import { issueTarget } from "./exam-structure-issues";
@@ -30,6 +30,8 @@ export interface ExamStructureSummaryProps {
   issueText: (issue: StructureIssue) => string;
   checkResult: ExamCheckResult | null;
   names: CheckResultNames;
+  /** Cấu trúc đang sửa, để vấn đề của quy tắc MAPID gọi quy tắc bằng câu mô tả của nó. */
+  parts?: ExamPart[];
   onSelect: (selection: StructureSelection) => void;
 }
 
@@ -64,6 +66,7 @@ export function ExamStructureSummaryRegion({
   issueText,
   checkResult,
   names,
+  parts,
   onSelect,
 }: ExamStructureSummaryProps) {
   const t = useTranslations("exams.structure.summaryPanel");
@@ -218,7 +221,7 @@ export function ExamStructureSummaryRegion({
       </section>
 
       {checkResult && (
-        <ExamStructureCheckResult result={checkResult} names={names} onSelect={onSelect} />
+        <ExamStructureCheckResult result={checkResult} names={names} parts={parts} onSelect={onSelect} />
       )}
     </Card>
   );

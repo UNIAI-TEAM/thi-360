@@ -1,13 +1,16 @@
 package vn.unicom.thi360.exam.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.catalog.spi.CatalogStatus;
 import vn.unicom.thi360.exam.domain.ExamQuota;
 import vn.unicom.thi360.exam.domain.ExamSection;
 
@@ -55,6 +58,48 @@ class ExamCheckUnitFingerprintTests {
         var after = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, catalog, List.of(eighteen));
         assertThat(after.key()).isEqualTo(before.key());
         assertThat(after.fingerprint()).isNotEqualTo(before.fingerprint());
+    }
+
+    @Test
+    void mapidRuleDescendantChangeInvalidatesOnlyAffectedUnit() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID nodeId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        UUID otherId = UUID.randomUUID();
+        CatalogItemView root = knowledgeItem(groupId, nodeId, "N1", null, (short) 0, "/N1/");
+        CatalogItemView child = knowledgeItem(groupId, childId, "N1_1", nodeId, (short) 1, "/N1/N1_1/");
+        CatalogItemView other = knowledgeItem(groupId, otherId, "N2", null, (short) 0, "/N2/");
+
+        CatalogLookup lookup = mock(CatalogLookup.class);
+        when(lookup.listActiveGroupItems("KNOWLEDGE")).thenReturn(List.of(root, other), List.of(root, child, other));
+
+        ExamSection affected = sectionWithMapidRule("sec-a", "TOAN", nodeId);
+        ExamSection unrelated = sectionWithMapidRule("sec-b", "LY", otherId);
+
+        var beforeSlice = new ExamCheckUnitCatalogSlice(lookup, mapper);
+        var beforeAffected = fingerprint.calculate("TOAN", List.of(affected), List.of(), config, 1L, beforeSlice, List.of());
+        var beforeUnrelated = fingerprint.calculate("LY", List.of(unrelated), List.of(), config, 1L, beforeSlice, List.of());
+
+        var afterSlice = new ExamCheckUnitCatalogSlice(lookup, mapper);
+        var afterAffected = fingerprint.calculate("TOAN", List.of(affected), List.of(), config, 1L, afterSlice, List.of());
+        var afterUnrelated = fingerprint.calculate("LY", List.of(unrelated), List.of(), config, 1L, afterSlice, List.of());
+
+        assertThat(afterAffected.key()).isEqualTo(beforeAffected.key());
+        assertThat(afterAffected.fingerprint()).isNotEqualTo(beforeAffected.fingerprint());
+        assertThat(afterUnrelated).isEqualTo(beforeUnrelated);
+    }
+
+    private CatalogItemView knowledgeItem(UUID groupId, UUID id, String code, UUID parentId, short depth, String path) {
+        return new CatalogItemView(id, groupId, "KNOWLEDGE", code, code.toLowerCase(java.util.Locale.ROOT), 0,
+                code, code, CatalogStatus.ACTIVE, CatalogStatus.ACTIVE, false, parentId, depth, path);
+    }
+
+    private ExamSection sectionWithMapidRule(String id, String subject, UUID nodeId) throws Exception {
+        return mapper.readValue("""
+                {"id":"%s","subjectCode":"%s","questionCount":2,"mapidMode":"MATRIX",
+                 "mapidRules":[{"id":"r1","type":"COUNT","nodeIds":["%s"],"comparator":"EXACT","count":1}],
+                 "blocks":[{"id":"block-%s","name":"B","questionType":"SINGLE_CHOICE","questionCount":2}]}
+                """.formatted(id, subject, nodeId, id), ExamSection.class);
     }
 
     private ExamSection section(String id, String name, int count) throws Exception {

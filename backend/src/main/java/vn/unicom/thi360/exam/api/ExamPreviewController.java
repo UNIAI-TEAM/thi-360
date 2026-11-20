@@ -195,7 +195,11 @@ public class ExamPreviewController {
                                BigDecimal available, Integer timeLimitSeconds,
                                List<String> questionCodes, ExamCheckApiModels.Location location,
                                @Schema(types = {"string", "null"}, description = "Display segment code of DISPLAY_SEGMENT_MISMATCH")
-                               String segmentCode) {
+                               String segmentCode,
+                               @Schema(description = "MAPID rule (UNI-2758) the failure names; the web scrolls to mapid-rule-<ruleId>")
+                               String ruleId,
+                               @Schema(description = "Node ids of the rule the failure names")
+                               List<String> nodeIds) {
     }
 
     @Schema(name = "ExamPreviewCompliance")

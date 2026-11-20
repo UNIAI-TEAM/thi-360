@@ -24,6 +24,7 @@ import type {
   ExamStructureSummaryRow,
   ExamVersion,
   KnowledgeScope,
+  MapidRule,
   MatrixDimensionValue,
   QuestionBlock,
   TopicQuota,
@@ -255,6 +256,18 @@ export function mapBlock(block: ApiBlock): QuestionBlock {
   };
 }
 
+function mapMapidRules(rules: readonly Schemas["MapidRule"][]): MapidRule[] {
+  return rules.map((rule) => ({
+    id: rule.id ?? "",
+    type: rule.type ?? "PRESENT",
+    groupId: rule.groupId ?? null,
+    nodeIds: rule.nodeIds ?? [],
+    ...(rule.comparator ? { comparator: rule.comparator } : {}),
+    ...(rule.count !== undefined && rule.count !== null ? { count: rule.count } : {}),
+    ...(rule.percent !== undefined && rule.percent !== null ? { percent: rule.percent } : {}),
+  }));
+}
+
 export function mapSection(section: ApiSection): ExamSection {
   return {
     id: section.id ?? "",
@@ -267,6 +280,8 @@ export function mapSection(section: ApiSection): ExamSection {
     blocks: (section.blocks ?? []).map(mapBlock),
     ...(section.topicQuotas?.length ? { topicQuotas: mapTopicQuotas(section.topicQuotas) } : {}),
     ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
+    ...(section.mapidMode ? { mapidMode: section.mapidMode } : {}),
+    ...(section.mapidRules?.length ? { mapidRules: mapMapidRules(section.mapidRules) } : {}),
   };
 }
 
@@ -327,8 +342,8 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
     if (value && typeof value === "object") {
       return Object.fromEntries(
         Object.entries(value as Record<string, unknown>)
-          // `positionRange` do máy chủ tính (2B 3.3), không gửi lại.
-          .filter(([key, item]) => item !== null && item !== undefined && key !== "positionRange")
+          // `positionRange` do máy chủ tính (2B 3.3), không gửi lại; `deletedGroupName` chỉ của bản nháp (quy tắc MAPID).
+          .filter(([key, item]) => item !== null && item !== undefined && key !== "positionRange" && key !== "deletedGroupName")
           .map(([key, item]) => [key, strip(item)]),
       );
     }

@@ -21,7 +21,7 @@ import Link from "next/link";
 import { type ChangeEvent, useEffect, useId, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { StudentHeader } from "@/components/student-header";
+import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import {
   confirmEmailChange,
   EmailCodeStatusError,
@@ -34,7 +34,6 @@ import {
   uploadAvatar,
 } from "@/features/account/api";
 import { cooldownAnnouncement, formatClock, LONG_COOLDOWN_SECONDS, useCooldown } from "@/features/account/cooldown";
-import { StudentUserMenu, StudentUserMenuPlaceholder } from "@/features/home/student-user-menu";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { touchFieldText } from "@/lib/styles";
@@ -90,11 +89,11 @@ export function ProfileView({ loadCurrentSession = loadSession }: { loadCurrentS
     staleTime: 0,
   });
 
-  const headerActions = sessionQuery.data ? (
-    <StudentUserMenu session={sessionQuery.data} />
-  ) : sessionQuery.isLoading ? (
-    <StudentUserMenuPlaceholder />
-  ) : undefined;
+  const account: HeaderAccount = sessionQuery.data
+    ? { kind: "user", session: sessionQuery.data }
+    : sessionQuery.isLoading
+      ? { kind: "loading" }
+      : { kind: "none" };
 
   function applyProfile(next: ProfileResponse) {
     queryClient.setQueryData(PROFILE_QUERY_KEY, next);
@@ -104,7 +103,7 @@ export function ProfileView({ loadCurrentSession = loadSession }: { loadCurrentS
 
   return (
     <div className="min-h-screen bg-page text-text">
-      <StudentHeader actions={headerActions} />
+      <StudentHeader account={account} />
       <main className="mx-auto flex max-w-[1170px] flex-col gap-6 px-4 py-10 sm:px-6">
         {profileQuery.isLoading && (
           <div role="status" aria-label={common("loading")} className="flex flex-col gap-6">

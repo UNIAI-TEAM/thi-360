@@ -292,6 +292,38 @@ export interface ExamSection {
   topicQuotas?: TopicQuota[];
   /** Điều kiện audio của môn (H38): các nhóm trong môn kế thừa. Bỏ trống hoặc `ANY`: không lọc. */
   audioRequirement?: AudioRequirement;
+  /**
+   * Chế độ MAPID của môn HSA dùng ma trận (UNI-1704 v2). Vắng: môn dùng phạm vi và chỉ tiêu chủ đề kiểu cũ. `ALL`: lấy toàn
+   * bài, quy tắc vẫn nằm trong bản nháp nhưng máy chủ không áp dụng. `MATRIX`: máy chủ biên dịch `mapidRules` và bỏ qua
+   * `knowledgeScope.nodeIds`, `topicQuotas` của môn và của nhóm.
+   */
+  mapidMode?: MapidMode;
+  mapidRules?: MapidRule[];
+}
+
+export type MapidMode = "ALL" | "MATRIX";
+/** PRESENT: ít nhất 1 câu; COUNT: số câu; ONLY_IN_GROUP: MAPID chỉ ở một nhóm; SOURCE: nguồn của môn hoặc nhóm chỉ từ các MAPID. */
+export type MapidRuleType = "PRESENT" | "COUNT" | "ONLY_IN_GROUP" | "SOURCE";
+export type MapidComparator = "EXACT" | "AT_LEAST";
+
+/**
+ * Một quy tắc MAPID của môn (khớp record `MapidRule` của máy chủ). `groupId` rỗng: cả môn; ngược lại là `QuestionBlock.id` của
+ * môn. `nodeIds` hiểu theo nghĩa "hoặc". `count` và `percent` chỉ có ở COUNT và ONLY_IN_GROUP kèm số; có cả hai thì `percent`
+ * thắng và mẫu số là số câu của phạm vi.
+ */
+export interface MapidRule {
+  id: string;
+  type: MapidRuleType;
+  groupId?: string | null;
+  nodeIds: string[];
+  comparator?: MapidComparator;
+  count?: number | null;
+  percent?: number | null;
+  /**
+   * Chỉ có ở bản nháp của màn: tên nhóm đã bị xóa khỏi môn, ghi lại lúc xóa để dòng quy tắc và thông báo chặn lưu còn gọi đúng tên
+   * nhóm cho tới khi người dùng sửa hoặc xóa quy tắc. Không bao giờ gửi lên máy chủ (`toApiParts`).
+   */
+  deletedGroupName?: string;
 }
 
 /**
@@ -755,6 +787,21 @@ export interface SuggestExamCodeQuery {
 }
 
 /**
+ * Phạm vi của một lần đếm: phạm vi MAPID có hiệu lực kèm các MAPID mà quy tắc "Chỉ xuất hiện ở nhóm khác" của môn loại khỏi nhóm
+ * này (`excludedNodeIds`, UNI-2758). Chỉ gửi lên khi đếm, không lưu vào cấu trúc.
+ */
+export interface CountKnowledgeScope extends KnowledgeScope {
+  excludedNodeIds?: string[];
+  /**
+   * Các quy tắc "Chỉ lấy từ" áp dụng cho nhóm (của cả môn và của chính nhóm), mỗi quy tắc một mảng MAPID: câu phải khớp từng mảng
+   * (VÀ), trong một mảng chỉ cần một MAPID (HOẶC). `nodeIds` rỗng khi dùng nó.
+   */
+  nodeGroups?: string[][];
+  /** Chùm dưới quy tắc "Chỉ lấy từ": chùm chỉ tính khi mọi câu con cùng nằm trong một nhánh MAPID của từng nhóm (chặt hơn `everyChildInScope`). */
+  everyChildSameNode?: boolean;
+}
+
+/**
  * Bộ lọc nguồn của một nhóm: môn, dạng trả lời, phạm vi kiến thức có hiệu lực (của nhóm, hoặc của môn khi nhóm kế
  * thừa). Chỉ đếm câu Sẵn sàng.
  */
@@ -767,7 +814,7 @@ export interface AvailableQuestionsQuery {
   /** Nhóm chùm: dạng của câu con; `null`: không giới hạn. */
   childAnswerType: QuestionType | null;
   /** Phạm vi có hiệu lực; `null`: không giới hạn MAPID. */
-  knowledgeScope: KnowledgeScope | null;
+  knowledgeScope: CountKnowledgeScope | null;
   tagCodes?: string[];
   competencyCodes?: string[];
   /** Điểm mỗi câu yêu cầu của khối (B5); bỏ trống: không lọc. */

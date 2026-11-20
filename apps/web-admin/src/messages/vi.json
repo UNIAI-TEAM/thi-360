@@ -2215,7 +2215,6 @@
       "collapseTooltip": "Thu gọn",
       "removeTooltip": "Bỏ chọn",
       "loading": "Đang tải cây kiến thức",
-      "sampleNote": "Dữ liệu cây là mẫu, chỉ để minh họa. Cây thật lấy từ danh mục Cấu trúc kiến thức, chỉ hiện nút đang hoạt động.",
       "noneSelectedHint": "Chưa chọn kiến thức nào. Tick ở cây bên trái để thêm.",
       "selectedLegend": "Kiến thức đã chọn",
       "examOnceNote": "Một câu gắn nhiều kiến thức vẫn chỉ được chọn một lần trong cùng đề."
@@ -3938,6 +3937,7 @@
       "blockAdded": "Đã thêm nhóm {name}.",
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
+      "mapidGroupBlocked": "Chưa lưu được: quy tắc «{rule}» trỏ tới {hasGroup, select, yes {nhóm «{group}» đã bị xóa} other {một nhóm đã bị xóa}}. Sửa phạm vi hoặc xóa quy tắc rồi lưu lại.",
       "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
       "rateBlocked": "Chưa lưu được: một dòng nhập theo tỷ lệ chưa ra chùm nguyên. Sửa tỷ lệ ở dòng đó rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
@@ -5073,6 +5073,8 @@
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
+        "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc.",
         "STATEMENT_POINTS_UNEVEN": "Khối {block}: câu {codes} có các ý Đúng/Sai không chia điểm đều, trong khi khối chấm theo từng ý cần mọi ý bằng điểm nhau. Thay câu này bằng câu khác."
       },
       "issueNoCount": {
@@ -5470,6 +5472,10 @@
           "DIFFICULTY": "Độ khó {name}",
           "EXAM": "Chỉ tiêu cấp bài {names}",
           "GRADE": "Khối lớp {name}",
+          "MAPID": "{sentence}",
+          "MAPID_COUNT": "{sentence} · số câu trong nhóm",
+          "MAPID_OUTSIDE": "{sentence} · ngoài nhóm này",
+          "MAPID_UNKNOWN": "Quy tắc MAPID {id}",
           "TOPIC": "Chỉ tiêu chủ đề",
           "TOPIC_NAMED": "{name}",
           "UNCLASSIFIED": "Chưa phân loại"
@@ -5486,7 +5492,7 @@
           "REFERENCE": "Tham khảo",
           "REQUIRED": "Bắt buộc"
         },
-        "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề là “ít nhất”, nên thực tế nhiều hơn yêu cầu vẫn đạt. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
+        "legend": "Chênh lệch bằng Thực tế trừ Yêu cầu. Chỉ tiêu chủ đề và quy tắc MAPID “Ít nhất”/“Phải có” là ít nhất: thực tế nhiều hơn yêu cầu vẫn đạt; quy tắc “Đúng” và hai dòng của “Chỉ xuất hiện ở nhóm này” phải khớp đúng. Dòng Tham khảo lệch chỉ là cảnh báo, không chặn; dòng chờ mapping chưa đối chiếu được. Dòng Bắt buộc không đạt thì đề không sinh được, không trả đề thiếu.",
         "level": "{enforcement} · {unit}",
         "pendingNoData": "Chưa có dữ liệu đối chiếu",
         "requiredNone": "—",
@@ -6031,6 +6037,152 @@
       "basisPOINTS": "Điểm",
       "basisFixed": "Đơn vị: {unit}",
       "basisTotal": "Tổng: {total} {unit}"
+    },
+    "mapidRules": {
+      "actions": "Thao tác",
+      "add": "Thêm quy tắc",
+      "addAria": "Thêm quy tắc MAPID cho {subject}",
+      "caption": "Quy tắc MAPID của {subject}",
+      "counter": "{count, number}/{max, number} quy tắc",
+      "delete": "Xóa",
+      "deleteAria": "Xóa quy tắc: {sentence}",
+      "deletedGroup": "Nhóm đã xóa",
+      "deletedGroupFix": "Quy tắc trỏ tới nhóm không còn. Sửa phạm vi hoặc xóa quy tắc trước khi lưu.",
+      "deletedGroupNamed": "Nhóm «{name}» đã xóa",
+      "dialog": {
+        "cancel": "Hủy",
+        "close": "Đóng",
+        "comparator": {
+          "AT_LEAST": "Ít nhất",
+          "EXACT": "Đúng",
+          "legend": "So sánh"
+        },
+        "count": "Số câu",
+        "countAria": "Số câu của quy tắc",
+        "denominator": "Mẫu số: {units, number} câu của {scope}",
+        "denominatorUnknown": "Mẫu số: chưa biết số câu của {scope}",
+        "description": "Quy tắc của {subject}. Các vị trí còn lại được lấy ngẫu nhiên trong phạm vi còn hợp lệ.",
+        "entry": "Nhập theo",
+        "entryCount": "Số câu",
+        "entryPercent": "Tỷ lệ",
+        "issues": {
+          "COUNT_ABOVE_TOTAL": "Số câu vượt số câu của môn ({total, number}). Nhập số nhỏ hơn hoặc bằng số câu của môn.",
+          "GROUP_MISSING": "Nhóm đã chọn không còn. Chọn lại phạm vi áp dụng.",
+          "NO_NODES": "Chọn ít nhất một MAPID.",
+          "NUMBER_INVALID": "Số nhập chưa đúng. Sửa lại trước khi lưu.",
+          "ONLY_IN_GROUP_NEEDS_GROUP": "Quy tắc này chỉ áp dụng cho một nhóm. Chọn một nhóm.",
+          "PERCENT_DENOMINATOR_UNKNOWN": "Chưa biết mẫu số nên chưa tính được tỷ lệ. Nhập số câu của môn và của các nhóm khác, hoặc chuyển sang nhập theo số câu.",
+          "PERCENT_POOL": "Môn tự chọn chưa dùng được tỷ lệ vì số câu của môn tính theo số môn học viên chọn. Chuyển sang nhập theo số câu.",
+          "PERCENT_RANGE": "Tỷ lệ phải từ 0 đến 100."
+        },
+        "nodeRemove": "Bỏ MAPID {code} {name}",
+        "nodesEmpty": "Chưa chọn MAPID nào.",
+        "nodesLegend": "MAPID",
+        "percent": "Tỷ lệ (%)",
+        "percentAria": "Tỷ lệ của quy tắc",
+        "percentResult": "= {count, number} câu trên mẫu số {units, number}",
+        "percentUnknown": "Chưa biết số câu của nhóm nên chưa quy ra được số câu.",
+        "pick": "Chọn MAPID",
+        "pickEdit": "Đổi MAPID",
+        "pickHint": "Câu khớp khi có ít nhất một mã đã chọn. Muốn cả ba chủ đề đều xuất hiện, thêm một quy tắc riêng cho từng mã.",
+        "pickHintSource": "Câu khớp quy tắc này khi có ít nhất một mã đã chọn. Mỗi quy tắc “Chỉ lấy nguồn” khác áp dụng cho phạm vi này (của chính nhóm, hoặc của cả môn) cũng phải khớp: thêm quy tắc thì nguồn hẹp lại, không rộng thêm.",
+        "pickerDescription": "Quy tắc của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó.",
+        "save": "Lưu quy tắc",
+        "scope": {
+          "groupHint": "{type} · {size}",
+          "legend": "Áp dụng cho",
+          "subject": "Toàn môn",
+          "subjectHint": "{subject}, cả môn",
+          "subjectHintCount": "{subject}, {total, number} câu"
+        },
+        "size": {
+          "remainder": "lấy phần còn lại",
+          "remainderUnits": "lấy phần còn lại = {units, number}/{total, number} câu",
+          "sets": "{sets, number} chùm × {size, number} câu con = {units, number}/{total, number} câu",
+          "setsNoTotal": "{sets, number} chùm × {size, number} câu con = {units, number} câu",
+          "single": "{units, number}/{total, number} câu",
+          "singleNoTotal": "{units, number} câu"
+        },
+        "title": "Thêm quy tắc",
+        "titleEdit": "Sửa quy tắc",
+        "type": {
+          "COUNT": {
+            "description": "Số câu thuộc MAPID bằng hoặc ít nhất một con số, kể cả câu con trong chùm và câu lấy ngẫu nhiên.",
+            "label": "Số lượng"
+          },
+          "ONLY_IN_GROUP": {
+            "description": "Giới hạn vị trí của chủ đề: các nhóm khác loại câu thuộc MAPID. Chỉ chọn được khi áp dụng cho một nhóm.",
+            "label": "Chỉ xuất hiện ở nhóm này"
+          },
+          "PRESENT": {
+            "description": "Đề có ít nhất 1 câu thuộc MAPID. Các vị trí ngẫu nhiên vẫn được lấy thêm câu cùng chủ đề.",
+            "label": "Phải xuất hiện"
+          },
+          "SOURCE": {
+            "description": "Giới hạn nguồn: phạm vi này chỉ lấy câu thuộc ít nhất một MAPID đã chọn. Quy tắc nguồn khác của cùng phạm vi, hoặc của cả môn, cũng phải khớp. Chủ đề vẫn có thể xuất hiện ở nhóm khác.",
+            "label": "Chỉ lấy nguồn từ các MAPID"
+          },
+          "contrast": "Hai quy tắc dễ nhầm: “Chỉ xuất hiện ở nhóm này” giới hạn vị trí của chủ đề (các nhóm khác loại chủ đề đó). “Chỉ lấy nguồn từ các MAPID” giới hạn nguồn của nhóm (nhóm chỉ lấy từ các chủ đề đó, chủ đề vẫn có thể xuất hiện ở nhóm khác). Nhiều quy tắc nguồn cùng áp dụng thì câu phải khớp cả từng quy tắc.",
+          "legend": "Loại quy tắc"
+        },
+        "withNumber": "Kèm số lượng",
+        "withNumberHint": "Ví dụ: chủ đề chỉ ở nhóm này và có đúng 3 câu."
+      },
+      "edit": "Sửa",
+      "editAria": "Sửa quy tắc: {sentence}",
+      "empty": "Chưa có quy tắc nào. Các vị trí không khai báo được lấy ngẫu nhiên theo cấu trúc đề.",
+      "group": {
+        "allMode": "Môn đang ở chế độ Toàn bài: không giới hạn MAPID cho nhóm này.",
+        "managed": "Phạm vi kiến thức và chỉ tiêu chủ đề của nhóm do các quy tắc MAPID của môn quyết định.",
+        "none": "Chưa có quy tắc MAPID nào áp dụng cho nhóm này.",
+        "open": "Mở bảng Quy tắc MAPID",
+        "title": "Nguồn câu theo MAPID"
+      },
+      "groupDeleted": "{name} (đã xóa)",
+      "hint": "Chỉ khai báo những chủ đề muốn kiểm soát. Các vị trí còn lại được lấy ngẫu nhiên trong phạm vi còn hợp lệ.",
+      "issue": {
+        "goToRule": "Đi tới quy tắc",
+        "goToRuleAria": "Đi tới quy tắc: {issue}",
+        "quoted": "«{sentence}»",
+        "setShortage": "{group} cần {requiredSets, number} chùm có {setSize, number} câu con cùng chủ đề. Hiện có {availableSingles, number} câu đơn và {availableSets, number} chùm phù hợp.",
+        "shortage": "Quy tắc {rule} thiếu nguồn{hasCount, select, yes {: cần {required, number} câu, hiện có {available, number} câu, còn thiếu {missing, number} câu} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
+      },
+      "limit": "Đã đủ {max, number} quy tắc.",
+      "mode": {
+        "all": "Toàn bài (không giới hạn MAPID)",
+        "allHint": "Lấy ngẫu nhiên từ toàn bộ nguồn hợp lệ của môn. Câu chưa gắn MAPID vẫn có thể được chọn.",
+        "legend": "Phạm vi kiến thức",
+        "matrix": "Theo ma trận MAPID",
+        "matrixHint": "Thêm quy tắc cho cả môn hoặc cho một nhóm lấy câu. Các vị trí còn lại được lấy ngẫu nhiên.",
+        "paused": "{count, number} quy tắc tạm ngừng áp dụng",
+        "pausedHint": "Quy tắc vẫn nằm trong bản nháp; chọn lại “Theo ma trận MAPID” để áp dụng.",
+        "pausedInvalid": "{count, number} quy tắc trỏ tới nhóm đã xóa. Chuyển sang “Theo ma trận MAPID” để sửa hoặc xóa trước khi lưu."
+      },
+      "rule": "Quy tắc",
+      "scopeDeleted": "Nhóm đã xóa",
+      "scopeSubject": "Toàn môn",
+      "sentence": {
+        "COUNT_AT_LEAST": "{scope} · Ít nhất {amount} câu thuộc {topics}",
+        "COUNT_EXACT": "{scope} · Đúng {amount} câu thuộc {topics}",
+        "ONLY_IN_GROUP": "{topics} chỉ xuất hiện ở nhóm {group}",
+        "ONLY_IN_GROUP_AT_LEAST": "{topics} chỉ xuất hiện ở nhóm {group} · Ít nhất {amount} câu",
+        "ONLY_IN_GROUP_EXACT": "{topics} chỉ xuất hiện ở nhóm {group} · Đúng {amount} câu",
+        "PRESENT": "{scope} · Phải có {topics}",
+        "SOURCE": "{scope} · Chỉ lấy từ {topics}"
+      },
+      "short": {
+        "COUNT_AT_LEAST": "Ít nhất {amount} câu thuộc {topics}",
+        "COUNT_EXACT": "Đúng {amount} câu thuộc {topics}",
+        "ELSEWHERE": "Không lấy {topics} (chỉ xuất hiện ở nhóm khác)",
+        "ONLY_IN_GROUP": "Chỉ nhóm này có {topics}",
+        "ONLY_IN_GROUP_AT_LEAST": "Chỉ nhóm này có {topics} · Ít nhất {amount} câu",
+        "ONLY_IN_GROUP_EXACT": "Chỉ nhóm này có {topics} · Đúng {amount} câu",
+        "PRESENT": "Phải có {topics}",
+        "SOURCE": "Chỉ lấy từ {topics}"
+      },
+      "title": "Quy tắc MAPID",
+      "topicsPending": "(đang tải MAPID)",
+      "untitledGroup": "Nhóm chưa đặt tên"
     },
     "scopeField": {
       "legend": "Phạm vi kiến thức",

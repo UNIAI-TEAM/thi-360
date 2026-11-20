@@ -1,5 +1,5 @@
 import type { ContentReference } from "@/features/content/types";
-import type { ExamSection, ExamStructure, QuestionBlock } from "./types";
+import type { ExamSection, ExamStructure, MapidRule, QuestionBlock } from "./types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion, TopicQuotaIndex } from "./review-types";
 
 /** Sai lệch số thập phân nhỏ hơn mức này coi là bằng nhau (điểm và số câu máy chủ tính bằng BigDecimal). */
@@ -11,6 +11,7 @@ export type CriterionRef =
   | { kind: "ANSWER_TYPE" | "GRADE" | "DIFFICULTY" | "COMPETENCY" | "TOPIC"; code: string }
   | { kind: "CELL"; gradeCode: string; difficultyCode: string }
   | { kind: "EXAM"; quotaId: string; codes: string[] }
+  | { kind: "MAPID"; ruleId: string; count: boolean }
   | { kind: "UNKNOWN"; raw: string };
 
 /** Tiêu chí của một dòng (`ANSWER_TYPE:SINGLE_CHOICE`, `CELL:G12:VD`, `EXAM:<id>:G10,G11`, ...). */
@@ -27,6 +28,12 @@ export function parseCriterion(raw: string): CriterionRef {
       return { kind, gradeCode: first, difficultyCode: second };
     case "EXAM":
       return { kind, quotaId: first, codes: second ? second.split(",") : [] };
+    case "MAPID": {
+      // `MAPID:<ruleId>` hoặc `MAPID:<ruleId>:COUNT` (số câu trong nhóm của "Chỉ xuất hiện ở nhóm này"): mã quy tắc là phần giữa.
+      const rest = raw.slice("MAPID:".length);
+      const count = rest.endsWith(":COUNT");
+      return { kind, ruleId: count ? rest.slice(0, -":COUNT".length) : rest, count };
+    }
     default:
       return { kind: "UNKNOWN", raw };
   }
@@ -40,6 +47,39 @@ export function parseScope(raw: string): ScopeRef {
   const kind = separator < 0 ? raw : raw.slice(0, separator);
   if (kind === "SECTION" || kind === "BLOCK") return { kind, id: raw.slice(separator + 1) };
   return { kind: "EXAM" };
+}
+
+/** Môn theo id môn và theo id nhóm của cấu trúc, để tra quy tắc MAPID của dòng `MAPID:<ruleId>` theo phạm vi của nó. */
+export interface MapidRuleIndex {
+  bySection: Map<string, ExamSection>;
+  byBlock: Map<string, ExamSection>;
+}
+
+/** Chỉ mục quy tắc của các môn đang ở chế độ có quy tắc (`mapidRules`); `undefined` khi chưa có cấu trúc. */
+export function buildMapidRuleIndex(structure: Pick<ExamStructure, "parts"> | undefined): MapidRuleIndex | undefined {
+  if (!structure) return undefined;
+  const index: MapidRuleIndex = { bySection: new Map(), byBlock: new Map() };
+  const add = (section: ExamSection) => {
+    if (!section.mapidRules?.length) return;
+    index.bySection.set(section.id, section);
+    section.blocks.forEach((block) => index.byBlock.set(block.id, section));
+  };
+  for (const part of structure.parts) {
+    part.sections.forEach(add);
+    part.subjectPool?.forEach(add);
+    part.options.forEach((option) => option.sections.forEach(add));
+  }
+  return index;
+}
+
+/** Môn và quy tắc của một dòng MAPID; `null` khi dòng không phải MAPID, hoặc môn hay quy tắc không còn trong cấu trúc. */
+export function resolveMapidRow(row: PreviewCompliance, rules: MapidRuleIndex): { section: ExamSection; rule: MapidRule; count: boolean } | null {
+  const ref = parseCriterion(row.criterion);
+  if (ref.kind !== "MAPID") return null;
+  const scope = parseScope(row.scope);
+  const section = scope.kind === "SECTION" ? rules.bySection.get(scope.id) : scope.kind === "BLOCK" ? rules.byBlock.get(scope.id) : undefined;
+  const rule = section?.mapidRules?.find((item) => item.id === ref.ruleId);
+  return section && rule ? { section, rule, count: ref.count } : null;
 }
 
 /**
@@ -96,12 +136,28 @@ export function commandDenominators(rows: readonly PreviewCompliance[]): Command
 }
 
 /**
- * Mức lệch của một dòng. Chỉ tiêu chủ đề là "ít nhất" (K6): thực tế nhiều hơn yêu cầu vẫn đạt, chỉ thiếu mới lệch. Dòng
+ * Dòng đối chiếu chỉ tiêu "ít nhất": thực tế nhiều hơn yêu cầu vẫn đạt. Chỉ tiêu chủ đề kiểu cũ (K6); dòng MAPID theo quy tắc của
+ * nó: "Phải có" và "Ít nhất" là ít nhất, "Đúng" là bằng, dòng "ngoài nhóm" của "Chỉ xuất hiện ở nhóm này" là bằng 0. Chưa tra
+ * được quy tắc (chưa có cấu trúc, quy tắc đã xóa): yêu cầu dương là ít nhất, 0 là bằng.
+ */
+export function isAtLeastRow(row: PreviewCompliance, rules?: MapidRuleIndex): boolean {
+  const ref = parseCriterion(row.criterion);
+  if (ref.kind === "TOPIC") return true;
+  if (ref.kind !== "MAPID") return false;
+  const found = rules ? resolveMapidRow(row, rules) : null;
+  if (!found) return (row.required ?? 0) > 0;
+  if (found.rule.type === "PRESENT") return true;
+  if (found.rule.type === "ONLY_IN_GROUP" && !ref.count) return false;
+  return found.rule.comparator !== "EXACT";
+}
+
+/**
+ * Mức lệch của một dòng. Chỉ tiêu "ít nhất" (`isAtLeastRow`): thực tế nhiều hơn yêu cầu vẫn đạt, chỉ thiếu mới lệch. Dòng
  * Bắt buộc lệch là lỗi, dòng Tham khảo lệch là cảnh báo không chặn.
  */
-export function complianceLevel(row: PreviewCompliance): ComplianceLevel {
+export function complianceLevel(row: PreviewCompliance, rules?: MapidRuleIndex): ComplianceLevel {
   if (isUnclassifiedRow(row)) return "OK";
-  const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
+  const atLeast = isAtLeastRow(row, rules);
   const required = row.required ?? 0;
   const deviates = atLeast ? row.actual < required - EPSILON : Math.abs(row.actual - required) > EPSILON;
   if (!deviates) return "OK";

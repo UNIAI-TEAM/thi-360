@@ -85,7 +85,7 @@ final class SubproblemSolver {
             return Outcome.invalid(
                     subjectOnly ? SolveReason.SUBJECT_QUOTA_INFEASIBLE
                             : SolveReason.NO_JOINT_SOLUTION,
-                    null);
+                    null, blamedCap(ctx));
         }
         var assignments = TopicAssignments.assign(ctx, picked, deadlineCheck);
         if (assignments == null) {
@@ -106,6 +106,95 @@ final class SubproblemSolver {
     }
 
     /**
+     * The cap that makes an infeasible section infeasible (UNI-2758): relax the caps one at a time, then
+     * cumulatively, and name the first that lets the search succeed. Null when there are no caps, when the
+     * section stays infeasible without them, or when the deadline hit while diagnosing (the proof stands).
+     */
+    private QuotaRef blamedCap(Prep.SubproblemContext ctx) {
+        int caps = ctx.caps().size();
+        if (caps == 0) {
+            return null;
+        }
+        try {
+            for (int k = 0; k < caps; k++) {
+                boolean[] relaxed = new boolean[caps];
+                relaxed[k] = true;
+                if (new PathSearch(ctx, deadlineCheck, relaxed).solve() != null) {
+                    return capRef(ctx, k);
+                }
+            }
+            boolean[] relaxed = new boolean[caps];
+            for (int k = 0; k < caps; k++) {
+                relaxed[k] = true;
+                if (new PathSearch(ctx, deadlineCheck, relaxed).solve() != null) {
+                    return capRef(ctx, k);
+                }
+            }
+        } catch (DeadlineHit e) {
+            return null;
+        }
+        return null;
+    }
+
+    private static QuotaRef capRef(Prep.SubproblemContext ctx, int k) {
+        Prep.ScopedCap cap = ctx.caps().get(k);
+        return new QuotaRef(ctx.subjectCode(), ctx.sections().get(cap.section()).sectionId(), "TOPIC_CAP",
+                cap.cap().id());
+    }
+
+    /**
+     * A group short of usable units: names the cap whose relaxation ALONE would close the gap, that is, whose
+     * blocked candidates are not over another cap as well. The count only proposes it (individual availability);
+     * the cap is named when relaxing it alone lets the whole section be solved (sufficient) and, with every other
+     * cap relaxed, enforcing it alone keeps the section infeasible (necessary): at most two bounded searches per
+     * proposed cap. Null when no single cap does (the shortage is the source's, several caps hold the same
+     * candidates, or the others must be relaxed too), or when the deadline hit while verifying (UNI-2758 R2-3).
+     */
+    private QuotaRef capShortage(Prep.SubproblemContext ctx, int groupUnits, long units, long[] blocked) {
+        try {
+            for (int k = 0; k < blocked.length; k++) {
+                if (units + blocked[k] >= groupUnits && aloneNecessaryAndSufficient(ctx, k)) {
+                    return capRef(ctx, k);
+                }
+            }
+        } catch (DeadlineHit e) {
+            return null;
+        }
+        return null;
+    }
+
+    private boolean aloneNecessaryAndSufficient(Prep.SubproblemContext ctx, int k) {
+        int caps = ctx.caps().size();
+        boolean[] onlyK = new boolean[caps];
+        onlyK[k] = true;
+        if (new PathSearch(ctx, deadlineCheck, onlyK).solve() == null) {
+            return false;
+        }
+        if (caps == 1) {
+            return true; // the shortage itself proves the section infeasible with this cap enforced
+        }
+        boolean[] others = new boolean[caps];
+        java.util.Arrays.fill(others, true);
+        others[k] = false;
+        return new PathSearch(ctx, deadlineCheck, others).solve() == null;
+    }
+
+    /** The only cap candidate {@code i} of group {@code g} is over, or -1 when two or more caps hold it out. */
+    private static int soleBlockingCap(Prep.SubproblemContext ctx, int g, int i) {
+        int[] use = ctx.capUse()[g][i];
+        int sole = -1;
+        for (int k = 0; k < use.length; k++) {
+            if (use[k] > ctx.caps().get(k).cap().max()) {
+                if (sole >= 0) {
+                    return -1;
+                }
+                sole = k;
+            }
+        }
+        return sole;
+    }
+
+    /**
      * Nguồn thiếu rõ ràng trước khi giải (spec 5.4): tổng nguồn usable của một nhóm nhỏ hơn số
      * đơn vị của nó, hoặc nguồn usable của một chỉ tiêu nhỏ hơn quota. Trả id nhóm thiếu (cho
      * {@link PathResult#groupId}), null khi đủ.
@@ -123,6 +212,7 @@ final class SubproblemSolver {
             deadlineCheck.run();
             int groupUnits = ctx.groups().get(g).units();
             long units = 0;
+            long[] blocked = new long[ctx.caps().size()];
             for (int i = 0; i < ctx.cands().get(g).size(); i++) {
                 if ((scans++ & 0x3FF) == 0) {
                     deadlineCheck.run();
@@ -153,10 +243,15 @@ final class SubproblemSolver {
                             supply[r] += vec[r];
                         }
                     }
+                } else if (ctx.capBlock()[g][i] >= 0) {
+                    int sole = soleBlockingCap(ctx, g, i);
+                    if (sole >= 0) {
+                        blocked[sole] += ctx.units()[g][i];
+                    }
                 }
             }
             if (units < groupUnits) {
-                return new Shortage(ctx.groups().get(g).group().groupId(), null);
+                return new Shortage(ctx.groups().get(g).group().groupId(), capShortage(ctx, groupUnits, units, blocked));
             }
             if (ctx.groups().get(g).group().kind() == GroupQuota.GroupKind.FLEXIBLE_SET) {
                 boolean[] reachable = new boolean[groupUnits + 1];

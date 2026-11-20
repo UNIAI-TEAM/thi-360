@@ -20,7 +20,8 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined })
 describe("web-student tiêu đề trang", () => {
   it("layout gốc đặt mẫu '<tên trang> · Thi 360'; các trang con chỉ trả tên trang, not-found tự ghép theo cùng mẫu", async () => {
     const layout = await (await import("./layout")).generateMetadata();
-    expect(layout.title).toEqual({ default: "Thi 360 — Luyện thi HSA, QDA", template: "%s · Thi 360" });
+    expect(layout.title).toEqual({ default: "Thi 360 — Luyện thi trực tuyến", template: "%s · Thi 360" });
+    expect(layout.description).not.toMatch(/HSA và QDA/);
 
     expect((await (await import("./login/page")).generateMetadata()).title).toBe("Đăng nhập");
     expect((await (await import("./change-password/page")).generateMetadata()).title).toBe("Đặt mật khẩu mới");

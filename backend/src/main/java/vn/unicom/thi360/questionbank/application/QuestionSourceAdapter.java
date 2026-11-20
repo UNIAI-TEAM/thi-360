@@ -364,6 +364,8 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         addKnowledgeGroup(parts, params, p + "knowledge", f.knowledgeGroups());
         addEveryChildKnowledge(parts, params, p + "everyChildKnowledge", f.knowledgeGroups(),
                 Boolean.TRUE.equals(f.everyChildInScope()));
+        addEveryChildSameNode(parts, params, p + "sameNodeKnowledge", f.knowledgeGroups(),
+                Boolean.TRUE.equals(f.everyChildSameNode()));
         if (f.additionalKnowledgeGroups() != null) {
             for (int j = 0; j < f.additionalKnowledgeGroups().size(); j++) {
                 addKnowledgeGroup(parts, params, p + "extraKnowledge" + j + "_",
@@ -373,8 +375,14 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                         && Boolean.TRUE.equals(f.additionalEveryChildInScope().get(j));
                 addEveryChildKnowledge(parts, params, p + "extraEveryChildKnowledge" + j,
                         f.additionalKnowledgeGroups().get(j), everyChild);
+                boolean sameNode = f.additionalEveryChildSameNode() != null
+                        && j < f.additionalEveryChildSameNode().size()
+                        && Boolean.TRUE.equals(f.additionalEveryChildSameNode().get(j));
+                addEveryChildSameNode(parts, params, p + "extraSameNode" + j + "_",
+                        f.additionalKnowledgeGroups().get(j), sameNode);
             }
         }
+        addExcludedKnowledge(parts, params, p + "excludedKnowledge", f.excludedKnowledge());
         if (f.itemShape() != null) {
             String rootShape = shapePredicate("q.type", "v.snapshot", p + "shape", f.itemShape(), params);
             String childShape = shapePredicate("c.type", "cv.snapshot", p + "childShape", f.itemShape(), params);
@@ -471,6 +479,27 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 + ") pos where not exists (select 1 from " + source + " where " + String.join(" and ", where) + ")))";
     }
 
+    /**
+     * A set stays only when one knowledge subtree holds a node of EVERY live child (a MAPID SOURCE rule: the
+     * children carry the same code, a descendant of it counts). Standalone questions are not affected.
+     */
+    private static void addEveryChildSameNode(List<String> parts, MapSqlParameterSource params,
+            String prefix, List<List<UUID>> groups, boolean enabled) {
+        if (!enabled || groups == null || groups.isEmpty()) return;
+        List<String> alternatives = new ArrayList<>();
+        for (int j = 0; j < groups.size(); j++) {
+            if (groups.get(j).isEmpty()) continue;
+            String key = prefix + j;
+            params.addValue(key, groups.get(j));
+            alternatives.add("not exists (select 1 from questionbank.question c "
+                    + "where c.parent_id=q.id and c.deleted_at is null and not exists "
+                    + "(select 1 from questionbank.question_knowledge ck where ck.question_id=c.id "
+                    + "and ck.knowledge_item_id in (:" + key + ")))");
+        }
+        parts.add(alternatives.isEmpty() ? "false"
+                : "(q.type <> 'QUESTION_SET' or (" + String.join(" or ", alternatives) + "))");
+    }
+
     private static void addEveryChildKnowledge(List<String> parts, MapSqlParameterSource params,
             String key, List<List<UUID>> groups, boolean enabled) {
         if (!enabled || groups == null || groups.isEmpty()) return;
@@ -517,6 +546,20 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                     + "and k.knowledge_item_id in (:" + key + "))");
         }
         parts.add("(" + String.join(" or ", alternatives) + ")");
+    }
+
+    /**
+     * A candidate carrying an excluded node is dropped: the question itself, or for a set any live child (or the
+     * set root), exactly the rows the scope filter reads, so a set with one excluded child goes as a whole.
+     */
+    private static void addExcludedKnowledge(List<String> parts, MapSqlParameterSource params, String key,
+            List<UUID> excluded) {
+        if (excluded == null || excluded.isEmpty()) return;
+        params.addValue(key, excluded);
+        parts.add("not exists (select 1 from questionbank.question_knowledge k "
+                + "join questionbank.question x on x.id=k.question_id "
+                + "where (x.id=q.id or (x.parent_id=q.id and x.deleted_at is null)) "
+                + "and k.knowledge_item_id in (:" + key + "))");
     }
 
     private String shapePredicate(String type, String snapshot, String prefix,

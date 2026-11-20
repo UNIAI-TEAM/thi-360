@@ -251,6 +251,26 @@ export function issueStructureHref(examId: string, issue: CheckIssue): string | 
   return null;
 }
 
+/**
+ * Chỗ của quy tắc MAPID mà vấn đề nêu: mở môn chứa quy tắc và cuộn tới dòng của nó (`?section=&rule=`, trang Cấu trúc đọc
+ * `rule`). `null` khi vấn đề không nêu quy tắc hoặc không biết môn.
+ */
+export function issueRuleHref(examId: string, issue: Pick<CheckIssue, "ruleId" | "sectionId">): string | null {
+  if (!issue.ruleId || !issue.sectionId) return null;
+  const base = `/exams/${encodeURIComponent(examId)}/structure`;
+  return `${base}?section=${encodeURIComponent(issue.sectionId)}&rule=${encodeURIComponent(issue.ruleId)}`;
+}
+
+/** Môn theo id, tìm trong phần chung, `subjectPool` và môn của mọi lựa chọn. */
+export function findSectionById(exam: Pick<ExamDetail, "parts">, sectionId: string | null | undefined): ExamSection | null {
+  if (!sectionId) return null;
+  for (const part of exam.parts) {
+    const found = partSections(part).find((section) => section.id === sectionId);
+    if (found) return found;
+  }
+  return null;
+}
+
 const STATE_RANK: Record<ExamSectionState["state"], number> = { CHECKED: 0, NEEDS_CHECK: 1, INCOMPLETE: 2 };
 
 /** Trạng thái xấu nhất của một tập môn (spec 7.1: phần và mã lấy trạng thái xấu nhất của các môn); `null` khi không có môn nào. */
