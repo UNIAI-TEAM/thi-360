@@ -8,7 +8,9 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -173,6 +175,36 @@ public class StorefrontProductRepository {
         return new Page(items, total);
     }
 
+    /** Lightweight projection of all matching on-sale rows for post-promotion price sorting (CM-2, E11). */
+    public List<SortableProduct> listSortable(ListQuery query) {
+        List<Object> args = new ArrayList<>();
+        String where = where(query, args);
+        return jdbc.query(
+                "SELECT id, exam_id, exam_item_id, list_price_vnd, published_at FROM commerce.storefront_product " + where,
+                (rs, n) -> new SortableProduct(
+                        rs.getObject(1, UUID.class),
+                        rs.getObject(2, UUID.class),
+                        rs.getObject(3, UUID.class),
+                        rs.getLong(4),
+                        rs.getTimestamp(5).toInstant()),
+                args.toArray());
+    }
+
+    /** Fetches serialized {@code card} JSON only for the requested product IDs. */
+    public Map<UUID, String> findCardsByIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, String> cards = new LinkedHashMap<>(ids.size());
+        jdbc.query(
+                "SELECT id, card::text FROM commerce.storefront_product WHERE id = ANY(?)",
+                ps -> ps.setArray(1, array(ps, "uuid", ids.toArray())),
+                rs -> {
+                    cards.put(rs.getObject(1, UUID.class), rs.getString(2));
+                });
+        return cards;
+    }
+
     private static String where(ListQuery query, List<Object> args) {
         StringBuilder sql = new StringBuilder("WHERE sale_state = 'ON_SALE'");
         if (query.likePattern() != null) {
@@ -245,6 +277,8 @@ public class StorefrontProductRepository {
                             StorefrontSort sort, int page, int size) { }
 
     public record ListedProduct(UUID examId, UUID examKindItemId, long listPriceVnd, String card) { }
+
+    public record SortableProduct(UUID id, UUID examId, UUID examKindItemId, long listPriceVnd, Instant publishedAt) { }
 
     public record Page(List<ListedProduct> items, long total) { }
 
