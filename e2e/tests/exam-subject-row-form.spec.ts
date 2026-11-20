@@ -75,19 +75,24 @@ test("THPTQG Lý: Phân bổ đối chiếu độ khó 8/6/4 lưu được và K
     await page.getByRole("button", { name: "Lưu", exact: true }).click();
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
   };
-  const issues = async (): Promise<string> => {
+  const issues = async () => {
     const check = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/check`, { headers: admin.headers, data: { scope: "EXAM" } });
     expect(check.status(), await check.text()).toBeLessThan(300);
-    return JSON.stringify(await check.json());
+    return collectIssues(await check.json());
   };
 
   await fill(["8", "6", "4"]);
-  expect(await issues()).not.toContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
-  const matrix = (await structureOf(admin, id)).parts.flatMap((part) => part.sections ?? [])[0]?.matrix as { byDifficulty: unknown[] };
-  expect(matrix.byDifficulty).toHaveLength(3);
+  expect((await issues()).map((issue) => issue.code)).not.toContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
+  const firstSection = allSections(await getStructure(admin, id))[0]!;
+  expect(firstSection.matrix?.byDifficulty).toHaveLength(3);
 
   await fill(["8", "6", "2"]);
-  expect(await issues()).toContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
+  const mismatch = (await issues()).filter((issue) => issue.code === "SUBJECT_MATRIX_TOTAL_MISMATCH");
+  expect(mismatch.length).toBeGreaterThan(0);
+  for (const issue of mismatch) {
+    expect("sectionId" in issue && issue.sectionId).toBe(firstSection.id);
+    expect("dimension" in issue && issue.dimension).toBe("DIFFICULTY");
+  }
 });
 
 for (const kind of ["HSCA", "VSAT"] as const) {
@@ -138,6 +143,13 @@ for (const scenario of [
     const parent = section?.blocks?.find((block) => scenario.match.test(block.name ?? ""));
     expect(parent).toMatchObject({ setCount: 4, setSize: scenario.setSize });
     expect(parent?.id).toBeTruthy();
+    parent!.shuffleUnits = false;
+    const initialSave = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`, {
+      headers: admin.headers,
+      data: { parts: before.parts, examQuotas: before.examQuotas ?? [], expectedRevision: before.revision },
+    });
+    expect(initialSave.status(), await initialSave.text()).toBe(200);
+    const baseline = await getStructure(admin, id);
     await page.goto(`${ADMIN_URL}/exams/${id}/structure?section=${section!.id}`);
     const row = page.locator(`[data-form-row="${parent!.id}"]`);
     await expect(row).toBeVisible();
@@ -167,6 +179,8 @@ for (const scenario of [
     expect(next.blocks?.map((item) => [item.setCount, item.setSize, item.questionCount])).toEqual(Array(4).fill([1, scenario.setSize, scenario.setSize]));
     expect(next.blocks?.[0]?.id).toBe(parent!.id);
     expect(next.blocks?.[0]?.templateGroupCode).toBe(parent!.templateGroupCode);
+    expect(next.blocks?.map((item) => item.shuffleUnits)).toEqual([false, false, false, false]);
+    expect(allSections(after).filter((item) => item.id !== section!.id)).toEqual(allSections(baseline).filter((item) => item.id !== section!.id));
     expect(allSections(after).map((item) => [item.id, item.audioRequirement])).toEqual(allSections(before).map((item) => [item.id, item.audioRequirement]));
     const check = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/check`, { headers: admin.headers, data: { scope: "EXAM" } });
     expect(check.status(), await check.text()).toBeLessThan(300);
