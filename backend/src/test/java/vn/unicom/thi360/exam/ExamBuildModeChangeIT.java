@@ -54,7 +54,7 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
         assertThat(after.path("practiceScoring").asText()).isEqualTo("LINEAR");
         JsonNode part = after.path("parts").get(0);
         assertThat(after.path("parts")).hasSize(1);
-        assertThat(part.path("name").asText()).isEqualTo("Review");
+        assertThat(part.path("name").asText()).isEqualTo("Bài ôn");
         assertThat(part.path("sections").get(0).path("subjectCode").asText()).isEqualTo("TOAN");
         // The whole standard part set was replaced, not patched.
         assertThat(after.path("questionCount").asInt()).isLessThan(before.path("questionCount").asInt());
@@ -87,7 +87,7 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
         assertThat(after.path("name").asText()).isEqualTo(before.path("name").asText());
         assertThat(after.path("practiceScoring").asText()).isEqualTo("RAW");
         assertThat(after.path("maxScore").decimalValue()).isEqualByComparingTo("50");
-        assertThat(after.path("parts").get(0).path("name").asText()).isNotEqualTo("Review");
+        assertThat(after.path("parts").get(0).path("name").asText()).isNotEqualTo("Bài ôn");
         assertThat(edited(id)).isFalse();
     }
 
@@ -110,7 +110,7 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
         patchInfo(id, "{\"buildMode\":\"REVIEW\",\"confirmReplace\":true}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.templateCode").value("HSA_REVIEW"))
-                .andExpect(jsonPath("$.parts[0].name").value("Review"));
+                .andExpect(jsonPath("$.parts[0].name").value("Bài ôn"));
     }
 
     @Test
