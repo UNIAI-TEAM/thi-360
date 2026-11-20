@@ -54,6 +54,30 @@
         "required" : [ "addedCount", "addedUserIds", "classId", "skippedCount", "skippedUserIds" ],
         "type" : "object"
       },
+      "AfterStartChoiceView" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ChoiceOptionView"
+            },
+            "type" : "array"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AnswerQuota" : {
         "properties" : {
           "answerType" : {
@@ -187,6 +211,361 @@
           }
         },
         "required" : [ "mode", "palette", "version" ],
+        "type" : "object"
+      },
+      "AttemptItemView" : {
+        "properties" : {
+          "answer" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/Cloze"
+            }, {
+              "$ref" : "#/components/schemas/Essay"
+            }, {
+              "$ref" : "#/components/schemas/Matching"
+            }, {
+              "$ref" : "#/components/schemas/MultipleChoice"
+            }, {
+              "$ref" : "#/components/schemas/ShortAnswer"
+            }, {
+              "$ref" : "#/components/schemas/SingleChoice"
+            }, {
+              "$ref" : "#/components/schemas/TrueFalse"
+            } ]
+          },
+          "answerSeq" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "blockId" : {
+            "type" : "string"
+          },
+          "componentCode" : {
+            "type" : "string"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "displayNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "flagged" : {
+            "type" : "boolean"
+          },
+          "itemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "optionOrder" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "parentItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          },
+          "questionBody" : {
+            "$ref" : "#/components/schemas/AttemptQuestionBody"
+          },
+          "questionType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "unitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptPartStateView" : {
+        "properties" : {
+          "choice" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "choiceDeadlineAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "closedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deadlineAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "durationMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptItemView"
+            },
+            "type" : "array"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "PENDING", "AWAITING_CHOICE", "GENERATING", "GENERATION_FAILED", "OPEN", "CLOSED", "SKIPPED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptPrepareResponse" : {
+        "description" : "Thông tin chuẩn bị trước khi bắt đầu lượt thi (LT §5.1)",
+        "properties" : {
+          "afterStartChoices" : {
+            "description" : "Lựa chọn sẽ gặp sau khi vào làm (phần mở muộn)",
+            "items" : {
+              "$ref" : "#/components/schemas/AfterStartChoiceView"
+            },
+            "type" : "array"
+          },
+          "attemptsLeft" : {
+            "description" : "Số lượt còn lại trên quyền dùng",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "buildMode" : {
+            "description" : "STANDARD hoặc REVIEW",
+            "type" : "string"
+          },
+          "durationMinutes" : {
+            "description" : "Tổng thời lượng dự kiến (phút)",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "entitlementId" : {
+            "description" : "Quyền dùng được chọn",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examCode" : {
+            "description" : "Mã bài thi",
+            "type" : "string"
+          },
+          "examId" : {
+            "description" : "Bài thi gắn với quyền dùng",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKind" : {
+            "$ref" : "#/components/schemas/ExamKindView",
+            "description" : "Kỳ thi"
+          },
+          "examName" : {
+            "description" : "Tên bài thi",
+            "type" : "string"
+          },
+          "grantSource" : {
+            "$ref" : "#/components/schemas/GrantSourceView",
+            "description" : "Nguồn cấp quyền dùng; null khi hết lượt"
+          },
+          "instructions" : {
+            "description" : "Hướng dẫn làm bài đã đóng băng theo phiên bản",
+            "type" : "string"
+          },
+          "navigationMode" : {
+            "description" : "Chế độ di chuyển trong bài",
+            "enum" : [ "SEQUENTIAL", "FREE" ],
+            "type" : "string"
+          },
+          "omittedGroups" : {
+            "description" : "Nhóm bài tự luận bị lược khỏi lượt thi tự động",
+            "items" : {
+              "$ref" : "#/components/schemas/OmittedGroupView"
+            },
+            "type" : "array"
+          },
+          "openAttempt" : {
+            "$ref" : "#/components/schemas/OpenAttemptView",
+            "description" : "Lượt đang mở (STARTING hoặc IN_PROGRESS) nếu có"
+          },
+          "partCode" : {
+            "description" : "Mã phần nếu là bài theo phần",
+            "type" : "string"
+          },
+          "parts" : {
+            "description" : "Danh sách phần theo thứ tự cố định của bài",
+            "items" : {
+              "$ref" : "#/components/schemas/PreparePartView"
+            },
+            "type" : "array"
+          },
+          "preChoice" : {
+            "$ref" : "#/components/schemas/PreChoiceView",
+            "description" : "Lựa chọn cần quyết định trước khi bắt đầu; null nếu không cần"
+          },
+          "scope" : {
+            "description" : "Phạm vi bài thi: FULL, PART hay SUBJECT",
+            "type" : "string"
+          },
+          "servingStatus" : {
+            "description" : "Trạng thái phục vụ hiện tại của bài: PUBLISHED hoặc DISCONTINUED",
+            "type" : "string"
+          },
+          "subject" : {
+            "$ref" : "#/components/schemas/SubjectView",
+            "description" : "Môn nếu là bài theo môn"
+          },
+          "timing" : {
+            "description" : "Kiểu đồng hồ: PER_PART hoặc SHARED",
+            "enum" : [ "PER_PART", "SHARED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "afterStartChoices", "attemptsLeft", "buildMode", "entitlementId", "examCode", "examId", "examKind", "examName", "navigationMode", "omittedGroups", "parts", "scope", "servingStatus", "timing" ],
+        "type" : "object"
+      },
+      "AttemptQuestionBody" : {
+        "description" : "Thân câu hỏi đã lọc theo allowlist cho học viên — tuyệt đối không chứa đáp án hay hướng dẫn chấm",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/SingleChoice"
+        }, {
+          "$ref" : "#/components/schemas/MultipleChoice"
+        }, {
+          "$ref" : "#/components/schemas/ShortAnswer"
+        }, {
+          "$ref" : "#/components/schemas/Cloze"
+        }, {
+          "$ref" : "#/components/schemas/QuestionSet"
+        }, {
+          "$ref" : "#/components/schemas/TrueFalse"
+        }, {
+          "$ref" : "#/components/schemas/Matching"
+        }, {
+          "$ref" : "#/components/schemas/Essay"
+        } ],
+        "type" : "object"
+      },
+      "AttemptStateResponse" : {
+        "description" : "Trạng thái đầy đủ hoặc rút gọn của lượt thi cho giao diện làm bài (LT §7.1)",
+        "properties" : {
+          "abortReason" : {
+            "description" : "Lý do hủy khi state là ABORTED",
+            "enum" : [ "GENERATION_FAILED", "GENERATION_TIMEOUT", "GENERATION_BUSY", "STALE_STARTING", "AUDIO_ASSET_MISSING", "AUDIO_ASSET_INVALID" ],
+            "type" : "string"
+          },
+          "attemptId" : {
+            "description" : "Id lượt thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "choices" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "deadlineAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lastPosition" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "maxScore" : {
+            "type" : "number"
+          },
+          "navigationMode" : {
+            "enum" : [ "SEQUENTIAL", "FREE" ],
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "parts" : {
+            "description" : "Các phần của lượt thi; không có khi STARTING hoặc ABORTED",
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptPartStateView"
+            },
+            "type" : "array"
+          },
+          "retryable" : {
+            "description" : "Có thể bắt đầu lại (true khi ABORTED)",
+            "type" : "boolean"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "serverNow" : {
+            "description" : "Giờ máy chủ hiện tại",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "description" : "Trạng thái lượt thi",
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          },
+          "timing" : {
+            "enum" : [ "PER_PART", "SHARED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptId", "serverNow", "state" ],
         "type" : "object"
       },
       "AuditEventResponse" : {
@@ -1801,6 +2180,51 @@
         },
         "type" : "object"
       },
+      "ChoiceOptionView" : {
+        "properties" : {
+          "chooseSubjects" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "countsByPick" : {
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "subjects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ChoiceSubjectView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ChoiceSubjectView" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "nameVi" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ClassDetailResponse" : {
         "description" : "Thông tin chi tiết lớp học",
         "properties" : {
@@ -1985,6 +2409,28 @@
         "required" : [ "code", "createdAt", "id", "memberCount", "name", "status", "updatedAt", "version" ],
         "type" : "object"
       },
+      "Cloze" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "blanks" : {
+              "items" : {
+                "$ref" : "#/components/schemas/ClozeBlankView"
+              },
+              "type" : "array"
+            },
+            "passage" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
       "ClozeBlank" : {
         "properties" : {
           "answers" : {
@@ -1998,6 +2444,14 @@
           },
           "points" : {
             "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ClozeBlankView" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -3242,6 +3696,23 @@
         "required" : [ "code" ],
         "type" : "object"
       },
+      "Essay" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            },
+            "wordLimit" : {
+              "format" : "int32",
+              "type" : "integer"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
       "EssayBody" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/QuestionBody"
@@ -4195,6 +4666,24 @@
           }
         },
         "required" : [ "code", "nameEn", "nameVi" ],
+        "type" : "object"
+      },
+      "ExamKindView" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "nameVi" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "ExamListing" : {
@@ -6156,6 +6645,22 @@
         "required" : [ "code", "count" ],
         "type" : "object"
       },
+      "GrantSourceView" : {
+        "properties" : {
+          "grantedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "orderCode" : {
+            "type" : "string"
+          },
+          "source" : {
+            "enum" : [ "PURCHASE", "COMPENSATION" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ImportBatchResponse" : {
         "description" : "Thông tin đợt cấp tài khoản hàng loạt",
         "properties" : {
@@ -6702,6 +7207,34 @@
         },
         "type" : "object"
       },
+      "Matching" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "left" : {
+              "items" : {
+                "$ref" : "#/components/schemas/SideView"
+              },
+              "type" : "array"
+            },
+            "reuseRight" : {
+              "type" : "boolean"
+            },
+            "right" : {
+              "items" : {
+                "$ref" : "#/components/schemas/SideView"
+              },
+              "type" : "array"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
       "MatchingBody" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/QuestionBody"
@@ -6844,6 +7377,28 @@
         },
         "required" : [ "parentId" ],
         "type" : "object"
+      },
+      "MultipleChoice" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "options" : {
+              "items" : {
+                "$ref" : "#/components/schemas/OptionView"
+              },
+              "type" : "array"
+            },
+            "scoringRule" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
       },
       "MultipleChoiceBody" : {
         "allOf" : [ {
@@ -7008,6 +7563,30 @@
         "required" : [ "name" ],
         "type" : "object"
       },
+      "OmittedGroupView" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "OpenAttemptView" : {
+        "properties" : {
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "Option" : {
         "properties" : {
           "content" : {
@@ -7017,6 +7596,17 @@
             "type" : "boolean"
           },
           "letter" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "OptionView" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
             "type" : "string"
           }
         },
@@ -7809,6 +8399,76 @@
           "to" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "PreChoiceInput" : {
+        "properties" : {
+          "optionCode" : {
+            "description" : "Mã phương án hoặc mã tổ hợp đã chọn",
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "description" : "Danh sách mã môn nếu phương án yêu cầu chọn N trong M môn",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "optionCode" ],
+        "type" : "object"
+      },
+      "PreChoiceView" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ChoiceOptionView"
+            },
+            "type" : "array"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "preselectedCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PreparePartView" : {
+        "properties" : {
+          "choiceTiming" : {
+            "enum" : [ "NONE", "PRE_START", "AFTER_START" ],
+            "type" : "string"
+          },
+          "durationMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "required" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -9007,6 +9667,26 @@
         "required" : [ "affectedBlocks", "usedIn" ],
         "type" : "object"
       },
+      "QuestionSet" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "blankNumberStart" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "passage" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
       "QuestionSetBody" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/QuestionBody"
@@ -9764,6 +10444,25 @@
         },
         "type" : "object"
       },
+      "ShortAnswer" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "answerFormat" : {
+              "type" : "string"
+            },
+            "inputHint" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
       "ShortAnswerBody" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/QuestionBody"
@@ -9781,6 +10480,36 @@
             },
             "inputHint" : {
               "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
+      },
+      "SideView" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "SingleChoice" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "options" : {
+              "items" : {
+                "$ref" : "#/components/schemas/OptionView"
+              },
+              "type" : "array"
             },
             "type" : {
               "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
@@ -9829,6 +10558,52 @@
         "required" : [ "questionId", "reason" ],
         "type" : "object"
       },
+      "StartAttemptRequest" : {
+        "description" : "Yêu cầu bắt đầu một lượt thi mới hoặc nối lại lượt đang mở (LT §5.2)",
+        "properties" : {
+          "entitlementId" : {
+            "description" : "Id quyền dùng bài thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "preChoice" : {
+            "$ref" : "#/components/schemas/PreChoiceInput",
+            "description" : "Lựa chọn trước khi bắt đầu (nếu bài có phần chọn trước)"
+          }
+        },
+        "required" : [ "entitlementId" ],
+        "type" : "object"
+      },
+      "StartAttemptResponse" : {
+        "description" : "Kết quả khởi tạo hoặc nối lại lượt thi (LT §5.2)",
+        "properties" : {
+          "abortReason" : {
+            "description" : "Lý do hủy khi state là ABORTED",
+            "enum" : [ "GENERATION_FAILED", "GENERATION_TIMEOUT", "GENERATION_BUSY", "STALE_STARTING", "AUDIO_ASSET_MISSING", "AUDIO_ASSET_INVALID" ],
+            "type" : "string"
+          },
+          "attemptId" : {
+            "description" : "Id lượt thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "resumed" : {
+            "description" : "True nếu nối lại lượt đang mở có sẵn; false nếu mới khởi tạo",
+            "type" : "boolean"
+          },
+          "retryable" : {
+            "description" : "Có thể thử bắt đầu lại ngay (true khi ABORTED)",
+            "type" : "boolean"
+          },
+          "state" : {
+            "description" : "Trạng thái hiện tại của lượt thi",
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptId", "resumed", "retryable", "state" ],
+        "type" : "object"
+      },
       "Statement" : {
         "properties" : {
           "answer" : {
@@ -9838,6 +10613,17 @@
             "type" : "string"
           },
           "letter" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "StatementView" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
             "type" : "string"
           }
         },
@@ -10042,6 +10828,24 @@
         "required" : [ "code", "nameEn", "nameVi" ],
         "type" : "object"
       },
+      "SubjectView" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "nameVi" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "SuggestExamCodeResponse" : {
         "description" : "Mã bài thi gợi ý theo quy ước <KIND>-<F|P|S>-[PHẦN|MÔN-]<seq:03d>",
         "properties" : {
@@ -10158,6 +10962,25 @@
         },
         "required" : [ "sourceClassId", "targetClassId", "transferredAt", "userId" ],
         "type" : "object"
+      },
+      "TrueFalse" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/AttemptQuestionBody"
+        }, {
+          "properties" : {
+            "statements" : {
+              "items" : {
+                "$ref" : "#/components/schemas/StatementView"
+              },
+              "type" : "array"
+            },
+            "type" : {
+              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+              "type" : "string"
+            }
+          },
+          "type" : "object"
+        } ]
       },
       "TrueFalseBody" : {
         "allOf" : [ {
@@ -36224,6 +37047,311 @@
         "tags" : [ "Auth" ]
       }
     },
+    "/api/v1/me/attempts" : {
+      "post" : {
+        "operationId" : "start",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StartAttemptRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StartAttemptResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Bắt đầu lượt thi mới hoặc nối lại lượt đang mở (sinh đề chạy nền)",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}" : {
+      "get" : {
+        "operationId" : "getState",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptStateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đọc trạng thái và nội dung các phần đã mở của lượt thi",
+        "tags" : [ "Attempts" ]
+      }
+    },
     "/api/v1/me/avatar" : {
       "delete" : {
         "operationId" : "removeMyAvatar",
@@ -37074,6 +38202,154 @@
         },
         "summary" : "Xác minh email hiện tại bằng mã OTP",
         "tags" : [ "Me" ]
+      }
+    },
+    "/api/v1/me/entitlements/{entitlementId}/prepare" : {
+      "get" : {
+        "operationId" : "prepare",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "entitlementId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptPrepareResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chuẩn bị trước khi bắt đầu lượt thi theo quyền dùng",
+        "tags" : [ "Attempts" ]
       }
     },
     "/api/v1/me/exam-access/query" : {
@@ -38623,6 +39899,9 @@
   }, {
     "description" : "Danh mục bài thi cho khách, không cần đăng nhập",
     "name" : "Storefront (public)"
+  }, {
+    "description" : "Chuẩn bị, bắt đầu và đọc trạng thái lượt thi",
+    "name" : "Attempts"
   }, {
     "description" : "Ngân hàng câu hỏi: lưu, trạng thái, tìm kiếm",
     "name" : "Admin Question Bank"

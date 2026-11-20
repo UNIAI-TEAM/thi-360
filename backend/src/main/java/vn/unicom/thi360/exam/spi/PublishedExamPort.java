@@ -64,7 +64,18 @@ public interface PublishedExamPort {
                             UUID subjectItemId, String buildMode, String timing, Integer durationMinutes,
                             BigDecimal maxScore, BigDecimal referenceMax, String practiceScoring, Listing listing,
                             List<Part> parts, List<Combination> combinations, List<OmittedGroup> omittedGroups,
-                            List<String> publishedPathIds, List<String> servingPathIds) { }
+                            List<String> publishedPathIds, List<String> servingPathIds, String instructions) {
+        public PublishedVersion(UUID examId, int versionNo, String state, String status, Instant publishedAt,
+                                String code, String name, UUID kindItemId, String kindCode, String scope, String partCode,
+                                UUID subjectItemId, String buildMode, String timing, Integer durationMinutes,
+                                BigDecimal maxScore, BigDecimal referenceMax, String practiceScoring, Listing listing,
+                                List<Part> parts, List<Combination> combinations, List<OmittedGroup> omittedGroups,
+                                List<String> publishedPathIds, List<String> servingPathIds) {
+            this(examId, versionNo, state, status, publishedAt, code, name, kindItemId, kindCode, scope, partCode,
+                    subjectItemId, buildMode, timing, durationMinutes, maxScore, referenceMax, practiceScoring, listing,
+                    parts, combinations, omittedGroups, publishedPathIds, servingPathIds, null);
+        }
+    }
 
     record Listing(String summary, String objectives, String audience, Long listPriceVnd, Integer attemptsGranted,
                    boolean benefitAiExplanation, boolean benefitStrengthWeakness, boolean benefitPractice,
