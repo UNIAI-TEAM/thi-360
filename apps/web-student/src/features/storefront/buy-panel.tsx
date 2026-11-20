@@ -58,6 +58,7 @@ export function BuyPanel({ product }: { product: ProductDetail }) {
           {t("guestHint")}{" "}
           <Link
             href={withCallbackUrl("/register", checkoutPath(product))}
+            prefetch={false}
             className="font-medium text-primary-text underline-offset-2 hover:underline"
           >
             {header("register")}

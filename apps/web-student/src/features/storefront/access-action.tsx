@@ -86,7 +86,7 @@ export function AccessAction({
     return (
       <div className={wrapper}>
         <Button asChild size={primarySize} className="flex-1">
-          <Link href={withCallbackUrl("/login", checkout)}>{t("buy")}</Link>
+          <Link href={withCallbackUrl("/login", checkout)} prefetch={false}>{t("buy")}</Link>
         </Button>
         {viewDetail}
       </div>
@@ -96,7 +96,7 @@ export function AccessAction({
   const { row } = view;
   const buyMore = !row.hasPendingFulfillment && (
     <Button asChild variant="outline" className="h-11 flex-1">
-      <Link href={checkout}>{t("buyMore")}</Link>
+      <Link href={checkout} prefetch={false}>{t("buyMore")}</Link>
     </Button>
   );
   // Còn lượt mà đơn mua thêm đang kẹt (TM 10.2): không đề nghị thanh toán lại, ghi mã đơn đang kiểm tra.
@@ -127,7 +127,7 @@ export function AccessAction({
         <div className={wrapper}>
           {attemptsNote}
           <Button asChild variant="exam" size={primarySize} className="flex-1">
-            <Link href={row.entitlementId ? `/prepare/${row.entitlementId}` : "/home"}>{t("enter")}</Link>
+            <Link href={row.entitlementId ? `/prepare/${row.entitlementId}` : "/home"} prefetch={false}>{t("enter")}</Link>
           </Button>
           {buyMore}
           {pendingNote}
@@ -139,7 +139,7 @@ export function AccessAction({
         <div className={wrapper}>
           <p className="w-full text-field-label text-text-secondary">{t("exhaustedNote")}</p>
           <Button asChild size={primarySize} className="flex-1">
-            <Link href={checkout}>{t("buyAgain")}</Link>
+            <Link href={checkout} prefetch={false}>{t("buyAgain")}</Link>
           </Button>
           {viewDetail}
         </div>
@@ -168,7 +168,7 @@ export function AccessAction({
       return (
         <div className={wrapper}>
           <Button asChild size={primarySize} className="flex-1">
-            <Link href={checkout}>{t("buy")}</Link>
+            <Link href={checkout} prefetch={false}>{t("buy")}</Link>
           </Button>
           {viewDetail}
         </div>
