@@ -67,6 +67,21 @@ describe("StudentHeader", () => {
     expect(within(banner).getByRole("button", { name: "Chọn ngôn ngữ" })).toBeInTheDocument();
   });
 
+  it("tài khoản quản trị chỉ có menu tài khoản, không có điều hướng dẫn tới trang của học viên (R1-9)", () => {
+    nav.pathname = "/";
+    renderWithProviders(
+      <StudentHeader
+        account={{ kind: "user", session: { ...STUDENT, access: "MANAGE", permissions: ["USER.VIEW"] } }}
+      />,
+    );
+
+    const banner = screen.getByRole("banner");
+    expect(within(banner).queryByRole("navigation")).toBeNull();
+    expect(within(banner).queryByRole("link", { name: "Bài thi của tôi" })).toBeNull();
+    expect(within(banner).queryByRole("link", { name: "Hồ sơ" })).toBeNull();
+    expect(within(banner).getByRole("button", { name: "Menu tài khoản" })).toBeInTheDocument();
+  });
+
   it("mục điều hướng đánh dấu trang hiện tại cả với trang con", () => {
     nav.pathname = "/account/profile/avatar";
     renderWithProviders(<StudentHeader account={{ kind: "user", session: STUDENT }} />);

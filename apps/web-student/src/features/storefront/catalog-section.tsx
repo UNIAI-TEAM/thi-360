@@ -186,6 +186,10 @@ export function CatalogSection({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(query.q);
   const pushedSearch = useRef(query.q);
+  const latestQuery = useRef(query);
+  useEffect(() => {
+    latestQuery.current = query;
+  });
 
   function go(next: CatalogQuery, mode: "replace" | "push" = "replace") {
     const url = `/${catalogSearch(next)}`;
@@ -200,10 +204,10 @@ export function CatalogSection({
     if (search === query.q) return;
     const handle = window.setTimeout(() => {
       pushedSearch.current = search;
-      go({ ...query, q: search, page: 1 });
+      go({ ...latestQuery.current, q: search, page: 1 });
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
-    // `go` đọc `query` mới nhất ở mỗi lần dựng lại; chỉ gõ chữ mới đặt lại hẹn giờ.
+    // `go` chỉ đọc điều kiện mới nhất qua `latestQuery`; chỉ gõ chữ mới đặt lại hẹn giờ.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 

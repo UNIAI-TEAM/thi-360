@@ -562,6 +562,7 @@
       "policy": {
         "contactLine": "Send a request via: {contact}",
         "contactPending": "Contact information is being updated.",
+        "hoursLine": "Support hours: {hours}",
         "priceNote": "Prices are in VND, tax and fees included.",
         "refund": "Refund for system errors: {policy}",
         "refundPending": "per the policy published by the operating unit; if you need help, contact support through the channels in the Need help? block on the home page.",

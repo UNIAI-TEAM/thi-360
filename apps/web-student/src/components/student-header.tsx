@@ -55,7 +55,8 @@ export function StudentHeader({ account }: { account: HeaderAccount }) {
           <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
         </Link>
 
-        {account.kind === "user" && (
+        {/* Điều hướng là các trang của học viên: tài khoản quản trị chỉ có menu tài khoản, không có mục dẫn tới trang bị chặn. */}
+        {account.kind === "user" && account.session.access === "EXAM" && (
           <nav aria-label={t("nav.label")} className="order-last basis-full md:order-none md:basis-auto md:flex-1">
             <ul className="flex flex-wrap gap-1">
               {VISIBLE_NAV_ITEMS.map((item) => {

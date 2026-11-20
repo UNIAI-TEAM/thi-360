@@ -132,6 +132,22 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
     expect(router.replace).toHaveBeenCalledTimes(1);
   });
 
+  it("đổi bộ lọc trong lúc chờ ngừng gõ: URL mới giữ cả bộ lọc vừa chọn (R1-7)", async () => {
+    const view = renderWithProviders(
+      <CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page()} />,
+    );
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Tìm theo tên hoặc mã" }), "hsa");
+    // Trong lúc chờ hẹn giờ, điều kiện trên URL đổi (chọn Kỳ thi) và trang dựng lại với điều kiện mới.
+    view.rerender(
+      <CatalogSection query={{ ...EMPTY_CATALOG_QUERY, kind: "HSA" }} filters={FILTERS} products={page()} />,
+    );
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?q=hsa&kind=HSA", { scroll: false }), {
+      timeout: 2000,
+    });
+  });
+
   it("Xóa bộ lọc đưa mọi điều kiện về mặc định", async () => {
     renderWithProviders(
       <CatalogSection

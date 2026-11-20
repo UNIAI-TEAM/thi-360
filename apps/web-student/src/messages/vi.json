@@ -562,6 +562,7 @@
       "policy": {
         "contactLine": "Gửi yêu cầu qua: {contact}",
         "contactPending": "Thông tin liên hệ đang được cập nhật.",
+        "hoursLine": "Giờ hỗ trợ: {hours}",
         "priceNote": "Giá bán bằng VND, đã gồm thuế, phí.",
         "refund": "Hoàn tiền khi lỗi hệ thống: {policy}",
         "refundPending": "theo chính sách do đơn vị vận hành công bố; cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ trên trang chủ.",

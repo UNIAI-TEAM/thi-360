@@ -186,6 +186,16 @@ describe("ExamDetailView", () => {
     );
   });
 
+  it("chỉ cấu hình giờ hỗ trợ: vẫn ghi 'đang được cập nhật' cho kênh, giờ nằm ở dòng riêng (R1-8)", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPPORT_HOURS", "8:00–17:00");
+    renderWithProviders(<ExamDetailView product={FULL_DETAIL} />);
+
+    const policy = screen.getByRole("region", { name: "Giá và chính sách" });
+    expect(policy).toHaveTextContent("Thông tin liên hệ đang được cập nhật.");
+    expect(policy).toHaveTextContent("Giờ hỗ trợ: 8:00–17:00");
+    expect(policy).not.toHaveTextContent("Gửi yêu cầu qua");
+  });
+
   it("giao diện tiếng Anh: không lẫn chữ giao diện tiếng Việt", () => {
     const { container } = renderWithProviders(<ExamDetailView product={FULL_DETAIL} />, {
       locale: "en",

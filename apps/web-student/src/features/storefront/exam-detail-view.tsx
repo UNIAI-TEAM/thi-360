@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { BuyPanel } from "./buy-panel";
 import { REVIEW_BUILD_MODE, rangeText } from "./format";
 import { FormatChip } from "./product-card";
-import { hasSupportContact, readSupportContact } from "./support";
+import { readSupportContact } from "./support";
 import type { AnswerTypeGroup, DetailChoiceOption, ProductDetail } from "./types";
 
 const ESSAY_TYPE = "ESSAY";
@@ -108,9 +108,15 @@ function ChoiceOption({ option }: { option: DetailChoiceOption }) {
 function SupportLine() {
   const t = useTranslations("storefront.detail.policy");
   const contact = readSupportContact();
-  if (!hasSupportContact(contact)) return <p className="text-text-secondary">{t("contactPending")}</p>;
   const channels = [contact.phone, contact.email].filter(Boolean).join(" · ");
-  return <p className="text-text-secondary">{t("contactLine", { contact: channels || contact.hours })}</p>;
+  return (
+    <>
+      <p className="text-text-secondary">
+        {channels ? t("contactLine", { contact: channels }) : t("contactPending")}
+      </p>
+      {contact.hours && <p className="text-text-secondary">{t("hoursLine", { hours: contact.hours })}</p>}
+    </>
+  );
 }
 
 /** Trang chi tiết một bài thi đang bán (TM 11.3, UniNote 5.1.6). Khung Giá bán là phần chạy phía trình duyệt. */
