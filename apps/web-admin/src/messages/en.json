@@ -7759,5 +7759,435 @@
       "latexPlaceholder": "x^2 + y^2 = z^2",
       "title": "Insert formula"
     }
+  },
+  "promotions": {
+    "actions": {
+      "backToList": "Back to list",
+      "cancel": "Cancel",
+      "clearFilters": "Clear filters",
+      "create": "Create promotion",
+      "delete": "Delete",
+      "deleteDisabledUsed": "Cannot delete because this promotion already has redemptions.",
+      "edit": "Edit",
+      "reload": "Reload",
+      "reloadLatest": "Load latest version",
+      "resume": "Resume",
+      "retry": "Retry",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "stop": "Stop",
+      "suggestCode": "Suggest code",
+      "suggestingCode": "Generating...",
+      "viewDetail": "View details"
+    },
+    "audienceLabels": {
+      "ALL": "All students",
+      "NEW_ACCOUNT": "New accounts",
+      "SELECTED": "Selected ({classes} classes, {users} students)",
+      "SELECTEDClasses": "By classes ({count})",
+      "SELECTEDUsers": "By students ({count})",
+      "unknownClass": "Class #{id}",
+      "unknownUser": "Student #{id}"
+    },
+    "capWarning": {
+      "badge": "Floor price reached",
+      "cardDescription": "Some exams hit the minimum floor price after this discount and will be capped at the floor price.",
+      "cardTitle": "Floor price warnings ({count})",
+      "discountedPrice": "Discounted",
+      "examName": "Exam",
+      "floorPrice": "Floor price",
+      "listMore": "+{count} more",
+      "listPrefix": "Hits floor price:",
+      "listPrice": "List price",
+      "tableLabel": "Exams reaching floor price"
+    },
+    "common": {
+      "loading": "Loading...",
+      "noDescription": "No description",
+      "unlimited": "Unlimited"
+    },
+    "create": {
+      "description": "Configure an automatic promotion or voucher code applied when students purchase exams.",
+      "title": "Create promotion"
+    },
+    "detail": {
+      "createdAt": "Created at",
+      "description": "Configuration, redemption tracking, price preview, and change history.",
+      "errorDescription": "Unable to load promotion details. Please try again.",
+      "errorTitle": "Unable to load details",
+      "info": {
+        "audience": "Audience",
+        "code": "Voucher code",
+        "combinable": "Combinable",
+        "combinableNo": "Not combinable",
+        "combinableYes": "Combinable",
+        "description": "Description",
+        "discount": "Discount",
+        "maxDiscount": "Max discount",
+        "perUserLimit": "Per student",
+        "scope": "Scope",
+        "schedule": "Schedule",
+        "stackingNote": "Automatic promotions always apply independently and do not stack with voucher codes.",
+        "title": "Configuration"
+      },
+      "metrics": {
+        "confirmedReserved": "{confirmed} confirmed · {reserved} reserved",
+        "discountValue": "Discount",
+        "period": "Period",
+        "periodRange": "{startsAt} - {endsAt}",
+        "totalDiscountPaid": "Total discount paid",
+        "usage": "Used",
+        "usageWithLimit": "{used} / {limit}",
+        "usageWithoutLimit": "{used} / Unlimited"
+      },
+      "notFoundDescription": "This promotion does not exist or has been deleted.",
+      "notFoundTitle": "Promotion not found",
+      "revision": "Revision #{revision}",
+      "subtitleAuto": "Automatic promotion",
+      "subtitleVoucher": "Voucher {code}",
+      "title": "Promotion details",
+      "updatedAt": "Updated at"
+    },
+    "dialogs": {
+      "delete": {
+        "confirm": "Delete promotion",
+        "description": "Permanently delete \"{name}\"? This action cannot be undone.",
+        "errorInUse": "This promotion just received redemptions and can no longer be deleted. Latest details have been reloaded.",
+        "title": "Delete promotion?"
+      },
+      "resume": {
+        "confirm": "Resume",
+        "description": "Resume \"{name}\" using its configured schedule?",
+        "title": "Resume promotion"
+      },
+      "stop": {
+        "confirm": "Stop promotion",
+        "description": "Stop \"{name}\" immediately? Existing reservations remain subject to checkout rules.",
+        "title": "Stop promotion"
+      }
+    },
+    "discountLabels": {
+      "amount": "-{amount}",
+      "perUserOnce": "{limit} per student",
+      "percent": "-{percent}%",
+      "percentWithCap": "-{percent}% (up to {cap})"
+    },
+    "edit": {
+      "description": "Update promotion settings. Certain fields are locked once redemptions exist.",
+      "errorDescription": "Unable to load promotion for editing.",
+      "errorTitle": "Unable to load promotion",
+      "title": "Edit promotion"
+    },
+    "errors": {
+      "CONFLICT": "Request conflicts with the current state. Please review and try again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Unable to complete the action. Please try again.",
+      "INTERNAL_ERROR": "A system error occurred. Please try again later.",
+      "NETWORK": "Could not reach the server. Please check your connection and try again.",
+      "NOT_FOUND": "Promotion no longer exists.",
+      "PRODUCT_GONE": "This exam is no longer on sale or available.",
+      "PROMOTION_ENDED": "This promotion has ended and cannot be resumed.",
+      "PROMOTION_ENDS_AT_PAST": "End time must be in the future.",
+      "PROMOTION_IN_USE": "This promotion just received redemptions so locked fields cannot be edited or deleted. Reloading latest data.",
+      "PROMOTION_SCOPE_INVALID": "Selected scope requires at least one valid target in ready state.",
+      "PROMOTION_TOTAL_LIMIT_BELOW_USED": "Total limit must be greater than or equal to current redemptions ({used}).",
+      "PROMOTION_TOTAL_LIMIT_BELOW_USED_GENERIC": "Total limit cannot be less than current redemptions.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "VALIDATION_FAILED": "Some fields are invalid. Please review the highlighted inputs.",
+      "VERSION_CONFLICT": "This promotion was updated by someone else. Reload the latest version before saving.",
+      "VOUCHER_CODE_TAKEN": "This voucher code is already taken. Choose another code or click Suggest code."
+    },
+    "fieldErrors": {
+      "audienceTargetsRequired": "Select at least one class or student when restricting the audience.",
+      "codeFormat": "Voucher code may only contain uppercase letters, numbers, and hyphens (3 to 32 characters).",
+      "codeRequired": "Please enter a voucher code.",
+      "descriptionTooLong": "Description must not exceed 500 characters.",
+      "discountAmountMin": "Discount amount must be greater than 0.",
+      "discountPercentRange": "Discount percentage must be between 1 and 100.",
+      "discountValueRequired": "Please enter a valid discount value.",
+      "endsAfterStarts": "End time must be after start time.",
+      "endsAtFuture": "End time must be in the future.",
+      "endsAtRequired": "Please select an end time.",
+      "maxDiscountMin": "Maximum discount must be greater than 0.",
+      "nameRequired": "Please enter a promotion name.",
+      "nameTooLong": "Promotion name must not exceed 120 characters.",
+      "perUserLimitMin": "Per-student limit must be a positive integer.",
+      "scopeExamsRequired": "Select at least one exam.",
+      "scopeKindsRequired": "Select at least one exam kind.",
+      "startsAtRequired": "Please select a start time.",
+      "suggestCodeFailed": "Unable to suggest a code right now. Please try again.",
+      "totalLimitMin": "Total limit must be a positive integer.",
+      "totalLimitTooLow": "Total limit cannot be less than current redemptions."
+    },
+    "form": {
+      "aside": {
+        "summaryAudience": "Audience",
+        "summaryDiscount": "Discount",
+        "summaryKind": "Type",
+        "summaryPeriod": "Schedule",
+        "summaryPlaceholder": "Not set",
+        "summaryScope": "Scope",
+        "summaryTitle": "Promotion summary",
+        "todoComplete": "All required information is filled in and ready to save.",
+        "todoItems": {
+          "audienceTargets": "Select at least one class or student",
+          "code": "Enter a valid voucher code",
+          "discountValue": "Enter a valid discount",
+          "endsAt": "Set an end time after start time",
+          "name": "Enter a promotion name",
+          "scopeTargets": "Select at least one scope target",
+          "startsAt": "Set a start time"
+        },
+        "todoRemaining": "Remaining items ({count})",
+        "todoTitle": "Checklist"
+      },
+      "banner": {
+        "conflictDescription": "The server holds a newer revision than the one you are editing. Reload the latest version before saving.",
+        "conflictTitle": "Version conflict (412)",
+        "formErrorTitle": "Unable to save promotion",
+        "inUseDescription": "This promotion already has {count} redemptions. To protect active checkouts and reservations, type, voucher code, discount rules, minimum order, start time, combinable setting, scope, and audience are locked. You can still update name, description, end time, total limit, or status.",
+        "inUseTitle": "Locked fields due to existing redemptions"
+      },
+      "fields": {
+        "audience": "Target audience",
+        "audienceHint": "Applies to vouchers only; automatic promotions apply to all students.",
+        "audienceOptions": {
+          "ALL": "All students",
+          "ALLHint": "Any eligible student may apply the code.",
+          "NEW_ACCOUNT": "New accounts",
+          "NEW_ACCOUNTHint": "Applies only to eligible new student accounts.",
+          "SELECTED": "Specific classes or students",
+          "SELECTEDHint": "Applies only to the selected classes or students below."
+        },
+        "classesLabel": "Select classes",
+        "classesNoPermission": "Your account lacks CLASS.VIEW permission. Existing assigned classes are preserved or can be removed.",
+        "classesPlaceholder": "Search by class name or code...",
+        "classesSelected": "Selected ({count} classes)",
+        "code": "Voucher code",
+        "codeHint": "Uppercase letters, numbers, and hyphens (-). Automatically uppercased.",
+        "codePlaceholder": "e.g. SUMMER2026",
+        "combinable": "Stackable with others",
+        "combinableHint": "Allow stacking with other combinable vouchers in the same order.",
+        "combinableLabel": "Allow combinable stacking at checkout",
+        "description": "Description",
+        "descriptionPlaceholder": "Internal or customer-facing note about this promotion...",
+        "discountType": "Discount type",
+        "discountTypeAmount": "Fixed amount (VND)",
+        "discountTypePercent": "Percentage (%)",
+        "discountValueAmount": "Discount amount (VND)",
+        "discountValueAmountHint": "Formatted: {formatted}",
+        "discountValuePercent": "Discount percentage (%)",
+        "endsAt": "Ends at (UTC+7)",
+        "examKindsLabel": "Select exam kinds",
+        "examsLabel": "Select published exams",
+        "examsNoPermission": "Your account lacks EXAM.VIEW permission to browse exams.",
+        "examsPlaceholder": "Search published exams by title or code...",
+        "examsSelected": "Selected ({count} exams)",
+        "kind": "Promotion type",
+        "kindAuto": "Automatic promotion",
+        "kindAutoHint": "Automatically deducted when students view or buy matching exams.",
+        "kindVoucher": "Voucher code",
+        "kindVoucherHint": "Students enter a code at checkout; supports per-user limits and audiences.",
+        "maxDiscountVnd": "Maximum discount (VND)",
+        "maxDiscountVndHint": "Leave blank for no cap. Formatted: {formatted}",
+        "maxDiscountVndPlaceholder": "No cap",
+        "minOrderVnd": "Minimum order (VND)",
+        "minOrderVndHint": "0 VND means no minimum order value.",
+        "name": "Promotion name",
+        "namePlaceholder": "e.g. Back-to-school discount",
+        "perUserLimit": "Per-student limit",
+        "perUserLimitHint": "Leave blank for unlimited uses per student.",
+        "scope": "Scope",
+        "scopeOptions": {
+          "ALL": "All exams",
+          "ALLHint": "Applies to all published exams.",
+          "EXAM": "Specific exams",
+          "EXAMHint": "Applies only to selected exams below.",
+          "EXAM_KIND": "By exam kind",
+          "EXAM_KINDHint": "Applies to all exams of the selected kinds."
+        },
+        "startsAt": "Starts at (UTC+7)",
+        "status": "Status",
+        "statusActive": "Active",
+        "statusStopped": "Stopped",
+        "totalLimit": "Total usage limit",
+        "totalLimitHint": "Leave blank for unlimited total uses. Once used, must be >= {used}.",
+        "totalLimitPlaceholder": "Unlimited",
+        "usersLabel": "Select students",
+        "usersNoPermission": "Your account lacks USER.VIEW permission. Existing assigned students are preserved or can be removed.",
+        "usersPlaceholder": "Search by name, username, or email...",
+        "usersSelected": "Selected ({count} students)"
+      },
+      "lockedChip": "Locked",
+      "picker": {
+        "empty": "No matching items found.",
+        "error": "Failed to load options.",
+        "loading": "Searching...",
+        "removeItem": "Remove {label}"
+      },
+      "sections": {
+        "audience": "5. Target audience",
+        "general": "1. General information",
+        "limits": "3. Discount & limits",
+        "schedule": "2. Schedule",
+        "scope": "4. Scope"
+      },
+      "toast": {
+        "created": "Promotion created.",
+        "deleted": "Promotion deleted.",
+        "resumed": "Promotion resumed.",
+        "stopped": "Promotion stopped.",
+        "updated": "Promotion updated."
+      }
+    },
+    "history": {
+      "actions": {
+        "CREATED": "Created",
+        "DELETED": "Deleted",
+        "RESUMED": "Resumed",
+        "STOPPED": "Stopped",
+        "UPDATED": "Updated"
+      },
+      "actorFallback": "Administrator",
+      "arrow": "{from} → {to}",
+      "boolFalse": "No",
+      "boolTrue": "Yes",
+      "description": "All configuration and status changes recorded newest-first.",
+      "emptyDescription": "No change history has been recorded yet.",
+      "emptyTitle": "No change history yet",
+      "emptyValue": "Empty",
+      "fields": {
+        "audience": "Audience",
+        "audienceClassIds": "Target classes",
+        "audienceUserIds": "Target students",
+        "code": "Voucher code",
+        "combinable": "Combinable",
+        "description": "Description",
+        "discountType": "Discount type",
+        "discountValue": "Discount value",
+        "endsAt": "Ends at",
+        "examIds": "Target exams",
+        "examKindIds": "Exam kinds",
+        "kind": "Type",
+        "maxDiscountVnd": "Max discount",
+        "minOrderVnd": "Minimum order",
+        "name": "Name",
+        "perUserLimit": "Per-student limit",
+        "scope": "Scope",
+        "startsAt": "Starts at",
+        "status": "Status",
+        "totalLimit": "Total limit"
+      },
+      "title": "Change history"
+    },
+    "kinds": {
+      "AUTO": "Automatic",
+      "VOUCHER": "Voucher"
+    },
+    "list": {
+      "audienceSummary": {
+        "ALL": "All students",
+        "NEW_ACCOUNT": "New accounts",
+        "SELECTED": "Selected classes / students"
+      },
+      "columns": {
+        "actions": "Actions",
+        "discount": "Discount",
+        "nameAndCode": "Name & code",
+        "period": "Schedule",
+        "scopeAndAudience": "Scope & audience",
+        "status": "Status",
+        "used": "Used"
+      },
+      "description": "Manage automatic promotions and voucher codes for exam purchases.",
+      "emptyDescription": "No promotions in this category yet. Create one to get started.",
+      "emptyFilteredDescription": "No promotions match your active filter or search query.",
+      "emptyFilteredTitle": "No matching promotions",
+      "emptyTitle": "No promotions yet",
+      "errorDescription": "Failed to load promotions. Please try again.",
+      "errorTitle": "Unable to load list",
+      "scopeSummary": {
+        "ALL": "All exams",
+        "EXAM": "Specific exams",
+        "EXAM_KIND": "By exam kind"
+      },
+      "searchAria": "Search promotions by name or code",
+      "searchPlaceholder": "Search by name or voucher code...",
+      "stateFilters": {
+        "ALL": "All",
+        "ENDED": "Ended",
+        "RUNNING": "Running",
+        "STOPPED": "Stopped",
+        "UPCOMING": "Upcoming"
+      },
+      "stateGroupAria": "Filter by status",
+      "summaryCount": "{total} promotions",
+      "tabs": {
+        "AUTO": "Automatic",
+        "VOUCHER": "Vouchers"
+      },
+      "title": "Promotions"
+    },
+    "pricePreview": {
+      "appliedStatus": "Applied: {label}",
+      "autoTag": "Automatic promotion",
+      "description": "Check the effective price of an exam after applying this promotion and floor price limits.",
+      "discountAmount": "Discount",
+      "discountedPrice": "Final price",
+      "emptyExams": "No matching exams available to preview.",
+      "errorGeneric": "Unable to calculate price preview. Please try again.",
+      "examLabel": "Select an exam to preview",
+      "examPlaceholder": "Select an exam...",
+      "finalDiscountAmount": "Effective discount",
+      "floorBadge": "Capped at floor price",
+      "floorPrice": "Floor price",
+      "listPrice": "List price",
+      "loadingQuote": "Calculating preview price...",
+      "noDiscountReason": "No additional discount applies to this exam.",
+      "saveFirstReason": "Save the promotion first to preview real pricing with floor price rules.",
+      "title": "Exam price preview",
+      "voucherTag": "Voucher"
+    },
+    "redemptions": {
+      "columns": {
+        "discountVnd": "Discount",
+        "orderCode": "Order",
+        "state": "Status",
+        "student": "Student",
+        "timestamp": "Time"
+      },
+      "description": "Track voucher/promotion reservations and confirmed redemptions across orders.",
+      "emptyFilteredDescription": "No redemptions match your current search or status filter.",
+      "emptyFilteredTitle": "No matching redemptions",
+      "emptyNeverUsedDescription": "This promotion has not been applied to any order yet.",
+      "emptyNeverUsedTitle": "No redemptions yet",
+      "errorDescription": "Failed to load redemption records.",
+      "errorTitle": "Unable to load redemptions",
+      "filters": {
+        "ALL": "All",
+        "CONFIRMED": "Confirmed",
+        "RELEASED": "Released",
+        "RESERVED": "Reserved"
+      },
+      "searchAria": "Search redemptions by student or order code",
+      "searchPlaceholder": "Search by student, email, or order code...",
+      "statusLabels": {
+        "CONFIRMED": "Confirmed",
+        "RELEASED": "Released",
+        "RESERVED": "Reserved"
+      },
+      "title": "Redemptions"
+    },
+    "scopeLabels": {
+      "ALL": "All exams",
+      "EXAM": "Exams ({count})",
+      "EXAM_KIND": "Exam kinds ({count})"
+    },
+    "states": {
+      "ENDED": "Ended",
+      "RUNNING": "Running",
+      "STOPPED": "Stopped",
+      "UPCOMING": "Upcoming"
+    }
   }
 }
