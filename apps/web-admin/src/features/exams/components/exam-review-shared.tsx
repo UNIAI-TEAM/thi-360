@@ -160,6 +160,8 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
       const values = {
         block: blockName ? `${subject} · ${blockName}` : subject,
         subject,
+        // Id đã lưu bị trùng (STORED_ID_COLLISION): máy chủ đặt id đó ở `blockId` của lỗi cấp cả bài.
+        id: issue.blockId ?? "",
         part: issue.partName ?? where?.part.name ?? "",
         place,
         hasPlace: place ? "yes" : "no",

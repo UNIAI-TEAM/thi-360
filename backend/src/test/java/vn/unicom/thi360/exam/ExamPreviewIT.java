@@ -929,10 +929,10 @@ class ExamPreviewIT extends AbstractIntegrationTest {
     }
 
     /**
-     * R4-3 (AD-85): the ambiguous-id rejection applies only at the draft check boundary. A frozen published version
+     * R4-3 + ADV:CR-4:21: the ambiguous-id rule applies only at the draft check boundary. A frozen published version
      * whose snapshot carries the legacy collision (option "b" holds a real section named "a:blocks", the holder name of
-     * option "a"'s direct blocks) still previews as it was published, while the equivalent draft is refused: the
-     * check marks the path invalid and a draft preview of it fails.
+     * option "a"'s direct blocks) still previews as it was published, while the equivalent draft is refused: its
+     * preview fails and its check reports the one exam-level collision error.
      */
     @Test
     void aFrozenLegacyVersionWithTheBlocksHolderIdStillPreviewsWhileTheEquivalentDraftIsRefused() throws Exception {
@@ -961,19 +961,94 @@ class ExamPreviewIT extends AbstractIntegrationTest {
         // The equivalent draft: the preview of the path fails on the ambiguous id, and a fresh check marks the path.
         mockMvc.perform(post("/api/v1/admin/exams/" + id + "/preview").with(asUser(Permissions.EXAM_VIEW))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"pathId\":\"b\",\"seed\":1}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.issues[?(@.code == 'STORED_ID_COLLISION')]").isNotEmpty());
         JsonNode check = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + id + "/check")
                         .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
-        boolean located = false;
-        for (JsonNode issue : check.path("groups").findValues("issues").stream()
-                .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false)).toList()) {
-            located |= "OPTION_EMPTY".equals(issue.path("code").asText()) && "b".equals(issue.path("optionId").asText());
+        java.util.List<JsonNode> collisions = check.path("groups").findValues("issues").stream()
+                .flatMap(list -> java.util.stream.StreamSupport.stream(list.spliterator(), false))
+                .filter(issue -> "STORED_ID_COLLISION".equals(issue.path("code").asText())).toList();
+        assertThat(collisions).as("the draft check reports the one exam-level collision: %s", check.path("groups")).hasSize(1);
+        assertThat(collisions.getFirst().path("blockId").asText()).isEqualTo("a:blocks");
+        assertThat(check.path("paths")).as("no path of the draft is certified: %s", check.path("paths")).isEmpty();
+    }
+
+    /**
+     * R5-3: the mirrored legacy fixture. "b" is listed BEFORE "a" and stores a real section named "a:blocks" with a
+     * two-point block; "a" holds one direct block worth one point; the frozen maxScore is one. The frozen version
+     * previews path "a" with its own one-point block, as it did before the draft guard existed (the later holder wins
+     * the id for a version), instead of reading the two-point section for it. The equivalent draft preview is refused
+     * with the one exam-level collision error.
+     */
+    @Test
+    void aFrozenLegacyVersionPreviewsTheDirectBlocksOptionWithItsOwnScoring() throws Exception {
+        Subject first = subject();
+        Subject second = subject();
+        jdbc.update("update questionbank.question set points=1 where id=?", question(first, "SINGLE_CHOICE", "legacy first", false));
+        jdbc.update("update questionbank.question set points=2 where id=?", question(second, "SINGLE_CHOICE", "legacy second", false));
+        String parts = """
+                [{"id":"p","order":1,"name":"Choice","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                  "options":[
+                    {"id":"b","kind":"SUBJECT","code":"%s","sections":[{"id":"a:blocks","subjectCode":"%s",
+                      "questionCount":1,"blocks":[{"id":"gb","questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":2}]}]},
+                    {"id":"a","kind":"SUBJECT","code":"%s","blocks":[{"id":"ga","questionType":"SINGLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":1}]}]}]
+                """.formatted(second.code(), second.code(), first.code());
+        UUID id = exam(parts);
+        jdbc.update("insert into exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by) "
+                        + "values (?, ?, 1, cast(? as jsonb), cast(? as jsonb), array['a'], array['a'], ?, 'SERVING', 'PUBLISHED', now(), ?)",
+                UUID.randomUUID(), id, "{\"code\":\"OLD\",\"name\":\"Old\",\"scope\":\"FULL\",\"timing\":\"SHARED\",\"durationMinutes\":45,\"practiceScoring\":\"RAW\",\"maxScore\":1}",
+                "{\"parts\":" + parts + "}", UUID.randomUUID(), UUID.randomUUID());
+
+        JsonNode frozen = preview(id, "{\"pathId\":\"a\",\"seed\":1,\"version\":1}");
+        assertThat(frozen.path("version").asInt()).isEqualTo(1);
+        assertThat(frozen.path("paper").path("parts").get(0).path("blocks").get(0).path("blockId").asText()).isEqualTo("ga");
+
+        mockMvc.perform(post("/api/v1/admin/exams/" + id + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"pathId\":\"a\",\"seed\":1}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.issues[?(@.code == 'STORED_ID_COLLISION')]").isNotEmpty())
+                .andExpect(jsonPath("$.paper").doesNotExist());
+    }
+
+    /**
+     * R5-2: a normal draft (no stored id equals a holder name) whose authored option "p3:CA1" is invalid (an unsized
+     * single-choice block among its direct blocks) shares its id with the option the code-source part "p3" generates
+     * for combination CA1. Previewing the safe sibling with the generated option must not inherit the authored
+     * option's error (an option-scoped issue belongs to its own part "p"), while previewing the authored option
+     * itself reports it.
+     */
+    @Test
+    void anAuthoredOptionIdEqualToAGeneratedIdDoesNotFailAnotherPartsPreview() throws Exception {
+        Subject safe = subject();
+        question(safe, "SINGLE_CHOICE", "safe", false);
+        for (String code : List.of("LY", "HOA", "SINH", "DIA")) {
+            UUID subjectId = jdbc.queryForObject("select id from catalog.catalog_item where group_id = ? and code_normalized = ?",
+                    UUID.class, SUBJECT_GROUP, code.toLowerCase(Locale.ROOT));
+            question(new Subject(subjectId, code), "SINGLE_CHOICE", code, false);
         }
-        assertThat(located).as("the draft check locates the ambiguity on option b: %s", check.path("groups")).isTrue();
-        for (JsonNode path : check.path("paths")) {
-            if ("b".equals(path.path("pathId").asText())) assertThat(path.path("result").asText()).isEqualTo("INVALID");
-        }
+        UUID examId = exam("""
+                [{"id":"p","order":1,"name":"Choice","questionCount":1,"participation":{"mode":"CHOICE","choose":1},
+                  "options":[
+                    {"id":"p3:CA1","kind":"SUBJECT","code":"X","blocks":[{"id":"x-rest","questionType":"SINGLE_CHOICE"}]},
+                    {"id":"safe","kind":"SUBJECT","code":"S","sections":[{"id":"safe-sec","subjectCode":"%s","questionCount":1,
+                      "blocks":[{"id":"g-safe","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]},
+                 {"id":"p3","order":2,"name":"Three","questionCount":1,
+                  "codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
+                    {"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[{"id":"gly","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"hoa","subjectCode":"HOA","questionCount":1,"blocks":[{"id":"ghoa","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"sinh","subjectCode":"SINH","questionCount":1,"blocks":[{"id":"gsinh","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"dia","subjectCode":"DIA","questionCount":1,"blocks":[{"id":"gdia","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]
+                """.formatted(safe.code()));
+        jdbc.update("update exam.exam set kind_item_id=(select id from catalog.catalog_item where code_normalized='bca' and group_id='00000000-0000-7000-8100-000000000001') where id=?", examId);
+
+        JsonNode generated = preview(examId, "{\"pathId\":\"safe+p3:CA1\",\"seed\":1}");
+        assertThat(generated.path("paper").path("parts")).as("the safe path previews: %s", generated).isNotEmpty();
+
+        mockMvc.perform(post("/api/v1/admin/exams/" + examId + "/preview").with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"pathId\":\"p3:CA1+p3:CA1\",\"seed\":1}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.issues[?(@.code == 'SECTION_TOTAL_MISMATCH')]").isNotEmpty());
     }
 
     @Test

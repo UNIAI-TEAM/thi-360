@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamCheckApiModels.SectionState;
 import vn.unicom.thi360.exam.domain.ExamSection;
+import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
@@ -51,6 +52,7 @@ public class ExamCheckUnitStates {
     public List<SectionState> states(UUID examId) {
         var snapshot = snapshots.read(examId);
         var document = snapshot.structure();
+        if (ExamStoredIdCollision.find(document).isPresent()) return allIncomplete(document);
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), document);
         // Only the locked-count template facts feed sections; the exam-level publish ban marks no section.
         var rules = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
@@ -120,14 +122,6 @@ public class ExamCheckUnitStates {
                     incomplete.addAll(unit.key().sectionIds());
                     continue;
                 }
-                if (unit.key().sectionIds().stream().anyMatch(rules.ambiguousSectionIds()::contains)) {
-                    // A proof stored under an ambiguous "{option}:blocks" identity is untrusted: show the unit as
-                    // needing a check rather than whatever the saved row says.
-                    for (String sectionId : unit.key().sectionIds()) {
-                        status.merge(sectionId, "NEEDS_CHECK", ExamCheckUnitStates::worst);
-                    }
-                    continue;
-                }
                 List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
                 var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections, document.examQuotas(),
                         config, inputs.profileRevision(), inputs.catalogRevision(), unit.sections());
@@ -154,6 +148,31 @@ public class ExamCheckUnitStates {
                     String id = option.id() + ":blocks";
                     result.add(new SectionState(part.id(), id, option.code(), incomplete.contains(id)
                             ? "INCOMPLETE" : status.getOrDefault(id, "NEEDS_CHECK")));
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    /**
+     * ADV:CR-4:21: nothing of a draft with an ambiguous stored id is certifiable, so every section reads as incomplete
+     * and no saved unit proof is consulted.
+     */
+    private static List<SectionState> allIncomplete(ExamStructureDocument document) {
+        List<SectionState> result = new ArrayList<>();
+        for (var part : document.parts()) {
+            for (var section : part.sections()) {
+                result.add(new SectionState(part.id(), section.id(), section.subjectCode(), "INCOMPLETE"));
+            }
+            for (var section : part.subjectPool()) {
+                result.add(new SectionState(part.id(), section.id(), section.subjectCode(), "INCOMPLETE"));
+            }
+            for (var option : part.options()) {
+                for (var section : option.sections()) {
+                    result.add(new SectionState(part.id(), section.id(), section.subjectCode(), "INCOMPLETE"));
+                }
+                if (!option.blocks().isEmpty()) {
+                    result.add(new SectionState(part.id(), option.id() + ":blocks", option.code(), "INCOMPLETE"));
                 }
             }
         }

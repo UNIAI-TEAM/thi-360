@@ -157,6 +157,7 @@ export const CHECK_ISSUE_CODES = [
   "DISPLAY_SEGMENT_MISMATCH",
   "SECTION_SET_COUNT_RANGE",
   "SHORT_ANSWER_MIN",
+  "STORED_ID_COLLISION",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 

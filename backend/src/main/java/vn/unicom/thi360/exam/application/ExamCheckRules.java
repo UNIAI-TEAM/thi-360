@@ -62,10 +62,6 @@ public final class ExamCheckRules {
     private final Map<String, SectionContext> sections = new LinkedHashMap<>();
     private final Map<String, ExamPartOption> options = new LinkedHashMap<>();
     private final Map<String, ExamPart> parts = new LinkedHashMap<>();
-    /** Options an ambiguous stored id makes unrepresentable, keyed by part and option; see the constructor. */
-    private final Set<vn.unicom.thi360.exam.domain.solver.ChosenOption> collidingOptions = new LinkedHashSet<>();
-    /** Stored section ids that also name the direct-blocks holder of some option: their unit proofs are untrusted. */
-    private final Set<String> ambiguousSectionIds = new LinkedHashSet<>();
 
     ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document) {
         this(mapper, exam, document, Map.of());
@@ -97,17 +93,6 @@ public final class ExamCheckRules {
     public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
                           Map<String, Map<String, List<String>>> combinationsByPart,
                           Map<UUID, UUID> topicParents, TemplateFacts template, String kindCode) {
-        this(mapper, exam, document, combinationsByPart, topicParents, template, kindCode, true);
-    }
-
-    /**
-     * {@code storedDraft} distinguishes the live draft from an immutable published version. The ambiguity rejection
-     * below applies only to the draft check boundary ({@code storedDraft = true}); a frozen version keeps the older
-     * behaviour so a preview of published content is unchanged.
-     */
-    public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
-                          Map<String, Map<String, List<String>>> combinationsByPart,
-                          Map<UUID, UUID> topicParents, TemplateFacts template, String kindCode, boolean storedDraft) {
         this.kindCode = kindCode;
         this.template = template;
         this.topicParents = topicParents;
@@ -115,57 +100,6 @@ public final class ExamCheckRules {
         this.exam = exam;
         this.document = document;
         this.issues = new ExamCheckIssues(mapper);
-        // Conservative legacy rule (AD-85, R1-13): the checker, the solver and the preview name the holder of an
-        // option's direct blocks "{option}:blocks". A stored draft whose any node id takes that name for ANY option
-        // (the same option or another, with or without direct blocks) is ambiguous: the owning option(s) get a
-        // located structure error, and the affected section ids must not reuse or save unit proofs.
-        Set<String> storedIds = new LinkedHashSet<>();
-        Set<String> storedSectionIds = new LinkedHashSet<>();
-        Map<String, ExamPartOption> nodeOwners = new LinkedHashMap<>();
-        for (ExamPart part : document.parts()) {
-            storedIds.add(part.id());
-            for (ExamSection section : part.sections()) {
-                storedIds.add(section.id());
-                storedSectionIds.add(section.id());
-                section.blocks().forEach(block -> storedIds.add(block.id()));
-            }
-            for (ExamSection section : part.subjectPool()) {
-                storedIds.add(section.id());
-                storedSectionIds.add(section.id());
-                section.blocks().forEach(block -> storedIds.add(block.id()));
-            }
-            for (ExamPartOption option : part.options()) {
-                storedIds.add(option.id());
-                nodeOwners.putIfAbsent(option.id(), option);
-                for (ExamSection section : option.sections()) {
-                    storedIds.add(section.id());
-                    storedSectionIds.add(section.id());
-                    nodeOwners.putIfAbsent(section.id(), option);
-                    section.blocks().forEach(block -> storedIds.add(block.id()));
-                }
-                for (var block : option.blocks()) {
-                    storedIds.add(block.id());
-                    nodeOwners.putIfAbsent(block.id(), option);
-                }
-            }
-        }
-        if (storedDraft) {
-            for (ExamPart part : document.parts()) {
-                for (ExamPartOption option : part.options()) {
-                    String holder = option.id() + ":blocks";
-                    if (!storedIds.contains(holder)) continue;
-                    collidingOptions.add(new vn.unicom.thi360.exam.domain.solver.ChosenOption(part.id(), option.id()));
-                    ExamPartOption owner = nodeOwners.get(holder);
-                    if (owner != null && owner != option) {
-                        ExamPart ownerPart = document.parts().stream()
-                                .filter(candidate -> candidate.options().contains(owner)).findFirst().orElse(part);
-                        collidingOptions.add(new vn.unicom.thi360.exam.domain.solver.ChosenOption(
-                                ownerPart.id(), owner.id()));
-                    }
-                    if (storedSectionIds.contains(holder)) ambiguousSectionIds.add(holder);
-                }
-            }
-        }
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
             for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section, false));
@@ -174,7 +108,6 @@ public final class ExamCheckRules {
                 options.put(option.id(), option);
                 for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section, false));
                 if (!option.blocks().isEmpty()) {
-                    if (storedSectionIds.contains(option.id() + ":blocks")) continue;
                     int count = option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
@@ -184,23 +117,17 @@ public final class ExamCheckRules {
         }
     }
 
-    /** Stored section ids that double as a "{option}:blocks" holder name; unit proofs across them are untrusted. */
-    Set<String> ambiguousSectionIds() {
-        return ambiguousSectionIds;
-    }
-
     /** Static checks applicable to one resolved path, without validating unrelated options. */
     public static List<ObjectNode> issuesForPath(ObjectMapper mapper, Exam exam,
-                                                 ExamStructureDocument document, PathResult result,
-                                                 boolean storedDraft) {
-        ExamCheckRules rules = new ExamCheckRules(mapper, exam, document, Map.of(), Map.of(), TemplateFacts.NONE,
-                null, storedDraft);
+                                                 ExamStructureDocument document, PathResult result) {
+        ExamCheckRules rules = new ExamCheckRules(mapper, exam, document);
         List<ObjectNode> found = new ArrayList<>(rules.common());
-        Set<String> selected = new LinkedHashSet<>();
-        result.path().chosen().forEach(choice -> selected.add(choice.optionId()));
+        // An option-scoped issue belongs to (partId, optionId): a generated option of another part may share the id.
+        Set<vn.unicom.thi360.exam.domain.solver.ChosenOption> selected = new LinkedHashSet<>(result.path().chosen());
         for (ObjectNode issue : rules.unrepresentable()) {
             String optionId = issue.path("optionId").asText(null);
-            if (optionId == null || selected.contains(optionId)) found.add(issue);
+            if (optionId == null || selected.contains(new vn.unicom.thi360.exam.domain.solver.ChosenOption(
+                    issue.path("partId").asText(null), optionId))) found.add(issue);
         }
         found.addAll(rules.path(result));
         return dedupe(found);
@@ -820,10 +747,6 @@ public final class ExamCheckRules {
                 found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
             }
             for (ExamPartOption option : part.options()) {
-                if (collidingOptions.contains(new vn.unicom.thi360.exam.domain.solver.ChosenOption(part.id(), option.id()))) {
-                    // Saved by code that let a stored node take the "{option}:blocks" holder name (AD-85, R1-13).
-                    found.add(issue("OPTION_EMPTY", "STRUCTURE", part, option.id(), null));
-                }
                 if (!option.blocks().isEmpty() && option.kind() != OptionKind.SUBJECT) {
                     found.add(issue("OPTION_EMPTY", "STRUCTURE", part, option.id(), null));
                 }
@@ -1089,7 +1012,8 @@ public final class ExamCheckRules {
         for (var selected : result.path().chosen()) {
             ExamPartOption option = options.get(selected.optionId());
             ExamPart part = parts.get(selected.partId());
-            if (option == null || part == null) continue;
+            // An option id is authored; a generated option ("partId:CODE") with the same id has no authored record.
+            if (option == null || part == null || !part.options().contains(option)) continue;
             if (Boolean.FALSE.equals(option.expertConfirmed())) found.add(issue("OPTION_UNCONFIRMED", "STRUCTURE", part, option.id(), null));
             if (option.kind() == OptionKind.SUBJECT_CHOICE) {
                 ObjectNode invalid = choiceIssue(part, option);

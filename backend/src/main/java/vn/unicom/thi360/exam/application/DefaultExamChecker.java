@@ -66,6 +66,17 @@ public class DefaultExamChecker implements ExamChecker {
         Set<String> requested = scope.sections(snapshot.structure());
         List<ObjectNode> common = new ArrayList<>(rules.common().stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList());
+        var assembler = new ExamCheckAssembler(mapper, clock, limits);
+        // ADV:CR-4:21: a stored node id equal to the "{option}:blocks" holder name of any option makes the draft
+        // ambiguous. Nothing is certifiable then, whatever the scope: one exam-level blocking structure error, no
+        // solving, no unit proof read or written, and (assembled without proofs) no rules stamp.
+        var collision = ExamStoredIdCollision.find(snapshot.structure());
+        if (collision.isPresent()) {
+            common.add(ExamStoredIdCollision.issue(mapper, collision.get()));
+            return assembler.assemble(snapshot.exam(), snapshot.structure(), null,
+                    new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
+                    deadline, budget, common, rules::path);
+        }
         if (scope.kind() == ExamCheckScope.Kind.EXAM && snapshot.servingCombinations() != null
                 && snapshot.servingCombinations().isArray()) {
             List<ExamCheckRules.CombinationContent> served = new ArrayList<>();
@@ -101,7 +112,6 @@ public class DefaultExamChecker implements ExamChecker {
         List<ObjectNode> allInvalid = withSiblingLocks(rules.unrepresentable(), rules, scope, requested);
         List<ObjectNode> invalid = allInvalid.stream()
                 .filter(issue -> inScope(issue, scope, requested)).toList();
-        var assembler = new ExamCheckAssembler(mapper, clock, limits);
         if (scope.kind() == ExamCheckScope.Kind.PART && requested.isEmpty()) {
             ExamPart part = snapshot.structure().parts().stream()
                     .filter(candidate -> scope.targetId().equals(candidate.id())).findFirst().orElseThrow();
@@ -221,8 +231,7 @@ public class DefaultExamChecker implements ExamChecker {
                     var evaluation = assembler.assemble(snapshot.exam(), snapshot.structure(), null,
                             new SolveOutcome(SolveStatus.INVALID, null, List.of(), SolveStats.EMPTY),
                             deadline, budget, common, rules::path);
-                    return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, related,
-                            rules.ambiguousSectionIds()));
+                    return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, related));
                 }
             } catch (ExamCheckUnitPlanner.TooManyPaths | ExamCheckUnitPlanner.TooManyChoiceSubjects ignored) {
                 // The unit engine reports the solver limit without attempting these units.
@@ -418,8 +427,7 @@ public class DefaultExamChecker implements ExamChecker {
                 maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), sections), options), parts);
         try {
             var input = builder.build(snapshot.exam().getKindItemId(), document);
-            return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, common,
-                    rules.ambiguousSectionIds()));
+            return evaluation.withUnits(units.invalidUnits(snapshot, input, scope, common));
         } catch (IllegalArgumentException | ExamCheckUnitPlanner.TooManyPaths
                 | ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
             // A draft without a representable unit is reflected directly by structural section states.
