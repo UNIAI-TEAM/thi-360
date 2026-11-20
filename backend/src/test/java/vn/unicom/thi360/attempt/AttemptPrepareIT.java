@@ -78,14 +78,24 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
     void prepareMatchesPublishedPaths() throws Exception {
         UUID userId = createStudent("prep-paths");
 
-        // 1. HSA FULL: instructions (frozen check), grantSource, parts from paths[], afterStartChoices (SCIENCE 3-of-5 [17,17,16] + ANH)
+        // 1. HSA FULL: non-blank frozen instructions (unchanged after draft edit), grantSource, parts from paths[], afterStartChoices
         GrantOrderResult.Line hsaLine = grant(userId, "DS-HSA-FULL-MINI", 3, List.of());
         String originalDraftInstructions =
                 jdbc.queryForObject(
                         "SELECT instructions FROM exam.exam WHERE id = ?",
                         String.class,
                         hsaLine.examId());
+        String originalVersionConfig =
+                jdbc.queryForObject(
+                        "SELECT config::text FROM exam.exam_version WHERE exam_id = ? AND version_no = 1",
+                        String.class,
+                        hsaLine.examId());
         try {
+            jdbc.update(
+                    "UPDATE exam.exam_version SET config = jsonb_set(config, '{instructions}', to_jsonb(?::text), true) "
+                            + "WHERE exam_id = ? AND version_no = 1",
+                    "<p>Frozen exam rules v1</p>",
+                    hsaLine.examId());
             jdbc.update(
                     "UPDATE exam.exam SET instructions = ? WHERE id = ?",
                     "<p>DRAFT CHANGED SHOULD NOT AFFECT PREPARE</p>",
@@ -103,9 +113,8 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
             assertThat(hsa.path("examKind").path("code").asText()).isEqualTo("HSA");
             assertThat(hsa.path("grantSource").path("source").asText()).isEqualTo("PURCHASE");
             assertThat(hsa.path("grantSource").path("orderCode").asText()).startsWith("ORD-");
-            assertThat(hsa.path("instructions").asText("")).isEqualTo(
-                    hsaServing.version().instructions() == null ? "" : hsaServing.version().instructions());
-            assertThat(hsa.path("instructions").asText("")).doesNotContain("DRAFT CHANGED");
+            assertThat(hsa.path("instructions").asText()).isEqualTo("<p>Frozen exam rules v1</p>");
+            assertThat(hsa.path("instructions").asText()).doesNotContain("DRAFT CHANGED");
             assertThat(hsa.path("navigationMode").asText()).isEqualTo("SEQUENTIAL");
             assertThat(hsa.path("preChoice").isNull()).isTrue();
             assertThat(hsa.path("parts")).hasSize(hsaPath.parts().size());
@@ -132,6 +141,10 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
             assertThat(scienceOpt.path("countsByPick")).hasSize(3);
         } finally {
             jdbc.update(
+                    "UPDATE exam.exam_version SET config = ?::jsonb WHERE exam_id = ? AND version_no = 1",
+                    originalVersionConfig,
+                    hsaLine.examId());
+            jdbc.update(
                     "UPDATE exam.exam SET instructions = ? WHERE id = ?",
                     originalDraftInstructions,
                     hsaLine.examId());
@@ -147,7 +160,7 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         assertThat(qda.path("afterStartChoices")).hasSize(1);
         assertThat(qda.path("afterStartChoices").get(0).path("options")).isNotEmpty();
 
-        // 3. SPT Informatics with single granted branch -> preChoice preselectedCode = CS & filtered options
+        // 3. SPT Informatics with single granted branch -> preChoice preselectedCode = CS, filtered options, and omittedGroups
         GrantOrderResult.Line sptCsLine = grant(userId, "DS-SPT-INFORMATICS-MINI", 2, List.of("CS"));
         MvcResult sptRes = performPrepare(userId, sptCsLine.entitlementId());
         assertThat(sptRes.getResponse().getStatus()).isEqualTo(200);
@@ -156,6 +169,67 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         assertThat(spt.path("preChoice").path("preselectedCode").asText()).isEqualTo("CS");
         assertThat(spt.path("preChoice").path("options")).hasSize(1);
         assertThat(spt.path("preChoice").path("options").get(0).path("code").asText()).isEqualTo("CS");
+        assertThat(spt.path("omittedGroups")).isNotEmpty();
+        assertThat(spt.path("parts").get(1).path("questionCount").asInt()).isEqualTo(2);
+
+        // 4. VSAT Van with omitted essay group (Viết, 30 pts) -> non-empty omittedGroups and 0-count omitted part
+        GrantOrderResult.Line vsatVanLine = grant(userId, "DS-VSAT-VAN", 2, List.of());
+        MvcResult vsatRes = performPrepare(userId, vsatVanLine.entitlementId());
+        assertThat(vsatRes.getResponse().getStatus()).isEqualTo(200);
+        JsonNode vsat = json(vsatRes);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(vsat);
+        assertThat(vsat.path("omittedGroups")).hasSize(1);
+        assertThat(vsat.path("omittedGroups").get(0).path("name").asText()).isNotBlank();
+        assertThat(new BigDecimal(vsat.path("omittedGroups").get(0).path("points").asText()))
+                .isEqualByComparingTo("30");
+        assertThat(vsat.path("parts")).hasSize(4);
+        assertThat(vsat.path("parts").get(3).path("questionCount").asInt()).isZero();
+    }
+
+    @Test
+    void prepareWithZeroAttemptsLeftReturnsNullGrantSourceAndHidesRestrictedOptions() throws Exception {
+        UUID userId = createStudent("prep-zero-left");
+        GrantOrderResult.Line line = grant(userId, "DS-SPT-INFORMATICS-MINI", 1, List.of("CS"));
+        ServingExam serving = publishedExamPort.findServing(line.examId()).orElseThrow();
+        PublishedVersion v = serving.version();
+
+        UUID attemptId = Ids.newId();
+        entitlementPort.reserve(userId, line.entitlementId(), attemptId);
+        attemptRepository.saveAndFlush(
+                Attempt.start(
+                        attemptId,
+                        userId,
+                        line.examId(),
+                        v.versionNo(),
+                        line.entitlementId(),
+                        line.grantId(),
+                        v.name(),
+                        v.kindItemId(),
+                        v.kindCode(),
+                        v.scope(),
+                        v.partCode(),
+                        v.subjectItemId(),
+                        AttemptTiming.valueOf(v.timing()),
+                        NavigationMode.SEQUENTIAL,
+                        Map.of(),
+                        9876L,
+                        Ids.newId(),
+                        "SCORE_AND_ANSWERS",
+                        v.practiceScoring(),
+                        v.referenceMax(),
+                        v.maxScore(),
+                        "key-prep-zero",
+                        mutableClock.instant()));
+
+        MvcResult res = performPrepare(userId, line.entitlementId());
+        assertThat(res.getResponse().getStatus()).isEqualTo(200);
+        JsonNode body = json(res);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(body);
+        assertThat(body.path("attemptsLeft").asInt()).isZero();
+        assertThat(body.path("grantSource").isNull()).isTrue();
+        assertThat(body.path("openAttempt").path("attemptId").asText()).isEqualTo(attemptId.toString());
+        assertThat(body.path("openAttempt").path("state").asText()).isEqualTo("STARTING");
+        assertThat(body.path("preChoice").path("options")).isEmpty();
     }
 
     @Test

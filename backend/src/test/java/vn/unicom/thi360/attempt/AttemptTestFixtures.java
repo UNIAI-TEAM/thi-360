@@ -154,6 +154,34 @@ public final class AttemptTestFixtures {
                 """, userId);
         jdbc.update("DELETE FROM commerce.entitlement WHERE user_id = ?", userId);
         jdbc.update("DELETE FROM shared.idempotency_key WHERE scope LIKE ?", userId + ":%");
+        jdbc.update("DELETE FROM identity.platform_admin WHERE id = ?", userId);
         jdbc.update("DELETE FROM identity.user_account WHERE id = ?", userId);
+    }
+
+    /** Removes synthetic questions (and any children/ledgers/versions) created by a test. */
+    public static void cleanupSyntheticQuestions(JdbcTemplate jdbc, List<UUID> rootQuestionIds) {
+        if (rootQuestionIds == null || rootQuestionIds.isEmpty()) {
+            return;
+        }
+        for (UUID rootId : rootQuestionIds) {
+            if (rootId == null) {
+                continue;
+            }
+            List<UUID> allIds = jdbc.queryForList(
+                    "SELECT id FROM questionbank.question WHERE id = ? OR parent_id = ?",
+                    UUID.class,
+                    rootId,
+                    rootId);
+            for (UUID qId : allIds) {
+                jdbc.update("DELETE FROM questionbank.question_asset_ref WHERE question_id = ?", qId);
+                jdbc.update("DELETE FROM questionbank.question_knowledge WHERE question_id = ?", qId);
+                jdbc.update("DELETE FROM questionbank.question_tag WHERE question_id = ?", qId);
+                jdbc.update("DELETE FROM questionbank.question_usage_ledger WHERE question_id = ?", qId);
+                jdbc.update("DELETE FROM questionbank.question_source_code_claim WHERE question_id = ?", qId);
+                jdbc.update("DELETE FROM questionbank.question_version WHERE question_id = ?", qId);
+            }
+            jdbc.update("DELETE FROM questionbank.question WHERE parent_id = ?", rootId);
+            jdbc.update("DELETE FROM questionbank.question WHERE id = ?", rootId);
+        }
     }
 }

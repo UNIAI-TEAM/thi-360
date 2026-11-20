@@ -2,6 +2,7 @@ package vn.unicom.thi360.attempt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -191,6 +192,47 @@ class AttemptStaleWorkerIT extends AbstractIntegrationTest {
         Attempt reloaded = attemptRepository.findById(attemptId).orElseThrow();
         assertThat(reloaded.getState()).isEqualTo(AttemptState.ABORTED);
         assertThat(reloaded.getAbortReason()).isEqualTo(AbortReason.STALE_STARTING);
+    }
+
+    @Test
+    void poisonPillAttemptDoesNotBlockNewerStaleAttempts() {
+        UUID u1 = student();
+        UUID u2 = student();
+        UUID examId = UUID.randomUUID();
+        GrantOrderResult.Line g1 = AttemptTestFixtures.grantExam(
+                grantService, u1, examId, 2, List.of("FULL"), "FULL_SOLUTION", 1);
+        GrantOrderResult.Line g2 = AttemptTestFixtures.grantExam(
+                grantService, u2, examId, 2, List.of("FULL"), "FULL_SOLUTION", 1);
+
+        UUID oldestId = UUID.randomUUID();
+        UUID newerId = UUID.randomUUID();
+        Instant t0 = clock.instant();
+        entitlementPort.reserve(u1, g1.entitlementId(), oldestId);
+        saveStartingAttempt(oldestId, u1, examId, g1.entitlementId(), g1.grantId(), t0);
+        entitlementPort.reserve(u2, g2.entitlementId(), newerId);
+        saveStartingAttempt(newerId, u2, examId, g2.entitlementId(), g2.grantId(), t0.plusSeconds(1));
+        Mockito.clearInvocations(entitlementPort);
+
+        clock.advance(Duration.ofMinutes(3));
+        doThrow(new RuntimeException("simulated release failure"))
+                .when(entitlementPort)
+                .release(oldestId);
+
+        int aborted = worker.sweepStaleStarting();
+        assertThat(aborted).isEqualTo(1);
+
+        Attempt oldest = attemptRepository.findById(oldestId).orElseThrow();
+        assertThat(oldest.getState()).isEqualTo(AttemptState.STARTING);
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.entitlement_usage WHERE attempt_id = ?",
+                String.class, oldestId)).isEqualTo("RESERVED");
+
+        Attempt newer = attemptRepository.findById(newerId).orElseThrow();
+        assertThat(newer.getState()).isEqualTo(AttemptState.ABORTED);
+        assertThat(newer.getAbortReason()).isEqualTo(AbortReason.STALE_STARTING);
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.entitlement_usage WHERE attempt_id = ?",
+                String.class, newerId)).isEqualTo("RELEASED");
     }
 
     private UUID student() {

@@ -2,8 +2,11 @@ package vn.unicom.thi360.attempt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -18,6 +21,7 @@ import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Section;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPathPart;
 
@@ -30,17 +34,84 @@ class AttemptScopeMatrixIT extends AbstractAttemptDsIT {
     @Test
     void informaticsBranchDenominators() throws Exception {
         // SPT Informatics: CS & ICT each have 22 questions
-        verifyInformaticsBranch("DS-SPT-INFORMATICS", "CS", 22, "TIN_CS");
-        verifyInformaticsBranch("DS-SPT-INFORMATICS", "ICT", 22, "TIN_ICT");
+        verifyInformaticsBranches("DS-SPT-INFORMATICS", 22);
 
         // THPTQG Informatics: CS & ICT each have 28 questions
-        verifyInformaticsBranch("DS-THPTQG-INFORMATICS", "CS", 28, "TIN_CS");
-        verifyInformaticsBranch("DS-THPTQG-INFORMATICS", "ICT", 28, "TIN_ICT");
+        verifyInformaticsBranches("DS-THPTQG-INFORMATICS", 28);
     }
 
-    private void verifyInformaticsBranch(
-            String examCode, String branchCode, int expectedQuestions, String expectedSubjectPrefix)
-            throws Exception {
+    private void verifyInformaticsBranches(String examCode, int expectedQuestions) throws Exception {
+        UUID examId = AttemptTestFixtures.dsExamId(jdbc, examCode);
+        var version = publishedExamPort.findServing(examId).orElseThrow().version();
+        var portPart2 = version.parts().get(1);
+        Set<String> portCsSections = portPart2.options().stream()
+                .filter(o -> "CS".equals(o.code()))
+                .flatMap(o -> o.sections().stream())
+                .map(Section::id)
+                .collect(Collectors.toSet());
+        Set<String> portIctSections = portPart2.options().stream()
+                .filter(o -> "ICT".equals(o.code()))
+                .flatMap(o -> o.sections().stream())
+                .map(Section::id)
+                .collect(Collectors.toSet());
+
+        String partsJson = jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_version WHERE exam_id = ? AND version_no = ?",
+                String.class,
+                examId,
+                version.versionNo());
+        JsonNode part2Json = objectMapper.readTree(partsJson).path("parts").get(1);
+        Set<String> commonSectionIds = collectSectionIds(part2Json.path("sections"));
+        Set<String> commonBlockIds = collectBlockIds(part2Json.path("sections"));
+        Set<String> csSectionIds = new LinkedHashSet<>();
+        Set<String> csBlockIds = new LinkedHashSet<>();
+        Set<String> ictSectionIds = new LinkedHashSet<>();
+        Set<String> ictBlockIds = new LinkedHashSet<>();
+        for (JsonNode opt : part2Json.path("options")) {
+            String code = opt.path("code").asText();
+            if ("CS".equals(code)) {
+                csSectionIds.addAll(collectSectionIds(opt.path("sections")));
+                csBlockIds.addAll(collectBlockIds(opt.path("sections")));
+            } else if ("ICT".equals(code)) {
+                ictSectionIds.addAll(collectSectionIds(opt.path("sections")));
+                ictBlockIds.addAll(collectBlockIds(opt.path("sections")));
+            }
+        }
+        assertThat(csSectionIds).isNotEmpty().isEqualTo(portCsSections);
+        assertThat(ictSectionIds).isNotEmpty().isEqualTo(portIctSections);
+        assertThat(csBlockIds).isNotEmpty();
+        assertThat(ictBlockIds).isNotEmpty();
+        assertThat(Collections.disjoint(csSectionIds, ictSectionIds)).isTrue();
+        assertThat(Collections.disjoint(csBlockIds, ictBlockIds)).isTrue();
+
+        BranchItems csItems = startAndInspectBranch(examCode, "CS", expectedQuestions);
+        assertThat(csItems.part2SectionIds()).containsAll(csSectionIds).doesNotContainAnyElementsOf(ictSectionIds);
+        assertThat(csItems.part2BlockIds()).containsAll(csBlockIds).doesNotContainAnyElementsOf(ictBlockIds);
+        Set<String> csOnlySections = new LinkedHashSet<>(csItems.part2SectionIds());
+        csOnlySections.removeAll(commonSectionIds);
+        assertThat(csOnlySections).isEqualTo(csSectionIds);
+        Set<String> csOnlyBlocks = new LinkedHashSet<>(csItems.part2BlockIds());
+        csOnlyBlocks.removeAll(commonBlockIds);
+        assertThat(csOnlyBlocks).isEqualTo(csBlockIds);
+
+        BranchItems ictItems = startAndInspectBranch(examCode, "ICT", expectedQuestions);
+        assertThat(ictItems.part2SectionIds()).containsAll(ictSectionIds).doesNotContainAnyElementsOf(csSectionIds);
+        assertThat(ictItems.part2BlockIds()).containsAll(ictBlockIds).doesNotContainAnyElementsOf(csBlockIds);
+        Set<String> ictOnlySections = new LinkedHashSet<>(ictItems.part2SectionIds());
+        ictOnlySections.removeAll(commonSectionIds);
+        assertThat(ictOnlySections).isEqualTo(ictSectionIds);
+        Set<String> ictOnlyBlocks = new LinkedHashSet<>(ictItems.part2BlockIds());
+        ictOnlyBlocks.removeAll(commonBlockIds);
+        assertThat(ictOnlyBlocks).isEqualTo(ictBlockIds);
+
+        assertThat(Collections.disjoint(csOnlySections, ictOnlySections)).isTrue();
+        assertThat(Collections.disjoint(csOnlyBlocks, ictOnlyBlocks)).isTrue();
+    }
+
+    private record BranchItems(Set<String> part2SectionIds, Set<String> part2BlockIds) {}
+
+    private BranchItems startAndInspectBranch(
+            String examCode, String branchCode, int expectedQuestions) throws Exception {
         UUID userId = createStudent("inf-" + branchCode);
         GrantOrderResult.Line line = grant(userId, examCode, 2, List.of());
 
@@ -63,18 +134,30 @@ class AttemptScopeMatrixIT extends AbstractAttemptDsIT {
         int totalUnits = allItems.stream().mapToInt(AttemptItem::getUnitCount).sum();
         assertThat(totalUnits).isEqualTo(expectedQuestions);
 
-        // Verify no questions from the unselected branch subject leaked into the paper
-        List<String> subjectCodes =
-                allItems.stream()
-                        .filter(i -> i.getParentItemId() == null)
-                        .map(AttemptItem::getComponentCode)
-                        .filter(c -> c != null && !c.isBlank())
-                        .distinct()
-                        .toList();
-        if (!subjectCodes.isEmpty()) {
-            String opposite = "CS".equals(branchCode) ? "TIN_ICT" : "TIN_CS";
-            assertThat(subjectCodes).doesNotContain(opposite);
+        List<AttemptItem> part2Items = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(1).getId());
+        Set<String> sectionIds = part2Items.stream().map(AttemptItem::getSectionId).collect(Collectors.toSet());
+        Set<String> blockIds = part2Items.stream().map(AttemptItem::getBlockId).collect(Collectors.toSet());
+        return new BranchItems(sectionIds, blockIds);
+    }
+
+    private static Set<String> collectSectionIds(JsonNode sections) {
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonNode s : sections) {
+            ids.add(s.path("id").asText());
         }
+        return ids;
+    }
+
+    private static Set<String> collectBlockIds(JsonNode sections) {
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonNode s : sections) {
+            for (JsonNode b : s.path("blocks")) {
+                if (!b.path("omitted").asBoolean(false)) {
+                    ids.add(b.path("id").asText());
+                }
+            }
+        }
+        return ids;
     }
 
     @Test

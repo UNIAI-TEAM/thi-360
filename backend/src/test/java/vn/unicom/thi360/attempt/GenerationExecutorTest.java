@@ -121,4 +121,26 @@ class GenerationExecutorTest {
             executor.shutdown();
         }
     }
+
+    @Test
+    void propertiesClampInvalidAndNegativeDurations() {
+        AttemptGenerationProperties clamped = new AttemptGenerationProperties(
+                0, -5, Duration.ofSeconds(-1), Duration.ZERO);
+        assertThat(clamped.threads()).isEqualTo(4);
+        assertThat(clamped.queueCapacity()).isEqualTo(32);
+        assertThat(clamped.maxQueueWait()).isEqualTo(Duration.ofSeconds(60));
+        assertThat(clamped.staleStartingAfter()).isEqualTo(Duration.ofMinutes(2));
+
+        AttemptGenerationProperties negativeStale = new AttemptGenerationProperties(
+                2, 0, Duration.ZERO, Duration.ofSeconds(-10));
+        assertThat(negativeStale.threads()).isEqualTo(2);
+        assertThat(negativeStale.queueCapacity()).isZero();
+        assertThat(negativeStale.maxQueueWait()).isEqualTo(Duration.ZERO);
+        assertThat(negativeStale.staleStartingAfter()).isEqualTo(Duration.ofMinutes(2));
+
+        AttemptGenerationProperties nullDurations = new AttemptGenerationProperties(
+                1, 1, null, null);
+        assertThat(nullDurations.maxQueueWait()).isEqualTo(Duration.ofSeconds(60));
+        assertThat(nullDurations.staleStartingAfter()).isEqualTo(Duration.ofMinutes(2));
+    }
 }

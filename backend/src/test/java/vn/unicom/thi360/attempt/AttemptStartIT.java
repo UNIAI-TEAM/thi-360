@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
@@ -32,6 +34,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.domain.AbortReason;
 import vn.unicom.thi360.attempt.domain.Attempt;
@@ -52,7 +57,9 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.api.BulkQuestionStatusRequest;
+import vn.unicom.thi360.questionbank.api.QuestionStatusRequest;
 import vn.unicom.thi360.questionbank.api.SaveQuestionRequest;
+import vn.unicom.thi360.questionbank.api.UpdateQuestionRequest;
 import vn.unicom.thi360.questionbank.domain.QuestionBody;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.ids.Ids;
@@ -61,11 +68,12 @@ import vn.unicom.thi360.shared.ids.Ids;
 class AttemptStartIT extends AbstractAttemptDsIT {
 
     @MockitoSpyBean private PaperSolverPort paperSolverPort;
-    @Autowired private EntitlementPort entitlementPort;
+    @MockitoSpyBean private EntitlementPort entitlementPort;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     @AfterEach
     void resetSpy() {
-        reset(paperSolverPort);
+        reset(paperSolverPort, entitlementPort);
     }
 
     @Test
@@ -317,37 +325,182 @@ class AttemptStartIT extends AbstractAttemptDsIT {
 
     @Test
     void runningAttemptKeepsIssuedPaper() throws Exception {
-        UUID userId = createStudent("keep-paper");
-        GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        UUID adminId = UUID.randomUUID();
+        SaveQuestionRequest createReq =
+                new SaveQuestionRequest(
+                        QuestionType.SINGLE_CHOICE,
+                        "TOAN",
+                        "G12",
+                        "TH",
+                        null,
+                        null,
+                        BigDecimal.ONE,
+                        List.of(),
+                        List.of(),
+                        "<p>ISSUED_V1_CONTENT</p>",
+                        null,
+                        List.of(),
+                        List.of(),
+                        new QuestionBody.SingleChoiceBody(
+                                QuestionType.SINGLE_CHOICE,
+                                List.of(
+                                        new QuestionBody.ChoiceOption("o1", "<p>A</p>", true),
+                                        new QuestionBody.ChoiceOption("o2", "<p>B</p>", false)),
+                                false),
+                        "KEEP-V1-" + UUID.randomUUID().toString().substring(0, 6));
 
-        MvcResult res = performStart(userId, "kp-1", line.entitlementId(), null);
-        assertThat(res.getResponse().getStatus()).isEqualTo(202);
-        UUID attemptId = UUID.fromString(json(res).path("attemptId").asText());
-        Attempt opened = awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
-        assertThat(opened.getExamVersionNo()).isEqualTo(1);
-        List<AttemptItem> itemsBefore = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId);
+        MvcResult qCreateRes =
+                mockMvc.perform(
+                                post("/api/v1/admin/questions")
+                                        .with(asUser(adminId, "q-author", Permissions.QUESTION_MODIFY))
+                                        .header("Idempotency-Key", "create-kp-" + UUID.randomUUID())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(createReq)))
+                        .andReturn();
+        assertThat(qCreateRes.getResponse().getStatus()).isBetween(200, 201);
+        UUID questionId = UUID.fromString(json(qCreateRes).path("summary").path("id").asText());
 
+        UUID attemptId = null;
+        UUID examId = AttemptTestFixtures.dsExamId(jdbc, "DS-HSA-REVIEW-MINI");
         try {
+            MvcResult readyRes =
+                    mockMvc.perform(
+                                    post("/api/v1/admin/questions/bulk/ready")
+                                            .with(asUser(adminId, "q-author", Permissions.QUESTION_MODIFY))
+                                            .header("Idempotency-Key", "ready-kp-" + UUID.randomUUID())
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content(
+                                                    objectMapper.writeValueAsString(
+                                                            new BulkQuestionStatusRequest(List.of(questionId)))))
+                            .andReturn();
+            assertThat(readyRes.getResponse().getStatus()).isEqualTo(200);
+
+            UUID userId = createStudent("keep-paper");
+            GrantOrderResult.Line line = grant(userId, "DS-HSA-REVIEW-MINI", 2, List.of());
+            ServingExam serving = publishedExamPort.findServing(line.examId()).orElseThrow();
+            String partId = serving.version().parts().getFirst().id();
+            doReturn(
+                            new GeneratedPaper(
+                                    List.of(
+                                            new GeneratedPart(
+                                                    partId,
+                                                    List.of(
+                                                            new GeneratedSection(
+                                                                    "S1",
+                                                                    "TOAN",
+                                                                    1,
+                                                                    List.of(
+                                                                            new GeneratedGroup(
+                                                                                    "B1",
+                                                                                    List.of(
+                                                                                            new GeneratedQuestion(
+                                                                                                    questionId,
+                                                                                                    1)),
+                                                                                    false)))))),
+                                    List.of()))
+                    .when(paperSolverPort)
+                    .generate(any(), anyInt(), any(), any(), anyLong(), any());
+
+            MvcResult res = performStart(userId, "kp-1", line.entitlementId(), null);
+            assertThat(res.getResponse().getStatus()).isEqualTo(202);
+            attemptId = UUID.fromString(json(res).path("attemptId").asText());
+            Attempt opened = awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+            assertThat(opened.getExamVersionNo()).isEqualTo(1);
+            List<AttemptItem> itemsBefore = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId);
+            assertThat(itemsBefore).hasSize(1);
+            assertThat(itemsBefore.getFirst().getQuestionVersionNo()).isEqualTo(1);
+
+            String beforeContent =
+                    json(performGetState(userId, attemptId))
+                            .path("parts").get(0).path("items").get(0).path("content").asText();
+            assertThat(beforeContent).contains("ISSUED_V1_CONTENT");
+
+            // Edit question -> create version 2 with EDITED_V2_SENTINEL_CONTENT + mark READY, and publish exam v2
+            Long qRev =
+                    jdbc.queryForObject(
+                            "SELECT revision FROM questionbank.question WHERE id = ?",
+                            Long.class,
+                            questionId);
+            UpdateQuestionRequest updateReq =
+                    new UpdateQuestionRequest(
+                            qRev,
+                            QuestionType.SINGLE_CHOICE,
+                            "TOAN",
+                            "G12",
+                            "TH",
+                            null,
+                            null,
+                            BigDecimal.ONE,
+                            List.of(),
+                            List.of(),
+                            "<p>EDITED_V2_SENTINEL_CONTENT</p>",
+                            null,
+                            List.of(),
+                            List.of(),
+                            new QuestionBody.SingleChoiceBody(
+                                    QuestionType.SINGLE_CHOICE,
+                                    List.of(
+                                            new QuestionBody.ChoiceOption("o1", "<p>A v2</p>", true),
+                                            new QuestionBody.ChoiceOption("o2", "<p>B v2</p>", false)),
+                                    false),
+                            createReq.sourceCode());
+            MvcResult updateRes =
+                    mockMvc.perform(
+                                    put("/api/v1/admin/questions/{id}", questionId)
+                                            .with(asUser(adminId, "q-author", Permissions.QUESTION_MODIFY))
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content(objectMapper.writeValueAsString(updateReq)))
+                            .andReturn();
+            assertThat(updateRes.getResponse().getStatus()).isEqualTo(200);
+            Long updatedRev =
+                    jdbc.queryForObject(
+                            "SELECT revision FROM questionbank.question WHERE id = ?",
+                            Long.class,
+                            questionId);
+            MvcResult readyV2Res =
+                    mockMvc.perform(
+                                    post("/api/v1/admin/questions/{id}/ready", questionId)
+                                            .with(asUser(adminId, "q-author", Permissions.QUESTION_MODIFY))
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content(
+                                                    objectMapper.writeValueAsString(
+                                                            new QuestionStatusRequest(updatedRev))))
+                            .andReturn();
+            assertThat(readyV2Res.getResponse().getStatus()).isEqualTo(200);
+            assertThat(
+                            jdbc.queryForObject(
+                                    "SELECT current_version_no FROM questionbank.question WHERE id = ?",
+                                    Integer.class,
+                                    questionId))
+                    .isEqualTo(2);
+
             jdbc.update(
                     "INSERT INTO exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by, note) "
                             + "SELECT gen_random_uuid(), exam_id, 2, config, parts, published_path_ids, serving_path_ids, check_run_id, 'SERVING', status, now(), published_by, 'v2 test' "
                             + "FROM exam.exam_version WHERE exam_id = ? AND version_no = 1",
-                    line.examId());
+                    examId);
 
             MvcResult stateRes = performGetState(userId, attemptId);
             assertThat(stateRes.getResponse().getStatus()).isEqualTo(200);
-            JsonNode state = json(stateRes);
+            String stateRaw = stateRes.getResponse().getContentAsString();
+            assertThat(stateRaw).doesNotContain("EDITED_V2_SENTINEL_CONTENT");
+            JsonNode state = objectMapper.readTree(stateRaw);
             assertThat(state.path("examVersionNo").asInt()).isEqualTo(1);
+            assertThat(state.path("parts").get(0).path("items").get(0).path("content").asText())
+                    .isEqualTo(beforeContent);
             List<AttemptItem> itemsAfter =
                     attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId);
             assertThat(itemsAfter).hasSameSizeAs(itemsBefore);
             assertThat(itemsAfter.stream().map(AttemptItem::getQuestionId).toList())
                     .isEqualTo(itemsBefore.stream().map(AttemptItem::getQuestionId).toList());
         } finally {
-            jdbc.update("DELETE FROM attempt.attempt WHERE id = ?", attemptId);
+            if (attemptId != null) {
+                jdbc.update("DELETE FROM attempt.attempt WHERE id = ?", attemptId);
+            }
             jdbc.update(
                     "DELETE FROM exam.exam_version WHERE exam_id = ? AND version_no = 2",
-                    line.examId());
+                    examId);
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, List.of(questionId));
         }
     }
 
@@ -391,60 +544,69 @@ class AttemptStartIT extends AbstractAttemptDsIT {
         assertThat(qCreateRes.getResponse().getStatus()).isBetween(200, 201);
         UUID questionId = UUID.fromString(json(qCreateRes).path("summary").path("id").asText());
 
-        MvcResult readyRes =
-                mockMvc.perform(
-                                post("/api/v1/admin/questions/bulk/ready")
-                                        .with(asUser(adminId, "q-author", Permissions.QUESTION_MODIFY))
-                                        .header("Idempotency-Key", "ready-keep-" + UUID.randomUUID())
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(
-                                                objectMapper.writeValueAsString(
-                                                        new BulkQuestionStatusRequest(List.of(questionId)))))
-                        .andReturn();
-        assertThat(readyRes.getResponse().getStatus()).isEqualTo(200);
+        UUID attemptId = null;
+        try {
+            MvcResult readyRes =
+                    mockMvc.perform(
+                                    post("/api/v1/admin/questions/bulk/ready")
+                                            .with(asUser(adminId, "q-author", Permissions.QUESTION_MODIFY))
+                                            .header("Idempotency-Key", "ready-keep-" + UUID.randomUUID())
+                                            .contentType(MediaType.APPLICATION_JSON)
+                                            .content(
+                                                    objectMapper.writeValueAsString(
+                                                            new BulkQuestionStatusRequest(List.of(questionId)))))
+                            .andReturn();
+            assertThat(readyRes.getResponse().getStatus()).isEqualTo(200);
 
-        UUID userId = createStudent("keep-opt");
-        GrantOrderResult.Line line = grant(userId, "DS-HSA-REVIEW-MINI", 2, List.of());
-        ServingExam serving = publishedExamPort.findServing(line.examId()).orElseThrow();
-        String partId = serving.version().parts().getFirst().id();
-        String blockId = "B1";
+            UUID userId = createStudent("keep-opt");
+            GrantOrderResult.Line line = grant(userId, "DS-HSA-REVIEW-MINI", 2, List.of());
+            ServingExam serving = publishedExamPort.findServing(line.examId()).orElseThrow();
+            String partId = serving.version().parts().getFirst().id();
+            String blockId = "B1";
 
-        doReturn(
-                        new GeneratedPaper(
-                                List.of(
-                                        new GeneratedPart(
-                                                partId,
-                                                List.of(
-                                                        new GeneratedSection(
-                                                                "S1",
-                                                                "TOAN",
-                                                                1,
-                                                                List.of(
-                                                                        new GeneratedGroup(
-                                                                                blockId,
-                                                                                List.of(
-                                                                                        new GeneratedQuestion(
-                                                                                                questionId, 1)),
-                                                                                false)))))),
-                                List.of()))
-                .when(paperSolverPort)
-                .generate(any(), anyInt(), any(), any(), anyLong(), any());
+            doReturn(
+                            new GeneratedPaper(
+                                    List.of(
+                                            new GeneratedPart(
+                                                    partId,
+                                                    List.of(
+                                                            new GeneratedSection(
+                                                                    "S1",
+                                                                    "TOAN",
+                                                                    1,
+                                                                    List.of(
+                                                                            new GeneratedGroup(
+                                                                                    blockId,
+                                                                                    List.of(
+                                                                                            new GeneratedQuestion(
+                                                                                                    questionId,
+                                                                                                    1)),
+                                                                                    false)))))),
+                                    List.of()))
+                    .when(paperSolverPort)
+                    .generate(any(), anyInt(), any(), any(), anyLong(), any());
 
-        MvcResult startRes = performStart(userId, "keep-opt-key", line.entitlementId(), null);
-        assertThat(startRes.getResponse().getStatus()).isEqualTo(202);
-        UUID attemptId = UUID.fromString(json(startRes).path("attemptId").asText());
-        awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+            MvcResult startRes = performStart(userId, "keep-opt-key", line.entitlementId(), null);
+            assertThat(startRes.getResponse().getStatus()).isEqualTo(202);
+            attemptId = UUID.fromString(json(startRes).path("attemptId").asText());
+            awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
 
-        List<AttemptItem> items = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId);
-        assertThat(items).hasSize(1);
-        assertThat(items.getFirst().getOptionOrder())
-                .containsExactly("opt-a", "opt-b", "opt-c", "opt-d", "opt-e");
+            List<AttemptItem> items = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId);
+            assertThat(items).hasSize(1);
+            assertThat(items.getFirst().getOptionOrder())
+                    .containsExactly("opt-a", "opt-b", "opt-c", "opt-d", "opt-e");
 
-        JsonNode state = json(performGetState(userId, attemptId));
-        JsonNode options = state.path("parts").get(0).path("items").get(0).path("questionBody").path("options");
-        List<String> renderedIds = new ArrayList<>();
-        options.forEach(o -> renderedIds.add(o.path("id").asText()));
-        assertThat(renderedIds).containsExactly("opt-a", "opt-b", "opt-c", "opt-d", "opt-e");
+            JsonNode state = json(performGetState(userId, attemptId));
+            JsonNode options = state.path("parts").get(0).path("items").get(0).path("questionBody").path("options");
+            List<String> renderedIds = new ArrayList<>();
+            options.forEach(o -> renderedIds.add(o.path("id").asText()));
+            assertThat(renderedIds).containsExactly("opt-a", "opt-b", "opt-c", "opt-d", "opt-e");
+        } finally {
+            if (attemptId != null) {
+                jdbc.update("DELETE FROM attempt.attempt WHERE id = ?", attemptId);
+            }
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, List.of(questionId));
+        }
     }
 
     @Test
@@ -580,9 +742,11 @@ class AttemptStartIT extends AbstractAttemptDsIT {
 
         MvcResult missing = performStart(userId, null, line.entitlementId(), null);
         assertThat(missing.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(missing).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
 
         MvcResult blank = performStart(userId, "   ", line.entitlementId(), null);
         assertThat(blank.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(blank).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
     }
 
     @Test
@@ -826,6 +990,116 @@ class AttemptStartIT extends AbstractAttemptDsIT {
         MvcResult strangerStart = performStart(stranger, "stranger-1", ownerLine.entitlementId(), null);
         assertThat(strangerStart.getResponse().getStatus()).isEqualTo(404);
         assertThat(performGetState(stranger, attemptId).getResponse().getStatus()).isEqualTo(404);
+
+        // INACTIVE user (status = 3) holding EXAM principal -> 403 ATTEMPT_ACCESS_FORBIDDEN
+        UUID inactiveUser = createStudent("auth-inactive");
+        GrantOrderResult.Line inactiveLine = grant(inactiveUser, "DS-HSA-PART-MATH-MINI", 1, List.of());
+        jdbc.update("UPDATE identity.user_account SET status = 3 WHERE id = ?", inactiveUser);
+        assertForbiddenAccess(inactiveUser, inactiveLine.entitlementId(), attemptId, "inact-1");
+
+        // Soft-deleted user (deleted_at IS NOT NULL) holding EXAM principal -> 403 ATTEMPT_ACCESS_FORBIDDEN
+        UUID deletedUser = createStudent("auth-deleted");
+        GrantOrderResult.Line deletedLine = grant(deletedUser, "DS-HSA-PART-MATH-MINI", 1, List.of());
+        jdbc.update("UPDATE identity.user_account SET deleted_at = now() WHERE id = ?", deletedUser);
+        assertForbiddenAccess(deletedUser, deletedLine.entitlementId(), attemptId, "del-1");
+
+        // platformAdmin account (only in identity.platform_admin) holding EXAM principal -> 403 ATTEMPT_ACCESS_FORBIDDEN
+        UUID platformAdminId = UUID.randomUUID();
+        createdUserIds.add(platformAdminId);
+        jdbc.update(
+                "INSERT INTO identity.platform_admin (id, username) VALUES (?, ?)",
+                platformAdminId,
+                "plat-admin-" + platformAdminId.toString().substring(0, 8));
+        assertForbiddenAccess(platformAdminId, ownerLine.entitlementId(), attemptId, "plat-1");
+
+        // Missing-row EXAM principal -> 403 ATTEMPT_ACCESS_FORBIDDEN
+        UUID missingRowUser = UUID.randomUUID();
+        assertForbiddenAccess(missingRowUser, ownerLine.entitlementId(), attemptId, "ghost-1");
+    }
+
+    @Test
+    void multiGrantToctouMismatchRejectsAndRollsBack() throws Exception {
+        UUID userId = createStudent("toctou-grant");
+        GrantOrderResult.Line g1 = grant(userId, "DS-SPT-INFORMATICS-MINI", 1, List.of("CS"));
+        GrantOrderResult.Line g2 = grant(userId, "DS-SPT-INFORMATICS-MINI", 1, List.of("ICT"));
+        assertThat(g2.entitlementId()).isEqualTo(g1.entitlementId());
+
+        TransactionTemplate requiresNewTx = new TransactionTemplate(transactionManager);
+        requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        doAnswer(
+                        inv -> {
+                            requiresNewTx.executeWithoutResult(
+                                    status -> grantService.revokeUnused(g1.grantId()));
+                            return inv.callRealMethod();
+                        })
+                .when(entitlementPort)
+                .reserve(eq(userId), eq(g1.entitlementId()), any());
+
+        MvcResult res =
+                performStart(
+                        userId, "toctou-1", g1.entitlementId(), new PreChoiceInput("CS", null));
+        assertThat(res.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(res).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
+        assertThat(countEntitlementUsageForGrant(g2.grantId(), "RESERVED")).isEqualTo(0);
+        assertThat(
+                        attemptRepository.findByUserIdAndExamIdAndStateIn(
+                                userId,
+                                g1.examId(),
+                                List.of(AttemptState.STARTING, AttemptState.IN_PROGRESS)))
+                .isEmpty();
+    }
+
+    @Test
+    void combinationStartSucceedsAndFixedExamRejectsExtraPreChoice() throws Exception {
+        UUID userId = createStudent("combo-fixed");
+        GrantOrderResult.Line qdaLine = grant(userId, "DS-QDA-PART-SCIENCE-MINI", 2, List.of());
+        ServingExam qdaServing = publishedExamPort.findServing(qdaLine.examId()).orElseThrow();
+        String combinationCode =
+                qdaServing.servingPaths().stream()
+                        .filter(sp -> sp.choices() != null && !sp.choices().isEmpty())
+                        .findFirst()
+                        .orElseThrow()
+                        .choices()
+                        .getFirst()
+                        .code();
+
+        MvcResult comboRes =
+                performStart(
+                        userId,
+                        "combo-ok-1",
+                        qdaLine.entitlementId(),
+                        new PreChoiceInput(combinationCode, null));
+        assertThat(comboRes.getResponse().getStatus()).isEqualTo(202);
+        UUID comboAttemptId = UUID.fromString(json(comboRes).path("attemptId").asText());
+        Attempt comboOpened = awaitTerminalStartState(comboAttemptId, AttemptState.IN_PROGRESS);
+        assertThat(comboOpened.getChoices().toString()).contains(combinationCode);
+
+        // No-choice exam must reject non-empty preChoice with 422 CHOICE_NOT_ALLOWED
+        GrantOrderResult.Line mathLine = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        MvcResult extraChoice =
+                performStart(
+                        userId,
+                        "fixed-extra-choice",
+                        mathLine.entitlementId(),
+                        new PreChoiceInput("TOAN", null));
+        assertThat(extraChoice.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(extraChoice).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
+    }
+
+    private void assertForbiddenAccess(
+            UUID actorId, UUID entitlementId, UUID attemptId, String keyPrefix) throws Exception {
+        MvcResult prep = performPrepare(actorId, entitlementId);
+        assertThat(prep.getResponse().getStatus()).isEqualTo(403);
+        assertThat(json(prep).path("code").asText()).isEqualTo("ATTEMPT_ACCESS_FORBIDDEN");
+
+        MvcResult start = performStart(actorId, keyPrefix + "-s", entitlementId, null);
+        assertThat(start.getResponse().getStatus()).isEqualTo(403);
+        assertThat(json(start).path("code").asText()).isEqualTo("ATTEMPT_ACCESS_FORBIDDEN");
+
+        MvcResult state = performGetState(actorId, attemptId);
+        assertThat(state.getResponse().getStatus()).isEqualTo(403);
+        assertThat(json(state).path("code").asText()).isEqualTo("ATTEMPT_ACCESS_FORBIDDEN");
     }
 
     @Test

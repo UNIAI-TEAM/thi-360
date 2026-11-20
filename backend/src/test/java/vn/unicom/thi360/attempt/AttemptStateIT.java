@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.domain.AbortReason;
+import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
@@ -59,6 +60,7 @@ class AttemptStateIT extends AbstractAttemptDsIT {
         // 3. Create 8 REAL READY questions (all 8 QuestionTypes) carrying sentinel secret values
         UUID adminId = UUID.randomUUID();
         List<UUID> createdIds = new java.util.ArrayList<>();
+        try {
         UUID scId = createAndReadyQuestion(adminId, QuestionType.SINGLE_CHOICE, null, "<p>SC prompt</p>",
                 "<p>SENTINEL_SOLUTION_SC</p>",
                 new QuestionBody.SingleChoiceBody(
@@ -180,21 +182,30 @@ class AttemptStateIT extends AbstractAttemptDsIT {
         awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
         AttemptPart part0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId).getFirst();
 
-        // Replace part0 items with 1 of each of the 8 question types + set children
+        // Replace part0 items with 1 of each of the 8 question types + set children and saved answers
         jdbc.update("DELETE FROM attempt.attempt_item WHERE part_id = ?", part0.getId());
         int ord = 0;
         UUID setItemId = Ids.newId();
-        List<AttemptItem> all8 =
-                List.of(
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 1, 1, scId, 1, QuestionType.SINGLE_CHOICE, BigDecimal.ONE, List.of("o2", "o1")),
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 2, 1, mcId, 1, QuestionType.MULTIPLE_CHOICE, BigDecimal.ONE, List.of("m3", "m1", "m2")),
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 3, 1, saId, 1, QuestionType.SHORT_ANSWER, BigDecimal.ONE, null),
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 4, 1, clozeId, 1, QuestionType.CLOZE, BigDecimal.ONE, null),
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 5, 1, tfId, 1, QuestionType.TRUE_FALSE, BigDecimal.ONE, null),
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 6, 1, matchId, 1, QuestionType.MATCHING, BigDecimal.ONE, List.of("r2", "r1")),
-                        AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 7, 1, essayId, 1, QuestionType.ESSAY, BigDecimal.ONE, null),
-                        AttemptItem.create(setItemId, attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, null, 2, setId, 1, QuestionType.QUESTION_SET, new BigDecimal("2"), null));
-        attemptItemRepository.saveAllAndFlush(all8);
+        var scItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 1, 1, scId, 1, QuestionType.SINGLE_CHOICE, BigDecimal.ONE, List.of("o2", "o1"));
+        var mcItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 2, 1, mcId, 1, QuestionType.MULTIPLE_CHOICE, BigDecimal.ONE, List.of("m3", "m1", "m2"));
+        var saItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 3, 1, saId, 1, QuestionType.SHORT_ANSWER, BigDecimal.ONE, null);
+        var clozeItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 4, 1, clozeId, 1, QuestionType.CLOZE, BigDecimal.ONE, null);
+        var tfItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 5, 1, tfId, 1, QuestionType.TRUE_FALSE, BigDecimal.ONE, null);
+        var matchItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 6, 1, matchId, 1, QuestionType.MATCHING, BigDecimal.ONE, List.of("r2", "r1"));
+        var essayItem = AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, 7, 1, essayId, 1, QuestionType.ESSAY, BigDecimal.ONE, null);
+        var setItem = AttemptItem.create(setItemId, attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, ord++, null, 2, setId, 1, QuestionType.QUESTION_SET, new BigDecimal("2"), null);
+
+        var answerNow = mutableClock.instant();
+        scItem.recordAnswer(new AnswerValue.SingleChoice("o2"), 1L, answerNow);
+        mcItem.recordAnswer(new AnswerValue.MultipleChoice(List.of("m1", "m3")), 1L, answerNow);
+        saItem.recordAnswer(new AnswerValue.ShortAnswer("42"), 1L, answerNow);
+        clozeItem.recordAnswer(new AnswerValue.Cloze(Map.of("b1", "word")), 1L, answerNow);
+        tfItem.recordAnswer(new AnswerValue.TrueFalse(Map.of("s1", true, "s2", false)), 1L, answerNow);
+        // Leave Matching answer = null per R1-19/R1-20 deferral to AT-3
+        essayItem.recordAnswer(new AnswerValue.Essay("<p>My essay</p>", 2), 1L, answerNow);
+
+        attemptItemRepository.saveAllAndFlush(
+                List.of(scItem, mcItem, saItem, clozeItem, tfItem, matchItem, essayItem, setItem));
         attemptItemRepository.saveAllAndFlush(
                 List.of(
                         AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", setItemId, ord++, 8, 1, child1Id, 1, QuestionType.SINGLE_CHOICE, BigDecimal.ONE, List.of("c1b", "c1a")),
@@ -212,13 +223,33 @@ class AttemptStateIT extends AbstractAttemptDsIT {
         for (JsonNode item : stateJson.path("parts").get(0).path("items")) {
             String qt = item.path("questionType").asText();
             seenTypes.add(qt);
+            if ("SINGLE_CHOICE".equals(qt)) {
+                List<String> optIds = new java.util.ArrayList<>();
+                item.path("questionBody").path("options").forEach(o -> optIds.add(o.path("id").asText()));
+                if (item.path("parentItemId").isNull() || item.path("parentItemId").isMissingNode()) {
+                    assertThat(optIds).containsExactly("o2", "o1");
+                    assertThat(item.path("answer").path("optionId").asText()).isEqualTo("o2");
+                } else {
+                    assertThat(optIds).containsExactly("c1b", "c1a");
+                }
+            }
+            if ("MULTIPLE_CHOICE".equals(qt)) {
+                List<String> optIds = new java.util.ArrayList<>();
+                item.path("questionBody").path("options").forEach(o -> optIds.add(o.path("id").asText()));
+                assertThat(optIds).containsExactly("m3", "m1", "m2");
+                assertThat(item.path("answer").path("optionIds")).hasSize(2);
+            }
             if ("TRUE_FALSE".equals(qt)) {
+                List<String> stmtIds = new java.util.ArrayList<>();
                 for (JsonNode st : item.path("questionBody").path("statements")) {
+                    stmtIds.add(st.path("id").asText());
                     assertThat(st.has("answer")).isFalse();
                     assertThat(st.has("points")).isFalse();
                     assertThat(st.has("id")).isTrue();
                     assertThat(st.has("content")).isTrue();
                 }
+                assertThat(stmtIds).containsExactly("s1", "s2");
+                assertThat(item.path("answer").path("statements").path("s1").asBoolean()).isTrue();
             }
             if ("CLOZE".equals(qt)) {
                 for (JsonNode bl : item.path("questionBody").path("blanks")) {
@@ -226,6 +257,23 @@ class AttemptStateIT extends AbstractAttemptDsIT {
                     assertThat(bl.has("points")).isFalse();
                     assertThat(bl.has("id")).isTrue();
                 }
+                assertThat(item.path("answer").path("blanks").path("b1").asText()).isEqualTo("word");
+            }
+            if ("MATCHING".equals(qt)) {
+                List<String> leftIds = new java.util.ArrayList<>();
+                List<String> rightIds = new java.util.ArrayList<>();
+                item.path("questionBody").path("left").forEach(l -> leftIds.add(l.path("id").asText()));
+                item.path("questionBody").path("right").forEach(r -> rightIds.add(r.path("id").asText()));
+                assertThat(leftIds).containsExactly("l1", "l2");
+                assertThat(rightIds).containsExactly("r2", "r1");
+            }
+            if ("SHORT_ANSWER".equals(qt)
+                    && (item.path("parentItemId").isNull() || item.path("parentItemId").isMissingNode())) {
+                assertThat(item.path("answer").path("text").asText()).isEqualTo("42");
+            }
+            if ("ESSAY".equals(qt)) {
+                assertThat(item.path("answer").path("html").asText()).isEqualTo("<p>My essay</p>");
+                assertThat(item.path("answer").path("wordCount").asInt()).isEqualTo(2);
             }
         }
         assertThat(seenTypes)
@@ -238,6 +286,9 @@ class AttemptStateIT extends AbstractAttemptDsIT {
                         "MATCHING",
                         "ESSAY",
                         "QUESTION_SET");
+        } finally {
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, createdIds);
+        }
     }
 
     @Test
@@ -320,47 +371,208 @@ class AttemptStateIT extends AbstractAttemptDsIT {
                         "SELECT current_version_no FROM questionbank.question WHERE id = ?",
                         Integer.class,
                         imageQuestionId);
+        UUID imageAssetId =
+                jdbc.queryForObject(
+                        "SELECT id FROM questionbank.question_asset WHERE kind = 'IMAGE' ORDER BY created_at LIMIT 1",
+                        UUID.class);
+        assertThat(imageAssetId).isNotNull();
 
-        UUID userId = createStudent("state-img");
-        GrantOrderResult.Line line = grant(userId, "DS-HSA-SUBJECT-TOAN-MINI", 2, List.of());
-        MvcResult startRes = performStart(userId, "img-start", line.entitlementId(), null);
-        UUID attemptId = UUID.fromString(json(startRes).path("attemptId").asText());
-        awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+        UUID adminId = UUID.randomUUID();
+        List<UUID> createdIds = new java.util.ArrayList<>();
+        try {
+            UUID clozeId =
+                    createAndReadyQuestion(
+                            adminId,
+                            QuestionType.CLOZE,
+                            BigDecimal.ONE,
+                            "<p>Cloze asset prompt</p>",
+                            null,
+                            new QuestionBody.ClozeBody(
+                                    QuestionType.CLOZE,
+                                    "<p>Fill [[b1]] <img data-asset-id=\"" + imageAssetId + "\"></p>",
+                                    List.of(
+                                            new QuestionBody.ClozeBlank(
+                                                    "b1", List.of("ans"), BigDecimal.ONE))));
+            createdIds.add(clozeId);
+            jdbc.update(
+                    "UPDATE questionbank.question_version SET snapshot = jsonb_set(snapshot, '{body,passage}', to_jsonb(?::text), true) WHERE question_id = ?",
+                    "<p>Fill [[b1]] <IMG data-asset-id=\"" + imageAssetId + "\"></p>",
+                    clozeId);
 
-        AttemptPart part0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId).getFirst();
-        jdbc.update("DELETE FROM attempt.attempt_item WHERE part_id = ?", part0.getId());
-        attemptItemRepository.saveAndFlush(
-                AttemptItem.create(
-                        Ids.newId(),
-                        attemptId,
-                        part0.getId(),
-                        null,
-                        "SEC",
-                        "TOAN",
-                        "B",
-                        null,
-                        0,
-                        1,
-                        1,
-                        imageQuestionId,
-                        qVer,
-                        QuestionType.SINGLE_CHOICE,
-                        BigDecimal.ONE,
-                        List.of("a", "b", "c", "d")));
+            UUID setId =
+                    createAndReadyQuestion(
+                            adminId,
+                            QuestionType.QUESTION_SET,
+                            new BigDecimal("2"),
+                            "<p>Set prompt</p>",
+                            null,
+                            new QuestionBody.QuestionSetBody(
+                                    QuestionType.QUESTION_SET,
+                                    "<p>Set passage <img data-asset-id=\"" + imageAssetId + "\"></p>",
+                                    1,
+                                    List.of(
+                                            new QuestionBody.ChildQuestion(
+                                                    QuestionType.SINGLE_CHOICE,
+                                                    "<p>Child 1</p>",
+                                                    new QuestionBody.SingleChoiceBody(
+                                                            QuestionType.SINGLE_CHOICE,
+                                                            List.of(
+                                                                    new QuestionBody.ChoiceOption(
+                                                                            "c1a", "<p>A</p>", true),
+                                                                    new QuestionBody.ChoiceOption(
+                                                                            "c1b", "<p>B</p>", false)),
+                                                            false),
+                                                    null,
+                                                    BigDecimal.ONE,
+                                                    null,
+                                                    null,
+                                                    null,
+                                                    null),
+                                            new QuestionBody.ChildQuestion(
+                                                    QuestionType.SHORT_ANSWER,
+                                                    "<p>Child 2</p>",
+                                                    new QuestionBody.ShortAnswerBody(
+                                                            QuestionType.SHORT_ANSWER,
+                                                            List.of("9"),
+                                                            null,
+                                                            null),
+                                                    null,
+                                                    BigDecimal.ONE,
+                                                    null,
+                                                    null,
+                                                    null,
+                                                    null))));
+            createdIds.add(setId);
+            jdbc.update(
+                    "UPDATE questionbank.question_version SET snapshot = jsonb_set(snapshot, '{body,passage}', to_jsonb(?::text), true) WHERE question_id = ?",
+                    "<p>Set passage <img src=\"https://admin.example.com/api/v1/admin/question-assets/"
+                            + imageAssetId
+                            + "\"></p>",
+                    setId);
 
-        MvcResult stateRes = performGetState(userId, attemptId);
-        assertThat(stateRes.getResponse().getStatus()).isEqualTo(200);
-        String rawJson = stateRes.getResponse().getContentAsString();
-        JsonNode stateJson = objectMapper.readTree(rawJson);
+            UUID tfId =
+                    createAndReadyQuestion(
+                            adminId,
+                            QuestionType.TRUE_FALSE,
+                            BigDecimal.ONE,
+                            "<p>TF prompt</p>",
+                            null,
+                            new QuestionBody.TrueFalseBody(
+                                    QuestionType.TRUE_FALSE,
+                                    List.of(
+                                            new QuestionBody.TrueFalseStatement(
+                                                    "s1",
+                                                    "<p>TF stmt <img data-asset-id=\""
+                                                            + imageAssetId
+                                                            + "\"></p>",
+                                                    true,
+                                                    new BigDecimal("0.5")),
+                                            new QuestionBody.TrueFalseStatement(
+                                                    "s2",
+                                                    "<p>TF stmt 2</p>",
+                                                    false,
+                                                    new BigDecimal("0.5"))),
+                                    QuestionBody.TrueFalseScoringMethod.PER_STATEMENT,
+                                    null));
+            createdIds.add(tfId);
 
-        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(stateJson);
-        assertThat(rawJson).doesNotContain("/api/v1/admin/");
+            UUID matchId =
+                    createAndReadyQuestion(
+                            adminId,
+                            QuestionType.MATCHING,
+                            BigDecimal.ONE,
+                            "<p>Match prompt</p>",
+                            null,
+                            new QuestionBody.MatchingBody(
+                                    QuestionType.MATCHING,
+                                    List.of(
+                                            new QuestionBody.MatchingSide(
+                                                    "l1",
+                                                    "<p>Left <img data-asset-id=\""
+                                                            + imageAssetId
+                                                            + "\"></p>"),
+                                            new QuestionBody.MatchingSide("l2", "<p>Left 2</p>")),
+                                    List.of(
+                                            new QuestionBody.MatchingSide(
+                                                    "r1",
+                                                    "<p>Right <img data-asset-id=\""
+                                                            + imageAssetId
+                                                            + "\"></p>"),
+                                            new QuestionBody.MatchingSide("r2", "<p>Right 2</p>")),
+                                    List.of(
+                                            new QuestionBody.MatchingPair(
+                                                    "l1", "r1", new BigDecimal("0.5")),
+                                            new QuestionBody.MatchingPair(
+                                                    "l2", "r2", new BigDecimal("0.5"))),
+                                    false));
+            createdIds.add(matchId);
 
-        String expectedPrefix = "/api/v1/me/attempts/" + attemptId + "/assets/";
-        JsonNode item = stateJson.path("parts").get(0).path("items").get(0);
-        assertThat(item.path("content").asText()).contains("src=\"" + expectedPrefix);
-        assertThat(item.path("questionBody").path("options").get(0).path("content").asText())
-                .contains("src=\"" + expectedPrefix);
+            List<UUID> setChildIds =
+                    jdbc.queryForList(
+                            "SELECT id FROM questionbank.question WHERE parent_id = ? ORDER BY position",
+                            UUID.class,
+                            setId);
+
+            UUID userId = createStudent("state-img");
+            GrantOrderResult.Line line = grant(userId, "DS-HSA-SUBJECT-TOAN-MINI", 2, List.of());
+            MvcResult startRes = performStart(userId, "img-start", line.entitlementId(), null);
+            UUID attemptId = UUID.fromString(json(startRes).path("attemptId").asText());
+            awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+
+            AttemptPart part0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId).getFirst();
+            jdbc.update("DELETE FROM attempt.attempt_item WHERE part_id = ?", part0.getId());
+            UUID setItemId = Ids.newId();
+            attemptItemRepository.saveAllAndFlush(
+                    List.of(
+                            AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, 0, 1, 1, imageQuestionId, qVer, QuestionType.SINGLE_CHOICE, BigDecimal.ONE, List.of("a", "b", "c", "d")),
+                            AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, 1, 2, 1, clozeId, 1, QuestionType.CLOZE, BigDecimal.ONE, null),
+                            AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, 2, 3, 1, tfId, 1, QuestionType.TRUE_FALSE, BigDecimal.ONE, null),
+                            AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, 3, 4, 1, matchId, 1, QuestionType.MATCHING, BigDecimal.ONE, List.of("r1", "r2")),
+                            AttemptItem.create(setItemId, attemptId, part0.getId(), null, "SEC", "TOAN", "B", null, 4, null, 0, setId, 1, QuestionType.QUESTION_SET, new BigDecimal("2"), null)));
+            attemptItemRepository.saveAllAndFlush(
+                    List.of(
+                            AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", setItemId, 5, 5, 1, setChildIds.get(0), 1, QuestionType.SINGLE_CHOICE, BigDecimal.ONE, List.of("c1a", "c1b")),
+                            AttemptItem.create(Ids.newId(), attemptId, part0.getId(), null, "SEC", "TOAN", "B", setItemId, 6, 6, 1, setChildIds.get(1), 1, QuestionType.SHORT_ANSWER, BigDecimal.ONE, null)));
+
+            MvcResult stateRes = performGetState(userId, attemptId);
+            assertThat(stateRes.getResponse().getStatus()).isEqualTo(200);
+            String rawJson = stateRes.getResponse().getContentAsString();
+            JsonNode stateJson = objectMapper.readTree(rawJson);
+
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(stateJson);
+            assertThat(rawJson).doesNotContain("/api/v1/admin/");
+            assertThat(rawJson).doesNotContain("admin.example.com");
+
+            String expectedPrefix = "/api/v1/me/attempts/" + attemptId + "/assets/";
+            String expectedAssetSrc = expectedPrefix + imageAssetId;
+            for (JsonNode item : stateJson.path("parts").get(0).path("items")) {
+                String qt = item.path("questionType").asText();
+                if ("SINGLE_CHOICE".equals(qt)
+                        && (item.path("parentItemId").isNull() || item.path("parentItemId").isMissingNode())) {
+                    assertThat(item.path("content").asText()).contains("src=\"" + expectedPrefix);
+                    assertThat(item.path("questionBody").path("options").get(0).path("content").asText())
+                            .contains("src=\"" + expectedPrefix);
+                }
+                if ("CLOZE".equals(qt)) {
+                    assertThat(item.path("questionBody").path("passage").asText()).contains(expectedAssetSrc);
+                }
+                if ("QUESTION_SET".equals(qt)) {
+                    assertThat(item.path("questionBody").path("passage").asText()).contains(expectedAssetSrc);
+                }
+                if ("TRUE_FALSE".equals(qt)) {
+                    assertThat(item.path("questionBody").path("statements").get(0).path("content").asText())
+                            .contains(expectedAssetSrc);
+                }
+                if ("MATCHING".equals(qt)) {
+                    assertThat(item.path("questionBody").path("left").get(0).path("content").asText())
+                            .contains(expectedAssetSrc);
+                    assertThat(item.path("questionBody").path("right").get(0).path("content").asText())
+                            .contains(expectedAssetSrc);
+                }
+            }
+        } finally {
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, createdIds);
+        }
     }
 
     private UUID createAndReadyQuestion(

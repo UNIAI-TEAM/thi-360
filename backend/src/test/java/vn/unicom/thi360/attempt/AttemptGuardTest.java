@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.springframework.test.util.ReflectionTestUtils;
 import vn.unicom.thi360.attempt.application.AttemptGuard;
 import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
 import vn.unicom.thi360.attempt.application.NoOpAttemptSessionChecker;
@@ -27,7 +28,9 @@ import vn.unicom.thi360.attempt.application.NoOpOverdueAttemptCloser;
 import vn.unicom.thi360.attempt.application.OverdueAttemptCloser;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
+import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
+import vn.unicom.thi360.attempt.domain.EndReason;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
@@ -231,6 +234,61 @@ class AttemptGuardTest {
 
         assertThat(guardWithNoOps.requireEditablePart(attemptId, partId, ownerId, null).part().getState())
                 .isEqualTo(PartState.OPEN);
+    }
+
+    @Test
+    void rejectsPartAndAttemptClosedByTimeUpWithTimeUpCode() {
+        Attempt attempt = openAttempt(AttemptTiming.PER_PART, null);
+        when(attemptRepository.existsByIdAndUserId(attemptId, ownerId)).thenReturn(true);
+        when(attemptRepository.findByIdAndUserId(attemptId, ownerId)).thenReturn(Optional.of(attempt));
+
+        AttemptPart closedByTimeUp = openPart(NOW.plusSeconds(300));
+        closedByTimeUp.close(PartCloseReason.TIME_UP, NOW.minusSeconds(5));
+        when(attemptPartRepository.findByIdAndAttemptId(partId, attemptId)).thenReturn(Optional.of(closedByTimeUp));
+
+        assertThatThrownBy(() -> guard.requireEditablePart(attemptId, partId, ownerId, sessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "TIME_UP");
+
+        Attempt endedByTimeUp = openAttempt(AttemptTiming.SHARED, NOW.plusSeconds(300));
+        ReflectionTestUtils.setField(endedByTimeUp, "state", AttemptState.SCORED);
+        ReflectionTestUtils.setField(endedByTimeUp, "endReason", EndReason.TIME_UP);
+        when(attemptRepository.findByIdAndUserId(attemptId, ownerId)).thenReturn(Optional.of(endedByTimeUp));
+
+        assertThatThrownBy(() -> guard.requireEditableAttempt(attemptId, ownerId, sessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "TIME_UP");
+        assertThatThrownBy(() -> guard.requireEditablePart(attemptId, partId, ownerId, sessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "TIME_UP");
+    }
+
+    @Test
+    void attemptPartEnforcesStateTransitionGuards() {
+        AttemptPart part = AttemptPart.createPending(
+                partId, attemptId, "P1", "Part 1", 0, 60, 10, BigDecimal.TEN, 1L);
+        assertThatThrownBy(() -> part.close(PartCloseReason.FINISHED, NOW))
+                .isInstanceOf(IllegalStateException.class);
+
+        part.open(NOW, NOW.plusSeconds(600));
+        assertThatThrownBy(() -> part.open(NOW, NOW.plusSeconds(600)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> part.skip(PartCloseReason.ATTEMPT_SUBMITTED, NOW))
+                .isInstanceOf(IllegalStateException.class);
+
+        part.close(PartCloseReason.FINISHED, NOW.plusSeconds(60));
+        assertThatThrownBy(() -> part.close(PartCloseReason.FINISHED, NOW.plusSeconds(65)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> part.open(NOW.plusSeconds(70), null))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> part.skip(PartCloseReason.ATTEMPT_SUBMITTED, NOW.plusSeconds(70)))
+                .isInstanceOf(IllegalStateException.class);
+
+        AttemptPart generating = AttemptPart.createPending(
+                UUID.randomUUID(), attemptId, "P2", "Part 2", 1, 60, 10, BigDecimal.TEN, 2L);
+        ReflectionTestUtils.setField(generating, "state", PartState.GENERATING);
+        generating.open(NOW, NOW.plusSeconds(600));
+        assertThat(generating.getState()).isEqualTo(PartState.OPEN);
     }
 
     private Attempt startingAttempt(AttemptTiming timing) {
