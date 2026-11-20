@@ -917,7 +917,7 @@ public class OrderService {
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Map<String, Object> benefits,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String resultView,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PaymentMethod paymentMethod,
-            OrderState state,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OrderState state,
             UUID replacedByOrderId,
             String replacedByOrderCode,
             Instant expiresAt,

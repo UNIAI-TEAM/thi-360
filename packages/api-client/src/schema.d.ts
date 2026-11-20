@@ -6436,7 +6436,7 @@ export interface components {
             replacedByOrderId?: string;
             resultView: string;
             /** @enum {string} */
-            state?: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+            state: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
             /** Format: date-time */
             updatedAt: string;
             /** Format: uuid */

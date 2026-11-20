@@ -8012,7 +8012,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "amountDueVnd", "attemptsGranted", "benefits", "buyerFullName", "buyerUsername", "code", "createdAt", "discountApplied", "history", "id", "items", "listPriceVnd", "optionCodes", "paymentMethod", "payments", "productCode", "productName", "productType", "promotionDiscountVnd", "resultView", "updatedAt", "userId", "voucherDiscountVnd" ],
+        "required" : [ "amountDueVnd", "attemptsGranted", "benefits", "buyerFullName", "buyerUsername", "code", "createdAt", "discountApplied", "history", "id", "items", "listPriceVnd", "optionCodes", "paymentMethod", "payments", "productCode", "productName", "productType", "promotionDiscountVnd", "resultView", "state", "updatedAt", "userId", "voucherDiscountVnd" ],
         "type" : "object"
       },
       "OrderHistoryView" : {
