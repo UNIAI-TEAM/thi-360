@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.shared.security.CtxCookieSigner;
@@ -24,6 +25,7 @@ import vn.unicom.thi360.shared.security.SessionStore;
 
 /** Profile {@code e2e} cộng {@code api,worker,test} của lớp nền (realm, khóa ngữ cảnh, S3 bộ nhớ). */
 @ActiveProfiles("e2e")
+@TestPropertySource(properties = "thi360.devdata.published-exams.enabled=false")
 class E2eClockApiIT extends AbstractIntegrationTest {
 
     private static final String CLOCK = "/api/v1/test/clock";
