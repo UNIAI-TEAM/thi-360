@@ -228,8 +228,8 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 
 | Task | Issue | Việc | Phụ thuộc cứng | Phụ thuộc mềm | Điểm | Trạng thái |
 |---|---|---|---|---|---|---|
-| C-0 | UNI-2703 | Khung module `commerce`, `attempt`; quyền bit 18–26; hợp đồng SPI; `StudentLearningProvider` nhận danh sách; pepper; ngôn ngữ ưa dùng; danh sách IP miễn giới hạn tần suất |  |  | 3 | đang làm |
-| C-0b | UNI-2704 | Profile `e2e`, đồng hồ thử, `/api/v1/test/**`, `ForbiddenKeysAssert` |  |  | 1 | đang làm |
+| C-0 | UNI-2703 | Khung module `commerce`, `attempt`; quyền bit 18–26; hợp đồng SPI; `StudentLearningProvider` nhận danh sách; pepper; ngôn ngữ ưa dùng; danh sách IP miễn giới hạn tần suất |  |  | 3 | merge PR #124 (`b64c9e14`) |
+| C-0b | UNI-2704 | Profile `e2e`, đồng hồ thử, `/api/v1/test/**`, `ForbiddenKeysAssert` |  |  | 1 | merge PR #123 (`2b72ce26`) |
 | ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | merge PR #127 (`265ea998`) |
 | TS | UNI-2701 | Dựng lại seed đề test `TEST-*` theo mẫu BA (UNI-2701, cổng G0c cũ) | G0b |  | 3 | merge PR #136 (`5e70f8e8`) |
 | FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | merge PR #155 (`858cb28c`) |
@@ -249,9 +249,9 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | VP-2 | UNI-2719 | Luồng VNPAY sandbox thật có IPN, qua bản demo | CM-3b, FS-3, FA-3, DS, G2 |  | 1 | chưa mở |
 | CM-6 | UNI-2720 | Bộ đề: bảng, công bố, bảng chiếu, đơn nhiều bài, cấp quyền từng bài, hoàn tiền, voucher phạm vi bộ | CM-1, CM-3a, CM-4b, DS | CM-5 | 3 | chưa mở |
 | AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | merge PR #157 (`11527568`) |
-| AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | đang làm (bro) |
-| AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | chưa mở |
-| AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | chưa mở |
+| AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | merge PR #160 (`d75b1369`) |
+| AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | đang làm (bro) |
+| AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | đang làm (bro) |
 | AT-4 | UNI-2725 | Chấm tự động, tổng hợp, kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | AT-2a | AT-2b, AT-3 | 5 | chưa mở |
 | AT-5 | UNI-2726 | Hàng chờ chấm tự luận, số đếm, chấm lại, vận hành lượt, API chấm và kéo dài đề làm thử | AT-4 |  | 4 | chưa mở |
 | AT-6 | UNI-2727 | Phát audio có giới hạn lần nghe, kiểm tệp audio khi mở lượt | AT-2a, AT-3 |  | 3 | chưa mở |
@@ -260,13 +260,13 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | merge PR #149 (`1e49a9e5`) |
 | FS-2 | UNI-2731 | Web học viên: đăng ký, xác minh, quên mật khẩu, hồ sơ | ID-1, ID-2 | FS-1 | 3 | merge PR #142 (`db46d807`) |
 | FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | chưa mở |
-| FS-4 | UNI-2733 | `packages/ui`: thành phần 8 dạng câu (làm bài và chỉ đọc); đưa bộ hiển thị nội dung (`RichTextView`, mọi loại nút, KaTeX, mhchem) vào `packages/ui` |  |  | 3 | đang làm |
+| FS-4 | UNI-2733 | `packages/ui`: thành phần 8 dạng câu (làm bài và chỉ đọc); đưa bộ hiển thị nội dung (`RichTextView`, mọi loại nút, KaTeX, mhchem) vào `packages/ui` |  |  | 3 | merge PR #122 (`4f3820ab`) |
 | FS-5 | UNI-2734 | Web học viên: chuẩn bị (có chọn định hướng Tin học), chờ sinh đề, màn làm bài, lưu, ngoại tuyến, tiếp quản | FS-4, AT-2b, AT-3, CM-3a, AT-8 |  | 4 | chưa mở |
 | FS-6 | UNI-2735 | Web học viên: kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | FS-4, AT-4, FS-1, CM-3a |  | 3 | chưa mở |
 | FS-7 | UNI-2736 | Web học viên: audio, phân đoạn, nhập ký hiệu và kết quả của H-SCA, V-SAT | FS-5, FS-6, AT-6, AT-7 |  | 3 | chưa mở |
 | FB | UNI-2737 | Bộ đề trên web: màn admin "Bộ đề"; thẻ, chi tiết, mua bộ và nhóm thẻ theo bộ ở web học viên | CM-6, FS-1, FS-3, FA-1 | FA-3 | 2 | chưa mở |
 | FA-1 | UNI-2738 | Web admin: tab Thông tin bán, ảnh bìa, cảnh báo chấm tay, menu của đợt | EX-1, FS-4 | DS | 2 | merge PR #144 (`ac60b21d`) |
-| FA-2 | UNI-2739 | Web admin: Khuyến mãi | CM-2, FA-1 |  | 3 | đang làm (máy Windows chính) |
+| FA-2 | UNI-2739 | Web admin: Khuyến mãi | CM-2, FA-1 |  | 3 | merge PR #161 (`664edae8`) |
 | FA-3 | UNI-2740 | Web admin: Đơn hàng, người mua, hoàn tiền, đối soát tiền về muộn | CM-5, FA-1 |  | 4 | chưa mở |
 | FA-4 | UNI-2741 | Web admin: hàng chờ chấm thật, vận hành lượt, làm thử như học viên (phần web) | AT-5, FA-1, FS-4, FS-5, FS-6 |  | 3 | chưa mở |
 | FA-5 | UNI-2742 | Web admin: màn Sinh thử dùng giao diện câu hỏi chung, audio khi làm thử | FA-4, FS-7 |  | 2 | chưa mở |
@@ -294,7 +294,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | CR-4 | UNI-2762 | Form theo môn: luật máy chủ giới hạn chùm và câu điền môn Khoa học HSA, QDA (4 điểm, sóng 1, nộp sau EX-1) | merge PR #150 (`d66469eb`) |
 | CR-2 | UNI-2763 | Form theo môn: Ma trận môn QDA, BCA, V-ACT (3 điểm, sóng 2) | merge PR #151 (`6600d6c4`) |
 | CR-3 | UNI-2764 | Form theo môn: Danh sách dòng lấy câu (6 điểm, sóng 2) | merge PR #154 (`31cc852e`) |
-| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | merge PR #159 (`ac0f96d8`), đang cập nhật demo |
+| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | merge PR #159 (`ac0f96d8`), demo đã cập nhật |
 | CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | đang làm (bro) |
 
 Đặc tả `docs/specs/2026-11-19-form-theo-mon.md` và plan `docs/plans/2026-11-19-form-theo-mon.md` (bản 4, 24 điểm, báo riêng ngoài mẫu số 138).
