@@ -120,4 +120,24 @@ describe("AccessAction · bảng nút TM 11.3", () => {
 
     expect(screen.queryByRole("link", { name: "Xem chi tiết" })).toBeNull();
   });
+
+  // Trong khung chi tiết (flex-col) nút chỉ được căng ngang: flex-1 đặt flex-basis:0 làm nút xẹp ~20px (visual-6).
+  it.each<[string, AccessView]>([
+    ["khách", { kind: "guest" }],
+    ["lỗi tải", { kind: "error" }],
+    ["NONE", ready({ state: "NONE" })],
+    ["CAN_START", ready({ state: "CAN_START", attemptsLeft: 2 })],
+    ["IN_PROGRESS", ready({ state: "IN_PROGRESS", activeAttemptId: "att-1" })],
+    ["EXHAUSTED", ready({ state: "EXHAUSTED" })],
+    ["CHECKING", ready({ state: "CHECKING", pendingOrderCode: "DH1" })],
+  ])("khung chi tiết: nút không mang flex-1 (xẹp chiều cao): %s", (_name, view) => {
+    renderAction(view, "detail");
+
+    const actions = [...screen.queryAllByRole("link"), ...screen.queryAllByRole("button")];
+    expect(actions.length).toBeGreaterThan(0);
+    for (const el of actions) {
+      expect(el).not.toHaveClass("flex-1");
+      expect(el).toHaveClass("w-full");
+    }
+  });
 });

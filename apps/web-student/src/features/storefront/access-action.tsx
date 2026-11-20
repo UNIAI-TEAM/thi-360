@@ -49,7 +49,9 @@ export function AccessAction({
     ) : null;
 
   const wrapper = variant === "card" ? "flex flex-wrap gap-2" : "flex flex-col gap-3";
-
+  // Căng theo chiều chính của lớp bọc: chỉ thẻ danh mục (hàng) dùng flex-1; ở trang chi tiết (cột) flex-1 đặt
+  // flex-basis:0 nên nút xẹp còn ~20px thay vì h-13 — dùng w-full (stretch) để giữ chiều cao.
+  const grow = variant === "card" ? "flex-1" : "w-full";
   if (view.kind === "loading") {
     return (
       <div role="status" aria-busy="true" aria-label={t("loading")}>
@@ -64,7 +66,7 @@ export function AccessAction({
         <p role="alert" className="w-full text-field-label text-danger">
           {t("loadError")}
         </p>
-        <Button variant="secondary" className={cn("flex-1", primaryHeight)} onClick={onReload}>
+        <Button variant="secondary" className={cn(grow, primaryHeight)} onClick={onReload}>
           <RefreshCw aria-hidden />
           {t("reload")}
         </Button>
@@ -85,7 +87,7 @@ export function AccessAction({
   if (view.kind === "guest") {
     return (
       <div className={wrapper}>
-        <Button asChild size={primarySize} className="flex-1">
+        <Button asChild size={primarySize} className={grow}>
           <Link href={withCallbackUrl("/login", checkout)} prefetch={false}>{t("buy")}</Link>
         </Button>
         {viewDetail}
@@ -95,7 +97,7 @@ export function AccessAction({
 
   const { row } = view;
   const buyMore = !row.hasPendingFulfillment && (
-    <Button asChild variant="outline" className="h-11 flex-1">
+    <Button asChild variant="outline" className={cn("h-11", grow)}>
       <Link href={checkout} prefetch={false}>{t("buyMore")}</Link>
     </Button>
   );
@@ -114,7 +116,7 @@ export function AccessAction({
       return (
         <div className={wrapper}>
           <p className="w-full text-field-label text-text-secondary">{t("continueNote")}</p>
-          <Button asChild variant="exam" size={primarySize} className="flex-1">
+          <Button asChild variant="exam" size={primarySize} className={grow}>
             <Link href={row.activeAttemptId ? `/attempts/${row.activeAttemptId}` : "/home"}>{t("continue")}</Link>
           </Button>
           {buyMore}
@@ -126,7 +128,7 @@ export function AccessAction({
       return (
         <div className={wrapper}>
           {attemptsNote}
-          <Button asChild variant="exam" size={primarySize} className="flex-1">
+          <Button asChild variant="exam" size={primarySize} className={grow}>
             <Link href={row.entitlementId ? `/prepare/${row.entitlementId}` : "/home"} prefetch={false}>{t("enter")}</Link>
           </Button>
           {buyMore}
@@ -138,7 +140,7 @@ export function AccessAction({
       return (
         <div className={wrapper}>
           <p className="w-full text-field-label text-text-secondary">{t("exhaustedNote")}</p>
-          <Button asChild size={primarySize} className="flex-1">
+          <Button asChild size={primarySize} className={grow}>
             <Link href={checkout} prefetch={false}>{t("buyAgain")}</Link>
           </Button>
           {viewDetail}
@@ -150,7 +152,7 @@ export function AccessAction({
           <Button
             variant="secondary"
             size={primarySize}
-            className="flex-1 border-warning bg-warning-bg text-warning"
+            className={cn(grow, "border-warning bg-warning-bg text-warning")}
             disabled
             aria-disabled="true"
           >
@@ -167,7 +169,7 @@ export function AccessAction({
     case "NONE":
       return (
         <div className={wrapper}>
-          <Button asChild size={primarySize} className="flex-1">
+          <Button asChild size={primarySize} className={grow}>
             <Link href={checkout} prefetch={false}>{t("buy")}</Link>
           </Button>
           {viewDetail}
