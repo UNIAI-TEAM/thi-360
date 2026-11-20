@@ -9,6 +9,7 @@ import type { ContentReference } from "@/features/content/types";
 import {
   deletedGroupRules,
   describeRule,
+  formatRuleTopicNames,
   type GroupRule,
   mapidRuleAnchor,
   MAX_MAPID_RULES,
@@ -29,15 +30,14 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
   const format = useFormatter();
   const knowledgeIndex = useMemo(() => indexKnowledge(reference?.knowledgeTree ?? []), [reference]);
   const topics = useCallback(
-    (nodeIds: readonly string[]) => {
+    (nodeIds: readonly string[], marked = false) => {
       // Danh mục chưa tải (đang tải hoặc lỗi): chưa có tên nên không hiện mã nút thô (UUID) mà hiện chữ giữ chỗ (R1-F9).
       if (!reference) return t("topicsPending");
-      return format.list(
-        nodeIds.map((nodeId) => {
-          const node = knowledgeIndex.get(nodeId)?.node;
-          return node?.name || node?.code || nodeId;
-        }),
-        { type: "disjunction" },
+      return formatRuleTopicNames(
+        nodeIds,
+        knowledgeIndex,
+        (items) => format.list(items, { type: "disjunction" }),
+        marked ? markExamContent : undefined,
       );
     },
     [format, knowledgeIndex, reference, t],
@@ -59,7 +59,7 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
       return t(`sentence.${data.kind}`, {
         scope: scopeText(data, marked),
         group: groupName(data.group, data.deletedGroupName, marked),
-        topics: topics(rule.nodeIds),
+        topics: topics(rule.nodeIds, marked),
         amount: data.amount ?? "",
       });
     },
@@ -108,9 +108,11 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
     // Dòng bị xóa kéo theo nút đang giữ tiêu điểm: đưa tiêu điểm về nút "Thêm quy tắc" (R1-26).
     requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>('[data-testid="mapid-rule-add"]')?.focus());
   };
-  const save = (rule: MapidRule) => {
-    const exists = rules.some((item) => item.id === rule.id);
-    onChange(exists ? rules.map((item) => (item.id === rule.id ? rule : item)) : [...rules, rule]);
+  const save = (rule: MapidRule, options?: { replaceIds?: readonly string[] }) => {
+    const replaceSet = new Set(options?.replaceIds ?? []);
+    const remaining = rules.filter((item) => item.id === rule.id || !replaceSet.has(item.id));
+    const exists = remaining.some((item) => item.id === rule.id);
+    onChange(exists ? remaining.map((item) => (item.id === rule.id ? rule : item)) : [...remaining, rule]);
     setEditing(null);
   };
 
@@ -190,6 +192,10 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
         reference={reference}
         rule={editing === "new" ? null : editing}
         onSave={save}
+        onOpenRule={(id) => {
+          const target = rules.find((item) => item.id === id);
+          if (target) setEditing(target);
+        }}
       />
     </section>
   );

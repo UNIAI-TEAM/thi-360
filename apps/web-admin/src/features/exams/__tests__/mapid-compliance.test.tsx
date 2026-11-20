@@ -132,7 +132,8 @@ describe("dòng MAPID của bảng đối chiếu", () => {
       locale ? { locale, messages: en } : undefined,
     );
     // Câu quy tắc chỉ hiện khi cấu trúc và danh mục tải xong.
-    await screen.findByText("Toàn môn · Phải có Hàm số", {}, { timeout: 4000 }).catch(() => undefined);
+    const firstExpected = locale ? "Whole subject · Must include Functions" : "Toàn môn · Phải có Hàm số";
+    await screen.findByText((_, node) => node?.tagName === "SPAN" && node.textContent === firstExpected, {}, { timeout: 4000 }).catch(() => undefined);
     return screen.findByRole("table", { name: locale ? "Required and actual values of the trial paper" : "Yêu cầu và thực tế của đề thử" });
   }
 
@@ -140,14 +141,16 @@ describe("dòng MAPID của bảng đối chiếu", () => {
     const table = await renderRows(ROWS);
     const rows = within(table).getAllByRole("row").slice(1);
 
-    expect(within(rows[0]!).getByText("Toàn môn · Phải có Hàm số")).toBeInTheDocument();
+    expect(rows[0]).toHaveTextContent("Toàn môn · Phải có Hàm số");
+    expect(rows[0]!.querySelector("[data-exam-content]")).toHaveTextContent("Hàm số");
     expect(within(rows[0]!).getByText("ít nhất 1")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Đạt")).toBeInTheDocument();
     expect(rows[1]).toHaveTextContent("Trả lời ngắn · Ít nhất 3/15 câu thuộc Hàm số");
     expect(rows[1]!.querySelector("[data-exam-content]")).toHaveTextContent("Trả lời ngắn");
     expect(within(rows[1]!).getByText("ít nhất 3")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("Lệch · bắt buộc")).toBeInTheDocument();
-    expect(within(rows[2]!).getByText("Toàn môn · Đúng 3/50 câu thuộc Hàm số")).toBeInTheDocument();
+    expect(rows[2]).toHaveTextContent("Toàn môn · Đúng 3/50 câu thuộc Hàm số");
+    expect(rows[2]!.querySelector("[data-exam-content]")).toHaveTextContent("Hàm số");
     expect(within(rows[2]!).getByText("Lệch · bắt buộc")).toBeInTheDocument();
     expect(rows[3]).toHaveTextContent("Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu · ngoài nhóm này");
     expect(rows[4]).toHaveTextContent("Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu · số câu trong nhóm");
@@ -159,7 +162,8 @@ describe("dòng MAPID của bảng đối chiếu", () => {
     const table = await renderRows(ROWS.slice(0, 2), "en");
     const rows = within(table).getAllByRole("row").slice(1);
 
-    expect(within(rows[0]!).getByText("Whole subject · Must include Functions")).toBeInTheDocument();
+    expect(rows[0]).toHaveTextContent("Whole subject · Must include Functions");
+    expect(rows[0]!.querySelector("[data-exam-content]")).toHaveTextContent("Functions");
     expect(within(rows[0]!).getByText("at least 1")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("Deviates · required")).toBeInTheDocument();
   });

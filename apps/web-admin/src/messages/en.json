@@ -6059,8 +6059,32 @@
         "close": "Close",
         "comparator": {
           "AT_LEAST": "At least",
-          "EXACT": "Exactly",
+          "EXACT": "Exact",
           "legend": "Comparison"
+        },
+        "conflict": {
+          "CAPACITY_EXCEEDED_GROUP": "Group {scope} only has {available, number} questions, so it cannot require {required, number} questions on {topics}.",
+          "CAPACITY_EXCEEDED_SUBJECT": "The whole subject only has {available, number} questions, so it cannot require {required, number} questions on {topics}.",
+          "EQUIVALENT": "An equivalent rule already exists in {scope} for {topics}: {rule}.",
+          "EXACT_BELOW_MINIMUM": "Conflict in {scope} for {topics}: the exact limit of {available, plural, one {# question} other {# questions}} is below the minimum of {required, number} (related rule: {rule}).",
+          "EXACT_COUNTS_DIFFER": "Conflict in {scope} for {topics}: rule {rule} and this rule require different exact counts ({available, number} and {required, number}).",
+          "EXACT_ZERO_CONFLICTS_SOURCE": "Conflict with {rule}: {scope} cannot require exactly 0 questions on {topics} while drawing its source only from {topics}.",
+          "GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT": "Groups require at least {required, number} questions on {topics}, exceeding the whole-subject exact limit of {available, number}. Related rules: {rules}.",
+          "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP": "Cross-group conflict for {topics}: {topics} may appear only in group {onlyGroup}, conflicting with the requirement in group {otherGroup} (related rule: {rule}).",
+          "ONLY_IN_GROUP_EXCLUDES_SOURCE": "Cross-group conflict for {topics}: {topics} may appear only in group {onlyGroup}, conflicting with the source-only rule in group {otherGroup} (related rule: {rule}).",
+          "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP": "Cross-group conflict for {topics}: the group-exclusive rule in {onlyGroup} overlaps on topics with the rule in {otherGroup} (related rule: {rule}).",
+          "SUBJECT_EXACT_BELOW_GROUP_MINIMUM": "Conflict with {rule}: the whole subject allows exactly {available, number} questions on {topics}, while group {scope} requires at least {required, number}.",
+          "SUBSUMED_BY": "This condition is already covered by a stricter existing rule: {rule}. No duplicate rule is needed.",
+          "SUBSUMES_AT_LEAST_PRESENT": "At least {count, plural, one {# question} other {# questions}} already includes the must-appear requirement ({rules}). You can save or click «Replace old rule» to merge into one row.",
+          "SUBSUMES_AT_LEAST_RULE": "At least {count, plural, one {# question} other {# questions}} already covers the existing rule ({rules}). You can save or click «Replace old rule» to replace it.",
+          "SUBSUMES_EXACT_PRESENT": "Exactly {count, plural, one {# question} other {# questions}} already includes the must-appear requirement ({rules}). You can save or click «Replace old rule» to merge into one row.",
+          "SUBSUMES_EXACT_RULE": "Exactly {count, plural, one {# question} other {# questions}} already covers the existing rule ({rules}). You can save or click «Replace old rule» to replace it.",
+          "SUBSUMES_ONLY_IN_GROUP": "This counted rule already includes the uncounted group-exclusive rule ({rules}). You can save or click «Replace old rule».",
+          "SUBSUMES_PRESENT": "This stricter rule already includes the must-appear requirement ({rules}). You can save or click «Replace old rule».",
+          "SUBSUMES_RULE": "This stricter rule already covers the existing rule ({rules}). You can save or click «Replace old rule».",
+          "openRule": "Open rule to edit",
+          "openRuleNamed": "Edit: {rule}",
+          "replaceRule": "Replace old rule"
         },
         "count": "Questions",
         "countAria": "Question count of the rule",
@@ -6068,9 +6092,10 @@
         "denominatorUnknown": "Denominator: the question count of {scope} is not known",
         "description": "Rule for {subject}. The remaining positions are drawn at random within the scope that is still valid.",
         "entry": "Enter as",
-        "entryCount": "Questions",
-        "entryPercent": "Percent",
+        "entryCount": "Question count",
+        "entryPercent": "Percentage",
         "issues": {
+          "COUNT_ABOVE_GROUP": "The count exceeds the question count of group {scope} ({units, plural, one {# question} other {# questions}}). Enter at most {units, number}.",
           "COUNT_ABOVE_TOTAL": "The count is above the question count of the subject ({total, number}). Enter a number that is not larger than the question count of the subject.",
           "GROUP_MISSING": "The selected group no longer exists. Choose the scope again.",
           "NO_NODES": "Pick at least one MAPID.",
@@ -6078,60 +6103,90 @@
           "ONLY_IN_GROUP_NEEDS_GROUP": "This rule only applies to one group. Choose a group.",
           "PERCENT_DENOMINATOR_UNKNOWN": "The denominator is not known, so the percent cannot be converted. Enter the question counts of the subject and the other groups, or switch to entering a count.",
           "PERCENT_POOL": "Percent is not available for an elective subject because its question count depends on the subjects the student picks. Switch to entering a question count.",
-          "PERCENT_RANGE": "Percent must be between 0 and 100."
+          "PERCENT_RANGE": "Percent must be between 0 and 100.",
+          "TYPE_CLEARED_FOR_SUBJECT": "“MAPID only appears in this group” does not apply to the whole subject. Select a valid rule type.",
+          "TYPE_REQUIRED": "Select a rule type."
         },
         "nodeRemove": "Remove MAPID {code} {name}",
         "nodesEmpty": "No MAPID picked.",
         "nodesLegend": "MAPID",
-        "percent": "Percent (%)",
+        "percent": "Percentage (%)",
         "percentAria": "Percent of the rule",
         "percentResult": "= {count, plural, one {# question} other {# questions}} out of {units, number}",
         "percentUnknown": "The question count of the group is not known yet, so the percent cannot be turned into questions.",
         "pick": "Pick MAPID",
         "pickEdit": "Change MAPID",
-        "pickHint": "A question matches when it has at least one picked code. To require all three topics, add one rule per code.",
-        "pickHintSource": "A question matches this rule when it has at least one picked code. Every other “Source only” rule that applies to this scope (the group's own or the whole subject's) must match too: adding a rule narrows the source, never widens it.",
+        "pickHint": "Matches at least one selected MAPID. To require every topic to appear, add a separate rule for each code.",
+        "pickHintSource": "Matches at least one selected MAPID. When multiple source-only rules apply to this scope, a question must match all of them (narrows the source).",
         "pickerDescription": "Rule for {name}: pick a chapter, lesson or knowledge item. A picked node also matches questions on its child nodes.",
         "save": "Save rule",
         "scope": {
-          "groupHint": "{type} · {size}",
+          "deletedNamed": "Group «{name}» (deleted)",
+          "deletedUnnamed": "Deleted group — select scope",
+          "groupHint": "{type} · {units, number}/{total, number} questions",
+          "groupHintNoTotal": "{type} · {units, plural, one {# question} other {# questions}}",
+          "groupHintUnknown": "{type}",
+          "groupRemainder": "{name} · takes remainder",
+          "groupRemainderUnits": "{name} · takes remainder ({units, plural, one {# question} other {# questions}})",
+          "groupSets": "{name} · {sets, plural, one {# set} other {# sets}} × {size, plural, one {# sub-question} other {# sub-questions}}",
+          "groupSingle": "{name} · {units, plural, one {# question} other {# questions}}",
+          "groupUnknown": "{name}",
           "legend": "Applies to",
           "subject": "Whole subject",
-          "subjectHint": "{subject}, whole subject",
-          "subjectHintCount": "{subject}, {total, number} questions"
+          "subjectCount": "Whole subject · {total, plural, one {# question} other {# questions}}",
+          "subjectHint": "{subject} · whole subject",
+          "subjectHintCount": "{subject} · {total, plural, one {# question} other {# questions}}"
         },
-        "size": {
-          "remainder": "takes the remainder",
-          "remainderUnits": "takes the remainder = {units, number}/{total, number} questions",
-          "sets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, number}/{total, number} questions",
-          "setsNoTotal": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, plural, one {# question} other {# questions}}",
-          "single": "{units, number}/{total, number} questions",
-          "singleNoTotal": "{units, plural, one {# question} other {# questions}}"
+        "summary": {
+          "COUNT_AT_LEAST": "{scopePhrase}, take at least {count, plural, one {# question} other {# questions}} on {topics}.",
+          "COUNT_AT_LEAST_PERCENT": "{scopePhrase}, take at least {count, plural, one {# question} other {# questions}} ({percent, number}%) on {topics}.",
+          "COUNT_AT_LEAST_PERCENT_UNKNOWN": "{scopePhrase}, take at least {percent, number}% of questions on {topics}.",
+          "COUNT_EXACT": "{scopePhrase}, take exactly {count, plural, one {# question} other {# questions}} on {topics}.",
+          "COUNT_EXACT_PERCENT": "{scopePhrase}, take exactly {count, plural, one {# question} other {# questions}} ({percent, number}%) on {topics}.",
+          "COUNT_EXACT_PERCENT_UNKNOWN": "{scopePhrase}, take exactly {percent, number}% of questions on {topics}.",
+          "ONLY_IN_GROUP": "{topics} may only appear in group {group}. Other topics remain allowed in this group and 0 questions are allowed.",
+          "ONLY_IN_GROUP_AT_LEAST": "{topics} may only appear in group {group}, taking at least {count, plural, one {# question} other {# questions}}.",
+          "ONLY_IN_GROUP_AT_LEAST_PERCENT": "{topics} may only appear in group {group}, taking at least {count, plural, one {# question} other {# questions}} ({percent, number}%).",
+          "ONLY_IN_GROUP_AT_LEAST_PERCENT_UNKNOWN": "{topics} may only appear in group {group}, taking at least {percent, number}% of questions.",
+          "ONLY_IN_GROUP_EXACT": "{topics} may only appear in group {group}, taking exactly {count, plural, one {# question} other {# questions}}.",
+          "ONLY_IN_GROUP_EXACT_PERCENT": "{topics} may only appear in group {group}, taking exactly {count, plural, one {# question} other {# questions}} ({percent, number}%).",
+          "ONLY_IN_GROUP_EXACT_PERCENT_UNKNOWN": "{topics} may only appear in group {group}, taking exactly {percent, number}% of questions.",
+          "PRESENT": "{scopePhrase}, include at least 1 question on {topics}.",
+          "SOURCE_GROUP": "Group {group} draws only questions on {topics}. Other groups may still draw these topics.",
+          "SOURCE_SUBJECT": "The whole subject draws only questions on {topics}.",
+          "label": "Rule summary",
+          "pendingCondition": "Enter a valid value to preview the rule summary.",
+          "pendingNodes": "Pick at least one MAPID to preview the rule summary.",
+          "pendingScope": "Choose a valid scope to preview the rule summary.",
+          "pendingType": "Select a rule type to preview the rule summary.",
+          "scopeGroup": "In {units, plural, one {# question} other {# questions}} of {group}",
+          "scopeGroupUnknown": "In group {group}",
+          "scopeSubject": "Across the whole subject",
+          "scopeSubjectCount": "Across {total, plural, one {# question} other {# questions}} of the whole subject"
         },
         "title": "Add rule",
         "titleEdit": "Edit rule",
         "type": {
           "COUNT": {
-            "description": "The number of questions with the MAPID equals, or is at least, a number, counting child questions of sets and randomly drawn questions.",
-            "label": "Count"
+            "description": "Sets an exact or minimum question count for the selected MAPIDs, including set sub-questions.",
+            "label": "Question count by MAPID"
           },
           "ONLY_IN_GROUP": {
-            "description": "Limits where the topic can appear: other groups drop questions with the MAPID. Only available when applied to one group.",
-            "label": "Only appears in this group"
+            "description": "Other groups exclude these MAPIDs; leave count unchecked to restrict placement only (0 questions allowed).",
+            "label": "MAPID only appears in this group"
           },
           "PRESENT": {
-            "description": "The paper has at least 1 question with the MAPID. Randomly drawn positions may still add questions on the same topic.",
+            "description": "The selected scope has at least 1 matching question; random positions may draw more.",
             "label": "Must appear"
           },
           "SOURCE": {
-            "description": "Limits the source: this scope draws only questions with at least one picked MAPID. Every other source rule of the same scope, or of the whole subject, must match too. The topic can still appear in other groups.",
-            "label": "Source only from these MAPIDs"
+            "description": "Every question drawn in this scope must belong to at least one selected MAPID.",
+            "label": "Source only from selected MAPIDs"
           },
-          "contrast": "Two rules are easy to mix up: “Only appears in this group” limits where the topic can appear (other groups drop that topic). “Source only from these MAPIDs” limits what the group draws from (the group takes only those topics, which can still appear in other groups). When several source rules apply, a question must match every one of them.",
           "legend": "Rule type"
         },
         "withNumber": "With a count",
-        "withNumberHint": "For example: the topic appears only in this group and exactly 3 times."
+        "withNumberHint": "Leave unchecked to restrict placement only (0 questions allowed)."
       },
       "edit": "Edit",
       "editAria": "Edit rule: {sentence}",
