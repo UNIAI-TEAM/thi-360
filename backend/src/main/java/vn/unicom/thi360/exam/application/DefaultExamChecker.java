@@ -18,6 +18,7 @@ import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.OptionKind;
+import vn.unicom.thi360.exam.domain.solver.ChosenOption;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolveOption;
 import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
@@ -113,7 +114,9 @@ public class DefaultExamChecker implements ExamChecker {
                 return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
             }
         }
-        Map<String, List<ObjectNode>> invalidOptions = new LinkedHashMap<>();
+        // Option-scoped errors are keyed by (partId, optionId): a generated option in another part may share the
+        // optionId of a flagged authored option and must not inherit its error (R4-2).
+        Map<ChosenOption, List<ObjectNode>> invalidOptions = new LinkedHashMap<>();
         Map<String, Set<String>> missingCodes = new LinkedHashMap<>();
         boolean commonInvalid = false;
         for (ObjectNode issue : invalid) {
@@ -122,13 +125,15 @@ public class DefaultExamChecker implements ExamChecker {
                 String partId = issue.path("partId").asText();
                 for (var code : issue.path("affectedCodes")) {
                     missingCodes.computeIfAbsent(partId, ignored -> new java.util.LinkedHashSet<>()).add(code.asText());
-                    invalidOptions.computeIfAbsent(partId + ":" + code.asText(), ignored -> new ArrayList<>()).add(issue);
+                    invalidOptions.computeIfAbsent(new ChosenOption(partId, partId + ":" + code.asText()),
+                            ignored -> new ArrayList<>()).add(issue);
                 }
                 continue;
             }
             String optionId = issue.path("optionId").asText(null);
             if (optionId == null) commonInvalid = true;
-            else invalidOptions.computeIfAbsent(optionId, ignored -> new ArrayList<>()).add(issue);
+            else invalidOptions.computeIfAbsent(new ChosenOption(issue.path("partId").asText(), optionId),
+                    ignored -> new ArrayList<>()).add(issue);
         }
         if (commonInvalid || scope.kind() != ExamCheckScope.Kind.EXAM && !invalid.isEmpty()) {
             common.addAll(invalid);
@@ -146,7 +151,7 @@ public class DefaultExamChecker implements ExamChecker {
             }
             found.addAll(witnessIssues.getOrDefault(path.path().pathIndex(), List.of()));
             path.path().chosen().forEach(choice ->
-                    found.addAll(invalidOptions.getOrDefault(choice.optionId(), List.of())));
+                    found.addAll(invalidOptions.getOrDefault(choice, List.of())));
             return found;
         };
         if (!clock.instant().isBefore(deadline)) {
@@ -156,7 +161,7 @@ public class DefaultExamChecker implements ExamChecker {
                     deadline, budget, common, rules::path);
         }
         Set<String> maskedSections = new java.util.HashSet<>();
-        Set<String> maskedOptions = new java.util.HashSet<>(invalidOptions.keySet());
+        Set<ChosenOption> maskedOptions = new java.util.HashSet<>(invalidOptions.keySet());
         Set<String> ignoredParts = new java.util.HashSet<>();
         Set<String> requestedSubjects = new java.util.HashSet<>();
         if (scope.kind() != ExamCheckScope.Kind.EXAM) {
@@ -173,12 +178,13 @@ public class DefaultExamChecker implements ExamChecker {
                 if (sectionId != null) {
                     maskedSections.add(sectionId);
                 } else if (optionId != null) {
-                    if (optionContains(snapshot.structure(), optionId, requested)
-                            || optionSharesSubjectOnPath(snapshot.structure(), optionId, requested, requestedSubjects)) {
+                    String partId = issue.path("partId").asText(null);
+                    if (optionContains(snapshot.structure(), partId, optionId, requested)
+                            || optionSharesSubjectOnPath(snapshot.structure(), partId, optionId, requested, requestedSubjects)) {
                         common.add(issue);
                         return invalidResult(snapshot, scope, allInvalid, common, assembler, rules, deadline, budget);
                     }
-                    maskedOptions.add(optionId);
+                    maskedOptions.add(new ChosenOption(partId, optionId));
                 } else {
                     String partId = issue.path("partId").asText(null);
                     var part = snapshot.structure().parts().stream().filter(p -> p.id().equals(partId)).findFirst().orElse(null);
@@ -400,12 +406,13 @@ public class DefaultExamChecker implements ExamChecker {
                 deadline, budget, common, rules::path);
         if (scope.kind() == ExamCheckScope.Kind.EXAM) return evaluation;
         Set<String> sections = new java.util.HashSet<>();
-        Set<String> options = new java.util.HashSet<>();
+        Set<ChosenOption> options = new java.util.HashSet<>();
         Set<String> parts = new java.util.HashSet<>();
         for (var issue : allInvalid) {
             if (issue.hasNonNull("sectionId")) sections.add(issue.path("sectionId").asText());
-            else if (issue.hasNonNull("optionId")) options.add(issue.path("optionId").asText());
-            else if (issue.hasNonNull("partId")) parts.add(issue.path("partId").asText());
+            else if (issue.hasNonNull("optionId")) {
+                options.add(new ChosenOption(issue.path("partId").asText(), issue.path("optionId").asText()));
+            } else if (issue.hasNonNull("partId")) parts.add(issue.path("partId").asText());
         }
         var document = ExamCheckDraftInputs.withoutParts(
                 maskInvalidOptions(ExamCheckDraftInputs.maskSections(snapshot.structure(), sections), options), parts);
@@ -445,19 +452,20 @@ public class DefaultExamChecker implements ExamChecker {
                 && scope.targetId().equals(issue.path("partId").asText());
     }
 
-    private static boolean optionContains(ExamStructureDocument document, String optionId, Set<String> requested) {
+    private static boolean optionContains(ExamStructureDocument document, String partId, String optionId,
+                                          Set<String> requested) {
         for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
-            if (!optionId.equals(option.id())) continue;
+            if (!part.id().equals(partId) || !optionId.equals(option.id())) continue;
             if (requested.contains(option.id() + ":blocks")) return true;
             return option.sections().stream().anyMatch(section -> requested.contains(section.id()));
         }
         return false;
     }
 
-    static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String optionId,
+    static boolean optionSharesSubjectOnPath(ExamStructureDocument document, String partId, String optionId,
                                                       Set<String> requested, Set<String> subjects) {
         for (ExamPart part : document.parts()) for (ExamPartOption option : part.options()) {
-            if (!optionId.equals(option.id())) continue;
+            if (!part.id().equals(partId) || !optionId.equals(option.id())) continue;
             boolean sharesSubject = subjects.contains(option.code()) || option.sections().stream()
                     .anyMatch(section -> subjects.contains(section.subjectCode()));
             if (!sharesSubject) return false;
@@ -543,13 +551,13 @@ public class DefaultExamChecker implements ExamChecker {
     }
 
     /** Keep each invalid option's path identifiable while solving unrelated valid options normally. */
-    static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<String> invalid) {
+    static ExamStructureDocument maskInvalidOptions(ExamStructureDocument document, Set<ChosenOption> invalid) {
         if (invalid.isEmpty()) return document;
         List<ExamPart> parts = new ArrayList<>(document.parts().size());
         for (ExamPart part : document.parts()) {
             List<ExamPartOption> options = new ArrayList<>(part.options().size());
             for (ExamPartOption option : part.options()) {
-                options.add(invalid.contains(option.id())
+                options.add(invalid.contains(new ChosenOption(part.id(), option.id()))
                         ? new ExamPartOption(option.id(), OptionKind.SUBJECT, option.code(), option.name(),
                                 null, null, List.of(), List.of(), option.expertConfirmed())
                         : option);

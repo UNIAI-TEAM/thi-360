@@ -58,7 +58,7 @@ public class ExamCheckUnitStates {
                 templateFacts.forSections(snapshot.exam()), templateFacts.kindCode(snapshot.exam()));
         Set<String> incomplete = new HashSet<>();
         Set<String> invalidParts = new HashSet<>();
-        Set<String> invalidOptions = new HashSet<>();
+        Set<vn.unicom.thi360.exam.domain.solver.ChosenOption> invalidOptions = new HashSet<>();
         Set<String> invalidPartSubjects = new HashSet<>();
         Map<String, Set<String>> missingCodes = new LinkedHashMap<>();
         for (ObjectNode issue : rules.unrepresentable()) {
@@ -71,7 +71,8 @@ public class ExamCheckUnitStates {
             }
             markIncomplete(incomplete, issue);
             if (!issue.hasNonNull("sectionId") && issue.hasNonNull("optionId")) {
-                invalidOptions.add(issue.path("optionId").asText());
+                invalidOptions.add(new vn.unicom.thi360.exam.domain.solver.ChosenOption(
+                        issue.path("partId").asText(), issue.path("optionId").asText()));
             }
             if (!issue.hasNonNull("sectionId") && !issue.hasNonNull("optionId") && issue.hasNonNull("partId")) {
                 invalidParts.add(issue.path("partId").asText());
@@ -91,7 +92,7 @@ public class ExamCheckUnitStates {
             }
         }
         for (var part : document.parts()) for (var option : part.options()) {
-            if (invalidOptions.contains(option.id())) {
+            if (invalidOptions.contains(new vn.unicom.thi360.exam.domain.solver.ChosenOption(part.id(), option.id()))) {
                 option.sections().forEach(section -> incomplete.add(section.id()));
                 if (!option.blocks().isEmpty()) incomplete.add(option.id() + ":blocks");
             }

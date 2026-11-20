@@ -192,8 +192,8 @@ public class ExamCheckUnitEngine {
                 }
                 if (issue.hasNonNull("optionId")) {
                     return DefaultExamChecker.optionSharesSubjectOnPath(snapshot.structure(),
-                            issue.path("optionId").asText(), Set.copyOf(unit.key().sectionIds()),
-                            Set.of(unit.key().subjectCode()));
+                            issue.path("partId").asText(), issue.path("optionId").asText(),
+                            Set.copyOf(unit.key().sectionIds()), Set.of(unit.key().subjectCode()));
                 }
                 if (!issue.hasNonNull("partId")) return true;
                 String partId = issue.path("partId").asText();

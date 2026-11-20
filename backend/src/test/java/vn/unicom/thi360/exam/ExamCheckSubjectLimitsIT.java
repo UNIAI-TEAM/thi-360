@@ -601,8 +601,53 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
     }
 
     private void blockRef(UUID exam, String blockId, String sectionId, UUID subject) {
+        blockRef(exam, blockId, sectionId, subject, "p");
+    }
+
+    private void blockRef(UUID exam, String blockId, String sectionId, UUID subject, String partId) {
         jdbc.update("INSERT INTO exam.exam_block_ref(id, exam_id, block_id, part_id, section_id, subject_item_id) "
-                + "VALUES (?, ?, ?, 'p', ?, ?)", UUID.randomUUID(), exam, blockId, sectionId, subject);
+                + "VALUES (?, ?, ?, ?, ?, ?)", UUID.randomUUID(), exam, blockId, partId, sectionId, subject);
+    }
+
+    /**
+     * R4-2: option-scoped collision errors belong to (partId, optionId). Part "p" holds the colliding authored option
+     * "codes:QD05" (its stored node takes "codes:QD05:blocks"); the code-source part "codes" generates an option with
+     * the very same id "codes:QD05" (English). A path that selects the safe authored sibling of "p" and the
+     * generated option of "codes" must keep its own verdict; only the path that selects the authored collision is
+     * blocked.
+     */
+    @Test
+    void aCollisionErrorDoesNotLeakToAGeneratedOptionOfAnotherPart() throws Exception {
+        UUID id = sqlExam("QDA", """
+                [{"id":"p","questionCount":9,"participation":{"mode":"CHOICE","choose":1},"options":[
+                  {"id":"codes:QD05","kind":"SUBJECT","code":"LY","sections":[
+                    {"id":"codes:QD05:blocks","subjectCode":"LY","questionCount":9,"blocks":[
+                      {"id":"x-single","questionType":"SINGLE_CHOICE","questionCount":5},
+                      {"id":"x-set","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,
+                       "childAnswerType":"SINGLE_CHOICE"},
+                      {"id":"x-fill","questionType":"SHORT_ANSWER","questionCount":1}]}]},
+                  {"id":"safe-opt","kind":"SUBJECT","code":"LY","sections":[
+                    {"id":"safe-sec","subjectCode":"LY","questionCount":9,"blocks":[
+                      {"id":"s-single","questionType":"SINGLE_CHOICE","questionCount":5},
+                      {"id":"s-set","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,
+                       "childAnswerType":"SINGLE_CHOICE"},
+                      {"id":"s-fill","questionType":"SHORT_ANSWER","questionCount":1}]}]}]},
+                 {"id":"codes","questionCount":20,"codeSource":{"source":"GLOBAL_LIST"},"subjectPool":[
+                  {"id":"anh","subjectCode":"ANH","questionCount":20,"blocks":[
+                    {"id":"anh-single","questionType":"SINGLE_CHOICE","questionCount":20}]}]}]
+                """);
+        UUID ly = UUID.fromString("00000000-0000-7000-8200-000000000204");
+        for (String block : new String[] {"x-single", "x-set", "x-fill"}) blockRef(id, block, "codes:QD05:blocks", ly, "p");
+        for (String block : new String[] {"s-single", "s-set", "s-fill"}) blockRef(id, block, "safe-sec", ly, "p");
+        blockRef(id, "anh-single", "anh", UUID.fromString("00000000-0000-7000-8200-000000000203"), "codes");
+        jdbc.update("UPDATE exam.exam SET question_count = 29 WHERE id = ?", id);
+
+        JsonNode result = check("/api/v1/admin/exams/" + id);
+        java.util.Map<String, String> outcome = pathResults(result);
+        // The authored collision is blocked; the safe sibling with the generated English option is not.
+        assertThat(outcome).as("paths: %s", result.path("paths")).containsEntry("codes:QD05+codes:QD05", "INVALID");
+        assertThat(outcome.get("safe-opt+codes:QD05")).as("safe authored sibling with the generated option: %s",
+                result.path("paths")).isNotNull().isNotEqualTo("INVALID");
     }
 
     /**
