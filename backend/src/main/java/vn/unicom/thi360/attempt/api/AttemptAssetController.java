@@ -34,7 +34,7 @@ public class AttemptAssetController {
     @GetMapping("/{attemptId}/assets/{assetId}")
     @Operation(summary = "Tải tài nguyên câu hỏi (ảnh, tệp đính kèm) thuộc lượt thi của thí sinh")
     @ApiResponse(responseCode = "200", description = "Nội dung tệp tài nguyên")
-    public ResponseEntity<Resource> download(
+    public ResponseEntity<Resource> downloadAttemptAsset(
             @PathVariable UUID attemptId, @PathVariable UUID assetId) {
         AssetContent asset = attemptAssetService.loadAttemptAsset(attemptId, assetId);
         MediaType mediaType;

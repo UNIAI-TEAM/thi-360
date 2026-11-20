@@ -223,12 +223,13 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         any(),
                         any());
 
+        UUID hsaSid = claimSession(u1, hsaAttempt.getId());
         FinishPartRequest finReq =
                 new FinishPartRequest(
                         List.of(
                                 new FinalAnswerChange(
                                         hsaItemId, 7L, new AnswerValue.SingleChoice("opt-1"))));
-        MvcResult finRes = performFinishPart(u1, hsaAttempt.getId(), hsaP0.getId(), null, finReq);
+        MvcResult finRes = performFinishPart(u1, hsaAttempt.getId(), hsaP0.getId(), hsaSid, finReq);
         assertThat(finRes.getResponse().getStatus()).isEqualTo(200);
         verify(finalAnswerWriter, times(1))
                 .writeFinalAnswers(
@@ -277,12 +278,13 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         any(),
                         any());
 
+        UUID singleSid = claimSession(u2, singleAttempt.getId());
         SubmitAttemptRequest subReq =
                 new SubmitAttemptRequest(
                         List.of(
                                 new FinalAnswerChange(
                                         singleItemId, 9L, new AnswerValue.SingleChoice("opt-2"))));
-        MvcResult subRes = performSubmit(u2, singleAttempt.getId(), "wr-sub-key", null, subReq);
+        MvcResult subRes = performSubmit(u2, singleAttempt.getId(), "wr-sub-key", singleSid, subReq);
         assertThat(subRes.getResponse().getStatus()).isEqualTo(200);
         verify(finalAnswerWriter, times(1))
                 .writeFinalAnswers(
@@ -304,6 +306,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         UUID u1 = createStudent("writer-fail-fin");
         GrantOrderResult.Line hsaLine = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt a1 = startAndAwaitOpen(u1, "wr-fail-fin", hsaLine.entitlementId(), null);
+        UUID sid1 = claimSession(u1, a1.getId());
         List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
         UUID a1ItemId =
                 attemptItemRepository.findByPartIdOrderByOrdAsc(a1Parts.get(0).getId()).getFirst().getId();
@@ -322,7 +325,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         u1,
                         a1.getId(),
                         a1Parts.get(0).getId(),
-                        null,
+                        sid1,
                         new FinishPartRequest(
                                 List.of(
                                         new FinalAnswerChange(
@@ -340,6 +343,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         UUID u2 = createStudent("writer-fail-sub");
         GrantOrderResult.Line singleLine = grant(u2, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt a2 = startAndAwaitOpen(u2, "wr-fail-sub", singleLine.entitlementId(), null);
+        UUID sid2 = claimSession(u2, a2.getId());
         AttemptPart a2Part = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).getFirst();
         UUID a2ItemId = attemptItemRepository.findByPartIdOrderByOrdAsc(a2Part.getId()).getFirst().getId();
         clearInvocations(finalAnswerWriter);
@@ -357,7 +361,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         List.of(
                                 new FinalAnswerChange(
                                         a2ItemId, 2L, new AnswerValue.SingleChoice("y"))));
-        MvcResult subFail = performSubmit(u2, a2.getId(), "fail-then-retry", null, req);
+        MvcResult subFail = performSubmit(u2, a2.getId(), "fail-then-retry", sid2, req);
         assertThat(subFail.getResponse().getStatus()).isEqualTo(500);
         assertThat(attemptRepository.findById(a2.getId()).orElseThrow().getState())
                 .isEqualTo(AttemptState.IN_PROGRESS);
@@ -369,7 +373,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
 
         // Retrying with same Idempotency-Key after clearing failure succeeds cleanly
         reset(finalAnswerWriter);
-        MvcResult subRetry = performSubmit(u2, a2.getId(), "fail-then-retry", null, req);
+        MvcResult subRetry = performSubmit(u2, a2.getId(), "fail-then-retry", sid2, req);
         assertThat(subRetry.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(subRetry).path("state").asText()).isEqualTo("GRADING");
         assertThat(countEntitlementUsage(a2.getId(), "USED")).isEqualTo(1);
@@ -381,6 +385,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         UUID u1 = createStudent("writer-late-fin");
         GrantOrderResult.Line hsaLine = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt a1 = startAndAwaitOpen(u1, "late-fin", hsaLine.entitlementId(), null);
+        UUID sid1 = claimSession(u1, a1.getId());
         AttemptPart a1P0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).getFirst();
         UUID a1ItemId = attemptItemRepository.findByPartIdOrderByOrdAsc(a1P0.getId()).getFirst().getId();
         clearInvocations(finalAnswerWriter);
@@ -391,7 +396,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         u1,
                         a1.getId(),
                         a1P0.getId(),
-                        null,
+                        sid1,
                         new FinishPartRequest(
                                 List.of(
                                         new FinalAnswerChange(
@@ -407,6 +412,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         UUID u2 = createStudent("writer-late-sub");
         GrantOrderResult.Line singleLine = grant(u2, "DS-HSA-PART-MATH-MINI", 3, List.of());
         Attempt a2 = startAndAwaitOpen(u2, "late-sub", singleLine.entitlementId(), null);
+        UUID sid2 = claimSession(u2, a2.getId());
         AttemptPart a2P0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).getFirst();
         UUID a2ItemId = attemptItemRepository.findByPartIdOrderByOrdAsc(a2P0.getId()).getFirst().getId();
         clearInvocations(finalAnswerWriter);
@@ -417,7 +423,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         u2,
                         a2.getId(),
                         "late-sub-k",
-                        null,
+                        sid2,
                         new SubmitAttemptRequest(
                                 List.of(
                                         new FinalAnswerChange(
@@ -457,12 +463,32 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         Attempt a1 =
                 startAndAwaitOpen(
                         userId, "evt-no-cnt", bcaLine.entitlementId(), new PreChoiceInput("CA2", null));
+        UUID sid1 = claimSession(userId, a1.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
 
         List<AttemptItem> p0Items = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId());
         List<AttemptItem> p2Items = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(2).getId());
         UUID p0ItemId = p0Items.getFirst().getId();
-        UUID p2ItemId = p2Items.getFirst().getId();
+        AttemptItem p2Item =
+                p2Items.stream()
+                        .filter(
+                                i ->
+                                        i.getQuestionType()
+                                                == vn.unicom.thi360.questionbank.spi.QuestionType
+                                                        .SHORT_ANSWER)
+                        .findFirst()
+                        .orElseGet(p2Items::getFirst);
+        UUID p2ItemId = p2Item.getId();
+        AnswerValue p2Answer =
+                p2Item.getQuestionType()
+                                == vn.unicom.thi360.questionbank.spi.QuestionType.SINGLE_CHOICE
+                        ? new AnswerValue.SingleChoice(p2Item.getOptionOrder().getFirst())
+                        : new AnswerValue.ShortAnswer(
+                                p2Item.getQuestionType()
+                                                == vn.unicom.thi360.questionbank.spi.QuestionType
+                                                        .SHORT_ANSWER
+                                        ? "SENTINEL_SECRET_ANSWER_XYZ"
+                                        : null);
 
         String sentinel = "SENTINEL_SECRET_ANSWER_XYZ";
         assertThat(
@@ -470,7 +496,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                                         userId,
                                         a1.getId(),
                                         parts.get(0).getId(),
-                                        null,
+                                        sid1,
                                         new FinishPartRequest(
                                                 List.of(
                                                         new FinalAnswerChange(
@@ -484,7 +510,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                 .isEqualTo(200);
 
         assertThat(
-                        performFinishPart(userId, a1.getId(), parts.get(1).getId(), null, null)
+                        performFinishPart(userId, a1.getId(), parts.get(1).getId(), sid1, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
@@ -494,14 +520,13 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                                         userId,
                                         a1.getId(),
                                         "evt-sub-key",
-                                        null,
+                                        sid1,
                                         new SubmitAttemptRequest(
                                                 List.of(
                                                         new FinalAnswerChange(
                                                                 p2ItemId,
                                                                 22L,
-                                                                new AnswerValue.ShortAnswer(
-                                                                        sentinel)))))
+                                                                p2Answer))))
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
@@ -564,12 +589,13 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("direct-awaiting-choice");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "dir-ac", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId()).getFirst().getId();
 
         mutableClock.advance(Duration.ofMinutes(1));
         assertThat(
-                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
@@ -607,7 +633,9 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "free-dedup", line.entitlementId(), null);
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId()).getFirst().getId();
+        AttemptItem item = singleChoiceItems(parts.get(0).getId()).getFirst();
+        UUID itemId = item.getId();
+        String validOpt = item.getOptionOrder().getFirst();
 
         jdbc.update("UPDATE attempt.attempt SET navigation_mode = 'FREE' WHERE id = ?", attempt.getId());
         jdbc.update(
@@ -625,7 +653,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                         sessionId,
                         List.of(
                                 new FinalAnswerChange(
-                                        itemId, 5L, new AnswerValue.SingleChoice("opt-1"))));
+                                        itemId, 5L, new AnswerValue.SingleChoice(validOpt))));
         assertThat(res.closedNow()).isTrue();
 
         List<AttemptEvent> events =
@@ -652,7 +680,7 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                 startAndAwaitOpen(
                         userId, "sess-ok", line.entitlementId(), new PreChoiceInput("CA2", null));
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        UUID activeSessionId = UUID.randomUUID();
+        UUID activeSessionId = claimSession(userId, attempt.getId());
         clearInvocations(attemptSessionChecker);
 
         assertThat(
@@ -712,10 +740,9 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
                 startAndAwaitOpen(
                         userId, "sess-rev", line.entitlementId(), new PreChoiceInput("CA2", null));
         List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
+        claimSession(userId, a2.getId());
         UUID revokedSessionId = UUID.randomUUID();
-        doThrow(new ConflictException("ATTEMPT_SESSION_REVOKED"))
-                .when(attemptSessionChecker)
-                .requireEditSession(argThat(a -> a.getId().equals(a2.getId())), eq(revokedSessionId));
+        clearInvocations(attemptSessionChecker);
 
         MvcResult finRev =
                 performFinishPart(

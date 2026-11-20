@@ -105,7 +105,7 @@ class AttemptOpenApiContractTest {
         for (String schemaName : ANSWER_SUBTYPE_SCHEMAS) {
             expectedAnswerRefs.add("#/components/schemas/" + schemaName);
         }
-        for (String ownerSchema : List.of("FinalAnswerChange", "AttemptItemView")) {
+        for (String ownerSchema : List.of("FinalAnswerChange", "AnswerChange", "AttemptItemView")) {
             JsonNode answerProp = schemas.path(ownerSchema).path("properties").path("answer");
             assertThat(answerProp.isMissingNode()).isFalse();
             assertThat(answerProp.toString()).doesNotContain("AttemptQuestionBody");
@@ -134,6 +134,37 @@ class AttemptOpenApiContractTest {
                                 .path("maxItems")
                                 .asInt())
                 .isEqualTo(500);
+        assertThat(
+                        schemas.path("SaveAnswersRequest")
+                                .path("properties")
+                                .path("changes")
+                                .path("maxItems")
+                                .asInt())
+                .isEqualTo(50);
+        assertThat(
+                        schemas.path("SaveAnswersRequest")
+                                .path("properties")
+                                .path("flags")
+                                .path("maxItems")
+                                .asInt())
+                .isEqualTo(50);
+
+        JsonNode sessionConflictLastSeen =
+                schemas.path("AttemptSessionConflictResponse")
+                        .path("properties")
+                        .path("lastSeenAt");
+        assertThat(sessionConflictLastSeen.isMissingNode()).isFalse();
+        assertThat(sessionConflictLastSeen.path("format").asText()).isEqualTo("date-time");
+
+        JsonNode paths = root.path("paths");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/session").path("post").path("operationId").asText())
+                .isEqualTo("claimSession");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/heartbeat").path("post").path("operationId").asText())
+                .isEqualTo("heartbeat");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/answers").path("put").path("operationId").asText())
+                .isEqualTo("saveAnswers");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/assets/{assetId}").path("get").path("operationId").asText())
+                .isEqualTo("downloadAttemptAsset");
 
         JsonNode submitParams =
                 root.path("paths")
@@ -186,6 +217,19 @@ class AttemptOpenApiContractTest {
         assertThat(submitOpBlock)
                 .contains("\"Idempotency-Key\": string;")
                 .doesNotContain("\"Idempotency-Key\"?:");
+
+        String answerChangeBlock = extractComponentSchemaBlock(schemaDts, "AnswerChange");
+        assertThat(answerChangeBlock)
+                .doesNotContain(": never")
+                .contains("SingleChoiceAnswer");
+        String conflictBlock =
+                extractComponentSchemaBlock(schemaDts, "AttemptSessionConflictResponse");
+        assertThat(conflictBlock).contains("lastSeenAt?: string;");
+
+        extractOperationBlock(schemaDts, "claimSession");
+        extractOperationBlock(schemaDts, "heartbeat");
+        extractOperationBlock(schemaDts, "saveAnswers");
+        extractOperationBlock(schemaDts, "downloadAttemptAsset");
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {
