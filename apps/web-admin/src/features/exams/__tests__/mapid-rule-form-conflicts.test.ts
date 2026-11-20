@@ -128,6 +128,25 @@ describe("checkMapidRuleConflicts — 3-way cross-row check (AC-1707-7)", () => 
         knowledgeIndex,
       }),
     ).toMatchObject({ kind: "CONFLICT", code: "CAPACITY_EXCEEDED", required: 1, available: 0 });
+
+    // Remainder group with units === null (sibling set block has setCount: null) + count > section.questionCount -> CAPACITY_EXCEEDED, not SUBSUMES (R1-4)
+    const unknownRemSection = makeSection(
+      [{ id: "r-pres", type: "PRESENT", groupId: "b-rem", nodeIds: ["kn-hs-1"] }],
+      {
+        questionCount: 50,
+        blocks: [
+          block({ id: "b-set-null", name: "Chùm chưa rõ", questionType: "QUESTION_SET", questionCount: null, setCount: null, setSize: 3 }),
+          block({ id: "b-rem", name: "Phần còn lại", questionType: "SINGLE_CHOICE", questionCount: null }),
+        ],
+      },
+    );
+    expect(
+      checkMapidRuleConflicts({
+        candidate: { id: "c3", type: "COUNT", groupId: "b-rem", nodeIds: ["kn-hs-1"], comparator: "AT_LEAST", count: 51 },
+        section: unknownRemSection,
+        knowledgeIndex,
+      }),
+    ).toMatchObject({ kind: "CONFLICT", code: "CAPACITY_EXCEEDED", scopeGroupId: null, required: 51, available: 50 });
   });
 
   it("CONFLICT: same scope EXACT vs EXACT / AT_LEAST / PRESENT in BOTH directions and ancestor-aware", () => {
@@ -220,30 +239,76 @@ describe("checkMapidRuleConflicts — 3-way cross-row check (AC-1707-7)", () => 
     expect(checkMapidRuleConflicts({ candidate: presentSingle, section: makeSection([onlyShort]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP",
+      onlyGroupId: "b-short",
+      otherGroupId: "b-single",
+      scopeGroupId: "b-single",
+      required: 1,
     });
     expect(checkMapidRuleConflicts({ candidate: onlyShort, section: makeSection([presentSingle]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP",
+      onlyGroupId: "b-short",
+      otherGroupId: "b-single",
+      scopeGroupId: "b-single",
+      required: 1,
     });
 
     // Unnumbered ONLY_IN_GROUP vs unnumbered ONLY_IN_GROUP on overlapping nodes
     expect(checkMapidRuleConflicts({ candidate: onlySet, section: makeSection([onlyShort]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP",
+      onlyGroupId: "b-short",
+      otherGroupId: "b-set",
+      nodeIds: ["les-hamso"],
     });
     expect(checkMapidRuleConflicts({ candidate: onlyShort, section: makeSection([onlySet]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP",
+      onlyGroupId: "b-short",
+      otherGroupId: "b-set",
+      nodeIds: ["les-hamso"],
     });
+
+    // Numbered ONLY_IN_GROUP vs unnumbered ONLY_IN_GROUP on distinct groups -> identical code, required, available, onlyGroupId, otherGroupId, nodeIds in BOTH orders (R1-2, R1-10)
+    const onlySetNumbered: MapidRule = { id: "only-set-2", type: "ONLY_IN_GROUP", groupId: "b-set", nodeIds: ["kn-hs-1"], comparator: "EXACT", count: 2 };
+    const numFirst = checkMapidRuleConflicts({ candidate: onlyShort, section: makeSection([onlySetNumbered]), knowledgeIndex });
+    const unnumFirst = checkMapidRuleConflicts({ candidate: onlySetNumbered, section: makeSection([onlyShort]), knowledgeIndex });
+    expect(numFirst).toMatchObject({
+      kind: "CONFLICT",
+      code: "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP",
+      required: 2,
+      onlyGroupId: "b-short",
+      otherGroupId: "b-set",
+      scopeGroupId: "b-set",
+      nodeIds: ["les-hamso"],
+    });
+    expect(unnumFirst).toMatchObject({
+      kind: "CONFLICT",
+      code: "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP",
+      required: 2,
+      onlyGroupId: "b-short",
+      otherGroupId: "b-set",
+      scopeGroupId: "b-set",
+      nodeIds: ["les-hamso"],
+    });
+    if (numFirst.kind === "CONFLICT" && unnumFirst.kind === "CONFLICT") {
+      expect(numFirst.available).toBe(unnumFirst.available);
+    }
 
     // ONLY_IN_GROUP vs SOURCE in non-empty group B
     expect(checkMapidRuleConflicts({ candidate: sourceSet, section: makeSection([onlyShort]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "ONLY_IN_GROUP_EXCLUDES_SOURCE",
+      onlyGroupId: "b-short",
+      otherGroupId: "b-set",
+      scopeGroupId: "b-set",
     });
     expect(checkMapidRuleConflicts({ candidate: onlyShort, section: makeSection([sourceSet]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "ONLY_IN_GROUP_EXCLUDES_SOURCE",
+      onlyGroupId: "b-short",
+      otherGroupId: "b-set",
+      scopeGroupId: "b-set",
     });
 
     // EXACT 0 in group B vs ONLY_IN_GROUP in group A is allowed
@@ -256,7 +321,7 @@ describe("checkMapidRuleConflicts — 3-way cross-row check (AC-1707-7)", () => 
     ).toEqual({ kind: "OK" });
   });
 
-  it("CONFLICT: EXACT 0 vs SOURCE in same non-empty scope or Subject EXACT 0 vs non-empty Group SOURCE", () => {
+  it("CONFLICT: EXACT 0 vs SOURCE in same non-empty scope, Subject EXACT 0 vs Group SOURCE, and Subject SOURCE vs non-empty Group EXACT 0", () => {
     const exact0Subj: MapidRule = { id: "z-s", type: "COUNT", groupId: null, nodeIds: ["les-hamso"], comparator: "EXACT", count: 0 };
     const srcShort: MapidRule = { id: "src-s", type: "SOURCE", groupId: "b-short", nodeIds: ["kn-hs-1"] };
     expect(checkMapidRuleConflicts({ candidate: srcShort, section: makeSection([exact0Subj]), knowledgeIndex })).toMatchObject({
@@ -266,6 +331,22 @@ describe("checkMapidRuleConflicts — 3-way cross-row check (AC-1707-7)", () => 
     expect(checkMapidRuleConflicts({ candidate: exact0Subj, section: makeSection([srcShort]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "EXACT_ZERO_CONFLICTS_SOURCE",
+    });
+
+    // Subject SOURCE vs non-empty Group EXACT 0 in both orders (R1-5)
+    const srcSubj: MapidRule = { id: "src-subj", type: "SOURCE", groupId: null, nodeIds: ["kn-hs-1"] };
+    const exact0Short: MapidRule = { id: "z-short", type: "COUNT", groupId: "b-short", nodeIds: ["les-hamso"], comparator: "EXACT", count: 0 };
+    expect(checkMapidRuleConflicts({ candidate: exact0Short, section: makeSection([srcSubj]), knowledgeIndex })).toMatchObject({
+      kind: "CONFLICT",
+      code: "EXACT_ZERO_CONFLICTS_SOURCE",
+      scopeGroupId: "b-short",
+      nodeIds: ["kn-hs-1"],
+    });
+    expect(checkMapidRuleConflicts({ candidate: srcSubj, section: makeSection([exact0Short]), knowledgeIndex })).toMatchObject({
+      kind: "CONFLICT",
+      code: "EXACT_ZERO_CONFLICTS_SOURCE",
+      scopeGroupId: "b-short",
+      nodeIds: ["kn-hs-1"],
     });
   });
 
@@ -313,6 +394,20 @@ describe("checkMapidRuleConflicts — 3-way cross-row check (AC-1707-7)", () => 
     const presParent: MapidRule = { id: "r-pp", type: "PRESENT", groupId: null, nodeIds: ["les-hamso"] };
     expect(checkMapidRuleConflicts({ candidate: presParent, section: makeSection([exact3]), knowledgeIndex })).toMatchObject({
       kind: "SUBSUMED_BY",
+    });
+
+    // ONLY_IN_GROUP EXACT 3 vs COUNT EXACT 3 in same group -> ONLY_IN_GROUP strictly subsumes COUNT in both orders (R1-6)
+    const onlyExact3: MapidRule = { id: "r-only-ex3", type: "ONLY_IN_GROUP", groupId: "b-short", nodeIds: ["kn-hs-1"], comparator: "EXACT", count: 3 };
+    const countExact3: MapidRule = { id: "r-cnt-ex3", type: "COUNT", groupId: "b-short", nodeIds: ["kn-hs-1"], comparator: "EXACT", count: 3 };
+    expect(checkMapidRuleConflicts({ candidate: onlyExact3, section: makeSection([countExact3]), knowledgeIndex })).toMatchObject({
+      kind: "SUBSUMES",
+      reason: "EXACT_COVERS_RULE",
+      count: 3,
+      relatedRules: [countExact3],
+    });
+    expect(checkMapidRuleConflicts({ candidate: countExact3, section: makeSection([onlyExact3]), knowledgeIndex })).toMatchObject({
+      kind: "SUBSUMED_BY",
+      relatedRules: [onlyExact3],
     });
   });
 

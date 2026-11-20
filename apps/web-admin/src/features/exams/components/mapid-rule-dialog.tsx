@@ -359,6 +359,8 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     );
     const topics = formatTopics(crossCheck.nodeIds, true);
     const scope = scopeLabelForGroupId(crossCheck.scopeGroupId);
+    const onlyGroup = crossCheck.onlyGroupId !== undefined ? scopeLabelForGroupId(crossCheck.onlyGroupId) : scope;
+    const otherGroup = crossCheck.otherGroupId !== undefined ? scopeLabelForGroupId(crossCheck.otherGroupId) : scope;
     if (crossCheck.code === "CAPACITY_EXCEEDED") {
       return t(crossCheck.scopeGroupId === null ? "conflict.CAPACITY_EXCEEDED_SUBJECT" : "conflict.CAPACITY_EXCEEDED_GROUP", {
         scope,
@@ -369,6 +371,8 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     }
     return t(`conflict.${crossCheck.code}`, {
       scope,
+      onlyGroup,
+      otherGroup,
       topics,
       rule: relatedSentence,
       rules: rulesList,

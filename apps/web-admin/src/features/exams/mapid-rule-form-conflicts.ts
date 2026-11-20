@@ -32,6 +32,10 @@ export type MapidRuleCheckResult =
       /** Whole-subject EXACT rule when code is GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT. */
       subjectRule?: MapidRule;
       scopeGroupId: string | null;
+      /** Group carrying the ONLY_IN_GROUP rule (or canonical first group when two ONLY_IN_GROUP rules overlap). */
+      onlyGroupId?: string | null;
+      /** Conflicting peer group in cross-group ONLY_IN_GROUP_* conflicts. */
+      otherGroupId?: string | null;
       required?: number;
       available?: number;
       nodeIds: string[];
@@ -158,6 +162,17 @@ export function checkMapidRuleConflicts({
       nodeIds: cand.nodeIds,
     };
   }
+  if (section.questionCount !== null && cand.min > section.questionCount) {
+    return {
+      kind: "CONFLICT",
+      code: "CAPACITY_EXCEEDED",
+      relatedRules: [],
+      scopeGroupId: null,
+      required: cand.min,
+      available: section.questionCount,
+      nodeIds: cand.nodeIds,
+    };
+  }
 
   // 1b. Same scope EXACT vs EXACT / AT_LEAST / PRESENT (both directions)
   for (const e of existing) {
@@ -264,6 +279,56 @@ export function checkMapidRuleConflicts({
 
   // 1e. ONLY_IN_GROUP in group A vs another group B (B !== A), both directions
   for (const e of existing) {
+    if (
+      cand.rule.type === "ONLY_IN_GROUP" &&
+      e.rule.type === "ONLY_IN_GROUP" &&
+      cand.groupId !== null &&
+      e.groupId !== null &&
+      cand.groupId !== e.groupId &&
+      nodesOverlap(cand.nodeIds, e.nodeIds, knowledgeIndex)
+    ) {
+      const candCovers = e.min >= 1 && nodesCover(cand.nodeIds, e.nodeIds, knowledgeIndex);
+      const eCovers = cand.min >= 1 && nodesCover(e.nodeIds, cand.nodeIds, knowledgeIndex);
+      if (candCovers || eCovers) {
+        const [only, other] =
+          candCovers && eCovers
+            ? e.min > cand.min || (e.min === cand.min && e.groupId.localeCompare(cand.groupId) > 0)
+              ? [cand, e]
+              : [e, cand]
+            : candCovers
+              ? [cand, e]
+              : [e, cand];
+        return {
+          kind: "CONFLICT",
+          code: "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP",
+          relatedRules: [e.rule],
+          scopeGroupId: other.groupId,
+          onlyGroupId: only.groupId,
+          otherGroupId: other.groupId,
+          required: other.min,
+          nodeIds: only.nodeIds,
+        };
+      }
+      const candCoversE = nodesCover(cand.nodeIds, e.nodeIds, knowledgeIndex);
+      const eCoversCand = nodesCover(e.nodeIds, cand.nodeIds, knowledgeIndex);
+      const [first, second] =
+        candCoversE !== eCoversCand
+          ? candCoversE
+            ? [cand, e]
+            : [e, cand]
+          : cand.groupId.localeCompare(e.groupId) <= 0
+            ? [cand, e]
+            : [e, cand];
+      return {
+        kind: "CONFLICT",
+        code: "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP",
+        relatedRules: [e.rule],
+        scopeGroupId: second.groupId,
+        onlyGroupId: first.groupId,
+        otherGroupId: second.groupId,
+        nodeIds: first.nodeIds,
+      };
+    }
     const pairs: Array<[NormalizedRule, NormalizedRule]> = [
       [cand, e],
       [e, cand],
@@ -272,23 +337,14 @@ export function checkMapidRuleConflicts({
       if (only.rule.type !== "ONLY_IN_GROUP" || only.groupId === null || other.groupId === null || other.groupId === only.groupId) {
         continue;
       }
-      if (other.rule.type === "ONLY_IN_GROUP" && nodesOverlap(only.nodeIds, other.nodeIds, knowledgeIndex)) {
-        const coveredMin = other.min >= 1 && nodesCover(only.nodeIds, other.nodeIds, knowledgeIndex);
-        return {
-          kind: "CONFLICT",
-          code: coveredMin ? "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP" : "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP",
-          relatedRules: [e.rule],
-          scopeGroupId: other.groupId,
-          ...(coveredMin ? { required: other.min } : {}),
-          nodeIds: only.nodeIds,
-        };
-      }
       if (isMinCapable(other) && other.min >= 1 && nodesCover(only.nodeIds, other.nodeIds, knowledgeIndex)) {
         return {
           kind: "CONFLICT",
           code: "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP",
           relatedRules: [e.rule],
           scopeGroupId: other.groupId,
+          onlyGroupId: only.groupId,
+          otherGroupId: other.groupId,
           required: other.min,
           nodeIds: only.nodeIds,
         };
@@ -299,13 +355,15 @@ export function checkMapidRuleConflicts({
           code: "ONLY_IN_GROUP_EXCLUDES_SOURCE",
           relatedRules: [e.rule],
           scopeGroupId: other.groupId,
+          onlyGroupId: only.groupId,
+          otherGroupId: other.groupId,
           nodeIds: other.nodeIds,
         };
       }
     }
   }
 
-  // 1f. EXACT 0 vs SOURCE in same non-empty scope (or Subject EXACT 0 vs Group SOURCE in non-empty group)
+  // 1f. EXACT 0 vs SOURCE in same non-empty scope, Subject EXACT 0 vs non-empty Group SOURCE, or Subject SOURCE vs non-empty Group EXACT 0
   for (const e of existing) {
     const pairs: Array<[NormalizedRule, NormalizedRule]> = [
       [cand, e],
@@ -315,15 +373,16 @@ export function checkMapidRuleConflicts({
       if (
         zero.exact === 0 &&
         src.rule.type === "SOURCE" &&
-        src.nonEmpty &&
-        (zero.groupId === src.groupId || zero.groupId === null) &&
+        ((zero.groupId === src.groupId && src.nonEmpty) ||
+          (zero.groupId === null && src.nonEmpty) ||
+          (src.groupId === null && zero.nonEmpty)) &&
         nodesCover(zero.nodeIds, src.nodeIds, knowledgeIndex)
       ) {
         return {
           kind: "CONFLICT",
           code: "EXACT_ZERO_CONFLICTS_SOURCE",
           relatedRules: [e.rule],
-          scopeGroupId: src.groupId,
+          scopeGroupId: zero.groupId ?? src.groupId,
           nodeIds: src.nodeIds,
         };
       }
@@ -348,6 +407,15 @@ export function checkMapidRuleConflicts({
     if (isCountOrPresent(cand) && cand.exact === null && isMinCapable(e)) {
       return e.min >= cand.min && nodesCover(cand.nodeIds, e.nodeIds, knowledgeIndex);
     }
+    if (
+      cand.rule.type === "COUNT" &&
+      cand.exact !== null &&
+      e.rule.type === "ONLY_IN_GROUP" &&
+      e.exact === cand.exact &&
+      nodesEquivalent(cand.nodeIds, e.nodeIds, knowledgeIndex)
+    ) {
+      return true;
+    }
     if (cand.rule.type === "ONLY_IN_GROUP" && cand.exact === null && e.rule.type === "ONLY_IN_GROUP") {
       return e.min >= cand.min && (e.hasNumber || e.min > cand.min) && nodesEquivalent(cand.nodeIds, e.nodeIds, knowledgeIndex);
     }
@@ -362,6 +430,15 @@ export function checkMapidRuleConflicts({
     if (e.groupId !== cand.groupId) return false;
     if (isCountOrPresent(e) && e.exact === null && isMinCapable(cand)) {
       return cand.min >= e.min && nodesCover(e.nodeIds, cand.nodeIds, knowledgeIndex);
+    }
+    if (
+      e.rule.type === "COUNT" &&
+      e.exact !== null &&
+      cand.rule.type === "ONLY_IN_GROUP" &&
+      cand.exact === e.exact &&
+      nodesEquivalent(cand.nodeIds, e.nodeIds, knowledgeIndex)
+    ) {
+      return true;
     }
     if (e.rule.type === "ONLY_IN_GROUP" && e.exact === null && cand.rule.type === "ONLY_IN_GROUP") {
       return cand.min >= e.min && (cand.hasNumber || cand.min > e.min) && nodesEquivalent(e.nodeIds, cand.nodeIds, knowledgeIndex);
