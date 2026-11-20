@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   ADMIN_URL,
   adminApi,
@@ -219,12 +219,18 @@ async function pickMapid(page: Page, code: string) {
   await expect(dialog.getByText(new RegExp(`^${code} `)).first()).toBeVisible();
 }
 
+/** Chọn phạm vi "Áp dụng cho" từ hộp chọn đơn. */
+async function selectScope(page: Page, dialog: Locator, optionPattern: RegExp) {
+  await dialog.getByTestId("mapid-rule-scope").getByRole("combobox").click();
+  await page.getByRole("option", { name: optionPattern }).click();
+}
+
 async function saveStructure(page: Page) {
   await page.getByRole("button", { name: "Lưu" }).click();
   await expect(page.getByText("Có thay đổi chưa lưu")).not.toBeVisible({ timeout: 60_000 });
 }
 
-test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi bỏ quy tắc), kiểm tra báo xung đột, Toàn bài tạm ngừng", async ({ context, page }) => {
+test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi bỏ quy tắc), kiểm tra chéo 3 chiều, Toàn bài tạm ngừng", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const admin = await adminApi();
   const bank = await seedBank(admin);
@@ -239,20 +245,23 @@ test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi 
   await page.getByRole("radio", { name: /Theo ma trận MAPID/ }).check();
   await expect(page.getByTestId("mapid-rules-table")).toBeVisible();
 
-  // Quy tắc 2: cả môn — Số lượng · Đúng · N câu thuộc MAPID X (kể cả câu con của chùm và câu lấy ngẫu nhiên).
+  // Quy tắc 2: cả môn — Số câu theo MAPID · Bằng · N câu thuộc MAPID X (Toàn môn chỉ hiện 3 loại quy tắc).
   let dialog = await openRuleDialog(page);
-  await expect(dialog.getByRole("radio", { name: /^Toàn môn/ })).toBeChecked();
-  await dialog.getByRole("radio", { name: /^Số lượng/ }).check();
+  await expect(dialog.getByTestId("mapid-rule-scope").getByRole("combobox")).toContainText("Toàn môn");
+  await expect(dialog.getByTestId("mapid-rule-type-ONLY_IN_GROUP")).toHaveCount(0);
+  await dialog.getByTestId("mapid-rule-type-COUNT").click();
   await pickMapid(page, bank.leafX.code);
-  await dialog.getByTestId("mapid-rule-comparator").getByRole("radio", { name: "Đúng" }).check();
+  await dialog.getByTestId("mapid-rule-comparator").getByRole("radio", { name: "Bằng" }).check();
   await dialog.getByTestId("mapid-rule-count").fill(String(EXACT_N));
+  await expect(dialog.getByTestId("mapid-rule-summary")).toContainText(`lấy đúng ${EXACT_N} câu`);
   await dialog.getByTestId("mapid-rule-save").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  // Quy tắc 5: nhóm Chùm cuối — Chỉ lấy nguồn từ Bài A (mọi câu con của bộ cùng thuộc nhánh của Bài A).
+  // Quy tắc 5: nhóm Chùm cuối — chọn nhóm hiện đủ 4 loại; Chỉ lấy nguồn từ Bài A.
   dialog = await openRuleDialog(page);
-  await dialog.getByRole("radio", { name: new RegExp(`^${SET_GROUP}`) }).check();
-  await dialog.getByRole("radio", { name: /Chỉ lấy nguồn/ }).check();
+  await selectScope(page, dialog, new RegExp(`^${SET_GROUP}`));
+  await expect(dialog.getByTestId("mapid-rule-type-ONLY_IN_GROUP")).toBeVisible();
+  await dialog.getByTestId("mapid-rule-type-SOURCE").click();
   await pickMapid(page, bank.lessonA.code);
   await dialog.getByTestId("mapid-rule-save").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -284,14 +293,60 @@ test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi 
     expect(countRow!.actual).toBe(EXACT_N);
   }
 
-  // Thêm quy tắc xung đột với quy tắc Đúng N (cùng phạm vi, cùng MAPID, Đúng N + 2) → EXACT_COUNTS_DIFFER.
+  // Kiểm tra chéo 3 chiều trong hộp thoại (UNI-1707 AC-1707-7):
+  // 1) Xung đột cùng phạm vi (Đúng N + 2 vs Đúng N): chặn lưu, giữ nguyên số đã nhập, cho mở quy tắc đang có để sửa.
   dialog = await openRuleDialog(page);
-  await dialog.getByRole("radio", { name: /^Số lượng/ }).check();
+  await dialog.getByTestId("mapid-rule-type-COUNT").click();
   await pickMapid(page, bank.leafX.code);
+  await dialog.getByTestId("mapid-rule-comparator").getByRole("radio", { name: "Bằng" }).check();
   await dialog.getByTestId("mapid-rule-count").fill(String(EXACT_N + 2));
-  await dialog.getByTestId("mapid-rule-comparator").getByRole("radio", { name: "Đúng" }).check();
+  await expect(dialog.getByTestId("mapid-rule-save")).toBeDisabled();
+  await expect(dialog.getByTestId("mapid-rule-cross-check")).toContainText(/Xung đột/);
+  await expect(dialog.getByTestId("mapid-rule-count")).toHaveValue(String(EXACT_N + 2));
+  await dialog.getByTestId(`mapid-rule-open-${countRule.id}`).click();
+  await expect(dialog.getByTestId("mapid-rule-count")).toHaveValue(String(EXACT_N));
+  await dialog.getByRole("button", { name: "Hủy" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // 2) Bao hàm (PRESENT + Đúng 2 trên nhóm Trắc nghiệm): hiện nút "Thay quy tắc cũ" và thay nguyên tử.
+  dialog = await openRuleDialog(page);
+  await selectScope(page, dialog, /^Trắc nghiệm/);
+  await pickMapid(page, bank.leafX.code);
   await dialog.getByTestId("mapid-rule-save").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("mapid-rules-table").getByRole("row")).toHaveCount(4);
+
+  dialog = await openRuleDialog(page);
+  await selectScope(page, dialog, /^Trắc nghiệm/);
+  await dialog.getByTestId("mapid-rule-type-COUNT").click();
+  await pickMapid(page, bank.leafX.code);
+  await dialog.getByTestId("mapid-rule-comparator").getByRole("radio", { name: "Bằng" }).check();
+  await dialog.getByTestId("mapid-rule-count").fill("2");
+  await expect(dialog.getByTestId("mapid-rule-cross-check")).toContainText("Đúng 2 câu đã bao gồm yêu cầu phải xuất hiện");
+  await expect(dialog.getByTestId("mapid-rule-save")).toBeEnabled();
+  await dialog.getByTestId("mapid-rule-replace").click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("mapid-rules-table").getByRole("row")).toHaveCount(4);
+
+  // Xóa quy tắc thử nghiệm trên Trắc nghiệm để bản nháp sạch trước khi tiêm lỗi máy chủ.
+  await page.getByTestId("mapid-rules-table").getByRole("row", { name: /Trắc nghiệm/ }).getByRole("button", { name: /^Xóa quy tắc/ }).click();
+  await expect(page.getByTestId("mapid-rules-table").getByRole("row")).toHaveCount(3);
+  await expect(page.getByText("Có thay đổi chưa lưu")).not.toBeVisible();
+
+  // Tiêm quy tắc xung đột qua API PUT /structure để kiểm tra lưới an toàn của máy chủ (Kiểm tra môn → MAPID_RULE_CONFLICT → Đi tới quy tắc).
+  const latestStructure = await getStructure(admin, id);
+  const latestMath = mathSection(latestStructure);
+  latestMath.mapidRules = [
+    ...(latestMath.mapidRules ?? []),
+    { id: "server-conflict-exact", type: "COUNT", groupId: null, nodeIds: [bank.leafX.id], comparator: "EXACT", count: EXACT_N + 2 },
+  ];
+  const putConflict = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${id}/structure`, {
+    headers: admin.headers,
+    data: { parts: latestStructure.parts, examQuotas: latestStructure.examQuotas ?? [], expectedRevision: latestStructure.revision },
+  });
+  expect(putConflict.status(), await putConflict.text()).toBe(200);
+  await page.reload();
+  await expect(page.getByTestId("mapid-rules-table").getByRole("row")).toHaveCount(4);
 
   // Kiểm tra môn chạy trên bản đã lưu (màn tự lưu trước khi kiểm tra).
   await page.getByRole("button", { name: "Kiểm tra môn" }).click();
