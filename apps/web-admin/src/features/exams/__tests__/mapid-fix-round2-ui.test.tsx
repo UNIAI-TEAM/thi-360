@@ -73,7 +73,6 @@ function renderPanel(initial: ExamSection, locale: "vi" | "en" = "vi") {
     return (
       <HsaExamContext.Provider value>
         <ExamStructureSubjectPanel
-          examId="exam-1"
           examKind="HSA"
           context={{ part: makePart(section), option: null, section, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
           subjectName="Toán học"
