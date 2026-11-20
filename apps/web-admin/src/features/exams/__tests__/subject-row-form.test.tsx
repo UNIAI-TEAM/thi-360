@@ -41,6 +41,8 @@ describe("Danh sách dòng: bảng dòng của HSA, QDA", () => {
     // Nút thêm, xóa, lên, xuống dòng không có (R-13); chỉ có nút Sửa.
     expect(screen.queryByRole("button", { name: /Thêm nhóm|Xóa|Lên|Xuống|Tách/ })).toBeNull();
     // Công tắc đảo chỉ có ở nhóm 5.
+    const slotsRow = document.querySelector<HTMLElement>('[data-form-slots="van-5"] td[colspan]')!;
+    expect(slotsRow).toHaveAttribute("colspan", "4");
     await user.click(within(rowOf("van-5")).getByRole("button", { name: /Sửa dòng Doc hieu/ }));
     expect(await screen.findByRole("switch", { name: "Đảo thứ tự các chùm" })).toBeChecked();
     await user.click(within(rowOf("van-1")).getByRole("button", { name: /Sửa dòng Tu khac nhom nghia/ }));
@@ -64,6 +66,8 @@ describe("Danh sách dòng: bảng dòng của HSA, QDA", () => {
       "Chùm 4: VAN_THIEU_NHI",
       "Chùm 5: VAN_TRUYEN",
     ]);
+    const slotsRow = document.querySelector<HTMLElement>('[data-form-slots="van-5"] td[colspan]')!;
+    expect(slotsRow).toHaveAttribute("colspan", "4");
     await user.click(within(rowOf("van-5")).getByRole("button", { name: /Sửa dòng Doc hieu/ }));
     const toggle = await screen.findByRole("switch", { name: "Đảo thứ tự các chùm" });
     await user.click(toggle);
@@ -83,10 +87,22 @@ describe("Danh sách dòng: chỉ số chỉ đọc, tự luận", () => {
     openStructure("?section=sec-p2");
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
     expect(within(rowOf("p2-tf")).getByText("4 câu Đ/S · 16 ý · thang 4 điểm")).toBeInTheDocument();
+    expect(rowOf("p2-tf").querySelector("[data-row-figures]")).toHaveTextContent("4 câu Đ/S · 16 ý · thang 4 điểm");
+    expect(within(rowOf("p2-tf")).getByText("Câu đơn · Đúng/Sai")).toBeInTheDocument();
+    const headers = within(document.querySelector<HTMLElement>("[data-rows-card]")!).getAllByRole("columnheader");
+    expect(headers).toHaveLength(5);
+    expect(headers[1]).toHaveClass("min-w-44");
     await user.click(within(rowOf("p2-tf")).getByRole("button", { name: /Sửa dòng Dung sai/ }));
     expect(await screen.findByText(/Theo mẫu: .*4 ý.*1 điểm mỗi câu.*bảng điểm theo số ý đúng 0,1 · 0,25 · 0,5 · 1/)).toBeInTheDocument();
     // Số câu, ý và điểm do mẫu đặt: không có ô sửa điểm hay hình dạng câu (R-13).
     expect(screen.queryByRole("textbox", { name: /Điểm mỗi câu|Số ý/ })).toBeNull();
+  });
+
+  it("readOnlyFigures: bỏ qua thẻ data-row-figures khi dòng không có thang điểm hay số ý riêng", async () => {
+    boot({ kind: "QDA", parts: oneSection(wireSection("sec-van", "VAN", [wireBlock("no-pts", { name: "Dong khong diem", questionCount: 5, requiredPointsPerQuestion: null })])) });
+    openStructure("?section=sec-van");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    expect(rowOf("no-pts").querySelector("[data-row-figures]")).toBeNull();
   });
 
   it("essayCases: THPTQG Văn không có ô sửa; BCA Văn một dòng tự luận sửa được MAPID", async () => {
@@ -97,6 +113,8 @@ describe("Danh sách dòng: chỉ số chỉ đọc, tự luận", () => {
     expect(screen.getByText("Tự luận – tạm bỏ qua. Phần này không có ô sửa.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Sửa dòng/ })).toBeNull();
     expect(rowNames()).toEqual(["Tu luan"]);
+    expect(within(document.querySelector<HTMLElement>("[data-rows-card]")!).getAllByRole("columnheader")).toHaveLength(4);
+    expect(rowOf("essay-1").querySelector("[data-row-figures]")).toHaveTextContent("1 câu · 1 điểm");
     window.history.replaceState(null, "", "/");
     // BCA: một dòng tự luận, sửa được; Thêm điều kiện có MAPID (lọc).
     boot({ kind: "BCA", parts: oneSection(bcaLiteratureSection()) });
@@ -413,6 +431,8 @@ describe("Danh sách dòng: số request, trường đã dọn (R-13)", () => {
     boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
     openStructure("?section=sec-van");
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const slotsRow = document.querySelector<HTMLElement>('[data-form-slots="van-5"] td[colspan]')!;
+    expect(slotsRow).toHaveAttribute("colspan", "4");
     await user.click(within(rowOf("van-5")).getByRole("button", { name: /Sửa dòng Doc hieu/ }));
     await screen.findByRole("heading", { name: /Sửa dòng: Doc hieu/ });
     await openReference(user);

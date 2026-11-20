@@ -6628,8 +6628,6 @@
           "columns": {
             "actions": "Actions",
             "conditions": "Conditions",
-            "figures": "Figures",
-            "kind": "Take as",
             "name": "Name",
             "order": "Order",
             "quantity": "Quantity"

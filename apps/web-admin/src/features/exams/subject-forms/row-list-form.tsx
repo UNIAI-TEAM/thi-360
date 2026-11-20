@@ -148,7 +148,7 @@ export function RowListForm({
   const figuresText = (block: QuestionBlock) => {
     const figures = rowFigures(block);
     if (figures.trueFalse) return t("table.figures.trueFalse", { count: figures.questions, statements: figures.statements ?? 0, hasStatements: figures.statements === null ? "no" : "yes", points: figures.points ?? 0, hasPoints: figures.points === null ? "no" : "yes" });
-    return figures.points === null ? t("table.figures.plain", { count: figures.questions }) : t("table.figures.plainPoints", { count: figures.questions, points: figures.points });
+    return figures.points === null ? null : t("table.figures.plainPoints", { count: figures.questions, points: figures.points });
   };
   const conditionsText = (block: QuestionBlock) => {
     const summary = conditionSummary(block);
@@ -178,7 +178,7 @@ export function RowListForm({
       noticeLines.push(tSubject("totalChange.topics", { values: topics.map((quota) => `${quota.name || tSubject("totalChange.untitled")} ${topicCountFor(quota, sectionCount)}`).join(" · ") }));
     }
   }
-  const columns = readOnlyNotice ? 6 : 7;
+  const columns = readOnlyNotice ? 4 : 5;
 
   return (
     <div ref={rootRef} className="flex flex-col gap-4" data-subject-form="ROWS">
@@ -219,17 +219,24 @@ export function RowListForm({
           <p className="text-body text-text-muted">{t("table.empty")}</p>
         ) : (
           <ScrollableTable label={t("table.caption", { subject: subjectName })} className="rounded-md border border-border">
-            <table className="w-full border-separate border-spacing-0 text-body">
+            <table className="w-full table-auto border-separate border-spacing-0 text-body">
               <caption className="sr-only">{t("table.caption", { subject: subjectName })}</caption>
               <thead>
                 <tr className="text-left text-caption text-text-muted">
-                  {(["order", "name", "kind", "quantity", "conditions", "figures"] as const).map((column) => (
-                    <th key={column} scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">
-                      {t(`table.columns.${column}`)}
-                    </th>
-                  ))}
+                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">
+                    {t("table.columns.order")}
+                  </th>
+                  <th scope="col" className="min-w-44 border-b border-border bg-subtle px-2 py-2 font-semibold">
+                    {t("table.columns.name")}
+                  </th>
+                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">
+                    {t("table.columns.quantity")}
+                  </th>
+                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">
+                    {t("table.columns.conditions")}
+                  </th>
                   {!readOnlyNotice && (
-                    <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold whitespace-nowrap">
+                    <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold whitespace-nowrap">
                       <span className="sr-only">{t("table.columns.actions")}</span>
                     </th>
                   )}
@@ -244,46 +251,51 @@ export function RowListForm({
                   const rowReasons = lockReasonsOf({ ...locks, counts: false });
                   const slots = (block.slots ?? []).filter((slot) => (slot.tagCodes?.length ?? 0) > 0 || (slot.knowledgeScope?.nodeIds.length ?? 0) > 0);
                   const name = block.name || t("table.untitled");
+                  const figures = figuresText(block);
                   return (
                     <Fragment key={block.id}>
                       {showSegment && (
                         <tr data-form-segment={segment.code}>
-                          <th scope="colgroup" colSpan={columns} className="border-b border-border bg-subtle/60 px-3 py-1.5 text-left text-label font-semibold text-text">
+                          <th scope="colgroup" colSpan={columns} className="border-b border-border bg-subtle/60 px-2 py-1.5 text-left text-label font-semibold text-text">
                             {segment.name}
                           </th>
                         </tr>
                       )}
                       <tr data-form-row={block.id} className={openId === block.id ? "bg-primary-50" : undefined}>
-                        <td className="border-b border-border px-3 py-2 whitespace-nowrap tabular-nums text-text-secondary">
+                        <td className="border-b border-border px-2 py-2 align-top text-caption whitespace-nowrap tabular-nums text-text-secondary">
                           {block.positionRange ? t("table.range", { from: block.positionRange.from, to: block.positionRange.to, same: block.positionRange.from === block.positionRange.to ? "yes" : "no" }) : index + 1}
                         </td>
-                        <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
-                          <span className="flex flex-wrap items-center gap-2">
+                        <th scope="row" className="min-w-44 border-b border-border px-2 py-2 align-top text-left font-medium text-text">
+                          <span className="flex flex-wrap items-center gap-1.5">
                             <span data-exam-content>{name}</span>
                             {block.questionType === "ESSAY" && <Badge className="font-medium">{tBlock("manualGrading")}</Badge>}
                             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
                             {audio && <AudioChip audio={audio} />}
                           </span>
+                          <div className="mt-0.5 text-caption font-normal text-text-muted">{kindText(block)}</div>
                           {rowReasons.map((code) => (
                             <LockReason key={code} code={code} className="mt-1 flex" />
                           ))}
                         </th>
-                        <td className="border-b border-border px-3 py-2 whitespace-nowrap text-text">{kindText(block)}</td>
-                        <td className="border-b border-border px-3 py-2 whitespace-nowrap tabular-nums text-text">
-                          <span className="inline-flex items-center gap-1.5">
-                            {quantityText(block)}
+                        <td className="border-b border-border px-2 py-2 align-top tabular-nums text-text">
+                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                            <span>{quantityText(block)}</span>
                             {locks.counts && (
                               <>
-                                <Lock aria-hidden className="size-3.5 text-text-muted" />
+                                <Lock aria-hidden className="size-3.5 shrink-0 text-text-muted" />
                                 <span className="sr-only">{t("table.countsLocked")}</span>
                               </>
                             )}
                           </span>
+                          {figures && (
+                            <div data-row-figures className="mt-0.5 text-caption text-text-muted">
+                              {figures}
+                            </div>
+                          )}
                         </td>
-                        <td className="border-b border-border px-3 py-2 text-text-secondary">{conditionsText(block)}</td>
-                        <td className="border-b border-border px-3 py-2 whitespace-nowrap tabular-nums text-text-secondary" data-row-figures>{figuresText(block)}</td>
+                        <td className="border-b border-border px-2 py-2 align-top text-caption text-text-secondary">{conditionsText(block)}</td>
                         {!readOnlyNotice && (
-                          <td className="border-b border-border px-3 py-1 text-right">
+                          <td className="border-b border-border px-2 py-1.5 align-top text-right whitespace-nowrap">
                             <Button type="button" variant="secondary" size="sm" aria-label={t("table.editAria", { name })} aria-expanded={openId === block.id} onClick={() => openFromRow(block.id)}>
                               {t("table.edit")}
                             </Button>
@@ -293,10 +305,10 @@ export function RowListForm({
                       {slots.length > 0 && (
                         <tr data-form-slots={block.id}>
                           <td className="border-b border-border" />
-                          <td colSpan={columns - 1} className="border-b border-border px-3 py-2">
+                          <td colSpan={columns - 1} className="border-b border-border px-2 py-2">
                             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-text-secondary" aria-label={t("table.slotsLabel", { name })}>
                               {slots.map((slot) => (
-                                <li key={slot.index} data-form-slot={slot.index}>
+                                <li key={slot.index} data-form-slot={slot.index} className="min-w-0 wrap-break-word">
                                   {t("table.slot", {
                                     index: slot.index,
                                     tags: (slot.tagCodes ?? []).map(tagName).join(", "),

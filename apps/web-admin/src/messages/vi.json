@@ -6628,8 +6628,6 @@
           "columns": {
             "actions": "Thao tác",
             "conditions": "Điều kiện",
-            "figures": "Chỉ số",
-            "kind": "Cách lấy",
             "name": "Tên",
             "order": "Thứ tự",
             "quantity": "Số lượng"
