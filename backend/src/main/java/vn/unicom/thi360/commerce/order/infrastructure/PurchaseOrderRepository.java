@@ -26,6 +26,9 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
 
     Optional<PurchaseOrder> findByCodeAndUserId(String code, UUID userId);
 
+    @Query("SELECT o.replacedByOrderId FROM PurchaseOrder o WHERE o.id = :id")
+    Optional<UUID> findReplacedByOrderIdById(@Param("id") UUID id);
+
     boolean existsByCode(String code);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -86,6 +89,22 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
             )
             """, nativeQuery = true)
     boolean existsPaidInReplacementChainStartingAt(@Param("startId") UUID startId);
+
+    @Query(value = """
+            WITH RECURSIVE chain AS (
+                SELECT id, state, paid_at, replaced_by_order_id
+                FROM commerce.purchase_order
+                WHERE id = :startId
+                UNION ALL
+                SELECT nxt.id, nxt.state, nxt.paid_at, nxt.replaced_by_order_id
+                FROM commerce.purchase_order nxt
+                JOIN chain c ON nxt.id = c.replaced_by_order_id
+            )
+            SELECT id FROM chain
+            WHERE paid_at IS NOT NULL OR state IN ('PAID', 'FULFILLED', 'REFUNDED')
+            ORDER BY id ASC
+            """, nativeQuery = true)
+    List<UUID> findPaidReplacementChainOrderIds(@Param("startId") UUID startId);
 
     @Query(value = """
             WITH RECURSIVE predecessors AS (

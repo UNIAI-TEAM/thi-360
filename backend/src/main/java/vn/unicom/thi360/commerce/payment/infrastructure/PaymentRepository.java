@@ -14,6 +14,16 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByTxnRef(String txnRef);
 
+    @Query("""
+            SELECT new vn.unicom.thi360.commerce.payment.infrastructure.PaymentRepository$PaymentLookup(
+                p.id, p.orderId, p.amountVnd)
+            FROM Payment p WHERE p.txnRef = :txnRef
+            """)
+    Optional<PaymentLookup> findLookupByTxnRef(@Param("txnRef") String txnRef);
+
+    record PaymentLookup(UUID id, UUID orderId, long amountVnd) {
+    }
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Payment p WHERE p.id = :id")
     Optional<Payment> lockById(@Param("id") UUID id);

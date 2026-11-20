@@ -295,6 +295,18 @@ public class PurchaseOrder {
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
+    /** Chuyển trạng thái sang REPLACED trước khi chèn đơn mới để giải phóng chỉ mục duy nhất đơn chờ (E13). */
+    public void beginReplace(Instant now) {
+        this.state = OrderState.REPLACED;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
+    /** Gắn liên kết sang đơn thay thế sau khi đơn mới đã được lưu vào bảng (đáp ứng khóa ngoại). */
+    public void linkReplacement(UUID replacementOrderId, Instant now) {
+        this.replacedByOrderId = Objects.requireNonNull(replacementOrderId, "replacementOrderId must not be null");
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
     public void markCancelled(Instant now) {
         this.state = OrderState.CANCELLED;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");

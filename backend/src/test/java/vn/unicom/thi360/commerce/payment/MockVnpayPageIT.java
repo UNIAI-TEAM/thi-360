@@ -109,6 +109,40 @@ class MockVnpayPageIT extends AbstractIntegrationTest {
         String paymentState = jdbc.queryForObject(
                 "SELECT state FROM commerce.payment WHERE id = ?", String.class, payment.id());
         assertThat(paymentState).isEqualTo("CREATED");
+
+        // "Thất bại": IPN chạy với mã 24 -> payment thành FAILED, order vẫn PENDING_PAYMENT, chưa cấp quyền.
+        String failedAction = payUrl.replace("/mock-vnpay?", "/mock-vnpay/action?outcome=failed&");
+        String failedRedirect = mockMvc.perform(getDecodedUrl(failedAction))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", Matchers.startsWith("http://localhost:3000/checkout/result?")))
+                .andReturn().getResponse().getHeader("Location");
+        assertThat(vnpayGateway.verify(parseQueryParams(failedRedirect))).isTrue();
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, payment.id()))
+                .isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, order.id()))
+                .isEqualTo("PENDING_PAYMENT");
+
+        // "Thành công" trên lần thanh toán mới -> IPN chạy thật -> đơn thành FULFILLED và cấp đủ lượt quyền.
+        var secondPayment = fixtures.insertStubPayment(order, 2, 200_000L, PaymentState.CREATED);
+        String secondPayUrl = vnpayGateway.pay(new PayRequest(
+                secondPayment.txnRef(), order.code(), 200_000L,
+                "Thanh toan don " + order.code(), "vn",
+                "http://localhost:3000/checkout/result",
+                "127.0.0.1", "20261121100500", "20261121102000"));
+        String successAction = secondPayUrl.replace("/mock-vnpay?", "/mock-vnpay/action?outcome=success&");
+        String successRedirect = mockMvc.perform(getDecodedUrl(successAction))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", Matchers.startsWith("http://localhost:3000/checkout/result?")))
+                .andReturn().getResponse().getHeader("Location");
+        assertThat(vnpayGateway.verify(parseQueryParams(successRedirect))).isTrue();
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, secondPayment.id()))
+                .isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, order.id()))
+                .isEqualTo("FULFILLED");
+        Integer grantedAttempts = jdbc.queryForObject(
+                "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, buyer.id(), product.examId());
+        assertThat(grantedAttempts).isEqualTo(3);
     }
 
     @Test

@@ -1,15 +1,11 @@
 package vn.unicom.thi360.commerce.payment.gateway;
 
 import java.util.Map;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
 
 /**
  * Bean dự phòng khi {@code thi360.vnpay.mode} khác {@code MOCK} và chưa có bản cài đặt thật (CM-3b).
- * Giúp context khởi động sạch ở {@code SANDBOX} để kiểm chứng {@code /mock-vnpay} trả 404 (AC-18).
+ * Được đăng ký qua {@link VnpayConfiguration} để đánh giá {@code @ConditionalOnMissingBean} sau khi quét component.
  */
-@Component
-@ConditionalOnMissingBean(VnpayGateway.class)
 public class UnsupportedVnpayGateway implements VnpayGateway {
 
     @Override
