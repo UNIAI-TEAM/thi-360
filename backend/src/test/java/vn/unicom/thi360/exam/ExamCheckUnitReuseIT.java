@@ -258,7 +258,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         entities.clear();
         clearInvocations(units);
         var checked = checkCodes(base);
-        verify(units, times(6)).solveUnit(any(), any(), any());
+        // FU-BE9-1: a new code is a new path over the same subject units, so every unit proof is reused (K13 re-solved all six).
+        verify(units, times(0)).solveUnit(any(), any(), any());
         assertThat(checked.path("groups").findValuesAsText("code")).contains("COMBINATION_LIST_CHANGED");
         assertThat(checked.path("paths").toString()).contains("codes:QD06");
         assertThat(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id)).isEqualTo(before);

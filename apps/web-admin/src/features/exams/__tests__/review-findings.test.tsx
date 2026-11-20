@@ -167,7 +167,7 @@ describe("Kiểm tra: bấm lỗi mở đúng chỗ ở bước Cấu trúc", ()
     const links = errors.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       `${STRUCTURE}?section=sec-1`,
-      `${STRUCTURE}?block=blk-1`,
+      `${STRUCTURE}?block=blk-1&field=itemShape`,
     ]);
     expect(links[1]).toHaveAccessibleName(/^Mở chỗ lỗi: /);
   });

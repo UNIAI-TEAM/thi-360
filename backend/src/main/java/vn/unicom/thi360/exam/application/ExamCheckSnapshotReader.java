@@ -33,10 +33,12 @@ public class ExamCheckSnapshotReader {
     private final ExamCheckFingerprint fingerprint;
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
+    private final ExamCheckValidity validity;
 
     public ExamCheckSnapshotReader(ExamRepository exams, ExamStructureRepository structures,
             ExamKindProfileRepository profiles, ExamBlockRefRepository references, QuestionSourcePort source,
-            CatalogLookup catalog, ExamCheckFingerprint fingerprint, ObjectMapper mapper, JdbcTemplate jdbc) {
+            CatalogLookup catalog, ExamCheckFingerprint fingerprint, ObjectMapper mapper, JdbcTemplate jdbc,
+            ExamCheckValidity validity) {
         this.exams = exams;
         this.structures = structures;
         this.profiles = profiles;
@@ -46,6 +48,7 @@ public class ExamCheckSnapshotReader {
         this.fingerprint = fingerprint;
         this.jdbc = jdbc;
         this.mapper = mapper;
+        this.validity = validity;
     }
 
     public record Snapshot(Exam exam, ExamStructureDocument structure,
@@ -70,7 +73,7 @@ public class ExamCheckSnapshotReader {
         String hash = fingerprint.calculate(codec.write(document), config, profileRevision, catalogRevision);
         ExamCheckResultStore.Input input = new ExamCheckResultStore.Input(examId, exam.getRevision(),
                 structure.getStructureHash(), mapper.valueToTree(config), profileRevision, catalogRevision,
-                hash, mapper.valueToTree(sourceRevisions));
+                hash, mapper.valueToTree(sourceRevisions), validity.templatePolicy(examId));
         JsonNode servingCombinations = null;
         if (exam.getServingVersion() != null) {
             var rows = jdbc.query("SELECT config->'combinations', serving_path_ids FROM exam.exam_version "

@@ -77,4 +77,20 @@ describe("Select", () => {
     expect(option).toHaveClass("outline-hidden");
     expect(option).not.toHaveClass("outline-none");
   });
+
+  it("nút chọn và mục danh sách dùng chiều cao tối thiểu để nhãn dài nhiều dòng không bị cắt (R1-2/F-VIS-01)", async () => {
+    const { rerender } = render(<Select aria-label="Kỳ thi" options={options} />);
+    const trigger = screen.getByRole("combobox", { name: "Kỳ thi" });
+    expect(trigger).toHaveClass("min-h-10", "py-1.5");
+    expect(trigger).not.toHaveClass("h-10");
+
+    rerender(<Select aria-label="Kỳ thi" size="lg" options={options} />);
+    expect(trigger).toHaveClass("min-h-12", "py-2");
+    expect(trigger).not.toHaveClass("h-12");
+
+    await userEvent.click(trigger);
+    const option = await screen.findByRole("option", { name: "Hoạt động" });
+    expect(option).toHaveClass("min-h-9", "py-1.5");
+    expect(option).not.toHaveClass("h-9");
+  });
 });

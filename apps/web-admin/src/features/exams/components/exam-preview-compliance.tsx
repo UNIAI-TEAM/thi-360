@@ -30,8 +30,8 @@ import {
 } from "../review-compliance";
 import type { ExamDetail } from "../types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "../review-types";
-import { ExamContentText, markExamContent } from "./exam-content-text";
-import { useLookup } from "./exam-review-shared";
+import { ExamContentText } from "./exam-content-text";
+import { ExamName, richNodes, useLookup } from "./exam-review-shared";
 import { useMapidRuleText } from "./mapid-rules-table";
 
 const LEVEL_TONE: Record<ComplianceLevel, StatusTone> = {
@@ -65,8 +65,11 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   const lookup = useLookup();
   const reference = useContentReference().data;
   const assigned = useMemo(() => topicAssignments(paper, original), [paper, original]);
-  const structure = useExamStructure(examId ?? "", undefined, Boolean(examId)).data;
+  const structureQuery = useExamStructure(examId ?? "", undefined, Boolean(examId));
+  const structure = structureQuery.data;
   const quotas = useMemo(() => buildTopicQuotaIndex(structure), [structure]);
+  // Chưa có cấu trúc để biết dòng chủ đề nào chờ mapping: trung tính trong lúc tải, kèm lời nhắn khi tải lỗi.
+  const structureUnavailable = Boolean(examId) && structure === undefined;
   const rules = useMemo(() => buildMapidRuleIndex(structure), [structure]);
   const { sentence } = useMapidRuleText(reference);
   const { columns, cards } = useMemo(() => {
@@ -89,10 +92,19 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         case "COMPETENCY":
           return t("criterion.COMPETENCY", { name: competencyName(ref.code, reference) });
         case "TOPIC": {
+          // Tên chủ đề do máy chủ gửi kèm từng dòng (`topicName`); chưa có thì lấy ở chỉ tiêu của cấu trúc. Độ khó của chỉ tiêu
+          // chỉ có ở cấu trúc nên hiện thêm khi cấu trúc đã tải.
           const quota = quotas?.get(ref.code);
-          if (quota?.name) {
-            const levels = quota.difficultyCodes.map((code) => lookup.difficulty(code)).filter(Boolean);
-            return t("criterion.TOPIC_NAMED", { name: [quota.name, ...levels].join(" · ") });
+          const name = row.topicName?.trim() || quota?.name?.trim();
+          if (name) {
+            const levels = (quota?.difficultyCodes ?? []).map((code) => lookup.difficulty(code)).filter(Boolean);
+            return levels.length > 0 ? (
+              <>
+                <ExamName>{name}</ExamName> · {levels.join(" · ")}
+              </>
+            ) : (
+              <ExamName>{name}</ExamName>
+            );
           }
           return t("criterion.TOPIC");
         }
@@ -103,8 +115,11 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           const found = rules ? resolveMapidRow(row, rules) : null;
           if (!found) return t("criterion.MAPID_UNKNOWN", { id: ref.ruleId });
           const text = sentence(found.section, found.rule, true);
-          if (found.rule.type !== "ONLY_IN_GROUP") return t("criterion.MAPID", { sentence: text });
-          return t(ref.count ? "criterion.MAPID_COUNT" : "criterion.MAPID_OUTSIDE", { sentence: text });
+          const label =
+            found.rule.type !== "ONLY_IN_GROUP"
+              ? t("criterion.MAPID", { sentence: text })
+              : t(ref.count ? "criterion.MAPID_COUNT" : "criterion.MAPID_OUTSIDE", { sentence: text });
+          return <ExamContentText text={label} />;
         }
         default:
           return ref.raw;
@@ -115,7 +130,13 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       if (ref.kind === "SECTION") return lookup.subject(sections.get(ref.id)?.subjectCode ?? "") || t("scope.EXAM");
       if (ref.kind === "BLOCK") {
         const block = blocks.get(ref.id);
-        return block ? `${lookup.subject(block.subjectCode)} · ${markExamContent(block.blockName)}` : ref.id;
+        return block ? (
+          <>
+            {lookup.subject(block.subjectCode)} · <ExamName>{block.blockName}</ExamName>
+          </>
+        ) : (
+          ref.id
+        );
       }
       return t("scope.EXAM");
     };
@@ -125,17 +146,23 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       if (isUnclassifiedRow(row) || row.required === null) return t("requiredNone");
       const atLeast = isAtLeastRow(row, rules);
       const removed = droppedCount(row.note);
-      const value = removed > 0 ? t("requiredDropped", { value: number(row.required), count: removed }) : number(row.required);
+      // Dòng đã bỏ câu: hiện cả số yêu cầu gốc của chỉ tiêu ("16 (17, đã bỏ 1 câu)"); máy chủ chưa gửi số gốc thì chỉ nêu số câu bỏ.
+      const value =
+        removed > 0
+          ? row.originalRequired !== null
+            ? t("requiredOriginal", { value: number(row.required), original: number(row.originalRequired), count: removed })
+            : t("requiredDropped", { value: number(row.required), count: removed })
+          : number(row.required);
       return atLeast ? t("requiredAtLeast", { value }) : value;
     };
     const actual = (row: PreviewCompliance) => {
-      if (topicQuotaPending(row, quotas)) return t("pendingNoData");
+      if (topicQuotaPending(row, quotas, structureUnavailable)) return t("pendingNoData");
       const ref = parseCriterion(row.criterion);
       const numbers = ref.kind === "TOPIC" ? (assigned.get(ref.code) ?? []) : [];
       return numbers.length > 0 ? t("actualAssigned", { value: number(row.actual), numbers: numbers.join(", ") }) : number(row.actual);
     };
     const difference = (row: PreviewCompliance) => {
-      if (topicQuotaPending(row, quotas)) return t("pendingNoData");
+      if (topicQuotaPending(row, quotas, structureUnavailable)) return t("pendingNoData");
       const value = complianceDifference(row);
       const shown = number(Math.abs(value));
       return value < 0 ? `\u2212${shown}` : value > 0 ? `+${shown}` : shown;
@@ -148,14 +175,14 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           <StatusChip tone="success">{t("result.OK")}</StatusChip>
         );
       }
-      if (topicQuotaPending(row, quotas)) return <StatusChip tone="neutral">{t("result.PENDING")}</StatusChip>;
+      if (topicQuotaPending(row, quotas, structureUnavailable)) return <StatusChip tone="neutral">{t("result.PENDING")}</StatusChip>;
       const value = complianceLevel(row, rules);
       return <StatusChip tone={LEVEL_TONE[value]}>{t(`result.${value}`)}</StatusChip>;
     };
 
     const columns: ColumnDef<PreviewCompliance>[] = [
-      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text"><ExamContentText text={criterion(row.original)} /></span> },
-      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32"><ExamContentText text={scope(row.original)} /></span> },
+      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text">{criterion(row.original)}</span> },
+      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32">{scope(row.original)}</span> },
       { id: "level", header: t("columns.level"), cell: ({ row }) => <span>{level(row.original)}</span> },
       { id: "required", header: () => <span className="block text-right">{t("columns.required")}</span>, cell: ({ row }) => <span className="block min-w-16 text-right">{required(row.original)}</span> },
       { id: "actual", header: () => <span className="block text-right">{t("columns.actual")}</span>, cell: ({ row }) => <span className="block min-w-16 text-right">{actual(row.original)}</span> },
@@ -165,8 +192,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     const cards: TableCards<PreviewCompliance> = {
       render: (row) => (
         <ListCard
-          title={<ExamContentText text={criterion(row)} />}
-          caption={<ExamContentText text={scope(row)} />}
+          title={criterion(row)}
+          caption={scope(row)}
           status={result(row)}
           meta={[
             { label: t("columns.level"), value: level(row) },
@@ -178,10 +205,13 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       ),
     };
     return { columns, cards };
-  }, [t, tContent, format, lookup, reference, paper, assigned, quotas, rules, sentence]);
+  }, [t, tContent, format, lookup, reference, paper, assigned, quotas, structureUnavailable, rules, sentence]);
 
   if (compliance.length === 0 && dropped.length === 0) return null;
-  const deviations = compliance.filter((row) => !topicQuotaPending(row, quotas) && complianceLevel(row, rules) !== "OK");
+  const hasPendingStructure = structureUnavailable && compliance.some((row) => topicQuotaPending(row, quotas, true));
+  const deviations = compliance.filter(
+    (row) => !topicQuotaPending(row, quotas, structureUnavailable) && complianceLevel(row, rules) !== "OK",
+  );
   const blocking = deviations.some((row) => complianceLevel(row, rules) === "REQUIRED_DEVIATION");
 
   return (
@@ -191,12 +221,18 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           {t("title")}
         </h3>
         {compliance.length > 0 &&
-          (deviations.length === 0 ? (
-            <StatusChip tone="success">{t("allPassed")}</StatusChip>
-          ) : (
+          (deviations.length > 0 ? (
             <StatusChip tone={blocking ? "danger" : "warning"}>{t("deviations", { count: deviations.length })}</StatusChip>
-          ))}
+          ) : !hasPendingStructure ? (
+            <StatusChip tone="success">{t("allPassed")}</StatusChip>
+          ) : null)}
       </div>
+      {structureQuery.isError && (
+        <p role="note" className="flex items-start gap-2 text-caption text-text-muted">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {t("structureUnavailable")}
+        </p>
+      )}
       {examId && <DenominatorNotes paper={paper} compliance={compliance} examId={examId} />}
       {dropped.length > 0 && (
         <ul className="flex flex-col gap-1">
@@ -259,7 +295,11 @@ function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; 
         const key = exam.scope === "PART" ? (subject ? "denominator.part" : "denominator.partNoSubject") : subject ? "denominator.whole" : "denominator.wholeNoSubject";
         return (
           <li key={denominator.scope} className="text-label font-semibold text-text">
-            <ExamContentText text={t(key, { part: paper.parts.map((part) => markExamContent(part.name)).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })} />
+            {richNodes(t, key, {
+              part: <ExamName>{paper.parts.map((part) => part.name).join(", ")}</ExamName>,
+              count: denominator.total,
+              ...(subject ? { subject } : {}),
+            })}
           </li>
         );
       })}

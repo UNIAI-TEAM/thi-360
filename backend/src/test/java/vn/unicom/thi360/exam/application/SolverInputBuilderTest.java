@@ -286,14 +286,14 @@ class SolverInputBuilderTest {
         var matching = setOf(3);
         when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of(matching));
         // One 3-child set composes the target; the child-unit count (3) meets the required count.
-        assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
+        assertThat(input.candidates().filterCounts(group, 3, () -> false)).isEmpty();
         var uncomposable = setOf(4);
         org.mockito.Mockito.doAnswer(invocation -> {
             var filter = (QuestionSourcePort.Filter) invocation.getArgument(0);
             return filter.childConditions().isEmpty() ? List.of(uncomposable, matching) : List.of(uncomposable);
         }).when(source).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
         // The filtered pool cannot compose 3; relaxing the condition can, so it is blamed.
-        assertThat(input.candidates().filterCounts(group, 3)).singleElement().satisfies(count -> {
+        assertThat(input.candidates().filterCounts(group, 3, () -> false)).singleElement().satisfies(count -> {
             assertThat(count.dimension())
                     .isEqualTo(SolverInputBuilder.SolverCandidates.FilterDimension.CHILD_CONDITION);
             assertThat(count.required()).isEqualTo(3);
@@ -305,7 +305,7 @@ class SolverInputBuilderTest {
             var filter = (QuestionSourcePort.Filter) invocation.getArgument(0);
             return filter.childConditions().isEmpty() ? List.of(setOf(2), setOf(2)) : List.of();
         }).when(source).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
-        assertThat(input.candidates().filterCounts(group, 3)).isEmpty();
+        assertThat(input.candidates().filterCounts(group, 3, () -> false)).isEmpty();
     }
 
     @Test
@@ -329,15 +329,15 @@ class SolverInputBuilderTest {
         org.junit.jupiter.api.Assertions.assertTimeout(java.time.Duration.ofSeconds(5), () -> {
             for (int target : targets) {
                 when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
-                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                assertThat(input.candidates().filterCounts(group, target, () -> false)).isEmpty();
                 when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt()))
                         .thenReturn(List.of(setOf(3), setOf(2)));
-                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                assertThat(input.candidates().filterCounts(group, target, () -> false)).isEmpty();
                 // A truncated source cannot establish a shortfall; it is rejected before any counting.
                 org.mockito.Mockito.clearInvocations(source);
                 when(source.findCandidates(any(), org.mockito.ArgumentMatchers.anyInt()))
                         .thenReturn(java.util.Collections.nCopies(20001, setOf(1)));
-                assertThat(input.candidates().filterCounts(group, target)).isEmpty();
+                assertThat(input.candidates().filterCounts(group, target, () -> false)).isEmpty();
                 verify(source, org.mockito.Mockito.times(1)).findCandidates(any(), org.mockito.ArgumentMatchers.anyInt());
             }
         });

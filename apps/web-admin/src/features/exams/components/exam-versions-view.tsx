@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { useExam } from "../queries";
 import { useDiscontinueExam, useExamVersions, useIdempotencyKey } from "../review-queries";
@@ -39,7 +39,7 @@ import type { ExamChange, ExamChangeKind, ExamVersionList, ExamVersionRow } from
 import { EXAM_CHECK_TONE } from "../status";
 import type { ExamDetail } from "../types";
 import { ExamVersionDetailDialog } from "./exam-versions-detail-dialog";
-import { IconLink, pathLabelCodes, reviewHref, structureHref, useChangeWhere } from "./exam-review-shared";
+import { IconLink, labelAfterName, labelBeforeName, pathLabelCodeNodes, reviewHref, richNodes, structureHref, useChangeWhereNode } from "./exam-review-shared";
 import { PublishExamDialog } from "./publish-exam-dialog";
 
 const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
@@ -232,7 +232,7 @@ function WorkingCopySection({
             {working.note && <p className="text-body text-text-secondary">{working.note}</p>}
             {data.items.length > 0 && working.unpublishedPaths.length > 0 && data.changes.length === 0 && (
               <p className="text-body text-text-secondary">
-                {t("working.pendingPaths", { paths: pathLabelCodes(working.unpublishedPaths, t("singlePath")) })}
+                {richNodes(t, "working.pendingPaths", { paths: pathLabelCodeNodes(working.unpublishedPaths, t("singlePath")) })}
               </p>
             )}
             <p className="flex items-start gap-2 text-body text-text-muted">
@@ -258,7 +258,7 @@ function WorkingCopySection({
 function ChangesSection({ exam, data }: { exam: ExamDetail; data: ExamVersionList }) {
   const t = useTranslations("exams.versions");
   const base = data.workingCopy?.baseVersion ?? null;
-  const whereLabel = useChangeWhere(exam);
+  const whereNode = useChangeWhereNode(exam);
   return (
     <section aria-labelledby="versions-changes-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -269,15 +269,16 @@ function ChangesSection({ exam, data }: { exam: ExamDetail; data: ExamVersionLis
       </div>
       <ul className="flex flex-col gap-3">
         {data.changes.map((change) => (
-          <ChangeItem key={change.id} exam={exam} change={change} where={whereLabel(change.where)} base={base} />
+          <ChangeItem key={change.id} exam={exam} change={change} where={whereNode(change.where)} base={base} />
         ))}
       </ul>
     </section>
   );
 }
 
-function ChangeItem({ exam, change, where, base }: { exam: ExamDetail; change: ExamChange; where: string; base: number | null }) {
+function ChangeItem({ exam, change, where, base }: { exam: ExamDetail; change: ExamChange; where: ReactNode; base: number | null }) {
   const t = useTranslations("exams.versions.changes");
+  const whereId = useId();
   const Icon = CHANGE_ICON[change.kind];
   return (
     <li className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4">
@@ -287,7 +288,9 @@ function ChangeItem({ exam, change, where, base }: { exam: ExamDetail; change: E
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-text">{t(`kind.${change.kind}`)}</span>
-          <span className="text-body text-text-secondary">{where}</span>
+          <span id={whereId} className="text-body text-text-secondary">
+            {where}
+          </span>
           {change.warning && (
             <StatusChip tone={change.warning === "INVALID" ? "danger" : "warning"}>
               {t(`warning.${change.warning}`)}
@@ -313,7 +316,9 @@ function ChangeItem({ exam, change, where, base }: { exam: ExamDetail; change: E
       </div>
       <IconLink
         href={structureHref(exam.id, change.blockId)}
-        label={t("openAria", { where })}
+        label={labelBeforeName(t, "openAria", "where")}
+        labelAfter={labelAfterName(t, "openAria", "where")}
+        nameId={whereId}
         tooltip={t("openTooltip")}
         icon={<ArrowRight />}
       />
@@ -341,10 +346,14 @@ function HistorySection({
     const status = (row: ExamVersionRow) => {
       if (row.state !== "SERVING") return <StatusChip tone="neutral">{t("state.RETIRED")}</StatusChip>;
       const partial = row.servingPaths.length < row.publishedPaths.length;
+      if (!partial) return <StatusChip tone="success">{t("state.SERVING")}</StatusChip>;
       return (
-        <StatusChip tone="success">
-          {partial ? t("state.servingPaths", { paths: pathLabelCodes(row.servingPaths, single) }) : t("state.SERVING")}
-        </StatusChip>
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <StatusChip tone="success">{t("state.SERVING")}</StatusChip>
+          <span className="text-caption text-text-secondary">
+            {pathLabelCodeNodes(row.servingPaths, single)}
+          </span>
+        </span>
       );
     };
     const actions = (row: ExamVersionRow) => (
@@ -384,7 +393,7 @@ function HistorySection({
         id: "paths",
         header: t("columns.paths"),
         cell: ({ row }) => (
-          <span className="block min-w-36">{pathLabelCodes(row.original.publishedPaths, single)}</span>
+          <span className="block min-w-36">{pathLabelCodeNodes(row.original.publishedPaths, single)}</span>
         ),
       },
       {
@@ -404,7 +413,7 @@ function HistorySection({
       render: (row) => (
         <ListCard
           title={t("versionName", { version: row.version })}
-          caption={pathLabelCodes(row.publishedPaths, single)}
+          caption={pathLabelCodeNodes(row.publishedPaths, single)}
           status={status(row)}
           actions={actions(row)}
           meta={[

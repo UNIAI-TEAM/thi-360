@@ -5,6 +5,7 @@ import { renderWithProviders } from "@/test/render";
 import { ExamPreviewPaper, sliceBySegments } from "../components/exam-preview-paper";
 import type { PreviewPaper, PreviewPart } from "../review-types";
 import { block, paperOf, partOf, question, segment, set, single } from "./preview-paper-fixtures";
+import { byTextContent } from "./text-content";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -127,7 +128,7 @@ describe("phân đoạn hiển thị Phần I–IV (R-133, H40)", () => {
 
     const first = screen.getByRole("region", { name: /^Phần I ·/ });
     const second = screen.getByRole("region", { name: /^Phần II ·/ });
-    expect(within(first).getByText(/Khối .*True\/False/)).toBeInTheDocument();
+    expect(within(first).getByText(byTextContent(/Khối .*True\/False/))).toBeInTheDocument();
     expect(within(first).getByText(/câu 8–9 · 2 câu/)).toBeInTheDocument();
     expect(within(second).getByText(/câu 10–15 · 6 câu/)).toBeInTheDocument();
     expect(within(second).queryByText(/True\/False/)).not.toBeInTheDocument();
@@ -163,7 +164,7 @@ describe("đề không có phân đoạn hiển thị", () => {
     expect(sliceBySegments(englishVsat(false), false)).toBeNull();
     expect(sliceBySegments({ ...englishVsat(false), displaySegments: [] }, false)).toBeNull();
     expect(screen.queryByRole("region", { name: /^Phần / })).not.toBeInTheDocument();
-    expect(screen.getByText(/Khối .*True\/False/)).toBeInTheDocument();
+    expect(screen.getByText(byTextContent(/Khối .*True\/False/))).toBeInTheDocument();
     expect(screen.getByText(/1 bộ × 8 câu · câu 8–15/)).toBeInTheDocument();
     expect(screen.getAllByText("The shared reading text")).toHaveLength(1);
     expect(empty.container.innerHTML).toBe(withoutHeadings);

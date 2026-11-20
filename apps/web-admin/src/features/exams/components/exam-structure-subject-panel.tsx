@@ -15,6 +15,7 @@ import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, 
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
+import { ExamName, richNodes } from "./exam-review-shared";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
 import { KnowledgeScopeField, MapidModeField } from "./knowledge-scope-field";
 import { AllocationGap } from "./allocation-gap";
@@ -662,7 +663,7 @@ function GroupList({
       {audio && (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-label font-semibold text-text tabular-nums">
-            {t("partSummary", { part: partName, known: partTotal !== null && partTotal > 0 ? "yes" : "no", count: partTotal ?? 0 })}
+            {richNodes(t, "partSummary", { part: <ExamName>{partName}</ExamName>, known: partTotal !== null && partTotal > 0 ? "yes" : "no", count: partTotal ?? 0 })}
           </p>
           <AudioChip audio={audio} />
           <span className="text-caption text-text-muted">{tRows("audioNote")}</span>
@@ -693,7 +694,7 @@ function GroupList({
               {section.blocks.map((block) => (
                 <tr key={block.id}>
                   <th scope="row" className={cn("border-b border-border px-3 py-2 text-left font-medium text-text", !mapid && "whitespace-nowrap")}>
-                    {block.name || t("untitled")}
+                    {block.name ? <ExamName>{block.name}</ExamName> : t("untitled")}
                   </th>
                   {mapid && <td className="min-w-56 border-b border-border px-2 py-2 text-text-secondary">{scopeCell(block)}</td>}
                   <td className={cn("border-b border-border px-2 py-2 text-text", !mapid && "whitespace-nowrap")}>
@@ -732,7 +733,7 @@ function GroupList({
             {audio && (
               <tfoot>
                 <tr className="bg-subtle font-bold tabular-nums text-text">
-                  <th scope="row" colSpan={4} className="px-3 py-2.5 text-left">{t("partTotal", { part: partName })}</th>
+                  <th scope="row" colSpan={4} className="px-3 py-2.5 text-left">{richNodes(t, "partTotal", { part: <ExamName>{partName}</ExamName> })}</th>
                   <td className="px-2 py-2.5 text-right">{format.number(sumQuestions)}</td>
                   <td className="px-2 py-2.5 whitespace-nowrap">{percentText(blockShare(sumQuestions, partTotal))}</td>
                   <td colSpan={3} />

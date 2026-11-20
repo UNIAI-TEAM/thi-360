@@ -265,6 +265,14 @@ export function toWireTemplate(template: ExamTemplate): WireTemplate {
     maxScore: template.maxScore ?? undefined,
     expertNote: template.expertNote ?? undefined,
     structure: { parts: template.parts.map((part, index) => wireTemplatePart(template, part, index)) } as unknown as WireTemplate["structure"],
+    // Tóm tắt từng phần của máy chủ: số câu theo dạng câu chỉ có khi mẫu của test khai `questionTypes`.
+    parts: template.parts.map((part, index) => ({
+      ...(part.partId ? { partId: part.partId } : {}),
+      order: index + 1,
+      name: part.name,
+      questionCount: part.questionCount,
+      questionTypes: part.questionTypes ?? [],
+    })),
   };
 }
 

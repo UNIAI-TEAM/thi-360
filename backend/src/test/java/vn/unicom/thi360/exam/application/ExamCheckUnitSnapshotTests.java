@@ -43,7 +43,7 @@ class ExamCheckUnitSnapshotTests {
         when(source.sourceRevisions(any())).thenReturn(Map.of());
         var reader = new ExamCheckSnapshotReader(exams, structures, mock(ExamKindProfileRepository.class),
                 references, source, mock(CatalogLookup.class), new ExamCheckFingerprint(mapper), mapper,
-                mock(org.springframework.jdbc.core.JdbcTemplate.class));
+                mock(org.springframework.jdbc.core.JdbcTemplate.class), mock(ExamCheckValidity.class));
 
         var before = reader.read(id);
         var after = reader.read(id);

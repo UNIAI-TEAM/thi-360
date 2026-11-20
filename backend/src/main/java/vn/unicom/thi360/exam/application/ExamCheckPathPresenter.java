@@ -240,7 +240,7 @@ final class ExamCheckPathPresenter {
             int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
             for (QuestionBlock block : info.section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
-                int count = block.questionCount() == null
+                int count = vn.unicom.thi360.exam.domain.BlockCounts.isRemainder(block)
                         ? Math.max(0, (section.questionCount() == null ? 0 : section.questionCount()) - fixed)
                         : fixedCount(block);
                 if (!subjectChoice) totalQuestions += count;
@@ -602,8 +602,8 @@ final class ExamCheckPathPresenter {
         for (SubjectPick pick : choices.get(index)) { prefix.add(pick); product(choices, index + 1, prefix, out); prefix.removeLast(); }
     }
     private static int fixedCount(QuestionBlock block) {
-        if (block.questionCount() != null) return block.questionCount();
-        return block.setCount() == null || block.setSize() == null ? 0 : block.setCount() * block.setSize();
+        Integer count = vn.unicom.thi360.exam.domain.BlockCounts.configured(block);
+        return count == null ? 0 : count;
     }
     private static int fixedCount(GroupQuota group) {
         if (group.kind() == GroupQuota.GroupKind.SET) return group.setCount() * group.setSize();

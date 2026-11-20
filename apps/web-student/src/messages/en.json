@@ -90,7 +90,7 @@
         "cancel": "Discard changes",
         "fullNameLabel": "Full name",
         "fullNameRequired": "Please enter your full name.",
-        "fullNameTooLong": "Full name is up to 100 characters.",
+        "fullNameTooLong": "Full name is up to 200 characters.",
         "genericError": "Unable to save changes. Please try again.",
         "phoneEmpty": "You have not entered a phone number.",
         "phoneInvalid": "Phone number has 10 digits and starts with 0.",

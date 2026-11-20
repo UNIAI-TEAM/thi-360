@@ -1,4 +1,5 @@
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
+import type { BlockField } from "./components/block-form-fields";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathChoice } from "./review-types";
 import type { ExamDetail, ExamPart, ExamSection, ExamSectionState, QuestionBlock, StructureCombination } from "./types";
 
@@ -197,12 +198,51 @@ export function groupIssues(issues: readonly CheckIssue[], by: IssueGrouping): I
 }
 
 /**
- * Chỗ sửa của một vấn đề ở bước Cấu trúc: khối, môn, lựa chọn của phần, rồi phần (`?block=`, `?section=`, `?part=&option=`,
- * `?part=`). Vấn đề cả bài không có chỗ sửa riêng (`null`).
+ * Ô của khối mà vấn đề nói tới, để bấm lỗi đưa tiêu điểm vào đúng ô (`?block=<id>&field=<ô>`). Chỉ các mã gắn với một ô
+ * có mỏ neo trên màn nhóm; mã còn lại (chỉ tiêu, nguồn câu, ma trận) chỉ mở khối.
+ */
+export function issueBlockField(issue: CheckIssue): BlockField | null {
+  switch (issue.code) {
+    case "SET_SIZE_MISMATCH":
+      return "setCount";
+    case "ITEM_SHAPE_SHORTAGE":
+      return "itemShape";
+    case "ANSWER_FORMAT_SHORTAGE":
+      return "answerFormats";
+    case "CHILD_CONDITION_SHORTAGE":
+      return "childConditions";
+    case "SLOT_SOURCE_SHORTAGE":
+      return "slots";
+    case "OMITTED_BLOCK_LOCKED":
+      return "omitted";
+    case "BLOCK_COUNT_LOCKED":
+      switch (issue.dimension) {
+        case "COUNT":
+          return "questionCount";
+        case "SET_COUNT":
+          return "setCount";
+        case "SET_SIZE":
+          return "setSize";
+        case "TYPE":
+          return "questionType";
+        default:
+          return null;
+      }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Chỗ sửa của một vấn đề ở bước Cấu trúc: khối (kèm ô khi biết), môn, lựa chọn của phần, rồi phần (`?block=`, `?section=`,
+ * `?part=&option=`, `?part=`). Vấn đề cả bài không có chỗ sửa riêng (`null`).
  */
 export function issueStructureHref(examId: string, issue: CheckIssue): string | null {
   const base = `/exams/${encodeURIComponent(examId)}/structure`;
-  if (issue.blockId) return `${base}?block=${encodeURIComponent(issue.blockId)}`;
+  if (issue.blockId) {
+    const field = issueBlockField(issue);
+    return `${base}?block=${encodeURIComponent(issue.blockId)}${field ? `&field=${field}` : ""}`;
+  }
   if (issue.sectionId) return `${base}?section=${encodeURIComponent(issue.sectionId)}`;
   if (issue.partId && issue.optionId) {
     return `${base}?part=${encodeURIComponent(issue.partId)}&option=${encodeURIComponent(issue.optionId)}`;

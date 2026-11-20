@@ -25,8 +25,12 @@ public class ExamCheckUnitFingerprint {
 
     public record Identity(String key, List<String> sectionIds, String fingerprint) { }
 
+    /**
+     * {@code catalog} supplies the slice of the catalog this unit reads (FU-BE9-1), in place of the revision of the whole
+     * catalog, so a catalog edit changes the fingerprint of the units that use the edited item only.
+     */
     public Identity calculate(String subject, List<ExamSection> sections, List<ExamQuota> quotas,
-            ExamCheckFingerprint.Config config, Long profileRevision, long catalogRevision,
+            ExamCheckFingerprint.Config config, Long profileRevision, ExamCheckUnitCatalogSlice catalog,
             List<SectionOnPath> resolvedSections) {
         List<ExamSection> ordered = sections.stream().sorted(Comparator.comparing(ExamSection::id)).toList();
         List<String> ids = ordered.stream().map(ExamSection::id).toList();
@@ -47,10 +51,11 @@ public class ExamCheckUnitFingerprint {
         }
         input.set("examQuotas", mapper.valueToTree(required));
         removeDisplayNames(input);
+        input.set("catalog", catalog.of(subject, input));
         String key;
         try { key = mapper.writeValueAsString(List.of(subject, ids)); }
         catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException(e); }
-        return new Identity(key, ids, fingerprints.calculate(input, config, profileRevision, catalogRevision));
+        return new Identity(key, ids, fingerprints.calculate(input, config, profileRevision, 0L));
     }
 
     private static void removeDisplayNames(JsonNode node) {

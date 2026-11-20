@@ -64,6 +64,7 @@ import { CreateExamStepper } from "./create-exam-stepper";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { ExamOverviewTable } from "./exam-overview-table";
+import { ExamName, richNodes } from "./exam-review-shared";
 
 const EXAMS_HREF = "/exams";
 /** Quyền tạo bài (cổng ở `app/(shell)/exams/new/layout.tsx`); chỉ để nêu trong thông báo khi máy chủ trả 403. */
@@ -304,11 +305,11 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
             const name = lookup.subject(code);
             return name === code ? undefined : name;
           },
-          partSections: (partRow) => template?.parts[Number(partRow.key.slice(2))]?.sections ?? [],
+          partSections: (partRow) => partRow.partIndex === undefined ? [] : (template?.parts[partRow.partIndex]?.sections ?? []),
           // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
           audioLabel: audioSplit
             ? (partRow) => {
-                const audio = templatePartAudio(template?.parts[Number(partRow.key.slice(2))]);
+                const audio = templatePartAudio(partRow.partIndex === undefined ? undefined : template?.parts[partRow.partIndex]);
                 return audio ? tStep(audio === "REQUIRED" ? "skillListening" : "skillReading") : undefined;
               }
             : undefined,
@@ -662,7 +663,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               templatesStatus === "loading"
                 ? undefined
                 : templateName(template)
-                  ? tOverview("description", { template: templateName(template) ?? "" })
+                  ? richNodes(tOverview, "description", { template: <ExamName>{templateName(template) ?? ""}</ExamName> })
                   : tOverview("descriptionNoTemplate")
             }
           >
@@ -776,7 +777,7 @@ function FormSection({
 }: {
   step: number;
   title: string;
-  description?: string;
+  description?: ReactNode;
   children: ReactNode;
 }) {
   const headingId = useId();

@@ -21,7 +21,8 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 @Component
 public class PreviewSnapshotStore {
     private static final String KEY_PREFIX = "exam:preview:";
-    private static final Duration TTL = Duration.ofMinutes(30);
+    /** How long a stored preview lives after generation; the preview result reports it as {@code expiresAt}. */
+    public static final Duration TTL = Duration.ofMinutes(30);
     /**
      * Raises the absolute expiry to {@code ARGV[1]} (epoch ms) when that is later, and returns the expiry the key
      * holds afterwards, read back from Redis itself ({@code PEXPIRETIME}, Redis 7); -1 when the key is gone.

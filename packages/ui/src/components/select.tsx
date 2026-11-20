@@ -54,8 +54,8 @@ export function Select({
       <SelectPrimitive.Trigger
         className={cn(
           fieldBase,
-          "flex items-center justify-between gap-2 px-3 text-left data-[placeholder]:text-text-placeholder",
-          size === "lg" ? "h-12" : "h-10",
+          "flex items-center justify-between gap-2 px-3 text-left data-[placeholder]:text-text-placeholder [&>span:first-child]:min-w-0",
+          size === "lg" ? "min-h-12 py-2" : "min-h-10 py-1.5",
           className,
         )}
         {...triggerProps}
@@ -78,7 +78,7 @@ export function Select({
                 value={option.value}
                 disabled={option.disabled}
                 textValue={option.textValue ?? (typeof option.label === "string" ? option.label : undefined)}
-                className="relative flex h-9 cursor-default items-center rounded-sm pr-8 pl-3 text-label font-medium text-text outline-hidden select-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-text"
+                className="relative flex min-h-9 cursor-default items-center rounded-sm py-1.5 pr-8 pl-3 text-label font-medium text-text outline-hidden select-none data-[disabled]:opacity-50 data-[highlighted]:bg-subtle data-[state=checked]:text-primary-text"
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator className="absolute right-2.5">

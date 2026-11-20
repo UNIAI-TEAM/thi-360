@@ -89,6 +89,17 @@ export function TopicQuotaTable({
 
   const patch = (quotaId: string, change: Partial<TopicQuota>) =>
     onChange(quotas.map((quota) => (quota.id === quotaId ? { ...quota, ...change } : quota)));
+  // Bảng lẫn dòng nhập theo tỷ lệ (nạp từ máy chủ) và dòng nhập theo số câu vẫn là bảng "theo số câu": sửa số câu của dòng
+  // còn mang `percent` thì bỏ `percent`, nếu không `topicCountFor` đọc lại từ tỷ lệ cũ và số hiện trên màn không đổi.
+  const setCount = (quotaId: string, count: number) =>
+    onChange(
+      quotas.map((quota) => {
+        if (quota.id !== quotaId) return quota;
+        const next: TopicQuota = { ...quota, count };
+        delete next.percent;
+        return next;
+      }),
+    );
   const setEntryMode = (next: EntryMode) => {
     setEntry(next);
     onChange(convertTopicEntry(quotas, next, total));
@@ -234,7 +245,7 @@ export function TopicQuotaTable({
                             value={quota.count}
                             readOnly={readOnly}
                             aria-label={t("countAria", { name: label })}
-                            onValueChange={(value) => patch(quota.id, { count: value })}
+                            onValueChange={(value) => setCount(quota.id, value)}
                           />
                           <span className="text-text-muted">{t("countUnit")}</span>
                         </span>

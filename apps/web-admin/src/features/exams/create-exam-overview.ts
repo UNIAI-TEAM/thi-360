@@ -23,6 +23,8 @@ export interface OverviewRow {
   subjectCode: string;
   /** Năng lực đầu tiên của mục (V-ACT: hai mục cùng môn SCIENTIFIC_THINKING tách tên theo năng lực). */
   competencyCode?: string;
+  /** Dòng phần: vị trí của phần trong mẫu hoặc cấu trúc (không suy từ `key`); dòng khác để trống. */
+  partIndex?: number;
   /** Khóa so khớp gửi máy chủ. */
   partId?: string;
   partCode?: string;
@@ -73,6 +75,7 @@ function partRow(part: ExamTemplate["parts"][number], index: number): OverviewRo
     kind: "part",
     label: part.name,
     subjectCode: "",
+    partIndex: index,
     partId: part.partId || undefined,
     questionCount: formatNumber(base.questionCount),
     durationMinutes: formatNumber(base.durationMinutes),

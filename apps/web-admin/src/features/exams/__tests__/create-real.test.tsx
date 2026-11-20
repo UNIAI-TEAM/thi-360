@@ -64,7 +64,7 @@ const part = (order: number, name: string, count: number, minutes: number | null
 
 /** Mẫu theo dạng máy chủ trả: `structure` là tài liệu `{ parts }`. */
 function template(code: string, fields: Wire, parts: Wire[]): Wire {
-  return { active: true, scope: "SUBJECT", timing: "PER_PART", buildMode: "STANDARD", isDefault: true, ...fields, code, structure: { parts } };
+  return { active: true, scope: "SUBJECT", timing: "PER_PART", buildMode: "STANDARD", isDefault: true, ...fields, code, structure: { parts }, parts: [] };
 }
 
 const HSA_FULL = template("HSA_FULL", { kindCode: "HSA", scope: "FULL", label: "HSA · Toàn bài" }, [

@@ -3,6 +3,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { createContext, use, useEffect, useRef, type ComponentProps } from "react";
 import { cn } from "../lib/cn";
+import { followActiveTab } from "../lib/reveal-tab";
 import { focusRing } from "../lib/styles";
 
 /**
@@ -23,21 +24,6 @@ export function Tabs({ variant = "content", ...props }: TabsProps) {
   );
 }
 
-/**
- * Cuộn riêng thanh tab (không cuộn trang) để tab đang chọn hiện trọn, kèm một phần tab kế bên: bấm vào một tab
- * đang lộ một nửa thì tab sau nó cũng ló ra, người dùng chuột không có bánh xe ngang vẫn tới được mọi tab.
- * Tự tính `scrollLeft` thay cho `scrollIntoView`: trình duyệt chưa hỗ trợ `container: "nearest"` sẽ cuộn cả trang.
- */
-function revealTab(list: HTMLElement, tab: HTMLElement) {
-  const peek = tab.offsetHeight;
-  const listBox = list.getBoundingClientRect();
-  const tabBox = tab.getBoundingClientRect();
-  const hiddenAtStart = tabBox.left - peek - listBox.left;
-  const hiddenAtEnd = tabBox.right + peek - listBox.right;
-  if (hiddenAtStart < 0) list.scrollLeft += hiddenAtStart;
-  else if (hiddenAtEnd > 0) list.scrollLeft += hiddenAtEnd;
-}
-
 export function TabsList({ className, ref, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
   const variant = use(TabsVariantContext);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -48,15 +34,7 @@ export function TabsList({ className, ref, ...props }: ComponentProps<typeof Tab
   useEffect(() => {
     const list = listRef.current;
     if (!scrolls || !list) return;
-    const reveal = () => {
-      const active = list.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
-      if (active) revealTab(list, active);
-    };
-    reveal();
-    if (typeof MutationObserver === "undefined") return;
-    const observer = new MutationObserver(reveal);
-    observer.observe(list, { attributes: true, attributeFilter: ["data-state"], subtree: true });
-    return () => observer.disconnect();
+    return followActiveTab(list, '[role="tab"][data-state="active"]', "data-state");
   }, [scrolls]);
 
   return (

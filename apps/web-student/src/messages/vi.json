@@ -90,7 +90,7 @@
         "cancel": "Hủy thay đổi",
         "fullNameLabel": "Họ và tên",
         "fullNameRequired": "Vui lòng nhập họ và tên.",
-        "fullNameTooLong": "Họ và tên tối đa 100 ký tự.",
+        "fullNameTooLong": "Họ và tên tối đa 200 ký tự.",
         "genericError": "Không lưu được thay đổi. Vui lòng thử lại.",
         "phoneEmpty": "Bạn chưa nhập số điện thoại.",
         "phoneInvalid": "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.",
