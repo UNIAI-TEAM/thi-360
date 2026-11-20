@@ -97,7 +97,6 @@ test("HSA Văn: nhóm lấy câu mở và sửa qua danh sách dòng", async ({ 
   });
 
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
-  await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
   const rows = page.locator("[data-form-row]");
   await expect(rows).toHaveCount(5);
   await expect(page.locator("[data-form-slots] [data-form-slot]")).toHaveCount(5);

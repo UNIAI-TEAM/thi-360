@@ -33,8 +33,8 @@ test("HSA Văn: bảng 5 dòng theo mẫu, nhóm 5 có công tắc đảo; sửa
   const admin = await adminApi();
   const id = await createExam(admin, { code: `HSA-V-E2E-${RUN_ID}`.toUpperCase(), name: `HSA Văn dòng ${RUN_ID}`, kind: "HSA", scope: "SUBJECT", subjectCode: "VAN" });
 
-  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
-  await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
+  const initialSection = allSections(await getStructure(admin, id))[0]!;
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure?section=${initialSection.id}`);
   await expect(page.getByRole("heading", { name: "Các dòng lấy câu" })).toBeVisible();
   const rows = page.locator("[data-form-row]");
   await expect(rows).toHaveCount(5);
@@ -65,8 +65,8 @@ test("THPTQG Lý: Phân bổ đối chiếu độ khó 8/6/4 lưu được và K
   const admin = await adminApi();
   const id = await createExam(admin, { code: `THPT-LY-E2E-${RUN_ID}`.toUpperCase(), name: `THPTQG Lý dòng ${RUN_ID}`, kind: "THPTQG", scope: "SUBJECT", subjectCode: "LY" });
 
-  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
-  await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
+  const initialSection = allSections(await getStructure(admin, id))[0]!;
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure?section=${initialSection.id}`);
   await expect(page.getByRole("heading", { name: "Các dòng lấy câu" })).toBeVisible();
   await page.locator("[data-reference-block] summary").click();
   const cells = page.locator("[data-reference-block]").getByRole("textbox", { name: /^Độ khó: .*số câu$/ });
@@ -99,7 +99,14 @@ for (const kind of ["HSCA", "VSAT"] as const) {
   test(`omittedReenableViaApi: ${kind} Văn không cho bật lại dòng Viết`, async ({ context }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
-    const id = await createExam(admin, { code: `${kind}-OMIT-${RUN_ID}`.toUpperCase(), name: `${kind} Văn ${RUN_ID}`, kind, scope: "SUBJECT", subjectCode: "VAN" });
+    const id = await createExam(admin, {
+      code: `${kind}-OMIT-${RUN_ID}`.toUpperCase(),
+      name: `${kind} Văn ${RUN_ID}`,
+      kind,
+      scope: "SUBJECT",
+      subjectCode: "VAN",
+      durationMinutes: kind === "HSCA" ? 90 : 60,
+    });
     const before = await getStructure(admin, id);
     const writing = allSections(before).flatMap((section) => section.blocks ?? []).find((block) => block.questionType === "ESSAY" && block.omitted === true);
     expect(writing?.id).toBeTruthy();
@@ -131,13 +138,20 @@ for (const kind of ["HSCA", "VSAT"] as const) {
 }
 
 for (const scenario of [
-  { kind: "HSCA", scope: "SUBJECT", subjectCode: "ANH", match: /Đọc – chùm 10 câu/, setSize: 10 },
-  { kind: "VACT", scope: "FULL", subjectCode: undefined, match: /Logic, phân tích số liệu/, setSize: 3 },
+  { kind: "HSCA", scope: "SUBJECT", subjectCode: "ANH", durationMinutes: 60, match: /Đọc – chùm 10 câu/, setSize: 10 },
+  { kind: "VACT", scope: "FULL", subjectCode: undefined, durationMinutes: undefined, match: /Logic, phân tích số liệu/, setSize: 3 },
 ] as const) {
   test(`splitRowsPutGet: ${scenario.kind} giữ mục và điều kiện audio sau khi tách`, async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
-    const id = await createExam(admin, { code: `${scenario.kind}-SPLIT-${RUN_ID}`.toUpperCase(), name: `${scenario.kind} split ${RUN_ID}`, kind: scenario.kind, scope: scenario.scope, ...(scenario.subjectCode ? { subjectCode: scenario.subjectCode } : {}) });
+    const id = await createExam(admin, {
+      code: `${scenario.kind}-SPLIT-${RUN_ID}`.toUpperCase(),
+      name: `${scenario.kind} split ${RUN_ID}`,
+      kind: scenario.kind,
+      scope: scenario.scope,
+      ...(scenario.subjectCode ? { subjectCode: scenario.subjectCode } : {}),
+      ...(scenario.durationMinutes ? { durationMinutes: scenario.durationMinutes } : {}),
+    });
     const before = await getStructure(admin, id);
     const section = allSections(before).find((item) => item.blocks?.some((block) => scenario.match.test(block.name ?? "")));
     const parent = section?.blocks?.find((block) => scenario.match.test(block.name ?? ""));
@@ -219,8 +233,8 @@ test("SP2E Lịch sử: không hiện khối lớp sau khi lưu", async ({ conte
   await loginAdmin(context, "vi");
   const admin = await adminApi();
   const id = await createExam(admin, { code: `SP2E-SU-${RUN_ID}`.toUpperCase(), name: `SP2E Sử ${RUN_ID}`, kind: "SP2E", scope: "SUBJECT", subjectCode: "SU" });
-  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
-  await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
+  const firstSection = allSections(await getStructure(admin, id))[0]!;
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure?section=${firstSection.id}`);
   await page.locator("[data-reference-block] summary").click();
   await expect(page.locator('[data-reference-dimension="GRADE"]')).toHaveCount(0);
   const row = page.locator("[data-form-row]").first();
@@ -233,7 +247,6 @@ test("SP2E Lịch sử: không hiện khối lớp sau khi lưu", async ({ conte
   await page.getByRole("button", { name: "Lưu", exact: true }).click();
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
   await page.reload();
-  await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
   await page.locator("[data-reference-block] summary").click();
   await expect(page.locator('[data-reference-dimension="GRADE"]')).toHaveCount(0);
 });
@@ -309,7 +322,7 @@ test("rowPercentWholeSets: 25% của 40 không chia được chùm 4, chặn lư
 test("SP2E Văn: bật lại dòng Viết được lưu mà không có lỗi khóa", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const admin = await adminApi();
-  const id = await createExam(admin, { code: `SP2E-VAN-${RUN_ID}`.toUpperCase(), name: `SP2E Văn ${RUN_ID}`, kind: "SP2E", scope: "SUBJECT", subjectCode: "VAN" });
+  const id = await createExam(admin, { code: `SP2E-VAN-${RUN_ID}`.toUpperCase(), name: `SP2E Văn ${RUN_ID}`, kind: "SP2E", scope: "SUBJECT", subjectCode: "VAN", durationMinutes: 60 });
   const before = await getStructure(admin, id);
   const section = allSections(before).find((item) => item.blocks?.some((block) => block.questionType === "ESSAY" && block.omitted === true))!;
   const writing = section.blocks!.find((block) => block.questionType === "ESSAY" && block.omitted === true)!;
