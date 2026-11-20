@@ -2,6 +2,7 @@ package vn.unicom.thi360.exam.application;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +38,7 @@ import vn.unicom.thi360.exam.domain.solver.SlotParentQuota;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
 import vn.unicom.thi360.exam.domain.solver.SubjectChoice;
 import vn.unicom.thi360.exam.domain.solver.SubjectQuota;
+import vn.unicom.thi360.exam.domain.solver.TopicCap;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.AnswerFormat;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -54,9 +56,24 @@ public class SolverInputBuilder {
         this.limits = limits;
     }
 
-    public record SolverInput(List<SolvePart> parts, SolverCandidates candidates) {
+    /**
+     * {@code mapid}: compiled MAPID rules by section id, only for sections that have a {@code mapidMode}. The caps
+     * and exclusions in it are data only until the solver and the source filter read them.
+     */
+    public record SolverInput(List<SolvePart> parts, SolverCandidates candidates,
+            Map<String, CompiledMapidRules> mapid) {
         public SolverInput {
             parts = List.copyOf(parts);
+            mapid = Map.copyOf(mapid);
+        }
+
+        public SolverInput(List<SolvePart> parts, SolverCandidates candidates) {
+            this(parts, candidates, Map.of());
+        }
+
+        /** The same candidates and compiled rules over other parts. */
+        public SolverInput withParts(List<SolvePart> other) {
+            return new SolverInput(other, candidates, mapid);
         }
     }
 
@@ -97,6 +114,24 @@ public class SolverInputBuilder {
 
         public Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> loadedCandidates() {
             return Map.copyOf(loaded);
+        }
+
+        /**
+         * Single questions of the subject that match the source nodes of {@code group} (the group's own knowledge
+         * scope and exclusions, no other condition): what the admin has when the group needs whole sets and
+         * only scattered questions carry the code (UNI-2758). -1 when the pool is truncated and so unknown.
+         */
+        public long singlesFor(GroupQuota group) {
+            var filter = filters.get(group);
+            if (filter == null || filter.subjectId() == null) return -1;
+            var singles = new QuestionSourcePort.Filter(filter.subjectId(), filter.knowledgeGroups(), List.of(), null,
+                    null, null, List.of(), List.of(), null, null, List.of(), List.of(), List.of(),
+                    filter.additionalKnowledgeGroups(), List.of(), null, filter.additionalEveryChildInScope(),
+                    QuestionSourcePort.AudioRequirement.ANY, filter.excludedKnowledge(), null,
+                    filter.additionalEveryChildSameNode());
+            var found = source.findCandidates(singles, fetchLimit);
+            if (found.size() >= fetchLimit) return -1;
+            return found.stream().filter(candidate -> candidate.setId() == null).count();
         }
 
         public enum FilterDimension { ITEM_SHAPE, ANSWER_FORMAT, CHILD_CONDITION, AUDIO, POINTS }
@@ -142,7 +177,8 @@ public class SolverInputBuilder {
                     filter.additionalCompetencyGroups(), filter.everyChildInScope(),
                     filter.additionalEveryChildInScope(),
                     dimension == FilterDimension.AUDIO ? QuestionSourcePort.AudioRequirement.ANY
-                            : filter.audioRequirement());
+                            : filter.audioRequirement(), filter.excludedKnowledge(), filter.everyChildSameNode(),
+                    filter.additionalEveryChildSameNode());
         }
 
         /**
@@ -210,6 +246,7 @@ public class SolverInputBuilder {
         Map<GroupQuota, QuestionSourcePort.Filter> filters = new LinkedHashMap<>();
         java.util.Set<GroupQuota> setRowGroups = new java.util.HashSet<>();
         List<SolvePart> parts = new ArrayList<>();
+        Map<String, CompiledMapidRules> mapid = new LinkedHashMap<>();
         Map<String, List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota>> examQuotas = new HashMap<>();
         for (var quota : document.examQuotas()) {
             if (quota.enforcement() != QuotaEnforcement.REQUIRED || quota.subjectCodes().size() != 1) continue;
@@ -226,11 +263,11 @@ public class SolverInputBuilder {
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .toList()) {
             List<SectionOnPath> common = sections(part.sections(), false, filters, knowledge,
-                    knowledgeById, descendants, subjects, examQuotas, setRowGroups);
+                    knowledgeById, descendants, subjects, examQuotas, setRowGroups, mapid);
             if (part.codeSource() != null) {
                 Map<String, SectionOnPath> pool = new LinkedHashMap<>();
                 for (SectionOnPath section : sections(part.subjectPool(), false, filters, knowledge,
-                        knowledgeById, descendants, subjects, examQuotas, setRowGroups)) {
+                        knowledgeById, descendants, subjects, examQuotas, setRowGroups, mapid)) {
                     pool.put(section.subjectCode(), section);
                 }
                 List<SolveOption> codeOptions = new ArrayList<>();
@@ -256,7 +293,7 @@ public class SolverInputBuilder {
             for (ExamPartOption option : part.options()) {
                 boolean choice = option.kind() == OptionKind.SUBJECT_CHOICE;
                 List<SectionOnPath> optionSections = new ArrayList<>(sections(option.sections(), choice,
-                        filters, knowledge, knowledgeById, descendants, subjects, examQuotas, setRowGroups));
+                        filters, knowledge, knowledgeById, descendants, subjects, examQuotas, setRowGroups, mapid));
                 if (!option.blocks().isEmpty()) {
                     if (choice || option.kind() != OptionKind.SUBJECT) {
                         throw new IllegalArgumentException("Option-level blocks require a subject option");
@@ -265,7 +302,7 @@ public class SolverInputBuilder {
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
                     optionSections.addAll(sections(List.of(synthetic), false, filters, knowledge,
-                            knowledgeById, descendants, subjects, examQuotas, setRowGroups));
+                            knowledgeById, descendants, subjects, examQuotas, setRowGroups, mapid));
                 }
                 if (choice) {
                     if (option.chooseSubjects() == null || option.countsByPick() == null) {
@@ -283,7 +320,7 @@ public class SolverInputBuilder {
         }
         int limit = buildLimits.maxCandidatesPerBlock();
         return new SolverInput(parts, new SolverCandidates(source, filters, setRowGroups,
-                limit == Integer.MAX_VALUE ? limit : limit + 1));
+                limit == Integer.MAX_VALUE ? limit : limit + 1), mapid);
     }
 
     private List<SectionOnPath> sections(List<ExamSection> sections, boolean choice,
@@ -291,15 +328,19 @@ public class SolverInputBuilder {
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
             Map<String, UUID> subjects,
             Map<String, List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota>> examQuotas,
-            java.util.Set<GroupQuota> setRowGroups) {
+            java.util.Set<GroupQuota> setRowGroups, Map<String, CompiledMapidRules> mapid) {
         List<SectionOnPath> result = new ArrayList<>();
-        for (ExamSection section : sections) {
+        for (ExamSection declared : sections) {
+            CompiledMapidRules compiled = MapidRuleCompiler.compile(declared);
+            if (declared.mapidMode() != null) mapid.put(declared.id(), compiled);
+            ExamSection section = compiled.effectiveSection();
+            boolean matrix = section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX;
             UUID subject = subjects.computeIfAbsent(section.subjectCode(), code ->
                     catalog.findActiveItem("SUBJECT", code).map(CatalogItemView::id).orElse(null));
             List<GroupQuota> groups = new ArrayList<>();
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
-                GroupQuota parent = group(block, knowledge, knowledgeById, descendants);
+                GroupQuota parent = group(block, knowledge, knowledgeById, descendants, matrix);
                 int count = block.slots().isEmpty() ? 1 : block.setCount();
                 SlotParentQuota shared = block.slots().isEmpty() ? null
                         : new SlotParentQuota(block.id(), parent.matrix(), parent.competencies(),
@@ -313,7 +354,12 @@ public class SolverInputBuilder {
                             parent.requiredPointsPerUnit(), null, shared);
                     if (AnswerQuotaCounting.countsInSetRow(section, block)) setRowGroups.add(group);
                     KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(), section.knowledgeScope());
-                    List<List<UUID>> subtrees = expandScope(scope, knowledge, knowledgeById, descendants);
+                    // SOURCE rules (BA 3, "chỉ lấy"): every rule of the subject and of the group must match, A|B|C inside
+                    // one rule stays an OR. The first rule rides in knowledgeGroups, the others in additional groups.
+                    List<List<UUID>> allSources = compiled.sourcesOf(block.id());
+                    List<List<UUID>> subtrees = allSources.isEmpty()
+                            ? expandScope(scope, knowledge, knowledgeById, descendants)
+                            : expandNodes(allSources.getFirst(), knowledge, knowledgeById, descendants);
                     List<List<List<UUID>>> slotScopes = slot == null || slot.knowledgeScope() == null
                             || slot.knowledgeScope().nodeIds().isEmpty() ? List.of()
                             : List.of(expandScope(slot.knowledgeScope(), knowledge, knowledgeById, descendants));
@@ -327,19 +373,32 @@ public class SolverInputBuilder {
                     List<List<String>> slotCompetencies = slot == null || slot.knowledgeScope() == null
                             || slot.knowledgeScope().competencyCodes().isEmpty() ? List.of()
                             : List.of(slot.knowledgeScope().competencyCodes());
+                    List<List<List<UUID>>> additionalKnowledge = new ArrayList<>(slotScopes);
+                    List<Boolean> additionalEvery = new ArrayList<>(
+                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())));
+                    List<Boolean> additionalSameNode = new ArrayList<>(Collections.nCopies(slotScopes.size(), Boolean.FALSE));
+                    for (int s = 1; s < allSources.size(); s++) {
+                        additionalKnowledge.add(expandNodes(allSources.get(s), knowledge, knowledgeById, descendants));
+                        additionalEvery.add(Boolean.TRUE);
+                        additionalSameNode.add(Boolean.TRUE);
+                    }
+                    List<UUID> excluded = withDescendants(compiled.exclusions().getOrDefault(block.id(), List.of()),
+                            knowledge, knowledgeById, descendants);
                     filters.put(group, new QuestionSourcePort.Filter(subject, subtrees,
                             answerTypes, block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                             scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                             shape, answerFormats(block), conditions,
-                            slotTags, slotScopes, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
-                            slotScopes.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slot.knowledgeScope().everyChildInScope())),
-                            audio(section.audioRequirement())));
+                            slotTags, additionalKnowledge, slotCompetencies, scope == null ? null : scope.everyChildInScope(),
+                            additionalEvery, audio(section.audioRequirement()), excluded,
+                            // BA 5: a set counts for a SOURCE rule when all its children carry the SAME code of it.
+                            allSources.isEmpty() ? null : Boolean.TRUE, additionalSameNode));
                     groups.add(group);
                 }
             }
             result.add(new SectionOnPath(section.subjectCode(), section.id(), choice ? null : section.questionCount(),
                     subjectQuota(section, knowledge, knowledgeById, descendants,
-                            examQuotas.getOrDefault(section.subjectCode(), List.of())), groups,
+                            examQuotas.getOrDefault(section.subjectCode(), List.of()), compiled.caps(),
+                            matrix), groups,
                     section.choiceGroup() == null ? null : section.choiceGroup().name()));
         }
         return result;
@@ -382,8 +441,15 @@ public class SolverInputBuilder {
         })).toList();
     }
 
-    private static GroupQuota group(QuestionBlock block, List<CatalogItemView> knowledge,
+    /** One OR-group of a SOURCE rule: every node with its descendants (an unknown node is an empty subtree). */
+    static List<List<UUID>> expandNodes(List<UUID> nodes, List<CatalogItemView> knowledge,
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+        return expandScope(new KnowledgeScope(nodes, List.of(), null), knowledge, knowledgeById, descendants);
+    }
+
+    private static GroupQuota group(QuestionBlock block, List<CatalogItemView> knowledge,
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
+            boolean mapid) {
         boolean set = block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE;
         List<CompetencyQuota> competencies = new ArrayList<>();
         if (block.matrix() != null) {
@@ -400,12 +466,13 @@ public class SolverInputBuilder {
                 set ? block.setCount() : null, set ? block.setSize() : null,
                 set && block.childAnswerType() != null ? block.childAnswerType().name() : null,
                 matrix(block.matrix()), competencies, List.of(), block.requiredPointsPerQuestion(), null,
-                null, topics(block.topicQuotas(), knowledge, knowledgeById, descendants));
+                null, topics(block.topicQuotas(), knowledge, knowledgeById, descendants, mapid));
     }
 
     private static SubjectQuota subjectQuota(ExamSection section, List<CatalogItemView> knowledge,
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
-            List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota> examQuotas) {
+            List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota> examQuotas,
+            List<CompiledMapidRules.Cap> caps, boolean mapid) {
         SubjectQuota.AnswerQuotas answers = null;
         if (section.answerQuotas() != null) {
             answers = new SubjectQuota.AnswerQuotas(section.answerQuotas().items().stream()
@@ -414,12 +481,29 @@ public class SolverInputBuilder {
                             : QuotaUnit.valueOf(section.answerQuotas().unit().name()));
         }
         return new SubjectQuota(answers, matrix(section.matrix()),
-                topics(section.topicQuotas(), knowledge, knowledgeById, descendants), examQuotas);
+                topics(section.topicQuotas(), knowledge, knowledgeById, descendants, mapid), examQuotas,
+                caps.stream().map(cap -> new TopicCap(cap.ruleId(),
+                        cap.scope() == CompiledMapidRules.Cap.Scope.GROUP ? cap.groupId() : null,
+                        withDescendants(cap.nodeIds(), knowledge, knowledgeById, descendants).stream()
+                                .map(UUID::toString).toList(), cap.max())).toList(),
+                mapid);
+    }
+
+    /** The nodes and every descendant of each, without duplicates; unknown nodes stay out, as for topic quotas. */
+    private static List<UUID> withDescendants(List<UUID> nodes, List<CatalogItemView> knowledge,
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+        return nodes.stream().flatMap(id -> descendants.computeIfAbsent(id, key -> {
+            CatalogItemView root = knowledgeById.get(key);
+            if (root == null) return List.of();
+            return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                    .map(CatalogItemView::id).toList();
+        }).stream()).distinct().toList();
     }
 
     private static List<vn.unicom.thi360.exam.domain.solver.TopicQuota> topics(
             List<vn.unicom.thi360.exam.domain.TopicQuota> quotas, List<CatalogItemView> knowledge,
-            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
+            boolean mapid) {
         return quotas.stream().filter(q -> q.enforcement() != QuotaEnforcement.REFERENCE)
                 .map(q -> new vn.unicom.thi360.exam.domain.solver.TopicQuota(q.id(),
                         q.nodeIds().stream().flatMap(id -> descendants.computeIfAbsent(id, key -> {
@@ -428,7 +512,7 @@ public class SolverInputBuilder {
                             return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                                     .map(CatalogItemView::id).toList();
                         }).stream()).map(UUID::toString).distinct().toList(),
-                        q.count(), q.gradeCodes(), q.difficultyCodes(), q.groupIds())).toList();
+                        q.count(), q.gradeCodes(), q.difficultyCodes(), q.groupIds(), mapid)).toList();
     }
 
     private static MatrixQuota matrix(BlockMatrix matrix) {

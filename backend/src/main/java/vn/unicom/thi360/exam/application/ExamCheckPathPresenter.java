@@ -363,6 +363,13 @@ final class ExamCheckPathPresenter {
                 if (!replacedBySpecificShortage(issue, pathIssues.values())) {
                     issue.put("required", target);
                     issue.put("available", available);
+                    if (set && hasSourceRule(info.section, block)) {
+                        // "Chùm cuối cần 1 chùm có 3 câu con cùng chủ đề. Hiện có 6 câu đơn và 0 chùm phù hợp."
+                        issue.put("requiredSets", target);
+                        issue.put("availableSets", available);
+                        long singles = sources.singles(group);
+                        if (singles >= 0) issue.put("availableSingles", singles);
+                    }
                     addBlockIssue(pathIssues, blockIssues, issue);
                 }
             }
@@ -576,7 +583,17 @@ final class ExamCheckPathPresenter {
         } else {
             if (!issue.path("required").isNull()) existing.set("required", issue.path("required"));
             if (!issue.path("available").isNull()) existing.set("available", issue.path("available"));
+            for (String field : List.of("requiredSets", "availableSets", "availableSingles")) {
+                if (issue.hasNonNull(field)) existing.set(field, issue.get(field));
+            }
         }
+    }
+
+    /** A SOURCE rule of the section's MAPID matrix limits this group (its own rule or the subject's). */
+    private static boolean hasSourceRule(ExamSection section, QuestionBlock block) {
+        return section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX
+                && section.mapidRules().stream().anyMatch(rule -> rule.type() == vn.unicom.thi360.exam.domain.MapidRuleType.SOURCE
+                        && (rule.groupId() == null || rule.groupId().equals(block.id())));
     }
 
     private static void add(Map<String, ObjectNode> issues, ObjectNode issue) { issues.putIfAbsent(issue.path("key").asText(), issue); }

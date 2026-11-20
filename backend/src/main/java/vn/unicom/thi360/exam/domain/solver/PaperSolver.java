@@ -36,6 +36,9 @@ import java.util.Set;
  * đường, giải) và được kiểm qua {@link Clock} truyền vào để test được.
  */
 public final class PaperSolver {
+    /** Witnesses tried (consecutive seeds) before a trim that breaks a topic minimum is reported INVALID. */
+    public static final int TRIM_ATTEMPTS = 4;
+
 
     private final SolverLimits limits;
     private final Clock clock;
@@ -140,10 +143,23 @@ public final class PaperSolver {
      * tay cho test).
      */
     public PathResult solvePath(SolvePath path, CandidateSource source, SolveMode mode) {
+        return solvePath(path, source, mode, newDeadline());
+    }
+
+    /**
+     * Hạn thời gian của một yêu cầu bắt đầu ngay bây giờ ({@code limits.timeout()}); truyền cùng một
+     * hạn cho nhiều lần giải của một yêu cầu để các lần giải lại không được cấp hạn mới (R3-1).
+     */
+    public Instant newDeadline() {
+        return clock.instant().plus(limits.timeout());
+    }
+
+    /** Như {@link #solvePath(SolvePath, CandidateSource, SolveMode)} nhưng dùng hạn cho trước (UNCONFIRMED khi quá hạn). */
+    public PathResult solvePath(SolvePath path, CandidateSource source, SolveMode mode, Instant deadline) {
         Objects.requireNonNull(path, "path must not be null");
         Objects.requireNonNull(source, "source must not be null");
         Objects.requireNonNull(mode, "mode must not be null");
-        Instant deadline = clock.instant().plus(limits.timeout());
+        Objects.requireNonNull(deadline, "deadline must not be null");
         Runnable check = deadlineCheck(deadline);
         try {
             return solvePath(path, memoized(source), mode, new HashMap<>(), check,
@@ -236,25 +252,35 @@ public final class PaperSolver {
                     List.of(new ChosenOption(null, choice.optionId())), List.of(),
                     List.of(choice), List.of(List.of(pick)));
             CandidateSource filtered = memoized(excluding(source, excludedQuestionIds));
-            PathResult single = evalTuple(path, List.of(solvePick), filtered,
-                    SolveMode.generate(seed), new HashMap<>(), check, new long[1], new long[1]);
-            if (single.status() != SolveStatus.VALID || lowIndex < 0) return single;
+            if (lowIndex < 0) {
+                return evalTuple(path, List.of(solvePick), filtered, SolveMode.generate(seed), new HashMap<>(),
+                        check, new long[1], new long[1]);
+            }
             SectionOnPath trimmedSection = picked.get(lowIndex);
-            List<SubjectWitness> witnesses = new ArrayList<>(single.witness());
-            for (int i = 0; i < witnesses.size(); i++) {
-                SubjectWitness witness = witnesses.get(i);
-                if (witness.subjectCode().equals(trimmedSection.subjectCode())) {
-                    TrimPolicy.Result trim = TrimPolicy.trim(trimmedSection, witness, filtered, seed);
-                    if (trim == null) {
-                        return PathResult.invalid(path, SolveReason.NO_JOINT_SOLUTION,
-                                trimmedSection.subjectCode(), null);
+            TrimPolicy.Result blocked = null;
+            // The witness of the full-count solve may need every standalone question for the MAPID minimums of the
+            // subject; another witness (next seeds) may not. Attempt 0 is the plain seed, as before.
+            for (int attempt = 0; attempt < TRIM_ATTEMPTS; attempt++) {
+                long attemptSeed = seed + attempt;
+                PathResult single = evalTuple(path, List.of(solvePick), filtered,
+                        SolveMode.generate(attemptSeed), new HashMap<>(), check, new long[1], new long[1]);
+                if (single.status() != SolveStatus.VALID) return single;
+                List<SubjectWitness> witnesses = new ArrayList<>(single.witness());
+                for (int i = 0; i < witnesses.size(); i++) {
+                    SubjectWitness witness = witnesses.get(i);
+                    if (!witness.subjectCode().equals(trimmedSection.subjectCode())) continue;
+                    TrimPolicy.Result trim = TrimPolicy.trim(trimmedSection, witness, filtered, attemptSeed);
+                    if (trim != null && !trim.blocked()) {
+                        witnesses.set(i, trim.witness());
+                        return new PathResult(path, SolveStatus.VALID, null, null, null, witnesses,
+                                List.of(), null, List.of(), trim.droppedQuestion());
                     }
-                    witnesses.set(i, trim.witness());
-                    return new PathResult(path, SolveStatus.VALID, null, null, null, witnesses,
-                            List.of(), null, List.of(), trim.droppedQuestion());
+                    if (trim != null) blocked = trim;
+                    break;
                 }
             }
-            throw new IllegalStateException("Selected subject missing from witness");
+            return PathResult.invalid(path, SolveReason.NO_JOINT_SOLUTION, trimmedSection.subjectCode(), null,
+                    blocked == null ? null : blocked.blockedBy());
         } catch (DeadlineHit e) {
             return PathResult.unconfirmed(
                     new SolvePath(0, List.of(), List.of(), List.of(choice), List.of()),

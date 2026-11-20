@@ -11,6 +11,8 @@ import { type ChangeLevel, parseChangeWhere } from "../change-where";
 import { roundForDisplay } from "../display-number";
 import { useExamStructure } from "../queries";
 import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
+import { ExamContentText } from "./exam-content-text";
+import { useMapidIssueText } from "./use-mapid-issue-text";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
 /**
@@ -191,13 +193,14 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
  * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc. `text` trả chuỗi;
  * `node` trả nút React có tên phần, khối, phân đoạn nằm trong `ExamName` (nội dung đề), tên môn và danh mục ở ngoài.
  */
-function useIssueTranslate(exam?: Pick<ExamDetail, "parts">) {
+function useIssueTranslate(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
   const tFormat = useTranslations("questions.detail.body.answerFormats");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
+  const mapidIssue = useMapidIssueText(exam, marked);
   return useMemo(() => {
     const build = (issue: CheckIssue, rich: boolean, partOverride?: ReactNode) => {
       const where = exam ? findBlockContext(exam, issue.blockId) : null;
@@ -282,40 +285,63 @@ function useIssueTranslate(exam?: Pick<ExamDetail, "parts">) {
         segment: segment ? named(segment) : "",
         hasSegment: segment ? "yes" : "no",
       };
+      // Quy tắc MAPID (UNI-2758) có câu riêng dựng từ giá trị chuỗi; `block` ở đây là chuỗi, không phải nút.
+      const plain: Record<string, string | number> = { block: blockName ? `${subject} · ${blockName}` : subject };
+      for (const key of ["hasCount", "required", "available", "missing"]) plain[key] = values[key] as string | number;
+      const mapid = mapidIssue(issue, where, plain);
+      if (mapid.text !== null) return { text: mapid.text, translator: null, values: null };
+      const withMapid = { ...values, ...mapid.values };
       // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
       const noCount = issue.required == null || issue.available == null;
-      return { translator: noCount && COUNT_ISSUE_CODES[issue.code] ? tNoCount : t, values };
+      return { text: null, translator: noCount && COUNT_ISSUE_CODES[issue.code] ? tNoCount : t, values: withMapid };
     };
     // Giá trị nút React đi qua ICU như đối số đơn giản (use-intl giữ nguyên đối tượng, `t.rich` trả mảng); kiểu của
     // use-intl chỉ khai báo chuỗi, số, ngày, nên ép kiểu một chỗ này.
     return {
       text: (issue: CheckIssue) => {
-        const { translator, values } = build(issue, false);
-        return translator(issue.code, values as TranslationValues);
+        const built = build(issue, false);
+        return built.text !== null ? built.text : built.translator(issue.code, built.values as TranslationValues);
       },
       node: (issue: CheckIssue, partOverride?: ReactNode): ReactNode => {
-        const { translator, values } = build(issue, true, partOverride);
-        return translator.rich(issue.code, values as RichTranslationValues);
+        const built = build(issue, true, partOverride);
+        if (built.text !== null) return marked ? <ExamContentText text={built.text} /> : built.text;
+        const rich = built.translator.rich(issue.code, built.values as RichTranslationValues);
+        return marked ? markedContent(rich) : rich;
       },
     };
-  }, [t, tNoCount, tContent, tFormat, lookup, competencies, exam]);
+  }, [t, tNoCount, tContent, tFormat, lookup, competencies, exam, mapidIssue, marked]);
 }
 
-/** Câu mô tả một vấn đề dạng chuỗi (thuộc tính, chuỗi ghép, ô nhập); hiển thị trong cây giao diện dùng `useIssueNode`. */
-export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
-  return useIssueTranslate(exam).text;
+/** Chuỗi trong nút có tên đánh dấu (`markExamContent`, tên quy tắc và nhóm) hiện bằng `ExamContentText`. */
+function markedContent(node: ReactNode): ReactNode {
+  if (typeof node === "string") return <ExamContentText text={node} />;
+  if (!Array.isArray(node)) return node;
+  return node.map((item: ReactNode, index) =>
+    typeof item === "string" ? (
+      <Fragment key={`marked-${index}`}>
+        <ExamContentText text={item} />
+      </Fragment>
+    ) : (
+      item
+    ),
+  );
+}
+
+/** Câu mô tả một vấn đề dạng chuỗi (thuộc tính, chuỗi ghép, ô nhập); hiển thị trong cây giao diện dùng `useIssueNode`. `marked`: tên trong câu đánh dấu cho `ExamContentText`. */
+export function useIssueText(exam?: Pick<ExamDetail, "parts">, marked = false) {
+  return useIssueTranslate(exam, marked).text;
 }
 
 /** Câu mô tả một vấn đề để hiển thị: tên phần, khối, phân đoạn nằm trong `ExamName`. */
-export function useIssueNode(exam?: Pick<ExamDetail, "parts">) {
-  const { node } = useIssueTranslate(exam);
+export function useIssueNode(exam?: Pick<ExamDetail, "parts">, marked = false) {
+  const { node } = useIssueTranslate(exam, marked);
   return useCallback((issue: CheckIssue) => node(issue), [node]);
 }
 
 /** Vấn đề kèm tên đường khi vấn đề thuộc một lựa chọn của phần tự chọn. */
-export function useIssueWithPath(paths: readonly ExamPathRef[]) {
+export function useIssueWithPath(paths: readonly ExamPathRef[], exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review");
-  const { text, node } = useIssueTranslate();
+  const { text, node } = useIssueTranslate(exam, marked);
   return useCallback(
     (issue: CheckIssue): ReactNode => {
       if (!issue.optionId) return node(issue);

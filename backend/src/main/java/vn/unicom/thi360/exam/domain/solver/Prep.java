@@ -181,7 +181,22 @@ final class Prep {
             int[][] units,
             String[][][] keys,
             boolean[][] usable,
-            int[][] dims) {
+            int[][] dims,
+            List<ScopedCap> caps,
+            int[][][] capUse,
+            int[][] capBlock) {
+    }
+
+    /**
+     * A {@link TopicCap} bound to the section (index in the sub-problem) that declares it. {@code nodes} is the
+     * cap's node set for constant-time membership.
+     */
+    record ScopedCap(int section, TopicCap cap, Set<String> nodes) {
+
+        /** Whether the units of a group of section {@code sectionIdx} with scope id {@code scopeId} count here. */
+        boolean appliesTo(int sectionIdx, String scopeId) {
+            return section == sectionIdx && (cap.groupId() == null || cap.groupId().equals(scopeId));
+        }
     }
 
     // ---------------------------------------------------------------- chuẩn bị
@@ -445,6 +460,13 @@ final class Prep {
 
         int[][] dimsArr = dims.toArray(int[][]::new);
 
+        List<ScopedCap> caps = new ArrayList<>();
+        for (int s = 0; s < nS; s++) {
+            for (TopicCap cap : sections.get(s).subjectQuota().caps()) {
+                caps.add(new ScopedCap(s, cap, Set.copyOf(cap.nodeIds())));
+            }
+        }
+
         // ---- lọc ứng viên ----
         int nG = groups.size();
         List<List<PathCandidate>> cands = new ArrayList<>(nG);
@@ -452,6 +474,10 @@ final class Prep {
         int[][] units = new int[nG][];
         String[][][] keys = new String[nG][][];
         boolean[][] usable = new boolean[nG][];
+        // capUse[g][i][k]: units of candidate i of group g that count for cap k (0 when the cap is not in
+        // its scope); capBlock[g][i]: a cap the candidate alone exceeds although it passed every other filter
+        int[][][] capUse = new int[nG][][];
+        int[][] capBlock = new int[nG][];
         int rCount = reqs.size();
         for (int g = 0; g < nG; g++) {
             ResolvedGroup rg = groups.get(g);
@@ -462,6 +488,8 @@ final class Prep {
             units[g] = new int[n];
             keys[g] = new String[n][];
             usable[g] = new boolean[n];
+            capUse[g] = new int[n][];
+            capBlock[g] = new int[n];
             for (int i = 0; i < n; i++) {
                 if ((i & 0x3FF) == 0) {
                     deadlineCheck.run();
@@ -472,11 +500,44 @@ final class Prep {
                 int[] vec = contrib[g][i];
                 usable[g][i] = usableFor(rg.group(), c, vec, reqs, subjectBlocks, dimsArr,
                         reqFrom[g], reqTo[g], sectionOf[g], slotBlocks[g], deadlineCheck);
+                capBlock[g][i] = -1;
+                capUse[g][i] = capUse(caps, c, sectionOf[g], TopicAssignments.scopeId(rg.group()));
+                for (int k = 0; usable[g][i] && k < capUse[g][i].length; k++) {
+                    if (capUse[g][i][k] > caps.get(k).cap().max()) {
+                        usable[g][i] = false;
+                        capBlock[g][i] = k;
+                    }
+                }
             }
         }
         return new SubproblemContext(problem.subjectCode(), problem.count(), sections, groups,
                 sectionOf, reqs, reqRefs, subjectBlocks, slotBlocks, reqFrom, reqTo, cands, contrib, units,
-                keys, usable, dimsArr);
+                keys, usable, dimsArr, caps, capUse, capBlock);
+    }
+
+    private static final int[] NO_CAPS = new int[0];
+
+    /** Counting units of {@code c} that carry a node of each cap whose scope contains the group. */
+    private static int[] capUse(List<ScopedCap> caps, PathCandidate c, int sectionIdx, String scopeId) {
+        if (caps.isEmpty()) {
+            return NO_CAPS;
+        }
+        int[] use = new int[caps.size()];
+        for (int k = 0; k < use.length; k++) {
+            ScopedCap cap = caps.get(k);
+            if (!cap.appliesTo(sectionIdx, scopeId)) {
+                continue;
+            }
+            for (CountingUnit u : c.units()) {
+                for (String id : u.mapidIds()) {
+                    if (cap.nodes().contains(id)) {
+                        use[k]++;
+                        break;
+                    }
+                }
+            }
+        }
+        return use;
     }
 
     /**

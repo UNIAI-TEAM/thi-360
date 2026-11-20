@@ -2496,6 +2496,12 @@ export interface components {
         AvailableQuestionsKnowledgeScope: {
             competencyCodes?: string[];
             everyChildInScope?: boolean;
+            /** @description SOURCE rules of a MAPID matrix: a set counts only when all its children carry the same node of a group (a descendant counts); applies to every entry of nodeGroups; stricter than everyChildInScope (UNI-2758) */
+            everyChildSameNode?: boolean;
+            /** @description MAPID nodes (and their descendants) the group must not draw from: ONLY_IN_GROUP of another group (UNI-2758) */
+            excludedNodeIds?: string[];
+            /** @description SOURCE rules that all apply: an AND of OR-groups, one group per applicable rule (the subject's and the group's); inside a group any node (or a descendant) matches. nodeIds keeps the legacy single scope (UNI-2758) */
+            nodeGroups?: string[][];
             nodeIds?: string[];
         };
         /** @description Bộ lọc nguồn câu hỏi của một nhóm */
@@ -4108,10 +4114,22 @@ export interface components {
             affectedCodes?: string[];
             answerType?: string;
             available?: number;
+            /**
+             * Format: int64
+             * @description Whole sets the source holds for the group
+             */
+            availableSets?: number;
+            /**
+             * Format: int64
+             * @description Single questions of the subject that match the group's source nodes
+             */
+            availableSingles?: number;
             blockId?: string;
             blockName?: string;
             code?: string;
             competencyCode?: string;
+            /** @description Kind of a MAPID_RULE_CONFLICT */
+            conflictKind?: string;
             difficultyCode?: string;
             dimension?: string;
             excludedPoints?: number;
@@ -4119,11 +4137,22 @@ export interface components {
             group?: string;
             key?: string;
             location?: components["schemas"]["ExamIssueLocation"];
+            /** @description Node ids of the rule a shortage names */
+            nodeIds?: string[];
             optionId?: string;
             partId?: string;
             partName?: string;
             questionCodes?: string[];
             required?: number;
+            /**
+             * Format: int64
+             * @description Whole sets the group needs (set-unit shortage of a SOURCE rule)
+             */
+            requiredSets?: number;
+            /** @description MAPID rule (UNI-2758) the issue names; the web scrolls to mapid-rule-<ruleId> */
+            ruleId?: string;
+            /** @description Every rule of a MAPID_RULE_CONFLICT, in declaration order */
+            ruleIds?: string[];
             sectionId?: string;
             severity?: string;
             subjectCode?: string;
@@ -4592,11 +4621,15 @@ export interface components {
             group?: string;
             key?: string;
             location?: components["schemas"]["ExamIssueLocation"];
+            /** @description Node ids of the rule the failure names */
+            nodeIds?: string[];
             optionId?: string;
             partId?: string;
             partName?: string;
             questionCodes?: string[];
             required?: number;
+            /** @description MAPID rule (UNI-2758) the failure names; the web scrolls to mapid-rule-<ruleId> */
+            ruleId?: string;
             sectionId?: string;
             /** @description Display segment code of DISPLAY_SEGMENT_MISMATCH */
             segmentCode?: string | null;
@@ -4847,6 +4880,9 @@ export interface components {
             choiceGroup?: "NATURAL" | "SOCIAL";
             id?: string;
             knowledgeScope?: components["schemas"]["KnowledgeScope"];
+            /** @enum {string} */
+            mapidMode?: "ALL" | "MATRIX";
+            mapidRules?: components["schemas"]["MapidRule"][];
             matrix?: components["schemas"]["BlockMatrix"];
             /** Format: int32 */
             questionCount?: number;
@@ -5401,6 +5437,18 @@ export interface components {
              * @example http://localhost:3000/home
              */
             redirectTo: string;
+        };
+        MapidRule: {
+            /** @enum {string} */
+            comparator?: "EXACT" | "AT_LEAST";
+            /** Format: int32 */
+            count?: number;
+            groupId?: string;
+            id?: string;
+            nodeIds?: string[];
+            percent?: number;
+            /** @enum {string} */
+            type?: "PRESENT" | "COUNT" | "ONLY_IN_GROUP" | "SOURCE";
         };
         MatchingBody: {
             type: "MatchingBody";
