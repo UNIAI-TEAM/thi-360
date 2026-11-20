@@ -4293,7 +4293,7 @@ export interface components {
             /** @description PER_PART | SHARED */
             timing: string;
             /** @description Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng) */
-            trueFalseScoring?: components["schemas"]["JsonNode"];
+            trueFalseScoring?: components["schemas"]["ExamTrueFalseScoring"];
         };
         /** @description Kỳ thi của sản phẩm */
         ExamKindRef: {
@@ -4503,8 +4503,12 @@ export interface components {
             criterion?: string;
             enforcement?: string;
             note?: string;
+            /** @description Required count before the contribution of the dropped question was removed from required; null when nothing was dropped on this row */
+            originalRequired?: number | null;
             required?: number;
             scope?: string;
+            /** @description Topic name of a TOPIC row: the quota name, else the Vietnamese names of its knowledge nodes; null on other rows */
+            topicName?: string | null;
         };
         ExamPreviewIssue: {
             answerType?: string;
@@ -4647,20 +4651,10 @@ export interface components {
         ExamPreviewRequest: {
             /** Format: uuid */
             basePreviewId?: string;
-            /**
-             * @deprecated
-             * @description Legacy path selection; use target when BE-8 is available
-             */
-            pathId?: string;
             regeneratePartIds?: string[];
             /** Format: int64 */
             seed?: number;
-            /**
-             * @deprecated
-             * @description Legacy subject selection; use target.subjectCodes
-             */
-            subjectCodes?: string[];
-            target?: components["schemas"]["ExamPreviewTarget"];
+            target: components["schemas"]["ExamPreviewTarget"];
             /** Format: int32 */
             version?: number;
         };
@@ -4680,6 +4674,11 @@ export interface components {
             droppedQuestions?: components["schemas"]["ExamPreviewQuestion"][] | null;
             /** Format: uuid */
             examId?: string;
+            /**
+             * Format: date-time
+             * @description When the stored preview (previewId) expires if it is not extended; null on FAILED
+             */
+            expiresAt?: string | null;
             /** Format: date-time */
             generatedAt?: string;
             issues?: components["schemas"]["ExamPreviewIssue"][];
@@ -4787,6 +4786,11 @@ export interface components {
             state?: "INCOMPLETE" | "CHECKED" | "NEEDS_CHECK";
             subjectCode?: string;
         };
+        /** @description Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh) */
+        ExamStructureDocument: {
+            examQuotas?: components["schemas"]["ExamQuota"][];
+            parts?: components["schemas"]["ExamPart"][];
+        };
         /** @description Cấu trúc bản làm việc của bài thi (GET/PUT /exams/{id}/structure) */
         ExamStructureResponse: {
             combinations?: components["schemas"]["StructureCombination"][];
@@ -4812,6 +4816,7 @@ export interface components {
             blockId?: string;
             /** Format: int32 */
             childCount?: number;
+            children?: components["schemas"]["ExamStructureSummaryRow"][];
             /** Format: int32 */
             commandCount?: number;
             /** Format: int32 */
@@ -4885,6 +4890,26 @@ export interface components {
             /** @description Người cập nhật gần nhất */
             updatedBy?: components["schemas"]["PersonRef"];
         };
+        ExamTemplatePartSummary: {
+            name: string;
+            /** Format: int32 */
+            order?: number;
+            /** @description Id phần trong mẫu; null khi mẫu chưa gán id */
+            partId?: string;
+            /**
+             * Format: int32
+             * @description Số câu của phần theo mẫu; null khi mẫu không ghi
+             */
+            questionCount?: number;
+            /** @description Số câu theo dạng câu của các nhóm không lược trong phần, theo thứ tự xuất hiện; phần tự chọn tính theo lựa chọn đầu tiên; nhóm không ghi dạng câu có dạng ANY */
+            questionTypes: components["schemas"]["ExamTemplateQuestionTypeCount"][];
+        };
+        ExamTemplateQuestionTypeCount: {
+            /** Format: int32 */
+            questionCount: number;
+            /** @description Mã dạng câu (SINGLE_CHOICE, TRUE_FALSE, MATCHING, QUESTION_SET ...) hoặc ANY */
+            questionType: string;
+        };
         /** @description Nguyên mẫu cấu trúc bài thi (exam_template; spec 4, 5.2) */
         ExamTemplateResponse: {
             /** @description Có đang hoạt động */
@@ -4920,12 +4945,14 @@ export interface components {
             omittedLocked: boolean;
             /** @description Mã phần khi scope = PART */
             partCode?: string;
+            /** @description Mỗi phần của mẫu kèm số câu theo dạng câu (cho dòng thay đổi theo dạng câu khi đổi phiên bản) */
+            parts: components["schemas"]["ExamTemplatePartSummary"][];
             /** @description Mẫu cho phép công bố bài (false: chỉ lưu nháp) */
             publishable: boolean;
             /** @description FULL | PART | SUBJECT */
             scope: string;
             /** @description Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh) */
-            structure: components["schemas"]["JsonNode"];
+            structure: components["schemas"]["ExamStructureDocument"];
             /**
              * Format: int32
              * @description Năm cấu trúc
@@ -4937,6 +4964,13 @@ export interface components {
             summary?: string;
             /** @description PER_PART | SHARED */
             timing: string;
+        };
+        /** @description PER_STATEMENT: statementPoints per correct statement; COUNT_TABLE: table[i] is the score for i+1 correct statements */
+        ExamTrueFalseScoring: {
+            /** @enum {string} */
+            method: "PER_STATEMENT" | "COUNT_TABLE";
+            statementPoints?: number | null;
+            table: number[];
         };
         ExamVersionChange: {
             after?: string;
@@ -6937,7 +6971,7 @@ export interface components {
             /** @description PER_PART | SHARED */
             timing: string;
             /** @description Bảng điểm Đúng/Sai nhiều ý; null khi kỳ thi không dùng */
-            trueFalseScoring?: components["schemas"]["JsonNode"];
+            trueFalseScoring?: components["schemas"]["ExamTrueFalseScoring"];
         };
         UpdateExamListingRequest: {
             /**
