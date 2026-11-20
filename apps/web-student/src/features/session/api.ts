@@ -21,15 +21,25 @@ export async function loadSession(): Promise<StudentSession> {
 /**
  * Phiên tùy chọn cho trang công khai (`/`, `/exams/<code>`): khách nhận `null`, không phải lỗi. `query-provider.tsx`
  * đưa mọi 401 từ truy vấn về `/login`, nên 401 của khách phải được hấp thụ ở đây, trước khi thành lỗi của truy vấn.
- * Lỗi khác (5xx, mạng) vẫn là lỗi.
+ * Cookie truy cập hết hạn nhưng phiên còn (refresh token): thử `refreshSession()` đúng một lần rồi gọi lại `/me`;
+ * chỉ khi làm mới cũng thất bại mới coi là khách. Lỗi khác (5xx, mạng) vẫn là lỗi.
  */
 export const OPTIONAL_SESSION_QUERY_KEY = ["session", "optional"] as const;
 export type OptionalSessionLoader = () => Promise<StudentSession | null>;
 
 export async function loadOptionalSession(): Promise<StudentSession | null> {
   const client = createBrowserApiClient();
-  const { data, error, response } = await client.GET("/api/v1/me");
-  if (response.status === 401) return null;
+  let { data, error, response } = await client.GET("/api/v1/me");
+  if (response.status === 401) {
+    try {
+      await refreshSession();
+    } catch {
+      // Làm mới cũng 401 (khách, hoặc refresh token đã hết): coi là khách, không đưa về /login.
+      return null;
+    }
+    ({ data, error, response } = await client.GET("/api/v1/me"));
+    if (response.status === 401) return null;
+  }
   if (!response.ok || !data) {
     throw toApiStatusError(response.status, error);
   }

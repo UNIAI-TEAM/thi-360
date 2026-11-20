@@ -8,21 +8,30 @@ import viMessages from "@/messages/vi.json";
 import { QueryProvider } from "@/providers/query-provider";
 import { STUDENT_SESSION } from "@/test/storefront-fixtures";
 
-const mocks = vi.hoisted(() => ({ replace: vi.fn(), navigate: vi.fn(), refreshSession: vi.fn() }));
+const mocks = vi.hoisted(() => ({ replace: vi.fn(), navigate: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
   usePathname: () => "/exams/HSA-FULL-01",
-}));
-vi.mock("@/features/session/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/session/api")>()),
-  refreshSession: mocks.refreshSession,
 }));
 
 const fetchMock = vi.fn<typeof fetch>();
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
+
+function requestPath(input: RequestInfo | URL): string {
+  return new URL(input instanceof Request ? input.url : String(input)).pathname;
+}
+
+const UNAUTHORIZED = { code: "UNAUTHORIZED", message: "x", fieldErrors: [], traceId: "t" };
+
+/** Trả `json(401)` cho `/api/v1/auth/refresh` và lời gọi khác tùy `me`. */
+function stubMeThenRefreshFail(me: Response) {
+  fetchMock.mockImplementation(async (input) =>
+    json(requestPath(input) === "/api/v1/me" ? me.status : 401, UNAUTHORIZED),
+  );
 }
 
 beforeEach(() => {
@@ -34,21 +43,55 @@ afterEach(() => {
   fetchMock.mockReset();
   mocks.replace.mockReset();
   mocks.navigate.mockReset();
-  mocks.refreshSession.mockReset();
   vi.unstubAllGlobals();
 });
 
 describe("phiên tùy chọn cho trang công khai (AC-11)", () => {
-  it("khách: /api/v1/me trả 401 thì nhận null, không ném lỗi", async () => {
-    fetchMock.mockImplementation(async () => json(401, { code: "UNAUTHORIZED", message: "x", fieldErrors: [], traceId: "t" }));
+  it("khách: /api/v1/me trả 401 và làm mới cũng 401 thì nhận null, không ném lỗi", async () => {
+    stubMeThenRefreshFail(json(401, UNAUTHORIZED));
 
     await expect(loadOptionalSession()).resolves.toBeNull();
+    expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toEqual([
+      "/api/v1/me",
+      "/api/v1/auth/refresh",
+    ]);
   });
 
   it("đã đăng nhập: trả đúng phiên", async () => {
     fetchMock.mockImplementation(async () => json(200, STUDENT_SESSION));
 
     await expect(loadOptionalSession()).resolves.toMatchObject({ username: "student01", access: "EXAM" });
+  });
+
+  it("cookie truy cập hết hạn nhưng phiên còn: làm mới xong gọi lại /me và trả đúng phiên", async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const path = requestPath(input);
+      if (path === "/api/v1/auth/refresh") return json(200, {});
+      return json(401, UNAUTHORIZED);
+    });
+    await expect(loadOptionalSession()).resolves.toBeNull();
+    // Lần hai: /me 401 -> refresh 200 -> /me 200.
+    fetchMock.mockImplementation(async (input) => {
+      const path = requestPath(input);
+      if (path === "/api/v1/auth/refresh") return json(200, {});
+      if (fetchMock.mock.calls.filter(([call]) => requestPath(call) === "/api/v1/me").length > 1) {
+        return json(200, STUDENT_SESSION);
+      }
+      return json(401, UNAUTHORIZED);
+    });
+    await expect(loadOptionalSession()).resolves.toMatchObject({ username: "student01", access: "EXAM" });
+  });
+  it("làm mới xong mà /me vẫn 401 thì coi là khách, không gọi lại lần nữa", async () => {
+    fetchMock.mockImplementation(async (input) =>
+      json(requestPath(input) === "/api/v1/auth/refresh" ? 200 : 401, UNAUTHORIZED),
+    );
+
+    await expect(loadOptionalSession()).resolves.toBeNull();
+    expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toEqual([
+      "/api/v1/me",
+      "/api/v1/auth/refresh",
+      "/api/v1/me",
+    ]);
   });
 
   it("lỗi khác 401 vẫn là lỗi, để giao diện hiện trạng thái lỗi thay vì coi là khách", async () => {
@@ -58,8 +101,8 @@ describe("phiên tùy chọn cho trang công khai (AC-11)", () => {
     await expect(loadOptionalSession()).rejects.toMatchObject({ status: 500 });
   });
 
-  it("dưới QueryProvider: 401 của khách không đưa về /login, không thử làm mới phiên, không gọi lại", async () => {
-    fetchMock.mockImplementation(async () => json(401, { code: "UNAUTHORIZED", message: "x", fieldErrors: [], traceId: "t" }));
+  it("dưới QueryProvider: 401 của khách thử làm mới một lần, vẫn nhận null, không đưa về /login", async () => {
+    stubMeThenRefreshFail(json(401, UNAUTHORIZED));
 
     function Probe() {
       const { data, isSuccess } = useOptionalSession();
@@ -75,10 +118,10 @@ describe("phiên tùy chọn cho trang công khai (AC-11)", () => {
 
     await waitFor(() => expect(screen.getByTestId("probe")).toHaveTextContent("null"));
     expect(mocks.navigate).not.toHaveBeenCalled();
-    expect(mocks.refreshSession).not.toHaveBeenCalled();
     expect(mocks.replace).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [request] = fetchMock.mock.calls[0]!;
-    expect(new URL((request as Request).url).pathname).toBe("/api/v1/me");
+    expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toEqual([
+      "/api/v1/me",
+      "/api/v1/auth/refresh",
+    ]);
   });
 });
