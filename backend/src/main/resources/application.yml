@@ -200,6 +200,13 @@ thi360:
   avatar:
     # E20: bucket riêng cho ảnh đại diện (cùng endpoint và khóa với thi360.s3); tạo bucket ở môi trường triển khai.
     bucket: ${THI360_AVATAR_BUCKET:thi360-avatars}
+  commerce:
+    vnpay-min-amount: ${THI360_VNPAY_MIN_AMOUNT:5000}
+    voucher:
+      quote-per-user-minute-limit: ${THI360_VOUCHER_QUOTE_MINUTE_LIMIT:10}
+      quote-per-user-minute-window: PT1M
+      quote-per-user-day-limit: ${THI360_VOUCHER_QUOTE_DAY_LIMIT:50}
+      quote-per-user-day-window: PT24H
 ---
 spring:
   config:
