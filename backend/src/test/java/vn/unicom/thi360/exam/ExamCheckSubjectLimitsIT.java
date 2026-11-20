@@ -319,10 +319,10 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
     }
 
     /**
-     * R2-1: whether a section is the synthetic holder of an option's direct blocks is decided by where the checker
-     * built it, never by its id. A stored section of an option without direct blocks whose id reads
-     * "{option}:blocks" is a real subject section: PUT keeps the id and the solver solves it, so both R-12 rules apply
-     * and the path that holds it cannot publish.
+     * R2-1 + AD-85: a stored section inside an option without direct blocks is checked by the R-12 rules when its id
+     * is distinct ("ly-opt-sec"). Under the conservative rule a stored "{option}:blocks" id inside its own option
+     * names the holder of the option's direct blocks — the draft is ambiguous, so the located structure error on the
+     * option replaces the per-section verdicts and the path cannot publish either.
      */
     @Test
     void aStoredOptionSectionWithTheSyntheticLookingIdIsStillChecked() throws Exception {
@@ -345,20 +345,30 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
 
             JsonNode result = check(base);
             String as = kind + " " + id;
-            JsonNode set = issue(result, SET_CODE);
-            assertThat(set.path("sectionId").asText()).as(as).isEqualTo(id);
-            assertThat(set.path("subjectCode").asText()).as(as).isEqualTo("LY");
-            assertThat(issue(result, SHORT_CODE).path("sectionId").asText()).as(as).isEqualTo(id);
             assertThat(result.path("status").asText()).as(as).isEqualTo("INVALID");
             JsonNode lyPath = java.util.stream.StreamSupport.stream(result.path("paths").spliterator(), false)
                     .filter(path -> "ly-opt".equals(path.path("pathId").asText())).findFirst().orElseThrow();
             assertThat(lyPath.path("result").asText()).as(as).isEqualTo("INVALID");
-            // Otherwise valid: the two R-12 errors are the only errors of the path.
             java.util.Set<String> errors = new java.util.TreeSet<>();
             for (JsonNode list : lyPath.findValues("issues")) for (JsonNode item : list) {
                 if ("ERROR".equals(item.path("severity").asText())) errors.add(item.path("code").asText());
             }
-            assertThat(errors).as(as + " errors of the path").containsExactlyInAnyOrder(SET_CODE, SHORT_CODE);
+            if ("ly-opt:blocks".equals(id)) {
+                // AD-85: the stored id names the option's direct-blocks holder: the ambiguity error is located on the
+                // option, and the ambiguous section is not scored against the per-subject limits at all.
+                assertThat(errors).as(as + " errors of the path").contains("OPTION_EMPTY")
+                        .doesNotContain(SET_CODE, SHORT_CODE);
+                JsonNode located = issues(result).stream()
+                        .filter(item -> "OPTION_EMPTY".equals(item.path("code").asText())).findFirst().orElseThrow();
+                assertThat(located.path("optionId").asText()).as(as).isEqualTo("ly-opt");
+            } else {
+                // Otherwise valid: the two R-12 errors are the only errors of the path.
+                JsonNode set = issue(result, SET_CODE);
+                assertThat(set.path("sectionId").asText()).as(as).isEqualTo(id);
+                assertThat(set.path("subjectCode").asText()).as(as).isEqualTo("LY");
+                assertThat(issue(result, SHORT_CODE).path("sectionId").asText()).as(as).isEqualTo(id);
+                assertThat(errors).as(as + " errors of the path").containsExactlyInAnyOrder(SET_CODE, SHORT_CODE);
+            }
             publishRefused(base, result);
         }
     }
@@ -434,6 +444,205 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
             assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?::uuid",
                     Long.class, examId)).as(as).isZero();
         }
+    }
+
+    /**
+     * R4-1 (AD-85 conservative R1-13): a draft saved by older code gives the real section of "b-opt" the id of the
+     * holder of another option's direct blocks ("a-opt:blocks"). The draft is ambiguous: both owning options get a
+     * located structure error, so the aliased option's path is never certified on the other option's cached proof.
+     * The non-colliding sibling stays VALID.
+     */
+    @Test
+    void aCrossOptionCollisionKeepsTheAliasedOptionUnpublished() throws Exception {
+        for (String kind : new String[] {"HSA", "QDA"}) {
+            String base = optionsWithAliasedSection(kind);
+            String examId = base.substring(base.lastIndexOf('/') + 1);
+            // The first check warms "a-opt:blocks" as the valid holder of the direct blocks.
+            JsonNode warm = check(base);
+            assertThat(warm.path("status").asText()).as(kind + " warm: %s", warm.path("paths")).isEqualTo("VALID");
+            entityManager.flush();
+            entityManager.clear();
+
+            // The legacy write an old PUT allowed: b-opt's real section takes the holder id, with distinct groups and
+            // a required topic quota no candidate meets (solving the real section can only fail).
+            ObjectNode edited = (ObjectNode) mapper.readTree(jdbc.queryForObject(
+                    "SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?::uuid", String.class, examId));
+            ObjectNode aliased = null;
+            for (JsonNode p : edited.path("parts")) for (JsonNode o : p.path("options"))
+                for (JsonNode s : o.path("sections")) if ("b-sec".equals(s.path("id").asText())) aliased = (ObjectNode) s;
+            assertThat(aliased).isNotNull();
+            aliased.put("id", "a-opt:blocks");
+            ObjectNode quota = aliased.putArray("topicQuotas").addObject();
+            quota.put("id", "b-topic").put("count", 9).put("basis", "QUESTION").put("enforcement", "REQUIRED");
+            quota.putArray("nodeIds").add("00000000-0000-7000-8200-000000001201");
+            quota.putArray("gradeCodes").add("NO_SUCH_GRADE");
+            assertThat(jdbc.update("UPDATE exam.exam_structure SET parts = ?::jsonb WHERE exam_id = ?::uuid",
+                    mapper.writeValueAsString(edited), examId)).isEqualTo(1);
+
+            String as = kind + " cross-option collision";
+            JsonNode result = check(base);
+            assertThat(pathResults(result)).as(as + ": %s", result.path("paths"))
+                    .containsEntry("a-opt", "INVALID").containsEntry("b-opt", "INVALID")
+                    .containsEntry("c-opt", "VALID");
+            java.util.Set<String> flagged = new java.util.TreeSet<>();
+            for (JsonNode item : issues(result)) {
+                if ("OPTION_EMPTY".equals(item.path("code").asText())) flagged.add(item.path("optionId").asText());
+            }
+            assertThat(flagged).as(as + ": ambiguous options in %s", issues(result)).contains("a-opt", "b-opt");
+            assertThat(result.path("status").asText()).as(as).isEqualTo("INVALID");
+            ObjectNode refusal = mapper.createObjectNode().put("expectedRevision",
+                    json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200).path("revision").asLong());
+            refusal.putArray("pathIds").add("b-opt");
+            JsonNode refused = json(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                    .header("Idempotency-Key", UUID.randomUUID().toString())
+                    .contentType(MediaType.APPLICATION_JSON).content(refusal.toString()), 422);
+            assertThat(refused.path("code").asText()).as(as).isEqualTo("PATH_NOT_VALID");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?::uuid",
+                    Long.class, examId)).as(as).isZero();
+        }
+    }
+
+    /**
+     * R4-1 (AD-85 conservative R1-13): a unit whose section ids include an ambiguous "{option}:blocks" id never reuses
+     * a cached proof and is never saved again. A first check warms a VALID unit for ("LY", ["a-opt:blocks","c-sec"])
+     * while no option named "a-opt" exists; the legacy edit then adds "a-opt" with direct blocks of exactly the stored
+     * content and a required topic quota the source cannot fill. The next check must solve the real stored section:
+     * the topic failure appears and the path cannot publish.
+     */
+    @Test
+    void aLegacyCollisionNeverBorrowsACachedProof() throws Exception {
+        UUID ly = UUID.fromString("00000000-0000-7000-8200-000000000204");
+        UUID id = sqlExam("HSA", """
+                [{"id":"p","questionCount":18,"participation":{"mode":"CHOICE","choose":1},"options":[
+                  {"id":"c-opt","kind":"SUBJECT","code":"LY","sections":[
+                    {"id":"c-sec","subjectCode":"LY","questionCount":9,"blocks":[
+                      {"id":"c-single","questionType":"SINGLE_CHOICE","questionCount":5},
+                      {"id":"c-set","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,
+                       "childAnswerType":"SINGLE_CHOICE"},
+                      {"id":"c-fill","questionType":"SHORT_ANSWER","questionCount":1}]}]}],
+                 "sections":[{"id":"a-opt:blocks","subjectCode":"LY","questionCount":9,"blocks":[
+                   {"id":"a-single","questionType":"SINGLE_CHOICE","questionCount":5},
+                   {"id":"a-set","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,
+                    "childAnswerType":"SINGLE_CHOICE"},
+                   {"id":"a-fill","questionType":"SHORT_ANSWER","questionCount":1}]}]}]
+                """);
+        for (String block : new String[] {"a-single", "a-set", "a-fill"}) blockRef(id, block, "a-opt:blocks", ly);
+        for (String block : new String[] {"c-single", "c-set", "c-fill"}) blockRef(id, block, "c-sec", ly);
+        jdbc.update("UPDATE exam.exam SET question_count = 18 WHERE id = ?", id);
+        String base = "/api/v1/admin/exams/" + id;
+
+        JsonNode warm = check(base);
+        assertThat(warm.path("status").asText()).as("warm: %s", warm.path("paths")).isEqualTo("VALID");
+        java.sql.Timestamp warmedAt = jdbc.queryForObject(
+                "SELECT checked_at FROM exam.exam_check_unit WHERE exam_id = ? AND unit_key = ?",
+                java.sql.Timestamp.class, id, "[\"LY\",[\"a-opt:blocks\",\"c-sec\"]]");
+        assertThat(jdbc.queryForObject("SELECT outcome FROM exam.exam_check_unit WHERE exam_id = ? AND unit_key = ?",
+                String.class, id, "[\"LY\",[\"a-opt:blocks\",\"c-sec\"]]")).as("warm proof").isEqualTo("VALID");
+
+        // Legacy write: option "a-opt" appears with direct blocks of exactly the stored section's shape, and the stored
+        // section gains a required topic quota no candidate meets. Flush the check's writes first so they cannot
+        // overwrite the raw update, then clear so the next check reads the stored draft.
+        entityManager.flush();
+        entityManager.clear();
+        ObjectNode edited = (ObjectNode) mapper.readTree(jdbc.queryForObject(
+                "SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?::uuid", String.class, id));
+        ObjectNode part = (ObjectNode) edited.path("parts").get(0);
+        JsonNode storedBlocks = null;
+        for (JsonNode section : part.path("sections")) {
+            if ("a-opt:blocks".equals(section.path("id").asText())) {
+                storedBlocks = section.path("blocks");
+                ObjectNode quota = ((ObjectNode) section).putArray("topicQuotas").addObject();
+                quota.put("id", "a-topic").put("count", 9).put("basis", "QUESTION").put("enforcement", "REQUIRED");
+                quota.putArray("nodeIds").add("00000000-0000-7000-8200-000000001201");
+                quota.putArray("gradeCodes").add("NO_SUCH_GRADE");
+            }
+        }
+        // The holder the checker builds for these blocks serializes exactly like the stored section (minus the quota),
+        // so a fingerprint that ignores the stored section still matches the warm unit row.
+        ((ArrayNode) part.path("options")).addObject().put("id", "a-opt").put("kind", "SUBJECT").put("code", "LY")
+                .putArray("sections");
+        ((ObjectNode) part.path("options").get(part.path("options").size() - 1))
+                .set("blocks", storedBlocks.deepCopy());
+        entityManager.clear();
+        assertThat(jdbc.update("UPDATE exam.exam_structure SET parts = ?::jsonb WHERE exam_id = ?::uuid",
+                mapper.writeValueAsString(edited), id)).isEqualTo(1);
+
+        JsonNode result = check(base);
+        // The ambiguous path is never certified: it is not VALID, its stored section was evaluated fresh (its own
+        // blocks are reported), and the warm proof row is left untouched — never reused, never overwritten.
+        assertThat(pathResults(result)).as("post-edit: %s", result.path("paths"))
+                .containsEntry("a-opt", "INVALID");
+        assertThat(pathResults(result).get("c-opt")).as("post-edit c-opt: %s", result.path("paths"))
+                .isNotEqualTo("VALID");
+        boolean evaluated = false;
+        for (JsonNode path : result.path("paths")) {
+            if (!"c-opt".equals(path.path("pathId").asText())) continue;
+            for (JsonNode block : path.path("blocks")) {
+                evaluated |= "a-opt:blocks".equals(block.path("sectionId").asText());
+            }
+        }
+        assertThat(evaluated).as("the stored section itself was evaluated: %s", result.path("paths")).isTrue();
+        assertThat(jdbc.queryForObject("SELECT checked_at FROM exam.exam_check_unit WHERE exam_id = ? AND unit_key = ?",
+                java.sql.Timestamp.class, id, "[\"LY\",[\"a-opt:blocks\",\"c-sec\"]]"))
+                .as("the ambiguous unit is never written again").isEqualTo(warmedAt);
+        ObjectNode refusal = mapper.createObjectNode().put("expectedRevision",
+                json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200).path("revision").asLong());
+        refusal.putArray("pathIds").add("c-opt");
+        // An INVALID path is refused PATH_NOT_VALID (422); an UNCONFIRMED one CHECK_REQUIRED (409). Either way the
+        // path that shares the ambiguous id never publishes.
+        var response = mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(refusal.toString())).andReturn().getResponse();
+        JsonNode refused = mapper.readTree(response.getContentAsString());
+        assertThat(response.getStatus()).isIn(409, 422);
+        assertThat(refused.path("code").asText()).isIn("CHECK_REQUIRED", "PATH_NOT_VALID");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?::uuid",
+                Long.class, id)).isZero();
+    }
+
+    private void blockRef(UUID exam, String blockId, String sectionId, UUID subject) {
+        jdbc.update("INSERT INTO exam.exam_block_ref(id, exam_id, block_id, part_id, section_id, subject_item_id) "
+                + "VALUES (?, ?, ?, 'p', ?, ?)", UUID.randomUUID(), exam, blockId, sectionId, subject);
+    }
+
+    /**
+     * Three Lý options of one choice part, in the reviewer's order: "b-opt" first, then "a-opt" with nine single-choice
+     * direct blocks (the "a-opt:blocks" holder) and no sections, then the sibling "c-opt". Every section is nine R-12
+     * clean questions (one set of three, five singles, one short answer).
+     */
+    private String optionsWithAliasedSection(String kind) throws Exception {
+        String base = create(kind, "SUBJECT", null, "LY", null);
+        JsonNode before = structure(base);
+        ObjectNode edited = before.deepCopy();
+        ObjectNode template = section(edited, "LY");
+        ObjectNode single = blockOfType(template, "SINGLE_CHOICE");
+        ObjectNode set = blockOfType(template, "QUESTION_SET");
+        ObjectNode fill = blockOfType(template, "SHORT_ANSWER");
+        ObjectNode bSection = ownSection(template, "b-sec", 9, blockLike(set, "b-set", 3, 1),
+                blockLike(single, "b-single", 5, null), blockLike(fill, "b-fill", 1, null));
+        ObjectNode cSection = ownSection(template, "c-sec", 9, blockLike(set, "c-set", 3, 1),
+                blockLike(single, "c-single", 5, null), blockLike(fill, "c-fill", 1, null));
+        ObjectNode part = (ObjectNode) edited.at("/parts/0");
+        part.put("questionCount", 9);
+        if (part.has("questionCountOnPaper")) part.put("questionCountOnPaper", 9);
+        if (part.has("questionCountRequired")) part.put("questionCountRequired", 9);
+        part.remove("maxPoints");
+        part.putArray("sections");
+        part.putObject("participation").put("mode", "CHOICE").put("choose", 1);
+        ArrayNode options = part.putArray("options");
+        options.addObject().put("id", "b-opt").put("kind", "SUBJECT").put("code", "LY")
+                .putArray("sections").add(bSection);
+        options.addObject().put("id", "a-opt").put("kind", "SUBJECT").put("code", "LY")
+                .putArray("blocks").add(blockLike(single, "a-direct", 9, null));
+        options.addObject().put("id", "c-opt").put("kind", "SUBJECT").put("code", "LY")
+                .putArray("sections").add(cSection);
+        save(base, before, edited);
+        entityManager.flush();
+        entityManager.clear();
+        jdbc.update("UPDATE exam.exam SET question_count = 9, max_score = NULL WHERE id = ?::uuid",
+                base.substring(base.lastIndexOf('/') + 1));
+        entityManager.clear();
+        return base;
     }
 
     /**

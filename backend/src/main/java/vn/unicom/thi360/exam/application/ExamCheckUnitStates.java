@@ -119,6 +119,14 @@ public class ExamCheckUnitStates {
                     incomplete.addAll(unit.key().sectionIds());
                     continue;
                 }
+                if (unit.key().sectionIds().stream().anyMatch(rules.ambiguousSectionIds()::contains)) {
+                    // A proof stored under an ambiguous "{option}:blocks" identity is untrusted: show the unit as
+                    // needing a check rather than whatever the saved row says.
+                    for (String sectionId : unit.key().sectionIds()) {
+                        status.merge(sectionId, "NEEDS_CHECK", ExamCheckUnitStates::worst);
+                    }
+                    continue;
+                }
                 List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
                 var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections, document.examQuotas(),
                         config, inputs.profileRevision(), inputs.catalogRevision(), unit.sections());

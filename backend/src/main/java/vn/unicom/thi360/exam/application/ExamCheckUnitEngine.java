@@ -73,12 +73,16 @@ public class ExamCheckUnitEngine {
             if (scope.kind() != ExamCheckScope.Kind.EXAM
                     && unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
             List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
+            // A "{option}:blocks" id that is also a stored node is ambiguous (AD-85, R1-13): a proof of this identity
+            // could belong to the holder of the direct blocks, not to the stored section, so it is neither read nor
+            // written; the unit is solved every time.
+            boolean ambiguous = unit.key().sectionIds().stream().anyMatch(rules.ambiguousSectionIds()::contains);
             var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections,
                     snapshot.structure().examQuotas(), config, inputInfo.profileRevision(), inputInfo.catalogRevision(),
                     unit.sections());
             UUID subjectId = catalog.findActiveItem("SUBJECT", unit.key().subjectCode()).map(item -> item.id()).orElse(null);
             long sourceRevision = subjectId == null ? 0 : inputInfo.sourceRevisions().path(subjectId.toString()).asLong(0);
-            var old = persisted.get(identity.key());
+            var old = ambiguous ? null : persisted.get(identity.key());
             if (!clock.instant().isBefore(deadline)) {
                 proofs.put(unit.key(), new Proof(SolveStatus.UNCONFIRMED, SolveReason.DEADLINE_EXCEEDED,
                         unit.key().subjectCode(), null, null, List.of()));
@@ -123,9 +127,11 @@ public class ExamCheckUnitEngine {
                 }
             }
             String status = structuralError ? "INVALID" : proof.status().name();
-            changed.add(new ExamCheckUnitStore.Unit(identity.key(), identity.sectionIds(), identity.fingerprint(),
-                    sourceRevision, status, issues, mapper.valueToTree(proof), clock.instant(),
-                    Math.max(0, Duration.between(started, clock.instant()).toMillis())));
+            if (!ambiguous) {
+                changed.add(new ExamCheckUnitStore.Unit(identity.key(), identity.sectionIds(), identity.fingerprint(),
+                        sourceRevision, status, issues, mapper.valueToTree(proof), clock.instant(),
+                        Math.max(0, Duration.between(started, clock.instant()).toMillis())));
+            }
         }
         List<PathResult> paths = new ArrayList<>();
         if (scope.kind() == ExamCheckScope.Kind.EXAM) {
@@ -168,7 +174,8 @@ public class ExamCheckUnitEngine {
     }
 
     List<ExamCheckUnitStore.Unit> invalidUnits(ExamCheckSnapshotReader.Snapshot snapshot,
-            SolverInputBuilder.SolverInput input, ExamCheckScope scope, List<ObjectNode> issues) {
+            SolverInputBuilder.SolverInput input, ExamCheckScope scope, List<ObjectNode> issues,
+            Set<String> ambiguousSectionIds) {
         var plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
         var requested = scope.sections(snapshot.structure());
         var sourceSections = sections(snapshot.structure());
@@ -177,6 +184,7 @@ public class ExamCheckUnitEngine {
         List<ExamCheckUnitStore.Unit> changed = new ArrayList<>();
         for (var unit : plan.units()) {
             if (unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
+            if (unit.key().sectionIds().stream().anyMatch(ambiguousSectionIds::contains)) continue;
             var relevant = issues.stream().filter(issue -> {
                 if (!"ERROR".equals(issue.path("severity").asText())) return false;
                 if (issue.hasNonNull("sectionId")) {
