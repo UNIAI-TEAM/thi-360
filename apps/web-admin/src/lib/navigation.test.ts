@@ -241,26 +241,35 @@ describe("menu của đợt 3 (FA-1)", () => {
     expect(resolveBreadcrumb(NAVIGATION, "/attempts/abc")?.group.id).toBe("learners");
   });
 
-  it("danh sách ẩn: promotions, orders, bundles, attempts không hiện ở sidebar và lối tắt dù đủ quyền; nhóm hết mục thì bỏ", () => {
-    expect([...HIDDEN_NAV_ITEMS].sort()).toEqual(["attempts", "bundles", "orders", "promotions"]);
+  it("danh sách ẩn: orders, bundles, attempts không hiện ở sidebar và lối tắt dù đủ quyền; nhóm hết mục thì bỏ", () => {
+    expect([...HIDDEN_NAV_ITEMS].sort()).toEqual(["attempts", "bundles", "orders"]);
 
     const everything = new Set(["PROMOTION.VIEW", "ORDER.VIEW", "EXAM.VIEW", "ATTEMPT.VIEW", "USER.VIEW"]);
     const groups = filterNavigation(NAVIGATION, everything, none);
     const shown = groups.flatMap((group) => group.items.map((item) => item.id));
     for (const id of HIDDEN_NAV_ITEMS) expect(shown).not.toContain(id);
-    expect(groups.map((group) => group.id)).not.toContain("commerce");
+    expect(shown).toContain("promotions");
+    expect(idsOf(groups, "commerce")).toEqual(["promotions"]);
     expect(groups.map((group) => group.id)).not.toContain("learners");
     // Mục khác trong cùng bộ quyền vẫn hiện: Bài thi (EXAM.VIEW) ở nhóm Nội dung.
     expect(idsOf(groups, "content")).toEqual(["exams"]);
 
     const shortcuts = shortcutItems(NAVIGATION, everything).map((item) => item.id);
     for (const id of HIDDEN_NAV_ITEMS) expect(shortcuts).not.toContain(id);
+    expect(shortcuts).toContain("promotions");
     expect(shortcuts).toContain("exams");
+  });
+
+  it("mục khuyến mãi hiện ở sidebar và lối tắt khi có PROMOTION.VIEW", () => {
+    const granted = new Set(["PROMOTION.VIEW"]);
+    const groups = filterNavigation(NAVIGATION, granted, none);
+    expect(idsOf(groups, "commerce")).toEqual(["promotions"]);
+    expect(shortcutItems(NAVIGATION, granted).map((item) => item.id)).toContain("promotions");
   });
 
   it("bỏ một dòng ẩn thì mục đó hiện lại, các mục còn ẩn vẫn ẩn; nhóm hiện khi còn một mục", () => {
     const granted = new Set(["PROMOTION.VIEW", "ORDER.VIEW"]);
-    const groups = filterNavigation(NAVIGATION, granted, none, ["orders", "bundles", "attempts"]);
-    expect(idsOf(groups, "commerce")).toEqual(["promotions"]);
+    const groups = filterNavigation(NAVIGATION, granted, none, ["bundles", "attempts"]);
+    expect(idsOf(groups, "commerce")).toEqual(["promotions", "orders"]);
   });
 });
