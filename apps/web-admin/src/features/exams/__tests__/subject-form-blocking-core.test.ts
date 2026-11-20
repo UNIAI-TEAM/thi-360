@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { formBlockingIssues, registerFormBlockingRuleForTest, type BlockingIssue } from "../subject-forms/blocking";
 import { findFormTargetElement, focusFormTarget, formTarget } from "../subject-forms/navigation";
 import { createRawInputStore } from "../subject-forms/raw-input-store";
+import { rowFormBlockingRule } from "../subject-forms/row-blocking";
 import type { SubjectFormPins } from "../subject-forms/selection";
-import { part, scienceSection, standardExam } from "./subject-form-builders";
+import { part, scienceSection, setBlock, standardExam } from "./subject-form-builders";
 
 /** Lõi của chặn lưu (`blocking.ts`), kho nhập thô và `navigation.ts`: hàm thuần, chưa qua `StructureEditor`. */
 const restores: Array<() => void> = [];
@@ -86,8 +87,9 @@ describe("Lỗi chặn lưu (blocking.ts)", () => {
 describe("Điều hướng theo biểu mẫu (navigation.ts)", () => {
   const sel = (form: "MATRIX" | "ROWS" | "DEFAULT" | "REVIEW") => ({ form, notice: false });
 
-  it("MT: ô của môn (mặc định Cấu trúc câu); DS: dòng; MD, ON: đích cũ; không có nhóm: chỉ mở môn", () => {
-    expect(formTarget(sel("MATRIX"), { sectionId: "s", blockId: "b" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "STRUCTURE" } });
+  it("MT: ô của môn (mặc định Cấu trúc câu, kèm nhóm); DS: dòng; MD, ON: đích cũ; không có nhóm: chỉ mở môn", () => {
+    expect(formTarget(sel("MATRIX"), { sectionId: "s", blockId: "b" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "STRUCTURE", blockId: "b" } });
+    expect(formTarget(sel("MATRIX"), { sectionId: "s" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "STRUCTURE" } });
     expect(formTarget(sel("MATRIX"), { sectionId: "s", field: "SET_SOURCE" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "SET_SOURCE" } });
     expect(formTarget(sel("ROWS"), { sectionId: "s", blockId: "b" })).toEqual({ kind: "ROW", blockId: "b" });
     expect(formTarget(sel("ROWS"), { sectionId: "s" })).toBeNull();
@@ -108,5 +110,25 @@ describe("Điều hướng theo biểu mẫu (navigation.ts)", () => {
     expect(focusFormTarget(root, { kind: "ROW", blockId: "missing" })).toBe(false);
     expect(findFormTargetElement(root, { kind: "LEGACY_BLOCK", blockId: "b1" })).toBeNull();
     document.body.innerHTML = "";
+  });
+});
+
+describe("rowFormBlockingRule (R1-14)", () => {
+  it("bỏ qua môn không dùng ROWS, nhóm omitted hoặc questionCount null; báo lỗi COUNT_FIELD khi <= 0 hoặc không nguyên", () => {
+    const s = scienceSection("s");
+    s.blocks = [
+      { ...s.blocks[0]!, id: "zero", questionCount: 0 },
+      { ...s.blocks[1]!, id: "neg", questionCount: -1 },
+      { ...s.blocks[0]!, id: "frac", questionCount: 1.5 },
+      { ...s.blocks[0]!, id: "omitted", questionCount: 0, omitted: true },
+      { ...s.blocks[0]!, id: "nullCount", questionCount: null },
+      setBlock("ok", 2, 3),
+    ];
+    expect(rowFormBlockingRule(s, { kindCode: "QDA", form: "MATRIX" })).toEqual([]);
+    expect(rowFormBlockingRule(s, { kindCode: "THPTQG", form: "ROWS" })).toEqual([
+      { code: "ROW_COUNT_NOT_POSITIVE", sectionId: "s", blockId: "zero", field: "COUNT" },
+      { code: "ROW_COUNT_NOT_POSITIVE", sectionId: "s", blockId: "neg", field: "COUNT" },
+      { code: "ROW_COUNT_NOT_POSITIVE", sectionId: "s", blockId: "frac", field: "COUNT" },
+    ]);
   });
 });

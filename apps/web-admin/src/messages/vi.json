@@ -4739,7 +4739,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
         "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
-        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố."
+        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "RULES_CHANGED": "Quy tắc kiểm tra đã đổi sau lần kiểm tra này. Kiểm tra lại cả bài trước khi công bố."
       },
       "runError": "Không chạy được kiểm tra. Thử lại.",
       "live": {
@@ -5061,6 +5062,9 @@
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "SECTION_SET_COUNT_RANGE": "Môn {subject}: số chùm phải từ 1 đến 2 và mỗi chùm có 3 câu con.",
+        "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu Điền đáp án (loại Trả lời ngắn).",
+        "STORED_ID_COLLISION": "Id đã lưu \"{id}\" trùng tên giữ chỗ cho chùm trực tiếp của một tùy chọn (id tùy chọn cộng :blocks), nên không đường nào của bài thi này kiểm tra hay công bố được. Hãy đổi tên hoặc tạo lại mục mang id này, rồi kiểm tra lại.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
         "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc."
       },
@@ -5561,6 +5565,7 @@
           "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "RULES_CHANGED": "Quy tắc kiểm tra đã được cập nhật sau lần kiểm tra gần nhất. Kiểm tra lại cả bài rồi công bố.",
           "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
           "UNKNOWN": "Cấu hình cần được kiểm tra lại trước khi công bố."
         },
@@ -6052,8 +6057,32 @@
         "close": "Đóng",
         "comparator": {
           "AT_LEAST": "Ít nhất",
-          "EXACT": "Đúng",
+          "EXACT": "Bằng",
           "legend": "So sánh"
+        },
+        "conflict": {
+          "CAPACITY_EXCEEDED_GROUP": "Nhóm {scope} chỉ có {available, number} câu nên không thể yêu cầu {required, number} câu thuộc {topics}.",
+          "CAPACITY_EXCEEDED_SUBJECT": "Toàn môn chỉ có {available, number} câu nên không thể yêu cầu {required, number} câu thuộc {topics}.",
+          "EQUIVALENT": "Quy tắc tương đương đã tồn tại trong phạm vi {scope} cho {topics}: {rule}.",
+          "EXACT_BELOW_MINIMUM": "Xung đột trong phạm vi {scope} cho {topics}: điều kiện đúng {available, number} câu nhỏ hơn mức tối thiểu {required, number} câu (liên quan: {rule}).",
+          "EXACT_COUNTS_DIFFER": "Xung đột trong phạm vi {scope} cho {topics}: quy tắc {rule} và quy tắc này đòi hai số lượng khác nhau ({available, number} và {required, number} câu).",
+          "EXACT_ZERO_CONFLICTS_SOURCE": "Xung đột với {rule}: phạm vi {scope} không thể vừa có đúng 0 câu thuộc {topics} vừa chỉ lấy nguồn từ {topics}.",
+          "GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT": "Các nhóm đang yêu cầu tối thiểu {required, number} câu {topics}, vượt mức {available, number} câu của toàn môn. Các dòng liên quan: {rules}.",
+          "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP": "Xung đột giữa các nhóm cho {topics}: nhóm {onlyGroup} chỉ cho phép chủ đề này xuất hiện tại đó, mâu thuẫn với yêu cầu ở nhóm {otherGroup} (liên quan: {rule}).",
+          "ONLY_IN_GROUP_EXCLUDES_SOURCE": "Xung đột giữa các nhóm cho {topics}: chủ đề này chỉ được xuất hiện ở nhóm {onlyGroup}, xung đột với quy tắc chỉ lấy nguồn ở nhóm {otherGroup} (liên quan: {rule}).",
+          "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP": "Xung đột giữa các nhóm cho {topics}: quy tắc chỉ xuất hiện ở nhóm {onlyGroup} trùng chủ đề với quy tắc ở nhóm {otherGroup} (liên quan: {rule}).",
+          "SUBJECT_EXACT_BELOW_GROUP_MINIMUM": "Xung đột với {rule}: toàn môn chỉ cho đúng {available, number} câu {topics}, nhưng nhóm {scope} đang yêu cầu tối thiểu {required, number} câu.",
+          "SUBSUMED_BY": "Điều kiện này đã nằm trong quy tắc chặt hơn: {rule}. Không cần thêm dòng trùng lặp.",
+          "SUBSUMES_AT_LEAST_PRESENT": "Ít nhất {count, number} câu đã bao gồm yêu cầu phải xuất hiện ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ» để gộp thành một dòng.",
+          "SUBSUMES_AT_LEAST_RULE": "Ít nhất {count, number} câu đã bao gồm điều kiện hiện có ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ» để thay dòng cũ.",
+          "SUBSUMES_EXACT_PRESENT": "Đúng {count, number} câu đã bao gồm yêu cầu phải xuất hiện ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ» để gộp thành một dòng.",
+          "SUBSUMES_EXACT_RULE": "Đúng {count, number} câu đã bao gồm điều kiện hiện có ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ» để thay dòng cũ.",
+          "SUBSUMES_ONLY_IN_GROUP": "Quy tắc kèm số lượng đã bao gồm quy tắc chỉ xuất hiện ở nhóm này trước đó ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ».",
+          "SUBSUMES_PRESENT": "Quy tắc mới chặt hơn đã bao gồm yêu cầu phải xuất hiện ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ».",
+          "SUBSUMES_RULE": "Quy tắc mới chặt hơn đã bao gồm điều kiện hiện có ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ».",
+          "openRule": "Mở quy tắc để sửa",
+          "openRuleNamed": "Sửa: {rule}",
+          "replaceRule": "Thay quy tắc cũ"
         },
         "count": "Số câu",
         "countAria": "Số câu của quy tắc",
@@ -6064,6 +6093,7 @@
         "entryCount": "Số câu",
         "entryPercent": "Tỷ lệ",
         "issues": {
+          "COUNT_ABOVE_GROUP": "Số câu vượt số câu của nhóm {scope} ({units, number}). Nhập số nhỏ hơn hoặc bằng {units, number}.",
           "COUNT_ABOVE_TOTAL": "Số câu vượt số câu của môn ({total, number}). Nhập số nhỏ hơn hoặc bằng số câu của môn.",
           "GROUP_MISSING": "Nhóm đã chọn không còn. Chọn lại phạm vi áp dụng.",
           "NO_NODES": "Chọn ít nhất một MAPID.",
@@ -6071,7 +6101,9 @@
           "ONLY_IN_GROUP_NEEDS_GROUP": "Quy tắc này chỉ áp dụng cho một nhóm. Chọn một nhóm.",
           "PERCENT_DENOMINATOR_UNKNOWN": "Chưa biết mẫu số nên chưa tính được tỷ lệ. Nhập số câu của môn và của các nhóm khác, hoặc chuyển sang nhập theo số câu.",
           "PERCENT_POOL": "Môn tự chọn chưa dùng được tỷ lệ vì số câu của môn tính theo số môn học viên chọn. Chuyển sang nhập theo số câu.",
-          "PERCENT_RANGE": "Tỷ lệ phải từ 0 đến 100."
+          "PERCENT_RANGE": "Tỷ lệ phải từ 0 đến 100.",
+          "TYPE_CLEARED_FOR_SUBJECT": "Quy tắc «MAPID chỉ được xuất hiện ở nhóm này» không áp dụng cho toàn môn. Chọn loại quy tắc phù hợp.",
+          "TYPE_REQUIRED": "Chọn một loại quy tắc."
         },
         "nodeRemove": "Bỏ MAPID {code} {name}",
         "nodesEmpty": "Chưa chọn MAPID nào.",
@@ -6082,49 +6114,77 @@
         "percentUnknown": "Chưa biết số câu của nhóm nên chưa quy ra được số câu.",
         "pick": "Chọn MAPID",
         "pickEdit": "Đổi MAPID",
-        "pickHint": "Câu khớp khi có ít nhất một mã đã chọn. Muốn cả ba chủ đề đều xuất hiện, thêm một quy tắc riêng cho từng mã.",
-        "pickHintSource": "Câu khớp quy tắc này khi có ít nhất một mã đã chọn. Mỗi quy tắc “Chỉ lấy nguồn” khác áp dụng cho phạm vi này (của chính nhóm, hoặc của cả môn) cũng phải khớp: thêm quy tắc thì nguồn hẹp lại, không rộng thêm.",
+        "pickHint": "Khớp ít nhất một MAPID đã chọn. Nếu cần bảo đảm từng chủ đề đều xuất hiện, hãy thêm một dòng riêng cho mỗi mã.",
+        "pickHintSource": "Khớp ít nhất một MAPID đã chọn. Nếu có nhiều quy tắc chỉ lấy nguồn cùng áp dụng cho phạm vi này, câu hỏi phải thỏa mãn tất cả (nguồn hẹp lại).",
         "pickerDescription": "Quy tắc của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó.",
         "save": "Lưu quy tắc",
         "scope": {
-          "groupHint": "{type} · {size}",
+          "deletedNamed": "Nhóm «{name}» (đã xóa)",
+          "deletedUnnamed": "Nhóm đã xóa — chọn lại phạm vi",
+          "groupHint": "{type} · {units, number}/{total, number} câu",
+          "groupHintNoTotal": "{type} · {units, number} câu",
+          "groupHintUnknown": "{type}",
+          "groupRemainder": "{name} · lấy phần còn lại",
+          "groupRemainderUnits": "{name} · lấy phần còn lại ({units, number} câu)",
+          "groupSets": "{name} · {sets, number} chùm × {size, number} câu con",
+          "groupSingle": "{name} · {units, number} câu",
+          "groupUnknown": "{name}",
           "legend": "Áp dụng cho",
           "subject": "Toàn môn",
-          "subjectHint": "{subject}, cả môn",
-          "subjectHintCount": "{subject}, {total, number} câu"
+          "subjectCount": "Toàn môn · {total, number} câu",
+          "subjectHint": "{subject} · toàn môn",
+          "subjectHintCount": "{subject} · {total, number} câu"
         },
-        "size": {
-          "remainder": "lấy phần còn lại",
-          "remainderUnits": "lấy phần còn lại = {units, number}/{total, number} câu",
-          "sets": "{sets, number} chùm × {size, number} câu con = {units, number}/{total, number} câu",
-          "setsNoTotal": "{sets, number} chùm × {size, number} câu con = {units, number} câu",
-          "single": "{units, number}/{total, number} câu",
-          "singleNoTotal": "{units, number} câu"
+        "summary": {
+          "COUNT_AT_LEAST": "{scopePhrase}, lấy ít nhất {count, number} câu thuộc {topics}.",
+          "COUNT_AT_LEAST_PERCENT": "{scopePhrase}, lấy ít nhất {count, number} câu ({percent, number}%) thuộc {topics}.",
+          "COUNT_AT_LEAST_PERCENT_UNKNOWN": "{scopePhrase}, lấy ít nhất {percent, number}% số câu thuộc {topics}.",
+          "COUNT_EXACT": "{scopePhrase}, lấy đúng {count, number} câu thuộc {topics}.",
+          "COUNT_EXACT_PERCENT": "{scopePhrase}, lấy đúng {count, number} câu ({percent, number}%) thuộc {topics}.",
+          "COUNT_EXACT_PERCENT_UNKNOWN": "{scopePhrase}, lấy đúng {percent, number}% số câu thuộc {topics}.",
+          "ONLY_IN_GROUP": "{topics} chỉ được xuất hiện trong nhóm {group}. Nhóm này vẫn được lấy thêm các chủ đề khác và đề có thể có 0 câu thuộc {topics}.",
+          "ONLY_IN_GROUP_AT_LEAST": "{topics} chỉ được xuất hiện trong nhóm {group}, lấy ít nhất {count, number} câu.",
+          "ONLY_IN_GROUP_AT_LEAST_PERCENT": "{topics} chỉ được xuất hiện trong nhóm {group}, lấy ít nhất {count, number} câu ({percent, number}%).",
+          "ONLY_IN_GROUP_AT_LEAST_PERCENT_UNKNOWN": "{topics} chỉ được xuất hiện trong nhóm {group}, lấy ít nhất {percent, number}% số câu.",
+          "ONLY_IN_GROUP_EXACT": "{topics} chỉ được xuất hiện trong nhóm {group}, lấy đúng {count, number} câu.",
+          "ONLY_IN_GROUP_EXACT_PERCENT": "{topics} chỉ được xuất hiện trong nhóm {group}, lấy đúng {count, number} câu ({percent, number}%).",
+          "ONLY_IN_GROUP_EXACT_PERCENT_UNKNOWN": "{topics} chỉ được xuất hiện trong nhóm {group}, lấy đúng {percent, number}% số câu.",
+          "PRESENT": "{scopePhrase}, có ít nhất 1 câu thuộc {topics}.",
+          "SOURCE_GROUP": "Nhóm {group} chỉ lấy câu thuộc {topics}. Các nhóm khác vẫn có thể lấy câu thuộc chủ đề này.",
+          "SOURCE_SUBJECT": "Toàn môn chỉ lấy câu thuộc {topics}.",
+          "label": "Tóm tắt quy tắc",
+          "pendingCondition": "Nhập giá trị hợp lệ để xem câu tóm tắt quy tắc.",
+          "pendingNodes": "Chọn ít nhất một MAPID để xem tóm tắt quy tắc.",
+          "pendingScope": "Chọn lại phạm vi áp dụng để xem tóm tắt quy tắc.",
+          "pendingType": "Chọn loại quy tắc để xem tóm tắt quy tắc.",
+          "scopeGroup": "Trong {units, number} câu {group}",
+          "scopeGroupUnknown": "Trong nhóm {group}",
+          "scopeSubject": "Trong toàn môn",
+          "scopeSubjectCount": "Trong {total, number} câu toàn môn"
         },
         "title": "Thêm quy tắc",
         "titleEdit": "Sửa quy tắc",
         "type": {
           "COUNT": {
             "description": "Số câu thuộc MAPID bằng hoặc ít nhất một con số, kể cả câu con trong chùm và câu lấy ngẫu nhiên.",
-            "label": "Số lượng"
+            "label": "Số câu theo MAPID"
           },
           "ONLY_IN_GROUP": {
-            "description": "Giới hạn vị trí của chủ đề: các nhóm khác loại câu thuộc MAPID. Chỉ chọn được khi áp dụng cho một nhóm.",
-            "label": "Chỉ xuất hiện ở nhóm này"
+            "description": "Các nhóm khác loại chủ đề này; bỏ trống số lượng nếu chỉ giới hạn vị trí (có thể 0 câu).",
+            "label": "MAPID chỉ được xuất hiện ở nhóm này"
           },
           "PRESENT": {
-            "description": "Đề có ít nhất 1 câu thuộc MAPID. Các vị trí ngẫu nhiên vẫn được lấy thêm câu cùng chủ đề.",
+            "description": "Phạm vi đã chọn phải có ít nhất 1 câu phù hợp; các vị trí ngẫu nhiên có thể lấy thêm.",
             "label": "Phải xuất hiện"
           },
           "SOURCE": {
-            "description": "Giới hạn nguồn: phạm vi này chỉ lấy câu thuộc ít nhất một MAPID đã chọn. Quy tắc nguồn khác của cùng phạm vi, hoặc của cả môn, cũng phải khớp. Chủ đề vẫn có thể xuất hiện ở nhóm khác.",
-            "label": "Chỉ lấy nguồn từ các MAPID"
+            "description": "Toàn bộ câu được lấy trong phạm vi phải thuộc ít nhất một MAPID đã chọn (nhóm chùm lấy nguyên chùm).",
+            "label": "Chỉ lấy nguồn từ các MAPID được chọn"
           },
-          "contrast": "Hai quy tắc dễ nhầm: “Chỉ xuất hiện ở nhóm này” giới hạn vị trí của chủ đề (các nhóm khác loại chủ đề đó). “Chỉ lấy nguồn từ các MAPID” giới hạn nguồn của nhóm (nhóm chỉ lấy từ các chủ đề đó, chủ đề vẫn có thể xuất hiện ở nhóm khác). Nhiều quy tắc nguồn cùng áp dụng thì câu phải khớp cả từng quy tắc.",
           "legend": "Loại quy tắc"
         },
         "withNumber": "Kèm số lượng",
-        "withNumberHint": "Ví dụ: chủ đề chỉ ở nhóm này và có đúng 3 câu."
+        "withNumberHint": "Bỏ chọn nếu chỉ giới hạn vị trí (cho phép 0 câu)."
       },
       "edit": "Sửa",
       "editAria": "Sửa quy tắc: {sentence}",
@@ -6489,6 +6549,258 @@
           "rowNoSetSize": "Dòng không có cỡ chùm cố định",
           "rowOmitted": "Dòng đang tạm bỏ qua",
           "templateTotal": "Số câu của mục theo mẫu, không đổi"
+        }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Thêm điều kiện",
+          "conditionMenu": "Điều kiện thêm",
+          "declared": "Đã khai {declared, number}/{total, number}",
+          "difficulty": "Độ khó",
+          "grade": "Khối lớp",
+          "gradeCondition": "Khối lớp",
+          "hint": "Ô nào không cần kiểm soát thì để trống.",
+          "percentAria": "Tỷ lệ của {label}",
+          "percentNeeds100": "Tổng tỷ lệ {total, number}%, cần 100%",
+          "percentTotal": "Tổng tỷ lệ {total, number}%",
+          "title": "Khối lớp và độ khó"
+        },
+        "errors": {
+          "choiceBelowChildren": "Ít hơn số câu con của chùm ({children, number})",
+          "percentTotal": "Tổng tỷ lệ {total}%, cần 100%",
+          "setMin": "Ít nhất 1 chùm",
+          "setRange": "Số chùm từ {min, number} đến {max, number}",
+          "shortAnswerMin": "Cần ít nhất {min, number} câu điền đáp án"
+        },
+        "scope": {
+          "addQuota": "Thêm chỉ tiêu chủ đề",
+          "addQuotaHint": "Mở bảng số câu tối thiểu theo từng chủ đề.",
+          "hint": "Giới hạn nguồn câu hỏi theo MAPID.",
+          "title": "Phạm vi và chỉ tiêu chủ đề"
+        },
+        "setSource": {
+          "add": "Thêm điều kiện",
+          "added": "Đã thêm",
+          "empty": "Chưa có điều kiện: chùm lấy theo phạm vi của môn.",
+          "groupName": "Câu chùm",
+          "hint": "MAPID và nhãn của riêng nhóm câu chùm; câu đơn không đổi.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Nhãn nguồn"
+          },
+          "kindHint": {
+            "MAPID": "Chỉ lấy chùm thuộc các MAPID này",
+            "TAGS": "Lọc chùm theo nhãn, ví dụ loại ngữ liệu"
+          },
+          "menuLabel": "Điều kiện của nguồn chùm",
+          "remove": "Bỏ",
+          "removeAria": "Bỏ điều kiện {kind} của nguồn chùm",
+          "title": "Nguồn chùm"
+        },
+        "structure": {
+          "children": "Câu con trong chùm",
+          "childrenHint": "Tổng số câu con; hệ thống tự chọn các chùm nguyên",
+          "choice": "Trắc nghiệm",
+          "choiceHint": "Gồm cả câu con của chùm",
+          "choiceTotal": "Trắc nghiệm (gồm câu con)",
+          "choiceTotalHint": "Tự tính: câu đơn cộng câu con",
+          "fill": "Điền đáp án",
+          "fillMin": "Ít nhất {min, number}",
+          "hint": "Nhập số câu của từng dạng. Trắc nghiệm đơn tự tính.",
+          "setSize": "Mỗi chùm {size, number} câu con",
+          "sets": "Số chùm",
+          "single": "Trắc nghiệm đơn",
+          "singleAuto": "Trắc nghiệm đơn",
+          "singleAutoHint": "Tự tính: Trắc nghiệm trừ câu con của chùm",
+          "title": "Cấu trúc câu"
+        }
+      },
+      "rows": {
+        "editor": {
+          "close": "Về danh sách",
+          "conditions": {
+            "difficulty": {
+              "hint": "Phân bố độ khó theo số câu của dòng",
+              "label": "Độ khó"
+            },
+            "grade": {
+              "hint": "Phân bố khối lớp theo số câu của dòng",
+              "label": "Khối lớp"
+            },
+            "positions": {
+              "hint": "Điều kiện MAPID cho từng vị trí câu con của chùm",
+              "label": "Theo vị trí câu con",
+              "template": "Do mẫu đặt, không thêm điều kiện này",
+              "unavailable": "Chỉ cho dòng câu chùm cỡ cố định"
+            },
+            "scope": {
+              "hint": "Chỉ lấy câu thuộc các MAPID đã chọn",
+              "label": "MAPID (lọc)"
+            },
+            "slots": {
+              "hint": "Nhãn hoặc MAPID riêng cho từng chùm",
+              "label": "Điều kiện từng chùm",
+              "unavailable": "Chỉ cho dòng câu chùm cỡ cố định"
+            },
+            "topicQuotas": {
+              "hint": "Số câu tối thiểu theo từng MAPID, nằm trong số câu của dòng",
+              "label": "Phân bổ theo MAPID"
+            }
+          },
+          "countNotWhole": "{count, number} câu không chia được thành chùm {size, number} câu",
+          "facts": {
+            "formats": "định dạng đáp án {formats}",
+            "line": "Theo mẫu: {facts}",
+            "matching": "ghép {left, number} ý trái, {right, number} lựa chọn phải",
+            "options": "{count, number} phương án",
+            "points": "{points} điểm mỗi câu",
+            "rule": {
+              "ALL_OR_NOTHING": "đúng hết mới có điểm",
+              "PARTIAL": "chấm từng phần"
+            },
+            "statements": "{count, number} ý",
+            "trueFalseTable": "bảng điểm theo số ý đúng {table}"
+          },
+          "lockedList": "Khóa của dòng",
+          "position": "Dòng {position, number} / {total, number}",
+          "quantityPercent": "Số câu của dòng",
+          "split": "Tách dòng",
+          "title": "Sửa dòng: {name}",
+          "untitled": "Chưa đặt tên"
+        },
+        "notice": {
+          "ESSAY_SKIPPED": "Tự luận – tạm bỏ qua. Phần này không có ô sửa."
+        },
+        "reference": {
+          "caption": "Phân bố {dimension} của {subject}",
+          "cellAria": "{dimension}: {label}, số câu",
+          "cellPercentAria": "{dimension}: {label}, tỷ lệ",
+          "combined": {
+            "back": "Bỏ kết hợp",
+            "backDifficulties": "Theo độ khó: {values}",
+            "backGrades": "Theo khối lớp: {values}",
+            "cancel": "Hủy",
+            "caption": "Bảng kết hợp Khối lớp × Độ khó",
+            "cellAria": "{grade} × {difficulty}: số câu",
+            "cellPercentAria": "{grade} × {difficulty}: tỷ lệ",
+            "confirm": "Xác nhận chuyển",
+            "gradeHeader": "Khối lớp",
+            "percentError": "Tổng tỷ lệ {total, number}%, cần 100%",
+            "previewBackEmpty": "Bảng kết hợp chưa có số nào, nên hai chiều riêng sẽ bắt đầu trống. Chỉ ghi khi bạn xác nhận.",
+            "previewBackHint": "Tổng theo từng khối lớp và từng độ khó của bảng kết hợp hiện tại. Chỉ ghi khi bạn xác nhận.",
+            "previewBackTitle": "Xem trước: về riêng từng chiều",
+            "previewCaption": "Dữ liệu sẽ chuyển sang bảng kết hợp",
+            "previewEmpty": "Chưa có số nào để chuyển, bảng kết hợp bắt đầu trống. Chỉ ghi khi bạn xác nhận.",
+            "previewHint": "Số của hai chiều được chia vào các ô theo tích tỷ lệ. Chỉ ghi khi bạn xác nhận.",
+            "previewTitle": "Xem trước: sang bảng kết hợp",
+            "title": "Kết hợp Khối lớp × Độ khó",
+            "total": "Tổng {total, number}/{count, number} câu",
+            "totalNoCount": "Tổng {total, number} câu",
+            "totalPercent": "Tổng {total, number}%"
+          },
+          "conditions": {
+            "add": "Thêm điều kiện",
+            "addAria": "Thêm điều kiện của Phân bổ đối chiếu",
+            "added": "Đã thêm",
+            "combined": {
+              "hint": "Một bảng chung cho cả hai chiều; xem trước dữ liệu chuyển rồi xác nhận",
+              "label": "Kết hợp Lớp × Độ khó"
+            },
+            "menuLabel": "Điều kiện của Phân bổ đối chiếu"
+          },
+          "declared": "Đã khai {total, number}/{count, number} câu",
+          "declaredNoTotal": "Đã khai {total, number} câu",
+          "declaredPercent": "Đã khai {total, number}%",
+          "difficultyTitle": "Độ khó",
+          "dimensionTitle": "{dimension} của {subject}",
+          "gradeTitle": "Khối lớp",
+          "hint": "Mức áp dụng theo kỳ thi",
+          "percent": "Tỷ lệ (%)",
+          "percentTotal": "Tổng tỷ lệ {total, number}%, cần 100%",
+          "questions": "Số câu",
+          "quotas": {
+            "basis": {
+              "POINTS": "Đơn vị: điểm",
+              "PROMPT": "Đơn vị: lệnh hỏi",
+              "QUESTION": "Đơn vị: câu"
+            },
+            "denominator": "Mẫu số: {subject} · {count, number} lệnh",
+            "difficulty": "độ khó",
+            "entryTitle": "Phân bố {dimension}",
+            "grade": "khối lớp",
+            "percentValue": "{label}: {value, number}%",
+            "title": "Phân bố cả môn: {subject}",
+            "unclassified": "Chưa phân loại",
+            "unclassifiedValue": "Chưa phân loại: {count, number} lệnh",
+            "value": "{label}: {value, number}"
+          },
+          "resolved": "Số câu quy ra",
+          "resolvedValue": "{count, number} câu",
+          "title": "Phân bổ đối chiếu",
+          "unit": {
+            "count": "Số câu",
+            "legend": "Đơn vị nhập",
+            "percent": "Tỷ lệ"
+          }
+        },
+        "split": {
+          "apply": "Tách",
+          "cancel": "Hủy",
+          "childAria": "{unit, select, set {Số chùm của dòng con {index, number}} other {Số câu của dòng con {index, number}}}",
+          "childSets": "chùm, mỗi chùm {size, number} câu ({count, number} câu)",
+          "childSingle": "câu",
+          "errors": {
+            "notPositive": "Dòng con {index, number} phải có ít nhất {unit, select, set {1 chùm} other {1 câu}}",
+            "total": "Tổng các dòng con là {total, number}, dòng cha có {unit, select, set {{units, number} chùm} other {{units, number} câu}}"
+          },
+          "hint": "Dòng cha ({unit, select, set {{units, number} chùm} other {{units, number} câu}}) được thay bằng các dòng con; dòng con đầu giữ mã của dòng cha. Yêu cầu audio của mục không đổi.",
+          "partsLabel": "Số dòng sau khi tách",
+          "partsOption": "{count, number} dòng",
+          "title": "Tách dòng {name}"
+        },
+        "table": {
+          "caption": "Các dòng lấy câu của {subject}",
+          "columns": {
+            "actions": "Thao tác",
+            "conditions": "Điều kiện",
+            "name": "Tên",
+            "order": "Thứ tự",
+            "quantity": "Số lượng"
+          },
+          "conditions": {
+            "difficulty": "Độ khó",
+            "grade": "Khối lớp",
+            "none": "Không có",
+            "positions": "Theo vị trí: {count, number}",
+            "scope": "MAPID: {count, number}",
+            "slots": "Từng chùm: {count, number}",
+            "tags": "Nhãn: {count, number}",
+            "topicQuotas": "Phân bổ MAPID: {count, number} dòng"
+          },
+          "countsLocked": "Số lượng khóa theo mẫu",
+          "edit": "Sửa",
+          "editAria": "Sửa dòng {name}",
+          "empty": "Môn chưa có dòng lấy câu.",
+          "figures": {
+            "plainPoints": "{count, number} câu · {points, number} điểm",
+            "trueFalse": "{count, number} câu Đ/S{hasStatements, select, yes { · {statements, number} ý} other {}}{hasPoints, select, yes { · thang {points, number} điểm} other {}}"
+          },
+          "kind": {
+            "set": "Câu chùm",
+            "setOf": "Câu chùm · {type}",
+            "single": "Câu đơn",
+            "singleOf": "Câu đơn · {type}"
+          },
+          "quantity": {
+            "flexible": "{count, number} câu (chùm cỡ linh hoạt)",
+            "sets": "{sets, number} chùm × {size, number} ({count, number} câu)",
+            "single": "{count, number} câu"
+          },
+          "range": "Câu {from, number}{same, select, yes {} other {–{to, number}}}",
+          "slot": "Chùm {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · MAPID {nodes, number}}}",
+          "slotsLabel": "Điều kiện từng chùm của {name}",
+          "title": "Các dòng lấy câu",
+          "untitled": "Chưa đặt tên"
         }
       }
     }

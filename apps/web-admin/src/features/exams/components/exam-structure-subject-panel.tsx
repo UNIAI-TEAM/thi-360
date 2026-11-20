@@ -6,8 +6,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
 import type { AudioCountQuery } from "../api.http";
-import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalChangePending } from "../allocation";
-import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
+import { ratePercent } from "../allocation";
+import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
 import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
@@ -20,18 +20,12 @@ import { KnowledgeScopeField, MapidModeField } from "./knowledge-scope-field";
 import { AllocationGap } from "./allocation-gap";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
-import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
+import { ReferenceDistributions } from "./subject-allocation-extras";
+import { useSubjectTotalChange } from "./subject-total-change";
 import { useHsaExam, isHsaExam } from "../hsa-enforcement";
 import { deletedGroupRules, groupCountScope, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
 import { MapidRulesTable, useMapidRuleText } from "./mapid-rules-table";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
-
-/** Chỉ tiêu dạng trả lời nhập theo tỷ lệ quy về số câu của tổng `total` (phần dư lớn nhất); nhập theo số câu giữ nguyên. */
-function toCountQuotas(quotas: AnswerQuotas | null, total: number): AnswerQuotas | null {
-  if (quotas?.unit !== "PERCENT") return quotas;
-  const counts = apportionByPercent(quotas.items.map((item) => item.value), total).results;
-  return { unit: "COUNT", items: quotas.items.map((item, index) => ({ ...item, value: counts[index] ?? 0 })) };
-}
 
 export interface SubjectPanelProps {
   context: SectionContext;
@@ -44,6 +38,8 @@ export interface SubjectPanelProps {
   onAddBlock: () => void;
   /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
+  /** Mã bài (cấp qua `SubjectFormRendererProps` để DS đọc bộ nhớ đệm bài thi); màn mặc định không còn ô số câu (UNI-2753). */
+  examId: string;
   /** Mẫu khóa số câu từng phần, mục (H27): dòng số câu ở đầu màn ghi "Mẫu đã khóa số câu". */
   templateLocked?: boolean;
   /** Môn đã kiểm tra đạt và chưa sửa gì từ đó: hiện "Đủ nguồn theo ma trận" (R-122). */
@@ -163,50 +159,20 @@ export function ExamStructureSubjectPanel({
       return { ...current, knowledgeScope: checked ? { ...scope, everyChildInScope: true } : scope };
     });
 
-  const sectionCount = section.questionCount;
   const topicQuotas = section.topicQuotas ?? [];
-  const totalChanged = totalChangePending(section, confirmedCount);
-  const noticeLines: string[] = [];
-  if (totalChanged && sectionCount !== null) {
-    const grade = (code: string) => labels.grade(code);
-    const difficulty = (code: string) => labels.difficulty(code);
-    if (section.matrix?.unit === "PERCENT") {
-      const next = computeAllocation({ questionCount: sectionCount, matrix: section.matrix }, axes);
-      noticeLines.push(t("totalChange.grades", { values: axes.grades.map((code, index) => `${grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
-      noticeLines.push(t("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
-    }
-    if (quotas?.unit === "PERCENT") {
-      const next = apportionByPercent(quotas.items.map((item) => item.value), sectionCount).results;
-      noticeLines.push(t("totalChange.answerTypes", { values: quotas.items.map((item, index) => `${typeLabel(item.answerType)} ${next[index] ?? 0}`).join(" · ") }));
-    }
-    if (topicQuotas.some((quota) => quota.percent !== undefined && quota.percent !== null)) {
-      noticeLines.push(
-        t("totalChange.topics", {
-          values: topicQuotas.map((quota) => `${quota.name || t("totalChange.untitled")} ${topicCountFor(quota, sectionCount)}`).join(" · "),
-        }),
-      );
-    }
-  }
   // Hai nút của thông báo biến mất khi bấm: đưa tiêu điểm về tiêu đề của màn môn để người dùng bàn phím không mất chỗ (R1-26).
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const focusCount = () => requestAnimationFrame(() => titleRef.current?.focus());
-  const applyNewTotal = () => {
-    if (sectionCount === null) return;
-    onChange((current) => ({ ...current, topicQuotas: applyTopicTotal(current.topicQuotas ?? [], sectionCount) }));
-    onConfirmCount?.(sectionCount);
-    focusCount();
-  };
-  const keepOldTotal = () => {
-    if (sectionCount === null || confirmedCount === null) return;
-    onChange((current) => ({
-      ...current,
-      matrix: current.matrix?.unit === "PERCENT" ? convertMatrixUnit(current.matrix, "COUNT", confirmedCount, axes) : current.matrix,
-      answerQuotas: toCountQuotas(current.answerQuotas, confirmedCount),
-      topicQuotas: convertTopicEntry(applyTopicTotal(current.topicQuotas ?? [], confirmedCount), "COUNT", confirmedCount),
-    }));
-    onConfirmCount?.(sectionCount);
-    focusCount();
-  };
+  const { notice: totalChangeNotice } = useSubjectTotalChange({
+    section,
+    axes,
+    labels,
+    confirmedCount,
+    onConfirmCount: (next) => {
+      onConfirmCount?.(next);
+      requestAnimationFrame(() => titleRef.current?.focus());
+    },
+    onChange,
+  });
   const references = referenceEntries(section, examQuotas, examKind);
   const copyReference = (entry: ReferenceEntry) => {
     if (entry.kind !== "quota") return;
@@ -283,9 +249,7 @@ export function ExamStructureSubjectPanel({
         </div>
       </div>
 
-      {totalChanged && sectionCount !== null && confirmedCount !== null && (
-        <TotalChangeNotice oldTotal={confirmedCount} newTotal={sectionCount} lines={noticeLines} onApply={applyNewTotal} onKeep={keepOldTotal} />
-      )}
+      {totalChangeNotice}
 
       {varies && (
         <div className="flex flex-col gap-1">

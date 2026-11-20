@@ -13,6 +13,8 @@ export interface SubjectFormHeaderProps {
   count: number | null;
   /** Số câu đã phân bổ vào các nhóm. */
   allocated: number;
+  /** Mã bài tùy chọn để giữ tương thích với MT/DS; đầu môn không còn ô số câu hay đường dẫn (UNI-2753). */
+  examId?: string;
   /** Mẫu khóa số câu của mục (H27): dòng số câu ở đầu môn ghi lý do. */
   templateLocked?: boolean;
   /** Nút bên phải đầu môn (Kiểm tra môn). */

@@ -11,7 +11,7 @@ import {
 } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { roundForDisplay } from "../display-number";
 import type { ItemShape, QuestionBlock } from "../types";
@@ -21,12 +21,34 @@ import { BlockNumberInput } from "./block-number-input";
 import { BlockTagPicker } from "./block-tag-picker";
 import { OptionalNumberInput } from "./create-exam-fields";
 
+/**
+ * Mục điều kiện thêm ngoài năm điều kiện của màn nhóm (Danh sách dòng, FTM R-7: MAPID lọc, Phân bổ theo MAPID, Độ khó, Khối lớp,
+ * điều kiện từng chùm, theo vị trí câu con). Mục có giá trị sẵn (`state = "added"`) hiện mở; mục vừa thêm hiện cho tới khi gỡ.
+ */
+export interface ExtraCondition {
+  key: string;
+  label: string;
+  hint: string;
+  state: "available" | "added" | "unavailable";
+  /** Lý do khi `state = "unavailable"`. */
+  unavailableHint?: string;
+  /** Có nút Bỏ hay không; mặc định `true` (MD giữ nguyên; DS khóa điều kiện vị trí do mẫu đặt). */
+  removable?: boolean;
+  /** Giá trị khi gỡ mục; không làm gì khi mục chưa có giá trị. */
+  onRemove: () => void;
+  body: ReactNode;
+}
+
 export interface BlockConditionsProps {
   block: QuestionBlock;
   reference: ContentReference | undefined;
   onChange: (patch: Partial<QuestionBlock>) => void;
   /** Menu "Thêm điều kiện" → MAPID: MAPID là phạm vi kiến thức của nhóm, nên chuyển sang trường đó. */
   onAddMapid: () => void;
+  /** Điều kiện của màn nhóm có trong menu; mặc định cả năm (màn nhóm của MD). Danh sách dòng chỉ lấy nhãn: phần còn lại là chữ chỉ đọc của mẫu. */
+  kinds?: readonly ConditionKind[];
+  /** Mục thêm vào cuối menu; mặc định không có. */
+  extras?: readonly ExtraCondition[];
   /** MAPID của nhóm do bảng Quy tắc MAPID của môn quyết định (môn HSA dùng ma trận): menu không có mục MAPID. */
   mapidManaged?: boolean;
 }
@@ -42,15 +64,18 @@ function initialShown(block: QuestionBlock): Set<ConditionKind> {
  * hình dạng câu, định dạng đáp án, điểm mỗi câu. Mỗi điều kiện thêm và bỏ riêng; mọi câu của nhóm phải thỏa các điều kiện.
  * Điều kiện không áp cho loại câu của nhóm (hình dạng câu, định dạng đáp án) bị khóa trong menu.
  */
-export function BlockConditions({ block, reference, onChange, onAddMapid, mapidManaged = false }: BlockConditionsProps) {
+export function BlockConditions({ block, reference, onChange, onAddMapid, kinds = CONDITION_KINDS, extras = [], mapidManaged = false }: BlockConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.conditions");
   const [shown, setShown] = useState(() => initialShown(block));
+  const [shownExtras, setShownExtras] = useState<ReadonlySet<string>>(() => new Set(extras.filter((extra) => extra.state === "added").map((extra) => extra.key)));
   const type = sourceType(block);
   const questionCount = block.questionCount ?? 0;
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
 
   const stateOf = (kind: ConditionKind) => conditionState(block, kind, shown);
-  const visible = CONDITION_KINDS.filter((kind) => kind !== "MAPID" && stateOf(kind) === "added");
+  const visible = kinds.filter((kind) => kind !== "MAPID" && stateOf(kind) === "added");
+  const extraShown = (extra: ExtraCondition) => extra.state === "added" || (extra.state === "available" && shownExtras.has(extra.key));
+  const visibleExtras = extras.filter(extraShown);
 
   const add = (kind: ConditionKind) => {
     if (kind === "MAPID") {
@@ -88,7 +113,7 @@ export function BlockConditions({ block, reference, onChange, onAddMapid, mapidM
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent aria-label={t("menuLabel")} className="w-80 max-w-[calc(100vw-2rem)]">
-            {CONDITION_KINDS.filter((kind) => !(mapidManaged && kind === "MAPID")).map((kind) => {
+            {kinds.filter((kind) => !(mapidManaged && kind === "MAPID")).map((kind) => {
               const state = stateOf(kind);
               return (
                 <DropdownMenuItem
@@ -104,11 +129,27 @@ export function BlockConditions({ block, reference, onChange, onAddMapid, mapidM
                 </DropdownMenuItem>
               );
             })}
+            {extras.map((extra) => {
+              const shownNow = extraShown(extra);
+              return (
+                <DropdownMenuItem
+                  key={extra.key}
+                  disabled={extra.state === "unavailable" || shownNow}
+                  className="h-auto min-h-10 flex-col items-start gap-0 py-1.5"
+                  onSelect={() => setShownExtras((current) => new Set(current).add(extra.key))}
+                >
+                  <span>{extra.label}</span>
+                  <span className="text-caption font-normal text-text-muted">
+                    {shownNow ? t("added") : extra.state === "unavailable" ? extra.unavailableHint : extra.hint}
+                  </span>
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {visible.length === 0 && <p className="text-body text-text-muted">{t("empty")}</p>}
+      {visible.length === 0 && visibleExtras.length === 0 && <p className="text-body text-text-muted">{t("empty")}</p>}
 
       {visible.map((kind) => (
         <div key={kind} className="flex flex-col gap-2 rounded-md border border-border bg-subtle/40 p-3" data-condition={kind}>
@@ -157,6 +198,33 @@ export function BlockConditions({ block, reference, onChange, onAddMapid, mapidM
               )}
             </FormField>
           )}
+        </div>
+      ))}
+
+      {visibleExtras.map((extra) => (
+        <div key={extra.key} className="flex flex-col gap-2 rounded-md border border-border bg-subtle/40 p-3" data-condition={extra.key}>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-label font-semibold text-text">{extra.label}</h4>
+            {extra.removable !== false && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                aria-label={t("remove", { kind: extra.label })}
+                onClick={() => {
+                  setShownExtras((current) => {
+                    const next = new Set(current);
+                    next.delete(extra.key);
+                    return next;
+                  });
+                  extra.onRemove();
+                }}
+              >
+                {t("removeLabel")}
+              </Button>
+            )}
+          </div>
+          {extra.body}
         </div>
       ))}
     </section>

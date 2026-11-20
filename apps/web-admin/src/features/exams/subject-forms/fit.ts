@@ -138,9 +138,14 @@ function matrixFormReason(section: ExamSection, entry: SubjectFormEntry, context
   return null;
 }
 
+function hasCompetencyMatrix(section: ExamSection): boolean {
+  return (section.matrix?.byCompetency?.length ?? 0) > 0 || section.blocks.some((block) => (block.matrix?.byCompetency?.length ?? 0) > 0);
+}
+
 function rowsFormReason(section: ExamSection, context: FitContext): FitReason | null {
   const childAllowed = CHILD_CONDITION_PAIRS.includes(`${context.kindCode}:${context.subjectCode}`);
   if (!childAllowed && section.blocks.some((block) => (block.childConditions?.length ?? 0) > 0)) return "ROW_CONDITION_UNSUPPORTED";
+  if (hasCompetencyMatrix(section)) return "ROW_CONDITION_UNSUPPORTED";
   return section.blocks.some(setSizeMismatch) ? "SET_SIZE_MISMATCH" : null;
 }
 

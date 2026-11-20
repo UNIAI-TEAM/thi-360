@@ -108,6 +108,7 @@ describe("màn môn có dòng Bộ câu hỏi", () => {
     const part = { id: "p1", sections: [current], options: [] } as unknown as ExamPart;
     return renderWithProviders(
       <ExamStructureSubjectPanel
+        examId="exam-1"
         context={{ part, option: null, section: current, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
         subjectName="Toán học"
         axes={AXES}

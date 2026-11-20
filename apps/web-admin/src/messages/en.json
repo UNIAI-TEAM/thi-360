@@ -4739,7 +4739,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
         "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
-        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing.",
+        "RULES_CHANGED": "The check rules changed after this check. Run the check on the whole exam again before publishing."
       },
       "runError": "The check could not run. Try again.",
       "live": {
@@ -5061,6 +5062,9 @@
         "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
+        "SECTION_SET_COUNT_RANGE": "Subject {subject}: the number of sets must be 1 to 2, with 3 sub-questions per set.",
+        "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required.",
+        "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the item with this id, then check again.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} other {Rules {rules} conflict and cannot all hold.}}",
         "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule."
       },
@@ -5561,6 +5565,7 @@
           "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
           "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
           "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "RULES_CHANGED": "The check rules were updated after the latest check. Check the whole exam again, then publish.",
           "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
           "UNKNOWN": "The configuration must be checked again before publishing."
         },
@@ -6052,8 +6057,32 @@
         "close": "Close",
         "comparator": {
           "AT_LEAST": "At least",
-          "EXACT": "Exactly",
+          "EXACT": "Exact",
           "legend": "Comparison"
+        },
+        "conflict": {
+          "CAPACITY_EXCEEDED_GROUP": "Group {scope} only has {available, number} questions, so it cannot require {required, number} questions on {topics}.",
+          "CAPACITY_EXCEEDED_SUBJECT": "The whole subject only has {available, number} questions, so it cannot require {required, number} questions on {topics}.",
+          "EQUIVALENT": "An equivalent rule already exists in {scope} for {topics}: {rule}.",
+          "EXACT_BELOW_MINIMUM": "Conflict in {scope} for {topics}: the exact limit of {available, plural, one {# question} other {# questions}} is below the minimum of {required, number} (related rule: {rule}).",
+          "EXACT_COUNTS_DIFFER": "Conflict in {scope} for {topics}: rule {rule} and this rule require different exact counts ({available, number} and {required, number}).",
+          "EXACT_ZERO_CONFLICTS_SOURCE": "Conflict with {rule}: {scope} cannot require exactly 0 questions on {topics} while drawing its source only from {topics}.",
+          "GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT": "Groups require at least {required, number} questions on {topics}, exceeding the whole-subject exact limit of {available, number}. Related rules: {rules}.",
+          "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP": "Cross-group conflict for {topics}: {topics} may appear only in group {onlyGroup}, conflicting with the requirement in group {otherGroup} (related rule: {rule}).",
+          "ONLY_IN_GROUP_EXCLUDES_SOURCE": "Cross-group conflict for {topics}: {topics} may appear only in group {onlyGroup}, conflicting with the source-only rule in group {otherGroup} (related rule: {rule}).",
+          "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP": "Cross-group conflict for {topics}: the group-exclusive rule in {onlyGroup} overlaps on topics with the rule in {otherGroup} (related rule: {rule}).",
+          "SUBJECT_EXACT_BELOW_GROUP_MINIMUM": "Conflict with {rule}: the whole subject allows exactly {available, number} questions on {topics}, while group {scope} requires at least {required, number}.",
+          "SUBSUMED_BY": "This condition is already covered by a stricter existing rule: {rule}. No duplicate rule is needed.",
+          "SUBSUMES_AT_LEAST_PRESENT": "At least {count, plural, one {# question} other {# questions}} already includes the must-appear requirement ({rules}). You can save or click «Replace old rule» to merge into one row.",
+          "SUBSUMES_AT_LEAST_RULE": "At least {count, plural, one {# question} other {# questions}} already covers the existing rule ({rules}). You can save or click «Replace old rule» to replace it.",
+          "SUBSUMES_EXACT_PRESENT": "Exactly {count, plural, one {# question} other {# questions}} already includes the must-appear requirement ({rules}). You can save or click «Replace old rule» to merge into one row.",
+          "SUBSUMES_EXACT_RULE": "Exactly {count, plural, one {# question} other {# questions}} already covers the existing rule ({rules}). You can save or click «Replace old rule» to replace it.",
+          "SUBSUMES_ONLY_IN_GROUP": "This counted rule already includes the uncounted group-exclusive rule ({rules}). You can save or click «Replace old rule».",
+          "SUBSUMES_PRESENT": "This stricter rule already includes the must-appear requirement ({rules}). You can save or click «Replace old rule».",
+          "SUBSUMES_RULE": "This stricter rule already covers the existing rule ({rules}). You can save or click «Replace old rule».",
+          "openRule": "Open rule to edit",
+          "openRuleNamed": "Edit: {rule}",
+          "replaceRule": "Replace old rule"
         },
         "count": "Questions",
         "countAria": "Question count of the rule",
@@ -6061,9 +6090,10 @@
         "denominatorUnknown": "Denominator: the question count of {scope} is not known",
         "description": "Rule for {subject}. The remaining positions are drawn at random within the scope that is still valid.",
         "entry": "Enter as",
-        "entryCount": "Questions",
-        "entryPercent": "Percent",
+        "entryCount": "Question count",
+        "entryPercent": "Percentage",
         "issues": {
+          "COUNT_ABOVE_GROUP": "The count exceeds the question count of group {scope} ({units, plural, one {# question} other {# questions}}). Enter at most {units, number}.",
           "COUNT_ABOVE_TOTAL": "The count is above the question count of the subject ({total, number}). Enter a number that is not larger than the question count of the subject.",
           "GROUP_MISSING": "The selected group no longer exists. Choose the scope again.",
           "NO_NODES": "Pick at least one MAPID.",
@@ -6071,60 +6101,90 @@
           "ONLY_IN_GROUP_NEEDS_GROUP": "This rule only applies to one group. Choose a group.",
           "PERCENT_DENOMINATOR_UNKNOWN": "The denominator is not known, so the percent cannot be converted. Enter the question counts of the subject and the other groups, or switch to entering a count.",
           "PERCENT_POOL": "Percent is not available for an elective subject because its question count depends on the subjects the student picks. Switch to entering a question count.",
-          "PERCENT_RANGE": "Percent must be between 0 and 100."
+          "PERCENT_RANGE": "Percent must be between 0 and 100.",
+          "TYPE_CLEARED_FOR_SUBJECT": "“MAPID only appears in this group” does not apply to the whole subject. Select a valid rule type.",
+          "TYPE_REQUIRED": "Select a rule type."
         },
         "nodeRemove": "Remove MAPID {code} {name}",
         "nodesEmpty": "No MAPID picked.",
         "nodesLegend": "MAPID",
-        "percent": "Percent (%)",
+        "percent": "Percentage (%)",
         "percentAria": "Percent of the rule",
         "percentResult": "= {count, plural, one {# question} other {# questions}} out of {units, number}",
         "percentUnknown": "The question count of the group is not known yet, so the percent cannot be turned into questions.",
         "pick": "Pick MAPID",
         "pickEdit": "Change MAPID",
-        "pickHint": "A question matches when it has at least one picked code. To require all three topics, add one rule per code.",
-        "pickHintSource": "A question matches this rule when it has at least one picked code. Every other “Source only” rule that applies to this scope (the group's own or the whole subject's) must match too: adding a rule narrows the source, never widens it.",
+        "pickHint": "Matches at least one selected MAPID. To require every topic to appear, add a separate rule for each code.",
+        "pickHintSource": "Matches at least one selected MAPID. When multiple source-only rules apply to this scope, a question must match all of them (narrows the source).",
         "pickerDescription": "Rule for {name}: pick a chapter, lesson or knowledge item. A picked node also matches questions on its child nodes.",
         "save": "Save rule",
         "scope": {
-          "groupHint": "{type} · {size}",
+          "deletedNamed": "Group «{name}» (deleted)",
+          "deletedUnnamed": "Deleted group — select scope",
+          "groupHint": "{type} · {units, number}/{total, number} questions",
+          "groupHintNoTotal": "{type} · {units, plural, one {# question} other {# questions}}",
+          "groupHintUnknown": "{type}",
+          "groupRemainder": "{name} · takes remainder",
+          "groupRemainderUnits": "{name} · takes remainder ({units, plural, one {# question} other {# questions}})",
+          "groupSets": "{name} · {sets, plural, one {# set} other {# sets}} × {size, plural, one {# sub-question} other {# sub-questions}}",
+          "groupSingle": "{name} · {units, plural, one {# question} other {# questions}}",
+          "groupUnknown": "{name}",
           "legend": "Applies to",
           "subject": "Whole subject",
-          "subjectHint": "{subject}, whole subject",
-          "subjectHintCount": "{subject}, {total, number} questions"
+          "subjectCount": "Whole subject · {total, plural, one {# question} other {# questions}}",
+          "subjectHint": "{subject} · whole subject",
+          "subjectHintCount": "{subject} · {total, plural, one {# question} other {# questions}}"
         },
-        "size": {
-          "remainder": "takes the remainder",
-          "remainderUnits": "takes the remainder = {units, number}/{total, number} questions",
-          "sets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, number}/{total, number} questions",
-          "setsNoTotal": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, plural, one {# question} other {# questions}}",
-          "single": "{units, number}/{total, number} questions",
-          "singleNoTotal": "{units, plural, one {# question} other {# questions}}"
+        "summary": {
+          "COUNT_AT_LEAST": "{scopePhrase}, take at least {count, plural, one {# question} other {# questions}} on {topics}.",
+          "COUNT_AT_LEAST_PERCENT": "{scopePhrase}, take at least {count, plural, one {# question} other {# questions}} ({percent, number}%) on {topics}.",
+          "COUNT_AT_LEAST_PERCENT_UNKNOWN": "{scopePhrase}, take at least {percent, number}% of questions on {topics}.",
+          "COUNT_EXACT": "{scopePhrase}, take exactly {count, plural, one {# question} other {# questions}} on {topics}.",
+          "COUNT_EXACT_PERCENT": "{scopePhrase}, take exactly {count, plural, one {# question} other {# questions}} ({percent, number}%) on {topics}.",
+          "COUNT_EXACT_PERCENT_UNKNOWN": "{scopePhrase}, take exactly {percent, number}% of questions on {topics}.",
+          "ONLY_IN_GROUP": "{topics} may only appear in group {group}. Other topics remain allowed in this group and 0 questions are allowed.",
+          "ONLY_IN_GROUP_AT_LEAST": "{topics} may only appear in group {group}, taking at least {count, plural, one {# question} other {# questions}}.",
+          "ONLY_IN_GROUP_AT_LEAST_PERCENT": "{topics} may only appear in group {group}, taking at least {count, plural, one {# question} other {# questions}} ({percent, number}%).",
+          "ONLY_IN_GROUP_AT_LEAST_PERCENT_UNKNOWN": "{topics} may only appear in group {group}, taking at least {percent, number}% of questions.",
+          "ONLY_IN_GROUP_EXACT": "{topics} may only appear in group {group}, taking exactly {count, plural, one {# question} other {# questions}}.",
+          "ONLY_IN_GROUP_EXACT_PERCENT": "{topics} may only appear in group {group}, taking exactly {count, plural, one {# question} other {# questions}} ({percent, number}%).",
+          "ONLY_IN_GROUP_EXACT_PERCENT_UNKNOWN": "{topics} may only appear in group {group}, taking exactly {percent, number}% of questions.",
+          "PRESENT": "{scopePhrase}, include at least 1 question on {topics}.",
+          "SOURCE_GROUP": "Group {group} draws only questions on {topics}. Other groups may still draw these topics.",
+          "SOURCE_SUBJECT": "The whole subject draws only questions on {topics}.",
+          "label": "Rule summary",
+          "pendingCondition": "Enter a valid value to preview the rule summary.",
+          "pendingNodes": "Pick at least one MAPID to preview the rule summary.",
+          "pendingScope": "Choose a valid scope to preview the rule summary.",
+          "pendingType": "Select a rule type to preview the rule summary.",
+          "scopeGroup": "In {units, plural, one {# question} other {# questions}} of {group}",
+          "scopeGroupUnknown": "In group {group}",
+          "scopeSubject": "Across the whole subject",
+          "scopeSubjectCount": "Across {total, plural, one {# question} other {# questions}} of the whole subject"
         },
         "title": "Add rule",
         "titleEdit": "Edit rule",
         "type": {
           "COUNT": {
-            "description": "The number of questions with the MAPID equals, or is at least, a number, counting child questions of sets and randomly drawn questions.",
-            "label": "Count"
+            "description": "Sets an exact or minimum question count for the selected MAPIDs, including set sub-questions.",
+            "label": "Question count by MAPID"
           },
           "ONLY_IN_GROUP": {
-            "description": "Limits where the topic can appear: other groups drop questions with the MAPID. Only available when applied to one group.",
-            "label": "Only appears in this group"
+            "description": "Other groups exclude these MAPIDs; leave count unchecked to restrict placement only (0 questions allowed).",
+            "label": "MAPID only appears in this group"
           },
           "PRESENT": {
-            "description": "The paper has at least 1 question with the MAPID. Randomly drawn positions may still add questions on the same topic.",
+            "description": "The selected scope has at least 1 matching question; random positions may draw more.",
             "label": "Must appear"
           },
           "SOURCE": {
-            "description": "Limits the source: this scope draws only questions with at least one picked MAPID. Every other source rule of the same scope, or of the whole subject, must match too. The topic can still appear in other groups.",
-            "label": "Source only from these MAPIDs"
+            "description": "Every question drawn in this scope must belong to at least one selected MAPID.",
+            "label": "Source only from selected MAPIDs"
           },
-          "contrast": "Two rules are easy to mix up: “Only appears in this group” limits where the topic can appear (other groups drop that topic). “Source only from these MAPIDs” limits what the group draws from (the group takes only those topics, which can still appear in other groups). When several source rules apply, a question must match every one of them.",
           "legend": "Rule type"
         },
         "withNumber": "With a count",
-        "withNumberHint": "For example: the topic appears only in this group and exactly 3 times."
+        "withNumberHint": "Leave unchecked to restrict placement only (0 questions allowed)."
       },
       "edit": "Edit",
       "editAria": "Edit rule: {sentence}",
@@ -6489,6 +6549,258 @@
           "rowNoSetSize": "This row has no fixed set size",
           "rowOmitted": "This row is temporarily skipped",
           "templateTotal": "The section total comes from the template and cannot change"
+        }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Add condition",
+          "conditionMenu": "Extra conditions",
+          "declared": "Declared {declared, number}/{total, number}",
+          "difficulty": "Difficulty",
+          "grade": "Grade",
+          "gradeCondition": "Grade",
+          "hint": "Leave a cell empty when you do not need to control it.",
+          "percentAria": "Percentage of {label}",
+          "percentNeeds100": "Total {total, number}%, needs 100%",
+          "percentTotal": "Total {total, number}%",
+          "title": "Grade and difficulty"
+        },
+        "errors": {
+          "choiceBelowChildren": "Fewer than the sub-questions of the sets ({children, number})",
+          "percentTotal": "Total {total}%, needs 100%",
+          "setMin": "At least 1 set",
+          "setRange": "Sets must be between {min, number} and {max, number}",
+          "shortAnswerMin": "At least {min, number} fill-in answers needed"
+        },
+        "scope": {
+          "addQuota": "Add topic quota",
+          "addQuotaHint": "Opens the table of minimum questions per topic.",
+          "hint": "Limit where the questions come from, by MAPID.",
+          "title": "Scope and topic quotas"
+        },
+        "setSource": {
+          "add": "Add condition",
+          "added": "Added",
+          "empty": "No condition: the sets follow the scope of the subject.",
+          "groupName": "Question sets",
+          "hint": "MAPID and tags for the question sets only; single questions are not affected.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Source tags"
+          },
+          "kindHint": {
+            "MAPID": "Only take sets under these MAPIDs",
+            "TAGS": "Filter sets by tag, for example the kind of passage"
+          },
+          "menuLabel": "Conditions of the set source",
+          "remove": "Remove",
+          "removeAria": "Remove the {kind} condition of the set source",
+          "title": "Set source"
+        },
+        "structure": {
+          "children": "Sub-questions in sets",
+          "childrenHint": "Total number of sub-questions; whole sets are chosen automatically",
+          "choice": "Multiple choice",
+          "choiceHint": "Includes the sub-questions of the sets",
+          "choiceTotal": "Multiple choice (with sub-questions)",
+          "choiceTotalHint": "Calculated: single questions plus sub-questions",
+          "fill": "Fill-in answer",
+          "fillMin": "At least {min, number}",
+          "hint": "Enter the number of questions of each kind. Single questions are calculated.",
+          "setSize": "{size, number} sub-questions per set",
+          "sets": "Number of sets",
+          "single": "Single questions",
+          "singleAuto": "Single questions",
+          "singleAutoHint": "Calculated: multiple choice minus the sub-questions of the sets",
+          "title": "Question structure"
+        }
+      },
+      "rows": {
+        "editor": {
+          "close": "Back to the list",
+          "conditions": {
+            "difficulty": {
+              "hint": "Difficulty distribution by the row question count",
+              "label": "Difficulty"
+            },
+            "grade": {
+              "hint": "Grade distribution by the row question count",
+              "label": "Grade"
+            },
+            "positions": {
+              "hint": "Knowledge-node condition for each child position of a set",
+              "label": "By child position",
+              "template": "Set by the template; this condition cannot be added",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "scope": {
+              "hint": "Only take questions under the selected knowledge nodes",
+              "label": "Knowledge nodes (filter)"
+            },
+            "slots": {
+              "hint": "Own tags or knowledge nodes for each set",
+              "label": "Conditions per set",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "topicQuotas": {
+              "hint": "Minimum questions per knowledge node, inside the row question count",
+              "label": "Allocation by knowledge node"
+            }
+          },
+          "countNotWhole": "{count, plural, one {# question} other {# questions}} cannot be divided into sets of {size, number}",
+          "facts": {
+            "formats": "answer format {formats}",
+            "line": "From the template: {facts}",
+            "matching": "matching {left, number} left, {right, number} right choices",
+            "options": "{count, plural, one {# option} other {# options}}",
+            "points": "{count, plural, one {{points} point per question} other {{points} points per question}}",
+            "rule": {
+              "ALL_OR_NOTHING": "all correct or nothing",
+              "PARTIAL": "partial credit"
+            },
+            "statements": "{count, plural, one {# statement} other {# statements}}",
+            "trueFalseTable": "points by number of correct statements {table}"
+          },
+          "lockedList": "Row locks",
+          "position": "Row {position, number} of {total, number}",
+          "quantityPercent": "Row question count",
+          "split": "Split row",
+          "title": "Edit row: {name}",
+          "untitled": "Untitled"
+        },
+        "notice": {
+          "ESSAY_SKIPPED": "Essay – skipped for now. This part has nothing to edit."
+        },
+        "reference": {
+          "caption": "{dimension} distribution of {subject}",
+          "cellAria": "{dimension}: {label}, question count",
+          "cellPercentAria": "{dimension}: {label}, percentage",
+          "combined": {
+            "back": "Remove combined table",
+            "backDifficulties": "By difficulty: {values}",
+            "backGrades": "By grade: {values}",
+            "cancel": "Cancel",
+            "caption": "Combined Grade × Difficulty table",
+            "cellAria": "{grade} × {difficulty}: question count",
+            "cellPercentAria": "{grade} × {difficulty}: percentage",
+            "confirm": "Confirm conversion",
+            "gradeHeader": "Grade",
+            "percentError": "Total percentage is {total, number}%, needs 100%",
+            "previewBackEmpty": "The combined table has no numbers yet, so both separate dimensions will start empty. Nothing is saved until you confirm.",
+            "previewBackHint": "Totals by grade and by difficulty of the current combined table. Nothing is saved until you confirm.",
+            "previewBackTitle": "Preview: back to separate dimensions",
+            "previewCaption": "Data that will move to the combined table",
+            "previewEmpty": "There are no numbers to convert, so the combined table starts empty. Nothing is saved until you confirm.",
+            "previewHint": "The numbers of the two dimensions are spread over the cells by the product of their shares. Nothing is saved until you confirm.",
+            "previewTitle": "Preview: to the combined table",
+            "title": "Combined Grade × Difficulty",
+            "total": "Total {total, number}/{count, number} questions",
+            "totalNoCount": "Total {total, number} questions",
+            "totalPercent": "Total {total, number}%"
+          },
+          "conditions": {
+            "add": "Add condition",
+            "addAria": "Add a condition to the reference allocation",
+            "added": "Added",
+            "combined": {
+              "hint": "One table for both dimensions; preview the data to move, then confirm",
+              "label": "Combined Grade × Difficulty"
+            },
+            "menuLabel": "Reference allocation conditions"
+          },
+          "declared": "Declared {total, number}/{count, number} questions",
+          "declaredNoTotal": "Declared {total, number} questions",
+          "declaredPercent": "Declared {total, number}%",
+          "difficultyTitle": "Difficulty",
+          "dimensionTitle": "{dimension} of {subject}",
+          "gradeTitle": "Grade",
+          "hint": "Enforcement follows the exam kind",
+          "percent": "Percentage (%)",
+          "percentTotal": "Total percentage is {total, number}%, needs 100%",
+          "questions": "Questions",
+          "quotas": {
+            "basis": {
+              "POINTS": "Unit: points",
+              "PROMPT": "Unit: prompts",
+              "QUESTION": "Unit: questions"
+            },
+            "denominator": "Denominator: {subject} · {count, number} prompts",
+            "difficulty": "difficulty",
+            "entryTitle": "{dimension} distribution",
+            "grade": "grade",
+            "percentValue": "{label}: {value, number}%",
+            "title": "Whole-subject distribution: {subject}",
+            "unclassified": "Unclassified",
+            "unclassifiedValue": "Unclassified: {count, number} prompts",
+            "value": "{label}: {value, number}"
+          },
+          "resolved": "Resolved questions",
+          "resolvedValue": "{count, number} questions",
+          "title": "Reference allocation",
+          "unit": {
+            "count": "Questions",
+            "legend": "Entry unit",
+            "percent": "Percentage"
+          }
+        },
+        "split": {
+          "apply": "Split",
+          "cancel": "Cancel",
+          "childAria": "{unit, select, set {Sets of child row {index, number}} other {Questions of child row {index, number}}}",
+          "childSets": "sets, {size, number} questions each ({count, number} questions)",
+          "childSingle": "questions",
+          "errors": {
+            "notPositive": "Child row {index, number} needs at least {unit, select, set {1 set} other {1 question}}",
+            "total": "The child rows add up to {total, number}, the parent row has {unit, select, set {{units, number} sets} other {{units, number} questions}}"
+          },
+          "hint": "The parent row ({unit, select, set {{units, number} sets} other {{units, number} questions}}) is replaced by the child rows; the first child keeps the parent row identity. The audio requirement of the section does not change.",
+          "partsLabel": "Number of rows after the split",
+          "partsOption": "{count, number} rows",
+          "title": "Split row {name}"
+        },
+        "table": {
+          "caption": "Question rows of {subject}",
+          "columns": {
+            "actions": "Actions",
+            "conditions": "Conditions",
+            "name": "Name",
+            "order": "Order",
+            "quantity": "Quantity"
+          },
+          "conditions": {
+            "difficulty": "Difficulty",
+            "grade": "Grade",
+            "none": "None",
+            "positions": "By position: {count, number}",
+            "scope": "Knowledge nodes: {count, number}",
+            "slots": "Per set: {count, number}",
+            "tags": "Tags: {count, number}",
+            "topicQuotas": "Node allocation: {count, plural, one {# row} other {# rows}}"
+          },
+          "countsLocked": "Quantity locked by the template",
+          "edit": "Edit",
+          "editAria": "Edit row {name}",
+          "empty": "This subject has no question rows.",
+          "figures": {
+            "plainPoints": "{count, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}}",
+            "trueFalse": "{count, plural, one {# true/false question} other {# true/false questions}}{hasStatements, select, yes { · {statements, plural, one {# statement} other {# statements}}} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
+          },
+          "kind": {
+            "set": "Set",
+            "setOf": "Set · {type}",
+            "single": "Single",
+            "singleOf": "Single · {type}"
+          },
+          "quantity": {
+            "flexible": "{count, plural, one {# question} other {# questions}} (flexible-size set)",
+            "sets": "{sets, plural, one {# set} other {# sets}} × {size, number} ({count, plural, one {# question} other {# questions}})",
+            "single": "{count, plural, one {# question} other {# questions}}"
+          },
+          "range": "Q{from, number}{same, select, yes {} other {–{to, number}}}",
+          "slot": "Set {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · nodes {nodes, number}}}",
+          "slotsLabel": "Conditions per set of {name}",
+          "title": "Question rows",
+          "untitled": "Untitled"
         }
       }
     }

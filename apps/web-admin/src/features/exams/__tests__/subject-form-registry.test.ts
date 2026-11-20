@@ -33,12 +33,13 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(new Set(TABLE.map(([kind, subject]) => `${kind}:${subject}`)).size).toBe(75);
   });
 
-  it("subjectFormFor trả đúng dạng cho đúng 75 cặp canonical, mọi mục đang tắt", () => {
+  // CR-2 enables MATRIX for QDA, BCA, VACT (HSA MATRIX waits for CR-2H); CR-3 enables all ROWS pairs.
+  it("subjectFormFor trả đúng dạng cho đúng 75 cặp canonical; cờ bật đúng các cặp DS và MT của QDA, BCA, V-ACT", () => {
     for (const [kind, subject, form] of TABLE) {
       const entry = subjectFormFor(kind, subject);
       expect(entry, `${kind}:${subject}`).not.toBeNull();
       expect(entry!.form, `${kind}:${subject}`).toBe(form === "M" ? "MATRIX" : "ROWS");
-      expect(entry!.enabled, `${kind}:${subject} enabled`).toBe(false);
+      expect(entry!.enabled, `${kind}:${subject} enabled`).toBe(form === "D" || (form === "M" && (kind === "QDA" || kind === "BCA" || kind === "VACT")));
     }
     const listed = listSubjectFormPairs().map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`);
     expect(listed.toSorted()).toEqual(TABLE.map(([kind, subject]) => `${kind}:${subject}`).toSorted());
@@ -119,10 +120,10 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
   });
 
   it("chỗ cắm kiểm thử bật một mục rồi trả lại như cũ; không đụng mục khác", () => {
-    const restore = patchSubjectFormEntry("QDA", "LY", { enabled: true });
-    expect(subjectFormFor("QDA", "LY")!.enabled).toBe(true);
-    expect(subjectFormFor("QDA", "HOA")!.enabled).toBe(false);
+    const restore = patchSubjectFormEntry("HSA", "LY", { enabled: true });
+    expect(subjectFormFor("HSA", "LY")!.enabled).toBe(true);
+    expect(subjectFormFor("HSA", "HOA")!.enabled).toBe(false);
     restore();
-    expect(subjectFormFor("QDA", "LY")!.enabled).toBe(false);
+    expect(subjectFormFor("HSA", "LY")!.enabled).toBe(false);
   });
 });

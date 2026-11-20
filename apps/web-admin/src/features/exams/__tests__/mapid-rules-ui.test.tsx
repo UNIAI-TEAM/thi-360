@@ -74,6 +74,7 @@ function renderPanel(initial: ExamSection, { hsa = true, kind = "HSA" }: { hsa?:
     return (
       <HsaExamContext.Provider value={hsa}>
         <ExamStructureSubjectPanel
+          examId="exam-1"
           examKind={kind}
           context={{ part: makePart(section), option: null, section, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
           subjectName="Toán học"
@@ -110,6 +111,12 @@ async function pickTopic(u: UserEvent) {
 async function openAdd(u: UserEvent) {
   await u.click(screen.getByTestId("mapid-rule-add"));
   return ruleDialog();
+}
+
+async function selectScope(u: UserEvent, optionPattern: RegExp) {
+  const scopeBox = within(screen.getByRole("dialog", { name: /^(Thêm|Sửa) quy tắc$/ })).getByTestId("mapid-rule-scope");
+  await u.click(within(scopeBox).getByRole("combobox"));
+  await u.click(await screen.findByRole("option", { name: optionPattern }));
 }
 
 describe("Chế độ MAPID của môn HSA", () => {
@@ -155,15 +162,15 @@ describe("Thêm quy tắc qua hộp thoại", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("Số lượng: ô số có mặt, Đúng 3 của nhóm Trả lời ngắn hiện 3/15 câu", async () => {
+  it("Số lượng: ô số có mặt, Bằng 3 của nhóm Trả lời ngắn hiện 3/15 câu", async () => {
     const u = user();
     const latest = renderPanel(makeSection({ mapidMode: "MATRIX" }));
     const dialog = await openAdd(u);
-    await u.click(within(within(dialog).getByTestId("mapid-rule-scope")).getByRole("radio", { name: /^Trả lời ngắn/ }));
-    expect(within(dialog).getByRole("radio", { name: /^Trả lời ngắn/ })).toHaveAccessibleName(/15\/50 câu/);
-    await u.click(within(within(dialog).getByTestId("mapid-rule-type")).getByRole("radio", { name: /^Số lượng/ }));
+    await selectScope(u, /^Trả lời ngắn · 15 câu$/);
+    expect(within(dialog).getByTestId("mapid-rule-scope")).toHaveTextContent("15/50 câu");
+    await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickTopic(u);
-    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Đúng" }));
+    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Bằng" }));
     const count = within(dialog).getByTestId("mapid-rule-count");
     await u.clear(count);
     await u.type(count, "3");
@@ -176,8 +183,8 @@ describe("Thêm quy tắc qua hộp thoại", () => {
     const u = user();
     const latest = renderPanel(makeSection({ mapidMode: "MATRIX" }));
     const dialog = await openAdd(u);
-    await u.click(within(dialog).getByRole("radio", { name: /^Trả lời ngắn/ }));
-    await u.click(within(dialog).getByRole("radio", { name: /^Số lượng/ }));
+    await selectScope(u, /^Trả lời ngắn · 15 câu$/);
+    await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickTopic(u);
     await u.click(within(dialog).getByRole("radio", { name: "Tỷ lệ" }));
     expect(within(dialog).queryByTestId("mapid-rule-count")).not.toBeInTheDocument();
@@ -189,34 +196,33 @@ describe("Thêm quy tắc qua hộp thoại", () => {
     expect(latest.section.mapidRules![0]).toMatchObject({ type: "COUNT", groupId: "b-short", comparator: "AT_LEAST", count: 3, percent: 20 });
   });
 
-  it("Chỉ xuất hiện ở nhóm này: cả môn báo cần chọn nhóm; ô số chỉ có khi bật Kèm số lượng", async () => {
+  it("Chỉ xuất hiện ở nhóm này: ẩn khi chọn Toàn môn; chỉ hiện khi chọn nhóm; ô số chỉ có khi bật Kèm số lượng", async () => {
     const u = user();
     const latest = renderPanel(makeSection({ mapidMode: "MATRIX" }));
     const dialog = await openAdd(u);
-    await u.click(within(dialog).getByRole("radio", { name: /^Chỉ xuất hiện ở nhóm này/ }));
+    expect(within(dialog).queryByTestId("mapid-rule-type-ONLY_IN_GROUP")).not.toBeInTheDocument();
+    await selectScope(u, /^Trả lời ngắn · 15 câu$/);
+    await u.click(within(dialog).getByTestId("mapid-rule-type-ONLY_IN_GROUP"));
     await pickTopic(u);
-    expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
-    expect(within(dialog).getByRole("status")).toHaveTextContent("Quy tắc này chỉ áp dụng cho một nhóm");
-    await u.click(within(dialog).getByRole("radio", { name: /^Trả lời ngắn/ }));
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
     expect(within(dialog).queryByTestId("mapid-rule-count")).not.toBeInTheDocument();
     await u.click(within(dialog).getByRole("checkbox", { name: "Kèm số lượng" }));
     const count = within(dialog).getByTestId("mapid-rule-count");
     await u.clear(count);
     await u.type(count, "3");
-    await u.click(within(dialog).getByRole("radio", { name: "Đúng" }));
+    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Bằng" }));
     await u.click(within(dialog).getByTestId("mapid-rule-save"));
     expect(latest.section.mapidRules![0]).toMatchObject({ type: "ONLY_IN_GROUP", groupId: "b-short", comparator: "EXACT", count: 3 });
     expect(table()).toHaveTextContent("Mệnh đề và tập hợp chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu");
   });
 
-  it("Chỉ lấy nguồn từ các MAPID: không có ô số; chùm cuối hiện 1 chùm × 3 câu con = 3/50 câu", async () => {
+  it("Chỉ lấy nguồn từ các MAPID: không có ô số; chùm cuối hiện 1 chùm × 3 câu con và 3/50 câu", async () => {
     const u = user();
     const latest = renderPanel(makeSection({ mapidMode: "MATRIX" }));
     const dialog = await openAdd(u);
-    expect(within(dialog).getByRole("radio", { name: /^Chùm cuối/ })).toHaveAccessibleName(/1 chùm × 3 câu con = 3\/50 câu/);
-    await u.click(within(dialog).getByRole("radio", { name: /^Chùm cuối/ }));
-    await u.click(within(dialog).getByRole("radio", { name: /^Chỉ lấy nguồn từ các MAPID/ }));
+    await selectScope(u, /^Chùm cuối · 1 chùm × 3 câu con$/);
+    expect(within(dialog).getByTestId("mapid-rule-scope")).toHaveTextContent("3/50 câu");
+    await u.click(within(dialog).getByTestId("mapid-rule-type-SOURCE"));
     await pickTopic(u);
     expect(within(dialog).queryByTestId("mapid-rule-count")).not.toBeInTheDocument();
     await u.click(within(dialog).getByTestId("mapid-rule-save"));
@@ -224,12 +230,16 @@ describe("Thêm quy tắc qua hộp thoại", () => {
     expect(table()).toHaveTextContent("Chùm cuối · Chỉ lấy từ Mệnh đề và tập hợp");
   });
 
-  it("hai quy tắc dễ nhầm được giải thích cạnh nhau trong hộp thoại", async () => {
+  it("hai quy tắc dễ nhầm có câu tóm tắt phân biệt rõ ràng khi chọn", async () => {
     const u = user();
     renderPanel(makeSection({ mapidMode: "MATRIX" }));
     const dialog = await openAdd(u);
-    expect(within(dialog).getByText(/Hai quy tắc dễ nhầm/)).toHaveTextContent("Chỉ xuất hiện ở nhóm này” giới hạn vị trí của chủ đề");
-    expect(within(dialog).getByText(/Hai quy tắc dễ nhầm/)).toHaveTextContent("Chỉ lấy nguồn từ các MAPID” giới hạn nguồn của nhóm");
+    await selectScope(u, /^Trả lời ngắn · 15 câu$/);
+    await pickTopic(u);
+    await u.click(within(dialog).getByTestId("mapid-rule-type-ONLY_IN_GROUP"));
+    expect(within(dialog).getByTestId("mapid-rule-summary")).toHaveTextContent("Mệnh đề và tập hợp chỉ được xuất hiện trong nhóm Trả lời ngắn");
+    await u.click(within(dialog).getByTestId("mapid-rule-type-SOURCE"));
+    expect(within(dialog).getByTestId("mapid-rule-summary")).toHaveTextContent("Nhóm Trả lời ngắn chỉ lấy câu thuộc Mệnh đề và tập hợp");
   });
 });
 
@@ -246,11 +256,11 @@ describe("Mẫu số của nhóm lấy phần còn lại (R1-5)", () => {
     const u = user();
     const latest = renderPanel(remainder());
     const dialog = await openAdd(u);
-    expect(within(dialog).getByRole("radio", { name: /^Phần còn lại/ })).toHaveAccessibleName(/lấy phần còn lại.*6\/10 câu/);
-    await u.click(within(dialog).getByRole("radio", { name: /^Phần còn lại/ }));
-    await u.click(within(dialog).getByRole("radio", { name: /^Số lượng/ }));
+    await selectScope(u, /^Phần còn lại · lấy phần còn lại \(6 câu\)$/);
+    expect(within(dialog).getByTestId("mapid-rule-scope")).toHaveTextContent("6/10 câu");
+    await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickTopic(u);
-    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Đúng" }));
+    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Bằng" }));
     await u.click(within(dialog).getByRole("radio", { name: "Tỷ lệ" }));
     const percent = within(dialog).getByTestId("mapid-rule-percent");
     await u.clear(percent);
@@ -266,12 +276,12 @@ describe("Mẫu số của nhóm lấy phần còn lại (R1-5)", () => {
     const u = user();
     const latest = renderPanel(remainder({ questionCount: null }));
     const dialog = await openAdd(u);
-    await u.click(within(dialog).getByRole("radio", { name: /^Phần còn lại/ }));
-    await u.click(within(dialog).getByRole("radio", { name: /^Số lượng/ }));
+    await selectScope(u, /^Phần còn lại · lấy phần còn lại$/);
+    await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickTopic(u);
     await u.click(within(dialog).getByRole("radio", { name: "Tỷ lệ" }));
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
-    expect(within(dialog).getByRole("status")).toHaveTextContent("Chưa biết mẫu số");
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Chưa biết mẫu số");
     await u.click(within(dialog).getByRole("radio", { name: "Số câu" }));
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
     await u.click(within(dialog).getByTestId("mapid-rule-save"));
@@ -331,7 +341,7 @@ describe("Bảng quy tắc", () => {
     await u.click(screen.getByRole("button", { name: /^Sửa quy tắc/ }));
     const dialog = ruleDialog("Sửa quy tắc");
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
-    await u.click(within(dialog).getByRole("radio", { name: /^Toàn môn/ }));
+    await selectScope(u, /^Toàn môn/);
     await u.click(within(dialog).getByTestId("mapid-rule-save"));
     expect(latest.section.mapidRules![0]).toMatchObject({ id: "r9", groupId: null });
     expect(saveBlockers([makePart(latest.section)], { grades: [], difficulties: [] })).toEqual([]);
@@ -389,10 +399,12 @@ describe("Môn và kỳ thi khác giữ nguyên", () => {
   });
 });
 
-it("marks stored group names within rule sentences", () => {
+it("marks stored group names and topic names within rule sentences (R1-7)", () => {
   renderPanel(makeSection({ mapidMode: "MATRIX", mapidRules: [
     { id: "marked", type: "PRESENT", groupId: "b-short", nodeIds: [TOPIC.id] },
   ] }));
   const row = screen.getByTestId("mapid-rule-row-marked");
-  expect(row.querySelector("[data-exam-content]")).toHaveTextContent("Trả lời ngắn");
+  const markedTexts = Array.from(row.querySelectorAll("[data-exam-content]")).map((el) => el.textContent);
+  expect(markedTexts).toContain("Trả lời ngắn");
+  expect(markedTexts).toContain("Mệnh đề và tập hợp");
 });

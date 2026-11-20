@@ -1,7 +1,8 @@
+import type { KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
+import type { QuestionType } from "@/features/content/types";
 import { countFromPercent } from "./allocation";
 import { isSetBlock } from "./matrix";
 import { effectiveScope } from "./subject-matrix";
-import type { QuestionType } from "@/features/content/types";
 import type {
   CountKnowledgeScope,
   ExamSection,
@@ -322,6 +323,22 @@ function sentenceKind(rule: MapidRule): RuleSentenceKind {
   }
 }
 
+/** Định dạng tên các nút MAPID của quy tắc (dùng chung cho bảng quy tắc và hộp thoại kiểm tra chéo). */
+export function formatRuleTopicNames(
+  nodeIds: readonly string[],
+  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
+  formatDisjunction: (items: readonly string[]) => string,
+  wrapTopic?: (name: string) => string,
+): string {
+  return formatDisjunction(
+    nodeIds.map((nodeId) => {
+      const node = knowledgeIndex.get(nodeId)?.node;
+      const label = node?.name || node?.code || nodeId;
+      return wrapTopic ? wrapTopic(label) : label;
+    }),
+  );
+}
+
 /** Dữ liệu cho câu của một quy tắc; chữ do màn dịch (khóa `exams.mapidRules.sentence.<kind>`). */
 export function describeRule(section: ExamSection, rule: MapidRule): RuleSentence {
   const group = rule.groupId ? (section.blocks.find((block) => block.id === rule.groupId) ?? null) : null;
@@ -356,7 +373,7 @@ export function groupEffectiveRules(section: ExamSection, blockId: string): Grou
 
 export interface MapidRuleForm {
   id: string;
-  type: MapidRuleType;
+  type: MapidRuleType | null;
   /** `null`: cả môn. */
   groupId: string | null;
   nodeIds: string[];
@@ -369,7 +386,7 @@ export interface MapidRuleForm {
 }
 
 /** Quy tắc cần ô số: COUNT luôn; ONLY_IN_GROUP khi kèm số lượng; PRESENT và SOURCE không bao giờ. */
-export function ruleNeedsNumber(type: MapidRuleType, withNumber: boolean): boolean {
+export function ruleNeedsNumber(type: MapidRuleType | null, withNumber: boolean): boolean {
   return type === "COUNT" || (type === "ONLY_IN_GROUP" && withNumber);
 }
 
@@ -394,6 +411,9 @@ export function formFromRule(rule: MapidRule): MapidRuleForm {
 
 /** Quy tắc lưu từ biểu mẫu: chỉ giữ trường mà loại quy tắc dùng; nhập theo tỷ lệ ghi cả `percent` và `count` đã quy đổi. */
 export function ruleFromForm(form: MapidRuleForm, section: ExamSection): MapidRule {
+  if (!form.type) {
+    throw new Error("MapidRuleForm.type is required");
+  }
   const base: MapidRule = { id: form.id, type: form.type, groupId: form.groupId, nodeIds: [...form.nodeIds] };
   if (!ruleNeedsNumber(form.type, form.withNumber)) return base;
   const withComparator: MapidRule = { ...base, comparator: form.comparator };
@@ -402,12 +422,14 @@ export function ruleFromForm(form: MapidRuleForm, section: ExamSection): MapidRu
 }
 
 export type RuleIssue =
+  | "TYPE_REQUIRED"
   | "NO_NODES"
   | "GROUP_MISSING"
   | "ONLY_IN_GROUP_NEEDS_GROUP"
   | "PERCENT_RANGE"
   | "PERCENT_DENOMINATOR_UNKNOWN"
   | "PERCENT_POOL"
+  | "COUNT_ABOVE_GROUP"
   | "COUNT_ABOVE_TOTAL";
 
 /**
@@ -419,18 +441,32 @@ export function ruleFormIssues(form: MapidRuleForm, section: ExamSection): RuleI
   const issues: RuleIssue[] = [];
   const groupGone = !!form.groupId && !section.blocks.some((block) => block.id === form.groupId);
   if (groupGone) issues.push("GROUP_MISSING");
+  if (form.type === null) issues.push("TYPE_REQUIRED");
   if (form.nodeIds.length === 0) issues.push("NO_NODES");
   if (form.type === "ONLY_IN_GROUP" && !form.groupId) issues.push("ONLY_IN_GROUP_NEEDS_GROUP");
-  if (ruleNeedsNumber(form.type, form.withNumber) && form.entry === "PERCENT") {
-    if (form.percent < 0 || form.percent > 100) issues.push("PERCENT_RANGE");
-    else if (!groupGone && ruleUnits(section, form) === null) {
-      // Môn tự chọn (HSA Khoa học): số câu theo `countsByPick`, người dùng không nhập được ở môn nên chỉ còn nhập theo số câu (R1-F10).
-      issues.push(section.questionCount === null && section.choiceGroup !== null ? "PERCENT_POOL" : "PERCENT_DENOMINATOR_UNKNOWN");
+  const units = !groupGone ? ruleUnits(section, form) : null;
+  if (ruleNeedsNumber(form.type, form.withNumber)) {
+    let resolvedCount: number | null = null;
+    if (form.entry === "PERCENT") {
+      if (form.percent < 0 || form.percent > 100) issues.push("PERCENT_RANGE");
+      else if (!groupGone && units === null) {
+        // Môn tự chọn (HSA Khoa học): số câu theo `countsByPick`, người dùng không nhập được ở môn nên chỉ còn nhập theo số câu (R1-F10).
+        issues.push(section.questionCount === null && section.choiceGroup !== null ? "PERCENT_POOL" : "PERCENT_DENOMINATOR_UNKNOWN");
+      } else if (units !== null) {
+        resolvedCount = countFromPercent(form.percent, units);
+      }
+    } else {
+      resolvedCount = form.count;
     }
-  }
-  // Máy chủ từ chối cả bản lưu khi số câu của quy tắc vượt số câu của môn (`ExamStructureValidator.validateMapidRules`); vượt số câu của nhóm là việc của bước kiểm tra nên không chặn (R1-F5).
-  if (ruleNeedsNumber(form.type, form.withNumber) && form.entry === "COUNT" && section.questionCount !== null && form.count > section.questionCount) {
-    issues.push("COUNT_ABOVE_TOTAL");
+    if (resolvedCount !== null) {
+      if (form.groupId !== null && !groupGone && units !== null && resolvedCount > units) {
+        issues.push("COUNT_ABOVE_GROUP");
+      }
+      // Máy chủ từ chối cả bản lưu khi số câu của quy tắc vượt số câu của môn (`ExamStructureValidator.validateMapidRules`).
+      if (section.questionCount !== null && resolvedCount > section.questionCount) {
+        issues.push("COUNT_ABOVE_TOTAL");
+      }
+    }
   }
   return issues;
 }

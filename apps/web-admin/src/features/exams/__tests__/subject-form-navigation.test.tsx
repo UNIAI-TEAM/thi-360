@@ -2,7 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_ID } from "./fake-exams-server";
-import { boot, installForms, openStructure, qdaParts } from "./subject-form-harness";
+import { registerFormBlockingRuleForTest } from "../subject-forms/blocking";
+import { boot, checkCalls, installForms, openStructure, putCalls, qdaParts } from "./subject-form-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -141,5 +142,108 @@ describe("Điều hướng theo biểu mẫu (FTM R-15)", () => {
     await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
+  });
+});
+
+/**
+ * CR-3 AC-13 (FTM AC 59 cho DS) và R1-8 trên Danh sách dòng thật: ?block=, bấm lỗi kiểm tra và lỗi chặn lưu mở đúng màn sửa dòng của đúng dòng và đặt
+ * focus vào đó, kể cả khi môn DS vừa được vẽ (màn sửa dòng vẽ sau khung nên màn tự đặt focus, không nhờ bước focus một lần của khung).
+ */
+describe("Điều hướng tới dòng của Danh sách dòng thật (CR-3 AC-13)", () => {
+  const editorOf = (name: RegExp) => screen.findByRole("heading", { name: new RegExp("Sửa dòng: " + name.source) });
+
+  it("rowTargets: ?block= của nhóm thuộc môn DS mở màn sửa đúng dòng và focus nằm trong màn sửa", async () => {
+    restore();
+    boot();
+    openStructure("?block=van-r2");
+    const heading = await editorOf(/Van dong 2/);
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(screen.queryByRole("button", { name: /Xóa nhóm|Đưa nhóm/ })).toBeNull();
+    expect(document.querySelector('[data-form-row-editor="van-r2"]')).not.toBeNull();
+  });
+
+  it("rowTargets: bấm lỗi kiểm tra của nhóm thuộc môn DS (từ môn MD) mở đúng dòng và đặt focus vào màn sửa", async () => {
+    restore();
+    const user = userEvent.setup();
+    boot({ checkBody: failedCheck("van-r2", "sec-van", "VAN") });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { level: 2, name: /TOAN/ });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    const heading = await editorOf(/Van dong 2/);
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(window.location.search).toBe("?block=van-r2");
+  });
+
+  it("rowTargets: lỗi chặn lưu của một dòng DS không gửi request, mở đúng dòng và đặt focus; chọn dòng khác thì màn sửa chuyển dòng và focus theo", async () => {
+    restore();
+    const user = userEvent.setup();
+    const undo = registerFormBlockingRuleForTest((section, context) =>
+      context.form === "ROWS" && section.id === "sec-van" ? [{ code: "ROW_X", sectionId: section.id, blockId: "van-r2", field: null }] : [],
+    );
+    try {
+      const { server } = boot();
+      openStructure("?section=sec-toan");
+      await screen.findByRole("heading", { level: 2, name: /TOAN/ });
+      await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+      const heading = await editorOf(/Van dong 2/);
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(checkCalls(server)).toHaveLength(0);
+      expect(putCalls(server)).toHaveLength(0);
+      await user.click(within(document.querySelector<HTMLElement>('[data-form-row="van-r1"]')!).getByRole("button", { name: /Sửa dòng/ }));
+      expect(await editorOf(/Van dong 1/)).toHaveFocus();
+    } finally {
+      undo();
+    }
+  });
+});
+
+/**
+ * CR-2 AC-9 (FTM AC 59 cho MT): `?block=`, bấm lỗi kiểm tra và tóm tắt của nhóm thuộc môn MT thật vào đúng ô của vai trò nhóm và đặt focus,
+ * cả khi đi qua Lưu và chuyển; không mở editor nhóm đầy đủ. Cờ và màn của sản phẩm (đỏ trước: ở gốc `?block=` của nhóm QDA mở editor nhóm).
+ */
+describe("Đích MT thật (CR-2 AC-9)", () => {
+  beforeEach(() => restore());
+
+  it.each([
+    ["sec-ly-set", "Số chùm"],
+    ["sec-ly-fill", "Điền đáp án"],
+    ["sec-ly-single", "Trắc nghiệm"],
+  ])("matrixTargets: ?block=%s mở môn MT và đặt focus vào ô %s, không mở màn nhóm", async (blockId, name) => {
+    boot();
+    openStructure(`?block=${blockId}`);
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("group", { name })).getByRole("textbox")).toHaveFocus());
+    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
+  });
+
+  it("matrixTargets: bấm lỗi kiểm tra của nhóm chùm vào ô Số chùm, không mở màn nhóm", async () => {
+    const user = userEvent.setup();
+    boot({ checkBody: failedCheck("sec-hoa-set", "sec-hoa", "HOA") });
+    openStructure("?section=sec-ly");
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Số chùm" })).getByRole("textbox")).toHaveFocus());
+    expect(window.location.search).toBe("?block=sec-hoa-set");
+    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
+  });
+
+  it("matrixTargets: đi qua Lưu và chuyển (Tiếp tục khi bản nháp bẩn) rồi tới ô của lỗi kiểm tra", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ checkBody: failedCheck("sec-hoa-fill", "sec-hoa", "HOA") });
+    openStructure("?section=sec-ly");
+    const fill = await screen.findByRole("textbox", { name: "Điền đáp án" });
+    await user.clear(fill);
+    await user.type(fill, "2");
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Điền đáp án" })).getByRole("textbox")).toHaveFocus());
+    expect(window.location.search).toBe("?block=sec-hoa-fill");
+  });
+
+  it("khung không lộ nút thêm, xóa, đổi thứ tự nhóm khi mở MT thật", async () => {
+    boot();
+    openStructure("?section=sec-ly");
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    expect(screen.queryByRole("button", { name: /Thêm nhóm|Xóa nhóm|Lên|Xuống/ })).toBeNull();
   });
 });

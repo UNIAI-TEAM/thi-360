@@ -13,6 +13,21 @@ final class ExamCheckQuantities {
 
     static int[] resolve(List<BigDecimal> values, MatrixUnit unit, int total) {
         if (total < 0 || unit == null) return null;
+        int[] rows = rows(values, unit, total);
+        if (rows == null) return null;
+        // A PERCENT list is validated (sum 100) by rows; a COUNT list must add up to the total here.
+        if (unit == MatrixUnit.COUNT && java.util.Arrays.stream(rows).asLongStream().sum() != total) return null;
+        return rows;
+    }
+
+    /**
+     * The per-row question counts the solver derives from a quota list: COUNT values as declared, PERCENT values through
+     * the solver's own {@link LargestRemainderApportioner} (declaration-order ties). A null unit means COUNT, exactly as
+     * {@code SolverInputBuilder} reads it. Null when a value is missing, fractional or negative, or a PERCENT list does
+     * not add up to 100 (the matrix and answer-quota rules report those).
+     */
+    static int[] rows(List<BigDecimal> values, MatrixUnit unit, int total) {
+        if (total < 0) return null;
         int[] result = new int[values.size()];
         long sum = 0;
         for (int i = 0; i < values.size(); i++) {
@@ -26,9 +41,8 @@ final class ExamCheckQuantities {
             if (result[i] < 0) return null;
             sum += result[i];
         }
-        if (sum != (unit == MatrixUnit.PERCENT ? 100 : total)) return null;
-        return unit == MatrixUnit.PERCENT
-                ? APPORTIONER.apportion(java.util.Arrays.stream(result).boxed().toList(), total)
-                : result;
+        if (unit != MatrixUnit.PERCENT) return result;
+        if (sum != 100) return null;
+        return APPORTIONER.apportion(java.util.Arrays.stream(result).boxed().toList(), total);
     }
 }

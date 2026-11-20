@@ -73,6 +73,7 @@ function renderPanel(initial: ExamSection, locale: "vi" | "en" = "vi") {
     return (
       <HsaExamContext.Provider value>
         <ExamStructureSubjectPanel
+          examId="exam-1"
           examKind="HSA"
           context={{ part: makePart(section), option: null, section, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
           subjectName="Toán học"
@@ -108,7 +109,7 @@ async function pickTopic(u: UserEvent) {
 async function openCountDialog(u: UserEvent) {
   await u.click(screen.getByTestId("mapid-rule-add"));
   const dialog = dialogOf();
-  await u.click(within(dialog).getByRole("radio", { name: /^Số lượng/ }));
+  await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
   await pickTopic(u);
   return dialog;
 }
@@ -124,8 +125,9 @@ describe("R1-F2: nhóm đã bỏ không là đích của quy tắc", () => {
     );
     await u.click(screen.getByTestId("mapid-rule-add"));
     const dialog = dialogOf();
-    expect(within(dialog).queryByRole("radio", { name: /^Cố định bỏ/ })).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("radio", { name: /^Phần còn lại/ })).toHaveAccessibleName(/lấy phần còn lại = 10\/10 câu/);
+    await u.click(within(within(dialog).getByTestId("mapid-rule-scope")).getByRole("combobox"));
+    expect(screen.queryByRole("option", { name: /^Cố định bỏ/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /^Phần còn lại · lấy phần còn lại \(10 câu\)$/ })).toBeInTheDocument();
   });
 });
 
@@ -138,7 +140,7 @@ describe("R1-F5: số câu vượt số câu của môn", () => {
     await u.clear(count);
     await u.type(count, "51");
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
-    expect(within(dialog).getByRole("status")).toHaveTextContent("Số câu vượt số câu của môn (50)");
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Số câu vượt số câu của môn (50)");
     await u.clear(count);
     await u.type(count, "50");
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
@@ -155,14 +157,14 @@ describe("R1-F7: ô số nhập sai không được lưu ngầm", () => {
     await u.type(count, "2x");
     const save = within(dialog).getByTestId("mapid-rule-save");
     expect(save).toBeDisabled();
-    const status = within(dialog).getByRole("status");
-    expect(status).toHaveTextContent("Số nhập chưa đúng");
-    expect(status).toHaveClass("text-danger");
-    expect(save.getAttribute("aria-describedby")).toBe(status.id);
+    const alert = within(dialog).getByRole("alert");
+    expect(alert).toHaveTextContent("Số nhập chưa đúng");
+    expect(alert).toHaveClass("text-danger");
+    expect(save.getAttribute("aria-describedby")).toBe(alert.id);
     await u.clear(count);
     await u.type(count, "2");
     expect(save).toBeEnabled();
-    expect(within(dialog).queryByRole("status")).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
     expect(save).not.toHaveAttribute("aria-describedby");
   });
 
@@ -171,9 +173,9 @@ describe("R1-F7: ô số nhập sai không được lưu ngầm", () => {
     renderPanel(makeSection());
     await u.click(screen.getByTestId("mapid-rule-add"));
     const dialog = dialogOf();
-    const status = within(dialog).getByRole("status");
-    expect(status).toHaveClass("text-danger");
-    expect(within(dialog).getByTestId("mapid-rule-save").getAttribute("aria-describedby")).toBe(status.id);
+    const alert = within(dialog).getByRole("alert");
+    expect(alert).toHaveClass("text-danger");
+    expect(within(dialog).getByTestId("mapid-rule-save").getAttribute("aria-describedby")).toBe(alert.id);
   });
 });
 
@@ -192,7 +194,7 @@ describe("R1-F8: tiếng Anh có số ít, số nhiều", () => {
     expect(screen.getByTestId("mapid-paused-note")).toHaveTextContent("1 rule points to a deleted group");
   });
 
-  it("quy mô nhóm trong hộp thoại: 1 set × 1 child question, 2 sets × 3 child questions", async () => {
+  it("quy mô nhóm trong hộp thoại: 1 set × 1 sub-question, 2 sets × 3 sub-questions", async () => {
     const u = user();
     renderPanel(
       makeSection({
@@ -205,8 +207,9 @@ describe("R1-F8: tiếng Anh có số ít, số nhiều", () => {
     );
     await u.click(screen.getByTestId("mapid-rule-add"));
     const dialog = dialogOf();
-    expect(within(dialog).getByRole("radio", { name: /^One/ })).toHaveAccessibleName(/1 set × 1 child question = 1\/50 questions/);
-    expect(within(dialog).getByRole("radio", { name: /^Two/ })).toHaveAccessibleName(/2 sets × 3 child questions = 6\/50 questions/);
+    await u.click(within(within(dialog).getByTestId("mapid-rule-scope")).getByRole("combobox"));
+    expect(screen.getByRole("option", { name: /^One · 1 set × 1 sub-question$/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /^Two · 2 sets × 3 sub-questions$/ })).toBeInTheDocument();
   });
 });
 
@@ -233,9 +236,9 @@ describe("R1-F10: môn tự chọn không nhập được tỷ lệ", () => {
     const dialog = await openCountDialog(u);
     await u.click(within(dialog).getByRole("radio", { name: "Tỷ lệ" }));
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
-    const status = within(dialog).getByRole("status");
-    expect(status).toHaveTextContent("Môn tự chọn chưa dùng được tỷ lệ");
-    expect(status).not.toHaveTextContent("Nhập số câu của môn");
+    const alert = within(dialog).getByRole("alert");
+    expect(alert).toHaveTextContent("Môn tự chọn chưa dùng được tỷ lệ");
+    expect(alert).not.toHaveTextContent("Nhập số câu của môn");
   });
 });
 

@@ -9,16 +9,21 @@ import type { SubjectFormSelection } from "./selection";
  * - MD, ON: đích cũ (editor nhóm, hoặc màn bài ôn của môn).
  */
 
-/** Ô của MT mà đích trỏ tới. CR-2 thêm tên ô cho phần của mình (Nguồn chùm, Quy tắc MAPID của HSA...). */
+/** Ô của MT mà đích trỏ tới. CR-2 thêm tên ô cho phần của mình (Nguồn chùm...), CR-2H thêm Quy tắc MAPID của HSA. */
 export interface MatrixField {
   sectionId: string;
   name: string;
+  /**
+   * Nhóm mà đích trỏ tới (`?block=`, bấm lỗi hay tóm tắt của một nhóm): màn MT gắn `data-form-block="<blockId>"` lên ô của vai trò nhóm đó
+   * (Trắc nghiệm, Số chùm, Điền đáp án). Không có ô của nhóm thì dùng ô `name`.
+   */
+  blockId?: string;
 }
 
 /** Đích điều hướng: ô của MT, dòng của DS, hoặc nhóm ở màn nhóm cũ (MD, ON). */
 export type FormTarget =
   | { kind: "MATRIX_FIELD"; field: MatrixField }
-  | { kind: "ROW"; blockId: string }
+  | { kind: "ROW"; blockId: string; /** Ô của màn sửa dòng nhận focus (`data-form-field`); bỏ trống: tiêu đề của màn sửa. */ field?: string }
   | { kind: "LEGACY_BLOCK"; blockId: string };
 
 /** Nơi cần tới: nhóm (kèm môn chứa nó), hoặc một lỗi mang môn, nhóm và tên ô nếu có. */
@@ -37,25 +42,43 @@ export const MATRIX_DEFAULT_FIELD = "STRUCTURE";
  */
 export function formTarget(selection: SubjectFormSelection, ref: FormTargetRef): FormTarget | null {
   if (selection.form === "MATRIX") {
-    return { kind: "MATRIX_FIELD", field: { sectionId: ref.sectionId, name: ref.field ?? MATRIX_DEFAULT_FIELD } };
+    return {
+      kind: "MATRIX_FIELD",
+      field: { sectionId: ref.sectionId, name: ref.field ?? MATRIX_DEFAULT_FIELD, ...(ref.field || !ref.blockId ? {} : { blockId: ref.blockId }) },
+    };
   }
   if (!ref.blockId) return null;
-  return selection.form === "ROWS" ? { kind: "ROW", blockId: ref.blockId } : { kind: "LEGACY_BLOCK", blockId: ref.blockId };
+  if (selection.form !== "ROWS") return { kind: "LEGACY_BLOCK", blockId: ref.blockId };
+  return ref.field ? { kind: "ROW", blockId: ref.blockId, field: ref.field } : { kind: "ROW", blockId: ref.blockId };
 }
 
 /** Phần tử nhận focus của đích trong vùng biểu mẫu, hoặc `null` khi biểu mẫu chưa vẽ ô đó. */
 export function findFormTargetElement(root: ParentNode, target: FormTarget): HTMLElement | null {
   if (target.kind === "LEGACY_BLOCK") return null;
-  const selector = target.kind === "MATRIX_FIELD" ? `[data-form-field="${CSS.escape(target.field.name)}"]` : `[data-form-row="${CSS.escape(target.blockId)}"]`;
-  return root.querySelector<HTMLElement>(selector);
+  if (target.kind === "MATRIX_FIELD") {
+    const own = target.field.blockId ? root.querySelector<HTMLElement>(`[data-form-block="${CSS.escape(target.field.blockId)}"]`) : null;
+    return own ?? root.querySelector<HTMLElement>(`[data-form-field="${CSS.escape(target.field.name)}"]`);
+  }
+  return root.querySelector<HTMLElement>(`[data-form-row="${CSS.escape(target.blockId)}"]`);
 }
 
 const FOCUSABLE = "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex='-1']), a[href]";
+
+/**
+ * Sự kiện báo dòng đích cho Danh sách dòng (R-15: mở màn sửa đúng dòng). Phát trên phần tử `data-form-row` của dòng; màn DS nhận ở
+ * khung của mình, mở màn sửa dòng rồi tự đặt focus (màn sửa vẽ sau khung, nên không đợi focus của khung), và gọi `preventDefault` để
+ * khung bỏ bước đặt focus vào nút của dòng.
+ */
+export const ROW_TARGET_EVENT = "thi360:form-row-target";
 
 /** Đặt focus vào phần tử đích; phần tử không nhận focus thì vào điều khiển đầu tiên bên trong, không có thì vào chính nó. */
 export function focusFormTarget(root: ParentNode, target: FormTarget): boolean {
   const element = findFormTargetElement(root, target);
   if (!element) return false;
+  if (target.kind === "ROW") {
+    const notHandled = element.dispatchEvent(new CustomEvent(ROW_TARGET_EVENT, { bubbles: true, cancelable: true, detail: { blockId: target.blockId, field: target.field ?? null } }));
+    if (!notHandled) return true;
+  }
   const control = element.matches(FOCUSABLE) ? element : (element.querySelector<HTMLElement>(FOCUSABLE) ?? element);
   if (control === element && !element.matches(FOCUSABLE)) element.tabIndex = -1;
   control.focus();

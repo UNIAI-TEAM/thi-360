@@ -112,6 +112,7 @@ describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
       const [confirmed, setConfirmed] = useState(30);
       return (
         <ExamStructureSubjectPanel
+          examId={EXAM_ID}
           context={{ part: { id: "part-1", sections: [current], options: [] } as unknown as ExamPart, option: null, section: current, location: { partId: "part-1", optionId: null, sectionId: "sec-1" } }}
           subjectName="Toán học"
           axes={axes}

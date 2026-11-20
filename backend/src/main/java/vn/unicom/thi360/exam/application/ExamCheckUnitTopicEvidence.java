@@ -19,7 +19,10 @@ import vn.unicom.thi360.exam.domain.solver.TopicQuota;
 final class ExamCheckUnitTopicEvidence {
     private ExamCheckUnitTopicEvidence() { }
 
-    static List<ObjectNode> issues(PathResult result, ExamStructureDocument document,
+    /** {@code cutShort}: some pool read stopped at the deadline or the candidate limit, so issues may be missing. */
+    record Found(List<ObjectNode> issues, boolean cutShort) { }
+
+    static Found issues(PathResult result, ExamStructureDocument document,
             SolverInputBuilder.SolverCandidates candidates, ExamCheckRules rules,
             Clock clock, Instant deadline, int maxCandidates) {
         Map<String, SectionOnPath> sections = new LinkedHashMap<>();
@@ -27,11 +30,12 @@ final class ExamCheckUnitTopicEvidence {
         result.path().picks().forEach(tuple -> tuple.forEach(pick -> pick.resolvedSections()
                 .forEach(section -> sections.putIfAbsent(section.sectionId(), section))));
         List<ExamCheckRules.TopicQuotaEvidence> evidence = new ArrayList<>();
+        boolean cutShort = false;
         for (var section : sections.values()) {
             String partId = partId(document, section.sectionId());
             if (partId == null) continue;
             for (var quota : section.subjectQuota().topicQuotas()) {
-                add(evidence, section, partId, null, quota, section.groups(), candidates, clock, deadline, maxCandidates);
+                cutShort |= !add(evidence, section, partId, null, quota, section.groups(), candidates, clock, deadline, maxCandidates);
             }
             Map<String, List<GroupQuota>> groups = new LinkedHashMap<>();
             for (var group : section.groups()) {
@@ -42,23 +46,24 @@ final class ExamCheckUnitTopicEvidence {
                 var first = entry.getValue().getFirst();
                 var quotas = first.slotParent() == null ? first.topicQuotas() : first.slotParent().topicQuotas();
                 for (var quota : quotas) {
-                    add(evidence, section, partId, entry.getKey(), quota, entry.getValue(), candidates, clock, deadline, maxCandidates);
+                    cutShort |= !add(evidence, section, partId, entry.getKey(), quota, entry.getValue(), candidates, clock, deadline, maxCandidates);
                 }
             }
         }
-        return rules.topicQuotaIssues(evidence);
+        return new Found(rules.topicQuotaIssues(evidence), cutShort);
     }
 
-    private static void add(List<ExamCheckRules.TopicQuotaEvidence> evidence, SectionOnPath section,
+    /** Returns false when the deadline or the candidate limit cut the source read short: the bound is then unknown. */
+    private static boolean add(List<ExamCheckRules.TopicQuotaEvidence> evidence, SectionOnPath section,
             String partId, String blockId, TopicQuota quota, List<GroupQuota> groups,
             SolverInputBuilder.SolverCandidates candidates, Clock clock, Instant deadline, int maxCandidates) {
         long upperBound = 0;
         for (var group : groups) {
             String groupId = group.slotParent() == null ? group.groupId() : group.slotParent().parentGroupId();
             if (!quota.groupIds().isEmpty() && !quota.groupIds().contains(groupId)) continue;
-            if (!clock.instant().isBefore(deadline)) return;
+            if (!clock.instant().isBefore(deadline)) return false;
             var pool = candidates.candidatesFor(group);
-            if (pool.size() > maxCandidates || !clock.instant().isBefore(deadline)) return;
+            if (pool.size() > maxCandidates || !clock.instant().isBefore(deadline)) return false;
             for (var candidate : pool) for (var unit : candidate.units()) if (matches(quota, unit)) upperBound++;
         }
         if (upperBound < quota.count()) {
@@ -66,6 +71,7 @@ final class ExamCheckUnitTopicEvidence {
                     blockId, null, null, null, List.of());
             evidence.add(new ExamCheckRules.TopicQuotaEvidence(location, quota.id(), quota.count(), upperBound));
         }
+        return true;
     }
 
     private static boolean matches(TopicQuota quota, CountingUnit unit) {

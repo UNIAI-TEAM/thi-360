@@ -86,3 +86,24 @@ test("HSA dùng cấu trúc môn: màn môn không còn ô Số câu của mục
   await page.getByRole("button", { name: /^Mở nhóm/ }).first().click();
   await expect(page.getByRole("textbox", { name: /^Số câu cần lấy/ })).not.toHaveAttribute("readonly", "");
 });
+
+test("HSA Văn: nhóm lấy câu mở và sửa qua danh sách dòng", async ({ context, page }) => {
+  await loginAdmin(context, "vi");
+  const admin = await adminApi();
+  const id = await createExam(admin, {
+    code: `HSA-VAN-ROW-${RUN_ID}`.toUpperCase(),
+    name: `HSA Văn dòng ${RUN_ID}`,
+    kind: "HSA",
+    scope: "SUBJECT",
+    subjectCode: "VAN",
+  });
+
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  const rows = page.locator("[data-form-row]");
+  await expect(rows).toHaveCount(5);
+  await expect(page.locator("[data-form-slots] [data-form-slot]")).toHaveCount(5);
+  await rows.last().getByRole("button", { name: /^Sửa dòng/ }).click();
+  await expect(page.locator("[data-form-row-editor]")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Câu chùm" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "Đảo thứ tự các chùm" })).toBeVisible();
+});
