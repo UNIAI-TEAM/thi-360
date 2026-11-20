@@ -1,6 +1,28 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ADMIN_URL, adminApi, loginAdmin, type AdminApi } from "./helpers/editor-qa";
-import { examCode, getStructure, issueCodes, SOLVER_TIMEOUT_MS, type Structure, type StructureBlock, type StructureSection } from "./helpers/wave-2b";
+import {
+  ADMIN_URL,
+  adminApi,
+  GRADE_G12_ITEM_ID,
+  KNOWLEDGE_GROUP_ID,
+  loginAdmin,
+  RUN_ID,
+  SUBJECT_ITEM_ID,
+  UNIT_LABEL,
+  type AdminApi,
+} from "./helpers/editor-qa";
+import {
+  createReadyQuestions,
+  examCode,
+  getStructure,
+  issueCodes,
+  paperQuestions,
+  SOLVER_TIMEOUT_MS,
+  type PreviewResultLite,
+  type QuestionDraft,
+  type Structure,
+  type StructureBlock,
+  type StructureSection,
+} from "./helpers/wave-2b";
 
 test.setTimeout(SOLVER_TIMEOUT_MS);
 
@@ -235,5 +257,235 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
     await page.getByRole("button", { name: "Thêm điều kiện", exact: true }).first().click();
     await page.getByRole("menuitem", { name: "Khối lớp" }).click();
     await expect(page.getByRole("heading", { level: 4, name: "Khối lớp" })).toBeVisible();
+  });
+});
+
+const QUESTION_TAG_GROUP_ID = "00000000-0000-7000-8100-000000000008";
+
+test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H AC-2, AC-3, AC-11, AD-98, AD-99)", () => {
+  test("hsaMathSaveAndCheck: sửa Điền đáp án Toán MT cập nhật HSA-B answerQuotas và Kiểm tra không báo trùng hay lệch", async ({ context, page }) => {
+    await loginAdmin(context, "vi");
+    const admin = await adminApi();
+    const exam = await createExam(admin, { kind: "HSA", scope: "PART", partCode: "TOAN" }, "HSA-T");
+    const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
+
+    await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
+    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(field(page, "Trắc nghiệm")).toHaveValue("35");
+    await expect(field(page, "Điền đáp án")).toHaveValue("15");
+    await expect(field(page, "Số chùm")).toHaveValue("1");
+    await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue("32");
+
+    await typeInto(page, "Điền đáp án", "12");
+    await saveInUi(page, exam.id);
+    const savedQuotas = sectionOf(await getStructure(admin, exam.id), "TOAN").answerQuotas;
+    expect(savedQuotas?.items).toEqual([
+      { answerType: "SINGLE_CHOICE", value: 32 },
+      { answerType: "SHORT_ANSWER", value: 12 },
+      { answerType: "QUESTION_SET", value: 3 },
+    ]);
+
+    await typeInto(page, "Điền đáp án", "15");
+    await saveInUi(page, exam.id);
+    const codes = await checkSection(admin, exam.id, toan.id);
+    expect(codes).not.toContain("ANSWER_QUOTA_DUPLICATE");
+    expect(codes).not.toContain("ANSWER_QUOTA_MISMATCH");
+  });
+
+  test("hsaHistoryFillZero: HSA Sử giữ nguyên nhóm Điền đáp án qua 1 -> 0 -> tải lại -> 1 -> lưu", async ({ context, page }) => {
+    await loginAdmin(context, "vi");
+    const admin = await adminApi();
+    const exam = await createExam(admin, { kind: "HSA", scope: "SUBJECT", subjectCode: "SU" }, "HSA-SU0");
+    const initial = await getStructure(admin, exam.id);
+    const su = sectionOf(initial, "SU");
+    const fillId = crypto.randomUUID();
+    const single = roleBlock(su, null)!;
+    single.questionCount = (single.questionCount ?? 14) - 1;
+    (su.blocks ?? []).push({
+      id: fillId,
+      name: "Trả lời ngắn",
+      questionType: "SHORT_ANSWER",
+      questionCount: 1,
+      requiredPointsPerQuestion: 1,
+      tagCodes: [],
+      templateGroupCode: "SU_FILL_TEST",
+    });
+    const put = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/structure`, {
+      headers: admin.headers,
+      data: { parts: initial.parts, examQuotas: initial.examQuotas ?? [], expectedRevision: initial.revision },
+    });
+    expect(put.status(), await put.text()).toBe(200);
+
+    await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${su.id}`);
+    await expect(field(page, "Điền đáp án")).toHaveValue("1");
+    await typeInto(page, "Điền đáp án", "0");
+    await saveInUi(page, exam.id);
+
+    await page.reload();
+    await expect(field(page, "Điền đáp án")).toHaveValue("0");
+    const afterZero = roleBlock(sectionOf(await getStructure(admin, exam.id), "SU"), "SHORT_ANSWER");
+    expect(afterZero).toMatchObject({ id: fillId, questionCount: 0, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_TEST" });
+
+    await typeInto(page, "Điền đáp án", "1");
+    await saveInUi(page, exam.id);
+    const afterRestore = roleBlock(sectionOf(await getStructure(admin, exam.id), "SU"), "SHORT_ANSWER");
+    expect(afterRestore).toMatchObject({ id: fillId, questionCount: 1, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_TEST" });
+  });
+
+  test("hsaMathRulesInMatrix: HSA Toán MT thêm quy tắc 2 và 5 trong MapidRuleDialog nhúng rồi sinh thử tuân thủ", async ({ context, page }) => {
+    await loginAdmin(context, "vi");
+    const admin = await adminApi();
+
+    async function createNode(parentId: string | null, code: string, name: string, refItemIds: string[]) {
+      const res = await admin.api.post(`${ADMIN_URL}/api/v1/admin/catalog/groups/${KNOWLEDGE_GROUP_ID}/items`, {
+        headers: admin.headers,
+        data: { code, nameVi: name, nameEn: name, ...(parentId ? { parentId } : {}), ...(refItemIds.length ? { refItemIds } : {}) },
+      });
+      expect(res.status(), await res.text()).toBe(201);
+      return ((await res.json()) as { id: string }).id;
+    }
+
+    const base = `HSAMT-${RUN_ID}`.toUpperCase();
+    const chapter = await createNode(null, `${base}-C`, `Chương MT ${RUN_ID}`, [SUBJECT_ITEM_ID.TOAN!, GRADE_G12_ITEM_ID]);
+    const lessonX = await createNode(chapter, `${base}-LX`, `Bài X MT ${RUN_ID}`, []);
+    const leafX = await createNode(lessonX, `${base}-KX`, `Kiến thức X MT ${RUN_ID}`, []);
+    const lessonA = await createNode(chapter, `${base}-LA`, `Bài A MT ${RUN_ID}`, []);
+    const leafA = await createNode(lessonA, `${base}-KA`, `Kiến thức A MT ${RUN_ID}`, []);
+
+    const opt = (label: string, correct: boolean) => ({ id: crypto.randomUUID(), content: `<p>${label}</p>`, correct });
+    const mcBody = () => ({ type: "SINGLE_CHOICE", options: [opt("A", true), opt("B", false), opt("C", false), opt("D", false)], shuffleOptions: true });
+    const carrierDrafts: QuestionDraft[] = Array.from({ length: 12 }, (_, idx) => ({
+      type: idx % 2 === 0 ? "SINGLE_CHOICE" : "SHORT_ANSWER",
+      subjectCode: "TOAN",
+      gradeCode: "G12",
+      difficultyCode: idx % 2 === 0 ? "TH" : "VD",
+      points: 1,
+      knowledge: [{ nodeId: leafX, primary: true }],
+      content: `<p>${UNIT_LABEL}MT X ${RUN_ID} ${idx}.</p>`,
+      body: idx % 2 === 0 ? mcBody() : { type: "SHORT_ANSWER", answers: ["1"], inputHint: null, answerFormat: null },
+      sourceCode: `HSAMT-${RUN_ID}-X${idx}`.slice(0, 60),
+    }));
+    const setDrafts: QuestionDraft[] = Array.from({ length: 2 }, (_, idx) => ({
+      type: "QUESTION_SET",
+      subjectCode: "TOAN",
+      gradeCode: "G10",
+      difficultyCode: "TH",
+      points: 3,
+      knowledge: [{ nodeId: leafA, primary: true }],
+      content: `<p>${UNIT_LABEL}Chùm MT ${RUN_ID} ${idx}.</p>`,
+      body: {
+        type: "QUESTION_SET",
+        passage: `<p>${UNIT_LABEL}Ngữ liệu MT ${RUN_ID} ${idx}.</p>`,
+        blankNumberStart: 1,
+        children: [1, 2, 3].map((child) => ({ type: "SINGLE_CHOICE", content: `<p>${UNIT_LABEL}Con ${child}.</p>`, body: mcBody(), points: 1, knowledgeItemIds: [leafA] })),
+      },
+      sourceCode: `HSAMT-${RUN_ID}-A${idx}`.slice(0, 60),
+    }));
+    const carriers = await createReadyQuestions(admin, carrierDrafts);
+    const sets = await createReadyQuestions(admin, setDrafts);
+    const carrierCodes = new Set(carriers.map((q) => q.code));
+    const allowedSetCodes = new Set(sets.map((q) => q.code));
+
+    const exam = await createExam(admin, { kind: "HSA", scope: "PART", partCode: "TOAN" }, "HSA-RM");
+    const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
+
+    await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
+    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Thêm nhóm/ })).toHaveCount(0);
+
+    await page.getByTestId("mapid-mode-matrix").check();
+    await expect(page.getByTestId("mapid-rules-table")).toBeVisible();
+
+    const pickMapid = async (code: string) => {
+      const dialog = page.getByRole("dialog", { name: /^Thêm quy tắc/ });
+      await dialog.getByTestId("mapid-rule-mapid-picker").click();
+      const picker = page.getByRole("dialog", { name: /Chọn kiến thức/ });
+      await picker.getByPlaceholder(/Tìm theo mã hoặc tên/).fill(code);
+      await picker.getByRole("checkbox", { name: new RegExp(`^${code} `) }).check();
+      await picker.getByRole("button", { name: /Áp dụng/ }).click();
+    };
+
+    await page.getByTestId("mapid-rule-add").click();
+    let dialog = page.getByRole("dialog", { name: "Thêm quy tắc" });
+    await dialog.getByTestId("mapid-rule-type-COUNT").click();
+    await pickMapid(`${base}-KX`);
+    await dialog.getByTestId("mapid-rule-comparator").getByRole("radio", { name: "Bằng" }).check();
+    await dialog.getByTestId("mapid-rule-count").fill("3");
+    await dialog.getByTestId("mapid-rule-save").click();
+
+    await page.getByTestId("mapid-rule-add").click();
+    dialog = page.getByRole("dialog", { name: "Thêm quy tắc" });
+    await dialog.getByTestId("mapid-rule-scope").getByRole("combobox").click();
+    await page.getByRole("option", { name: /^Chùm cuối/ }).click();
+    await dialog.getByTestId("mapid-rule-type-SOURCE").click();
+    await pickMapid(`${base}-KA`);
+    await dialog.getByTestId("mapid-rule-save").click();
+
+    await saveInUi(page, exam.id);
+    const previewRes = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/preview`, { headers: admin.headers, data: { seed: 1, target: { kind: "EXAM" } } });
+    expect(previewRes.status(), await previewRes.text()).toBe(200);
+    const paper = (await previewRes.json()) as PreviewResultLite;
+    expect(paper.status, paper.reason ?? "").toBe("GENERATED");
+    expect(paperQuestions(paper).filter((q) => carrierCodes.has(q.code)).length).toBe(3);
+    const setItem = paper.paper.parts.flatMap((p) => p.blocks ?? []).find((b) => b.questionType === "QUESTION_SET")?.items?.[0];
+    expect(allowedSetCodes.has(setItem?.code ?? "")).toBe(true);
+  });
+
+  test("hsaHistoryGeographyAd98Ad99: Sử/Địa đặt Mạch kiến thức trước Cấu trúc câu gọn, đếm phân bổ, khối lớp tùy chọn và Địa lí chọn nhãn tư liệu động", async ({ context, page }) => {
+    await loginAdmin(context, "vi");
+    const admin = await adminApi();
+
+    const suExam = await createExam(admin, { kind: "HSA", scope: "SUBJECT", subjectCode: "SU" }, "HSA-SUA");
+    const su = sectionOf(await getStructure(admin, suExam.id), "SU");
+    await page.goto(`${ADMIN_URL}/exams/${suExam.id}/structure?section=${su.id}`);
+    const suStrand = page.getByTestId("hsa-strand-section");
+    const suStruct = page.locator('[data-form-field="STRUCTURE"]');
+    await expect(suStrand).toBeVisible();
+    await expect(suStruct).toHaveAttribute("data-structure-variant", "compact");
+    const suStrandBox = await suStrand.boundingBox();
+    const suStructBox = await suStruct.boundingBox();
+    expect(suStrandBox && suStructBox && suStrandBox.y < suStructBox.y).toBe(true);
+
+    const tagCode = `DIA_E2E_${RUN_ID}`.toUpperCase();
+    const tagName = `Tư liệu Địa ${RUN_ID}`;
+    const tagRes = await admin.api.post(`${ADMIN_URL}/api/v1/admin/catalog/groups/${QUESTION_TAG_GROUP_ID}/items`, {
+      headers: admin.headers,
+      data: { code: tagCode, nameVi: tagName, nameEn: `Geography Material ${RUN_ID}` },
+    });
+    expect(tagRes.status(), await tagRes.text()).toBe(201);
+
+    const exam = await createExam(admin, { kind: "HSA", scope: "SUBJECT", subjectCode: "DIA" }, "HSA-DIA");
+    const dia = sectionOf(await getStructure(admin, exam.id), "DIA");
+
+    await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${dia.id}`);
+    const strand = page.getByTestId("hsa-strand-section");
+    const structure = page.locator('[data-form-field="STRUCTURE"]');
+    await expect(strand).toBeVisible();
+    await expect(structure).toHaveAttribute("data-structure-variant", "compact");
+    const strandBox = await strand.boundingBox();
+    const structBox = await structure.boundingBox();
+    expect(strandBox && structBox && strandBox.y < structBox.y).toBe(true);
+
+    await page.getByTestId("mapid-mode-matrix").check();
+    await expect(page.getByTestId("hsa-mapid-allocation")).toContainText(/0 \/ 17.*còn tự do: 17/);
+
+    const gradeField = page.getByRole("heading", { level: 4, name: "Khối lớp" }).locator("xpath=ancestor::*[@data-form-field][1]");
+    for (const label of ["Lớp 10", "Lớp 11", "Lớp 12"]) {
+      await gradeField.getByLabel(label, { exact: true }).fill("");
+    }
+    await expect(gradeField.getByText("Chưa áp dụng")).toBeVisible();
+
+    await page.getByTestId("hsa-dia-material-add").click();
+    const picker = page.getByTestId("hsa-dia-material-picker");
+    await picker.getByRole("checkbox", { name: tagName }).check();
+    await saveInUi(page, exam.id);
+
+    const saved = sectionOf(await getStructure(admin, exam.id), "DIA");
+    expect(saved.matrix?.byGrade ?? []).toEqual([]);
+    expect(roleBlock(saved, "QUESTION_SET")?.tagCodes).toContain(tagCode);
+    const checkCodes = await checkSection(admin, exam.id, dia.id);
+    expect(checkCodes.some((code) => code.includes("GRADE"))).toBe(false);
+    await page.reload();
+    await expect(page.getByTestId("hsa-dia-material-picker").getByRole("checkbox", { name: tagName })).toBeChecked();
   });
 });

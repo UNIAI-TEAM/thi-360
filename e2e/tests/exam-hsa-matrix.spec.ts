@@ -71,24 +71,37 @@ function expectWholeSets(result: PreviewResultLite, expected: Array<{ subjectCod
   }
 }
 
-/** Mở môn trong danh sách bước 2, mở nhóm Bộ câu hỏi đầu tiên của môn và kiểm tra "Câu chùm" đang chọn. */
-async function expectSetGroupOpens(page: Page, id: string, subject: { index?: number; name?: RegExp }): Promise<void> {
+/** Mở môn dùng Ma trận môn (CR-2H: Toán, Lý): thấy Cấu trúc câu, Số chùm = 1, Mỗi chùm 3 câu con, không còn nút Thêm nhóm. */
+async function expectMatrixSetGroup(page: Page, id: string, subjectName: RegExp): Promise<void> {
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   const list = page.getByRole("navigation", { name: "Cấu trúc" });
   await expect(list).toBeVisible();
-  if (subject.name) await list.getByRole("button", { name: subject.name }).first().click();
-  else await list.locator("button[data-list-item]").nth(subject.index ?? 2).click();
-  const row = page.getByRole("table", { name: /Các nhóm lấy câu/ }).getByRole("row", { name: /Bộ câu hỏi/ }).first();
-  await expect(row).toBeVisible();
-  await row.getByRole("button", { name: /Mở nhóm/ }).click();
-  await expect(page.getByRole("radio", { name: "Câu chùm" })).toBeChecked();
-  await expect(page.getByText("Bộ câu hỏi").first()).toBeVisible();
+  await list.getByRole("button", { name: subjectName }).first().click();
+  await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Số chùm", exact: true })).toHaveValue("1");
+  await expect(page.getByText(/Mỗi chùm 3 câu con/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Thêm nhóm/ })).toHaveCount(0);
+}
+
+/** Mở môn dùng Danh sách dòng (CR-3: Ngữ văn): thấy các dòng `data-form-row`, mở Sửa dòng thấy Câu chùm và khung slot. */
+async function expectRowsSetGroup(page: Page, id: string, subjectName: RegExp): Promise<void> {
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  const list = page.getByRole("navigation", { name: "Cấu trúc" });
+  await expect(list).toBeVisible();
+  await list.getByRole("button", { name: subjectName }).first().click();
+  const rows = page.locator("[data-form-row]");
+  await expect(rows.first()).toBeVisible();
+  await rows.filter({ hasText: /Đọc hiểu/ }).first().getByRole("button", { name: /^Sửa dòng/ }).click();
+  const editor = page.locator("[data-form-row-editor]");
+  await expect(editor).toBeVisible();
+  await expect(editor.locator("[data-form-slots] [data-form-slot]").first()).toBeVisible();
+  await expect(editor.getByRole("radio", { name: "Câu chùm" })).toBeChecked();
 }
 
 test.describe("HSA: nhóm Bộ câu hỏi (UNI-1700 AC-1)", () => {
-  for (const [partCode, label, subjects] of [
-    ["TOAN", "Toán", ["TOAN"]],
-    ["VAN", "Văn", ["VAN"]],
+  for (const [partCode, label, subjectName, kind, subjects] of [
+    ["TOAN", "Toán", /^Toán/, "MATRIX", ["TOAN"]],
+    ["VAN", "Văn", /^Ngữ văn/, "ROWS", ["VAN"]],
   ] as const) {
     test(`HSA theo phần ${label}: nhóm Bộ câu hỏi hiện ở bước 2 và sinh thử lấy nguyên chùm`, async ({ context, page }) => {
       await loginAdmin(context, "vi");
@@ -98,7 +111,8 @@ test.describe("HSA: nhóm Bộ câu hỏi (UNI-1700 AC-1)", () => {
       const sets = setBlocks(structure);
       expect(sets.length, "mẫu HSA phải có nhóm QUESTION_SET").toBeGreaterThan(0);
 
-      await expectSetGroupOpens(page, id, { index: 2 });
+      if (kind === "MATRIX") await expectMatrixSetGroup(page, id, subjectName);
+      else await expectRowsSetGroup(page, id, subjectName);
       expectWholeSets(await previewOf(admin, id, { kind: "EXAM" }), subjects.map((subjectCode) => ({ subjectCode })));
     });
   }
@@ -112,7 +126,7 @@ test.describe("HSA: nhóm Bộ câu hỏi (UNI-1700 AC-1)", () => {
       expect(setBlocks(structure).some((item) => item.subjectCode === subjectCode), subjectCode).toBe(true);
     }
 
-    await expectSetGroupOpens(page, id, { name: /^Vật lí/ });
+    await expectMatrixSetGroup(page, id, /^Vật lí/);
 
     const checkRes = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/check`, { headers: admin.headers, data: {} });
     expect(checkRes.status(), await checkRes.text()).toBe(200);
