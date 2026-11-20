@@ -1,7 +1,7 @@
 {
   "source": {
-    "sha": "13628281dc4d4a981478ed9a728436e0e62009c6",
-    "exportedAt": "2026-11-19",
+    "sha": "ce464ab5806f262845ac81187010e095afdaf365",
+    "exportedAt": "2026-11-20",
     "note": "Du lieu kham pha, khong thay oracle BA: ky vong viet tay trong test (FTM R-1, R-7)."
   },
   "count": 107,
@@ -132,7 +132,7 @@
                       "value": 6
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "TOAN",
@@ -200,7 +200,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "SU",
@@ -294,7 +294,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "ANH",
@@ -381,7 +381,7 @@
                       "value": 1
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "LY",
@@ -446,7 +446,7 @@
                       "value": 1
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "HOA",
@@ -511,7 +511,7 @@
                       "value": 2
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "SINH",
@@ -576,7 +576,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "DIA",
@@ -655,7 +655,48 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "9121a1f1-c924-572a-82cd-614cfe31b94b",
+          "order": 1,
+          "name": "Tự luận Ngữ văn",
+          "questionCount": 1,
+          "questionTypes": [
+            {
+              "questionType": "ESSAY",
+              "questionCount": 1
+            }
+          ]
+        },
+        {
+          "partId": "390de1a3-b572-5215-b0be-af7b6158c49a",
+          "order": 2,
+          "name": "Trắc nghiệm bắt buộc",
+          "questionCount": 65,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 44
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 16
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "5704c7c4-eb29-55d9-b491-ac2c64615302",
+          "order": 3,
+          "name": "Trắc nghiệm tự chọn",
+          "questionCount": 15,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "BCA_PART_TN_BAT_BUOC",
@@ -749,7 +790,7 @@
                       "value": 6
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "TOAN",
@@ -817,7 +858,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "SU",
@@ -911,7 +952,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "ANH",
@@ -933,7 +974,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b31ccf5b-4097-53fd-a928-035b40482fdd",
+          "order": 1,
+          "name": "Trắc nghiệm bắt buộc",
+          "questionCount": 65,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 44
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 16
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_PART_TN_TU_CHON",
@@ -1025,7 +1088,7 @@
                       "value": 1
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "LY",
@@ -1090,7 +1153,7 @@
                       "value": 1
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "HOA",
@@ -1155,7 +1218,7 @@
                       "value": 2
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "SINH",
@@ -1220,7 +1283,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "DIA",
@@ -1241,7 +1304,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "152a916b-f0d7-5032-a4a8-24f97f97bad6",
+          "order": 1,
+          "name": "Trắc nghiệm tự chọn",
+          "questionCount": 15,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "BCA_PART_VAN_TU_LUAN",
@@ -1302,7 +1374,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "90584377-3235-5b4d-884d-c6da776103b1",
+          "order": 1,
+          "name": "Tự luận Ngữ văn",
+          "questionCount": 1,
+          "questionTypes": [
+            {
+              "questionType": "ESSAY",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_ANH",
@@ -1417,7 +1503,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "ANH",
@@ -1439,7 +1525,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "cc260580-77b6-57fd-9d88-7b0253f9aba3",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 20,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 10
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_DIA",
@@ -1525,7 +1629,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "DIA",
@@ -1547,7 +1651,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "fb3e8420-a7ef-513c-adca-55302f9267bf",
+          "order": 1,
+          "name": "Địa lí",
+          "questionCount": 15,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_HOA",
@@ -1633,7 +1755,7 @@
                       "value": 1
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "HOA",
@@ -1655,7 +1777,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "0871083c-ef8b-5784-9f25-161f189f87e2",
+          "order": 1,
+          "name": "Hóa học",
+          "questionCount": 15,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_LY",
@@ -1741,7 +1881,7 @@
                       "value": 1
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "LY",
@@ -1763,7 +1903,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "5513abe8-136f-517f-babb-7d83c5d0b70a",
+          "order": 1,
+          "name": "Vật lí",
+          "questionCount": 15,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_SINH",
@@ -1849,7 +2007,7 @@
                       "value": 2
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "SINH",
@@ -1871,7 +2029,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "075434e2-a09b-50c2-a238-fda768459221",
+          "order": 1,
+          "name": "Sinh học",
+          "questionCount": 15,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_SU",
@@ -1960,7 +2136,7 @@
                       "value": 0
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "SU",
@@ -1982,7 +2158,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "541fa66d-791f-5928-afbf-20e2e0123457",
+          "order": 1,
+          "name": "Lịch sử",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 7
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_TOAN",
@@ -2076,7 +2270,7 @@
                       "value": 6
                     }
                   ],
-                  "gradeEnforcement": "REQUIRED",
+                  "gradeEnforcement": "REFERENCE",
                   "difficultyEnforcement": "REFERENCE"
                 },
                 "subjectCode": "TOAN",
@@ -2098,7 +2292,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "13d28cc5-fca3-5010-9592-77e7a712c5fd",
+          "order": 1,
+          "name": "Toán",
+          "questionCount": 35,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 27
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "BCA_SUBJECT_VAN",
@@ -2159,7 +2375,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "bfa31689-b4ca-5ea8-8079-087d24055c33",
+          "order": 1,
+          "name": "Ngữ văn",
+          "questionCount": 1,
+          "questionTypes": [
+            {
+              "questionType": "ESSAY",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_FULL",
@@ -2949,7 +3179,52 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d889340f-7b95-5d9f-bb29-033d3148d96a",
+          "order": 1,
+          "name": "Toán học và xử lí số liệu",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 32
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 15
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        },
+        {
+          "partId": "b0178cae-7968-5ffc-b1f5-4ee5cf13b9cf",
+          "order": 2,
+          "name": "Ngôn ngữ – Văn học",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 25
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 25
+            }
+          ]
+        },
+        {
+          "partId": "a765a87b-4a21-5e50-a3c8-39f0bc627955",
+          "order": 3,
+          "name": "Khoa học hoặc Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "HSA_PART_ENGLISH",
@@ -3164,7 +3439,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "6e12de38-b3bd-5c33-8265-102d8b48e3de",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 35
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_PART_LITERATURE",
@@ -3303,7 +3596,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "742bbd40-a65b-592c-a537-9ded8d044c1b",
+          "order": 1,
+          "name": "Ngôn ngữ – Văn học",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 25
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 25
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_PART_MATH",
@@ -3436,7 +3747,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "c67b0d64-6dd5-53b1-be54-face59125e3e",
+          "order": 1,
+          "name": "Toán học và xử lí số liệu",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 32
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 15
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_PART_SCIENCE",
@@ -3828,7 +4161,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "549c4027-dcf2-5681-ab6e-e81cff04cc6b",
+          "order": 1,
+          "name": "Khoa học",
+          "questionCount": 50,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_ANH",
@@ -4043,7 +4385,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "1e0b6599-1d00-5a25-99a9-aa339a7adc90",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 35
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_DIA",
@@ -4148,7 +4508,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "382cccf5-3425-5366-b9e7-4c433be1a9fd",
+          "order": 1,
+          "name": "Địa lí",
+          "questionCount": 17,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 14
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_HOA",
@@ -4261,7 +4639,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "f2441ee6-77d4-58a6-a289-a7abe4919067",
+          "order": 1,
+          "name": "Hóa học",
+          "questionCount": 17,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 13
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_LY",
@@ -4374,7 +4774,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "5c16bc91-b0d8-5631-91b2-3857cd8ad82d",
+          "order": 1,
+          "name": "Vật lí",
+          "questionCount": 17,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 13
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_SINH",
@@ -4487,7 +4909,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "acdc4487-9433-5dd2-b6aa-e2aad0d7e40f",
+          "order": 1,
+          "name": "Sinh học",
+          "questionCount": 17,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 13
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_SU",
@@ -4592,7 +5036,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "420c8dc0-10d8-59d6-bc91-f6ad08fc936c",
+          "order": 1,
+          "name": "Lịch sử",
+          "questionCount": 17,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 14
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_TOAN",
@@ -4725,7 +5187,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "0d14e032-ddd5-5f75-b4b3-5407d0f1781d",
+          "order": 1,
+          "name": "Toán",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 32
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 15
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSA_SUBJECT_VAN",
@@ -4864,7 +5348,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b255485c-de21-5243-b780-b949933cd8d3",
+          "order": 1,
+          "name": "Ngữ văn",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 25
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 25
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_ANH",
@@ -4981,7 +5483,37 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "71cd93c2-7d96-5c5d-8082-08ce917d04f8",
+          "order": 1,
+          "name": "Nghe",
+          "questionCount": 35,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 8
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 27
+            }
+          ]
+        },
+        {
+          "partId": "3a4debc6-cf39-5dc9-ba1d-ab7d1aa4337c",
+          "order": 2,
+          "name": "Đọc",
+          "questionCount": 40,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 40
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_HOA",
@@ -5173,7 +5705,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "c4935404-5ee1-5158-b645-641c48d2e7ac",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "352a3a0a-15b9-57a5-a710-2e4fbde2d17f",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "16a142ac-b177-527f-ae9d-3bf76c033a8c",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_HOA_SAMPLE",
@@ -5453,7 +6027,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "9dae4aac-2ec4-51f5-b458-334828d0e75a",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "e59c48db-6f0e-52db-b970-9e6b622630ad",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "50c051ca-7aa5-5a17-928d-f1c1bb6f2235",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_LY",
@@ -5645,7 +6261,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "1c5e7a99-3cb8-555d-b595-f18e1f063ed4",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "fea7f988-bd3b-535f-87d6-b1e0dd344728",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "a426a8da-c61d-5f76-9531-82c306b6cd45",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_LY_SAMPLE",
@@ -5925,7 +6583,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "f218e4cd-021d-5a0d-8178-b2d07a273d8b",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "3de24906-8ecf-582b-b93d-fdb373868611",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "f034ecfd-6503-56c9-831a-5b7d1f78197f",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_SINH",
@@ -6117,7 +6817,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b61b4fd7-32c3-5d76-a914-f20a128976b5",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "23a79290-73a9-5ac7-a76a-e466c01c6c41",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "9164d7ec-6550-59c2-beba-567562e246ce",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_SINH_SAMPLE",
@@ -6397,7 +7139,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "97b75b92-6845-576a-9f8e-6ffcbf184f84",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "f02f93a8-ceff-5832-9632-b7a5b88becaf",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "d6da7bcf-0a45-5dc8-be9f-ef7d55bc7622",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_TOAN",
@@ -6589,7 +7373,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "48e21c0c-8b53-5e04-baf6-6ca3df5d5d3d",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "d7ca90c7-82cc-537f-937b-2dfc8efaaa60",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "c7273f82-354d-505c-8b45-bc5754d72b02",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_TOAN_SAMPLE",
@@ -6869,7 +7695,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "1ba5b586-6cfa-585a-9638-3bf1cbaa7c8b",
+          "order": 1,
+          "name": "Phần 1 · Trắc nghiệm",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "0ce4143d-f81f-5c6e-909f-532c269ddf85",
+          "order": 2,
+          "name": "Phần 2 · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "3dc3b83a-15c1-54d4-96ad-ff07a1a27ac3",
+          "order": 3,
+          "name": "Phần 3 · Điền đáp án",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "HSCA_SUBJECT_VAN",
@@ -7097,7 +7965,35 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": true
+      "omittedLocked": true,
+      "parts": [
+        {
+          "partId": "c7876f42-c71b-5e5e-8113-7c18ace0b7c9",
+          "order": 1,
+          "name": "Phần 1 · Đọc hiểu",
+          "questionCount": 20,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 20
+            }
+          ]
+        },
+        {
+          "partId": "7d0efaf1-1222-5374-b3e3-fd52ecbf3cd0",
+          "order": 2,
+          "name": "Phần 2 · Viết đoạn văn",
+          "questionCount": 0,
+          "questionTypes": []
+        },
+        {
+          "partId": "56bb1fca-0264-5cef-8c89-3aeb09b674fa",
+          "order": 3,
+          "name": "Phần 3 · Viết bài văn",
+          "questionCount": 0,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "QDA_FULL",
@@ -7768,7 +8664,52 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "9fcdde6a-e0af-5ccd-aac3-284d49562b8a",
+          "order": 1,
+          "name": "Toán học và xử lí số liệu",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 32
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 15
+            }
+          ]
+        },
+        {
+          "partId": "710f350e-a595-5c39-8c40-e9915548eb47",
+          "order": 2,
+          "name": "Ngôn ngữ – Văn học",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 25
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 25
+            }
+          ]
+        },
+        {
+          "partId": "ccf34448-e667-55b2-8327-3f069e554154",
+          "order": 3,
+          "name": "Khoa học hoặc Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "QDA_PART_ENGLISH",
@@ -7943,7 +8884,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "01e23eaf-34e6-5e43-81a3-14c85266a89c",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "QDA_PART_LITERATURE",
@@ -8082,7 +9032,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "e29e5534-cca5-537c-9d26-c605b54fc777",
+          "order": 1,
+          "name": "Ngôn ngữ – Văn học",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 25
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 25
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_PART_MATH",
@@ -8202,7 +9170,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "bb2f7ff8-a3ab-515c-b36d-89eb6fa64c98",
+          "order": 1,
+          "name": "Toán học và xử lí số liệu",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 32
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_PART_SCIENCE",
@@ -8540,7 +9530,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "19c0704e-5b2b-5668-9aff-405bf2fea89c",
+          "order": 1,
+          "name": "Khoa học",
+          "questionCount": 50,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_ANH",
@@ -8710,7 +9709,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "1825efd5-362e-56a2-9587-a9df032d83b6",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 35
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_DIA",
@@ -8801,7 +9818,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "2603e0aa-2d95-5d86-99fe-23e8acea7f7c",
+          "order": 1,
+          "name": "Địa lí",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 22
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_HOA",
@@ -8913,7 +9948,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "1188df95-cc12-5990-882a-032b8dfccb15",
+          "order": 1,
+          "name": "Hóa học",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 21
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_LY",
@@ -9012,7 +10069,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "473cb25f-8b61-5083-9deb-467215bb7044",
+          "order": 1,
+          "name": "Vật lí",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 21
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_SINH",
@@ -9111,7 +10190,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "e66b1f0a-12e1-5cfc-9cf1-ba7bc11e3102",
+          "order": 1,
+          "name": "Sinh học",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 21
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_SU",
@@ -9215,7 +10316,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "f27915b8-6ba7-5bf2-a620-996f8c013196",
+          "order": 1,
+          "name": "Lịch sử",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 22
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_TOAN",
@@ -9336,7 +10455,29 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "be5255ca-392f-5cc7-9ff6-b96201853603",
+          "order": 1,
+          "name": "Toán",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 32
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 3
+            },
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "QDA_SUBJECT_VAN",
@@ -9475,7 +10616,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "34b82824-2665-521b-bee1-7b87e9cc305d",
+          "order": 1,
+          "name": "Ngữ văn",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 25
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 25
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_ANH_2026",
@@ -9684,7 +10843,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "065f4a23-1a52-54b0-aa41-1e845efd2b94",
+          "order": 1,
+          "name": "Phần I · Tiếng Anh",
+          "questionCount": 50,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 33
+            },
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 17
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_DIA_2026",
@@ -9900,7 +11077,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "471103bc-a6bb-5115-ae35-4b43f816461b",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "fd037593-0be2-5475-b1d6-d8c063611643",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "a2ef184e-8fb0-585d-9a9a-81c487eebc2e",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 8,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 8
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_ECON_LAW_2026",
@@ -10059,7 +11274,37 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "f080f96f-0aac-5566-bfc8-e532485806bf",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 26,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "07d15f85-5062-5ce6-a054-1cec55c591eb",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_HOA_2026",
@@ -10225,7 +11470,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "fd54a46a-1065-56e5-9449-6e926689c28c",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "956a449e-f848-5fbf-92f9-d39b90c7143b",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "09e68c6e-a30c-5191-a966-d00183a2c951",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 8,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 8
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_HOA_OLD",
@@ -10389,7 +11672,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "3ce15f32-7411-5839-b770-f8ffc576d3b4",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 10
+            }
+          ]
+        },
+        {
+          "partId": "97e82830-5d11-5316-b2d5-c9691d866438",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "12906583-1be0-5156-8c21-523c348ec890",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_LY_2026",
@@ -10555,7 +11876,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "042f70fe-ae0f-54f2-a129-c9df5acf0f5d",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "24f30b09-dc12-5c13-996e-9aac97df5cb8",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "7f24396f-2575-5ee9-932f-348a2acab0c0",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 8,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 8
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_LY_OLD",
@@ -10719,7 +12078,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "ab76ff60-e45a-58ee-9a13-cf7d2e084184",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 10
+            }
+          ]
+        },
+        {
+          "partId": "c20d4e16-0317-58ad-a294-ad4fde72ae9a",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "68dd3835-a1a8-5237-afa0-ab893204dab4",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_MATH_2025",
@@ -10859,7 +12256,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "90658451-9aed-5abb-b299-0486f412b251",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 12,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            }
+          ]
+        },
+        {
+          "partId": "e5f1ec87-0885-5186-8776-eeacabb004ba",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "f3ce28eb-b22b-518b-826e-264ad79173ae",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_MATH_2026",
@@ -11024,7 +12459,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "604bc0fd-d7fa-52fc-af3b-d11acc0ce716",
+          "order": 1,
+          "name": "Phần I · Lựa chọn",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            },
+            {
+              "questionType": "MULTIPLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "4b77a528-cd7c-56e1-8aee-c86b9229eb1a",
+          "order": 2,
+          "name": "Phần II · Dữ liệu tổng hợp",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "b66cb547-8bad-53cc-8f71-12d6d44757a0",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 10
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_SINH_2026",
@@ -11190,7 +12667,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "3b717a82-46c1-5182-bce5-2f5df89c62dc",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "e2f3d601-c93e-56e1-b9dd-6bc8038c76d7",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "9ee9ee9e-a3d8-5754-86b1-ee4ebe785824",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 8,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 8
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_SINH_OLD",
@@ -11378,7 +12893,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d9108c72-6266-55b5-82ce-9b691de3a146",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 10
+            }
+          ]
+        },
+        {
+          "partId": "47e2fe29-f3b9-5818-9ce5-99b0eb8b084a",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "aede03e1-2dbb-5852-b93b-7382d3ac92d1",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_SU_2026",
@@ -11526,7 +13079,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "c71f45a8-850c-50d9-b6f4-f98a37433f4d",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 26,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 26
+            }
+          ]
+        },
+        {
+          "partId": "d84731d0-8a74-53d7-bb8f-4c57615ed648",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_SU_OLD",
@@ -11717,7 +13296,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "8ed125c9-a721-591f-86fe-462d0c77d73e",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 10
+            }
+          ]
+        },
+        {
+          "partId": "a835545a-7653-5865-aa20-f8cf57568cf2",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "6c1c048e-8104-5296-be9d-f660a76ad59f",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SP2E_VAN_2026",
@@ -11873,7 +13490,35 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "83f0664c-4d15-5121-93a8-3fad86722f67",
+          "order": 1,
+          "name": "Phần I · Đọc hiểu",
+          "questionCount": 20,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            }
+          ]
+        },
+        {
+          "partId": "ab5bb2ec-cbbd-5355-bf9d-3382c4057e53",
+          "order": 2,
+          "name": "Phần II · Viết đoạn",
+          "questionCount": 0,
+          "questionTypes": []
+        },
+        {
+          "partId": "e9df6a2f-a35c-52a5-9e01-a3e8a8d373e4",
+          "order": 3,
+          "name": "Phần III · Viết bài",
+          "questionCount": 0,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "SP2E_VAN_OLD",
@@ -12066,7 +13711,28 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "24c2d0ba-d5ab-5724-bc4d-799c1ba6277f",
+          "order": 1,
+          "name": "Phần I · Đọc hiểu",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 30
+            }
+          ]
+        },
+        {
+          "partId": "2e1b6983-0d85-5ac3-8080-6797319bedc9",
+          "order": 2,
+          "name": "Phần II · Viết",
+          "questionCount": 0,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "SPT_ANH_2025",
@@ -12258,7 +13924,49 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "00f7710d-b8c2-5079-aabb-dbd1c44ea264",
+          "order": 1,
+          "name": "Phần I · Use of English",
+          "questionCount": 18,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 6
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 12
+            }
+          ]
+        },
+        {
+          "partId": "0cad4649-44e9-5087-a550-5526a0b8a5fe",
+          "order": 2,
+          "name": "Phần II · Reading",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 10
+            }
+          ]
+        },
+        {
+          "partId": "888800f4-b836-5c04-97b3-827c9a8c720b",
+          "order": 3,
+          "name": "Phần III · Word Formation",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "CLOZE",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_DIA_2025",
@@ -12423,7 +14131,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "41524e10-1be7-5537-8b52-c4b5c8557a27",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 12,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            }
+          ]
+        },
+        {
+          "partId": "6b5de634-b984-58a9-8bba-7ed713d43068",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 3,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 3
+            }
+          ]
+        },
+        {
+          "partId": "6b0046e1-78c8-5f15-af34-d94dae36e888",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_ECON_LAW_2025",
@@ -12549,7 +14295,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "bb2abfbf-5804-5d98-87c6-ecdc473d678c",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "f7c1daf9-589d-552f-8b43-7e0079eac856",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 3,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 3
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_HOA_2025",
@@ -12687,7 +14459,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "e900d289-17f7-5c1a-8037-923aafc57a6e",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 20,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            }
+          ]
+        },
+        {
+          "partId": "2947c02d-acc2-5223-bc26-16d0ee3801eb",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 2,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2
+            }
+          ]
+        },
+        {
+          "partId": "3a06eab5-3bac-57a1-ae7f-71b3ec134c23",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_INFORMATICS_2025",
@@ -12867,7 +14677,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "69faf359-18fd-57f9-a2a5-a63f8853c8b6",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 20,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            }
+          ]
+        },
+        {
+          "partId": "a2bf28a0-9391-509d-b1b0-e3c8d4604360",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 2,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_LY_2025",
@@ -13005,7 +14841,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "c6b85df2-552d-5ac6-9d04-2b3e06700b0f",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 12,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            }
+          ]
+        },
+        {
+          "partId": "cfd1d652-8408-595e-82ba-9c4e04238ed9",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 3,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 3
+            }
+          ]
+        },
+        {
+          "partId": "bef32704-7837-5507-bd29-9f9488be59d2",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_MATH_2025",
@@ -13143,7 +15017,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "43a3a974-76d4-5fe9-a66a-332d01373f38",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "58e23d6f-f7c9-58ab-891f-a61e4a208116",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 2,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2
+            }
+          ]
+        },
+        {
+          "partId": "2bc69bf5-f9de-558f-a294-8cc4763ad83d",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_SINH_2025",
@@ -13281,7 +15193,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "570a3c79-b8a7-5b57-b152-090c44d41a3e",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 12,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            }
+          ]
+        },
+        {
+          "partId": "1abb2191-e089-552e-8d48-97fb74243a7b",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 3,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 3
+            }
+          ]
+        },
+        {
+          "partId": "790e9aa8-83a8-527f-ad9e-defe9670ba35",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_SU_2025",
@@ -13407,7 +15357,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "27bf22ec-f795-52a4-8ac9-782bad837fa5",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 20,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 20
+            }
+          ]
+        },
+        {
+          "partId": "ed51295c-dd02-562f-86ce-bdcf67eea07c",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 2,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_TECH_AGRICULTURE_2025",
@@ -13545,7 +15521,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "3b46227c-4517-5f19-b513-ffad81a303d5",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "11ff42b2-1c26-5bd2-8f5b-c8838852586e",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 2,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2
+            }
+          ]
+        },
+        {
+          "partId": "162dbd9f-9671-50a3-995b-0b88849cb7fe",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_TECH_INDUSTRY_2025",
@@ -13683,7 +15697,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "64e1f583-beb4-5731-a205-faf01c380b70",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 16,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 16
+            }
+          ]
+        },
+        {
+          "partId": "6ab58638-0de5-55ca-b5e4-b747c77c62ca",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 2,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2
+            }
+          ]
+        },
+        {
+          "partId": "f5120102-71e6-5503-af9b-684b0f60a935",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "SPT_VAN_2025",
@@ -13797,7 +15849,28 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b4fe2397-7eb8-526d-b6cb-687a395372c5",
+          "order": 1,
+          "name": "Phần I · Đọc hiểu",
+          "questionCount": 10,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 10
+            }
+          ]
+        },
+        {
+          "partId": "e808292d-ff26-54d3-834f-e7c7a3d63892",
+          "order": 2,
+          "name": "Phần II · Viết",
+          "questionCount": 0,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "THPTQG_BIOLOGY_2025",
@@ -13925,7 +15998,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "0f52b7bd-3f01-58cf-a6a1-1fa2c1bb6bee",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 18,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18
+            }
+          ]
+        },
+        {
+          "partId": "c8ea3f41-0c81-54fe-849a-e00566664d32",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "1fc5014b-20a0-5c2f-92a7-68adeb02f3e6",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_CHEMISTRY_2025",
@@ -14053,7 +16164,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "321760af-2e3a-5d4b-bf35-02fb408cf8b1",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 18,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18
+            }
+          ]
+        },
+        {
+          "partId": "cb453303-97bd-5187-821b-5fcc50f08f12",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "fda32ee7-88a7-58cf-bfc5-838c96e33d06",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_ECON_LAW_2025",
@@ -14151,7 +16300,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d40448bf-0776-585e-ab29-be685a5a6f34",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 24,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24
+            }
+          ]
+        },
+        {
+          "partId": "f83ea063-1fcc-56ce-9951-ad4058fe272c",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_ENGLISH_2025",
@@ -14282,7 +16457,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "03a8b981-c723-543d-a3f1-5334a29918d6",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 40,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 35
+            },
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_GEOGRAPHY_2025",
@@ -14410,7 +16603,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "e9a2526a-3c58-5ca1-8a0f-7b48bd9762a2",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 18,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18
+            }
+          ]
+        },
+        {
+          "partId": "8e8783d2-4e1b-5b70-a383-a8305c4a66f8",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "36b5ec97-3bae-5547-ab9f-34d35de868e9",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_HISTORY_2025",
@@ -14508,7 +16739,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "3be164f3-ea8d-5ce4-b269-288fe3edaace",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 24,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24
+            }
+          ]
+        },
+        {
+          "partId": "d382405a-e168-574e-bf25-46173cd4ec5d",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_INFORMATICS_2025",
@@ -14701,7 +16958,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "55f0b4e0-065a-56a4-a5b6-c1804e304eba",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm chọn một",
+          "questionCount": 24,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24
+            }
+          ]
+        },
+        {
+          "partId": "a86aa047-23c8-508f-81cd-8912f0e4f93d",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 2
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_LITERATURE_2025",
@@ -14824,7 +17107,25 @@
       "publishable": false,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "86f37764-4348-5061-a291-b021182d4d01",
+          "order": 1,
+          "name": "Ngữ văn",
+          "questionCount": 7,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 5
+            },
+            {
+              "questionType": "ESSAY",
+              "questionCount": 2
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_MATH_2025",
@@ -14952,7 +17253,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "1fa851a2-7b2c-555e-ac24-4adb758831a6",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 12,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            }
+          ]
+        },
+        {
+          "partId": "c3648228-0254-54ae-9929-31c53e27d07e",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "04152b67-d42f-5df9-bd6c-0bd5b10fad2b",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_PHYSICS_2025",
@@ -15080,7 +17419,45 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "3cc6bfc6-9df1-5d06-b259-378ce170ec9e",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 18,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 18
+            }
+          ]
+        },
+        {
+          "partId": "c2518743-938f-53a1-ba8a-dfee6df5b11b",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        },
+        {
+          "partId": "4208883e-88dd-5cc5-b5e5-bb2007d86bb8",
+          "order": 3,
+          "name": "Phần III · Trả lời ngắn",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_TECH_AGRICULTURE_2025",
@@ -15178,7 +17555,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "a34cc37f-c805-59ec-bd45-125c22f618a7",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 24,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24
+            }
+          ]
+        },
+        {
+          "partId": "43383c1e-2180-5848-b590-1376123cb7da",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "THPTQG_TECH_INDUSTRY_2025",
@@ -15276,7 +17679,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b0e7d9e4-6314-5f23-92cd-fb2e94b174e9",
+          "order": 1,
+          "name": "Phần I · Trắc nghiệm",
+          "questionCount": 24,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 24
+            }
+          ]
+        },
+        {
+          "partId": "8eef291f-3689-56a8-b5f3-69e975de24cd",
+          "order": 2,
+          "name": "Phần II · Đúng/Sai",
+          "questionCount": 4,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_FULL",
@@ -15825,7 +18254,53 @@
       "publishable": true,
       "fixedCounts": true,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "f1f4ad6a-83f6-54b5-ac31-f0c3d9467194",
+          "order": 1,
+          "name": "Sử dụng ngôn ngữ",
+          "questionCount": 60,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 45
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 15
+            }
+          ]
+        },
+        {
+          "partId": "4d90c6b5-3f13-5d98-a9f0-9b60df20c514",
+          "order": 2,
+          "name": "Toán học",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 18
+            }
+          ]
+        },
+        {
+          "partId": "288ca739-3e0f-54fa-8b0f-3991e94c36f7",
+          "order": 3,
+          "name": "Tư duy khoa học",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 30
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_PART_LANGUAGE",
@@ -16183,7 +18658,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "357a3c95-8ea3-5716-99da-98fc12b17c9a",
+          "order": 1,
+          "name": "Sử dụng ngôn ngữ",
+          "questionCount": 60,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 45
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_PART_LOGIC",
@@ -16270,7 +18763,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d72f4893-0f2f-50de-8dbb-c6aace9e602c",
+          "order": 1,
+          "name": "Logic và phân tích số liệu",
+          "questionCount": 12,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 12
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_PART_REASONING",
@@ -16357,7 +18864,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b4d45de5-e83b-5786-a83e-4e3f1299efb7",
+          "order": 1,
+          "name": "Suy luận khoa học",
+          "questionCount": 18,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 18
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_PART_THINKING",
@@ -16490,7 +19011,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "01fe858f-5230-541d-888f-877de9b9419c",
+          "order": 1,
+          "name": "Tư duy khoa học",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 30
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_SUBJECT_ANH",
@@ -16715,7 +19250,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "cd36c5d2-10b3-50b8-bc1a-d50575ee6cf6",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 15
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 15
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_SUBJECT_TOAN",
@@ -16825,7 +19378,25 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "6ade1b86-33e8-51ef-acdd-97331a204761",
+          "order": 1,
+          "name": "Toán học",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 12
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 18
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VACT_SUBJECT_VIETNAMESE",
@@ -16999,7 +19570,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "832cfaa9-c686-5e03-a7c0-4a8bb369d5c0",
+          "order": 1,
+          "name": "Tiếng Việt",
+          "questionCount": 30,
+          "questionTypes": [
+            {
+              "questionType": "SINGLE_CHOICE",
+              "questionCount": 30
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_PART_ANH_P2",
@@ -17058,7 +19643,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "2faad4cf-4f4d-5f3f-b8c6-cbfd4a98f128",
+          "order": 1,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_PART_ANH_P3",
@@ -17117,7 +19716,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "11c544dd-326b-5d4c-a557-6fb516747c8d",
+          "order": 1,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_PART_ANH_P4",
@@ -17175,7 +19788,21 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d7a3c63b-f554-5ecc-ac3f-b2d21d2f09de",
+          "order": 1,
+          "name": "Phần IV · Đọc điền",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "CLOZE",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_ANH",
@@ -17379,7 +20006,33 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "cbc4494c-a3c0-52da-8306-18dd748d34ca",
+          "order": 1,
+          "name": "Tiếng Anh",
+          "questionCount": 25,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 7
+            },
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 8
+            },
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            },
+            {
+              "questionType": "CLOZE",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_DIA",
@@ -17631,7 +20284,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "9ef0c3b2-4266-561b-9f91-5b322a999306",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "a3ac0790-4daf-547a-a62f-ab01443a4f68",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "7df4767e-2e20-52cf-8215-f068e075425d",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "345cbe85-549c-59bb-bf34-0c65237b5276",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_HOA",
@@ -17857,7 +20560,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "f76fa6ed-ed12-53d1-85da-e8965a33c3be",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "25613f31-70f6-54ae-8a62-0550d597b9c6",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "e7ac2841-0d02-5f45-bf2a-42b3dd306b29",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "51139734-d136-5d37-852c-e04777fb1c03",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_HOA_50",
@@ -18083,7 +20836,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "151b30b5-10e9-5f68-978d-b0f1d973caa9",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "24381585-ccab-583e-8c08-6b3fe8ed1233",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "96dc0859-db16-5bc9-b02d-ed4cbc9d3275",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "49ae284a-31f2-5d17-8ec2-64bdbb2acff4",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_LY",
@@ -18309,7 +21112,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "b03cd4d0-8a32-59ae-9e9c-a75a789e8425",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "084e1f66-4b3c-5c9a-ba61-b027a449d8ba",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "0fc47a67-dde9-53fc-b14d-12b11cd8c0db",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "97ed998b-6cb8-5880-9749-78e91534521e",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_SINH",
@@ -18535,7 +21388,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "43c2d52e-b762-545d-9a1f-572ad6daafca",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "272583d1-5605-5a2a-8a18-7616d8066f71",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "6e1a2db0-48ec-5b19-b584-33c108c62601",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "81836797-927b-5260-8957-bf4668d0218a",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_SU",
@@ -18761,7 +21664,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "9f7710e8-6dd9-5104-ab05-14e27db31413",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "f592df7c-e893-5ac9-b66f-cb17411e3f0c",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "b20363e0-510c-547a-a438-7e1e1b022c8f",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "ceed6e13-ceec-5261-9cab-0b1692071cd7",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_TOAN",
@@ -18987,7 +21940,57 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "fcab97eb-7ae5-5584-a5d8-74ab4b6d8ad0",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "193caf9c-f83a-5476-b425-c623318ee3ec",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "814164f6-5a8a-5c6d-8ec9-f881c7543ddf",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "17afe18b-de50-565e-b73f-a4cb8c6612e2",
+          "order": 4,
+          "name": "Phần IV · Trả lời ngắn",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "SHORT_ANSWER",
+              "questionCount": 5
+            }
+          ]
+        }
+      ]
     },
     {
       "code": "VSAT_SUBJECT_VAN",
@@ -19240,7 +22243,52 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": true,
-      "omittedLocked": true
+      "omittedLocked": true,
+      "parts": [
+        {
+          "partId": "feb4864d-8d4d-58e8-8fde-7dd02bcca66e",
+          "order": 1,
+          "name": "Phần I · Đúng/Sai",
+          "questionCount": 9,
+          "questionTypes": [
+            {
+              "questionType": "TRUE_FALSE",
+              "questionCount": 9
+            }
+          ]
+        },
+        {
+          "partId": "953313da-7e7b-52d9-82bf-25301273fef8",
+          "order": 2,
+          "name": "Phần II · Trắc nghiệm chọn một",
+          "questionCount": 6,
+          "questionTypes": [
+            {
+              "questionType": "QUESTION_SET",
+              "questionCount": 6
+            }
+          ]
+        },
+        {
+          "partId": "c24fafa2-f1e1-50d0-bc42-7459176e7e97",
+          "order": 3,
+          "name": "Phần III · Ghép đôi",
+          "questionCount": 5,
+          "questionTypes": [
+            {
+              "questionType": "MATCHING",
+              "questionCount": 5
+            }
+          ]
+        },
+        {
+          "partId": "02459622-0a80-5bc6-ab3e-3f56292dcdf0",
+          "order": 4,
+          "name": "Phần IV · Viết",
+          "questionCount": 0,
+          "questionTypes": []
+        }
+      ]
     }
   ]
 }
