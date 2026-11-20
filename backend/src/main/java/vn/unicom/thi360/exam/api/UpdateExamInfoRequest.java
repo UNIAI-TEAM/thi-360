@@ -32,9 +32,14 @@ public record UpdateExamInfoRequest(
         Integer matrixYear,
         @Schema(description = "Người dùng xác nhận năm cấu trúc ≠ năm ma trận")
         Boolean yearsConfirmed,
-        @Schema(description = "Bắt buộc true khi đổi phạm vi sau khi cấu trúc đã sửa; "
+        @Schema(description = "Bắt buộc true khi đổi phạm vi hoặc cách dựng bài sau khi cấu trúc đã sửa; "
                 + "thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM")
         Boolean confirmReplace,
+        @Schema(description = "STANDARD | REVIEW; đổi → dựng lại cấu trúc như tạo mới "
+                + "(cần confirmReplace như đổi phạm vi); đã phát hành → 409 EXAM_SCOPE_LOCKED; "
+                + "REVIEW chỉ khi scope = SUBJECT",
+                allowableValues = {"STANDARD", "REVIEW"})
+        String buildMode,
         @Schema(description = "Thời lượng chung (SHARED)")
         @Positive
         Integer durationMinutes,
@@ -59,4 +64,14 @@ public record UpdateExamInfoRequest(
         @NotNull
         Long expectedRevision
 ) {
+    /** Callers that only patch info/scoring and never the build mode (devdata builders) use this arity. */
+    public UpdateExamInfoRequest(String code, String name, String kind, String scope, String partCode,
+            String subjectCode, Integer structureYear, Integer matrixYear, Boolean yearsConfirmed,
+            Boolean confirmReplace, Integer durationMinutes, BigDecimal maxScore, String practiceScoring,
+            BigDecimal referenceMax, Boolean confirmScoring, String description, String instructions,
+            Long expectedRevision) {
+        this(code, name, kind, scope, partCode, subjectCode, structureYear, matrixYear, yearsConfirmed,
+                confirmReplace, null, durationMinutes, maxScore, practiceScoring, referenceMax,
+                confirmScoring, description, instructions, expectedRevision);
+    }
 }

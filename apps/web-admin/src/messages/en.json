@@ -4431,10 +4431,7 @@
         "matches": "Matches the subject's question count",
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
-          "label": "Questions in this subject",
-          "hint": "The question count comes from the overview; the part and its groups must match.",
-          "locked": "Template locks the count",
-          "lockedHint": "The template keeps the question count of each subject. The allocation inside the subject can still be edited."
+          "locked": "Template locks the count"
         },
         "totalChange": {
           "grades": "Grades: {values}",
@@ -5619,6 +5616,8 @@
       "description": "Enter the information, the part structure and the subject combinations. Question blocks and matrices come next.",
       "backToList": "Exam list",
       "formAriaLabel": "Create exam",
+      "backToStructure": "Back to structure",
+      "editing": "Editing exam {code}. Save and continue to return to the Structure and matrix step.",
       "cancel": "Cancel",
       "submit": "Save and continue",
       "success": "Exam {code} created.",
@@ -5894,11 +5893,18 @@
         "durationHintPrefilled": "Prefilled from the template; you can edit it.",
         "durationHintPartCut": "A by-part exam does not take the whole-subject duration.",
         "durationHintEmpty": "This subject's template leaves the duration empty.",
+        "buildModeChange": {
+          "title": "Change how the exam is built?",
+          "description": "Changing how the exam is built recreates the structure as for a new exam. The current structure, matrix and question groups will be replaced.",
+          "confirm": "Recreate structure",
+          "cancel": "Go back"
+        },
         "buildModeLegend": "How to build the exam",
         "buildModeStandard": "Use the {kind} subject structure",
         "buildModeStandardHint": "Loads the full subject structure from the default template.",
         "buildModeReview": "Set up a review exam",
         "buildModeReviewHint": "One part, one subject: enter the question count, duration and score scale.",
+        "buildModePublished": "This exam has a published version; to change how it is built, create a new exam",
         "labelFull": "{kind} · Full exam",
         "labelPart": "{kind} · Part {scope}",
         "labelSubject": "{kind} · Subject {subject}",
@@ -5932,6 +5938,8 @@
       "overview": {
         "title": "Overview structure",
         "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
+        "descriptionReview": "Numbers come from the {template}; edit them right on the row. Changing a number here does not reload the template.",
+        "reviewTemplate": "{kind} review template",
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
@@ -5950,7 +5958,8 @@
           "blockPoints": "Max points",
           "commands": "Prompts",
           "partRows": "Part and source rows",
-          "percentExamCustom": "Share of the exam"
+          "percentExamCustom": "Share of the exam",
+          "maxScore": "Maximum score"
         },
         "cell": {
           "questionCount": "Questions of {name}",
@@ -6025,6 +6034,8 @@
       "meterExact": "{allocated, number} of {count, number} questions, matches",
       "over": "{count, plural, one {Over by # question} other {Over by # questions}}",
       "under": "{count, plural, one {Short by # question} other {Short by # questions}}",
+      "totalOver": "over",
+      "totalUnder": "short",
       "matches": "Matches the block's question count",
       "issues": {
         "invalidValue": "The matrix has negative values or non-whole question counts.",
@@ -6301,7 +6312,6 @@
         "REQUIRED": "Required",
         "REFERENCE": "Reference",
         "basisLocked": "A required distribution must count questions. Change the unit to questions first.",
-        "fixedRequired": "HSA exam: papers are always generated from the matrix",
         "expertPending": "Waiting for expert confirmation: the English grade split is for reference only.",
         "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply.",
         "undeclared": "This distribution is not declared, so it does not constrain generation."

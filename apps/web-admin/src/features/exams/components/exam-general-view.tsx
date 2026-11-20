@@ -1,23 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Card, EmptyState, LiveStatus, notify, Skeleton, StatusChip } from "@thi360/ui";
+import { Button, Card, EmptyState, LiveStatus, Skeleton, StatusChip } from "@thi360/ui";
 import { Lock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
-import { getErrorStatus } from "@/lib/api/query-client";
-import { useExam, useExamStructure, useExamTemplates, useUpdateExamInfo, useUpdateExamStructure } from "../queries";
+import { useExam, useExamStructure, useExamTemplates } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
-import type { ExamDetail, ExamStructure, ExamTemplate, UpdateExamInfoRequest } from "../types";
+import type { ExamDetail, ExamStructure, ExamTemplate } from "../types";
 import {
-  combinationsForKind,
   type ExamInfoFormValues,
-  initialParts,
   kindOptionFor,
-  partNeedsSubject,
   resolveScope,
   sameSelection,
   scopeDefaults,
@@ -26,7 +22,7 @@ import {
   yearsDiffer,
 } from "../create-exam-schema";
 import { type OverviewRow, overviewRowsFromTemplate, rowsDifferFromTemplate, validateOverview } from "../create-exam-overview";
-import { applyOverviewToParts, overviewRowsFromParts } from "../create-exam-overview-structure";
+import { overviewRowsFromParts } from "../create-exam-overview-structure";
 import { overviewRowLabel } from "../create-exam-row-label";
 import { blockCountsLocked } from "./block-form";
 import { ExamInfoFields, useExamInfoSchema, usePartNames } from "./create-exam-fields";
@@ -35,23 +31,8 @@ import { focusField } from "./create-exam-summary";
 import { ExamOverviewTable } from "./exam-overview-table";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
-import { ExamsApiError } from "../review-api";
-
-/** Trường của máy chủ (`fieldErrors[].field`) tới ô nhập của biểu mẫu Thông tin chung. */
-const FORM_FIELD_OF: Record<string, keyof ExamInfoFormValues> = {
-  name: "name",
-  code: "code",
-  maxScore: "maxScore",
-  durationMinutes: "sharedDuration",
-  description: "description",
-  instructions: "instructions",
-};
-
-interface PendingInfoSave {
-  request: UpdateExamInfoRequest;
-  /** Các phần sẽ được nạp lại theo mẫu mới nhất của phạm vi mới (hiện ở hộp xác nhận). */
-  parts: ReloadPartRow[];
-}
+import { buildUpdateInfoRequest, examScope, examToFormValues, reloadPartRows } from "../create-exam-edit";
+import { type PendingInfoSave, useExamInfoSave } from "../create-exam-save";
 
 type OverviewField = "questionCount" | "durationMinutes" | "maxPoints";
 
@@ -60,35 +41,6 @@ const NO_CELL_ISSUES: ReadonlyMap<string, { questionCount?: string }> = new Map(
 
 /** Ô của bảng tổng quan người dùng đã sửa, theo khóa dòng; phủ lên số đang lưu để bảng đổi theo cấu trúc mới tải về. */
 type CellEdits = Record<string, Partial<Record<OverviewField, string>>>;
-
-/** Bài ôn nhận ra qua `buildMode` máy chủ trả (không đoán từ mẫu): thang của bài ôn được để trống. */
-function toFormValues(exam: ExamDetail): ExamInfoFormValues {
-  return {
-    name: exam.name,
-    code: exam.code,
-    kind: exam.kind,
-    scope: exam.scope,
-    partCode: exam.partCode ?? "",
-    subjectCode: exam.subjectCode ?? "",
-    timing: exam.timing,
-    sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : 0,
-    maxScore: exam.maxScore,
-    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
-    yearsConfirmed: exam.yearsConfirmed,
-    description: exam.description ?? "",
-    instructions: exam.instructions ?? "",
-  };
-}
-
-function examScope(exam: ExamDetail): ScopeSelection {
-  return {
-    kind: exam.kind,
-    scope: exam.scope,
-    partCode: exam.partCode ?? "",
-    subjectCode: exam.subjectCode ?? "",
-    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
-  };
-}
 
 /**
  * Tab Thông tin chung (chưa có bản vẽ riêng; trường theo `TaoBaiThi`, UniNote PBI-04 mục 4; spec 7 kỳ thi). Sửa tên, mã,
@@ -188,10 +140,7 @@ function ExamGeneralForm({
   const lookup = useReferenceLookup(reference);
   const schema = useExamInfoSchema(undefined, kinds);
   const partNames = usePartNames();
-  const update = useUpdateExamInfo(exam.id);
-  const structureUpdate = useUpdateExamStructure(exam.id);
   const [confirmReplace, setConfirmReplace] = useState<PendingInfoSave | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [cellEdits, setCellEdits] = useState<CellEdits>({});
   /** Bài đã công bố: phạm vi và bảng tổng quan chỉ đọc (AC-6); sửa số liệu ở bước Cấu trúc, trên bản nháp. */
   const lockScope = exam.servingVersion !== null;
@@ -199,7 +148,7 @@ function ExamGeneralForm({
   const form = useForm<ExamInfoFormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
-    defaultValues: toFormValues(exam),
+    defaultValues: examToFormValues(exam),
   });
   const { control, register, handleSubmit, setValue, getValues, setError, reset, formState } = form;
   const values = useWatch({ control }) as ExamInfoFormValues;
@@ -252,117 +201,24 @@ function ExamGeneralForm({
 
   const branchCount = exam.parts.flatMap((part) => part.options).filter((option) => option.kind === "BRANCH").length;
 
-  /**
-   * Các phần mà phạm vi mới sẽ nạp lại, cùng mẫu với bảng xem trước (`scopeTemplate`) và với máy chủ: Theo phần lấy các
-   * phần của mẫu riêng của phần hoặc phần cắt từ mẫu Theo môn (SP2E, SPT, THPTQG); phạm vi khác dựng như bước 1.
-   */
-  const reloadRows = (next: ScopeSelection): ReloadPartRow[] => {
-    const nextTemplate = scopeTemplate(templates, kinds, next);
-    const sharedNext = (nextTemplate?.timing ?? kindOptionFor(kinds, next.kind)?.timing) === "SHARED";
-    if (next.scope === "PART") {
-      return (nextTemplate?.parts ?? []).map((part) => ({
-        name: part.name,
-        questionCount: part.questionCount,
-        durationMinutes: part.durationMinutes ?? null,
-        shared: sharedNext,
-      }));
-    }
-    return initialParts({
-      templates,
-      kind: next.kind,
-      scope: next.scope,
-      partCode: next.partCode,
-      combinations: combinationsForKind(reference.combinations, next.kind),
-      scopeName: partNames.partName,
-      template: nextTemplate ?? null,
-      subjectCode: next.subjectCode,
-      subjectName: lookup.subject,
-    }).map((part) => ({
-      name: part.name,
-      questionCount: part.questionCount,
-      durationMinutes: part.durationMinutes,
-      shared: sharedNext,
-    }));
-  };
+  /** Các phần mà phạm vi mới sẽ nạp lại (hộp xác nhận). */
+  const reloadRows = (next: ScopeSelection): ReloadPartRow[] =>
+    reloadPartRows({ templates, kinds, combinations: reference.combinations, partName: partNames.partName, subjectName: lookup.subject, next });
 
-  /** `recheck`: chỉ ghi cấu trúc mà kết quả kiểm tra trước đó đã cũ, nên báo cần kiểm tra lại (như bước Cấu trúc). */
-  const done = (recheck = false) => {
-    setConfirmReplace(null);
-    const message = t(recheck ? "overview.savedRecheck" : "saved");
-    notify.success(message);
-    onAnnounce(message);
-  };
-
-  /**
-   * Lưu Thông tin chung. Đổi phạm vi thì máy chủ nạp mẫu mới nhất khớp; phiên bản năm khác chọn ở bước Cấu trúc.
-   * `structureSaved`: số liệu của bảng tổng quan đã lưu trước đó, nên lỗi ở đây nói rõ phần nào đã lưu, phần nào chưa.
-   */
-  const save = ({ request }: PendingInfoSave, structureSaved = false) => {
-    setSubmitError(null);
-    update.mutate(request, {
-      onSuccess: () => {
-        onHold(false);
-        done(structureSaved && exam.check.status !== "UNCHECKED");
-      },
-      onError: (error) => {
-        setConfirmReplace(null);
-        const status = getErrorStatus(error);
-        if (status === 409 && !lockScope) {
-          setError("code", { message: tExams("create.errors.codeTaken") }, { shouldFocus: true });
-        } else if (status === 412) {
-          setSubmitError(t("saveConflict"));
-        } else if (status === 400 || status === 422) {
-          // Lỗi theo trường gắn vào ô nhập tương ứng; không gắn được thì báo chung (không in chữ của máy chủ).
-          const fields = (error instanceof ExamsApiError ? error.fieldErrors : []).flatMap((item) => {
-            const field = FORM_FIELD_OF[item.field ?? ""];
-            return field ? [{ field, code: item.code }] : [];
-          });
-          if (fields.length === 0) setSubmitError(t("saveInvalid"));
-          fields.forEach(({ field, code }, index) =>
-            setError(
-              field,
-              { message: code === "EXAM_DURATION_REQUIRED" ? tExams("create.validation.sharedDurationPositive") : t("fieldInvalid") },
-              { shouldFocus: index === 0 },
-            ),
-          );
-        } else {
-          setSubmitError(t("saveError"));
-        }
-        if (structureSaved) setSubmitError(t("overview.infoNotSaved"));
-      },
-    });
-  };
-
-  /**
-   * Số liệu bảng tổng quan đã sửa: ghi cấu trúc TRƯỚC (cấu trúc đã đọc, chỉ đổi các số đó, `expectedRevision` của cấu
-   * trúc). Lỗi thì không gửi gì khác và giữ nguyên giá trị người dùng đã gõ; xong mới ghi thông tin chung (chỉ khi biểu
-   * mẫu có thay đổi) bằng revision mới của bài.
-   */
-  const saveOverviewThenInfo = async (pending: PendingInfoSave) => {
-    if (!structure) return;
-    setSubmitError(null);
-    onHold(true);
-    let saved: ExamDetail;
-    try {
-      saved = await structureUpdate.mutateAsync({
-        parts: applyOverviewToParts(structure.parts, rows),
-        examQuotas: structure.examQuotas ?? [],
-        expectedRevision: structure.revision,
-      });
-    } catch (error) {
-      onHold(false);
-      const status = getErrorStatus(error);
-      setSubmitError(status === 412 ? t("saveConflict") : status === 422 ? tExams("structure.saveInvalid") : tExams("structure.saveError"));
-      return;
-    }
-    setCellEdits({});
-    if (!formState.isDirty) {
-      onHold(false);
-      done(exam.check.status !== "UNCHECKED");
-      return;
-    }
-    save({ ...pending, request: { ...pending.request, expectedRevision: saved.revision } }, true);
-  };
+  const { update, structureUpdate, submitError, setSubmitError, save, saveOverviewThenInfo } = useExamInfoSave({
+    exam,
+    structure,
+    rows,
+    formDirty: formState.isDirty,
+    setError,
+    onHold,
+    onSaved: (message) => {
+      setConfirmReplace(null);
+      onAnnounce(message);
+    },
+    onFailed: () => setConfirmReplace(null),
+    onStructureSaved: () => setCellEdits({}),
+  });
 
   const onSubmit = handleSubmit((submitted) => {
     if (overviewChanged && overviewIssues.length > 0) {
@@ -378,25 +234,7 @@ function ExamGeneralForm({
       buildMode: submitted.buildMode,
     };
     const changed = !sameSelection(examScope(exam), next);
-    const request: UpdateExamInfoRequest = {
-      name: submitted.name,
-      code: submitted.code,
-      kind: submitted.kind,
-      scope: submitted.scope,
-      partCode: submitted.scope === "PART" ? submitted.partCode : null,
-      // Môn đi theo Theo môn và Theo phần của kỳ thi chọn môn trước phần (SP2E, SPT, THPTQG), như bước 1.
-      subjectCode:
-        submitted.scope === "SUBJECT" || (submitted.scope === "PART" && partNeedsSubject(kinds, submitted.kind))
-          ? submitted.subjectCode || null
-          : null,
-      durationMinutes: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
-      maxScore: submitted.maxScore,
-      yearsConfirmed: yearsDiffer(appliedTemplate) ? submitted.yearsConfirmed : true,
-      description: submitted.description.trim() || null,
-      instructions: submitted.instructions.trim() || null,
-      confirmReplace: changed,
-      expectedRevision: exam.revision,
-    };
+    const request = buildUpdateInfoRequest({ exam, submitted, kinds, appliedTemplate, changed, maxScore: submitted.maxScore });
     const pending: PendingInfoSave = { request, parts: changed ? reloadRows(next) : [] };
     if (changed) setConfirmReplace(pending);
     else if (overviewChanged) void saveOverviewThenInfo(pending);
@@ -422,7 +260,7 @@ function ExamGeneralForm({
     setValue("subjectCode", scope.subjectCode, { ...dirty, shouldValidate: formState.isSubmitted });
     const back = sameSelection(scope, examScope(exam));
     const defaults = back
-      ? toFormValues(exam)
+      ? examToFormValues(exam)
       : { ...scopeDefaults(scopeTemplate(templates, kinds, scope), kindOptionFor(kinds, scope.kind), scope.scope, scope.buildMode), yearsConfirmed: false };
     setValue("timing", defaults.timing, dirty);
     setValue("sharedDuration", defaults.sharedDuration, dirty);
@@ -558,7 +396,7 @@ function ExamGeneralForm({
                 variant="secondary"
                 disabled={(!formState.isDirty && !overviewChanged) || update.isPending || structureUpdate.isPending}
                 onClick={() => {
-                  reset(toFormValues(exam));
+                  reset(examToFormValues(exam));
                   setCellEdits({});
                   setSubmitError(null);
                   onHold(false);

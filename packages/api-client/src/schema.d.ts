@@ -7961,9 +7961,14 @@ export interface components {
         };
         /** @description Sửa thông tin chung của bài thi (PATCH /exams/{id}, spec 9.2); trường null = giữ nguyên */
         UpdateExamInfoRequest: {
+            /**
+             * @description STANDARD | REVIEW; đổi → dựng lại cấu trúc như tạo mới (cần confirmReplace như đổi phạm vi); đã phát hành → 409 EXAM_SCOPE_LOCKED; REVIEW chỉ khi scope = SUBJECT
+             * @enum {string}
+             */
+            buildMode?: "STANDARD" | "REVIEW";
             /** @description Mã bài thi (duy nhất) */
             code?: string;
-            /** @description Bắt buộc true khi đổi phạm vi sau khi cấu trúc đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM */
+            /** @description Bắt buộc true khi đổi phạm vi hoặc cách dựng bài sau khi cấu trúc đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM */
             confirmReplace?: boolean;
             /** @description Xác nhận quy đổi điểm sang LINEAR */
             confirmScoring?: boolean;

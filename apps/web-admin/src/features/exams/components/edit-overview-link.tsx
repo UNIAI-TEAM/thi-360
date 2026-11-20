@@ -3,7 +3,7 @@
 import { Button } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { examTabHref } from "../editor-tabs";
+import { examEditHref } from "../editor-tabs";
 
 /**
  * Đường dẫn về thông tin tổng quan (bước 1) đặt cạnh ô số câu chỉ đọc của bước 2: số câu của phần, mục và bài ôn chỉ sửa ở đó
@@ -13,7 +13,7 @@ export function EditOverviewLink({ examId, className }: { examId: string; classN
   const t = useTranslations("exams.structure.summary");
   return (
     <Button asChild variant="link" size="sm" className={className}>
-      <Link href={examTabHref(examId, "general")}>{t("editOverview")}</Link>
+      <Link href={examEditHref(examId)}>{t("editOverview")}</Link>
     </Button>
   );
 }
