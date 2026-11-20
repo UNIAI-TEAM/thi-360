@@ -29,8 +29,10 @@ export interface MatrixCellProps {
   readOnly?: boolean;
   /** Giá trị hợp lệ vừa nhập: `unit` là cột đã gõ, `value` `null` khi xóa ô. */
   onEdit: (edit: { unit: "COUNT" | "PERCENT"; value: number | null }) => void;
-  /** Báo chữ chưa ghi được (`null`: ô đã hợp lệ, xóa mục nhập thô). */
+  /** Báo chữ chưa ghi được (`null`: ô đã hợp lệ, xóa mục nhập thô). Mã `invalidPercent` cho cột Tỷ lệ, `invalidNumber` cho cột Số câu. */
   onRaw: (raw: { text: string; code: string } | null) => void;
+  /** Mục nhập thô đang giữ ở ô (kho nhập thô của view, R-15): ô mở lại hiện đúng chữ đã gõ và lỗi, không hiện lại số đã lưu. */
+  raw?: { text: string; code: string } | null;
 }
 
 /**
@@ -38,16 +40,17 @@ export interface MatrixCellProps {
  * Tỷ lệ (V-ACT, R-9): gõ ở cột nào thì ghi theo đơn vị đó và cột kia hiện số quy đổi (cột Tỷ lệ chưa gõ hiện % tính từ số làm gợi ý);
  * các kỳ khác một ô số câu kèm % chỉ đọc bên cạnh. Số không hợp lệ không vào bản nháp mà báo qua `onRaw`.
  */
-export function MatrixCell({ label, field, stored, count, unit, total, twoColumns, readOnly = false, onEdit, onRaw }: MatrixCellProps) {
+export function MatrixCell({ label, field, stored, count, unit, total, twoColumns, readOnly = false, onEdit, onRaw, raw = null }: MatrixCellProps) {
   const t = useTranslations("exams.subjectForm.matrix.distribution");
   const tCommon = useTranslations("exams.subjectForm.common.countPercent");
   const id = useId();
   const shownCount = stored === null ? null : unit === "COUNT" ? stored : count;
   const shownPercent = stored === null ? null : unit === "PERCENT" ? stored : total ? ratePercent(stored, total) : null;
-  const [countText, setCountText] = useState(textOf(shownCount));
-  const [percentText, setPercentText] = useState(textOf(unit === "PERCENT" ? shownPercent : null));
+  const rawIsPercent = raw?.code === "invalidPercent";
+  const [countText, setCountText] = useState(() => (raw && !rawIsPercent ? raw.text : textOf(shownCount)));
+  const [percentText, setPercentText] = useState(() => (raw && rawIsPercent ? raw.text : textOf(unit === "PERCENT" ? shownPercent : null)));
   const [last, setLast] = useState({ count: shownCount, percent: shownPercent });
-  const [invalid, setInvalid] = useState(false);
+  const [invalid, setInvalid] = useState(raw !== null);
   // Giá trị đổi từ bên ngoài (đổi tổng, hoàn tác, ô khác quy đổi lại): hiện giá trị mới thay cho chữ cũ.
   if (last.count !== shownCount || last.percent !== shownPercent) {
     setLast({ count: shownCount, percent: shownPercent });
@@ -60,25 +63,27 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
     onRaw(null);
     onEdit(edit);
   };
-  const reject = (text: string) => {
+  const reject = (text: string, code: "invalidNumber" | "invalidPercent") => {
     setInvalid(true);
-    onRaw({ text, code: "invalidNumber" });
+    onRaw({ text, code });
   };
   const changeCount = (text: string) => {
     setCountText(text);
     setPercentText("");
     if (text.trim() === "") return accept({ unit: "COUNT", value: null });
     const parsed = parseNumberText(text, false);
-    if (parsed === null) return reject(text);
+    if (parsed === null) return reject(text, "invalidNumber");
     accept({ unit: "COUNT", value: parsed });
   };
   const changePercent = (text: string) => {
     setPercentText(text);
     if (text.trim() === "") return accept({ unit: "PERCENT", value: null });
     const parsed = parseNumberText(text, true);
-    if (parsed === null || parsed > 100) return reject(text);
+    if (parsed === null || parsed > 100) return reject(text, "invalidPercent");
     accept({ unit: "PERCENT", value: parsed });
   };
+
+  const errorId = `${id}-error`;
 
   return (
     <div data-form-field={field} className="flex min-w-0 flex-col gap-1">
@@ -89,6 +94,7 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
           <Input
             id={`${id}-count`}
             aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? errorId : undefined}
             readOnly={readOnly}
             aria-readonly={readOnly || undefined}
             inputMode="numeric"
@@ -106,6 +112,7 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
             <Input
               id={`${id}-percent`}
               aria-invalid={invalid || undefined}
+              aria-describedby={invalid ? errorId : undefined}
               aria-label={t("percentAria", { label })}
               readOnly={readOnly}
               aria-readonly={readOnly || undefined}
@@ -122,7 +129,7 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
         )}
       </span>
       {invalid && (
-        <p role="alert" className="text-caption text-danger">
+        <p id={errorId} role="alert" className="text-caption text-danger">
           {tCommon("invalidNumber")}
         </p>
       )}

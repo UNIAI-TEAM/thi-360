@@ -3,7 +3,7 @@
 import { Button } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { KnowledgeScopeField } from "../components/knowledge-scope-field";
 import { TopicQuotaTable, type TopicQuotaServerError } from "../components/topic-quota-table";
 import type { MatrixBlockProps } from "./matrix-block-props";
@@ -20,6 +20,12 @@ export function MatrixScopeBlock({ section, subjectName, total, axes, labels, re
   const [requested, setRequested] = useState(false);
   const strands = section.subjectCode === "VIETNAMESE";
   const showTable = quotas.length > 0 || requested || strands;
+  const quotaRef = useRef<HTMLDivElement>(null);
+  // Nút mở bảng bị thay bằng chính bảng: đưa tiêu điểm về nút "Thêm chỉ tiêu chủ đề" của bảng để người dùng bàn phím không mất chỗ (R1-3).
+  const revealTable = () => {
+    setRequested(true);
+    requestAnimationFrame(() => quotaRef.current?.querySelector<HTMLElement>("[data-topic-add]")?.focus());
+  };
 
   return (
     <section aria-label={t("title")} className="flex flex-col gap-4 rounded-md border border-border p-4">
@@ -36,7 +42,7 @@ export function MatrixScopeBlock({ section, subjectName, total, axes, labels, re
           name={subjectName}
         />
       </div>
-      <div data-form-field={MATRIX_FIELDS.topicQuotas} className="flex flex-col gap-3">
+      <div ref={quotaRef} data-form-field={MATRIX_FIELDS.topicQuotas} className="flex flex-col gap-3">
         {showTable ? (
           <TopicQuotaTable
             id={section.id}
@@ -52,7 +58,7 @@ export function MatrixScopeBlock({ section, subjectName, total, axes, labels, re
           />
         ) : (
           <div className="flex flex-col items-start gap-1">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setRequested(true)}>
+            <Button type="button" variant="secondary" size="sm" onClick={revealTable}>
               <Plus />
               <span>{t("addQuota")}</span>
             </Button>

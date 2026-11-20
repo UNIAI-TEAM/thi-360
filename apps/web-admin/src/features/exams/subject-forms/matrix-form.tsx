@@ -51,6 +51,7 @@ export function MatrixForm(props: SubjectFormRendererProps) {
         const entry = rawEntries.find((item) => item.sectionId === section.id && item.blockId === null && item.field === field);
         return entry ? { text: entry.text, code: entry.code } : null;
       },
+      hasPrefix: (prefix) => rawEntries.some((item) => item.sectionId === section.id && item.blockId === null && item.field.startsWith(prefix)),
       set: (field, text, code) => rawInputs.set({ sectionId: section.id, blockId: null, field, text, code }),
       clear: (field) => rawInputs.clear(section.id, null, field),
     }),

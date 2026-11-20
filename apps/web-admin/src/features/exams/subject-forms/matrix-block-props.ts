@@ -11,6 +11,8 @@ import type { SubjectFormEntry } from "./registry";
 export interface MatrixRawFields {
   /** Mục đang giữ ở ô (chữ đã gõ và mã lỗi), hoặc `null`. */
   get: (field: string) => { text: string; code: string } | null;
+  /** Có mục nhập thô ở một ô có tên bắt đầu bằng `prefix` (ví dụ `GRADE:` cho mọi ô khối lớp): để hiện lại hàng mà người dùng đã gõ sai. */
+  hasPrefix: (prefix: string) => boolean;
   set: (field: string, text: string, code: string) => void;
   clear: (field: string) => void;
 }

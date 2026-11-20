@@ -353,6 +353,48 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
   });
 });
 
+describe("MT: bàn phím và focus (CR-2 AC-10; R1-3, R1-6)", () => {
+  it("Thêm chỉ tiêu chủ đề bằng bàn phím: Enter mở bảng và đưa focus về nút Thêm chỉ tiêu chủ đề của bảng; Enter nữa thêm dòng chờ mapping", async () => {
+    const user = userEvent.setup();
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN")])]);
+    const reveal = await screen.findByRole("button", { name: "Thêm chỉ tiêu chủ đề" });
+    reveal.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(document.activeElement).toHaveAttribute("data-topic-add"));
+    expect(document.activeElement).toHaveAccessibleName("Thêm chỉ tiêu chủ đề");
+    await user.keyboard("{Enter}");
+    expect(await screen.findByText("Chờ mapping")).toBeInTheDocument();
+  });
+
+  it("Nguồn chùm bằng bàn phím: Enter mở menu, ArrowDown tới Nhãn nguồn, Enter chọn; mục Nhãn nguồn hiện, menu đóng và focus về nút Thêm điều kiện", async () => {
+    const user = userEvent.setup();
+    await openSection("sec-hoa", [wirePart([wireQdaScience("sec-hoa", "HOA", { fill: 0 })])], "BCA");
+    const source = (await screen.findByRole("heading", { level: 4, name: "Nguồn chùm" })).closest("[data-form-field]") as HTMLElement;
+    const trigger = within(source).getByRole("button", { name: "Thêm điều kiện" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("menuitem", { name: /MAPID/ })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Nhãn nguồn/ })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(await within(source).findByRole("heading", { level: 5, name: "Nhãn nguồn" })).toBeInTheDocument();
+    expect(source.querySelector('[data-condition="MAPID"]')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("ô lớp gõ sai: Lưu không gửi PUT và đặt focus vào chính ô đó", async () => {
+    const user = userEvent.setup();
+    const { server } = await openSection("sec-ly", lyParts());
+    const grade = within(screen.getByRole("heading", { level: 4, name: "Khối lớp" }).closest("[data-form-field]") as HTMLElement);
+    await type(user, grade.getByLabelText("Lớp 12"), "abc");
+    expect(await grade.findByRole("alert")).toHaveTextContent("Nhập một số không âm.");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(server)).toHaveLength(0);
+    await waitFor(() => expect(grade.getByLabelText("Lớp 12")).toHaveFocus());
+  });
+});
+
 describe("MT: số request lúc mở (FTM mục 9, plan B4; CR-2 AC-11)", () => {
   it("noExtraRequestsOnOpen: mở môn MT không gọi nhiều request hơn MD của cùng môn, cùng fixture", async () => {
     const parts = () => [wirePart([wireQdaScience("sec-ly", "LY"), wireQdaScience("sec-hoa", "HOA")])];

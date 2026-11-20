@@ -37,6 +37,7 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
   const { section, entry, kindCode, total, raw, onChange, templateLocked } = props;
   const t = useTranslations("exams.subjectForm.matrix.structure");
   const tErrors = useTranslations("exams.subjectForm.matrix.errors");
+  const tCommon = useTranslations("exams.subjectForm.common.countPercent");
   const structure = structureOf(section);
   const { single, set, fill } = structure.blocks;
   const twoColumns = entry.percentEntry === "TWO_COLUMNS";
@@ -58,6 +59,8 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
         return tErrors("choiceBelowChildren", { children: structure.children });
       case MATRIX_ISSUE_CODES.structurePercentTotal:
         return tErrors("percentTotal", { total: stored?.text ?? "" });
+      case "invalidNumber":
+        return tCommon("invalidNumber");
       default:
         return undefined;
     }
@@ -142,6 +145,7 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
               readOnly={locked}
               onEdit={(edit) => changeTwoColumn(key, edit)}
               onRaw={rawInputOf(field)}
+              raw={raw.get(field)}
             />
             {locked && <LockReason code="templateTotal" />}
           </>
@@ -154,6 +158,7 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
             fieldName={field}
             onChange={(next) => writeCount(key, next.count)}
             onRawInput={rawInputOf(field)}
+            rawText={raw.get(field)?.code === "invalidNumber" ? raw.get(field)?.text : undefined}
             error={errorOf(field)}
           />
         )}

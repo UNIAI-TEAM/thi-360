@@ -3,7 +3,7 @@
 import { Button, cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apportionByPercent } from "../matrix";
 import type { QuotaEnforcement } from "../types";
 import { EnforcementControl } from "./enforcement-control";
@@ -73,6 +73,7 @@ function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, t
               }))
             }
             onRaw={(rawInput) => (rawInput ? raw.set(`${fieldBase}:${code}`, rawInput.text, rawInput.code) : raw.clear(`${fieldBase}:${code}`))}
+            raw={raw.get(`${fieldBase}:${code}`)}
           />
         ))}
       </div>
@@ -90,14 +91,21 @@ function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, t
  * Toán; khối lớp ẩn theo R-11; V-ACT Tiếng Việt chỉ hiện hàng khối lớp khi bài đã khai số hoặc người dùng thêm từ "Thêm điều kiện".
  */
 export function MatrixDistributionBlock(props: MatrixBlockProps) {
-  const { entry, section, axes, labels } = props;
+  const { entry, section, axes, labels, raw } = props;
   const t = useTranslations("exams.subjectForm.matrix.distribution");
   const [gradeAdded, setGradeAdded] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const gradeCodes = axes.grades.filter((code) => code !== "GRADE_MIXED" || entry.gradeMixedColumn);
-  const showGrade = !entry.hideGrade && (!entry.gradeOptional || gradeAdded || dimensionDeclared(section.matrix, "grade"));
+  // Hàng khối lớp hiện khi bài đã khai số, người dùng vừa thêm, hoặc còn chữ gõ sai ở một ô lớp (nhập thô sống lâu hơn màn: mở lại không giấu lỗi).
+  const showGrade = !entry.hideGrade && (!entry.gradeOptional || gradeAdded || dimensionDeclared(section.matrix, "grade") || raw.hasPrefix("GRADE:"));
+  // Mục "Khối lớp" bỏ cả menu cùng nút gọi nó: đưa tiêu điểm về ô lớp đầu tiên để người dùng bàn phím không mất chỗ (R1-3).
+  const addGrade = () => {
+    setGradeAdded(true);
+    requestAnimationFrame(() => sectionRef.current?.querySelector<HTMLElement>('[data-form-field="GRADE"] input')?.focus());
+  };
 
   return (
-    <section aria-label={t("title")} className="flex flex-col gap-4 rounded-md border border-border p-4">
+    <section ref={sectionRef} aria-label={t("title")} className="flex flex-col gap-4 rounded-md border border-border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h3 className="text-title font-semibold text-text">{t("title")}</h3>
@@ -113,7 +121,7 @@ export function MatrixDistributionBlock(props: MatrixBlockProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent aria-label={t("conditionMenu")} className="w-64 max-w-[calc(100vw-2rem)]">
-                <DropdownMenuItem onSelect={() => setGradeAdded(true)}>{t("gradeCondition")}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={addGrade}>{t("gradeCondition")}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

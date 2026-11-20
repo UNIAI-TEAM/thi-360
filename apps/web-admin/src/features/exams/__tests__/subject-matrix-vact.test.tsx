@@ -228,6 +228,34 @@ describe("V-ACT Tiếng Việt MT (R-4, R-6, CR-2 AC-4)", () => {
     expect(screen.getAllByText("Số câu của mục theo mẫu, không đổi").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("vactVietnameseScopes bằng bàn phím: Enter mở Thêm điều kiện, Enter chọn Khối lớp; hàng Khối lớp hiện và focus vào ô lớp đầu tiên (R1-3, R1-6)", async () => {
+    const user = userEvent.setup();
+    await openVietnamese("VACT_SUBJECT_VIETNAMESE");
+    const trigger = screen.getByRole("button", { name: "Thêm điều kiện" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("menuitem", { name: "Khối lớp" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    const grade = await screen.findByRole("heading", { level: 4, name: "Khối lớp" });
+    expect(grade).toBeInTheDocument();
+    const first = within(grade.closest("[data-form-field]") as HTMLElement).getAllByRole("textbox")[0]!;
+    await waitFor(() => expect(first).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Thêm điều kiện" })).not.toBeInTheDocument();
+  });
+
+  it("ô lớp thêm từ Thêm điều kiện gõ sai: Lưu không gửi PUT, focus vào ô lớp đó và hàng vẫn hiện (R1-5)", async () => {
+    const user = userEvent.setup();
+    const { server } = await openVietnamese("VACT_SUBJECT_VIETNAMESE");
+    await user.click(screen.getByRole("button", { name: "Thêm điều kiện" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Khối lớp" }));
+    const cell = await within((await screen.findByRole("heading", { level: 4, name: "Khối lớp" })).closest("[data-form-field]") as HTMLElement).findByLabelText("Lớp 12");
+    await type(user, cell, "abc");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(server)).toHaveLength(0);
+    await waitFor(() => expect(dimension("Khối lớp").getByLabelText("Lớp 12")).toHaveFocus());
+    expect(dimension("Khối lớp").getByRole("alert")).toBeInTheDocument();
+  });
+
   it("vactVietnameseScopes: tiểu mục (không khóa tổng) sửa được số câu; 8 dòng mạch chờ mapping hiện sẵn và lưu được nguyên vẹn", async () => {
     const user = userEvent.setup();
     const { server, sectionId } = await openVietnamese("VACT_SUBJECT_VIETNAMESE");
