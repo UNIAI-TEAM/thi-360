@@ -296,6 +296,32 @@ describe("Danh sách dòng: ẩn khối lớp (R-11)", () => {
     expect(await screen.findByText(/Môn này đang dùng thiết lập đầy đủ/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Các dòng lấy câu" })).toBeNull();
   });
+
+  it("hiddenGradeTopicQuota: SP2E:SU thêm chỉ tiêu chủ đề ở cả RowEditor và ReferenceBlock không có cột Giới hạn lớp (R1-4)", async () => {
+    const user = userEvent.setup();
+    boot({ kind: "SP2E", parts: oneSection(wireSection("sec-su", "SU", [wireBlock("su-1", { name: "Trac nghiem", questionCount: 25 })])) });
+    openStructure("?section=sec-su");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+
+    // Trong RowEditor:
+    await user.click(within(rowOf("su-1")).getByRole("button", { name: /Sửa dòng Trac nghiem/ }));
+    await user.click(await screen.findByRole("button", { name: "Thêm điều kiện" }));
+    await user.click(await screen.findByRole("menuitem", { name: /^Phân bổ theo MAPID/ }));
+    const editorQuota = document.querySelector<HTMLElement>('[data-condition="topicQuotas"]')!;
+    await user.click(within(editorQuota).getByRole("button", { name: /Thêm chỉ tiêu chủ đề/ }));
+    expect(within(editorQuota).getByRole("columnheader", { name: "Giới hạn độ khó" })).toBeInTheDocument();
+    expect(within(editorQuota).queryByRole("columnheader", { name: "Giới hạn lớp" })).toBeNull();
+    expect(within(editorQuota).queryByText("Mọi lớp")).toBeNull();
+    expect(within(editorQuota).queryByRole("checkbox", { name: /Lớp 10|Lớp 11|Lớp 12/ })).toBeNull();
+
+    // Trong ReferenceBlock:
+    const ref = await openReference(user);
+    await user.click(within(ref).getByRole("button", { name: /Thêm chỉ tiêu chủ đề/ }));
+    expect(within(ref).getByRole("columnheader", { name: "Giới hạn độ khó" })).toBeInTheDocument();
+    expect(within(ref).queryByRole("columnheader", { name: "Giới hạn lớp" })).toBeNull();
+    expect(within(ref).queryByText("Mọi lớp")).toBeNull();
+    expect(within(ref).queryByRole("checkbox", { name: /Lớp 10|Lớp 11|Lớp 12/ })).toBeNull();
+  });
 });
 
 describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {

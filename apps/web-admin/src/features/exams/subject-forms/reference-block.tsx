@@ -212,6 +212,7 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
             axes={axes}
             labels={labels}
             serverError={topicError}
+            hideGrade={!showGrade}
           />
         )}
       </div>

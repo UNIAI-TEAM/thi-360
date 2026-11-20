@@ -216,6 +216,7 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
           labels={labels}
           serverError={topicError}
           entry={entry.percentEntry === "NONE" ? "COUNT_ONLY" : undefined}
+          hideGrade={!gradeVisible(entry)}
         />
       ),
     },
