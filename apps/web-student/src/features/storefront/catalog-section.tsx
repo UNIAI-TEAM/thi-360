@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, cn, EmptyState, Input, Pagination, Select, type SelectOption, Skeleton } from "@thi360/ui";
-import { pickName } from "@/lib/pick-name";
+import { pickName } from "@thi360/web-kit/i18n";
 import { FileText, Search, SearchX, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";

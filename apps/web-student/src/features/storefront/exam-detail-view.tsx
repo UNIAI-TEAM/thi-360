@@ -1,5 +1,5 @@
 import { cn, focusRing } from "@thi360/ui";
-import { pickName } from "@/lib/pick-name";
+import { pickName } from "@thi360/web-kit/i18n";
 import { Check, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";

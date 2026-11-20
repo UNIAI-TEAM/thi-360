@@ -1,6 +1,6 @@
 "use client";
 
-import { pickName } from "@/lib/pick-name";
+import { pickName } from "@thi360/web-kit/i18n";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
