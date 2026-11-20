@@ -34,6 +34,7 @@ import type {
   PathSelectionCheck,
 } from "../review-types";
 import type { ExamDetail } from "../types";
+import { ExamContentText } from "./exam-content-text";
 import {
   BLOCK_RESULT_TONE,
   IconLink,
@@ -382,7 +383,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
   const t = useTranslations("exams.review.selections");
   const tReview = useTranslations("exams.review");
   const lookup = useLookup();
-  const issueText = useIssueText(exam);
+  const issueText = useIssueText(exam, true);
   const pathLabel = usePathLabel(exam.id);
   const choice = path.choices.find((item) => item.kind === "SUBJECT_CHOICE");
   const option = exam.parts
@@ -401,7 +402,7 @@ function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }
       if (unique.length === 0) return <span className="text-text-muted">{tReview("noIssue")}</span>;
       return (
         <span className={selection.result === "INVALID" ? "text-danger" : "text-text-secondary"}>
-          {issueText(unique[0]!)}
+          <ExamContentText text={issueText(unique[0]!)} />
           {unique.length > 1 && <> {tReview("moreIssues", { count: unique.length - 1 })}</>}
         </span>
       );
@@ -573,7 +574,7 @@ function PathsSection({
   const t = useTranslations("exams.review");
   const pathLabel = usePathLabel(exam.id);
   const pathSub = usePathSub();
-  const issueText = useIssueText(exam);
+  const issueText = useIssueText(exam, true);
   const partsList = [...exam.parts]
     .sort((a, b) => a.order - b.order)
     .map((part) => part.order)
@@ -591,7 +592,7 @@ function PathsSection({
       if (unique.length === 0) return <span className="text-text-muted">{t("noIssue")}</span>;
       return (
         <span className={path.result === "INVALID" ? "text-danger" : "text-text-secondary"}>
-          {issueText(unique[0]!)}
+          <ExamContentText text={issueText(unique[0]!)} />
           {unique.length > 1 && <> {t("moreIssues", { count: unique.length - 1 })}</>}
         </span>
       );
@@ -701,7 +702,7 @@ function Legend() {
 
 function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckResult }) {
   const t = useTranslations("exams.review");
-  const issueWithPath = useIssueWithPath(result.paths);
+  const issueWithPath = useIssueWithPath(result.paths, exam, true);
   const first = result.paths[0];
 
   const passText = (group: CheckGroupResult) =>
@@ -737,7 +738,7 @@ function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckRe
                   </StatusChip>
                 </div>
                 <p className="text-body text-text-secondary">
-                  {group.issues.length ? issueWithPath(group.issues[0]!) : passText(group)}
+                  {group.issues.length ? <ExamContentText text={issueWithPath(group.issues[0]!)} /> : passText(group)}
                 </p>
                 {group.issues.length > 1 && (
                   <p className="text-caption text-text-muted">{t("moreIssues", { count: group.issues.length - 1 })}</p>
@@ -806,7 +807,7 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
   const t = useTranslations("exams.review");
   const format = useFormatter();
   const lookup = useLookup();
-  const issueText = useIssueText(exam);
+  const issueText = useIssueText(exam, true);
 
   const { columns, cards } = useMemo(() => {
     const name = (block: BlockCheck) => `${lookup.subject(block.subjectCode)} · ${block.blockName}`;
@@ -825,7 +826,7 @@ function BlockTable({ exam, path, label }: { exam: ExamDetail; path: PathCheck; 
     const issue = (block: BlockCheck) =>
       block.issues.length ? (
         <span className={block.result === "NOT_FOUND" ? "text-danger" : "text-text-secondary"}>
-          {block.issues.map(issueText).join(" ")}
+          <ExamContentText text={block.issues.map(issueText).join(" ")} />
         </span>
       ) : (
         <span className="text-text-muted">{t("noIssue")}</span>

@@ -7,6 +7,7 @@ import { indexKnowledge } from "@/features/content/knowledge-tree";
 import { findSectionById, type BlockContext } from "../check";
 import type { CheckIssue } from "../review-types";
 import type { ExamDetail } from "../types";
+import { markExamContent } from "./exam-content-text";
 import { useMapidRuleText } from "./mapid-rules-table";
 
 /** Mã vấn đề có câu riêng cho quy tắc MAPID (`exams.review.issue`); các mã còn lại có `ruleId` là thiếu nguồn cho quy tắc. */
@@ -24,7 +25,7 @@ export interface MapidIssueText {
  * `mapidRules` của môn trong cấu trúc (`exam`); không có cấu trúc thì gọi bằng mã quy tắc. MAPID của quy tắc bị thiếu nguồn
  * nêu bằng mã trong cây kiến thức.
  */
-export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">) {
+export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.mapidRules.issue");
   const format = useFormatter();
   const reference = useContentReference().data;
@@ -35,7 +36,7 @@ export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">) {
       const section = exam ? findSectionById(exam, issue.sectionId ?? where?.section?.id) : null;
       const ruleLabel = (ruleId: string) => {
         const rule = section?.mapidRules?.find((item) => item.id === ruleId);
-        return t("quoted", { sentence: section && rule ? sentence(section, rule) : ruleId });
+        return t("quoted", { sentence: section && rule ? sentence(section, rule, marked) : ruleId });
       };
       const ruleIds = issue.ruleIds?.length ? issue.ruleIds : issue.ruleId ? [issue.ruleId] : [];
       // Danh mục chưa tải: không có mã để nêu, bỏ phần "(MAPID …)" thay vì in UUID của nút (R1-F9).
@@ -51,7 +52,7 @@ export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">) {
         availableSets: issue.availableSets ?? 0,
         availableSingles: issue.availableSingles ?? 0,
         setSize,
-        group: where?.block.name || String(base.block),
+        group: where?.block.name ? (marked ? markExamContent(where.block.name) : where.block.name) : String(base.block),
       };
       const all = { ...base, ...values };
       if (issue.code === "SET_SHORTAGE" && issue.requiredSets != null && issue.availableSingles != null && setSize > 0) {
@@ -62,6 +63,6 @@ export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">) {
       }
       return { values, text: null };
     },
-    [exam, t, format, sentence, knowledge, reference],
+    [exam, t, format, sentence, knowledge, reference, marked],
   );
 }

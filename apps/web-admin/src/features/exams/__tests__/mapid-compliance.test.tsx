@@ -141,13 +141,14 @@ describe("dòng MAPID của bảng đối chiếu", () => {
     expect(within(rows[0]!).getByText("Toàn môn · Phải có Hàm số")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("ít nhất 1")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Đạt")).toBeInTheDocument();
-    expect(within(rows[1]!).getByText("Trả lời ngắn · Ít nhất 3/15 câu thuộc Hàm số")).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent("Trả lời ngắn · Ít nhất 3/15 câu thuộc Hàm số");
+    expect(rows[1]!.querySelector("[data-exam-content]")).toHaveTextContent("Trả lời ngắn");
     expect(within(rows[1]!).getByText("ít nhất 3")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("Lệch · bắt buộc")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Toàn môn · Đúng 3/50 câu thuộc Hàm số")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Lệch · bắt buộc")).toBeInTheDocument();
-    expect(within(rows[3]!).getByText(/Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3\/15 câu · ngoài nhóm này/)).toBeInTheDocument();
-    expect(within(rows[4]!).getByText(/Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3\/15 câu · số câu trong nhóm/)).toBeInTheDocument();
+    expect(rows[3]).toHaveTextContent("Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu · ngoài nhóm này");
+    expect(rows[4]).toHaveTextContent("Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu · số câu trong nhóm");
     expect(within(rows[4]!).getByText("Đạt")).toBeInTheDocument();
     expect(within(rows[5]!).getByText("Quy tắc MAPID gone")).toBeInTheDocument();
   });

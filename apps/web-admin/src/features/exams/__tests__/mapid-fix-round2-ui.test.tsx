@@ -290,3 +290,13 @@ describe("R1-F4: xóa nhóm có quy tắc rồi Lưu", () => {
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(0));
   });
 });
+
+it("uses whole exam terminology and pluralizes group set counts in English", () => {
+  renderPanel(makeSection({ blocks: [
+    block({ id: "one", name: "One", questionType: "QUESTION_SET", questionCount: 1, setCount: 1, setSize: 1 }),
+    block({ id: "two", name: "Two", questionType: "QUESTION_SET", questionCount: 6, setCount: 2, setSize: 3 }),
+  ] }), "en");
+  expect(screen.getByRole("radio", { name: "Whole exam (no MAPID limit)" })).toBeInTheDocument();
+  expect(screen.getByText("1 set × 1 sub-question = 1 question")).toBeInTheDocument();
+  expect(screen.getByText("2 sets × 3 sub-questions = 6 questions")).toBeInTheDocument();
+});

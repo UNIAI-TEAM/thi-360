@@ -727,23 +727,25 @@ function GroupList({
             <thead>
               <tr className="text-left text-caption text-text-muted">
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">{t("name")}</th>
+                {mapid && <th scope="col" className={headCell}>{t("scope")}</th>}
                 <th scope="col" className={headCell}>{t("type")}</th>
                 {audio && <th scope="col" className={headCell}>{t("audioHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "quantityHeader" : "countHeader")}</th>
                 {audio && <th scope="col" className={cn(headCell, "text-right")}>{t("totalHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "shareHeader" : "rateHeader")}</th>
                 {audio && <th scope="col" className={headCell}>{t("availableHeader")}</th>}
-                <th scope="col" className={headCell}>{t("scope")}</th>
+                {!mapid && <th scope="col" className={headCell}>{t("scope")}</th>}
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold whitespace-nowrap"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
               {section.blocks.map((block) => (
                 <tr key={block.id}>
-                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text">
+                  <th scope="row" className={cn("border-b border-border px-3 py-2 text-left font-medium text-text", !mapid && "whitespace-nowrap")}>
                     {block.name || t("untitled")}
                   </th>
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text">
+                  {mapid && <td className="min-w-56 border-b border-border px-2 py-2 text-text-secondary">{scopeCell(block)}</td>}
+                  <td className={cn("border-b border-border px-2 py-2 text-text", !mapid && "whitespace-nowrap")}>
                     <span className="inline-flex items-center gap-1.5">
                       {typeText(block)}
                       {block.answerTypeLocked && (
@@ -759,7 +761,7 @@ function GroupList({
                       <AudioChip audio={audio} />
                     </td>
                   )}
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{audio ? quantityText(block) : countText(block)}</td>
+                  <td className={cn("border-b border-border px-2 py-2 tabular-nums text-text", !mapid && "whitespace-nowrap")}>{audio ? quantityText(block) : countText(block)}</td>
                   {audio && <td className="border-b border-border px-2 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-text">{format.number(questionsOf(block))}</td>}
                   <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{rateText(block)}</td>
                   {audio && (
@@ -767,7 +769,7 @@ function GroupList({
                       <AvailableSource block={block} section={section} />
                     </td>
                   )}
-                  <td className={cn("border-b border-border px-2 py-2 text-text-secondary", mapid ? "min-w-56" : "whitespace-nowrap")}>{scopeCell(block)}</td>
+                  {!mapid && <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text-secondary">{scopeCell(block)}</td>}
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}

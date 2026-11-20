@@ -33,6 +33,7 @@ import {
 import { useExamStructure } from "../queries";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamDetail, ExamSectionState } from "../types";
+import { ExamContentText } from "./exam-content-text";
 import { useIssueText, useLookup } from "./exam-review-shared";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
@@ -193,6 +194,7 @@ function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
   const t = useTranslations("exams.review.findings");
   const tMapid = useTranslations("exams.mapidRules.issue");
   const issueText = useIssueText(exam);
+  const issueContent = useIssueText(exam, true);
   const lookup = useLookup();
   const message = issueText(issue);
   const ruleHref = issueRuleHref(exam.id, issue);
@@ -211,7 +213,7 @@ function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
     <li className={`flex flex-col gap-1.5 rounded-lg border bg-surface p-3 ${tone}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="text-body text-text">{message}</p>
+          <p className="text-body text-text"><ExamContentText text={issueContent(issue)} /></p>
           <p className="font-mono text-caption text-text-muted">{issue.code}</p>
         </div>
         {href && (

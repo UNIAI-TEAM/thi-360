@@ -23,6 +23,7 @@ import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
 import type { ExamDetail, ExamPartOption } from "../types";
+import { ExamContentText } from "./exam-content-text";
 import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
@@ -467,6 +468,7 @@ function PreviewFailure({
 }) {
   const t = useTranslations("exams.preview");
   const issueText = useIssueText(exam);
+  const issueContent = useIssueText(exam, true);
   const invalid = result.reason === "INVALID";
   const fixHref = result.issues.map((issue) => issueStructureHref(exam.id, issue)).find((href) => href !== null) ?? null;
   const Icon = invalid ? CircleX : CircleHelp;
@@ -481,7 +483,7 @@ function PreviewFailure({
         </h3>
         <ul className="flex flex-col gap-1 text-body text-text">
           {result.issues.map((issue) => (
-            <PreviewIssueItem key={issue.key} examId={exam.id} issue={issue} text={issueText(issue)} />
+            <PreviewIssueItem key={issue.key} examId={exam.id} issue={issue} text={issueText(issue)} content={issueContent(issue)} />
           ))}
         </ul>
         <p className="text-body text-text-secondary">{t("failNote")}</p>
@@ -506,12 +508,12 @@ function PreviewFailure({
 }
 
 /** Một vấn đề của lần sinh thử; vấn đề nêu quy tắc MAPID có thêm liên kết tới dòng quy tắc ở trang Cấu trúc. */
-export function PreviewIssueItem({ examId, issue, text }: { examId: string; issue: CheckIssue; text: string }) {
+export function PreviewIssueItem({ examId, issue, text, content = text }: { examId: string; issue: CheckIssue; text: string; content?: string }) {
   const tMapid = useTranslations("exams.mapidRules.issue");
   const href = issueRuleHref(examId, issue);
   return (
     <li className="flex flex-wrap items-baseline gap-x-2">
-      <span>{text}</span>
+      <span><ExamContentText text={content} /></span>
       {href && (
         <Button asChild variant="link" size="sm">
           <Link href={href} aria-label={tMapid("goToRuleAria", { issue: text })}>

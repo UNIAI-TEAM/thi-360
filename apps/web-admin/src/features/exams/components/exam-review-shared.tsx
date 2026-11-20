@@ -114,14 +114,14 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
  * Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). Truyền `exam` thì vấn đề
  * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc.
  */
-export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
+export function useIssueText(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
   const tFormat = useTranslations("questions.detail.body.answerFormats");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
-  const mapidIssue = useMapidIssueText(exam);
+  const mapidIssue = useMapidIssueText(exam, marked);
   return useCallback(
     (issue: CheckIssue) => {
       const where = exam ? findBlockContext(exam, issue.blockId) : null;
@@ -208,9 +208,9 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
 }
 
 /** Vấn đề kèm tên đường khi vấn đề thuộc một lựa chọn của phần tự chọn. */
-export function useIssueWithPath(paths: readonly ExamPathRef[]) {
+export function useIssueWithPath(paths: readonly ExamPathRef[], exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review");
-  const issueText = useIssueText();
+  const issueText = useIssueText(exam, marked);
   return useCallback(
     (issue: CheckIssue) => {
       const text = issueText(issue);

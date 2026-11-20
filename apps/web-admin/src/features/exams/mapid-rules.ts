@@ -446,12 +446,24 @@ export function mapidRuleSelector(ruleId: string): string {
   return `[data-field="${CSS.escape(mapidRuleAnchor(ruleId))}"]`;
 }
 
+const highlightTimers = new WeakMap<HTMLElement, number>();
+
 /** Đưa focus tới dòng quy tắc; trả `false` khi màn không có dòng đó (ví dụ môn đang ở chế độ Toàn bài). */
 export function focusMapidRule(ruleId: string, root: ParentNode = document): boolean {
   const target = root.querySelector<HTMLElement>(mapidRuleSelector(ruleId));
   if (!target) return false;
   target.scrollIntoView({ block: "center" });
   target.focus();
+  if (!target.hasAttribute("data-mapid-focus")) {
+    target.setAttribute("data-mapid-focus", "");
+    target.addEventListener("blur", () => target.removeAttribute("data-mapid-focus"), { once: true });
+  }
+  target.setAttribute("data-mapid-highlight", "");
+  window.clearTimeout(highlightTimers.get(target));
+  highlightTimers.set(target, window.setTimeout(() => {
+    target.removeAttribute("data-mapid-highlight");
+    highlightTimers.delete(target);
+  }, 3000));
   return true;
 }
 

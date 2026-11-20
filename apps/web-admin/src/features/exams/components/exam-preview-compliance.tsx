@@ -30,6 +30,7 @@ import {
 } from "../review-compliance";
 import type { ExamDetail } from "../types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "../review-types";
+import { ExamContentText, markExamContent } from "./exam-content-text";
 import { useLookup } from "./exam-review-shared";
 import { useMapidRuleText } from "./mapid-rules-table";
 
@@ -101,7 +102,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           // Quy tắc của dòng gọi bằng câu mô tả của nó; "Chỉ xuất hiện ở nhóm này" có hai dòng (ngoài nhóm, số câu trong nhóm).
           const found = rules ? resolveMapidRow(row, rules) : null;
           if (!found) return t("criterion.MAPID_UNKNOWN", { id: ref.ruleId });
-          const text = sentence(found.section, found.rule);
+          const text = sentence(found.section, found.rule, true);
           if (found.rule.type !== "ONLY_IN_GROUP") return t("criterion.MAPID", { sentence: text });
           return t(ref.count ? "criterion.MAPID_COUNT" : "criterion.MAPID_OUTSIDE", { sentence: text });
         }
@@ -114,7 +115,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       if (ref.kind === "SECTION") return lookup.subject(sections.get(ref.id)?.subjectCode ?? "") || t("scope.EXAM");
       if (ref.kind === "BLOCK") {
         const block = blocks.get(ref.id);
-        return block ? `${lookup.subject(block.subjectCode)} · ${block.blockName}` : ref.id;
+        return block ? `${lookup.subject(block.subjectCode)} · ${markExamContent(block.blockName)}` : ref.id;
       }
       return t("scope.EXAM");
     };
@@ -153,8 +154,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     };
 
     const columns: ColumnDef<PreviewCompliance>[] = [
-      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text">{criterion(row.original)}</span> },
-      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32">{scope(row.original)}</span> },
+      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text"><ExamContentText text={criterion(row.original)} /></span> },
+      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32"><ExamContentText text={scope(row.original)} /></span> },
       { id: "level", header: t("columns.level"), cell: ({ row }) => <span>{level(row.original)}</span> },
       { id: "required", header: () => <span className="block text-right">{t("columns.required")}</span>, cell: ({ row }) => <span className="block min-w-16 text-right">{required(row.original)}</span> },
       { id: "actual", header: () => <span className="block text-right">{t("columns.actual")}</span>, cell: ({ row }) => <span className="block min-w-16 text-right">{actual(row.original)}</span> },
@@ -164,8 +165,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     const cards: TableCards<PreviewCompliance> = {
       render: (row) => (
         <ListCard
-          title={criterion(row)}
-          caption={scope(row)}
+          title={<ExamContentText text={criterion(row)} />}
+          caption={<ExamContentText text={scope(row)} />}
           status={result(row)}
           meta={[
             { label: t("columns.level"), value: level(row) },
@@ -258,7 +259,7 @@ function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; 
         const key = exam.scope === "PART" ? (subject ? "denominator.part" : "denominator.partNoSubject") : subject ? "denominator.whole" : "denominator.wholeNoSubject";
         return (
           <li key={denominator.scope} className="text-label font-semibold text-text">
-            {t(key, { part: paper.parts.map((part) => part.name).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })}
+            <ExamContentText text={t(key, { part: paper.parts.map((part) => markExamContent(part.name)).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })} />
           </li>
         );
       })}

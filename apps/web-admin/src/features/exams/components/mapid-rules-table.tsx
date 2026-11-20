@@ -15,6 +15,7 @@ import {
   type RuleSentence,
 } from "../mapid-rules";
 import type { ExamSection, MapidRule, QuestionBlock } from "../types";
+import { ExamContentText, markExamContent } from "./exam-content-text";
 import { MapidRuleDialog } from "./mapid-rule-dialog";
 import { ScrollableTable } from "./scrollable-table";
 
@@ -42,22 +43,22 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
     [format, knowledgeIndex, reference, t],
   );
   const groupName = useCallback(
-    (group: QuestionBlock | null, deletedName: string | null = null) => {
-      if (group) return group.name || t("untitledGroup");
-      return deletedName ? t("groupDeleted", { name: deletedName }) : t("scopeDeleted");
+    (group: QuestionBlock | null, deletedName: string | null = null, marked = false) => {
+      if (group) return group.name ? (marked ? markExamContent(group.name) : group.name) : t("untitledGroup");
+      return deletedName ? t("groupDeleted", { name: marked ? markExamContent(deletedName) : deletedName }) : t("scopeDeleted");
     },
     [t],
   );
   const scopeText = useCallback(
-    (sentence: RuleSentence) => (sentence.scope === "SUBJECT" ? t("scopeSubject") : groupName(sentence.group, sentence.deletedGroupName)),
+    (sentence: RuleSentence, marked = false) => (sentence.scope === "SUBJECT" ? t("scopeSubject") : groupName(sentence.group, sentence.deletedGroupName, marked)),
     [groupName, t],
   );
   const sentence = useCallback(
-    (section: ExamSection, rule: MapidRule): string => {
+    (section: ExamSection, rule: MapidRule, marked = false): string => {
       const data = describeRule(section, rule);
       return t(`sentence.${data.kind}`, {
-        scope: scopeText(data),
-        group: groupName(data.group, data.deletedGroupName),
+        scope: scopeText(data, marked),
+        group: groupName(data.group, data.deletedGroupName, marked),
         topics: topics(rule.nodeIds),
         amount: data.amount ?? "",
       });
@@ -157,9 +158,9 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
                 const sentence = text.sentence(view, rule);
                 const anchor = mapidRuleAnchor(rule.id);
                 return (
-                  <tr key={rule.id} id={anchor} data-field={anchor} data-testid={`mapid-rule-row-${rule.id}`} tabIndex={-1} className={cn("scroll-mt-24", focusRing)}>
+                  <tr key={rule.id} id={anchor} data-field={anchor} data-testid={`mapid-rule-row-${rule.id}`} tabIndex={-1} className={cn("scroll-mt-24 data-[mapid-highlight]:bg-primary-50 data-[mapid-focus]:outline-2 data-[mapid-focus]:-outline-offset-2 data-[mapid-focus]:outline-primary-text", focusRing)}>
                     <td className="border-b border-border px-3 py-2 text-text">
-                      <span className="wrap-anywhere">{sentence}</span>
+                      <span className="wrap-anywhere"><ExamContentText text={text.sentence(view, rule, true)} /></span>
                       {deleted.has(rule.id) && (
                         <span className="mt-1 flex flex-wrap items-center gap-2">
                           <StatusChip tone="danger">{rule.deletedGroupName ? t("deletedGroupNamed", { name: rule.deletedGroupName }) : t("deletedGroup")}</StatusChip>

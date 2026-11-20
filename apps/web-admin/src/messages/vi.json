@@ -2197,7 +2197,6 @@
       "collapseTooltip": "Thu gọn",
       "removeTooltip": "Bỏ chọn",
       "loading": "Đang tải cây kiến thức",
-      "sampleNote": "Dữ liệu cây là mẫu, chỉ để minh họa. Cây thật lấy từ danh mục Cấu trúc kiến thức, chỉ hiện nút đang hoạt động.",
       "noneSelectedHint": "Chưa chọn kiến thức nào. Tick ở cây bên trái để thêm.",
       "selectedLegend": "Kiến thức đã chọn",
       "examOnceNote": "Một câu gắn nhiều kiến thức vẫn chỉ được chọn một lần trong cùng đề."

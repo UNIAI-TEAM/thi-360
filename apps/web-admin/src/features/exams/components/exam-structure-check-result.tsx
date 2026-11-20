@@ -7,6 +7,7 @@ import { focusMapidRuleWhenReady } from "../mapid-rules";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamPart } from "../types";
 import type { StructureSelection } from "./exam-structure-draft";
+import { ExamContentText } from "./exam-content-text";
 import { useIssueText } from "./exam-review-shared";
 
 export interface CheckResultNames {
@@ -57,6 +58,7 @@ export function ExamStructureCheckResult({ result, names, parts, onSelect }: Exa
   const tMapid = useTranslations("exams.mapidRules.issue");
   const exam = useMemo(() => (parts ? { parts } : undefined), [parts]);
   const issueText = useIssueText(exam);
+  const issueContent = useIssueText(exam, true);
 
   const seen = new Set<string>();
   const issues = result.groups
@@ -81,7 +83,7 @@ export function ExamStructureCheckResult({ result, names, parts, onSelect }: Exa
               return (
                 <li key={issue.key} className="flex flex-wrap items-start justify-between gap-2 text-body text-text">
                   <span className="min-w-0 flex-1">
-                    {text}
+                    <ExamContentText text={issueContent(issue)} />
                     {issue.affectedCodes && issue.affectedCodes.length > 0 && (
                       <span className="ml-1.5 text-caption text-text-muted">
                         {t("codes", { codes: issue.affectedCodes.join(", ") })}

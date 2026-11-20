@@ -2197,7 +2197,6 @@
       "collapseTooltip": "Collapse",
       "removeTooltip": "Remove",
       "loading": "Loading the knowledge tree",
-      "sampleNote": "Sample tree for illustration only. The real tree comes from the Knowledge structure catalog and shows active nodes only.",
       "noneSelectedHint": "Nothing selected yet. Tick items in the tree to add them.",
       "selectedLegend": "Selected knowledge",
       "examOnceNote": "A question tagged with several knowledge items is still picked at most once per paper."
@@ -4492,7 +4491,7 @@
           "typeSetOf": "{type} · sub-questions {child}",
           "typeLocked": "Answer type filled in by the template",
           "count": "{count, plural, one {# question} other {# questions}}",
-          "countSets": "{sets, number} sets × {size, number} sub-questions = {total, number} questions",
+          "countSets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# sub-question} other {# sub-questions}} = {total, plural, one {# question} other {# questions}}",
           "countRemainder": "The rest ({count, number} questions)",
           "countRemainderInvalid": "The rest (cannot be split)",
           "remainderConflict": "The subject has {count, plural, one {# group} other {# groups}} taking the rest; only one is allowed. The check reports an error until one is left.",
@@ -5874,7 +5873,7 @@
       },
       "limit": "The limit of {max, number} rules is reached.",
       "mode": {
-        "all": "Whole subject (no MAPID limit)",
+        "all": "Whole exam (no MAPID limit)",
         "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",
         "legend": "Knowledge scope",
         "matrix": "By MAPID matrix",

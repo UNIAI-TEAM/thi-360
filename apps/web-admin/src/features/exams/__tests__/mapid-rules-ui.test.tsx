@@ -389,3 +389,11 @@ describe("Môn và kỳ thi khác giữ nguyên", () => {
     expect(screen.queryByRole("radio", { name: "Theo ma trận MAPID" })).not.toBeInTheDocument();
   });
 });
+
+it("marks stored group names within rule sentences", () => {
+  renderPanel(makeSection({ mapidMode: "MATRIX", mapidRules: [
+    { id: "marked", type: "PRESENT", groupId: "b-short", nodeIds: [TOPIC.id] },
+  ] }));
+  const row = screen.getByTestId("mapid-rule-row-marked");
+  expect(row.querySelector("[data-exam-content]")).toHaveTextContent("Trả lời ngắn");
+});

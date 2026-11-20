@@ -23,6 +23,7 @@ import type { ExamSection, MapidComparator, MapidRule, MapidRuleType, QuestionBl
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { draftId } from "./exam-structure-draft";
+import { ExamContentText, markExamContent } from "./exam-content-text";
 
 const SUBJECT_SCOPE = "__subject__";
 const RULE_TYPES: readonly MapidRuleType[] = ["PRESENT", "COUNT", "ONLY_IN_GROUP", "SOURCE"];
@@ -243,7 +244,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                 </FormField>
               )}
               <p className="flex flex-col pb-1 text-caption text-text-muted">
-                <span>{units === null ? t("denominatorUnknown", { scope: scopeName }) : t("denominator", { units, scope: scopeName })}</span>
+                <span><ExamContentText text={units === null ? t("denominatorUnknown", { scope: group?.name ? markExamContent(scopeName) : scopeName }) : t("denominator", { units, scope: group?.name ? markExamContent(scopeName) : scopeName })} /></span>
                 {form.entry === "PERCENT" && (
                   <span data-testid="mapid-rule-percent-result">
                     {units === null ? t("percentUnknown") : t("percentResult", { count: ruleCount(view, { id: form.id, type: "COUNT", groupId: form.groupId, nodeIds: [], percent: form.percent }), units })}

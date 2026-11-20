@@ -6,6 +6,8 @@ import type { ContentReference } from "@/features/content/types";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { issueRuleHref } from "../check";
+import { mapExamDetail } from "../api-mapping";
+import { ExamReviewCheck } from "../components/exam-review-check";
 import { ExamStructureCheckResult } from "../components/exam-structure-check-result";
 import { PreviewIssueItem } from "../components/exam-preview-panel";
 import { useIssueText } from "../components/exam-review-shared";
@@ -13,6 +15,7 @@ import { getExamCheck } from "../review-api";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamDetail, ExamPart, ExamSection, MapidRule, QuestionBlock } from "../types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, FakeServer } from "./fake-exams-server";
+import { examDetailWire } from "./fake-exams-server";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const node = (id: string, code: string, name: string) => ({
@@ -292,10 +295,13 @@ describe("Đi tới quy tắc", () => {
     );
 
     const go = await screen.findByRole("button", { name: /Đi tới quy tắc/ });
+    await waitFor(() => expect(screen.getByTestId("structure-check-errors").querySelector("[data-exam-content]")).toHaveTextContent("Trả lời ngắn"));
     await userEvent.click(go);
 
     expect(onSelect).toHaveBeenCalledWith({ kind: "section", sectionId: "s1" });
     await waitFor(() => expect(screen.getByTestId("row-r1")).toHaveFocus());
+    expect(screen.getByTestId("row-r1")).toHaveAttribute("data-mapid-highlight");
+    expect(screen.getByTestId("row-r1")).toHaveAttribute("data-mapid-focus");
     await userEvent.click(screen.getByRole("button", { name: "Đến chỗ sửa" }));
     expect(onSelect).toHaveBeenLastCalledWith({ kind: "block", blockId: "short" });
     expect(screen.getAllByRole("button", { name: /Đi tới quy tắc/ })).toHaveLength(1);
@@ -315,5 +321,22 @@ describe("lỗi sinh thử nêu quy tắc", () => {
     const link = screen.getByRole("link", { name: "Đi tới quy tắc: Quy tắc A thiếu nguồn" });
     expect(link).toHaveAttribute("href", "/exams/ex-1/structure?section=s1&rule=r2");
     expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+});
+
+describe("review summary", () => {
+  it("resolves conflict rule names using the exam structure", async () => {
+    const conflict = {
+      code: "MAPID_RULE_CONFLICT", severity: "ERROR", group: "MATRIX", sectionId: "s1",
+      ruleId: "r1", ruleIds: ["r1", "r2"], conflictKind: "EXACT_COUNTS_DIFFER", required: 3, available: 2,
+    };
+    new FakeServer().on("GET", `${EXAM_PATH}/check`, {
+      status: 200,
+      body: { ...checkResultWire("INVALID"), groups: [{ group: "MATRIX", status: "FAIL", issues: [conflict] }], paths: [{ pathId: "default", result: "INVALID", issues: [conflict] }] },
+    }).install();
+    renderWithProviders(<ExamReviewCheck exam={{ ...mapExamDetail(examDetailWire()), parts: [part] }} onPreview={() => {}} />);
+    const heading = await screen.findByRole("heading", { name: "Các nhóm kiểm tra" });
+    await waitFor(() => expect(heading.parentElement).toHaveTextContent(R2));
+    expect(heading.parentElement).toHaveTextContent(R1);
   });
 });
