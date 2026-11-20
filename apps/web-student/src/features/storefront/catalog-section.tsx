@@ -235,10 +235,13 @@ export function CatalogSection({
     { value: ALL, label: t("partAll") },
     ...(filtersData?.parts ?? [])
       .filter((part) => !query.kind || part.kindCode === query.kind)
-      .map((part) => ({
-        value: partValue(part.kindCode, part.code),
-        label: query.kind ? part.name : `${part.kindCode} · ${part.name}`,
-      })),
+      .map((part) => {
+        // Tên phần (PART) là nội dung đề (DESIGN mục 8): bọc data-exam-content như chip trên thẻ; Radix dựng
+        // nhãn này cả trong danh sách lẫn ở nút đang chọn, `textValue` giữ gõ tìm theo chữ thuần.
+        const text = query.kind ? part.name : `${part.kindCode} · ${part.name}`;
+        return { value: partValue(part.kindCode, part.code), label: <span data-exam-content>{text}</span>, textValue: text };
+      }),
+    // Tên môn (SUBJECT) qua pickName từ danh mục song ngữ: không đánh dấu, phép kiểm lẫn ngôn ngữ vẫn áp.
     ...(filtersData?.subjects ?? []).map((subject) => ({
       value: `S:${subject.code}`,
       label: pickName(subject, locale),

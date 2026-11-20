@@ -223,6 +223,31 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
     expect(screen.getByRole("option", { name: "Lich su" })).toBeInTheDocument();
   });
 
+
+  it("tiếng Anh: nhãn phần (PART) nằm trong data-exam-content, tên môn (SUBJECT) không (DESIGN mục 8)", async () => {
+    renderWithProviders(<CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page()} />, {
+      locale: "en",
+      messages: enMessages,
+    });
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Section/subject" }));
+
+    const partLabel = within(await screen.findByRole("listbox")).getByText("HSA · Toan hoc va Xu li so lieu");
+    expect(partLabel).toHaveAttribute("data-exam-content");
+    const subjectOption = screen.getByRole("option", { name: "Math" });
+    expect(within(subjectOption).queryByText("Math")).not.toHaveAttribute("data-exam-content");
+  });
+
+  it("tiếng Anh: phần đang chọn cũng hiện trong data-exam-content ở nút Phần/môn", () => {
+    renderWithProviders(
+      <CatalogSection query={{ ...EMPTY_CATALOG_QUERY, kind: "HSA", part: "TOAN" }} filters={FILTERS} products={page()} />,
+      { locale: "en", messages: enMessages },
+    );
+
+    expect(within(screen.getByRole("combobox", { name: "Section/subject" })).getByText("Toan hoc va Xu li so lieu"))
+      .toHaveAttribute("data-exam-content");
+  });
+
   it("trang vượt trang cuối: đưa về trang cuối, không hiện lưới rỗng hay khoảng đảo", async () => {
     renderWithProviders(
       <CatalogSection

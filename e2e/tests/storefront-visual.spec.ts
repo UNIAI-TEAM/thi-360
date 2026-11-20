@@ -71,20 +71,56 @@ async function settle(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
 }
 
-async function check(screen: string, path: string, cell: MatrixCell, ready: (page: Page) => Promise<void>) {
+type ConsoleError = { text: string; url?: string };
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Lỗi tài nguyên được phép (lọc theo URL, không chỉ theo dòng chữ): khách không có phiên thì `/api/v1/me` và
+ * `/api/v1/auth/refresh` trả 401 đúng thiết kế (AC-11), và ô 404 thì bản thân tài liệu điều hướng trả 404.
+ * Mọi lỗi khác, kể cả prefetch RSC tới trang chưa có, vẫn làm ca kiểm thử đỏ.
+ */
+function isExpectedResourceError(error: ConsoleError, path: string, allowDocument404: boolean): boolean {
+  const status = /^Failed to load resource: the server responded with a status of (\d+)/.exec(error.text)?.[1];
+  if (!status || !error.url) return false;
+  const pathname = new URL(error.url).pathname;
+  if (status === "401") return pathname === "/api/v1/me" || pathname === "/api/v1/auth/refresh";
+  return status === "404" && allowDocument404 && pathname === path;
+}
+
+async function check(
+  screen: string,
+  path: string,
+  cell: MatrixCell,
+  ready: (page: Page) => Promise<void>,
+  options: { allowDocument404?: boolean; allowDocumentTitle?: boolean } = {},
+) {
   const context = await openMatrixContext(browser, cell, WEB_URL);
   const page = await context.newPage();
-  const errors: string[] = [];
+  const errors: ConsoleError[] = [];
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error") errors.push({ text: message.text(), url: message.location().url });
   });
-  page.on("pageerror", (error) => errors.push(String(error)));
+  page.on("pageerror", (error) => errors.push({ text: String(error) }));
   try {
     await page.goto(`${WEB_URL}${path}`);
     await ready(page);
     await settle(page);
-    await expectMatrixClean(page, screen, cell, { elementOverflow: { allowAccessibleScroller: true } });
-    expect(errors, `${screen} ${cellLabel(cell)}: không có lỗi console`).toEqual([]);
+    // Tiêu đề tài liệu mang tên bài như lưu (AC-17): nội dung đề theo DESIGN mục 8 nhưng `<title>` không gắn
+    // được `data-exam-content`, nên bỏ qua đúng giá trị tiêu đề ở phép kiểm lẫn ngôn ngữ.
+    const allowLanguage = options.allowDocumentTitle
+      ? [new RegExp(`^${escapeRegExp(await page.title())}$`)]
+      : undefined;
+    await expectMatrixClean(page, screen, cell, {
+      elementOverflow: { allowAccessibleScroller: true },
+      allowLanguage,
+    });
+    const unexpected = errors
+      .filter((error) => !isExpectedResourceError(error, path, options.allowDocument404 ?? false))
+      .map((error) => error.text);
+    expect(unexpected, `${screen} ${cellLabel(cell)}: không có lỗi console`).toEqual([]);
   } finally {
     await context.close();
   }
@@ -114,7 +150,7 @@ for (const cell of matrixCells()) {
     await check("storefront-detail", `/exams/${productCode}`, cell, async (page) => {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(page.getByRole("complementary").getByRole("link", { name: HEADING.buy[cell.lang] })).toBeVisible();
-    });
+    }, { allowDocumentTitle: true });
   });
 
   test(`bài thi đã ngừng bán: ${cellLabel(cell)}`, async () => {
@@ -122,13 +158,13 @@ for (const cell of matrixCells()) {
     await waitForDsData();
     await check("storefront-gone", `/exams/${discontinuedExam().productCode}`, cell, async (page) => {
       await expect(page.getByRole("heading", { level: 1, name: HEADING.gone[cell.lang] })).toBeVisible();
-    });
+    }, { allowDocumentTitle: true });
   });
 
   test(`bài thi không có (404): ${cellLabel(cell)}`, async () => {
     test.setTimeout(120_000);
     await check("storefront-404", "/exams/KHONG-CO-MA-NAY", cell, async (page) => {
       await expect(page.getByRole("heading", { name: HEADING.notFound[cell.lang] })).toBeVisible();
-    });
+    }, { allowDocument404: true });
   });
 }
