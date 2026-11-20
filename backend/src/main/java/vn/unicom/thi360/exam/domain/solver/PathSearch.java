@@ -31,8 +31,10 @@ import java.util.Set;
  *       đột khóa giữa các nhóm.</li>
  * </ol>
  *
- * <p>Thứ tự duyệt xác định: chùm trước, nhóm có chỉ tiêu chủ đề trước, rồi theo nhóm và lớp.
- * Thành viên theo thứ tự ứng viên (cố định với CHECK, xáo với GENERATE).
+ * <p>Thứ tự duyệt xác định: chùm trước, rồi theo nhóm và lớp; riêng bài toán con có cận MAPID
+ * hoặc chỉ tiêu chủ đề từ ma trận MAPID duyệt nhóm có chỉ tiêu chủ đề trước (R5-1: đề kế thừa
+ * không MAPID phải giữ nguyên thứ tự và cùng một đề cho một hạt giống). Thành viên theo thứ tự
+ * ứng viên (cố định với CHECK, xáo với GENERATE).
  */
 final class PathSearch {
 
@@ -68,9 +70,11 @@ final class PathSearch {
     private int[] capRem;
     private final boolean[] relaxed;
 
-    // Independent upper bounds for topic minima. The final flow still enforces exclusive assignment per scope.
+    // Independent upper bounds for topic minima; active only when the sub-problem has a MAPID cap or
+    // a MATRIX-compiled quota (topicOpt). The final flow still enforces exclusive assignment per scope.
     private record TopicNeed(int section, String groupScope, TopicQuota quota) {}
     private record TopicScope(int section, String id) {}
+    private boolean topicOpt;
     private int[][] pairTopic;
     private int[] topicTarget;
     private int[] topicSelected;
@@ -192,8 +196,8 @@ final class PathSearch {
     }
 
     /**
-     * Cặp (nhóm, lớp): ứng viên nhiều đơn vị trước, sau đó nhóm có chỉ tiêu chủ đề tối thiểu,
-     * rồi theo nhóm và lớp. Mỗi (g, c) xuất hiện đúng một lần.
+     * Cặp (nhóm, lớp): ứng viên nhiều đơn vị trước, rồi theo nhóm và lớp; khi {@link #topicOpt} bật,
+     * nhóm có chỉ tiêu chủ đề tối thiểu được duyệt trước. Mỗi (g, c) xuất hiện đúng một lần.
      */
     @SuppressWarnings("unchecked")
     private void buildPairs() {
@@ -214,8 +218,12 @@ final class PathSearch {
                 }
             }
         }
+        // R5-1: ưu tiên nhóm có chỉ tiêu chủ đề chỉ khi bài toán con có cận MAPID hoặc chỉ tiêu chủ đề
+        // biên dịch từ MATRIX; cấu trúc kế thừa không cận phải giữ đúng thứ tự duyệt như develop.
+        topicOpt = !ctx.caps().isEmpty()
+                || ctx.sections().stream().anyMatch(s -> s.subjectQuota().mapidMatrix());
         boolean[] groupHasTopicMin = new boolean[ctx.groups().size()];
-        for (int g = 0; g < groupHasTopicMin.length; g++) {
+        for (int g = 0; topicOpt && g < groupHasTopicMin.length; g++) {
             GroupQuota group = ctx.groups().get(g).group();
             List<TopicQuota> own = group.slotParent() == null
                     ? group.topicQuotas() : group.slotParent().topicQuotas();
@@ -335,6 +343,12 @@ final class PathSearch {
     }
 
     private void buildTopicBounds() {
+        topicTarget = new int[0];
+        topicSelected = new int[0];
+        pairTopic = new int[0][];
+        if (!topicOpt) {
+            return;
+        }
         List<TopicNeed> needs = new ArrayList<>();
         for (int s = 0; s < ctx.sections().size(); s++) {
             for (TopicQuota quota : ctx.sections().get(s).subjectQuota().topicQuotas()) {
