@@ -36,7 +36,7 @@ final class PreviewSectionTarget {
                 }
             }
         }
-        throw new NotFoundException("SECTION_NOT_FOUND", "Exam section not found");
+        throw new NotFoundException("SECTION_NOT_FOUND", null);
     }
 
     private static Selection fixed(ExamPart part, ExamSection section, Integer requestedCount) {
