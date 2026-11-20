@@ -64,22 +64,22 @@ describe("phiên tùy chọn cho trang công khai (AC-11)", () => {
   });
 
   it("cookie truy cập hết hạn nhưng phiên còn: làm mới xong gọi lại /me và trả đúng phiên", async () => {
+    // Một lượt duy nhất: /me 401 -> refresh 200 -> /me 200. Đếm lời gọi trong chính implementation, không đọc
+    // `mock.calls` (bản ghi được thêm trước khi implementation chạy, dễ đếm lệch).
+    let meCalls = 0;
     fetchMock.mockImplementation(async (input) => {
       const path = requestPath(input);
       if (path === "/api/v1/auth/refresh") return json(200, {});
-      return json(401, UNAUTHORIZED);
+      meCalls += 1;
+      return meCalls > 1 ? json(200, STUDENT_SESSION) : json(401, UNAUTHORIZED);
     });
-    await expect(loadOptionalSession()).resolves.toBeNull();
-    // Lần hai: /me 401 -> refresh 200 -> /me 200.
-    fetchMock.mockImplementation(async (input) => {
-      const path = requestPath(input);
-      if (path === "/api/v1/auth/refresh") return json(200, {});
-      if (fetchMock.mock.calls.filter(([call]) => requestPath(call) === "/api/v1/me").length > 1) {
-        return json(200, STUDENT_SESSION);
-      }
-      return json(401, UNAUTHORIZED);
-    });
+
     await expect(loadOptionalSession()).resolves.toMatchObject({ username: "student01", access: "EXAM" });
+    expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toEqual([
+      "/api/v1/me",
+      "/api/v1/auth/refresh",
+      "/api/v1/me",
+    ]);
   });
   it("làm mới xong mà /me vẫn 401 thì coi là khách, không gọi lại lần nữa", async () => {
     fetchMock.mockImplementation(async (input) =>
