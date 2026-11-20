@@ -185,10 +185,12 @@ export function enforcementOf(value: QuotaEnforcement | undefined): QuotaEnforce
 // ---------------------------------------------------------------- chặn lưu
 
 export interface SaveBlocker {
-  kind: "MATRIX_PERCENT" | "TOPIC_MAX" | "TOPIC_PERCENT" | "TOTAL_CHANGE";
+  kind: "MATRIX_PERCENT" | "TOPIC_MAX" | "TOPIC_PERCENT" | "TOTAL_CHANGE" | "MAPID_GROUP";
   sectionId: string;
   /** Có khi lỗi nằm ở nhóm; `null` khi ở môn. */
   blockId: string | null;
+  /** `MAPID_GROUP`: quy tắc đầu tiên trỏ tới nhóm đã xóa, để thông báo gọi tên quy tắc. */
+  ruleId?: string;
 }
 
 /** Môn có bảng nhập theo tỷ lệ (ma trận, chỉ tiêu chủ đề hoặc chỉ tiêu dạng trả lời): đổi tổng số câu thì số câu của các bảng này đổi theo. */
@@ -260,6 +262,10 @@ export function saveBlockers(
         blockers.push({ kind: "MATRIX_PERCENT", sectionId: section.id, blockId: null });
       }
       topicIssue(section.topicQuotas, section.id, null);
+      // Quy tắc MAPID trỏ tới nhóm đã xóa: máy chủ từ chối `groupId` lạ, người dùng sửa hoặc xóa quy tắc trước khi lưu.
+      const groupIds = new Set(section.blocks.map((block) => block.id));
+      const orphan = section.mapidRules?.find((rule) => !!rule.groupId && !groupIds.has(rule.groupId));
+      if (orphan) blockers.push({ kind: "MAPID_GROUP", sectionId: section.id, blockId: null, ruleId: orphan.id });
       for (const block of section.blocks) {
         if (validateMatrix(block.matrix, block.questionCount, axes).some((issue) => issue.code === "PERCENT_TOTAL")) {
           blockers.push({ kind: "MATRIX_PERCENT", sectionId: section.id, blockId: block.id });

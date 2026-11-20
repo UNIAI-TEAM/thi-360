@@ -15,6 +15,8 @@ import { applyTopicTotal, countFromPercent, ratePercent } from "../allocation";
 import type { MatrixAxes } from "../matrix";
 import { roundForDisplay } from "../display-number";
 import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
+import { isHsaExam, useHsaExam } from "../hsa-enforcement";
+import { mapidViewMode } from "../mapid-rules";
 import { useAvailableQuestions } from "../queries";
 import type { ExamSection, ExamTemplate, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, droppedSlotIndexes, rateSetMismatch, resizeSets, switchSetMode, withEveryChildDefault } from "./block-form";
@@ -29,6 +31,7 @@ import { BlockSetConditions } from "./block-set-conditions";
 import { LOCKED_FIELD } from "./locked-field";
 import { BlockSwitches } from "./block-switches";
 import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { BlockMapidRules } from "./block-mapid-rules";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
@@ -140,6 +143,9 @@ export function BlockEditor({
         }
       : {};
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
+  // Môn HSA dùng ma trận MAPID: phạm vi và chỉ tiêu chủ đề của nhóm không còn dùng, thay bằng quy tắc của môn (cùng điều kiện với màn môn).
+  const hsaContext = useHsaExam();
+  const mapidMode = hsaContext || isHsaExam(examKind) ? mapidViewMode(section) : null;
 
   const isSet = isSetBlock(block);
   const flexible = isFlexibleSet(block);
@@ -499,28 +505,38 @@ export function BlockEditor({
 
       <BlockSwitches block={block} onChange={update} template={template} />
 
-      <KnowledgeScopeField
-        value={block.knowledgeScope}
-        onChange={(knowledgeScope) => update({ knowledgeScope })}
-        inherited={{ scope: section.knowledgeScope }}
-        reference={reference}
-        subjectCode={subjectCode}
-        name={block.name}
-        anchor={anchor("scope")}
-        strand={examKind !== undefined && STRAND_KINDS.includes(examKind)}
-        openRequest={mapidRequest}
-        everyChild={
-          isSet
-            ? {
-                checked: block.knowledgeScope?.everyChildInScope ?? false,
-                onChange: setEveryChild,
-                anchor: anchor("everyChildInScope"),
-              }
-            : undefined
-        }
-      />
+      {mapidMode !== null ? (
+        <BlockMapidRules section={section} blockId={block.id} mode={mapidMode} reference={reference} onOpenSection={onOpenSection} anchor={anchor("scope")} />
+      ) : (
+        <KnowledgeScopeField
+          value={block.knowledgeScope}
+          onChange={(knowledgeScope) => update({ knowledgeScope })}
+          inherited={{ scope: section.knowledgeScope }}
+          reference={reference}
+          subjectCode={subjectCode}
+          name={block.name}
+          anchor={anchor("scope")}
+          strand={examKind !== undefined && STRAND_KINDS.includes(examKind)}
+          openRequest={mapidRequest}
+          everyChild={
+            isSet
+              ? {
+                  checked: block.knowledgeScope?.everyChildInScope ?? false,
+                  onChange: setEveryChild,
+                  anchor: anchor("everyChildInScope"),
+                }
+              : undefined
+          }
+        />
+      )}
 
-      <BlockConditions block={block} reference={reference} onChange={update} onAddMapid={() => setMapidRequest((count) => count + 1)} />
+      <BlockConditions
+        block={block}
+        reference={reference}
+        onChange={update}
+        onAddMapid={() => setMapidRequest((count) => count + 1)}
+        mapidManaged={mapidMode !== null}
+      />
 
       {isSet && <BlockSetConditions block={block} reference={reference} subjectCode={subjectCode} onChange={update} commandCount={commandCount} locked={rowsLocked} />}
 
@@ -596,7 +612,7 @@ export function BlockEditor({
       </details>
 
       {/* Nhóm lấy phần còn lại không có bảng chỉ tiêu chủ đề: lỗi 422 của nó hiện như cảnh báo chung (R3-01). */}
-      {!remainder && reference ? (
+      {mapidMode !== null ? null : !remainder && reference ? (
         <TopicQuotaTable
           id={block.id}
           quotas={block.topicQuotas ?? []}

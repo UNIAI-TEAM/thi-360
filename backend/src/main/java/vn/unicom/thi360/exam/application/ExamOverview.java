@@ -68,7 +68,8 @@ final class ExamOverview {
                     && !sections.containsKey(part.id() + "\u0000" + fixed.getFirst().id())) {
                 ExamSection s = fixed.getFirst();
                 fixed = List.of(new ExamSection(s.id(), s.subjectCode(), count, s.knowledgeScope(), s.answerQuotas(),
-                        s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas(), s.audioRequirement()));
+                        s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas(), s.audioRequirement(),
+                        s.mapidMode(), s.mapidRules()));
             }
             return new ExamPart(part.id(), part.order(), part.name(),
                     change != null && change.durationChanged() ? row.durationMinutes() : part.durationMinutes(),
@@ -196,7 +197,8 @@ final class ExamOverview {
         return new ExamSection(section.id(), section.subjectCode(),
                 change.countChanged() ? row.questionCount() : section.questionCount(),
                 section.knowledgeScope(), section.answerQuotas(), section.matrix(), section.choiceGroup(),
-                section.blocks(), section.topicQuotas(), section.audioRequirement());
+                section.blocks(), section.topicQuotas(), section.audioRequirement(), section.mapidMode(),
+                section.mapidRules());
     }
 
     /** A changed section count means the expert never saw the option as it now is. */

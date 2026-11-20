@@ -271,7 +271,16 @@ function toCountBody(query: AudioCountQuery): ApiAvailableQuestionsQuery {
     answerTypes: query.answerTypes.length ? query.answerTypes : undefined,
     childAnswerType: query.childAnswerType ?? undefined,
     knowledgeScope: query.knowledgeScope
-      ? { nodeIds: query.knowledgeScope.nodeIds, competencyCodes: query.knowledgeScope.competencyCodes }
+      ? {
+          nodeIds: query.knowledgeScope.nodeIds,
+          competencyCodes: query.knowledgeScope.competencyCodes,
+          // Mỗi quy tắc "Chỉ lấy từ" là một nhóm MAPID, câu phải khớp mọi nhóm (UNI-2758); `nodeIds` chỉ còn cho phạm vi kiểu cũ.
+          ...(query.knowledgeScope.nodeGroups?.length ? { nodeGroups: query.knowledgeScope.nodeGroups } : {}),
+          // Chùm của quy tắc "Chỉ lấy từ" chỉ đếm khi cả chùm cùng phạm vi; loại trừ của nhóm khác (UNI-2758) chỉ gửi khi có.
+          ...(query.knowledgeScope.everyChildInScope ? { everyChildInScope: true } : {}),
+          ...(query.knowledgeScope.everyChildSameNode ? { everyChildSameNode: true } : {}),
+          ...(query.knowledgeScope.excludedNodeIds?.length ? { excludedNodeIds: query.knowledgeScope.excludedNodeIds } : {}),
+        }
       : undefined,
     tagCodes: query.tagCodes?.length ? query.tagCodes : undefined,
     competencyCodes: query.competencyCodes?.length ? query.competencyCodes : undefined,

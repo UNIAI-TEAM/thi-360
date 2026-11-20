@@ -475,6 +475,14 @@ export function mapIssue(issue: ApiIssue): CheckIssue {
     slotIndex: issue.location?.slotIndex ?? null,
     childPosition: issue.location?.childPosition ?? null,
     segmentCode: "segmentCode" in issue ? (issue.segmentCode ?? null) : null,
+    // Trường của quy tắc MAPID (UNI-2758) chỉ có khi máy chủ gửi: vấn đề khác giữ nguyên hình dạng cũ.
+    ...(issue.ruleId ? { ruleId: issue.ruleId } : {}),
+    ...(issue.nodeIds?.length ? { nodeIds: issue.nodeIds } : {}),
+    ...("ruleIds" in issue && issue.ruleIds?.length ? { ruleIds: issue.ruleIds } : {}),
+    ...("conflictKind" in issue && issue.conflictKind ? { conflictKind: issue.conflictKind } : {}),
+    ...("requiredSets" in issue && issue.requiredSets != null ? { requiredSets: issue.requiredSets } : {}),
+    ...("availableSets" in issue && issue.availableSets != null ? { availableSets: issue.availableSets } : {}),
+    ...("availableSingles" in issue && issue.availableSingles != null ? { availableSingles: issue.availableSingles } : {}),
   };
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }

@@ -11,6 +11,7 @@ import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import { EXAMS_QUERY_KEYS } from "../keys";
 import { useExamStructure } from "../queries";
 import {
+  buildMapidRuleIndex,
   buildTopicQuotaIndex,
   commandDenominators,
   competencyName,
@@ -18,8 +19,10 @@ import {
   complianceLevel,
   droppedCount,
   examQuotaNames,
+  isAtLeastRow,
   isUnclassifiedRow,
   parseCriterion,
+  resolveMapidRow,
   parseScope,
   topicAssignments,
   topicQuotaPending,
@@ -27,7 +30,9 @@ import {
 } from "../review-compliance";
 import type { ExamDetail } from "../types";
 import type { PreviewCompliance, PreviewPaper, PreviewQuestion } from "../review-types";
+import { ExamContentText, markExamContent } from "./exam-content-text";
 import { useLookup } from "./exam-review-shared";
+import { useMapidRuleText } from "./mapid-rules-table";
 
 const LEVEL_TONE: Record<ComplianceLevel, StatusTone> = {
   OK: "success",
@@ -62,6 +67,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   const assigned = useMemo(() => topicAssignments(paper, original), [paper, original]);
   const structure = useExamStructure(examId ?? "", undefined, Boolean(examId)).data;
   const quotas = useMemo(() => buildTopicQuotaIndex(structure), [structure]);
+  const rules = useMemo(() => buildMapidRuleIndex(structure), [structure]);
+  const { sentence } = useMapidRuleText(reference);
   const { columns, cards } = useMemo(() => {
     const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
     const blocks = new Map(paper.parts.flatMap((part) => part.blocks).map((block) => [block.blockId, block]));
@@ -91,6 +98,14 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         }
         case "EXAM":
           return t("criterion.EXAM", { names: examQuotaNames(ref.codes, reference).join(" + ") });
+        case "MAPID": {
+          // Quy tắc của dòng gọi bằng câu mô tả của nó; "Chỉ xuất hiện ở nhóm này" có hai dòng (ngoài nhóm, số câu trong nhóm).
+          const found = rules ? resolveMapidRow(row, rules) : null;
+          if (!found) return t("criterion.MAPID_UNKNOWN", { id: ref.ruleId });
+          const text = sentence(found.section, found.rule, true);
+          if (found.rule.type !== "ONLY_IN_GROUP") return t("criterion.MAPID", { sentence: text });
+          return t(ref.count ? "criterion.MAPID_COUNT" : "criterion.MAPID_OUTSIDE", { sentence: text });
+        }
         default:
           return ref.raw;
       }
@@ -100,7 +115,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       if (ref.kind === "SECTION") return lookup.subject(sections.get(ref.id)?.subjectCode ?? "") || t("scope.EXAM");
       if (ref.kind === "BLOCK") {
         const block = blocks.get(ref.id);
-        return block ? `${lookup.subject(block.subjectCode)} · ${block.blockName}` : ref.id;
+        return block ? `${lookup.subject(block.subjectCode)} · ${markExamContent(block.blockName)}` : ref.id;
       }
       return t("scope.EXAM");
     };
@@ -108,7 +123,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       t("level", { enforcement: t(`enforcement.${row.enforcement}`), unit: t(`unit.${row.basis}`) });
     const required = (row: PreviewCompliance) => {
       if (isUnclassifiedRow(row) || row.required === null) return t("requiredNone");
-      const atLeast = parseCriterion(row.criterion).kind === "TOPIC";
+      const atLeast = isAtLeastRow(row, rules);
       const removed = droppedCount(row.note);
       const value = removed > 0 ? t("requiredDropped", { value: number(row.required), count: removed }) : number(row.required);
       return atLeast ? t("requiredAtLeast", { value }) : value;
@@ -134,13 +149,13 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         );
       }
       if (topicQuotaPending(row, quotas)) return <StatusChip tone="neutral">{t("result.PENDING")}</StatusChip>;
-      const value = complianceLevel(row);
+      const value = complianceLevel(row, rules);
       return <StatusChip tone={LEVEL_TONE[value]}>{t(`result.${value}`)}</StatusChip>;
     };
 
     const columns: ColumnDef<PreviewCompliance>[] = [
-      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text">{criterion(row.original)}</span> },
-      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32">{scope(row.original)}</span> },
+      { id: "criterion", header: t("columns.criterion"), cell: ({ row }) => <span className="block min-w-32 font-semibold text-text"><ExamContentText text={criterion(row.original)} /></span> },
+      { id: "scope", header: t("columns.scope"), cell: ({ row }) => <span className="block min-w-32"><ExamContentText text={scope(row.original)} /></span> },
       { id: "level", header: t("columns.level"), cell: ({ row }) => <span>{level(row.original)}</span> },
       { id: "required", header: () => <span className="block text-right">{t("columns.required")}</span>, cell: ({ row }) => <span className="block min-w-16 text-right">{required(row.original)}</span> },
       { id: "actual", header: () => <span className="block text-right">{t("columns.actual")}</span>, cell: ({ row }) => <span className="block min-w-16 text-right">{actual(row.original)}</span> },
@@ -150,8 +165,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
     const cards: TableCards<PreviewCompliance> = {
       render: (row) => (
         <ListCard
-          title={criterion(row)}
-          caption={scope(row)}
+          title={<ExamContentText text={criterion(row)} />}
+          caption={<ExamContentText text={scope(row)} />}
           status={result(row)}
           meta={[
             { label: t("columns.level"), value: level(row) },
@@ -163,11 +178,11 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
       ),
     };
     return { columns, cards };
-  }, [t, tContent, format, lookup, reference, paper, assigned, quotas]);
+  }, [t, tContent, format, lookup, reference, paper, assigned, quotas, rules, sentence]);
 
   if (compliance.length === 0 && dropped.length === 0) return null;
-  const deviations = compliance.filter((row) => !topicQuotaPending(row, quotas) && complianceLevel(row) !== "OK");
-  const blocking = deviations.some((row) => complianceLevel(row) === "REQUIRED_DEVIATION");
+  const deviations = compliance.filter((row) => !topicQuotaPending(row, quotas) && complianceLevel(row, rules) !== "OK");
+  const blocking = deviations.some((row) => complianceLevel(row, rules) === "REQUIRED_DEVIATION");
 
   return (
     <section aria-labelledby="preview-compliance-title" className="flex flex-col gap-3">
@@ -244,7 +259,7 @@ function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; 
         const key = exam.scope === "PART" ? (subject ? "denominator.part" : "denominator.partNoSubject") : subject ? "denominator.whole" : "denominator.wholeNoSubject";
         return (
           <li key={denominator.scope} className="text-label font-semibold text-text">
-            {t(key, { part: paper.parts.map((part) => part.name).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })}
+            <ExamContentText text={t(key, { part: paper.parts.map((part) => markExamContent(part.name)).join(", "), count: denominator.total, ...(subject ? { subject } : {}) })} />
           </li>
         );
       })}

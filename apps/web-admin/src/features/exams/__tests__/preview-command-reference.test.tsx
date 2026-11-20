@@ -93,7 +93,9 @@ describe("đối chiếu theo lệnh: mẫu số và dòng Chưa phân loại (R
   it("bài theo phần: mẫu số nêu phần thay cho 'cả môn'", async () => {
     renderTable([row("DIFFICULTY:RECOGNITION", 2, 2), row("DIFFICULTY:COMPREHENSION", 4, 4)], "PART");
 
-    expect(await screen.findByText("Mẫu số: Toán · Phan II · 6 lệnh")).toBeInTheDocument();
+    // F7 gói tên phần trong `span[data-exam-content]` nên khớp theo textContent của dòng, không phải một nút chữ.
+    const denominator = await screen.findByText((_, element) => element?.tagName === "LI" && element.textContent === "Mẫu số: Toán · Phan II · 6 lệnh");
+    expect(denominator.querySelector("[data-exam-content]")).toHaveTextContent("Phan II");
   });
 
   it("có dòng Chưa phân loại ở cả khối lớp và độ khó, kết quả Thiếu nhãn, không hiện mã thô", async () => {
