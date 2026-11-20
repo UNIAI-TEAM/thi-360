@@ -7802,6 +7802,8 @@
         "properties" : {
           "code" : {
             "description" : "Mã sản phẩm",
+            "maxLength" : 100,
+            "minLength" : 0,
             "type" : "string"
           },
           "seenPrice" : {
@@ -7816,6 +7818,8 @@
           },
           "voucherCode" : {
             "description" : "Mã voucher tùy chọn",
+            "maxLength" : 100,
+            "minLength" : 0,
             "type" : "string"
           }
         },
