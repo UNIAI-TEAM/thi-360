@@ -31,8 +31,8 @@ import java.util.Set;
  *       đột khóa giữa các nhóm.</li>
  * </ol>
  *
- * <p>Thứ tự duyệt cố định (CHECK) hay theo danh sách đã xáo (GENERATE): lớp theo thứ tự xuất hiện
- * đầu tiên trong danh sách ứng viên, thành viên theo thứ tự ứng viên.
+ * <p>Thứ tự duyệt xác định: chùm trước, nhóm có chỉ tiêu chủ đề trước, rồi theo nhóm và lớp.
+ * Thành viên theo thứ tự ứng viên (cố định với CHECK, xáo với GENERATE).
  */
 final class PathSearch {
 
@@ -67,6 +67,13 @@ final class PathSearch {
     private final List<int[]> classCaps = new ArrayList<>();
     private int[] capRem;
     private final boolean[] relaxed;
+
+    // Independent upper bounds for topic minima. The final flow still enforces exclusive assignment per scope.
+    private record TopicNeed(int section, String groupScope, TopicQuota quota) {}
+    private record TopicScope(int section, String id) {}
+    private int[][] pairTopic;
+    private int[] topicTarget;
+    private int[] topicSelected;
 
     PathSearch(Prep.SubproblemContext ctx, Runnable deadlineCheck) {
         this(ctx, deadlineCheck, null);
@@ -185,9 +192,8 @@ final class PathSearch {
     }
 
     /**
-     * Cặp (nhóm, lớp) theo thứ tự duyệt: cặp của ứng viên nhiều đơn vị (chùm) trước, rồi theo
-     * nhóm, rồi thứ tự lớp. Mỗi (g, c) xuất hiện đúng một lần vì thành viên được liệt kê theo
-     * nhóm rồi chỉ số ứng viên.
+     * Cặp (nhóm, lớp): ứng viên nhiều đơn vị trước, sau đó nhóm có chỉ tiêu chủ đề tối thiểu,
+     * rồi theo nhóm và lớp. Mỗi (g, c) xuất hiện đúng một lần.
      */
     @SuppressWarnings("unchecked")
     private void buildPairs() {
@@ -208,11 +214,26 @@ final class PathSearch {
                 }
             }
         }
+        boolean[] groupHasTopicMin = new boolean[ctx.groups().size()];
+        for (int g = 0; g < groupHasTopicMin.length; g++) {
+            GroupQuota group = ctx.groups().get(g).group();
+            List<TopicQuota> own = group.slotParent() == null
+                    ? group.topicQuotas() : group.slotParent().topicQuotas();
+            for (TopicQuota quota : own) {
+                if (quota.count() > 0) {
+                    groupHasTopicMin[g] = true;
+                    break;
+                }
+            }
+        }
         pairs.sort((a, b) -> {
             int ua = unitsOfMember(a[0], a[1]);
             int ub = unitsOfMember(b[0], b[1]);
             if (ua != ub) {
                 return Integer.compare(ub, ua);
+            }
+            if (groupHasTopicMin[a[0]] != groupHasTopicMin[b[0]]) {
+                return groupHasTopicMin[a[0]] ? -1 : 1;
             }
             if (a[0] != b[0]) {
                 return Integer.compare(a[0], b[0]);
@@ -264,6 +285,7 @@ final class PathSearch {
             pairMembers[p] = ms;
             pairUnits[p] = unitsOfMember(g, c);
         }
+        buildTopicBounds();
         independentPair = new boolean[nPairs];
         Arrays.fill(independentPair, true);
         Map<String, Integer> keyOwner = new HashMap<>();
@@ -310,6 +332,70 @@ final class PathSearch {
             }
             suffixUnits[p][pairGroup[p]] += pairUnits[p] * pairMembers[p].size();
         }
+    }
+
+    private void buildTopicBounds() {
+        List<TopicNeed> needs = new ArrayList<>();
+        for (int s = 0; s < ctx.sections().size(); s++) {
+            for (TopicQuota quota : ctx.sections().get(s).subjectQuota().topicQuotas()) {
+                if (quota.count() > 0) needs.add(new TopicNeed(s, null, quota));
+            }
+        }
+        Set<TopicScope> seen = new HashSet<>();
+        for (int g = 0; g < ctx.groups().size(); g++) {
+            GroupQuota group = ctx.groups().get(g).group();
+            String scope = TopicAssignments.scopeId(group);
+            if (!seen.add(new TopicScope(ctx.sectionOf()[g], scope))) continue;
+            List<TopicQuota> quotas = group.slotParent() == null
+                    ? group.topicQuotas() : group.slotParent().topicQuotas();
+            for (TopicQuota quota : quotas) {
+                if (quota.count() > 0) needs.add(new TopicNeed(ctx.sectionOf()[g], scope, quota));
+            }
+        }
+        topicTarget = new int[needs.size()];
+        topicSelected = new int[needs.size()];
+        if (needs.isEmpty()) {
+            pairTopic = new int[0][];
+            return;
+        }
+        for (int q = 0; q < needs.size(); q++) topicTarget[q] = needs.get(q).quota().count();
+        pairTopic = new int[nPairs][needs.size()];
+        for (int p = 0; p < nPairs; p++) {
+            int g = pairGroup[p];
+            String scope = TopicAssignments.scopeId(ctx.groups().get(g).group());
+            PathCandidate candidate = ctx.cands().get(g).get(pairMembers[p].getFirst()[1]);
+            for (int q = 0; q < needs.size(); q++) {
+                if ((steps++ & 0x3FF) == 0) deadlineCheck.run();
+                TopicNeed need = needs.get(q);
+                if (need.section() != ctx.sectionOf()[g]
+                        || (need.groupScope() != null && !need.groupScope().equals(scope))) continue;
+                for (CountingUnit unit : candidate.units()) {
+                    if (need.quota().matches(scope, unit)) pairTopic[p][q]++;
+                }
+            }
+        }
+    }
+
+    /**
+     * A necessary bound only: it may count the same remaining unit for several minima and may reuse a cap budget
+     * between pairs. Both relaxations overestimate supply, so a failed bound cannot discard a valid assignment.
+     */
+    private boolean topicsPossible(int p) {
+        for (int q = 0; q < topicTarget.length; q++) {
+            long supply = topicSelected[q];
+            for (int j = p; j < nPairs && supply < topicTarget[q]; j++) {
+                if ((steps++ & 0x3FF) == 0) deadlineCheck.run();
+                if (pairTopic[j][q] == 0) continue;
+                int max = Math.min(pairMembers[j].size(), remUnits[pairGroup[j]] / pairUnits[j]);
+                int[] caps = classCaps.get(pairClass[j]);
+                for (int k = 0; k < caps.length; k++) {
+                    if (caps[k] > 0) max = Math.min(max, capRem[k] / caps[k]);
+                }
+                supply += (long) max * pairTopic[j][q];
+            }
+            if (supply < topicTarget[q]) return false;
+        }
+        return true;
     }
 
     private int unitsOfMember(int g, int c) {
@@ -396,6 +482,9 @@ final class PathSearch {
             for (int k = 0; k < capVec.length; k++) {
                 capRem[k] -= capVec[k] * t;
             }
+            for (int q = 0; q < topicSelected.length; q++) {
+                topicSelected[q] += pairTopic[p][q] * t;
+            }
             remUnits[g] -= perUnits * t;
             consumed[c] += t;
             appliedT = t;
@@ -410,6 +499,9 @@ final class PathSearch {
             }
             for (int k = 0; k < capVec.length; k++) {
                 capRem[k] += capVec[k] * appliedT;
+            }
+            for (int q = 0; q < topicSelected.length; q++) {
+                topicSelected[q] -= pairTopic[p][q] * appliedT;
             }
             remUnits[g] += perUnits * appliedT;
             consumed[c] -= appliedT;
@@ -436,6 +528,7 @@ final class PathSearch {
     }
 
     private void pushPairs(Deque<Object> stack, int p) {
+        if (!topicsPossible(p)) return;
         if (p == nPairs) {
             // đích: mọi chỉ tiêu còn thiếu đã về 0 và đơn vị của từng nhóm đủ đúng
             for (int v : rem) {
@@ -484,6 +577,7 @@ final class PathSearch {
         if ((steps++ & 0x3FF) == 0) {
             deadlineCheck.run();
         }
+        if (!topicsPossible(p)) return false;
         if (p == nPairs) {
             for (int v : rem) {
                 if (v > 0) {
@@ -526,8 +620,14 @@ final class PathSearch {
             for (int k = 0; k < caps.length; k++) {
                 capRem[k] -= caps[k] * t;
             }
+            for (int q = 0; q < topicSelected.length; q++) {
+                topicSelected[q] += pairTopic[p][q] * t;
+            }
             remUnits[g] -= pairUnits[p] * t;
             boolean feasible = classFeasible(p + 1);
+            for (int q = 0; q < topicSelected.length; q++) {
+                topicSelected[q] -= pairTopic[p][q] * t;
+            }
             remUnits[g] += pairUnits[p] * t;
             for (int k = 0; k < caps.length; k++) {
                 capRem[k] += caps[k] * t;

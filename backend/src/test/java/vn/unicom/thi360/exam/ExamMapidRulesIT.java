@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -122,7 +123,8 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         for (int i = 0; i < 150; i++) {
             UUID[] knowledge = i < 30 ? new UUID[]{nodes.get(0)} : new UUID[0];
             for (String type : List.of("SINGLE_CHOICE", "SHORT_ANSWER")) {
-                UUID id = single(type, knowledge);
+                UUID id = UUID.nameUUIDFromBytes(("F9-" + type + "-" + i).getBytes(StandardCharsets.UTF_8));
+                single(id, type, knowledge);
                 setDimensions(id, grades[(i / 4) % 2], levels[i % 4]);
             }
         }
@@ -143,9 +145,11 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         long start = System.nanoTime();
         JsonNode response = previewResponse(exam, 1);
         long millis = (System.nanoTime() - start) / 1_000_000;
+        System.out.println("PERF subject-group-preview ms=" + millis);
         assertThat(millis).as("preview wall time in milliseconds").isLessThan(3000);
         assertThat(carriers(questionIds(response.path("paper")), nodes.get(0))).isEqualTo(3);
         assertThat(carriers(blockQuestionIds(response.path("paper"), "sa"), nodes.get(0))).isGreaterThanOrEqualTo(2);
+        assertValid(check(exam));
     }
 
     private void setDimensions(UUID id, String grade, String level) {
@@ -724,7 +728,10 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
     }
 
     private UUID single(String type, UUID... knowledge) {
-        UUID id = UUID.randomUUID();
+        return single(UUID.randomUUID(), type, knowledge);
+    }
+
+    private UUID single(UUID id, String type, UUID... knowledge) {
         jdbc.update("insert into questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
                 + "values (?,?,?,'READY',?,1,1)", id, "M-" + id, type, subjectId);
         String body = type.equals("SHORT_ANSWER")
