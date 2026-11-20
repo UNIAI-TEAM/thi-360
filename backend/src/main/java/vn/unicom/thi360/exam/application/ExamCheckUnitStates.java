@@ -113,6 +113,7 @@ public class ExamCheckUnitStates {
             var oldUnits = store.load(examId);
             var config = ExamCheckFingerprint.Config.from(snapshot.exam());
             var inputs = snapshot.persistenceInput();
+            var unitCatalog = new ExamCheckUnitCatalogSlice(catalog, mapper);
             Map<String, ExamSection> sections = ExamCheckUnitEngine.sections(document);
             for (var unit : plan.units()) {
                 if (unit.key().sectionIds().stream().anyMatch(incomplete::contains)) {
@@ -121,7 +122,7 @@ public class ExamCheckUnitStates {
                 }
                 List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
                 var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections, document.examQuotas(),
-                        config, inputs.profileRevision(), inputs.catalogRevision(), unit.sections());
+                        config, inputs.profileRevision(), unitCatalog, unit.sections());
                 UUID subject = catalog.findActiveItem("SUBJECT", unit.key().subjectCode()).map(item -> item.id()).orElse(null);
                 long revision = subject == null ? 0 : inputs.sourceRevisions().path(subject.toString()).asLong(0);
                 var saved = oldUnits.get(identity.key());

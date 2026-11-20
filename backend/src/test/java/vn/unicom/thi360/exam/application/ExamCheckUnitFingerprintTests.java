@@ -2,15 +2,19 @@ package vn.unicom.thi360.exam.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.mockito.Mockito.mock;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.domain.ExamQuota;
 import vn.unicom.thi360.exam.domain.ExamSection;
 
 class ExamCheckUnitFingerprintTests {
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExamCheckUnitFingerprint fingerprint = new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper));
+    private final ExamCheckUnitCatalogSlice catalog = new ExamCheckUnitCatalogSlice(mock(CatalogLookup.class), mapper);
     private final ExamCheckFingerprint.Config config = new ExamCheckFingerprint.Config(null, "SUBJECT", null, null,
             null, null, null, false, null, null, null, null, null);
 
@@ -19,12 +23,12 @@ class ExamCheckUnitFingerprintTests {
         var first = section("a", "Original", 2);
         var renamed = section("a", "Renamed", 2);
         var second = section("b", "Second", 3);
-        var before = fingerprint.calculate("TOAN", List.of(first, second), List.of(), config, 1L, 2L, List.of());
-        var reordered = fingerprint.calculate("TOAN", List.of(second, renamed), List.of(), config, 1L, 2L, List.of());
+        var before = fingerprint.calculate("TOAN", List.of(first, second), List.of(), config, 1L, catalog, List.of());
+        var reordered = fingerprint.calculate("TOAN", List.of(second, renamed), List.of(), config, 1L, catalog, List.of());
         assertThat(reordered).isEqualTo(before);
         assertThat(before.sectionIds()).containsExactly("a", "b");
         var changed = fingerprint.calculate("TOAN", List.of(section("a", "Original", 4), second),
-                List.of(), config, 1L, 2L, List.of());
+                List.of(), config, 1L, catalog, List.of());
         assertThat(changed.key()).isEqualTo(before.key());
         assertThat(changed.fingerprint()).isNotEqualTo(before.fingerprint());
     }
@@ -32,12 +36,12 @@ class ExamCheckUnitFingerprintTests {
     @Test
     void onlyRequiredQuotasForTheSubjectChangeItsFingerprint() throws Exception {
         var section = section("a", "A", 2);
-        var empty = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L, List.of());
+        var empty = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, catalog, List.of());
         var other = quota("LY", "REQUIRED");
         var reference = quota("TOAN", "REFERENCE");
-        assertThat(fingerprint.calculate("TOAN", List.of(section), List.of(other, reference), config, 1L, 2L, List.of()))
+        assertThat(fingerprint.calculate("TOAN", List.of(section), List.of(other, reference), config, 1L, catalog, List.of()))
                 .isEqualTo(empty);
-        var required = fingerprint.calculate("TOAN", List.of(section), List.of(quota("TOAN", "REQUIRED")), config, 1L, 2L, List.of());
+        var required = fingerprint.calculate("TOAN", List.of(section), List.of(quota("TOAN", "REQUIRED")), config, 1L, catalog, List.of());
         assertThat(required.key()).isEqualTo(empty.key());
         assertThat(required.fingerprint()).isNotEqualTo(empty.fingerprint());
     }
@@ -47,8 +51,8 @@ class ExamCheckUnitFingerprintTests {
         var section = new ExamSection("science", "TOAN", null, null, null, null, null, List.of());
         var seventeen = new vn.unicom.thi360.exam.domain.solver.SectionOnPath("TOAN", "science", 17, null, List.of());
         var eighteen = new vn.unicom.thi360.exam.domain.solver.SectionOnPath("TOAN", "science", 18, null, List.of());
-        var before = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L, List.of(seventeen));
-        var after = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, 2L, List.of(eighteen));
+        var before = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, catalog, List.of(seventeen));
+        var after = fingerprint.calculate("TOAN", List.of(section), List.of(), config, 1L, catalog, List.of(eighteen));
         assertThat(after.key()).isEqualTo(before.key());
         assertThat(after.fingerprint()).isNotEqualTo(before.fingerprint());
     }

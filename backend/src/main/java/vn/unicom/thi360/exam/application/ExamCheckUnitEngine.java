@@ -59,6 +59,7 @@ public class ExamCheckUnitEngine {
         var persisted = store.load(snapshot.exam().getId());
         var inputInfo = snapshot.persistenceInput();
         var config = ExamCheckFingerprint.Config.from(snapshot.exam());
+        var unitCatalog = new ExamCheckUnitCatalogSlice(catalog, mapper);
         Map<String, ExamSection> sections = sections(snapshot.structure());
         Map<ExamCheckUnitPlanner.Key, Proof> proofs = new LinkedHashMap<>();
         List<ExamCheckUnitStore.Unit> changed = new ArrayList<>();
@@ -70,7 +71,7 @@ public class ExamCheckUnitEngine {
                     && unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
             List<ExamSection> sourceSections = unit.key().sectionIds().stream().map(sections::get).toList();
             var identity = fingerprints.calculate(unit.key().subjectCode(), sourceSections,
-                    snapshot.structure().examQuotas(), config, inputInfo.profileRevision(), inputInfo.catalogRevision(),
+                    snapshot.structure().examQuotas(), config, inputInfo.profileRevision(), unitCatalog,
                     unit.sections());
             UUID subjectId = catalog.findActiveItem("SUBJECT", unit.key().subjectCode()).map(item -> item.id()).orElse(null);
             long sourceRevision = subjectId == null ? 0 : inputInfo.sourceRevisions().path(subjectId.toString()).asLong(0);
@@ -168,6 +169,7 @@ public class ExamCheckUnitEngine {
         var sourceSections = sections(snapshot.structure());
         var inputInfo = snapshot.persistenceInput();
         var config = ExamCheckFingerprint.Config.from(snapshot.exam());
+        var unitCatalog = new ExamCheckUnitCatalogSlice(catalog, mapper);
         List<ExamCheckUnitStore.Unit> changed = new ArrayList<>();
         for (var unit : plan.units()) {
             if (unit.key().sectionIds().stream().noneMatch(requested::contains)) continue;
@@ -190,7 +192,7 @@ public class ExamCheckUnitEngine {
             var originals = unit.key().sectionIds().stream().map(sourceSections::get).toList();
             var identity = fingerprints.calculate(unit.key().subjectCode(), originals,
                     snapshot.structure().examQuotas(), config, inputInfo.profileRevision(),
-                    inputInfo.catalogRevision(), unit.sections());
+                    unitCatalog, unit.sections());
             UUID subject = catalog.findActiveItem("SUBJECT", unit.key().subjectCode())
                     .map(item -> item.id()).orElse(null);
             long revision = subject == null ? 0 : inputInfo.sourceRevisions().path(subject.toString()).asLong(0);
