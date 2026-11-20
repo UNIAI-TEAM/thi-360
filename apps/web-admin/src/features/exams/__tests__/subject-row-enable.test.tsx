@@ -70,6 +70,20 @@ describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
     }
   });
 
+  it.each([["SP2E", "TOAN"], ["HSCA", "ANH"], ["VACT", "SCIENTIFIC_THINKING"], ["VSAT", "TOAN"]])(
+    "bài % của %s %s mở MD trước bật và DS sau bật",
+    (kind, subject) => {
+      const item = section("s", subject, [block("b")], {
+        matrix: { mode: "SEPARATE", unit: "PERCENT", cells: [], byGrade: [], byDifficulty: [{ code: "NB", value: 100 }] },
+      });
+      const owner = part("p", [item]);
+      const undo = patchSubjectFormEntry(kind, subject, { enabled: false });
+      expect(selectAllSubjectForms(standardExam(kind), [owner]).s).toEqual({ form: "DEFAULT", notice: false });
+      undo();
+      expect(selectAllSubjectForms(standardExam(kind), [owner]).s).toEqual({ form: "ROWS", notice: false });
+    },
+  );
+
   it("bài có tỷ lệ ở kỳ không cho nhập % mở MD kèm dòng chữ ở cả trước và sau khi bật (PERCENT_ENTRY)", () => {
     const percent = section("s", "VAN", [block("b", { matrix: null })], {
       matrix: { mode: "SEPARATE", unit: "PERCENT", cells: [], byGrade: [], byDifficulty: [{ code: "NB", value: 100 }] },
