@@ -4431,10 +4431,7 @@
         "matches": "Khớp số câu của môn",
         "sourceEnough": "Đủ nguồn theo ma trận",
         "countField": {
-          "label": "Số câu của mục",
-          "hint": "Số câu lấy từ thông tin tổng quan; phần và các nhóm phải khớp.",
-          "locked": "Mẫu đã khóa số câu",
-          "lockedHint": "Mẫu giữ nguyên số câu của từng mục. Phân bổ bên trong mục vẫn sửa được."
+          "locked": "Mẫu đã khóa số câu"
         },
         "totalChange": {
           "grades": "Khối lớp: {values}",
@@ -5619,6 +5616,8 @@
       "description": "Khai báo thông tin, cấu trúc phần thi và tổ hợp môn. Khối câu hỏi và ma trận soạn ở bước sau.",
       "backToList": "Danh sách bài thi",
       "formAriaLabel": "Tạo bài thi",
+      "backToStructure": "Quay lại cấu trúc",
+      "editing": "Đang sửa bài {code}. Lưu và tiếp tục để quay về bước Cấu trúc và ma trận.",
       "cancel": "Hủy",
       "submit": "Lưu và tiếp tục",
       "success": "Đã tạo bài thi {code}.",
@@ -5894,11 +5893,18 @@
         "durationHintPrefilled": "Điền sẵn theo mẫu, sửa được.",
         "durationHintPartCut": "Bài theo phần không lấy thời lượng của cả môn.",
         "durationHintEmpty": "Mẫu của môn này để trống thời lượng.",
+        "buildModeChange": {
+          "title": "Đổi cách dựng bài?",
+          "description": "Đổi cách dựng bài sẽ tạo lại cấu trúc như đề mới. Cấu trúc, ma trận và nhóm lấy câu hiện tại sẽ bị thay.",
+          "confirm": "Tạo lại cấu trúc",
+          "cancel": "Quay lại"
+        },
         "buildModeLegend": "Cách dựng bài",
         "buildModeStandard": "Dùng cấu trúc môn {kind}",
         "buildModeStandardHint": "Nạp cấu trúc đầy đủ của môn theo mẫu mặc định.",
         "buildModeReview": "Tự thiết lập bài ôn",
         "buildModeReviewHint": "Một phần, một môn: nhập số câu, thời lượng và thang điểm.",
+        "buildModePublished": "Bài đã có phiên bản công bố; muốn đổi cách dựng bài hãy tạo bài mới",
         "labelFull": "{kind} · Toàn bài",
         "labelPart": "{kind} · Phần {scope}",
         "labelSubject": "{kind} · Môn {subject}",
@@ -5932,6 +5938,8 @@
       "overview": {
         "title": "Cấu trúc tổng quan",
         "description": "Số lấy từ mẫu mặc định “{template}”, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
+        "descriptionReview": "Số lấy từ {template}, sửa ngay trên dòng. Đổi số ở đây không nạp lại mẫu.",
+        "reviewTemplate": "mẫu Bài ôn {kind}",
         "descriptionNoTemplate": "Chưa có mẫu mặc định: nhập số câu, thời lượng và điểm của các phần ngay trên dòng.",
         "noTemplate": "Không có mẫu mặc định cho lựa chọn này. Bài vẫn tạo được: cấu trúc chỉ gồm các phần trong bảng, chưa có nhóm.",
         "regionLabel": "Bảng cấu trúc tổng quan của bài thi",
@@ -5950,7 +5958,8 @@
           "blockPoints": "Điểm tối đa",
           "commands": "Lệnh hỏi",
           "partRows": "Phần và dòng lấy câu",
-          "percentExamCustom": "Tỷ lệ trong bài"
+          "percentExamCustom": "Tỷ lệ trong bài",
+          "maxScore": "Điểm tối đa"
         },
         "cell": {
           "questionCount": "Số câu của {name}",
@@ -6025,6 +6034,8 @@
       "meterExact": "{allocated, number} trên {count, number} câu, khớp",
       "over": "Vượt {count, number} câu",
       "under": "Thiếu {count, number} câu",
+      "totalOver": "vượt",
+      "totalUnder": "thiếu",
       "matches": "Khớp số câu của khối",
       "issues": {
         "invalidValue": "Ma trận có giá trị âm hoặc số câu không phải số nguyên.",
@@ -6301,7 +6312,6 @@
         "REQUIRED": "Bắt buộc",
         "REFERENCE": "Tham khảo",
         "basisLocked": "Phân bố bắt buộc phải tính theo câu. Đổi đơn vị sang câu trước.",
-        "fixedRequired": "Kỳ thi HSA: sinh đề luôn theo ma trận",
         "expertPending": "Chờ chuyên gia xác nhận: phân bố khối lớp Tiếng Anh chỉ để tham khảo.",
         "normalized": "Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA. Lưu để áp dụng.",
         "undeclared": "Phân bổ này chưa khai báo nên không ràng buộc sinh đề."

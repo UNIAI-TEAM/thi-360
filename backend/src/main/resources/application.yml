@@ -191,6 +191,15 @@ thi360:
       generate:
         # LT F5: deadline of paper generation, separate from the check/preview limits (thi360.exam.solver.*).
         deadline: ${THI360_EXAM_SOLVER_GENERATE_DEADLINE:30s}
+  attempt:
+    generation:
+      threads: ${THI360_ATTEMPT_GEN_THREADS:4}
+      queue-capacity: ${THI360_ATTEMPT_GEN_QUEUE_CAPACITY:32}
+      max-queue-wait: ${THI360_ATTEMPT_GEN_MAX_QUEUE_WAIT:PT60S}
+      stale-starting-after: ${THI360_ATTEMPT_STALE_STARTING_AFTER:PT2M}
+    scheduling:
+      enabled: true
+      stale-starting-interval-ms: 30000
   mail:
     from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
     tls: ${THI360_SMTP_TLS:starttls}
@@ -200,6 +209,13 @@ thi360:
   avatar:
     # E20: bucket riêng cho ảnh đại diện (cùng endpoint và khóa với thi360.s3); tạo bucket ở môi trường triển khai.
     bucket: ${THI360_AVATAR_BUCKET:thi360-avatars}
+  commerce:
+    vnpay-min-amount: ${THI360_VNPAY_MIN_AMOUNT:5000}
+    voucher:
+      quote-per-user-minute-limit: ${THI360_VOUCHER_QUOTE_MINUTE_LIMIT:10}
+      quote-per-user-minute-window: PT1M
+      quote-per-user-day-limit: ${THI360_VOUCHER_QUOTE_DAY_LIMIT:50}
+      quote-per-user-day-window: PT24H
 ---
 spring:
   config:
@@ -299,6 +315,9 @@ thi360:
         scheduling:
           enabled: false
   exam:
+    scheduling:
+      enabled: false
+  attempt:
     scheduling:
       enabled: false
   mail:

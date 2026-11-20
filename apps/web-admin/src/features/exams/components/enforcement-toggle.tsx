@@ -29,7 +29,7 @@ export interface EnforcementToggleProps {
 /**
  * Nhãn "Bắt buộc" hoặc "Tham khảo" của một bảng phân bổ (K9, H21). Bắt buộc: bộ giải chỉ dùng phân bố này. Tham khảo: chỉ
  * đối chiếu khi sinh thử. Nút "Bắt buộc" bị khóa khi đơn vị không phải câu hoặc chỉ tiêu trải nhiều môn. Kỳ thi HSA sinh đề
- * luôn theo ma trận nên không có nút: chỉ chip chữ với lý do.
+ * luôn theo ma trận nên không có nút: mức Bắt buộc cố định không hiện gì (đã là mặc định), mức Tham khảo cố định giữ chip kèm lý do.
  */
 export function EnforcementToggle({
   legend,
@@ -52,8 +52,10 @@ export function EnforcementToggle({
   // Chiều chưa khai báo vẫn ở Tham khảo trong bản nháp (R1-2): chip khớp bản nháp thay vì mức Bắt buộc công thức.
   const fixed = hsaExam ? (expertPending || undeclared ? "REFERENCE" : hsaFixedEnforcement(basis, requiredLocked)) : undefined;
 
+  // HSA cố định Bắt buộc là mặc định của kỳ thi: không hiện chip hay chú thích; giá trị trong bản nháp vẫn REQUIRED.
+  if (fixed === "REQUIRED") return null;
   if (fixed !== undefined) {
-    const caption = fixed === "REQUIRED" ? t("fixedRequired") : expertPending ? t("expertPending") : (reason ?? (undeclared ? t("undeclared") : null));
+    const caption = expertPending ? t("expertPending") : (reason ?? (undeclared ? t("undeclared") : null));
     const plainLegend = typeof legend === "string";
     return (
       <div

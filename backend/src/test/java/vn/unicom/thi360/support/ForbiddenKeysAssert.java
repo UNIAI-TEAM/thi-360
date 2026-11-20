@@ -26,18 +26,17 @@ public final class ForbiddenKeysAssert {
 
     /**
      * LT 7.3 — nội dung câu gửi cho học viên trong lúc làm bài không được chứa:
-     * đáp án đúng ({@code correct}, {@code answer}), {@code answers}, {@code pairs},
+     * đáp án đúng ({@code correct}), {@code answers}, {@code pairs},
      * điểm từng ý của Đúng/Sai ({@code scoreTable}), lời giải ({@code solution}),
      * {@code gradingGuide}, {@code rubric}, {@code sampleAnswer}, {@code commonMistakes},
      * MAPID ({@code knowledge}, {@code knowledgeItemIds}, {@code mapId(s)}) và độ khó
      * ({@code levelItemId}, {@code difficulty(…)}, kể cả tên phục vụ {@code mapidIds} và
-     * {@code trueFalseTable}). {@code points} của câu, {@code inputHint}, {@code wordLimit} được
-     * phép nên không nằm trong danh sách; {@code points} của từng mệnh đề Đúng/Sai bị cấm theo
-     * đường dẫn ({@link #ATTEMPT_FORBIDDEN_SCOPED_KEYS}).
+     * {@code trueFalseTable}). {@code points} của câu, {@code answer} của học viên, {@code inputHint},
+     * {@code wordLimit} được phép ở cấp câu nên không nằm trong danh sách chung; {@code points} và
+     * {@code answer} của từng mệnh đề Đúng/Sai bị cấm theo đường dẫn ({@link #ATTEMPT_FORBIDDEN_SCOPED_KEYS}).
      */
     public static final Set<String> ATTEMPT_FORBIDDEN_KEYS = Set.of(
             "correct",
-            "answer",
             "answers",
             "pairs",
             "scoreTable",
@@ -58,10 +57,13 @@ public final class ForbiddenKeysAssert {
 
     /**
      * Khóa cấm theo vị trí, dạng {@code mảng[].khóa}: khóa chỉ bị báo khi nó là trường trực tiếp
-     * của một phần tử trong mảng tên {@code mảng}. {@code statements[].points} là điểm từng ý của
-     * Đúng/Sai (LT 7.3), còn {@code points} ở cấp câu vẫn được phép.
+     * của một phần tử trong mảng tên {@code mảng}. {@code statements[].points} là điểm từng ý và
+     * {@code statements[].answer} là đáp án đúng từng ý của Đúng/Sai (LT 7.3), còn {@code points} và
+     * {@code answer} đã lưu của học viên ở cấp câu vẫn được phép.
      */
-    public static final Set<String> ATTEMPT_FORBIDDEN_SCOPED_KEYS = Set.of("statements[].points");
+    public static final Set<String> ATTEMPT_FORBIDDEN_SCOPED_KEYS = Set.of(
+            "statements[].points",
+            "statements[].answer");
 
     /**
      * TM 10.1 — phản hồi của bảng chiếu không bao giờ chứa: id hoặc nội dung câu
@@ -107,6 +109,7 @@ public final class ForbiddenKeysAssert {
     static {
         Set<String> storefront = new LinkedHashSet<>(ATTEMPT_FORBIDDEN_KEYS);
         storefront.addAll(Set.of(
+                "answer",
                 "question",
                 "questions",
                 "questionId",

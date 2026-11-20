@@ -49,23 +49,26 @@ class ForbiddenKeysAssertTests {
 
     @Test
     void listsMatchSpecAndAllowedKeysPass() throws Exception {
-        // LT 7.3: đáp án đúng, answers, pairs, điểm từng ý Đ/S, lời giải,
+        // LT 7.3: đáp án đúng, answers, pairs, điểm/đáp án từng ý Đ/S, lời giải,
         // gradingGuide, rubric, sampleAnswer, commonMistakes, MAPID, độ khó.
         assertThat(ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_KEYS).containsExactlyInAnyOrder(
-                "correct", "answer", "answers", "pairs", "scoreTable",
+                "correct", "answers", "pairs", "scoreTable",
                 "solution", "gradingGuide", "rubric", "sampleAnswer",
                 "commonMistakes", "knowledge", "knowledgeItemIds",
                 "mapId", "mapIds", "mapidIds", "trueFalseTable", "levelItemId", "difficulty", "difficultyCode");
-        assertThat(ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_SCOPED_KEYS).containsExactly("statements[].points");
+        assertThat(ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_KEYS).doesNotContain("answer");
+        assertThat(ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_SCOPED_KEYS)
+                .containsExactlyInAnyOrder("statements[].points", "statements[].answer");
         // Khóa được phép (LT 7.3) không nằm trong danh sách cấm.
         assertThat(ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_KEYS)
                 .doesNotContain("points", "inputHint", "wordLimit");
 
-        // TM 10.1: danh sách bảng chiếu chứa mọi khóa lượt thi và thêm khóa của
+        // TM 10.1: danh sách bảng chiếu chứa mọi khóa lượt thi và thêm answer + khóa của
         // id/nội dung câu, nguồn câu của khối, đề chứng minh, đề xem trước.
         assertThat(ForbiddenKeysAssert.STOREFRONT_FORBIDDEN_KEYS)
                 .containsAll(ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_KEYS)
                 .contains(
+                        "answer",
                         "questionId", "questionVersionId", "question", "questions", "body",
                         "snapshot", "source", "sourceCode", "sourceRevision",
                         "knowledgeScope", "matrix", "topicQuotas", "tagCodes", "slots", "childConditions",
@@ -374,12 +377,43 @@ class ForbiddenKeysAssertTests {
 
     @Test
     void forbiddenKeyInValidDocumentFailsWithoutLeakingValueThroughStringOverload() {
-        String json = "{\"items\": [{\"answer\": \"" + SENTINEL + "\"}]}";
+        String json = "{\"items\": [{\"statements\": [{\"id\": \"s1\", \"answer\": \"" + SENTINEL + "\"}]}]}";
 
         Throwable thrown = catchThrowable(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(json));
 
-        assertThat(thrown).isInstanceOf(AssertionError.class).hasMessageContaining("$.items[0].answer");
+        assertThat(thrown).isInstanceOf(AssertionError.class).hasMessageContaining("$.items[0].statements[0].answer");
         assertThat(renderWithCauses(thrown)).doesNotContain(SENTINEL);
+    }
+
+    @Test
+    void learnerAnswerPassesAttemptListAndFailsStorefrontWhileStatementAnswerFailsBoth() {
+        String learnerAnswerJson = "{\"items\":[{\"id\":\"i1\",\"answer\":{\"optionId\":\"o1\"}}]}";
+        assertThatCode(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(learnerAnswerJson))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(learnerAnswerJson))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.items[0].answer")
+                .hasMessageNotContaining("o1");
+
+        String statementAnswerJson = "{\"items\":[{\"statements\":[{\"id\":\"s1\",\"answer\":true}]}]}";
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(statementAnswerJson))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.items[0].statements[0].answer")
+                .hasMessageNotContaining("true");
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(statementAnswerJson))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.items[0].statements[0].answer")
+                .hasMessageNotContaining("true");
+
+        String statementSentinelJson = "{\"items\":[{\"statements\":[{\"id\":\"s1\",\"answer\":\"" + SENTINEL + "\"}]}]}";
+        for (Runnable call : List.<Runnable>of(
+                () -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(statementSentinelJson),
+                () -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(statementSentinelJson))) {
+            Throwable thrown = catchThrowable(call::run);
+            assertThat(thrown).isInstanceOf(AssertionError.class)
+                    .hasMessageContaining("$.items[0].statements[0].answer");
+            assertThat(renderWithCauses(thrown)).doesNotContain(SENTINEL);
+        }
     }
 
     /** Toàn bộ thông báo, nguyên nhân và stack trace như JUnit/CI sẽ in. */

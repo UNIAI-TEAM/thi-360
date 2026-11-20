@@ -220,21 +220,27 @@ describe("Ô số câu / tỷ lệ (R-9)", () => {
 });
 
 describe("Đầu môn dùng chung (R-7, R-15)", () => {
-  it("tên môn, đã phân bổ kèm thiếu bằng chữ, số câu chỉ đọc, đường dẫn Thông tin tổng quan", () => {
-    renderWithProviders(<SubjectFormHeader subjectName="Vật lí" count={50} allocated={47} examId="e1" action={<button type="button">Kiểm tra môn</button>} />);
+  it("tên môn, dòng số câu của môn và đã phân bổ kèm thiếu bằng chữ; không có ô số câu và không có đường dẫn trong đầu môn", () => {
+    renderWithProviders(<SubjectFormHeader subjectName="Vật lí" count={50} allocated={47} action={<button type="button">Kiểm tra môn</button>} />);
     expect(screen.getByRole("heading", { level: 2, name: /Vật lí/ })).toBeInTheDocument();
+    expect(screen.getByText("50 câu")).toBeInTheDocument();
     expect(screen.getByText("Thiếu 3 câu")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /Số câu/ })).toHaveAttribute("readonly");
-    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute("href", "/exams/e1");
+    expect(screen.queryByRole("textbox", { name: /Số câu/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Số câu của mục")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Kiểm tra môn" })).toBeInTheDocument();
   });
 
-  it("vượt ghi Vượt n câu; đủ ghi Khớp; mẫu khóa số câu ghi lý do bằng chữ", () => {
-    const view = renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={53} examId="e1" />);
+  it("vượt ghi Vượt n câu; đủ ghi Khớp; mẫu khóa số câu ghi lý do bằng chữ cạnh dòng số câu", () => {
+    const view = renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={53} />);
     expect(screen.getByText("Vượt 3 câu")).toBeInTheDocument();
     view.unmount();
-    renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={50} examId="e1" templateLocked />);
+    const locked = renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={50} allocated={50} templateLocked />);
     expect(screen.getByText("Khớp số câu của môn")).toBeInTheDocument();
     expect(screen.getByText("Số câu của mục theo mẫu, không đổi")).toBeInTheDocument();
+    locked.unmount();
+    renderWithProviders(<SubjectFormHeader subjectName="Hóa" count={null} allocated={50} templateLocked />);
+    expect(screen.getByText("Số câu của môn chưa xác định.")).toBeInTheDocument();
+    expect(screen.queryByText("Số câu của mục theo mẫu, không đổi")).not.toBeInTheDocument();
   });
 });
