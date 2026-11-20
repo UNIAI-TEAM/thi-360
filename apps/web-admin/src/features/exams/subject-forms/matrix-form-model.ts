@@ -176,7 +176,7 @@ export interface MatrixEditContext {
  * Đổi đơn vị của ma trận SEPARATE: chỉ các ô đã khai được quy đổi (% → số câu theo phần dư lớn nhất, số câu → % nguyên tổng 100);
  * chiều chưa khai giữ mảng rỗng và ô để trống giữ trống, không biến thành ô 0 (khác `convertMatrixUnit` của màn MD).
  */
-function convertDeclaredDimensions(matrix: BlockMatrix, unit: MatrixUnit, total: number): BlockMatrix {
+export function convertDeclaredDimensions(matrix: BlockMatrix, unit: MatrixUnit, total: number): BlockMatrix {
   const convert = (items: readonly MatrixDimensionValue[]): MatrixDimensionValue[] => {
     const values = items.map((item) => item.value);
     const next = unit === "COUNT" ? apportionByPercent(values, total).results : countsToPercents(values, total);

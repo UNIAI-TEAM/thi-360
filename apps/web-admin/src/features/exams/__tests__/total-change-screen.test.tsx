@@ -48,6 +48,9 @@ vi.mock("../subject-forms/matrix-form", async (importOriginal) => {
         <button type="button" onClick={() => props.onChange((section) => ({ ...section, questionCount: 20 }))}>
           Đặt tổng môn thành 20 (MT)
         </button>
+        <button type="button" onClick={() => props.onChange((section) => ({ ...section, questionCount: 40 }))}>
+          Đặt tổng môn thành 40 (MT)
+        </button>
         <Form {...props} />
       </>
     ),
@@ -167,5 +170,80 @@ describe("Đổi tổng ở môn MT (QDA)", () => {
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ questionCount: number; matrix: { unit: string; byGrade: Array<{ value: number }> } }> }> };
     expect(sent.parts[0]!.sections[0]!.questionCount).toBe(20);
     expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ unit: "COUNT", byGrade: [{ value: 30 }] });
+  });
+});
+
+/**
+ * CR-2a′ (FTM R-9 "Đổi tổng", AC-54 a): V-ACT Toán độ khó 25/50/25% của 30 câu, tổng đổi thành 40 trong phiên: thông báo nêu 10/20/10, Lưu bị
+ * chặn tới khi chọn Áp dụng số mới (hoặc Giữ số cũ); sau đó lưu `unit: PERCENT` giữ 25/50/25. Giữ số cũ đổi về số câu của tổng cũ (8/15/7).
+ */
+describe("Đổi tổng ở môn MT có bảng theo tỷ lệ (V-ACT Toán)", () => {
+  const vactServer = () => {
+    const section = {
+      id: "sec-vact",
+      subjectCode: "TOAN",
+      questionCount: 30,
+      blocks: [
+        { id: "blk-single", name: "Single", questionType: "SINGLE_CHOICE", questionCount: 12, requiredPointsPerQuestion: 1 },
+        { id: "blk-set", name: "Set", questionType: "QUESTION_SET", questionCount: 18, requiredPointsPerQuestion: 1 },
+      ],
+      matrix: {
+        mode: "SEPARATE",
+        unit: "PERCENT",
+        cells: [],
+        byGrade: [],
+        byDifficulty: [
+          { code: "RECOGNITION", value: 25 },
+          { code: "COMPREHENSION", value: 50 },
+          { code: "APPLICATION", value: 25 },
+        ],
+        gradeEnforcement: "REFERENCE",
+        difficultyEnforcement: "REFERENCE",
+      },
+    };
+    return new FakeServer()
+      .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ kind: "VACT", questionCount: 30 }) })
+      .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })
+      .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [{ ...FIXED_PART, questionCount: 30, sections: [section] }] } })
+      .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
+      .install();
+  };
+  type Sent = { parts: Array<{ sections: Array<{ questionCount: number; matrix: { unit: string; byDifficulty: Array<{ code: string; value: number }> } }> }> };
+
+  it("totalChangePercentMatrix: 30 → 40 hiện 10/20/10, Lưu chặn tới khi Áp dụng số mới; PUT giữ PERCENT 25/50/25", async () => {
+    const server = vactServer();
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-vact`);
+    renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
+
+    await user.click(await screen.findByRole("button", { name: "Đặt tổng môn thành 40 (MT)" }));
+    expect(await screen.findByText(/Tổng đổi thành 40 câu \(trước đó 30 câu\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Độ khó: Nhận biết 10 · Thông hiểu 20 · Vận dụng 10/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
+    expect(await screen.findByText(/tổng số câu của môn .* đã đổi/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
+    expect(screen.queryByText(/Tổng đổi thành 40 câu/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as Sent;
+    expect(sent.parts[0]!.sections[0]!.questionCount).toBe(40);
+    expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ unit: "PERCENT", byDifficulty: [{ value: 25 }, { value: 50 }, { value: 25 }] });
+  });
+
+  it("totalChangePercentMatrix: Giữ số cũ đổi bảng sang số câu của tổng cũ (8/15/7), chiều khối lớp chưa khai giữ mảng rỗng", async () => {
+    const server = vactServer();
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-vact`);
+    renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
+
+    await user.click(await screen.findByRole("button", { name: "Đặt tổng môn thành 40 (MT)" }));
+    await user.click(await screen.findByRole("button", { name: "Giữ số cũ" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
+    const sent = server.calls("PUT", STRUCTURE)[0]!.body as Sent & { parts: Array<{ sections: Array<{ matrix: { byGrade: unknown[] } }> }> };
+    expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ unit: "COUNT", byDifficulty: [{ value: 8 }, { value: 15 }, { value: 7 }], byGrade: [] });
   });
 });

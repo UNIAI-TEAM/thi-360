@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { LOCKED_FIELD } from "../components/locked-field";
 import { CountPercentInput } from "./count-percent-input";
+import { LockReason } from "./lock-reason";
+import { MatrixCell } from "./matrix-cell";
 import type { MatrixBlockProps } from "./matrix-block-props";
 import { MATRIX_FIELDS, MATRIX_ISSUE_CODES, matrixBlockingIssues } from "./matrix-blocking";
 import { structureOf, writeStructure, type StructureInput } from "./matrix-form-model";
@@ -31,7 +33,7 @@ function ReadOnlyCount({ label, value, hint }: { label: string; value: number; h
  * số khi các vai trò cộng đủ 100%, chưa đủ thì giữ ở kho nhập thô và chặn lưu.
  */
 export function MatrixStructureBlock(props: MatrixBlockProps) {
-  const { section, entry, kindCode, total, raw, onChange } = props;
+  const { section, entry, kindCode, total, raw, onChange, templateLocked } = props;
   const t = useTranslations("exams.subjectForm.matrix.structure");
   const tErrors = useTranslations("exams.subjectForm.matrix.errors");
   const structure = structureOf(section);
@@ -74,15 +76,18 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
 
   /** Hai cột (V-ACT): tỷ lệ gõ ở một vai trò chờ các vai trò còn lại; đủ 100% mới quy ra số bằng phần dư lớn nhất. */
   const percentRoles: RowKey[] = [single ? "SINGLE" : null, set && structure.flexible ? "CHILDREN" : null, fill ? "FILL" : null].filter((key): key is RowKey => key !== null);
-  const changeTwoColumn = (key: RowKey, { count, percent }: { count: number; percent: number | null }) => {
-    if (percent === null) {
+  const changeTwoColumn = (key: RowKey, edit: { unit: "COUNT" | "PERCENT"; value: number | null }) => {
+    if (edit.unit === "COUNT") {
       setPercentDraft({});
       raw.clear(MATRIX_FIELDS.structure);
-      writeCount(key, count);
+      if (edit.value !== null) writeCount(key, edit.value);
       return;
     }
-    const next = { ...percentDraft, [key]: percent };
+    const next = { ...percentDraft };
+    if (edit.value === null) delete next[key];
+    else next[key] = edit.value;
     setPercentDraft(next);
+    if (Object.keys(next).length === 0) return raw.clear(MATRIX_FIELDS.structure);
     const complete = percentRoles.every((role) => next[role] !== undefined);
     const sum = percentRoles.reduce((all, role) => all + (next[role] ?? 0), 0);
     if (!complete || Math.abs(sum - 100) > 1e-6) {
@@ -101,18 +106,38 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
     // Ô của nhóm nào mang `data-form-block` của nhóm đó (đích `?block=`); Trắc nghiệm theo nhóm câu đơn, không có thì theo nhóm chùm.
     const blockId = key === "CHOICE" || key === "SINGLE" ? (single?.id ?? set?.id) : key === "FILL" ? fill?.id : set?.id;
     const percentRow = twoColumns && percentRoles.includes(key);
+    // Mẫu khóa số câu của mục (H27, V-ACT Tiếng Việt FULL): nhóm câu đơn là cả mục, nên số câu chỉ đọc kèm lý do.
+    const locked = templateLocked && key === "SINGLE" && !set && !fill;
     return (
       <div key={key} data-form-block={blockId} className="flex min-w-0 flex-col gap-1">
-        <CountPercentInput
-          label={label}
-          entry={percentRow ? "TWO_COLUMNS" : "NONE"}
-          total={key === "SETS" ? 0 : (total ?? 0)}
-          count={valueOf(key)}
-          fieldName={field}
-          onChange={(next) => (percentRow ? changeTwoColumn(key, next) : writeCount(key, next.count))}
-          onRawInput={rawInputOf(field)}
-          error={errorOf(field)}
-        />
+        {percentRow ? (
+          <>
+            <MatrixCell
+              label={label}
+              field={field}
+              stored={valueOf(key)}
+              count={valueOf(key)}
+              unit="COUNT"
+              total={total}
+              twoColumns
+              readOnly={locked}
+              onEdit={(edit) => changeTwoColumn(key, edit)}
+              onRaw={rawInputOf(field)}
+            />
+            {locked && <LockReason code="templateTotal" />}
+          </>
+        ) : (
+          <CountPercentInput
+            label={label}
+            entry="NONE"
+            total={key === "SETS" ? 0 : (total ?? 0)}
+            count={valueOf(key)}
+            fieldName={field}
+            onChange={(next) => writeCount(key, next.count)}
+            onRawInput={rawInputOf(field)}
+            error={errorOf(field)}
+          />
+        )}
         {hint && <p className="text-caption text-text-muted">{hint}</p>}
       </div>
     );

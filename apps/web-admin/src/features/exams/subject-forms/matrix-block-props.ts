@@ -27,5 +27,7 @@ export interface MatrixBlockProps {
   labels: MatrixLabels;
   reference: ContentReference;
   onChange: (update: (section: ExamSection) => ExamSection) => void;
+  /** Mẫu khóa số câu của mục (H27, V-ACT FULL): số câu của nhóm câu đơn duy nhất chỉ đọc. */
+  templateLocked: boolean;
   raw: MatrixRawFields;
 }

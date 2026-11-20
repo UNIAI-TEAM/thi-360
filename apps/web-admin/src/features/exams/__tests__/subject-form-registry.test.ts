@@ -33,12 +33,12 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(new Set(TABLE.map(([kind, subject]) => `${kind}:${subject}`)).size).toBe(75);
   });
 
-  it("subjectFormFor trả đúng dạng cho đúng 75 cặp canonical; chỉ MT của QDA, BCA (lát CR-2a) đang bật", () => {
+  it("subjectFormFor trả đúng dạng cho đúng 75 cặp canonical; chỉ MT của QDA, BCA, V-ACT (lát CR-2a, CR-2a′) đang bật", () => {
     for (const [kind, subject, form] of TABLE) {
       const entry = subjectFormFor(kind, subject);
       expect(entry, `${kind}:${subject}`).not.toBeNull();
       expect(entry!.form, `${kind}:${subject}`).toBe(form === "M" ? "MATRIX" : "ROWS");
-      expect(entry!.enabled, `${kind}:${subject} enabled`).toBe(form === "M" && (kind === "QDA" || kind === "BCA"));
+      expect(entry!.enabled, `${kind}:${subject} enabled`).toBe(form === "M" && (kind === "QDA" || kind === "BCA" || kind === "VACT"));
     }
     const listed = listSubjectFormPairs().map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`);
     expect(listed.toSorted()).toEqual(TABLE.map(([kind, subject]) => `${kind}:${subject}`).toSorted());
