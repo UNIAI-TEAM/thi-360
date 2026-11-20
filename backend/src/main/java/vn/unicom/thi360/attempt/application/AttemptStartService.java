@@ -3,7 +3,6 @@ package vn.unicom.thi360.attempt.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,9 +16,9 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -92,6 +91,7 @@ public class AttemptStartService {
     private final AttemptEventRepository attemptEventRepository;
     private final GenerationExecutor generationExecutor;
     private final IdempotentCommand idempotentCommand;
+    private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate requiresNewTx;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -128,6 +128,7 @@ public class AttemptStartService {
             AttemptEventRepository attemptEventRepository,
             GenerationExecutor generationExecutor,
             IdempotentCommand idempotentCommand,
+            JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
             Clock clock) {
         this.accessGate = accessGate;
@@ -143,6 +144,7 @@ public class AttemptStartService {
         this.attemptEventRepository = attemptEventRepository;
         this.generationExecutor = generationExecutor;
         this.idempotentCommand = idempotentCommand;
+        this.jdbcTemplate = jdbcTemplate;
         this.requiresNewTx = new TransactionTemplate(transactionManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
@@ -182,6 +184,14 @@ public class AttemptStartService {
             UUID userId, StartAttemptRequest request, String idempotencyKey) {
         EntitlementDescription desc = entitlementPort.describe(userId, request.entitlementId());
 
+        // Serialize concurrent start attempts for the same (user, exam) on a single JDBC connection
+        // to eliminate nested REQUIRES_NEW pool contention and roll back cleanly on reserve errors.
+        jdbcTemplate.queryForObject(
+                "SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(?), hashtext(?))) lock_acquired",
+                Integer.class,
+                userId.toString(),
+                desc.examId().toString());
+
         Optional<Attempt> existingOpen =
                 attemptRepository.findByUserIdAndExamIdAndStateIn(
                         userId, desc.examId(), OPEN_STATES);
@@ -202,50 +212,35 @@ public class AttemptStartService {
         PublishedVersion version = plan.version();
         AttemptTiming timing = AttemptTiming.valueOf(version.timing());
 
-        try {
-            requiresNewTx.executeWithoutResult(
-                    status -> {
-                        EntitlementBenefits benefits =
-                                entitlementPort.reserve(userId, request.entitlementId(), attemptId);
-                        Instant now = clock.instant();
-                        Attempt attempt =
-                                Attempt.start(
-                                        attemptId,
-                                        userId,
-                                        serving.examId(),
-                                        version.versionNo(),
-                                        request.entitlementId(),
-                                        benefits.grantId(),
-                                        version.name(),
-                                        version.kindItemId(),
-                                        version.kindCode(),
-                                        version.scope(),
-                                        version.partCode(),
-                                        version.subjectItemId(),
-                                        timing,
-                                        NavigationMode.SEQUENTIAL,
-                                        plan.choices(),
-                                        seed,
-                                        generationToken,
-                                        benefits.resultView(),
-                                        version.practiceScoring(),
-                                        version.referenceMax(),
-                                        plan.totalMaxScore(),
-                                        idempotencyKey,
-                                        now);
-                        attemptRepository.saveAndFlush(attempt);
-                    });
-        } catch (DataIntegrityViolationException ex) {
-            if (isOpenAttemptConflict(ex)) {
-                Optional<Attempt> winner =
-                        attemptRepository.findByUserIdAndExamIdAndStateIn(
-                                userId, desc.examId(), OPEN_STATES);
-                if (winner.isPresent()) {
-                    return new StartCommandResult(winner.get().getId(), true);
-                }
-            }
-            throw ex;
-        }
+        EntitlementBenefits benefits =
+                entitlementPort.reserve(userId, request.entitlementId(), attemptId);
+        Instant now = clock.instant();
+        Attempt attempt =
+                Attempt.start(
+                        attemptId,
+                        userId,
+                        serving.examId(),
+                        version.versionNo(),
+                        request.entitlementId(),
+                        benefits.grantId(),
+                        version.name(),
+                        version.kindItemId(),
+                        version.kindCode(),
+                        version.scope(),
+                        version.partCode(),
+                        version.subjectItemId(),
+                        timing,
+                        NavigationMode.SEQUENTIAL,
+                        plan.choices(),
+                        seed,
+                        generationToken,
+                        benefits.resultView(),
+                        version.practiceScoring(),
+                        version.referenceMax(),
+                        plan.totalMaxScore(),
+                        idempotencyKey,
+                        now);
+        attemptRepository.saveAndFlush(attempt);
 
         GenerationJob job =
                 new GenerationJob(
@@ -588,21 +583,6 @@ public class AttemptStartService {
         z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
         z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
         return z ^ (z >>> 31);
-    }
-
-    private static boolean isOpenAttemptConflict(DataIntegrityViolationException ex) {
-        Throwable cur = ex;
-        while (cur != null) {
-            if (cur instanceof SQLException sqlEx && "23505".equals(sqlEx.getSQLState())) {
-                return true;
-            }
-            String msg = cur.getMessage();
-            if (msg != null && msg.contains("uq_attempt_open_user_exam")) {
-                return true;
-            }
-            cur = cur.getCause();
-        }
-        return false;
     }
 
     private static String safe(String val) {
