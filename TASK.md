@@ -280,8 +280,10 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | HSA-A | UNI-2750, UNI-2751 | 1696, 1697 | Bước 1 tạo bài thi: bỏ các dòng thừa; bảng tổng quan sửa được ở tab Thông tin chung | merge PR #129 (`8c9eb3e6`); vào `develop`: PR #130 (`e0240ffd`) |
 | HSA-B | UNI-2752, UNI-2753, UNI-2754 | 1698, 1699, 1700 | Bước cấu trúc: kiểm tra bài ôn tập, số câu trên đề chỉ đọc, gọn bảng chỉ tiêu, dòng "Bộ câu hỏi" trong chỉ tiêu dạng trả lời | merge PR #133 (`469c034e`); vào `develop`: PR #134 (`12ec91a8`) |
 | HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); vào `develop`: PR #126 (`fd67d223`) |
-| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | đang làm lại theo bản BA 2026-11-19 23:52 (AD-67, AD-68), cty; vào `develop` trước rồi forward-merge vào `integration/dot-3` |
+| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | vào `develop`: PR #147 (`e6b3b71d`); forward-merge PR #148 (`5bd43aff`) |
 | HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | merge PR #131 (`cf789ed9`); vào `develop`: PR #132 (`9b8a7e2e`) |
+| HSA-F | UNI-2749 (2751) | 1697 (bổ sung) | Tab Thông tin chung sửa trực tiếp chế độ xây dựng bài thi và đồng bộ cấu trúc | đang làm (bro) |
+| HSA-G | UNI-2770 | 1707 | Điều chỉnh form Thêm quy tắc MAPID theo phạm vi và kiểm tra xung đột giữa các dòng | vào `develop`: PR #152 (`c69484fb`), demo đã cập nhật; forward-merge PR #153 (`ada02513`) |
 
 **Ngoài plan, thay đổi theo yêu cầu (AD-34):** khóa giá trị hệ thống của danh mục, issue UniAI **UNI-2759**.
 
