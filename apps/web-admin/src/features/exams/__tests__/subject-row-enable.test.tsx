@@ -23,7 +23,10 @@ afterEach(() => {
 });
 
 const ENABLED_KINDS = ["HSA", "QDA", "BCA", "THPTQG", "VACT", "SP2E", "SPT", "HSCA", "VSAT"] as const;
-const isEnabledPair = (kind: string, subject: string) => subjectFormFor(kind, subject)?.enabled === true;
+const isEnabledRowPair = (kind: string, subject: string) => {
+  const entry = subjectFormFor(kind, subject);
+  return entry?.form === "ROWS" && entry.enabled === true;
+};
 
 /** Mọi mục DS của cặp đã bật trong mọi mẫu chuẩn (cả `sections`, `subjectPool`, `options[].sections`). */
 function enabledRowSections(): Array<{ code: string; kind: string; part: ExamPart; section: ExamSection }> {
@@ -31,7 +34,7 @@ function enabledRowSections(): Array<{ code: string; kind: string; part: ExamPar
   for (const template of standardFixtureTemplates()) {
     for (const item of template.parts) {
       for (const candidate of [...item.sections, ...(item.subjectPool ?? []), ...item.options.flatMap((option) => option.sections)]) {
-        if (isEnabledPair(template.kindCode, candidate.subjectCode)) found.push({ code: template.code, kind: template.kindCode, part: item, section: candidate });
+        if (isEnabledRowPair(template.kindCode, candidate.subjectCode)) found.push({ code: template.code, kind: template.kindCode, part: item, section: candidate });
       }
     }
   }
@@ -39,10 +42,11 @@ function enabledRowSections(): Array<{ code: string; kind: string; part: ExamPar
 }
 
 describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
-  it("mọi cặp DS đang bật; MT vẫn tắt", () => {
+  it("mọi cặp DS đang bật; MT của QDA, BCA, V-ACT bật cùng CR-2 (HSA MT chờ CR-2H)", () => {
     const enabled = listSubjectFormPairs().filter(({ entry }) => entry.enabled);
-    expect(enabled.every(({ entry }) => entry.form === "ROWS")).toBe(true);
-    expect(enabled.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
+    const enabledRows = enabled.filter(({ entry }) => entry.form === "ROWS");
+    const enabledMatrix = enabled.filter(({ entry }) => entry.form === "MATRIX");
+    expect(enabledRows.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
       [
         ...["HSA", "QDA", "BCA"].flatMap((kind) => ["VAN", "ANH"].map((subject) => `${kind}:${subject}`)),
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `THPTQG:${subject}`),
@@ -51,6 +55,13 @@ describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `SPT:${subject}`),
         ...["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"].map((subject) => `HSCA:${subject}`),
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"].map((subject) => `VSAT:${subject}`),
+      ].toSorted(),
+    );
+    expect(enabledMatrix.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
+      [
+        ...["QDA", "BCA"].flatMap((kind) => ["TOAN", "LY", "HOA", "SINH", "SU", "DIA"].map((subject) => `${kind}:${subject}`)),
+        "VACT:TOAN",
+        "VACT:VIETNAMESE",
       ].toSorted(),
     );
   });
