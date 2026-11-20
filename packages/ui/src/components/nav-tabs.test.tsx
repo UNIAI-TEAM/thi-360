@@ -123,5 +123,35 @@ describe("NavTabs", () => {
       await waitFor(() => expect(screen.getByRole("link", { name: "Mục t2" })).toHaveAttribute("aria-current", "page"));
       expect(list.scrollLeft).toBe(60);
     });
+
+    it("gắn thêm tab mới đang chọn sau lần dựng đầu vẫn tự cuộn tới tab đó (R1-13)", async () => {
+      function Dynamic({ appendActive }: { appendActive: boolean }) {
+        return (
+          <NavTabs aria-label="Bài thi">
+            {ids.map((id) => (
+              <NavTab key={id} href={`/${id}`} current={!appendActive && id === "t1"}>
+                {`Mục ${id}`}
+              </NavTab>
+            ))}
+            {appendActive && (
+              <NavTab href="/t6" current>
+                Mục t6
+              </NavTab>
+            )}
+          </NavTabs>
+        );
+      }
+      const { rerender } = render(<Dynamic appendActive={false} />);
+      const list = listOf(screen.getByRole("navigation", { name: "Bài thi" }));
+      layout(list);
+
+      rerender(<Dynamic appendActive />);
+      const added = screen.getByRole("link", { name: "Mục t6" });
+      Object.defineProperty(added, "offsetHeight", { configurable: true, value: 40 });
+      added.getBoundingClientRect = () => ({ left: 700 - list.scrollLeft, right: 820 - list.scrollLeft, top: 0, bottom: 40, width: 120, height: 40 }) as DOMRect;
+
+      // Mục t6 chiếm x=700..820: cần cuộn 820 + 40 - 400 = 460.
+      await waitFor(() => expect(list.scrollLeft).toBe(460));
+    });
   });
 });

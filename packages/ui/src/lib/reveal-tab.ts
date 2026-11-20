@@ -25,6 +25,6 @@ export function followActiveTab(list: HTMLElement, activeSelector: string, attri
   reveal();
   if (typeof MutationObserver === "undefined") return () => {};
   const observer = new MutationObserver(reveal);
-  observer.observe(list, { attributes: true, attributeFilter: [attribute], subtree: true });
+  observer.observe(list, { attributes: true, attributeFilter: [attribute], childList: true, subtree: true });
   return () => observer.disconnect();
 }
