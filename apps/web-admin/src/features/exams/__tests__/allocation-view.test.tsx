@@ -268,6 +268,7 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     publishable: true,
     fixedCounts,
     structure: { parts: [] },
+    parts: [],
   });
 
   it("khóa ô số câu của mục; phân bổ bên trong mục vẫn sửa được", async () => {

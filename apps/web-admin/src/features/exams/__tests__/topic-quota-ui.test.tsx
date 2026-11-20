@@ -62,6 +62,18 @@ describe("Chỉ tiêu chủ đề (R-118, R-126)", () => {
     expect(screen.getByText("40%")).toBeInTheDocument();
   });
 
+  it("hàng lẫn COUNT và PERCENT: sửa số câu của hàng có percent thì xóa percent và cập nhật số hiển thị (R1-14)", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Harness initial={[quota({ count: 3, percent: 10 }), quota({ id: "q2", name: "Hàm số", count: 5 })]} />);
+    const count = screen.getByRole("textbox", { name: /Số câu ít nhất · Xác suất/ }) as HTMLInputElement;
+    await user.clear(count);
+    await user.type(count, "6");
+    expect(stateOf()[0]).toMatchObject({ id: "q1", count: 6 });
+    expect(stateOf()[0]!.percent).toBeUndefined();
+    expect(count.value).toBe("6");
+    expect(screen.getByText("20%")).toBeInTheDocument();
+  });
+
   it("dòng chưa gắn MAPID ghi Chờ mapping; Bắt buộc thì báo chặn kiểm tra, Tham khảo thì ghi chưa có dữ liệu đối chiếu", async () => {
     renderWithProviders(<Harness initial={[quota(), quota({ id: "q2", name: "Hàm số", enforcement: "REFERENCE" })]} />);
     expect(screen.getAllByText("Chờ mapping")).toHaveLength(2);

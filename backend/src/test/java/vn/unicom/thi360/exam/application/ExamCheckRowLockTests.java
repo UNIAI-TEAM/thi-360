@@ -187,7 +187,7 @@ class ExamCheckRowLockTests {
         when(template.getCode()).thenReturn("T");
         when(template.isFixedBlockCounts()).thenReturn(true);
         when(template.getStructure()).thenReturn(readTree(ROWS));
-        when(templates.findProvenance("T")).thenReturn(template);
+        TemplateFactsStubs.provenance(templates, "T", template);
         var facts = new ExamCheckTemplateFacts(catalog, templates, mapper);
         assertThat(facts.of(scopedExam("SUBJECT", "T")).blockLockedTemplate()).isNotNull();
         assertThat(facts.of(scopedExam("PART", "T")).blockLockedTemplate()).isNull();
@@ -380,7 +380,7 @@ class ExamCheckRowLockTests {
         when(template.getCode()).thenReturn("T");
         when(template.isOmittedLocked()).thenReturn(omittedLocked);
         when(template.getStructure()).thenReturn(mapper.readTree(structure));
-        when(templates.findProvenance("T")).thenReturn(template);
+        TemplateFactsStubs.provenance(templates, "T", template);
         UUID subjectId = UUID.randomUUID();
         subjects.put("VAN", subjectId);
         List<Candidate> pool = new ArrayList<>();
@@ -440,7 +440,7 @@ class ExamCheckRowLockTests {
         when(template.isFixedBlockCounts()).thenReturn(fixedBlockCounts);
         when(template.isOmittedLocked()).thenReturn(omittedLocked);
         when(template.getStructure()).thenReturn(readTree(structure));
-        when(templates.findProvenance("T")).thenReturn(template);
+        TemplateFactsStubs.provenance(templates, "T", template);
     }
 
     private List<String> sectionStates(Exam exam, String structure) throws Exception {

@@ -6,6 +6,8 @@
  * Tra bằng mã canonical. Bí danh chỉ đổi mã **dùng để tra** và chỉ ở kỳ có mã canonical tương ứng; không trả và không ghi lại
  * mã đã đổi (mã môn gốc của bài giữ nguyên). Mã không có trong bảng, kể cả mã hệ thống cũ, không có mục (dùng MD).
  */
+// Nạp màn Danh sách dòng cho dạng ROWS cùng bảng đăng ký (CR-3): bảng và màn bật cờ cùng nơi.
+import "./row-form-register";
 
 export type SubjectFormKind = "MATRIX" | "ROWS";
 
@@ -60,6 +62,8 @@ interface KindRule {
   hideGrade: readonly string[];
   matrix: readonly string[];
   rows: readonly string[];
+  /** Cặp DS đã bật (B7): lát CR-3a bật HSA, QDA, BCA (`VAN`, `ANH`) và THPTQG; lát CR-3b bật V-ACT (`ANH`, `SCIENTIFIC_THINKING`), SP2E, SPT, H-SCA, V-SAT. Cờ của MT thuộc CR-2. */
+  enabledRows?: readonly string[];
 }
 
 const SOCIAL_AND_ENGLISH = ["SU", "DIA", "ECON_LAW", "ANH"] as const;
@@ -88,6 +92,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: ["ANH"],
     matrix: SCIENCE_MATRIX,
     rows: ["VAN", "ANH"],
+    enabledRows: ["VAN", "ANH"],
   },
   QDA: {
     enforcement: "DECLARED_REQUIRED",
@@ -96,6 +101,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: SCIENCE_MATRIX,
     rows: ["VAN", "ANH"],
+    enabledRows: ["VAN", "ANH"],
   },
   BCA: {
     enforcement: "FIXED_REFERENCE",
@@ -104,6 +110,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: ["TOAN", "SU", "LY", "HOA", "SINH", "DIA"],
     rows: ["VAN", "ANH"],
+    enabledRows: ["VAN", "ANH"],
   },
   VACT: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -112,6 +119,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: ["TOAN", "VIETNAMESE"],
     rows: ["ANH", "SCIENTIFIC_THINKING"],
+    enabledRows: ["ANH", "SCIENTIFIC_THINKING"],
   },
   SP2E: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -120,6 +128,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: SOCIAL_AND_ENGLISH,
     matrix: [],
     rows: ["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"],
+    enabledRows: ["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"],
   },
   SPT: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -128,6 +137,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: SOCIAL_AND_ENGLISH,
     matrix: [],
     rows: TWELVE_SUBJECTS,
+    enabledRows: TWELVE_SUBJECTS,
   },
   THPTQG: {
     enforcement: "DECLARED_REQUIRED",
@@ -136,6 +146,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: SOCIAL_AND_ENGLISH,
     matrix: [],
     rows: TWELVE_SUBJECTS,
+    enabledRows: TWELVE_SUBJECTS,
   },
   HSCA: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -144,6 +155,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: [],
     matrix: [],
     rows: ["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"],
+    enabledRows: ["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"],
   },
   VSAT: {
     enforcement: "REFERENCE_WITH_APPLY",
@@ -152,12 +164,13 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     hideGrade: ["DIA", "ANH", "VAN"],
     matrix: [],
     rows: ["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"],
+    enabledRows: ["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"],
   },
 };
 
 /**
- * Cờ `enabled` theo lát cắt (plan B7): cặp chỉ bật khi lát có đủ hành vi FTM yêu cầu cho nó. Lát CR-2a bật MT của QDA, BCA; lát CR-2a′ bật MT
- * của V-ACT (Toán, Tiếng Việt); mọi dạng khác (HSA: CR-2H; DS: CR-3) còn tắt và dùng MD như hôm nay.
+ * Cờ `enabled` theo lát cắt (plan B7): cặp chỉ bật khi lát có đủ hành vi FTM yêu cầu cho nó. CR-2 bật MT của QDA, BCA, V-ACT (Toán,
+ * Tiếng Việt); CR-3 bật toàn bộ DS; MT của HSA chờ CR-2H nên vẫn tắt và dùng MD.
  */
 const MATRIX_ENABLED_KINDS: readonly SubjectFormExamKind[] = ["QDA", "BCA", "VACT"];
 
@@ -172,7 +185,7 @@ function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFor
   const limited = LIMITED_KINDS.includes(kind) && subject in SCIENCE_LIMITS;
   return {
     form,
-    enabled: matrix && MATRIX_ENABLED_KINDS.includes(kind),
+    enabled: matrix ? MATRIX_ENABLED_KINDS.includes(kind) : (rule.enabledRows?.includes(subject) ?? false),
     percentEntry: rule.percent[form],
     enforcement: rule.enforcement,
     combinedMatrix: rule.combinedMatrix,

@@ -426,6 +426,7 @@ const wireTemplate = (code: string, fields: Wire, parts: Wire[]): Wire => ({
   ...fields,
   code,
   structure: { parts },
+  parts: [],
 });
 
 const VIETNAMESE = section("VIETNAMESE", 30, competency("VACT-NN-TV"));

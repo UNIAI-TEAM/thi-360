@@ -12,6 +12,7 @@ import type { SubjectFormEntry } from "./registry";
 export interface CountPercentRaw {
   text: string;
   code: "invalidNumber" | "setNotWhole";
+  source?: "COUNT" | "PERCENT";
 }
 
 export interface CountPercentInputProps {
@@ -35,6 +36,8 @@ export interface CountPercentInputProps {
   error?: string;
   /** Chữ đã gõ còn giữ ở kho nhập thô khi ô mở lại (R-15): hiện thay cho số đã lưu. */
   rawText?: string;
+  /** Ô chứa chữ nhập thô; mặc định COUNT để giữ hành vi của CR-2. */
+  rawSource?: "COUNT" | "PERCENT";
 }
 
 type Problem = { code: CountPercentRaw["code"]; count: number } | null;
@@ -44,19 +47,37 @@ type Problem = { code: CountPercentRaw["code"]; count: number } | null;
  * quy ra và mẫu số trước khi lưu ("30% của 40 câu = 12 câu"); quy đổi dùng `percent.ts`. Giá trị sai (không phải số, tỷ lệ quy ra
  * không chia hết cỡ chùm) không vào bản nháp mà báo qua `onRawInput`.
  */
-export function CountPercentInput({ label, entry, total, count, setSize = null, fieldName, onChange, onRawInput, error, rawText }: CountPercentInputProps) {
+export function CountPercentInput({ label, entry, total, count, setSize = null, fieldName, onChange, onRawInput, error, rawText, rawSource }: CountPercentInputProps) {
   const t = useTranslations("exams.subjectForm.common.countPercent");
   const id = useId();
-  const [countText, setCountText] = useState(() => rawText ?? String(count));
-  const [percentText, setPercentText] = useState("");
+  const [countText, setCountText] = useState(() => rawSource === "PERCENT" ? String(count) : rawText ?? String(count));
+  const [percentText, setPercentText] = useState(() => rawSource === "PERCENT" ? rawText ?? "" : "");
   const [lastCount, setLastCount] = useState(count);
-  const [problem, setProblem] = useState<Problem>(null);
+  const [lastSetSize, setLastSetSize] = useState(setSize);
+  const [problem, setProblem] = useState<Problem>(() => {
+    if (rawText === undefined) return null;
+    const percent = rawSource === "PERCENT";
+    const parsed = parseNumberText(rawText, percent);
+    if (parsed === null || (percent && (parsed < 0 || parsed > 100))) return { code: "invalidNumber", count: 0 };
+    if (percent && setSize !== null) {
+      const converted = percentToCount(parsed, total);
+      if (!wholeSetCount(converted, setSize).ok) return { code: "setNotWhole", count: converted };
+    }
+    return null;
+  });
 
   // Số câu đổi từ bên ngoài (đổi tổng, hoàn tác): hiện số mới thay cho chữ cũ.
   if (count !== lastCount) {
     setLastCount(count);
     if (parseNumberText(countText, false) !== count) {
       setCountText(String(count));
+      setPercentText("");
+      setProblem(null);
+    }
+  }
+  if (setSize !== lastSetSize) {
+    setLastSetSize(setSize);
+    if (rawText === undefined && problem?.code === "setNotWhole") {
       setPercentText("");
       setProblem(null);
     }
@@ -73,9 +94,9 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
   const previewId = `${id}-preview`;
   const describedBy = [message && errorId, preview && previewId].filter(Boolean).join(" ") || undefined;
 
-  const reject = (text: string, code: CountPercentRaw["code"], rejected = 0) => {
+  const reject = (text: string, code: CountPercentRaw["code"], source: "COUNT" | "PERCENT", rejected = 0) => {
     setProblem({ code, count: rejected });
-    onRawInput?.({ text, code });
+    onRawInput?.(rawSource === undefined ? { text, code } : { text, code, source });
   };
   const accept = (next: { count: number; percent: number | null }) => {
     setProblem(null);
@@ -87,7 +108,7 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
     setCountText(text);
     setPercentText("");
     const parsed = parseNumberText(text, false);
-    if (parsed === null) reject(text, "invalidNumber");
+    if (parsed === null) reject(text, "invalidNumber", "COUNT");
     else accept({ count: parsed, percent: null });
   };
   const changePercent = (text: string) => {
@@ -100,9 +121,9 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
     }
     const parsed = parseNumberText(text, true);
     // R1-9: tỷ lệ ngoài 0–100 báo sai ngay, không quy đổi.
-    if (parsed === null || parsed < 0 || parsed > 100) return reject(text, "invalidNumber");
+    if (parsed === null || parsed < 0 || parsed > 100) return reject(text, "invalidNumber", "PERCENT");
     const converted = percentToCount(parsed, total);
-    if (setSize !== null && !wholeSetCount(converted, setSize).ok) return reject(text, "setNotWhole", converted);
+    if (setSize !== null && !wholeSetCount(converted, setSize).ok) return reject(text, "setNotWhole", "PERCENT", converted);
     setCountText(String(converted));
     accept({ count: converted, percent: parsed });
   };

@@ -67,6 +67,16 @@ class MessageBundlesTest {
     }
 
     @Test
+    void followUpCodesHaveMessages() throws IOException {
+        for (String resource : List.of("messages.properties", "messages_vi.properties", "messages_en.properties")) {
+            Properties bundle = loadUtf8Properties(resource);
+            for (String code : List.of("CHECK_RUN_SCOPE_CONFLICT", "SECTION_NOT_FOUND")) {
+                assertThat(bundle.getProperty(code)).as("%s key '%s'", resource, code).isNotBlank();
+            }
+        }
+    }
+
+    @Test
     void localeResolverSupportsOnlyViAndEn_neverFallsBackToJvmLocale() {
         withRestoredLocaleDefaults(() -> {
             Locale.setDefault(Locale.US);

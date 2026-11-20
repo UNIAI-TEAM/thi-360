@@ -135,6 +135,51 @@ VALUES
     ('00000000-0000-7000-8200-000000001003', '00000000-0000-7000-8200-000000000301')
 ON CONFLICT (item_id, ref_item_id) DO NOTHING;
 
+-- FU (UNI-2700, V1-04): MAPID data for a subject other than Toán, so the knowledge picker offers nodes that have
+-- questions (R__seed_questionbank_dev_data.sql links two questions to every leaf below). Chapters link to
+-- SUBJECT.LY and GRADE.G10. ON CONFLICT DO NOTHING keeps a rerun and a database with its own nodes untouched.
+INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+VALUES
+    ('00000000-0000-7000-8200-000000002001', '00000000-0000-7000-8100-000000000009', 'LY1', 'ly1', 101, 'Dao động', 'Oscillations', '[MẪU] Chương 1 Vật lí', 3, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000002001/'),
+    ('00000000-0000-7000-8200-000000002002', '00000000-0000-7000-8100-000000000009', 'LY2', 'ly2', 102, 'Sóng', 'Waves', '[MẪU] Chương 2 Vật lí', 4, 1, false, NULL, 1, '/00000000-0000-7000-8200-000000002002/')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+SELECT v.id::uuid, '00000000-0000-7000-8100-000000000009', v.code, lower(v.code), v.value, v.name_vi, v.name_en,
+       '[MẪU] Bài ' || v.code, v.display_order, 1, false, p.id, p.depth + 1, p.path || v.id || '/'
+FROM (VALUES
+    ('00000000-0000-7000-8200-000000002101', 'LY1-1', 103, 'Dao động điều hòa', 'Simple harmonic motion', 0, '00000000-0000-7000-8200-000000002001'),
+    ('00000000-0000-7000-8200-000000002102', 'LY1-2', 104, 'Con lắc', 'Pendulums', 1, '00000000-0000-7000-8200-000000002001'),
+    ('00000000-0000-7000-8200-000000002103', 'LY2-1', 105, 'Sóng cơ', 'Mechanical waves', 0, '00000000-0000-7000-8200-000000002002'),
+    ('00000000-0000-7000-8200-000000002104', 'LY2-2', 106, 'Sóng âm', 'Sound waves', 1, '00000000-0000-7000-8200-000000002002')
+) v(id, code, value, name_vi, name_en, display_order, parent_id)
+JOIN catalog.catalog_item p ON p.id = v.parent_id::uuid
+ON CONFLICT DO NOTHING;
+
+INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, name_en, description, display_order, status, is_system, parent_id, depth, path)
+SELECT v.id::uuid, '00000000-0000-7000-8100-000000000009', v.code, lower(v.code), v.value, v.name_vi, v.name_en,
+       '[MẪU] Kiến thức ' || v.code, v.display_order, 1, false, p.id, p.depth + 1, p.path || v.id || '/'
+FROM (VALUES
+    ('00000000-0000-7000-8200-000000002201', 'LY1-1-1', 107, 'Phương trình dao động', 'Equation of motion', 0, '00000000-0000-7000-8200-000000002101'),
+    ('00000000-0000-7000-8200-000000002202', 'LY1-1-2', 108, 'Năng lượng dao động', 'Oscillation energy', 1, '00000000-0000-7000-8200-000000002101'),
+    ('00000000-0000-7000-8200-000000002203', 'LY1-2-1', 109, 'Con lắc lò xo', 'Spring pendulum', 0, '00000000-0000-7000-8200-000000002102'),
+    ('00000000-0000-7000-8200-000000002204', 'LY1-2-2', 110, 'Con lắc đơn', 'Simple pendulum', 1, '00000000-0000-7000-8200-000000002102'),
+    ('00000000-0000-7000-8200-000000002205', 'LY2-1-1', 111, 'Truyền sóng', 'Wave propagation', 0, '00000000-0000-7000-8200-000000002103'),
+    ('00000000-0000-7000-8200-000000002206', 'LY2-1-2', 112, 'Giao thoa sóng', 'Wave interference', 1, '00000000-0000-7000-8200-000000002103'),
+    ('00000000-0000-7000-8200-000000002207', 'LY2-2-1', 113, 'Đặc trưng của âm', 'Properties of sound', 0, '00000000-0000-7000-8200-000000002104'),
+    ('00000000-0000-7000-8200-000000002208', 'LY2-2-2', 114, 'Sóng dừng', 'Standing waves', 1, '00000000-0000-7000-8200-000000002104')
+) v(id, code, value, name_vi, name_en, display_order, parent_id)
+JOIN catalog.catalog_item p ON p.id = v.parent_id::uuid
+ON CONFLICT DO NOTHING;
+
+INSERT INTO catalog.catalog_item_ref (item_id, ref_item_id)
+VALUES
+    ('00000000-0000-7000-8200-000000002001', '00000000-0000-7000-8200-000000000204'),
+    ('00000000-0000-7000-8200-000000002001', '00000000-0000-7000-8200-000000000301'),
+    ('00000000-0000-7000-8200-000000002002', '00000000-0000-7000-8200-000000000204'),
+    ('00000000-0000-7000-8200-000000002002', '00000000-0000-7000-8200-000000000301')
+ON CONFLICT (item_id, ref_item_id) DO NOTHING;
+
 -- Sync last_value on all groups so newly created items never collide with seeded values
 UPDATE catalog.catalog_group g
 SET last_value = GREATEST(
@@ -392,7 +437,10 @@ WITH seed(ordinal, code, name_vi, name_en) AS (
       (46, 'TD_BIEU_DO', 'Biểu đồ', 'Chart'),
       -- Q-45 (UNI-2687): hai nhãn Địa lí cho V-SAT Phần II, tạm thời đến khi BA xác nhận mã.
       (47, 'DIA_BANG_SO_LIEU', 'Địa lí · Bảng số liệu', 'Geography · Data table'),
-      (48, 'DIA_BIEU_DO', 'Địa lí · Biểu đồ', 'Geography · Chart')
+      (48, 'DIA_BIEU_DO', 'Địa lí · Biểu đồ', 'Geography · Chart'),
+      -- Item 12 (UNI-2700, UNI-1706 Q3): hai nhãn tư liệu Địa lí, cùng khối với hai nhãn trên.
+      (49, 'DIA_BAN_DO', 'Địa lí · Bản đồ', 'Geography · Map'),
+      (50, 'DIA_ATLAT', 'Địa lí · Atlat', 'Geography · Atlat')
 ), missing AS (
     SELECT s.*, row_number() OVER (ORDER BY ordinal) AS allocation,
            ('00000000-0000-7000-8601-' || lpad(s.ordinal::text, 12, '0'))::uuid AS id

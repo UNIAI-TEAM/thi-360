@@ -130,6 +130,23 @@ describe("ProfileView thông tin cá nhân (AC-16)", () => {
     expect(screen.getByRole("button", { name: "Lưu thay đổi" })).toBeDisabled();
   });
 
+  it("họ tên dài đúng 200 ký tự được gửi đi: một giới hạn với đăng ký, ô nhập không cắt ở 100", async () => {
+    const longName = "A".repeat(200);
+    mocks.updateProfile.mockImplementation(async (body: { fullName?: string }) => profile({ fullName: body.fullName ?? "" }));
+    const user = userEvent.setup();
+    renderView();
+
+    const name = await screen.findByLabelText(/Họ và tên/);
+    expect(name).toHaveAttribute("maxlength", "200");
+    await user.clear(name);
+    await user.click(name);
+    await user.paste(longName);
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith(expect.objectContaining({ fullName: longName })));
+    expect(screen.queryByText("Họ và tên tối đa 200 ký tự.")).toBeNull();
+  });
+
   it("lỗi tại ô nhập: số điện thoại sai quy tắc và họ tên trống, không gọi API", async () => {
     const user = userEvent.setup();
     renderView();

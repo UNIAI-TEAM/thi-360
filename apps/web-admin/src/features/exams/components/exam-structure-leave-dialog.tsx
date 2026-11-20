@@ -78,6 +78,18 @@ export function ExamStructureLeaveDialog({
         return t("change.blockCount", { name: change.name, from: value(change.from), to: value(change.to) });
       case "blockSettings":
         return t("change.blockSettings", { name: change.name });
+      case "blocksReordered":
+        return t("change.blocksReordered", { subject: change.subject });
+      case "partAdded":
+        return t("change.partAdded", { name: change.name });
+      case "partRemoved":
+        return t("change.partRemoved", { name: change.name });
+      case "sectionAdded":
+        return t("change.sectionAdded", { subject: change.subject });
+      case "sectionRemoved":
+        return t("change.sectionRemoved", { subject: change.subject });
+      case "structureChanged":
+        return t("change.structureChanged");
     }
   };
   return (

@@ -232,7 +232,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | C-0b | UNI-2704 | Profile `e2e`, đồng hồ thử, `/api/v1/test/**`, `ForbiddenKeysAssert` |  |  | 1 | đang làm |
 | ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | merge PR #127 (`265ea998`) |
 | TS | UNI-2701 | Dựng lại seed đề test `TEST-*` theo mẫu BA (UNI-2701, cổng G0c cũ) | G0b |  | 3 | merge PR #136 (`5e70f8e8`) |
-| FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | chưa mở |
+| FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | merge PR #155 (`858cb28c`) |
 | EX-1 | UNI-2706 | Module `exam`: thông tin bán, ảnh bìa (kèm dọn ảnh bỏ), kiểm tra khi công bố, quy tắc E24, sự kiện, `PublishedExamPort`, đọc giờ qua `Clock` | G0b, TS | C-0b | 4 | merge PR #140 (`ba90c125`) |
 | EX-2 | UNI-2707 | Module `exam`: `PaperSolverPort` trên mô hình 2B, `PreviewPaperPort`, đo hiệu năng | G0b, TS |  | 2 | merge PR #138 (`f77deccb`) |
 | DS | UNI-2708 | Bộ dữ liệu bài đã công bố cho 9 kỳ thi, dùng cho test, dev, E2E | EX-1 | EX-2 | 4 | đang làm (bro) |
@@ -240,7 +240,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | merge PR #137 (`9c73a563`) |
 | ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | merge PR #139 (`1250752a`) |
 | CM-1 | UNI-2712 | Bảng chiếu sản phẩm, API công khai | C-0, C-0b, EX-1 | DS | 3 | merge PR #141 (`25e2e8f7`) |
-| CM-2 | UNI-2713 | Khuyến mãi, voucher, tính giá, cảnh báo giá sàn, tổng tiền đã giảm, lịch sử thay đổi | CM-1 |  | 5 | chưa mở |
+| CM-2 | UNI-2713 | Khuyến mãi, voucher, tính giá, cảnh báo giá sàn, tổng tiền đã giảm, lịch sử thay đổi | CM-1 |  | 5 | đang làm (cty) |
 | CM-4a | UNI-2714 | Bảng quyền dùng, `EntitlementPort`, cấp quyền nội bộ | C-0 |  | 2 | merge PR #128 (`55994db7`) |
 | CM-4b | UNI-2715 | `exam-access`, `/me/exams` | CM-1, CM-4a |  | 2 | đang làm (cty) |
 | CM-3a | UNI-2716 | Đơn hàng, cổng giả lập, IPN, trang quay lại, đơn 0 đồng, cấp quyền sau thu tiền, quy tắc một khoản được tính mỗi đơn | CM-2, CM-4b, ML |  | 5 | chưa mở |
@@ -248,7 +248,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | CM-5 | UNI-2718 | Quản lý đơn, người mua, hoàn tiền, tiếp tục cấp quyền, đối soát, xử lý tiền về trên lần đã ghi thất bại | CM-3a |  | 5 | chưa mở |
 | VP-2 | UNI-2719 | Luồng VNPAY sandbox thật có IPN, qua bản demo | CM-3b, FS-3, FA-3, DS, G2 |  | 1 | chưa mở |
 | CM-6 | UNI-2720 | Bộ đề: bảng, công bố, bảng chiếu, đơn nhiều bài, cấp quyền từng bài, hoàn tiền, voucher phạm vi bộ | CM-1, CM-3a, CM-4b, DS | CM-5 | 3 | chưa mở |
-| AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | chưa mở |
+| AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | đang làm (bro) |
 | AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | chưa mở |
 | AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | chưa mở |
 | AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | chưa mở |
@@ -293,8 +293,8 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | CR-1 | UNI-2761 | Form theo môn: bảng đăng ký, khớp và chọn biểu mẫu, điều hướng, chặn lưu (6 điểm, sóng 1) | merge PR #143 (`52168620`) |
 | CR-4 | UNI-2762 | Form theo môn: luật máy chủ giới hạn chùm và câu điền môn Khoa học HSA, QDA (4 điểm, sóng 1, nộp sau EX-1) | merge PR #150 (`d66469eb`) |
 | CR-2 | UNI-2763 | Form theo môn: Ma trận môn QDA, BCA, V-ACT (3 điểm, sóng 2) | merge PR #151 (`6600d6c4`) |
-| CR-3 | UNI-2764 | Form theo môn: Danh sách dòng lấy câu (6 điểm, sóng 2) | đang làm (cty) |
-| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D (2 điểm, sóng 3) | chưa mở |
+| CR-3 | UNI-2764 | Form theo môn: Danh sách dòng lấy câu (6 điểm, sóng 2) | merge PR #154 (`31cc852e`) |
+| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | đang làm (cty) |
 | CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | chưa mở |
 
 Đặc tả `docs/specs/2026-11-19-form-theo-mon.md` và plan `docs/plans/2026-11-19-form-theo-mon.md` (bản 4, 24 điểm, báo riêng ngoài mẫu số 138).

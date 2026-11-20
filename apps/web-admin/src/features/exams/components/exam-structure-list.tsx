@@ -8,6 +8,7 @@ import { sectionGroups, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamSection, ExamSectionState, StructureCombination } from "../types";
 import { findBlock, type StructureSelection } from "./exam-structure-draft";
 import { optionLabel, type StructureNames } from "./exam-structure-issues";
+import { ExamName } from "./exam-review-shared";
 
 export interface ExamStructureListProps {
   parts: readonly ExamPart[];
@@ -148,7 +149,7 @@ export function ExamStructureList({
     const choice = option.kind === "SUBJECT_CHOICE";
     const header = (
       <span className="flex flex-wrap items-center gap-x-1.5 pl-1 text-label font-medium text-text">
-        {optionLabel(option, names)}
+        {option.kind === "BRANCH" || choice ? <ExamName>{optionLabel(option, names)}</ExamName> : optionLabel(option, names)}
         {choice && (
           <span className="text-caption font-normal text-text-muted">
             {t("pickSubjects", { count: option.chooseSubjects ?? 0 })}
@@ -218,7 +219,7 @@ export function ExamStructureList({
                 warning={partHasIssue(part.id) ? t("hasIssue") : null}
                 strong
               >
-                {part.name}
+                <ExamName>{part.name}</ExamName>
               </ListItemButton>
               {part.codeSource ? (
                 renderCodedPart(part)

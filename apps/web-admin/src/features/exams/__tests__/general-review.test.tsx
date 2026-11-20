@@ -32,7 +32,7 @@ const part = (name: string, count: number, extra: Wire = {}) => ({
 
 /** Mẫu theo dạng máy chủ trả: `structure` là tài liệu `{ parts }`. */
 function template(code: string, fields: Wire, parts: Wire[]): Wire {
-  return { active: true, kindCode: "HSA", scope: "SUBJECT", timing: "PER_PART", buildMode: "STANDARD", isDefault: true, ...fields, code, structure: { parts } };
+  return { active: true, kindCode: "HSA", scope: "SUBJECT", timing: "PER_PART", buildMode: "STANDARD", isDefault: true, ...fields, code, structure: { parts }, parts: [] };
 }
 
 // Hình thật: mẫu bài ôn không ghi môn và không có thang; mẫu STANDARD của môn có thang 150.

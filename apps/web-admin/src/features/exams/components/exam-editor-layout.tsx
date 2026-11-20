@@ -92,7 +92,7 @@ function ExamEditorHeader({ exam, actionsRef }: { exam: ExamDetail; actionsRef: 
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="min-w-0 text-page-title font-bold wrap-break-word text-text">{exam.name}</h1>
+          <h1 data-exam-content className="min-w-0 text-page-title font-bold wrap-break-word text-text">{exam.name}</h1>
           <StatusChip tone={EXAM_STATUS_TONE[exam.status]}>
             {exam.status === "PUBLISHED" && exam.servingVersion !== null
               ? t("status.servingVersion", { version: exam.servingVersion })

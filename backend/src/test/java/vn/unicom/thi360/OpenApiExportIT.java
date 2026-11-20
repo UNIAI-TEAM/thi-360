@@ -54,8 +54,8 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         assertThat(schemas.path("LoadExamTemplateRequest").path("properties").has("overviewPolicy")).isTrue();
         assertThat(schemas.path("ExamCheckRequest").path("properties").has("scope")).isTrue();
         JsonNode previewRequest = schemas.path("ExamPreviewRequest").path("properties");
-        assertThat(previewRequest.path("pathId").path("deprecated").asBoolean()).isTrue();
-        assertThat(previewRequest.path("subjectCodes").path("deprecated").asBoolean()).isTrue();
+        assertThat(previewRequest.has("pathId")).isFalse();
+        assertThat(previewRequest.has("subjectCodes")).isFalse();
         assertThat(previewRequest.has("target")).isTrue();
         assertThat(previewRequest.has("basePreviewId")).isTrue();
         assertThat(previewRequest.has("regeneratePartIds")).isTrue();

@@ -6,6 +6,7 @@ import { createExam } from "../api";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
+import { byTextContent } from "./text-content";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -45,10 +46,10 @@ describe("Cấu trúc: phiên bản năm", () => {
     const dialog = await screen.findByRole("dialog", { name: /Đổi sang “SP2E · Toán · 2025”\?/ });
     expect(within(dialog).getByText("Bước 1/2")).toBeInTheDocument();
     expect(within(dialog).getByText("Các phần sẽ được nạp lại (1)")).toBeInTheDocument();
-    expect(within(dialog).getByText("1. Toán")).toBeInTheDocument();
+    expect(within(dialog).getByText(byTextContent("1. Toán"))).toBeInTheDocument();
     // Trước → sau theo từng phần: cấu trúc hiện tại (bản 2026) và phần của mẫu 2025.
     expect(within(dialog).getByText(/→ 22 câu · chưa có thời lượng$/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/^Toán · \d+ câu .* → /)).toBeInTheDocument();
+    expect(within(dialog).getByText(byTextContent(/^Toán · \d+ câu .* → /))).toBeInTheDocument();
     // Chưa xác nhận: cấu trúc chưa đổi.
     expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
 

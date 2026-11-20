@@ -8,7 +8,7 @@ import { RichTextView } from "@thi360/ui/rich-text";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { PreviewBlock, PreviewDisplaySegment, PreviewItem, PreviewPaper, PreviewPart, PreviewQuestion } from "../review-types";
 import { audioAttachments, PreviewAudioList } from "./exam-preview-audio";
-import { useLookup } from "./exam-review-shared";
+import { ExamName, richNodes, useLookup } from "./exam-review-shared";
 
 /** Số mục (câu hoặc bộ) hiện sẵn của mỗi khối; phần còn lại mở bằng "Hiện tất cả". */
 const VISIBLE_ITEMS = 3;
@@ -95,7 +95,7 @@ export function ExamPreviewPaper({ paper, original = false }: { paper: PreviewPa
       {paper.parts.map((part) => (
         <section key={part.partId} aria-labelledby={`preview-part-${part.partId}`} className="flex flex-col gap-4">
           <h3 id={`preview-part-${part.partId}`} className="text-title font-semibold text-text">
-            {part.name}{" "}
+            <ExamName>{part.name}</ExamName>{" "}
             <span className="font-normal text-text-muted">
               ·{" "}
               {t("partRange", {
@@ -129,7 +129,7 @@ function PreviewPartBody({ part, original }: { part: PreviewPart; original: bool
     return (
       <section key={segment.code} aria-labelledby={headingId} className="flex flex-col gap-3">
         <h4 id={headingId} className="text-label font-semibold text-text">
-          {segment.name}{" "}
+          <ExamName>{segment.name}</ExamName>{" "}
           <span className="font-normal text-text-muted">
             ·{" "}
             {t("segmentRange", {
@@ -152,7 +152,12 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
   const t = useTranslations("exams.preview");
   const lookup = useLookup();
   const [expanded, setExpanded] = useState(false);
-  const name = `${lookup.subject(block.subjectCode)} · ${block.blockName}`;
+  // Tên khối do mẫu đặt là nội dung đề: nằm trong `ExamName`, tên môn theo danh mục ở ngoài.
+  const name = (
+    <>
+      {lookup.subject(block.subjectCode)} · <ExamName>{block.blockName}</ExamName>
+    </>
+  );
   const items = useMemo(
     () =>
       original
@@ -176,7 +181,7 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
       <Heading className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-semibold text-text">
         <span>
-          {t("blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
+          {richNodes(t, "blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
         </span>
         {block.manualGrading && <Badge>{t("manualGrading")}</Badge>}
       </Heading>

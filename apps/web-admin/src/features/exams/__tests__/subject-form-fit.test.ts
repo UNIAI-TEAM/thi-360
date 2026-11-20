@@ -149,6 +149,13 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     const rich = block("r", { tagCodes: ["x"], knowledgeScope: { nodeIds: ["m"] }, matrix: separate({ byGrade: [] , byDifficulty: [{ code: "RECOGNITION", value: 2 }] }), topicQuotas: [{ id: "t", name: "t", nodeIds: ["n"], count: 1, enforcement: "REFERENCE" }] });
     expect(ds("SP2E", "TOAN", [rich, setBlock("c", 2, 5, { slots: [{ index: 1, tagCodes: ["y"] }] })])).toBe("FITS");
   });
+
+  it("DS: ma trận theo năng lực (byCompetency) ở mục hoặc dòng rơi về MD; mảng rỗng vẫn khớp", () => {
+    const competency = [{ code: "VACT-TD-LOGIC", value: 12 }, { code: "VACT-TD-SL", value: 18 }];
+    expect(ds("VACT", "SCIENTIFIC_THINKING", [block("b", { matrix: separate({ byCompetency: competency }) })])).toBe("ROW_CONDITION_UNSUPPORTED");
+    expect(ds("VACT", "SCIENTIFIC_THINKING", [block("b")], { matrix: separate({ byCompetency: competency }) })).toBe("ROW_CONDITION_UNSUPPORTED");
+    expect(ds("VACT", "SCIENTIFIC_THINKING", [block("b", { matrix: separate({ byCompetency: [] }) })])).toBe("FITS");
+  });
 });
 
 describe("Khớp biểu mẫu: mẫu chuẩn của fixture (plan B8, FTM AC 5)", () => {

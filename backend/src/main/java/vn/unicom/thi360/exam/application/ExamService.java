@@ -819,7 +819,7 @@ public class ExamService {
                 writeStructure(exam, doc, false, actor, now);
             }
         }
-        if (!scopeChanged) {
+        if (!scopeChanged && !"RAW".equals(exam.getPracticeScoring())) {
             rejectRawReview(request.practiceScoring(), exam.getBuildMode());
         }
 
@@ -1011,15 +1011,20 @@ public class ExamService {
         exam.setBuildMode(template.getBuildMode());
         // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the scoring values
         // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
-        // scale, a standard exam takes the template or profile scale and the profile scoring.
+        // scale, a standard exam takes the template or profile scale and the profile scoring. One exception (BE-13
+        // R3-1, FU): a V-ACT exam scored RAW that loads a review template keeps its scoring, scoringReset stays false.
         boolean scoringReset = false;
         if (modeChanged) {
             ExamKindProfile profile = crossingProfile;
             if ("REVIEW".equals(template.getBuildMode())) {
-                exam.applyScoringProfile(null, "LINEAR");
-                exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
-                        exam.getDurationMinutes(), null, actor, now);
-                scoringReset = true;
+                boolean keepRawVact = rawScoring && catalogLookup.findItem(exam.getKindItemId())
+                        .map(item -> "VACT".equals(item.code())).orElse(false);
+                if (!keepRawVact) {
+                    exam.applyScoringProfile(null, "LINEAR");
+                    exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
+                            exam.getDurationMinutes(), null, actor, now);
+                    scoringReset = true;
+                }
             } else {
                 BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
                         : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();

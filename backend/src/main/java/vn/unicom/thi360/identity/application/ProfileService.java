@@ -40,7 +40,8 @@ import vn.unicom.thi360.shared.web.AppMessages;
 @Service
 public class ProfileService {
 
-    static final int FULL_NAME_MAX_CHARS = 100;
+    /** One full-name limit on every path (admin create/import, self registration, profile): 200 characters (FS-2 R1-9). */
+    static final int FULL_NAME_MAX_CHARS = 200;
     private static final Pattern PHONE = Pattern.compile("0\\d{9}");
     private static final String AVATAR_URL_PREFIX = "/api/v1/avatars/";
     private static final Logger log = LoggerFactory.getLogger(ProfileService.class);

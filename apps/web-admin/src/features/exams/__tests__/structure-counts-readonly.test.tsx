@@ -34,6 +34,7 @@ const reviewTemplate = {
   publishable: true,
   fixedCounts: false,
   structure: { parts: [] },
+  parts: [],
 };
 
 const block = (id: string, questionCount: number) => ({ id, name: id, questionType: "SINGLE_CHOICE", questionCount, requiredPointsPerQuestion: 1 });

@@ -171,17 +171,17 @@ class MeProfileIT extends AbstractAvatarMinioIT {
     void fullNameBoundaries() throws Exception {
         Account account = support.eligible("profile.name");
 
-        assertThat(patchAndGet(account, "{\"fullName\":\"" + fullNameOf(100) + "\"}").getStatus())
-                .as("100 characters").isEqualTo(200);
-        assertThat(reload(account).getFullName()).isEqualTo(fullNameOf(100));
+        assertThat(patchAndGet(account, "{\"fullName\":\"" + fullNameOf(200) + "\"}").getStatus())
+                .as("200 characters, the limit of registration and admin create").isEqualTo(200);
+        assertThat(reload(account).getFullName()).isEqualTo(fullNameOf(200));
 
-        for (String bad : List.of(fullNameOf(101), "", "   ")) {
+        for (String bad : List.of(fullNameOf(201), "", "   ")) {
             MockHttpServletResponse response = patchAndGet(account, "{\"fullName\":\"" + bad + "\"}");
             assertThat(response.getStatus()).as("rejected: '%s'", bad.length()).isEqualTo(400);
             JsonNode body = objectMapper.readTree(response.getContentAsString());
             assertThat(body.get("fieldErrors").get(0).get("field").asText()).isEqualTo("fullName");
         }
-        assertThat(reload(account).getFullName()).as("rejected input changes nothing").isEqualTo(fullNameOf(100));
+        assertThat(reload(account).getFullName()).as("rejected input changes nothing").isEqualTo(fullNameOf(200));
     }
 
     @Test
