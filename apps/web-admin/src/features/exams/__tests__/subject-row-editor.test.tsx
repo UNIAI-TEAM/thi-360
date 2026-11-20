@@ -605,4 +605,19 @@ describe("Danh sách dòng: focus COUNT_FIELD và role=alert ở kỳ không nh�
     expect(putCalls(qdaServer)).toHaveLength(0);
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Số chùm" })).toHaveFocus());
   });
+
+  it("toggleEditRow: bấm Sửa lần hai trên dòng đang mở sẽ đóng màn sửa (R1-18)", async () => {
+    const user = userEvent.setup();
+    boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
+    openStructure("?section=sec-van");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const editBtn = within(rowOf("van-1")).getByRole("button", { name: /Sửa dòng Tu khac nhom nghia/ });
+    expect(editBtn).toHaveAttribute("aria-expanded", "false");
+    await user.click(editBtn);
+    expect(editBtn).toHaveAttribute("aria-expanded", "true");
+    expect(document.querySelector('[data-form-row-editor="van-1"]')).not.toBeNull();
+    await user.click(editBtn);
+    expect(editBtn).toHaveAttribute("aria-expanded", "false");
+    expect(document.querySelector('[data-form-row-editor="van-1"]')).toBeNull();
+  });
 });

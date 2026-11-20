@@ -79,4 +79,17 @@ describe("exam quota references", () => {
     ]);
     expect(commandDenominator(entries)).toBe(67);
   });
+
+  it("computes PROMPT denominator from count buckets before filtering hidden GRADE (R1-15)", () => {
+    const entries = referenceQuotaEntries("ANH", [
+      { id: "hidden-grade", name: "grade", dimension: "GRADE", basis: "PROMPT", enforcement: "REFERENCE", subjectCodes: ["ANH"], buckets: [{ codes: ["G12"], count: 67 }] },
+      { id: "percent-prompt", name: "pct", dimension: "DIFFICULTY", basis: "PROMPT", enforcement: "REFERENCE", subjectCodes: ["ANH"], buckets: [{ codes: ["NB"], percent: 100 }] },
+      { id: "diff", name: "diff", dimension: "DIFFICULTY", basis: "PROMPT", enforcement: "REFERENCE", subjectCodes: ["ANH"], buckets: [{ codes: ["NB"], count: 60 }] },
+    ], false);
+    expect(entries.map((entry) => [entry.quota.id, entry.unclassified])).toEqual([
+      ["percent-prompt", 0],
+      ["diff", 7],
+    ]);
+    expect(commandDenominator(entries)).toBe(67);
+  });
 });

@@ -6614,8 +6614,8 @@
             "back": "Bỏ kết hợp",
             "backDifficulties": "Theo độ khó: {values}",
             "backGrades": "Theo khối lớp: {values}",
-            "caption": "Bảng kết hợp Khối lớp × Độ khó",
             "cancel": "Hủy",
+            "caption": "Bảng kết hợp Khối lớp × Độ khó",
             "cellAria": "{grade} × {difficulty}: số câu",
             "cellPercentAria": "{grade} × {difficulty}: tỷ lệ",
             "confirm": "Xác nhận chuyển",
@@ -6717,7 +6717,6 @@
           "editAria": "Sửa dòng {name}",
           "empty": "Môn chưa có dòng lấy câu.",
           "figures": {
-            "plain": "{count, number} câu",
             "plainPoints": "{count, number} câu · {points, number} điểm",
             "trueFalse": "{count, number} câu Đ/S{hasStatements, select, yes { · {statements, number} ý} other {}}{hasPoints, select, yes { · thang {points, number} điểm} other {}}"
           },

@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  focusRing,
 } from "@thi360/ui";
 import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -105,7 +106,7 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
       open={userOpen || visiblePercentIssues.length > 0}
       onToggle={(event) => setUserOpen(event.currentTarget.open)}
     >
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-3 text-label font-semibold text-text">
+      <summary className={cn("flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-md px-4 py-3 text-label font-semibold text-text", focusRing)}>
         <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
         <span id={headingId}>{t("title")}</span>
         <span className="text-caption font-normal text-text-muted">{t("hint")}</span>

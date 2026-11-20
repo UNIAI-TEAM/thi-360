@@ -167,6 +167,9 @@ describe("CR-3 bản en: data-exam-content, aria-labelledby và số ít/số nh
 
     const content = examContentTexts(container);
     expect(content).toContain("Phân đoạn Đọc hiểu");
+    const segmentRow = container.querySelector('[data-form-segment="SEG_1"]')!;
+    expect(segmentRow.querySelector("th")).toBeNull();
+    expect(segmentRow.querySelector("td[colspan]")).toHaveAttribute("colspan", "5");
     expect(content).toContain("Từ khác nhóm nghĩa");
     expect(content).toContain("Đọc hiểu");
     expect(content).toContain("Nghị luận xã hội");

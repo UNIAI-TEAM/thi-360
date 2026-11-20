@@ -6614,8 +6614,8 @@
             "back": "Remove combined table",
             "backDifficulties": "By difficulty: {values}",
             "backGrades": "By grade: {values}",
-            "caption": "Combined Grade × Difficulty table",
             "cancel": "Cancel",
+            "caption": "Combined Grade × Difficulty table",
             "cellAria": "{grade} × {difficulty}: question count",
             "cellPercentAria": "{grade} × {difficulty}: percentage",
             "confirm": "Confirm conversion",
@@ -6717,7 +6717,6 @@
           "editAria": "Edit row {name}",
           "empty": "This subject has no question rows.",
           "figures": {
-            "plain": "{count, plural, one {# question} other {# questions}}",
             "plainPoints": "{count, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}}",
             "trueFalse": "{count, plural, one {# true/false question} other {# true/false questions}}{hasStatements, select, yes { · {statements, plural, one {# statement} other {# statements}}} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
           },

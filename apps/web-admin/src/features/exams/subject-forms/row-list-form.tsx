@@ -119,6 +119,10 @@ export function RowListForm({
   const editingIndex = editing ? section.blocks.findIndex((block) => block.id === editing.id) : -1;
 
   const openFromRow = (blockId: string) => {
+    if (openId === blockId) {
+      closeEditor();
+      return;
+    }
     cancelCloseFocus();
     setOpenId(blockId);
     setFocusField(null);
@@ -267,9 +271,9 @@ export function RowListForm({
                     <Fragment key={block.id}>
                       {showSegment && (
                         <tr data-form-segment={segment.code}>
-                          <th scope="colgroup" colSpan={columns} className="border-b border-border bg-subtle/60 px-2 py-1.5 text-left text-label font-semibold text-text">
+                          <td colSpan={columns} className="border-b border-border bg-subtle/60 px-2 py-1.5 text-left text-label font-semibold text-text">
                             <ExamName>{segment.name}</ExamName>
-                          </th>
+                          </td>
                         </tr>
                       )}
                       <tr data-form-row={block.id} className={openId === block.id ? "bg-primary-50" : undefined}>

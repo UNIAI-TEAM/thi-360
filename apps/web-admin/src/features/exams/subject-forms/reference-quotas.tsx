@@ -23,6 +23,7 @@ export interface ReferenceQuotaEntry {
 }
 
 const bucketValue = (bucket: ExamQuota["buckets"][number]): number => bucket.percent ?? bucket.count ?? 0;
+const isCountBucket = (quota: ExamQuota) => quota.buckets.every((bucket) => bucket.percent === undefined || bucket.percent === null);
 
 /**
  * Phân bố cấp bài (cả môn) áp cho môn của mục (R-7, R-8): chỉ tiêu của riêng môn này, hoặc trải nhiều môn có môn này (chỉ đối chiếu,
@@ -31,22 +32,24 @@ const bucketValue = (bucket: ExamQuota["buckets"][number]): number => bucket.per
  */
 export function referenceQuotaEntries(subjectCode: string, examQuotas: readonly ExamQuota[], showGrade: boolean): ReferenceQuotaEntry[] {
   const applies = (quota: ExamQuota) =>
-    !(quota.excludeSubjectCodes ?? []).includes(subjectCode) && ((quota.subjectCodes?.length ?? 0) === 0 || (quota.subjectCodes ?? []).includes(subjectCode)) && (showGrade || quota.dimension !== "GRADE");
-  const mine = examQuotas.filter(applies);
+    !(quota.excludeSubjectCodes ?? []).includes(subjectCode) && ((quota.subjectCodes?.length ?? 0) === 0 || (quota.subjectCodes ?? []).includes(subjectCode));
+  const mineAll = examQuotas.filter(applies);
   const single = (quota: ExamQuota) => quota.subjectCodes?.length === 1;
   const totalOf = (quota: ExamQuota) => quota.buckets.reduce((sum, bucket) => sum + bucketValue(bucket), 0);
-  const denominator = Math.max(0, ...mine.filter((quota) => single(quota) && quota.basis === "PROMPT").map(totalOf));
-  return mine.map((quota) => {
-    const total = totalOf(quota);
-    const lock = !single(quota) ? "multiSubject" : quota.basis !== "QUESTION" ? "promptBasis" : null;
-    const hasUnclassifiedBucket = quota.buckets.some((bucket) => bucket.codes.includes(UNCLASSIFIED_BUCKET));
-    return { quota, lock, total, unclassified: single(quota) && quota.basis === "PROMPT" && !hasUnclassifiedBucket ? Math.max(0, denominator - total) : 0 };
-  });
+  const denominator = Math.max(0, ...mineAll.filter((quota) => single(quota) && quota.basis === "PROMPT" && isCountBucket(quota)).map(totalOf));
+  return mineAll
+    .filter((quota) => showGrade || quota.dimension !== "GRADE")
+    .map((quota) => {
+      const total = totalOf(quota);
+      const lock = !single(quota) ? "multiSubject" : quota.basis !== "QUESTION" ? "promptBasis" : null;
+      const hasUnclassifiedBucket = quota.buckets.some((bucket) => bucket.codes.includes(UNCLASSIFIED_BUCKET));
+      return { quota, lock, total, unclassified: single(quota) && quota.basis === "PROMPT" && isCountBucket(quota) && !hasUnclassifiedBucket ? Math.max(0, denominator - total) : 0 };
+    });
 }
 
 /** Mẫu số theo lệnh của môn: tổng lớn nhất trong các phân bố theo lệnh của riêng môn (ví dụ Toán 67 lệnh); `null` khi không có. */
 export function commandDenominator(entries: readonly ReferenceQuotaEntry[]): number | null {
-  const totals = entries.filter((entry) => entry.lock !== "multiSubject" && entry.quota.basis === "PROMPT").map((entry) => entry.total + entry.unclassified);
+  const totals = entries.filter((entry) => entry.lock !== "multiSubject" && entry.quota.basis === "PROMPT" && isCountBucket(entry.quota)).map((entry) => entry.total + entry.unclassified);
   return totals.length > 0 ? Math.max(...totals) : null;
 }
 
