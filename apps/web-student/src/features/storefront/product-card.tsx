@@ -27,8 +27,13 @@ export function FormatChip({
       {scopeLabel && (
         <>
           {" · "}
-          {/* Tên phần là nội dung bài thi (không dịch), tên môn lấy từ danh mục song ngữ: vùng nội dung đề bỏ qua phép kiểm lẫn ngôn ngữ. */}
-          <span data-exam-content>{pickName(scopeLabel, locale)}</span>
+          {/* Tên phần (PART) là nội dung đề nên đánh dấu data-exam-content; tên môn (SUBJECT) qua pickName từ danh
+              mục song ngữ, phép kiểm lẫn ngôn ngữ vẫn áp cho nó. */}
+          {format === "PART" ? (
+            <span data-exam-content>{pickName(scopeLabel, locale)}</span>
+          ) : (
+            <span>{pickName(scopeLabel, locale)}</span>
+          )}
         </>
       )}
     </span>

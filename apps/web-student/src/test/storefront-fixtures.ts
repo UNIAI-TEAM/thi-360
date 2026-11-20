@@ -62,6 +62,14 @@ export const REVIEW_CARD: ProductCard = {
   scopeLabel: { nameVi: "Toan", nameEn: "Math" },
 };
 
+export const VI_ONLY_CARD: ProductCard = {
+  ...REVIEW_CARD,
+  code: "HSA-R-LICH-SU-001",
+  name: "HSA on tap Lich su",
+  // Môn chưa có tên Anh: pickName rơi về nameVi ở cả hai ngôn ngữ (A7).
+  scopeLabel: { nameVi: "Lich su", nameEn: "" },
+};
+
 export const FULL_DETAIL: ProductDetail = {
   code: "HSA-FULL-01",
   name: "De thi thu HSA FULL so 01",

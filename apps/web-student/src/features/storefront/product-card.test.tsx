@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import enMessages from "@/messages/en.json";
-import { FULL_CARD, PART_CARD, REVIEW_CARD } from "@/test/storefront-fixtures";
+import { FULL_CARD, PART_CARD, REVIEW_CARD, VI_ONLY_CARD } from "@/test/storefront-fixtures";
 import { renderWithProviders } from "@/test/render";
 import { ProductCard } from "./product-card";
 
@@ -77,6 +77,30 @@ describe("ProductCard", () => {
     expect(scope).toHaveTextContent("Toan hoc va Xu li so lieu");
     expect(within(article).getByText("79.000 đ").closest("[data-exam-content]")).toBeNull();
   });
+
+  it("tên môn (SUBJECT) trên chip không gắn data-exam-content: pickName còn nằm trong phép kiểm lẫn ngôn ngữ", () => {
+    renderWithProviders(<ProductCard product={REVIEW_CARD} action={action} />);
+    const article = card(REVIEW_CARD.name);
+
+    const scope = within(article).getByText("Toan");
+    expect(scope.closest("[data-exam-content]")).toBeNull();
+  });
+
+  it("giao diện tiếng Anh: nameEn rỗng thì chip hiện nameVi, nameEn khác nameVi thì hiện nameEn (A7)", () => {
+    const viOnly = renderWithProviders(<ProductCard product={VI_ONLY_CARD} action={action} />, {
+      locale: "en",
+      messages: enMessages,
+    });
+    expect(within(card(VI_ONLY_CARD.name)).getByText(/Subject exam/)).toHaveTextContent("Subject exam · Lich su");
+    viOnly.unmount();
+
+    renderWithProviders(<ProductCard product={REVIEW_CARD} action={action} />, {
+      locale: "en",
+      messages: enMessages,
+    });
+    expect(within(card(REVIEW_CARD.name)).getByText(/Subject exam/)).toHaveTextContent("Subject exam · Math");
+  });
+
 
   it("giao diện tiếng Anh: chữ giao diện tiếng Anh, tên môn theo nameEn, số tiếng Anh", () => {
     renderWithProviders(<ProductCard product={REVIEW_CARD} action={action} />, {

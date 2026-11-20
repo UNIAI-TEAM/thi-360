@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
+import enMessages from "@/messages/en.json";
 import { FULL_CARD, PART_CARD } from "@/test/storefront-fixtures";
 import { renderWithProviders } from "@/test/render";
 import { EMPTY_CATALOG_QUERY } from "./catalog-query";
@@ -181,6 +182,29 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
     );
 
     expect(screen.queryByRole("navigation", { name: "Phân trang danh mục" })).toBeNull();
+  });
+
+
+  it("tiếng Anh: tên môn trong bộ lọc Phần/môn hiện nameEn, rỗng thì rơi về nameVi (A7)", async () => {
+    const filters: Loaded<StorefrontFilters> = {
+      status: "ok",
+      data: {
+        ...FILTERS.data,
+        subjects: [
+          { code: "TOAN", nameVi: "Toan", nameEn: "Math", count: 4 },
+          { code: "LSU", nameVi: "Lich su", nameEn: "", count: 1 },
+        ],
+      },
+    };
+    renderWithProviders(<CatalogSection query={EMPTY_CATALOG_QUERY} filters={filters} products={page()} />, {
+      locale: "en",
+      messages: enMessages,
+    });
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Section/subject" }));
+
+    expect(await screen.findByRole("option", { name: "Math" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Lich su" })).toBeInTheDocument();
   });
 
   it("trang vượt trang cuối: đưa về trang cuối, không hiện lưới rỗng hay khoảng đảo", async () => {
