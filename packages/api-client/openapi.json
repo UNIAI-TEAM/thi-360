@@ -2697,6 +2697,25 @@
         "required" : [ "code", "examKindCodes", "name" ],
         "type" : "object"
       },
+      "ConfirmPartChoiceRequest" : {
+        "description" : "Yêu cầu xác nhận lựa chọn phần tự chọn sau khi bắt đầu (LT §6.1)",
+        "properties" : {
+          "optionCode" : {
+            "description" : "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "description" : "Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học)",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 10,
+            "minItems" : 0,
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "ContentReferenceResponse" : {
         "description" : "Dữ liệu tham chiếu gộp cho màn Ngân hàng câu hỏi và Bài thi (spec mục 5.3, 9.2)",
         "properties" : {
@@ -8349,6 +8368,78 @@
         "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
         "type" : "object"
       },
+      "PartChoiceResponse" : {
+        "description" : "Trạng thái phần tự chọn sau khi xác nhận lựa chọn hoặc thử lại sinh đề",
+        "properties" : {
+          "attemptId" : {
+            "description" : "Id lượt thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptState" : {
+            "description" : "Trạng thái lượt thi",
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          },
+          "choice" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "description" : "Lựa chọn đã khóa của phần",
+            "type" : "object"
+          },
+          "choiceConfirmedAt" : {
+            "description" : "Thời điểm khóa lựa chọn",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "choiceDeadlineAt" : {
+            "description" : "Hạn chờ chọn phần",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deadlineAt" : {
+            "description" : "Hạn kết thúc phần",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "generationError" : {
+            "description" : "Mã lỗi sinh đề gần nhất nếu có",
+            "type" : "string"
+          },
+          "generationTries" : {
+            "description" : "Số lần sinh lỗi liên tiếp",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "description" : "Mã phần thi",
+            "type" : "string"
+          },
+          "partId" : {
+            "description" : "Id phần thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "serverNow" : {
+            "description" : "Giờ máy chủ hiện tại",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "startedAt" : {
+            "description" : "Thời điểm bắt đầu làm phần",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "description" : "Trạng thái phần thi",
+            "enum" : [ "PENDING", "AWAITING_CHOICE", "GENERATING", "GENERATION_FAILED", "OPEN", "CLOSED", "SKIPPED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptId", "attemptState", "generationTries", "partCode", "partId", "serverNow", "state" ],
+        "type" : "object"
+      },
       "PartFilter" : {
         "description" : "Phần của bài thi theo phần (PART); mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. Chỉ bài thi theo phần mới có mã phần: bài thi FULL tìm theo hình thức FULL, không theo phần. Tham số part của danh sách là code, đi kèm kind, và chỉ khớp bài thi theo phần",
         "properties" : {
@@ -10451,6 +10542,18 @@
           }
         },
         "required" : [ "expectedRevision" ],
+        "type" : "object"
+      },
+      "RetryPartRequest" : {
+        "description" : "Yêu cầu thử lại sinh đề cho phần bị lỗi (LT §6.1)",
+        "properties" : {
+          "reason" : {
+            "description" : "Lý do thử lại tùy chọn",
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "RoleDetailResponse" : {
@@ -37717,6 +37820,197 @@
         "tags" : [ "Attempts" ]
       }
     },
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice" : {
+      "post" : {
+        "operationId" : "confirmPartChoice",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "partId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Khóa chống gửi lặp bắt buộc cho thao tác chọn phần 3",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmPartChoiceRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartChoiceResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái hiện tại khi gửi lại cùng khóa idempotency hoặc lựa chọn đã khóa giống hệt"
+          },
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartChoiceResponse"
+                }
+              }
+            },
+            "description" : "Đã khóa lựa chọn và đưa việc sinh phần vào hàng chờ"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xác nhận lựa chọn phần tự chọn (phần 3 HSA, QDA) và sinh đề ở nền",
+        "tags" : [ "Attempts" ]
+      }
+    },
     "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish" : {
       "post" : {
         "operationId" : "finishPart",
@@ -37887,6 +38181,197 @@
           }
         },
         "summary" : "Hoàn thành phần hiện tại và mở phần kế tiếp của lượt thi",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry" : {
+      "post" : {
+        "operationId" : "retryPartGeneration",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "partId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Khóa chống gửi lặp bắt buộc cho thao tác thử lại sinh phần",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RetryPartRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartChoiceResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái hiện tại khi gửi lại cùng khóa idempotency"
+          },
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartChoiceResponse"
+                }
+              }
+            },
+            "description" : "Đã đưa yêu cầu sinh lại phần vào hàng chờ"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Thử lại sinh đề cho phần thi đang ở trạng thái GENERATION_FAILED",
         "tags" : [ "Attempts" ]
       }
     },

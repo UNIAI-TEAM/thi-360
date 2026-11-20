@@ -135,23 +135,28 @@ class AttemptOpenApiContractTest {
                                 .asInt())
                 .isEqualTo(500);
 
-        JsonNode submitParams =
-                root.path("paths")
-                        .path("/api/v1/me/attempts/{attemptId}/submit")
-                        .path("post")
-                        .path("parameters");
-        assertThat(submitParams.isArray()).isTrue();
-        boolean foundRequiredIdempotencyKey = false;
-        for (JsonNode param : submitParams) {
-            if ("header".equals(param.path("in").asText())
-                    && "Idempotency-Key".equals(param.path("name").asText())) {
-                assertThat(param.path("required").asBoolean()).isTrue();
-                foundRequiredIdempotencyKey = true;
+        for (String endpointPath :
+                List.of(
+                        "/api/v1/me/attempts/{attemptId}/submit",
+                        "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+                        "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry")) {
+            JsonNode params =
+                    root.path("paths").path(endpointPath).path("post").path("parameters");
+            assertThat(params.isArray()).as("parameters for %s", endpointPath).isTrue();
+            boolean foundRequiredIdempotencyKey = false;
+            for (JsonNode param : params) {
+                if ("header".equals(param.path("in").asText())
+                        && "Idempotency-Key".equals(param.path("name").asText())) {
+                    assertThat(param.path("required").asBoolean())
+                            .as("%s Idempotency-Key required", endpointPath)
+                            .isTrue();
+                    foundRequiredIdempotencyKey = true;
+                }
             }
+            assertThat(foundRequiredIdempotencyKey)
+                    .as("%s requires Idempotency-Key header", endpointPath)
+                    .isTrue();
         }
-        assertThat(foundRequiredIdempotencyKey)
-                .as("/api/v1/me/attempts/{attemptId}/submit requires Idempotency-Key header")
-                .isTrue();
     }
 
     @Test
@@ -182,10 +187,13 @@ class AttemptOpenApiContractTest {
                     .doesNotContain(": never");
         }
 
-        String submitOpBlock = extractOperationBlock(schemaDts, "submit");
-        assertThat(submitOpBlock)
-                .contains("\"Idempotency-Key\": string;")
-                .doesNotContain("\"Idempotency-Key\"?:");
+        for (String opId : List.of("submit", "confirmPartChoice", "retryPartGeneration")) {
+            String opBlock = extractOperationBlock(schemaDts, opId);
+            assertThat(opBlock)
+                    .as("%s requires Idempotency-Key header in schema.d.ts", opId)
+                    .contains("\"Idempotency-Key\": string;")
+                    .doesNotContain("\"Idempotency-Key\"?:");
+        }
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {
