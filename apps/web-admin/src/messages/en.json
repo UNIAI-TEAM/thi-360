@@ -5072,7 +5072,8 @@
         "BLOCK_COUNT_LOCKED": "Block {block}: the template locks the {dimension, select, COUNT {row's question count} SET_COUNT {row's set count} SET_SIZE {row's set size} TYPE {row's question type} other {row's type and counts}}{hasCount, select, yes {; the template keeps {required, number}, the row has {available, number}} other {}}. Set the row back to the template.",
         "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
-        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}."
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
+        "STATEMENT_POINTS_UNEVEN": "Block {block}: question {codes} awards unequal points to its True/False statements, while a block scored per statement needs every statement to carry the same points. Replace this question."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -5524,8 +5525,9 @@
         "showShuffled": "Show shuffled order"
       },
       "originalOrderNote": "Showing the original order: questions as the solver picked them, options as authored. The real paper uses the order shuffled by the seed.",
-      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · kept for {minutes, number} minutes · questions are logged as preview, no attempt is used",
+      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · {retention} · questions are logged as preview, no attempt is used",
       "resultTitle": "Trial paper · {label}",
+      "retention": "kept for {minutes, number} minutes{state, select, left { ({left, number} min left)} expired { (expired)} other {}}",
       "scope": {
         "count": "Questions in the subject",
         "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",

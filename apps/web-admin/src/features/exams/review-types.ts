@@ -155,6 +155,7 @@ export const CHECK_ISSUE_CODES = [
   "OMITTED_BLOCK_LOCKED",
   "SCALE_INCLUDES_EXCLUDED_PART",
   "DISPLAY_SEGMENT_MISMATCH",
+  "STATEMENT_POINTS_UNEVEN",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 

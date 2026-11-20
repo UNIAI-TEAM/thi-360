@@ -5072,7 +5072,8 @@
         "BLOCK_COUNT_LOCKED": "Khối {block}: mẫu khóa {dimension, select, COUNT {số câu của dòng} SET_COUNT {số chùm của dòng} SET_SIZE {số câu mỗi chùm} TYPE {dạng của dòng} other {dạng và số lượng của dòng}}{hasCount, select, yes {; mẫu giữ {required, number}, hiện có {available, number}} other {}}. Đưa dòng về đúng như mẫu.",
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
-        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}."
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "STATEMENT_POINTS_UNEVEN": "Khối {block}: câu {codes} có các ý Đúng/Sai không chia điểm đều, trong khi khối chấm theo từng ý cần mọi ý bằng điểm nhau. Thay câu này bằng câu khác."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -5524,8 +5525,9 @@
         "showShuffled": "Xem thứ tự đã đảo"
       },
       "originalOrderNote": "Đang xem thứ tự gốc: câu theo thứ tự bộ giải chọn, phương án theo thứ tự lúc soạn. Đề thật dùng thứ tự đã đảo bằng hạt giống.",
-      "resultMeta": "{questions, number} câu · hạt giống {seed} · giữ trong {minutes, number} phút · câu ghi sổ xem trước, không trừ lượt",
+      "resultMeta": "{questions, number} câu · hạt giống {seed} · {retention} · câu ghi sổ xem trước, không trừ lượt",
       "resultTitle": "Đề thử · {label}",
+      "retention": "giữ trong {minutes, number} phút{state, select, left { (còn {left, number} phút)} expired { (đã hết hạn)} other {}}",
       "scope": {
         "count": "Số câu của môn",
         "countOption": "{count, number} câu{full, select, yes {} other { (bỏ 1 câu)}}",

@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   EmptyState,
-  FormField,
   LiveStatus,
   Select,
   Skeleton,
@@ -16,9 +15,10 @@ import {
 import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
+import { usePreviewMinutesLeft } from "../preview-retention";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
 import type { ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
@@ -27,6 +27,7 @@ import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
+import { PreviewScopeCard } from "./exam-preview-scope-card";
 import { ExamName, richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
@@ -75,6 +76,7 @@ export function ExamPreviewPanel({
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
+  const scopeName = useId();
   const [liveMessage, setLiveMessage] = useState("");
   const [run, setRun] = useState(0);
   const [tab, setTab] = useState<"paper" | "allocation">("paper");
@@ -217,6 +219,7 @@ export function ExamPreviewPanel({
   };
 
   const data = generate.data;
+  const minutesLeft = usePreviewMinutesLeft(data?.expiresAt ?? null);
   const shown = data?.status === "GENERATED" ? data : null;
   const expired = generate.isError && errorCodeOf(generate.error) === "PREVIEW_EXPIRED";
   const runStatus = data
@@ -310,7 +313,11 @@ export function ExamPreviewPanel({
               {t("resultMeta", {
                 questions: data.paper.totalQuestions,
                 seed: data.seed,
-                minutes: PREVIEW_RETENTION_MINUTES,
+                retention: t("retention", {
+                  minutes: PREVIEW_RETENTION_MINUTES,
+                  state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                  left: minutesLeft ?? 0,
+                }),
               })}
             </p>
           </div>
@@ -336,12 +343,6 @@ export function ExamPreviewPanel({
     );
   }
 
-  const kindOptions = [
-    ...(sectionOptions.length > 0 ? [{ value: "SECTION", label: t("scope.kind.SECTION") }] : []),
-    ...(choiceRequired ? [{ value: "PATH", label: t("scope.kind.PATH") }] : []),
-    { value: "EXAM", label: t("scope.kind.EXAM"), disabled: choiceRequired },
-  ];
-
   return (
     <section aria-labelledby="preview-title" className="flex flex-col gap-4">
       <h2 id="preview-title" className="sr-only">
@@ -364,32 +365,18 @@ export function ExamPreviewPanel({
       )}
 
       <Card padding="md" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <FormField label={t("scope.label")} className="min-w-0 flex-[1_1_14rem]">
-            {(controlProps) => (
-              <Select {...controlProps} value={kind} onValueChange={(value) => setPickedKind(value as ScopeKind)} options={kindOptions} />
-            )}
-          </FormField>
-          {kind === "PATH" && (
-            <FormField label={t("pathLabel")} className="min-w-0 flex-[1_1_18rem]">
-              {(controlProps) => (
+        <fieldset className="m-0 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(16.25rem,100%),1fr))] gap-2.5 border-0 p-0">
+          <legend className="sr-only">{t("scope.label")}</legend>
+          {sectionOptions.length > 0 && (
+            <PreviewScopeCard name={scopeName} value="SECTION" label={t("scope.kind.SECTION")} checked={kind === "SECTION"} onSelect={() => setPickedKind("SECTION")}>
+              {section && (
                 <Select
-                  {...controlProps}
-                  value={pathId ?? undefined}
-                  onValueChange={setSelected}
-                  disabled={options.length === 0}
-                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
-                />
-              )}
-            </FormField>
-          )}
-          {kind === "SECTION" && section && (
-            <FormField label={t("scope.section")} className="min-w-0 flex-[1_1_18rem]">
-              {(controlProps) => (
-                <Select
-                  {...controlProps}
+                  aria-label={t("scope.section")}
                   value={section.sectionId}
-                  onValueChange={setPickedSection}
+                  onValueChange={(value) => {
+                    setPickedKind("SECTION");
+                    setPickedSection(value);
+                  }}
                   options={sectionOptions.map((item) => ({
                     value: item.sectionId,
                     label: richNodes(t, "scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: <ExamName>{item.partName}</ExamName> }),
@@ -397,20 +384,35 @@ export function ExamPreviewPanel({
                   }))}
                 />
               )}
-            </FormField>
-          )}
-          {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
-            <FormField label={t("scope.count")} className="min-w-0 flex-[0_1_12rem]">
-              {(controlProps) => (
+              {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
                 <Select
-                  {...controlProps}
+                  aria-label={t("scope.count")}
                   value={String(sectionCount)}
                   onValueChange={(value) => setPickedCount(Number(value))}
-                  options={section.counts!.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
+                  options={section.counts.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
                 />
               )}
-            </FormField>
+            </PreviewScopeCard>
           )}
+          {choiceRequired && (
+            <PreviewScopeCard name={scopeName} value="PATH" label={t("scope.kind.PATH")} checked={kind === "PATH"} onSelect={() => setPickedKind("PATH")}>
+              <Select
+                aria-label={t("pathLabel")}
+                value={pathId ?? undefined}
+                onValueChange={(value) => {
+                  setPickedKind("PATH");
+                  setSelected(value);
+                }}
+                disabled={options.length === 0}
+                options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
+              />
+            </PreviewScopeCard>
+          )}
+          <PreviewScopeCard name={scopeName} value="EXAM" label={t("scope.kind.EXAM")} checked={kind === "EXAM"} disabled={choiceRequired} onSelect={() => setPickedKind("EXAM")}>
+            {choiceRequired && <span className="text-caption">{t("scope.examBlocked")}</span>}
+          </PreviewScopeCard>
+        </fieldset>
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => start()} loading={generate.isPending} disabled={!canGenerate}>
             {data ? <RefreshCw /> : <Eye />}
             {data ? t("regenerate") : t("generate")}
@@ -425,7 +427,6 @@ export function ExamPreviewPanel({
             </Button>
           )}
         </div>
-        {choiceRequired && <p className="text-caption text-text-muted">{t("scope.examBlocked")}</p>}
         {subjectOption && (
           <ExamPreviewSubjects
             option={subjectOption}

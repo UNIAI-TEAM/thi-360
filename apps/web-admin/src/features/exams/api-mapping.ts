@@ -59,9 +59,7 @@ export function mapSectionStates(
 }
 
 /** Hàng của `structure/summary`: cây phần → môn → nhóm qua `children` (kiểu sinh từ OpenAPI có đủ trường tự tham chiếu). */
-type ApiSummaryRow = Schemas["ExamStructureSummaryRow"];
-
-function flattenSummary(rows: readonly ApiSummaryRow[] | null | undefined, into: ExamStructureSummaryRow[]) {
+function flattenSummary(rows: readonly Schemas["ExamStructureSummaryRow"][] | null | undefined, into: ExamStructureSummaryRow[]) {
   for (const row of rows ?? []) {
     into.push({
       name: row.name ?? null,
@@ -83,7 +81,7 @@ function flattenSummary(rows: readonly ApiSummaryRow[] | null | undefined, into:
 }
 
 /** Dàn cây tổng hợp thành các dòng phẳng theo thứ tự phần → môn → nhóm (bảng ở vùng (d) đọc theo thứ tự này). */
-export function mapStructureSummary(response: { parts?: readonly ApiSummaryRow[] | null }): ExamStructureSummary {
+export function mapStructureSummary(response: { parts?: readonly Schemas["ExamStructureSummaryRow"][] | null }): ExamStructureSummary {
   const rows: ExamStructureSummaryRow[] = [];
   flattenSummary(response.parts, rows);
   return { rows };
