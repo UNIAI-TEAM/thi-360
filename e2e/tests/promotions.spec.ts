@@ -37,7 +37,7 @@ async function createPromotionViaApi(
       name: `${TAG}-PROMO`,
       discountType: "PERCENT",
       discountValue: 15,
-      maxDiscountVnd: 50000,
+      ...(payload.discountType === "AMOUNT" ? {} : { maxDiscountVnd: 50000 }),
       startsAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       scope: "ALL",
@@ -180,8 +180,10 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       // Chan route /new va /edit
       await page.goto(`${ADMIN_URL}/promotions/new`);
       await expect(page.getByRole("button", { name: "Tạo khuyến mãi" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
       await page.goto(`${ADMIN_URL}/promotions/${promoId}/edit`);
       await expect(page.getByRole("button", { name: "Lưu thay đổi" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
     } finally {
       await cleanupPromotion({ api, headers }, promoId);
       if (userId) {
@@ -239,6 +241,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
 
       await page.goto(`${ADMIN_URL}/promotions`);
       await expect(page.getByRole("tab", { name: "Khuyến mãi tự động" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
     } finally {
       if (userId) {
         await api.put(admin(`/users/${userId}/roles`), { headers, data: { roleIds: [] } });
