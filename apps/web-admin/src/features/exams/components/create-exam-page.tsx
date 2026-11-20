@@ -64,6 +64,7 @@ import { CreateExamStepper } from "./create-exam-stepper";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { ExamOverviewTable } from "./exam-overview-table";
+import { ExamName, richNodes } from "./exam-review-shared";
 
 const EXAMS_HREF = "/exams";
 /** Quyền tạo bài (cổng ở `app/(shell)/exams/new/layout.tsx`); chỉ để nêu trong thông báo khi máy chủ trả 403. */
@@ -662,7 +663,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               templatesStatus === "loading"
                 ? undefined
                 : templateName(template)
-                  ? tOverview("description", { template: templateName(template) ?? "" })
+                  ? richNodes(tOverview, "description", { template: <ExamName>{templateName(template) ?? ""}</ExamName> })
                   : tOverview("descriptionNoTemplate")
             }
           >
@@ -776,7 +777,7 @@ function FormSection({
 }: {
   step: number;
   title: string;
-  description?: string;
+  description?: ReactNode;
   children: ReactNode;
 }) {
   const headingId = useId();

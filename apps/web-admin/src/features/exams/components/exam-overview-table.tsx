@@ -262,7 +262,7 @@ export function ExamOverviewTable({
                   <tr key={row.key} className="border-b border-border last:border-b-0">
                     <td className="px-3 py-2 pl-8 align-top text-text-secondary">
                       <span className="me-1 text-text-muted">–</span>
-                      {display}
+                      <span data-exam-content>{display}</span>
                     </td>
                     <td className="px-3 py-2 align-top text-end">
                       <span className="px-3 py-2 font-medium">{info.questions}</span>
