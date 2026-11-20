@@ -108,6 +108,10 @@ final class ExamCheckSolverIssues {
                 }
                 default -> { }
             }
+            if (!List.of("ANSWER", "CELL", "GRADE", "DIFFICULTY").contains(quota.kind())) {
+                // A cap or a compiled topic quota carries the id of its MAPID rule (UNI-2758).
+                MapidRuleNaming.name(issue, MapidRuleNaming.section(document, quota.sectionId()), quota.key());
+            }
         }
         for (SubjectPick pick : picks) {
             for (int i = 0; i < pick.sections().size(); i++) {

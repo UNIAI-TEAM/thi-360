@@ -5,7 +5,7 @@ import { Headphones, HeadphoneOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { AudioCountQuery } from "../api.http";
 import { ratePercent } from "../allocation";
-import { effectiveScope } from "../subject-matrix";
+import { groupCountScope } from "../mapid-rules";
 import type { ExamSection, QuestionBlock } from "../types";
 
 /**
@@ -29,7 +29,7 @@ export function blockAvailableInput(block: QuestionBlock, section: ExamSection, 
     questionType: block.questionType,
     answerTypes: block.questionType === null ? quotaTypes : [],
     childAnswerType: block.childAnswerType,
-    knowledgeScope: effectiveScope(block, section),
+    knowledgeScope: groupCountScope(block, section),
     tagCodes: block.tagCodes,
     requiredPointsPerQuestion: block.requiredPointsPerQuestion,
     itemShape: block.itemShape,

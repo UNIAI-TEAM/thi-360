@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 import { canRequire } from "./allocation";
 import { canRequireQuota } from "./exam-overview";
+import { normalizeMapidSection } from "./mapid-rules";
 import { awaitsExpert } from "./reference-distribution";
 import type { BlockMatrix, ExamPart, ExamPartOption, ExamQuota, ExamSection, QuestionBlock, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
 
@@ -85,12 +86,19 @@ function normalizeBlock(block: QuestionBlock): QuestionBlock {
   return { ...block, matrix, ...(topicQuotas ? { topicQuotas } : {}) };
 }
 
+/**
+ * Mức cho phép của một môn, rồi quy tắc MAPID (UNI-1704 v2): môn dùng ma trận còn phạm vi, chỉ tiêu chủ đề kiểu cũ thì chuyển
+ * sang quy tắc, và số câu của quy tắc nhập theo tỷ lệ luôn theo số câu hiện tại của môn, nhóm (`mapid-rules.ts`).
+ */
 function normalizeSection(section: ExamSection): ExamSection {
   const matrix = normalizeMatrix(section.matrix);
   const topicQuotas = normalizeTopicQuotas(section.topicQuotas);
   const blocks = mapKeep(section.blocks, normalizeBlock);
-  if (matrix === section.matrix && topicQuotas === section.topicQuotas && blocks === section.blocks) return section;
-  return { ...section, matrix, blocks, ...(topicQuotas ? { topicQuotas } : {}) };
+  const enforced =
+    matrix === section.matrix && topicQuotas === section.topicQuotas && blocks === section.blocks
+      ? section
+      : { ...section, matrix, blocks, ...(topicQuotas ? { topicQuotas } : {}) };
+  return normalizeMapidSection(enforced);
 }
 
 function normalizeOption(option: ExamPartOption): ExamPartOption {

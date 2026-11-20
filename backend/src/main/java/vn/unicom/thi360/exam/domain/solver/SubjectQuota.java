@@ -13,13 +13,29 @@ import java.util.Set;
  * @param answerQuotas chỉ tiêu theo dạng trả lời (D22), ví dụ Toán HSA SINGLE_CHOICE 35 +
  *                     SHORT_ANSWER 15; null khi môn không kiểm soát dạng trả lời
  * @param matrix       chỉ tiêu lớp × độ khó của môn; null khi không kiểm soát
+ * @param caps         cận trên số đơn vị mang một MAPID (UNI-2758), của cả môn hoặc của một nhóm
+ * @param mapidMatrix  true khi mọi chỉ tiêu chủ đề của môn đến từ luật MAPID (mapidMode MATRIX): các số tối thiểu
+ *                     đó là cứng, nên cắt 17 → 16 không được phá chúng; chỉ tiêu chủ đề cũ giữ cách dự phòng H3.
+ *                     Là cờ mode của section, không phải bằng chứng có chỉ tiêu — PathSearch tự kiểm tra nội
+ *                     dung qua {@link TopicQuota#mapid}
  */
 public record SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
-        List<ExamDimensionQuota> examQuotas) {
+        List<ExamDimensionQuota> examQuotas, List<TopicCap> caps, boolean mapidMatrix) {
 
     public SubjectQuota {
         topicQuotas = topicQuotas == null ? List.of() : List.copyOf(topicQuotas);
         examQuotas = examQuotas == null ? List.of() : List.copyOf(examQuotas);
+        caps = caps == null ? List.of() : List.copyOf(caps);
+    }
+
+    public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
+            List<ExamDimensionQuota> examQuotas, List<TopicCap> caps) {
+        this(answerQuotas, matrix, topicQuotas, examQuotas, caps, false);
+    }
+
+    public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
+            List<ExamDimensionQuota> examQuotas) {
+        this(answerQuotas, matrix, topicQuotas, examQuotas, List.of());
     }
 
     public SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas) {

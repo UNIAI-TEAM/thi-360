@@ -166,15 +166,34 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
             List<CatalogItemView> knowledge, Map<UUID, CatalogItemView> knowledgeById,
             Map<UUID, List<UUID>> descendants, Map<QuestionSourcePort.Filter, Boolean> matches) {
         if (block == null || !Objects.equals(block.id(), ref.getBlockId())) return;
-        KnowledgeScope scope = EffectiveKnowledgeScope.of(block.knowledgeScope(),
-                section == null ? null : section.knowledgeScope());
-        List<List<UUID>> groups = scope == null ? List.of() : scope.nodeIds().stream().map(id ->
-                descendants.computeIfAbsent(id, key -> {
+        // The section's MAPID rules, not its legacy scope, decide what generation draws (UNI-2758).
+        CompiledMapidRules compiled;
+        try {
+            compiled = section == null ? null : MapidRuleCompiler.compile(section);
+        } catch (IllegalArgumentException malformed) {
+            return; // generation rejects this section as well: it selects nothing
+        }
+        QuestionBlock sourceBlock = compiled == null ? block : compiled.effectiveSection().blocks().stream()
+                .filter(candidate -> Objects.equals(candidate.id(), block.id())).findFirst().orElse(block);
+        KnowledgeScope scope = EffectiveKnowledgeScope.of(sourceBlock.knowledgeScope(),
+                compiled == null ? null : compiled.effectiveSection().knowledgeScope());
+        List<UUID> excluded = compiled == null ? List.of() : compiled.exclusions().getOrDefault(block.id(), List.<UUID>of())
+                .stream().flatMap(id -> descendants.computeIfAbsent(id, key -> {
                     CatalogItemView root = knowledgeById.get(key);
-                    if (root == null) return List.of();
+                    if (root == null) return List.<UUID>of();
                     return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                             .map(CatalogItemView::id).toList();
-                })).toList();
+                }).stream()).distinct().toList();
+        java.util.function.Function<UUID, List<UUID>> subtree = id -> descendants.computeIfAbsent(id, key -> {
+            CatalogItemView root = knowledgeById.get(key);
+            if (root == null) return List.<UUID>of();
+            return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
+                    .map(CatalogItemView::id).toList();
+        });
+        // Every SOURCE rule of the subject and of the group must match; the first one rides in the first group.
+        List<List<UUID>> sources = compiled == null ? List.of() : compiled.sourcesOf(block.id());
+        List<List<UUID>> groups = !sources.isEmpty() ? sources.getFirst().stream().map(subtree).toList()
+                : scope == null ? List.of() : scope.nodeIds().stream().map(subtree).toList();
         List<QuestionType> answers = block.questionType() == null && section != null && section.answerQuotas() != null
                 ? section.answerQuotas().items().stream().map(a -> a.answerType()).filter(Objects::nonNull).toList()
                 : List.of();
@@ -191,17 +210,26 @@ public class ExamQuestionUsageProvider implements QuestionUsageProvider, ExamUsa
                                 return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                                         .map(CatalogItemView::id).toList();
                             })).toList());
+            List<List<List<UUID>>> additionalGroups = new ArrayList<>(slotGroups);
+            List<Boolean> additionalEvery = new ArrayList<>(slotGroups.isEmpty() ? List.of()
+                    : List.of(Boolean.TRUE.equals(slotScope.everyChildInScope())));
+            List<Boolean> additionalSameNode = new ArrayList<>(java.util.Collections.nCopies(slotGroups.size(), Boolean.FALSE));
+            for (int s = 1; s < sources.size(); s++) {
+                additionalGroups.add(sources.get(s).stream().map(subtree).toList());
+                additionalEvery.add(Boolean.TRUE);
+                additionalSameNode.add(Boolean.TRUE);
+            }
             var filter = new QuestionSourcePort.Filter(ref.getSubjectItemId(), groups, answers,
                     block.questionType(), null, block.childAnswerType(), block.tagCodes(),
                     scope == null ? List.of() : scope.competencyCodes(), block.requiredPointsPerQuestion(),
                     generated.itemShape(), generated.answerFormats(), generated.childConditions(),
                     slot == null || slot.tagCodes().isEmpty() ? List.of() : List.of(slot.tagCodes()),
-                    slotGroups,
+                    additionalGroups,
                     slotScope == null || slotScope.competencyCodes().isEmpty()
                             ? List.of() : List.of(slotScope.competencyCodes()),
                     scope == null ? null : scope.everyChildInScope(),
-                    slotGroups.isEmpty() ? List.of() : List.of(Boolean.TRUE.equals(slotScope.everyChildInScope())),
-                    generated.audio());
+                    additionalEvery,
+                    generated.audio(), excluded, sources.isEmpty() ? null : Boolean.TRUE, additionalSameNode);
             return matches.computeIfAbsent(filter,
                     key -> source.matching(key, List.of(questionId)).contains(questionId));
         });
