@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 
 /**
  * AC-21: what the database itself refuses, whatever the application code does. Runs on the real migrations
@@ -163,14 +164,17 @@ class EntitlementConstraintsIT extends EntitlementIntegrationTest {
     }
 
     private void insertPurchaseGrant(UUID id, UUID entitlementId, UUID examId, UUID orderId, int attempts) {
+        String orderCode = "ORD-" + orderId.toString().replace("-", "").substring(0, 12).toUpperCase();
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, newId(), examId, orderCode);
+        createdStubOrderIds.add(orderId);
         jdbc.update(
                 """
                 INSERT INTO commerce.entitlement_grant
                     (id, entitlement_id, kind, order_id, order_code, exam_id, attempts, result_view, exam_version_no,
                      granted_at, granted_by)
-                VALUES (?, ?, 'PURCHASE', ?, 'ORD-X', ?, ?, 'FULL', 1, now(), 'SYSTEM')
+                VALUES (?, ?, 'PURCHASE', ?, ?, ?, ?, 'FULL', 1, now(), 'SYSTEM')
                 """,
-                id, entitlementId, orderId, examId, attempts);
+                id, entitlementId, orderId, orderCode, examId, attempts);
     }
 
     private void insertCompensationGrant(UUID id, UUID entitlementId, UUID examId, UUID attemptId) {

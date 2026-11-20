@@ -25,6 +25,7 @@ import vn.unicom.thi360.commerce.promotion.domain.PromotionAudienceType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionStatus;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.ids.Ids;
 
 /** Base integration support for promotion repository and redemption tests with per-test cleanup. */
@@ -40,6 +41,7 @@ abstract class PromotionIntegrationTest extends AbstractIntegrationTest {
     protected PromotionRedemptionService redemptionService;
 
     private final Set<UUID> createdPromotionIds = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> createdOrderIds = ConcurrentHashMap.newKeySet();
 
     @AfterEach
     void cleanupPromotions() {
@@ -49,6 +51,28 @@ abstract class PromotionIntegrationTest extends AbstractIntegrationTest {
             jdbc.update("DELETE FROM commerce.promotion WHERE id = ?", promotionId);
         }
         createdPromotionIds.clear();
+        for (UUID orderId : createdOrderIds) {
+            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        }
+        createdOrderIds.clear();
+    }
+
+    protected UUID stubOrder(UUID userId) {
+        UUID orderId = Ids.newId();
+        return stubOrder(orderId, userId, null);
+    }
+
+    protected UUID stubOrder(UUID userId, String orderCode) {
+        return stubOrder(Ids.newId(), userId, orderCode);
+    }
+
+    protected UUID stubOrder(UUID orderId, UUID userId, String orderCode) {
+        String effectiveCode = orderCode != null
+                ? orderCode
+                : "STUB-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, userId, Ids.newId(), effectiveCode);
+        createdOrderIds.add(orderId);
+        return orderId;
     }
 
     protected UUID trackPromotion(UUID id) {
