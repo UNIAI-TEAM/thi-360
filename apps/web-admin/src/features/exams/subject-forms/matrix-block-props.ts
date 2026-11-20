@@ -1,5 +1,6 @@
 import type { ContentReference } from "@/features/content/types";
 import type { MatrixLabels } from "../components/block-matrix-editor";
+import type { TopicQuotaServerError } from "../components/topic-quota-table";
 import type { MatrixAxes } from "../matrix";
 import type { ExamSection } from "../types";
 import type { SubjectFormEntry } from "./registry";
@@ -32,6 +33,8 @@ export interface MatrixBlockProps {
   /** Mẫu khóa số câu của mục (H27, V-ACT FULL): số câu của nhóm câu đơn duy nhất chỉ đọc. */
   templateLocked: boolean;
   raw: MatrixRawFields;
+  /** Lỗi 422 từ máy chủ của bảng chỉ tiêu chủ đề (`MAX_TOPIC_QUOTAS` / `PERCENT_OUT_OF_RANGE`). */
+  topicError?: TopicQuotaServerError;
 }
 /**
  * Tuỳ chọn của chỗ gắn theo kỳ (`matrix-form.tsx`, `registerMatrixKindSlot`; chỗ gắn riêng theo kỳ của CR-2H).

@@ -72,7 +72,7 @@ export function MatrixForm(props: SubjectFormRendererProps) {
   // Khi sửa Cấu trúc câu hay bất kỳ phần nào của HSA MT, tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
   const handleChange: MatrixBlockProps["onChange"] =
     entry.mapidFlow === "HSA_RULES" ? (update) => onChange((current) => recomputeMapidRules(update(current))) : onChange;
-  const blockProps: MatrixBlockProps = { section, entry, kindCode, subjectName, total, axes, labels, reference, onChange: handleChange, templateLocked, raw };
+  const blockProps: MatrixBlockProps = { section, entry, kindCode, subjectName, total, axes, labels, reference, onChange: handleChange, templateLocked, raw, topicError };
   const kindSlot = kindSlots[kindCode];
   const slotOptions = kindSlot ? (typeof kindSlot.options === "function" ? kindSlot.options(section) : kindSlot.options) : {};
   const beforeStructure = slotOptions.placement === "before-structure";

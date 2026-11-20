@@ -107,8 +107,11 @@ export function focusFormTarget(root: ParentNode, target: FormTarget): boolean {
     if (target.field.ruleId && focusMapidRule(target.field.ruleId, root)) return true;
     const element = findFormTargetElement(root, target);
     if (!element) return false;
-    if (!element.matches(FOCUSABLE)) element.tabIndex = -1;
-    element.focus();
+    const control = element.matches(`[data-form-field="${CSS.escape(MATRIX_MAPID_RULES_FIELD)}"]`)
+      ? (element.querySelector<HTMLElement>(FOCUSABLE) ?? element)
+      : element;
+    if (!control.matches(FOCUSABLE)) control.tabIndex = -1;
+    control.focus();
     return true;
   }
   const element = findFormTargetElement(root, target);

@@ -6573,12 +6573,12 @@
           "percentTotal": "Total {total}%, needs 100%",
           "setMin": "At least 1 set",
           "setRange": "Sets must be between {min, number} and {max, number}",
-          "shortAnswerMin": "At least {min, number} fill-in answers needed"
+          "shortAnswerMin": "At least {min, plural, one {# fill-in answer} other {# fill-in answers}} needed"
         },
         "hsa": {
-          "allocationCount": "MAPID allocated: {allocated, number} / {total, number} questions · remaining free: {free, number} questions",
-          "allocationOver": "Exceeds the subject total by {over, number} questions",
-          "allocationUnknown": "MAPID allocated: {allocated, number} questions",
+          "allocationCount": "MAPID allocated: {allocated, number} / {total, plural, one {# question} other {# questions}} · remaining free: {free, plural, one {# question} other {# questions}}",
+          "allocationOver": "Exceeds the subject total by {over, plural, one {# question} other {# questions}}",
+          "allocationUnknown": "MAPID allocated: {allocated, plural, one {# question} other {# questions}}",
           "gradeOptionalHint": "Optional for this subject.",
           "material": {
             "add": "Add source material condition",

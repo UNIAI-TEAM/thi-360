@@ -152,17 +152,22 @@ export function MatrixStructureBlock({ compact = false, renderRoleFooter, ...pro
             {locked && <LockReason code="templateTotal" />}
           </>
         ) : (
-          <CountPercentInput
-            label={label}
-            entry="NONE"
-            total={key === "SETS" ? 0 : (total ?? 0)}
-            count={valueOf(key)}
-            fieldName={field}
-            onChange={(next) => writeCount(key, next.count)}
-            onRawInput={rawInputOf(field)}
-            rawText={raw.get(field)?.code === "invalidNumber" ? raw.get(field)?.text : undefined}
-            error={errorOf(field)}
-          />
+          <div className="flex flex-col gap-1.5">
+            <span aria-hidden="true" className="text-field-label font-medium text-text-secondary">
+              {label}
+            </span>
+            <CountPercentInput
+              label={label}
+              entry="NONE"
+              total={key === "SETS" ? 0 : (total ?? 0)}
+              count={valueOf(key)}
+              fieldName={field}
+              onChange={(next) => writeCount(key, next.count)}
+              onRawInput={rawInputOf(field)}
+              rawText={raw.get(field)?.code === "invalidNumber" ? raw.get(field)?.text : undefined}
+              error={errorOf(field)}
+            />
+          </div>
         )}
         {hint && <p className="text-caption text-text-muted">{hint}</p>}
         {(key === "SETS" || key === "CHILDREN") && set && renderRoleFooter?.(set)}
