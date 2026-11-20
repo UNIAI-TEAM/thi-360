@@ -96,9 +96,9 @@ async function selectScope(u: UserEvent, optionPattern: RegExp) {
 
 async function pickNode(u: UserEvent, code: string) {
   await u.click(within(dialogOf()).getByTestId("mapid-rule-mapid-picker"));
-  const picker = await screen.findByRole("dialog", { name: /Chọn kiến thức|Pick knowledge/ });
+  const picker = await screen.findByRole("dialog", { name: /Chọn kiến thức|Choose knowledge/ });
   await u.type(within(picker).getByRole("searchbox"), code);
-  await u.click(await within(picker).findByRole("checkbox", { name: new RegExp(`^${code}\\b`) }));
+  await u.click(await within(picker).findByRole("checkbox", { name: new RegExp(`^${code} `) }));
   await u.click(within(picker).getByRole("button", { name: /Áp dụng|Apply/ }));
 }
 
@@ -195,7 +195,7 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     expect(latest.rules).toEqual([{ id: expect.any(String), type: "PRESENT", groupId: null, nodeIds: ["kn-0D2-1"] }]);
   });
 
-  it("AC-1707-7: EQUIVALENT blocks and opens existing row; SUBSUMES offers Thay quy tắc cũ; Group sum > Subject EXACT blocks with open buttons", async () => {
+  it("AC-1707-7: EQUIVALENT blocks and opens existing row; SUBSUMES offers Thay quy tắc cũ", async () => {
     const u = userEvent.setup();
     const initialRules: MapidRule[] = [
       { id: "r-pres", type: "PRESENT", groupId: null, nodeIds: ["kn-0D2-1"] },
@@ -203,7 +203,7 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     const latest = renderTable(makeSection({ mapidRules: initialRules }));
 
     // 1. Equivalent: COUNT AT_LEAST 1 on same node/scope -> blocks & opens r-pres
-    let dialog = await openAdd(u);
+    const dialog = await openAdd(u);
     await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickNode(u, "0D2-1");
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
@@ -220,9 +220,17 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     await u.click(within(dialog).getByTestId("mapid-rule-replace"));
     expect(latest.rules).toHaveLength(1);
     expect(latest.rules[0]).toMatchObject({ type: "COUNT", groupId: null, comparator: "EXACT", count: 3 });
+  });
 
-    // 3. Allowed: add Group Trả lời ngắn EXACT 2 (2 <= 3)
-    dialog = await openAdd(u);
+  it("AC-1707-7: Subject EXACT 3 + single Group EXACT 2 allowed; Group sum > Subject EXACT blocks with open buttons", async () => {
+    const u = userEvent.setup();
+    const initialRules: MapidRule[] = [
+      { id: "r-subj", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1"], comparator: "EXACT", count: 3 },
+    ];
+    const latest = renderTable(makeSection({ mapidRules: initialRules }));
+
+    // Allowed: add Group Trả lời ngắn EXACT 2 (2 <= 3)
+    let dialog = await openAdd(u);
     await selectScope(u, /^Trả lời ngắn/);
     await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickNode(u, "0D2-1");
@@ -233,7 +241,7 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     await u.click(within(dialog).getByTestId("mapid-rule-save"));
     expect(latest.rules).toHaveLength(2);
 
-    // 4. Conflict: add second Group Trắc nghiệm AT_LEAST 2 (2 + 2 = 4 > 3) -> blocked, shows message + open buttons
+    // Conflict: add second Group Trắc nghiệm AT_LEAST 2 (2 + 2 = 4 > 3) -> blocked, shows message + open buttons
     dialog = await openAdd(u);
     await selectScope(u, /^Trắc nghiệm/);
     await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
@@ -244,10 +252,45 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     expect(within(dialog).getByTestId("mapid-rule-cross-check")).toHaveTextContent(
       "Các nhóm đang yêu cầu tối thiểu 4 câu Hàm số, vượt mức 3 câu của toàn môn.",
     );
-    // Clicking open on subject rule switches dialog to edit that rule
-    const subjectRuleId = latest.rules[0]!.id;
-    await u.click(within(dialog).getByTestId(`mapid-rule-open-${subjectRuleId}`));
+    await u.click(within(dialog).getByTestId("mapid-rule-open-r-subj"));
     expect(within(dialogOf()).getByTestId("mapid-rule-count")).toHaveValue("3");
+  });
+
+  it("AC-1707-7: SUBSUMED_BY blocks weaker duplicate; ONLY_IN_GROUP cross-group conflict blocks in both orders; Edit excludes self and preserves input", async () => {
+    const u = userEvent.setup();
+    const initialRules: MapidRule[] = [
+      { id: "r-ex3", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1"], comparator: "EXACT", count: 3 },
+      { id: "r-only", type: "ONLY_IN_GROUP", groupId: "b-short", nodeIds: ["kn-0D1"] },
+    ];
+    const latest = renderTable(makeSection({ mapidRules: initialRules }));
+
+    // SUBSUMED_BY: adding PRESENT on 0D2-1 when EXACT 3 exists -> blocked, offers open button
+    let dialog = await openAdd(u);
+    await pickNode(u, "0D2-1");
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
+    expect(within(dialog).getByTestId("mapid-rule-cross-check")).toHaveTextContent(/đã nằm trong quy tắc chặt hơn/);
+    expect(within(dialog).getByTestId("mapid-rule-open-r-ex3")).toBeInTheDocument();
+
+    // ONLY_IN_GROUP in b-short (0D1) vs PRESENT in b-single (0D1) -> blocked, preserves selection
+    await selectScope(u, /^Trắc nghiệm/);
+    await u.click(within(dialog).getByTestId("mapid-rule-mapid-picker"));
+    const picker = await screen.findByRole("dialog", { name: /Chọn kiến thức/ });
+    await u.click(await within(picker).findByRole("checkbox", { name: /^0D2-1 / }));
+    await u.type(within(picker).getByRole("searchbox"), "0D1");
+    await u.click(await within(picker).findByRole("checkbox", { name: /^0D1 / }));
+    await u.click(within(picker).getByRole("button", { name: /Áp dụng/ }));
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
+    expect(within(dialog).getByTestId("mapid-rule-open-r-only")).toBeInTheDocument();
+
+    // Close and edit r-ex3 -> excludes itself, allows changing count 3 -> 4
+    await u.click(within(dialog).getByRole("button", { name: "Hủy" }));
+    await u.click(screen.getByRole("button", { name: /^Sửa quy tắc: Toàn môn · Đúng 3\/50/ }));
+    dialog = dialogOf();
+    await u.clear(within(dialog).getByTestId("mapid-rule-count"));
+    await u.type(within(dialog).getByTestId("mapid-rule-count"), "4");
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
+    await u.click(within(dialog).getByTestId("mapid-rule-save"));
+    expect(latest.rules.find((item) => item.id === "r-ex3")).toMatchObject({ count: 4 });
   });
 
   it("EN locale renders clean English labels, summaries, and pluralization without Vietnamese diacritics", async () => {

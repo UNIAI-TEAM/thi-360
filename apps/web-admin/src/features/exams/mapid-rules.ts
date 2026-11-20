@@ -1,7 +1,8 @@
+import type { KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
+import type { QuestionType } from "@/features/content/types";
 import { countFromPercent } from "./allocation";
 import { isSetBlock } from "./matrix";
 import { effectiveScope } from "./subject-matrix";
-import type { QuestionType } from "@/features/content/types";
 import type {
   CountKnowledgeScope,
   ExamSection,
@@ -320,6 +321,22 @@ function sentenceKind(rule: MapidRule): RuleSentenceKind {
     case "ONLY_IN_GROUP":
       return numbered ? `ONLY_IN_GROUP_${suffix}` : "ONLY_IN_GROUP";
   }
+}
+
+/** Định dạng tên các nút MAPID của quy tắc (dùng chung cho bảng quy tắc và hộp thoại kiểm tra chéo). */
+export function formatRuleTopicNames(
+  nodeIds: readonly string[],
+  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
+  formatDisjunction: (items: readonly string[]) => string,
+  wrapTopic?: (name: string) => string,
+): string {
+  return formatDisjunction(
+    nodeIds.map((nodeId) => {
+      const node = knowledgeIndex.get(nodeId)?.node;
+      const label = node?.name || node?.code || nodeId;
+      return wrapTopic ? wrapTopic(label) : label;
+    }),
+  );
 }
 
 /** Dữ liệu cho câu của một quy tắc; chữ do màn dịch (khóa `exams.mapidRules.sentence.<kind>`). */
