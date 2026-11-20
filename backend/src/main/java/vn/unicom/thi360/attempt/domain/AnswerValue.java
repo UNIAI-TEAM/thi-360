@@ -26,15 +26,6 @@ import java.util.Map;
             @DiscriminatorMapping(value = "TRUE_FALSE", schema = AnswerValue.TrueFalse.class),
             @DiscriminatorMapping(value = "MATCHING", schema = AnswerValue.Matching.class),
             @DiscriminatorMapping(value = "ESSAY", schema = AnswerValue.Essay.class)
-        },
-        oneOf = {
-            AnswerValue.SingleChoice.class,
-            AnswerValue.MultipleChoice.class,
-            AnswerValue.ShortAnswer.class,
-            AnswerValue.Cloze.class,
-            AnswerValue.TrueFalse.class,
-            AnswerValue.Matching.class,
-            AnswerValue.Essay.class
         })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({

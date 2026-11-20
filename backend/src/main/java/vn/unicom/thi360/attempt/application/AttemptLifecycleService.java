@@ -500,6 +500,8 @@ public class AttemptLifecycleService {
             Instant effectiveDeadline = resolveEffectiveDeadline(attempt, targetPart);
             boolean overdue =
                     findOverdueAwaitingChoice(parts, finishedAt) != null
+                            || (attempt.getTiming() == AttemptTiming.PER_PART
+                                    && indexOfOverdueOpenPart(parts, finishedAt) >= 0)
                             || (effectiveDeadline != null
                                     && !finishedAt.isBefore(effectiveDeadline));
             if (overdue) {

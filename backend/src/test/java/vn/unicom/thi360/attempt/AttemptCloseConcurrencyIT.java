@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.FinalAnswerChange;
+import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.application.AttemptDeadlineWorker;
 import vn.unicom.thi360.attempt.application.FinalAnswerWriter;
@@ -393,6 +394,148 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             assertThat(reloaded2.getState()).isEqualTo(AttemptState.GRADING);
             assertThat(reloaded2.getEndReason()).isEqualTo(EndReason.TIME_UP);
             assertThat(reloaded2.getFinishedAt()).isEqualTo(deadline2);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void nonLastFinishPartBlockedAcrossDeadlineUsesPostLockTime() throws Exception {
+        UUID userId = createStudent("stale-nonlast-fin");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "stale-nl-fin", line.entitlementId(), null);
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        AttemptPart p0 = parts.get(0);
+        UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(p0.getId()).getFirst().getId();
+        Instant p0Deadline = p0.getDeadlineAt();
+        clearInvocations(entitlementPort, overdueCloser, finalAnswerWriter);
+
+        mutableClock.setAt(p0Deadline.minusSeconds(1));
+        CountDownLatch lockHeld = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> lockHolder =
+                    pool.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                status -> {
+                                                    attemptRepository.findByIdForUpdate(attempt.getId()).orElseThrow();
+                                                    lockHeld.countDown();
+                                                    try {
+                                                        assertThat(releaseLock.await(15, TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException ex) {
+                                                        Thread.currentThread().interrupt();
+                                                        throw new IllegalStateException(ex);
+                                                    }
+                                                });
+                                return null;
+                            });
+            assertThat(lockHeld.await(15, TimeUnit.SECONDS)).isTrue();
+
+            FinishPartRequest request =
+                    new FinishPartRequest(
+                            List.of(
+                                    new FinalAnswerChange(
+                                            itemId, 1L, new AnswerValue.SingleChoice("late"))));
+            Future<MvcResult> finishFuture =
+                    pool.submit(
+                            () -> performFinishPart(userId, attempt.getId(), p0.getId(), null, request));
+            awaitAttemptRowLockWait();
+
+            mutableClock.setAt(p0Deadline.plusSeconds(5));
+            releaseLock.countDown();
+            lockHolder.get(15, TimeUnit.SECONDS);
+
+            MvcResult finRes = finishFuture.get(15, TimeUnit.SECONDS);
+            assertThat(finRes.getResponse().getStatus()).isEqualTo(200);
+            JsonNode finJson = json(finRes);
+            assertThat(finJson.path("closedPart").path("state").asText()).isEqualTo("CLOSED");
+            assertThat(finJson.path("closedPart").path("closeReason").asText()).isEqualTo("TIME_UP");
+            assertThat(Instant.parse(finJson.path("closedPart").path("closedAt").asText()))
+                    .isEqualTo(p0Deadline);
+            assertThat(finJson.path("nextPart").path("state").asText()).isEqualTo("OPEN");
+            assertThat(Instant.parse(finJson.path("nextPart").path("startedAt").asText()))
+                    .isEqualTo(p0Deadline);
+
+            List<AttemptPart> updatedParts =
+                    attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+            assertThat(updatedParts.get(0).getState()).isEqualTo(PartState.CLOSED);
+            assertThat(updatedParts.get(0).getCloseReason()).isEqualTo(PartCloseReason.TIME_UP);
+            assertThat(updatedParts.get(0).getClosedAt()).isEqualTo(p0Deadline);
+            assertThat(updatedParts.get(1).getState()).isEqualTo(PartState.OPEN);
+            assertThat(updatedParts.get(1).getStartedAt()).isEqualTo(p0Deadline);
+            assertThat(attemptRepository.findById(attempt.getId()).orElseThrow().getState())
+                    .isEqualTo(AttemptState.IN_PROGRESS);
+            verifyNoInteractions(finalAnswerWriter);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void submitPartNotLastBlockedAcrossDeadlinePersistsOverdueClose() throws Exception {
+        UUID userId = createStudent("stale-sub-notlast");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "stale-sub-nl", line.entitlementId(), null);
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        AttemptPart p0 = parts.get(0);
+        Instant p0Deadline = p0.getDeadlineAt();
+        clearInvocations(entitlementPort, overdueCloser, finalAnswerWriter);
+
+        mutableClock.setAt(p0Deadline.minusSeconds(1));
+        CountDownLatch lockHeld = new CountDownLatch(1);
+        CountDownLatch releaseLock = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> lockHolder =
+                    pool.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                status -> {
+                                                    attemptRepository.findByIdForUpdate(attempt.getId()).orElseThrow();
+                                                    lockHeld.countDown();
+                                                    try {
+                                                        assertThat(releaseLock.await(15, TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException ex) {
+                                                        Thread.currentThread().interrupt();
+                                                        throw new IllegalStateException(ex);
+                                                    }
+                                                });
+                                return null;
+                            });
+            assertThat(lockHeld.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> submitFuture =
+                    pool.submit(
+                            () ->
+                                    performSubmit(
+                                            userId, attempt.getId(), "stale-sub-nl-k", null, null));
+            awaitAttemptRowLockWait();
+
+            mutableClock.setAt(p0Deadline.plusSeconds(5));
+            releaseLock.countDown();
+            lockHolder.get(15, TimeUnit.SECONDS);
+
+            MvcResult subRes = submitFuture.get(15, TimeUnit.SECONDS);
+            assertThat(subRes.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(subRes).path("code").asText()).isEqualTo("PART_NOT_LAST");
+
+            Attempt reloaded = attemptRepository.findById(attempt.getId()).orElseThrow();
+            assertThat(reloaded.getState()).isEqualTo(AttemptState.IN_PROGRESS);
+            List<AttemptPart> updatedParts =
+                    attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+            assertThat(updatedParts.get(0).getState()).isEqualTo(PartState.CLOSED);
+            assertThat(updatedParts.get(0).getCloseReason()).isEqualTo(PartCloseReason.TIME_UP);
+            assertThat(updatedParts.get(0).getClosedAt()).isEqualTo(p0Deadline);
+            assertThat(updatedParts.get(1).getState()).isEqualTo(PartState.OPEN);
+            assertThat(updatedParts.get(1).getStartedAt()).isEqualTo(p0Deadline);
+            assertThat(updatedParts.get(2).getState()).isEqualTo(PartState.PENDING);
+            verifyNoInteractions(finalAnswerWriter);
         } finally {
             pool.shutdownNow();
         }

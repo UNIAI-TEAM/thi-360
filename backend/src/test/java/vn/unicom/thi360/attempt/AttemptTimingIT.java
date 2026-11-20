@@ -308,6 +308,33 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         assertThat(a2Closed.getFinishedAt()).isEqualTo(d2);
         assertThat(countEntitlementUsage(a2.getId(), "USED")).isEqualTo(1);
         assertThat(countOutboxEvents(a2.getId(), "attempt.finished")).isEqualTo(1);
+
+        // 3. 1-attempt-entitlement overdue case -> POST /me/attempts returns 409 NO_ATTEMPTS_LEFT
+        //    AND persists the lazy overdue close outside the rolled-back transaction (R2-4).
+        mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+        UUID singleUser = createStudent("real-closer-one-attempt");
+        GrantOrderResult.Line oneAttemptLine = grant(singleUser, "DS-HSA-PART-MATH-MINI", 1, List.of());
+        Attempt singleAttempt =
+                startAndAwaitOpen(singleUser, "rc-one-1", oneAttemptLine.entitlementId(), null);
+        Instant singleDeadline =
+                attemptPartRepository
+                        .findByAttemptIdOrderByOrdAsc(singleAttempt.getId())
+                        .getFirst()
+                        .getDeadlineAt();
+
+        mutableClock.setAt(singleDeadline.plus(Duration.ofMinutes(2)));
+        MvcResult deniedStart =
+                performStart(singleUser, "rc-one-exhausted", oneAttemptLine.entitlementId(), null);
+        assertThat(deniedStart.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(deniedStart).path("code").asText()).isEqualTo("NO_ATTEMPTS_LEFT");
+
+        Attempt singleClosed = attemptRepository.findById(singleAttempt.getId()).orElseThrow();
+        assertThat(singleClosed.getState()).isEqualTo(AttemptState.GRADING);
+        assertThat(singleClosed.getEndReason()).isEqualTo(EndReason.TIME_UP);
+        assertThat(singleClosed.getFinishedAt()).isEqualTo(singleDeadline);
+        assertThat(countEntitlementUsage(singleAttempt.getId(), "USED")).isEqualTo(1);
+        assertThat(countEntitlementUsage(singleAttempt.getId(), "RESERVED")).isZero();
+        assertThat(countOutboxEvents(singleAttempt.getId(), "attempt.finished")).isEqualTo(1);
     }
 
     @Test

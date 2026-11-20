@@ -2544,7 +2544,7 @@ export interface components {
         };
         AnswerValue: {
             type: string;
-        } & (components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["ClozeAnswer"] | components["schemas"]["TrueFalseAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["EssayAnswer"]);
+        };
         /** @description Định dạng lỗi chuẩn của API */
         ApiError: {
             /**
@@ -2607,7 +2607,7 @@ export interface components {
             version: number;
         };
         AttemptItemView: {
-            answer?: components["schemas"]["AnswerValue"];
+            answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
             /** Format: int64 */
             answerSeq?: number;
             blockId?: string;
@@ -3862,12 +3862,6 @@ export interface components {
              * @enum {string}
              */
             type: "CLOZE";
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "CLOZE";
         };
         ClozeBlank: {
             answers?: string[];
@@ -4484,12 +4478,6 @@ export interface components {
             html?: string;
             /** Format: int32 */
             wordCount?: number;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "ESSAY";
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -5682,7 +5670,7 @@ export interface components {
         /** @description Thay đổi câu trả lời cuối cùng gửi kèm khi hoàn thành phần hoặc nộp bài (LT §6.3, §7.1) */
         FinalAnswerChange: {
             /** @description Nội dung câu trả lời; null để xóa đáp án */
-            answer?: components["schemas"]["AnswerValue"];
+            answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
             /**
              * Format: uuid
              * @description Id câu hỏi trong lượt
@@ -6086,12 +6074,6 @@ export interface components {
              * @enum {string}
              */
             type: "MATCHING";
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "MATCHING";
         };
         MatchingBody: {
             type: "MatchingBody";
@@ -6171,12 +6153,6 @@ export interface components {
         };
         MultipleChoiceAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
             optionIds?: string[];
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "MULTIPLE_CHOICE";
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -7830,12 +7806,6 @@ export interface components {
              * @enum {string}
              */
             type: "SHORT_ANSWER";
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "SHORT_ANSWER";
         };
         SideView: {
             content?: string;
@@ -7848,12 +7818,6 @@ export interface components {
         };
         SingleChoiceAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
             optionId?: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "SINGLE_CHOICE";
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -8111,12 +8075,6 @@ export interface components {
             statements?: {
                 [key: string]: boolean;
             };
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "TRUE_FALSE";
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript

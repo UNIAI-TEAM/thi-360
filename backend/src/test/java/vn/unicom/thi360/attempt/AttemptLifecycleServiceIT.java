@@ -734,4 +734,65 @@ class AttemptLifecycleServiceIT extends AbstractAttemptDsIT {
         assertThat(attemptRepository.findById(a2.getId()).orElseThrow().getState())
                 .isEqualTo(AttemptState.IN_PROGRESS);
     }
+
+    @Test
+    void directCloseSubmittedPerPartFreeWithOverdueOpenPartSkipsWriter() throws Exception {
+        // 1. Multi-part PER_PART FREE attempt with overdue Part 0 OPEN -> closes Part 0 TIME_UP without calling writer
+        UUID userId = createStudent("perpart-free-overdue");
+        GrantOrderResult.Line fullLine = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt full = startAndAwaitOpen(userId, "pp-free-multi", fullLine.entitlementId(), null);
+        List<AttemptPart> fullParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(full.getId());
+        UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(fullParts.get(0).getId()).getFirst().getId();
+        Instant p0Deadline = fullParts.get(0).getDeadlineAt();
+
+        jdbc.update("UPDATE attempt.attempt SET navigation_mode = 'FREE' WHERE id = ?", full.getId());
+        jdbc.update(
+                "UPDATE attempt.attempt_part SET state = 'OPEN', started_at = ?, deadline_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(mutableClock.instant()),
+                java.sql.Timestamp.from(p0Deadline.plus(Duration.ofMinutes(30))),
+                fullParts.get(1).getId());
+        clearInvocations(finalAnswerWriter);
+
+        CloseAttemptResult multiRes =
+                lifecycleService.closeAttempt(
+                        full.getId(),
+                        EndReason.SUBMITTED,
+                        p0Deadline.plusSeconds(10),
+                        null,
+                        List.of(new FinalAnswerChange(itemId, 1L, new AnswerValue.SingleChoice("late"))));
+        assertThat(multiRes.closedNow()).isFalse();
+        verifyNoInteractions(finalAnswerWriter);
+
+        List<AttemptPart> updatedParts =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(full.getId());
+        assertThat(updatedParts.get(0).getState()).isEqualTo(PartState.CLOSED);
+        assertThat(updatedParts.get(0).getCloseReason()).isEqualTo(PartCloseReason.TIME_UP);
+        assertThat(updatedParts.get(0).getClosedAt()).isEqualTo(p0Deadline);
+        assertThat(updatedParts.get(1).getState()).isEqualTo(PartState.OPEN);
+        assertThat(attemptRepository.findById(full.getId()).orElseThrow().getState())
+                .isEqualTo(AttemptState.IN_PROGRESS);
+
+        // 2. Single-part PER_PART FREE attempt past deadline -> closes attempt TIME_UP without calling writer
+        GrantOrderResult.Line singleLine = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        Attempt single = startAndAwaitOpen(userId, "pp-free-single", singleLine.entitlementId(), null);
+        AttemptPart singlePart = attemptPartRepository.findByAttemptIdOrderByOrdAsc(single.getId()).getFirst();
+        UUID singleItemId = attemptItemRepository.findByPartIdOrderByOrdAsc(singlePart.getId()).getFirst().getId();
+        Instant singleDeadline = singlePart.getDeadlineAt();
+
+        jdbc.update("UPDATE attempt.attempt SET navigation_mode = 'FREE' WHERE id = ?", single.getId());
+        clearInvocations(finalAnswerWriter);
+
+        CloseAttemptResult singleRes =
+                lifecycleService.closeAttempt(
+                        single.getId(),
+                        EndReason.SUBMITTED,
+                        singleDeadline.plusSeconds(10),
+                        null,
+                        List.of(new FinalAnswerChange(singleItemId, 2L, new AnswerValue.SingleChoice("late"))));
+        assertThat(singleRes.closedNow()).isTrue();
+        assertThat(singleRes.attempt().getState()).isEqualTo(AttemptState.GRADING);
+        assertThat(singleRes.attempt().getEndReason()).isEqualTo(EndReason.TIME_UP);
+        assertThat(singleRes.attempt().getFinishedAt()).isEqualTo(singleDeadline);
+        verifyNoInteractions(finalAnswerWriter);
+    }
 }

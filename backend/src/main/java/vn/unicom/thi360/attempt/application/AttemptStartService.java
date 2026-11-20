@@ -162,16 +162,30 @@ public class AttemptStartService {
             String idempotencyKey, StartAttemptRequest request) {
         UUID userId = accessGate.requireLearner();
         boolean[] newlyExecuted = {false};
-        StartCommandResult commandResult =
-                idempotentCommand.execute(
-                        idempotencyKey,
-                        OPERATION,
-                        request,
-                        StartCommandResult.class,
-                        () -> {
-                            newlyExecuted[0] = true;
-                            return executeStartOrResume(userId, request, idempotencyKey);
-                        });
+        UUID[] closedOverdueId = {null};
+        StartCommandResult commandResult;
+        try {
+            commandResult =
+                    idempotentCommand.execute(
+                            idempotencyKey,
+                            OPERATION,
+                            request,
+                            StartCommandResult.class,
+                            () -> {
+                                newlyExecuted[0] = true;
+                                return executeStartOrResume(
+                                        userId, request, idempotencyKey, closedOverdueId);
+                            });
+        } catch (RuntimeException ex) {
+            if (closedOverdueId[0] != null) {
+                try {
+                    overdueAttemptCloser.closeIfOverdue(closedOverdueId[0], clock.instant());
+                } catch (RuntimeException closeEx) {
+                    ex.addSuppressed(closeEx);
+                }
+            }
+            throw ex;
+        }
 
         if (newlyExecuted[0] && !commandResult.resumed()) {
             return ResponseEntity.status(HttpStatus.ACCEPTED)
@@ -200,7 +214,10 @@ public class AttemptStartService {
     }
 
     private StartCommandResult executeStartOrResume(
-            UUID userId, StartAttemptRequest request, String idempotencyKey) {
+            UUID userId,
+            StartAttemptRequest request,
+            String idempotencyKey,
+            UUID[] closedOverdueId) {
         EntitlementDescription desc = entitlementPort.describe(userId, request.entitlementId());
 
         // Serialize concurrent start attempts for the same (user, exam) on a single JDBC connection
@@ -221,6 +238,9 @@ public class AttemptStartService {
                 entityManager.detach(open);
                 overdueAttemptCloser.closeIfOverdue(openId, clock.instant());
                 open = attemptRepository.findById(openId).orElse(null);
+                if (open == null || !OPEN_STATES.contains(open.getState())) {
+                    closedOverdueId[0] = openId;
+                }
             }
             if (open != null && OPEN_STATES.contains(open.getState())) {
                 return new StartCommandResult(open.getId(), true);
