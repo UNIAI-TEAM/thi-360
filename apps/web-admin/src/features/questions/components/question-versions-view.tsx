@@ -23,7 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
-import { RichTextView } from "@/components/rich-text";
+import { RichTextView } from "@thi360/ui/rich-text";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { isRevisionConflict } from "@/features/content/api-error";
 import { QUESTIONS_QUERY_KEYS, toQuestionSummary } from "../api";

@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-import { sanitizeQuestionHtml } from "../sanitize";
+import { sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 
 /**
  * Lọc HTML dán/thả vào soạn theo đúng danh sách cho phép của backend trước khi ProseMirror parse.

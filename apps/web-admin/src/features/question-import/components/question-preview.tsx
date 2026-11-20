@@ -4,7 +4,7 @@ import { Card, StatusChip, type StatusTone } from "@thi360/ui";
 import { Check, CircleX, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { type RefObject, useId } from "react";
-import { RichTextView, questionHtmlText } from "@/components/rich-text";
+import { RichTextView, questionHtmlText } from "@thi360/ui/rich-text";
 import { useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
 import type { IssueText } from "../error-report";

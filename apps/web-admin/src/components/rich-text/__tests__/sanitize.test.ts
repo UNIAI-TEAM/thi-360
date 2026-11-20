@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { sanitizeQuestionHtml } from "../sanitize";
+import { sanitizeQuestionHtml } from "@thi360/ui/rich-text";
 
 interface Sample {
   name: string;
