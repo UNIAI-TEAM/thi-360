@@ -1287,9 +1287,21 @@ interface S3Config {
   secretKey: string;
 }
 
+/**
+ * Điểm cuối kho lưu trữ của stack đang chạy thử. Không có mặc định: `localhost:9360` là MinIO dùng chung của máy dev, và
+ * bước chuẩn bị ở đây XÓA, GHI object trong đó (C-0b, 2026-11-19). Thiếu biến thì dừng thay vì đụng vào kho chung.
+ */
+function s3Endpoint(): string {
+  const endpoint = process.env.THI360_S3_ENDPOINT?.trim();
+  if (!endpoint) {
+    throw new Error("THI360_S3_ENDPOINT chưa đặt: đặt về MinIO của stack đang chạy thử (stack lane: http://localhost:<57400+k>), không dùng kho dev dùng chung.");
+  }
+  return endpoint.replace(/\/+$/, "");
+}
+
 function s3Config(): S3Config {
   return {
-    endpoint: (process.env.THI360_S3_ENDPOINT ?? "http://localhost:9360").replace(/\/+$/, ""),
+    endpoint: s3Endpoint(),
     bucket: process.env.THI360_S3_BUCKET ?? "thi360-private",
     accessKey: process.env.THI360_S3_ACCESS_KEY ?? "thi360",
     secretKey: process.env.THI360_S3_SECRET_KEY ?? "thi360-dev-only",
