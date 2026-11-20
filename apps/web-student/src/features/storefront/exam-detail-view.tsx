@@ -35,7 +35,7 @@ function YesNo({ value }: { value: boolean }) {
   );
 }
 
-/** Mọi dạng câu của các phần cố định, cộng số câu theo dạng (TM 10.1). */
+/** Mọi dạng câu của một tập nhóm, cộng số câu theo dạng (TM 10.1); `QUESTION_SET` tính `childAnswerType`. */
 function mergeAnswerTypes(groups: AnswerTypeGroup[]): Array<{ type: string; count: number }> {
   const totals = new Map<string, number>();
   for (const group of groups) {
@@ -45,9 +45,26 @@ function mergeAnswerTypes(groups: AnswerTypeGroup[]): Array<{ type: string; coun
   return [...totals].map(([type, count]) => ({ type, count }));
 }
 
+/** Mọi nhóm dạng câu của sản phẩm: phần cố định, dạng riêng của lựa chọn và dạng từng môn trong lựa chọn. */
+function allAnswerGroups(product: ProductDetail): AnswerTypeGroup[] {
+  return [
+    ...product.parts.flatMap((part) => part.answerTypes),
+    ...product.choices.flatMap((group) =>
+      group.options.flatMap((option) => [
+        ...option.answerTypes,
+        ...option.subjectAnswerTypes.flatMap((subject) => subject.answerTypes),
+      ]),
+    ),
+  ];
+}
+
 function ChoiceOption({ option }: { option: DetailChoiceOption }) {
   const t = useTranslations("storefront.detail");
   const locale = useLocale();
+  const optionTypes = mergeAnswerTypes([
+    ...option.answerTypes,
+    ...option.subjectAnswerTypes.flatMap((subject) => subject.answerTypes),
+  ]);
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
       <div className="font-semibold text-text">
@@ -67,6 +84,17 @@ function ChoiceOption({ option }: { option: DetailChoiceOption }) {
             </li>
           ))}
         </ul>
+      )}
+      {optionTypes.length > 0 && (
+        <p className="text-field-label text-text-muted">
+          {optionTypes
+            .map(({ type, count }) =>
+              t.has(`answerType.${type}`)
+                ? t("answerTypeCount", { type: t(`answerType.${type}`), count })
+                : t("answerTypeCount", { type, count }),
+            )
+            .join(", ")}
+        </p>
       )}
       {option.countsByPick && option.countsByPick.length > 0 && (
         <p className="text-field-label text-text-muted">
@@ -93,7 +121,9 @@ export function ExamDetailView({ product }: { product: ProductDetail }) {
   const questions = rangeText(product.questionCount);
   const minutes = rangeText(product.durationMinutes);
   const fixedTypes = mergeAnswerTypes(product.parts.flatMap((part) => part.answerTypes));
-  const hasEssay = product.parts.some((part) => part.answerTypes.some((group) => group.questionType === ESSAY_TYPE));
+  const hasEssay = allAnswerGroups(product).some(
+    (group) => (group.childAnswerType ?? group.questionType) === ESSAY_TYPE,
+  );
   const maxScore = product.scoring.maxScore ?? rangeText(product.maxPoints);
   const resultTimingKey = hasEssay ? "afterEssay" : "afterGrading";
 

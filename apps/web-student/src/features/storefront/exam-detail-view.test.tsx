@@ -102,6 +102,64 @@ describe("ExamDetailView", () => {
     expect(how).toHaveTextContent("Không có phần tự luận: Viet doan van · 2 điểm");
   });
 
+  it("tự luận chỉ nằm trong môn của một lựa chọn: vẫn ghi 'sau khi người chấm xong' và số câu từng lựa chọn", () => {
+    const optionEssay = {
+      ...FULL_DETAIL,
+      choices: [
+        {
+          partName: "Phan 3",
+          options: [
+            {
+              code: "KH",
+              kind: "SUBJECT_CHOICE",
+              name: "Khoa hoc",
+              chooseSubjects: 3,
+              countsByPick: [17, 17, 16],
+              answerTypes: [],
+              subjectAnswerTypes: [
+                {
+                  subject: { code: "LY", nameVi: "Vat li", nameEn: "Physics" },
+                  answerTypes: [
+                    { questionType: "SINGLE_CHOICE", questionCount: 15 },
+                    { questionType: "ESSAY", questionCount: 2 },
+                  ],
+                },
+              ],
+              subjects: [{ code: "LY", nameVi: "Vat li", nameEn: "Physics" }],
+            },
+          ],
+        },
+      ],
+    };
+    renderWithProviders(<ExamDetailView product={optionEssay} />);
+
+    const rights = screen.getByRole("region", { name: "Quyền sau khi mua" });
+    expect(rights).toHaveTextContent("Sau khi người chấm chấm xong");
+    const choices = screen.getByRole("region", { name: "Phần được chọn trong phạm vi mua" });
+    expect(choices).toHaveTextContent("Tự luận: 2");
+  });
+
+  it("nhóm QUESTION_SET có childAnswerType ESSAY: ghi 'sau khi người chấm xong'", () => {
+    const childEssay = {
+      ...FULL_DETAIL,
+      parts: [
+        {
+          ...FULL_DETAIL.parts[0]!,
+          answerTypes: [
+            { questionType: "SINGLE_CHOICE", questionCount: 40 },
+            { questionType: "QUESTION_SET", childAnswerType: "ESSAY", questionCount: 4 },
+          ],
+        },
+        FULL_DETAIL.parts[1]!,
+      ],
+    };
+    renderWithProviders(<ExamDetailView product={childEssay} />);
+
+    const rights = screen.getByRole("region", { name: "Quyền sau khi mua" });
+    expect(rights).toHaveTextContent("Sau khi người chấm chấm xong");
+    expect(rights).not.toHaveTextContent("Ngay sau khi chấm xong");
+  });
+
   it("mô tả, mục tiêu, đối tượng là nội dung đề (data-exam-content), không có thời hạn sử dụng", () => {
     const { container } = renderWithProviders(<ExamDetailView product={FULL_DETAIL} />);
 
