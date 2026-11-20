@@ -295,7 +295,6 @@ function PickerBody({
               {tree.map((node) => renderNode(node, 0))}
             </ul>
           )}
-          <p className="mt-auto border-t border-border px-3.5 py-2 text-caption text-text-muted">{t("sampleNote")}</p>
         </section>
 
         <section aria-labelledby={selectedHeadingId} className="flex min-w-0 flex-col rounded-xl border border-border">

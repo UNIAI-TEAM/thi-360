@@ -78,7 +78,17 @@ public final class ExamStructureOps {
         }
         return new ExamSection(id(s.id(), regenerate), s.subjectCode(), s.questionCount(),
                 s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks,
-                mapTopicQuotas(s.topicQuotas(), blockIds), s.audioRequirement());
+                mapTopicQuotas(s.topicQuotas(), blockIds), s.audioRequirement(), s.mapidMode(),
+                mapMapidRules(s.mapidRules(), blockIds));
+    }
+
+    private static List<MapidRule> mapMapidRules(List<MapidRule> rules, Map<String, String> blockIds) {
+        if (blockIds.isEmpty()) {
+            return rules;
+        }
+        return rules.stream().map(r -> r == null || r.groupId() == null ? r : new MapidRule(r.id(), r.type(),
+                blockIds.getOrDefault(r.groupId(), r.groupId()), r.nodeIds(), r.comparator(), r.count(),
+                r.percent())).toList();
     }
 
 
@@ -182,7 +192,7 @@ public final class ExamStructureOps {
         }
         return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
                 s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks, s.topicQuotas(),
-                s.audioRequirement());
+                s.audioRequirement(), s.mapidMode(), s.mapidRules());
     }
 
     private static void index(ExamStructureDocument doc, Map<String, QuestionBlock> blocks) {

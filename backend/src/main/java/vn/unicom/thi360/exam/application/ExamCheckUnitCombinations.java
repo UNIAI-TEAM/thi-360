@@ -42,8 +42,10 @@ final class ExamCheckUnitCombinations {
         return parents;
     }
 
+    /** Two quotas, or two MAPID rules of a matrix (their conflicts follow the catalog hierarchy), need the parents. */
     private static boolean hasTopicPairs(List<vn.unicom.thi360.exam.domain.ExamSection> sections) {
         return sections.stream().anyMatch(section -> section.topicQuotas().size() > 1
+                || section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX && section.mapidRules().size() > 1
                 || section.blocks().stream().anyMatch(block -> block.topicQuotas().size() > 1));
     }
 }

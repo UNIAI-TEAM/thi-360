@@ -28,7 +28,7 @@ export function ScrollableTable({ label, labelledBy, className, children }: Scro
         <ArrowLeftRight aria-hidden className="size-3.5 shrink-0" />
         {t("scrollHint")}
       </p>
-      <div role="region" tabIndex={0} aria-label={label} aria-labelledby={label ? undefined : labelledBy} className={cn("max-w-full overflow-x-auto", focusRingInset)}>
+      <div role="region" tabIndex={0} aria-label={label} aria-labelledby={label ? undefined : labelledBy} className={cn("relative max-w-full overflow-x-auto", focusRingInset)}>
         {children}
       </div>
     </div>

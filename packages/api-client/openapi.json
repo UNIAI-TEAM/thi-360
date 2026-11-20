@@ -389,6 +389,31 @@
           "everyChildInScope" : {
             "type" : "boolean"
           },
+          "everyChildSameNode" : {
+            "description" : "SOURCE rules of a MAPID matrix: a set counts only when all its children carry the same node of a group (a descendant counts); applies to every entry of nodeGroups; stricter than everyChildInScope (UNI-2758)",
+            "type" : "boolean"
+          },
+          "excludedNodeIds" : {
+            "description" : "MAPID nodes (and their descendants) the group must not draw from: ONLY_IN_GROUP of another group (UNI-2758)",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "nodeGroups" : {
+            "description" : "SOURCE rules that all apply: an AND of OR-groups, one group per applicable rule (the subject's and the group's); inside a group any node (or a descendant) matches. nodeIds keeps the legacy single scope (UNI-2758)",
+            "items" : {
+              "items" : {
+                "format" : "uuid",
+                "type" : "string"
+              },
+              "maxItems" : 2147483647,
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "type" : "array"
+          },
           "nodeIds" : {
             "items" : {
               "format" : "uuid",
@@ -3136,6 +3161,75 @@
         },
         "type" : "object"
       },
+      "ExamAccessItem" : {
+        "description" : "Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2)",
+        "properties" : {
+          "activeAttemptId" : {
+            "description" : "Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "attemptsLeft" : {
+            "description" : "Lượt còn dùng được; 0 khi chưa có quyền dùng, hoặc khi lượt cuối đang được giữ",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "description" : "Mã như học viên gửi (đã bỏ khoảng trắng đầu cuối)",
+            "type" : "string"
+          },
+          "entitlementId" : {
+            "description" : "Quyền dùng của tài khoản với bài này; trống khi chưa có",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "hasPendingFulfillment" : {
+            "description" : "Có đơn đã thu tiền chưa cấp xong cho bài này (kể cả khi vẫn còn lượt dùng)",
+            "type" : "boolean"
+          },
+          "pendingOrderCode" : {
+            "description" : "Mã đơn đã thu tiền chưa cấp xong; trống khi không có",
+            "type" : [ "string", "null" ]
+          },
+          "state" : {
+            "description" : "Giá trị đầu tiên thỏa theo thứ tự IN_PROGRESS, CAN_START, CHECKING, EXHAUSTED, NONE",
+            "enum" : [ "IN_PROGRESS", "CAN_START", "CHECKING", "EXHAUSTED", "NONE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptsLeft", "code", "hasPendingFulfillment", "state" ],
+        "type" : "object"
+      },
+      "ExamAccessQueryRequest" : {
+        "description" : "Mã sản phẩm cần hỏi quyền dùng (TM 10.2)",
+        "properties" : {
+          "codes" : {
+            "description" : "Mã sản phẩm, tối đa 48; mã trùng chỉ trả một dòng",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 48,
+            "minItems" : 0,
+            "type" : "array"
+          }
+        },
+        "required" : [ "codes" ],
+        "type" : "object"
+      },
+      "ExamAccessQueryResponse" : {
+        "description" : "Quyền dùng theo từng mã đã hỏi",
+        "properties" : {
+          "items" : {
+            "description" : "Một dòng cho mỗi mã khác nhau, theo thứ tự gửi lên",
+            "items" : {
+              "$ref" : "#/components/schemas/ExamAccessItem"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "items" ],
+        "type" : "object"
+      },
       "ExamCheckAnswerQuota" : {
         "properties" : {
           "achieved" : {
@@ -3295,6 +3389,16 @@
           "available" : {
             "type" : "number"
           },
+          "availableSets" : {
+            "description" : "Whole sets the source holds for the group",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "availableSingles" : {
+            "description" : "Single questions of the subject that match the group's source nodes",
+            "format" : "int64",
+            "type" : "integer"
+          },
           "blockId" : {
             "type" : "string"
           },
@@ -3305,6 +3409,10 @@
             "type" : "string"
           },
           "competencyCode" : {
+            "type" : "string"
+          },
+          "conflictKind" : {
+            "description" : "Kind of a MAPID_RULE_CONFLICT",
             "type" : "string"
           },
           "difficultyCode" : {
@@ -3328,6 +3436,13 @@
           "location" : {
             "$ref" : "#/components/schemas/ExamIssueLocation"
           },
+          "nodeIds" : {
+            "description" : "Node ids of the rule a shortage names",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "optionId" : {
             "type" : "string"
           },
@@ -3345,6 +3460,22 @@
           },
           "required" : {
             "type" : "number"
+          },
+          "requiredSets" : {
+            "description" : "Whole sets the group needs (set-unit shortage of a SOURCE rule)",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "ruleId" : {
+            "description" : "MAPID rule (UNI-2758) the issue names; the web scrolls to mapid-rule-<ruleId>",
+            "type" : "string"
+          },
+          "ruleIds" : {
+            "description" : "Every rule of a MAPID_RULE_CONFLICT, in declaration order",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "sectionId" : {
             "type" : "string"
@@ -4494,6 +4625,13 @@
           "location" : {
             "$ref" : "#/components/schemas/ExamIssueLocation"
           },
+          "nodeIds" : {
+            "description" : "Node ids of the rule the failure names",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "optionId" : {
             "type" : "string"
           },
@@ -4511,6 +4649,10 @@
           },
           "required" : {
             "type" : "number"
+          },
+          "ruleId" : {
+            "description" : "MAPID rule (UNI-2758) the failure names; the web scrolls to mapid-rule-<ruleId>",
+            "type" : "string"
           },
           "sectionId" : {
             "type" : "string"
@@ -5206,6 +5348,16 @@
           },
           "knowledgeScope" : {
             "$ref" : "#/components/schemas/KnowledgeScope"
+          },
+          "mapidMode" : {
+            "enum" : [ "ALL", "MATRIX" ],
+            "type" : "string"
+          },
+          "mapidRules" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MapidRule"
+            },
+            "type" : "array"
           },
           "matrix" : {
             "$ref" : "#/components/schemas/BlockMatrix"
@@ -6298,6 +6450,39 @@
         "required" : [ "mustChangePassword", "redirectTo" ],
         "type" : "object"
       },
+      "MapidRule" : {
+        "properties" : {
+          "comparator" : {
+            "enum" : [ "EXACT", "AT_LEAST" ],
+            "type" : "string"
+          },
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "groupId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "nodeIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "percent" : {
+            "type" : "number"
+          },
+          "type" : {
+            "enum" : [ "PRESENT", "COUNT", "ONLY_IN_GROUP", "SOURCE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "MatchingBody" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/QuestionBody"
@@ -6466,6 +6651,130 @@
           },
           "type" : "object"
         } ]
+      },
+      "MyExamCard" : {
+        "description" : "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId)",
+        "properties" : {
+          "actions" : {
+            "description" : "Nút của thẻ theo TM 12, nút chính đứng đầu",
+            "items" : {
+              "enum" : [ "CONTINUE", "START", "VIEW_RESULT", "HISTORY", "REBUY", "BUY_MORE", "CHECKING" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "activeAttemptId" : {
+            "description" : "Lượt đang mở (kể cả STARTING)",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "activeAttemptState" : {
+            "description" : "Trạng thái của lượt đang mở",
+            "enum" : [ "STARTING", "IN_PROGRESS", null ],
+            "type" : [ "string", "null" ]
+          },
+          "attemptsLeft" : {
+            "description" : "Lượt còn dùng được, từ quyền đã cấp (không từ sản phẩm đang bán)",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsTotal" : {
+            "description" : "Tổng lượt của quyền sau khi trừ lượt đã thu hồi; 0 ở thẻ chưa có quyền",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "buildMode" : {
+            "description" : "STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2)",
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "Mã sản phẩm, cũng là mã bài thi",
+            "type" : "string"
+          },
+          "coverUrl" : {
+            "description" : "Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định",
+            "type" : [ "string", "null" ]
+          },
+          "durationMinutes" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ],
+            "description" : "Thời lượng một lượt, phút, theo các đường đã mua; khoảng khi các đường khác nhau"
+          },
+          "entitlementId" : {
+            "description" : "Quyền dùng; trống ở thẻ \"Đang kiểm tra\" của đơn chưa cấp quyền",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "examKind" : {
+            "$ref" : "#/components/schemas/ExamKindRef"
+          },
+          "format" : {
+            "description" : "Hình thức (E4): FULL, PART hay SUBJECT",
+            "type" : "string"
+          },
+          "hasPendingFulfillment" : {
+            "description" : "Có đơn đã thu tiền chưa cấp xong cho bài này",
+            "type" : "boolean"
+          },
+          "name" : {
+            "description" : "Tên sản phẩm",
+            "type" : "string"
+          },
+          "pendingOrderCode" : {
+            "description" : "Mã đơn đã thu tiền chưa cấp xong",
+            "type" : [ "string", "null" ]
+          },
+          "questionCount" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ],
+            "description" : "Số câu học viên làm theo các đường đã mua; khoảng khi các đường khác nhau"
+          },
+          "resultAttemptId" : {
+            "description" : "Lượt mới nhất đã có kết quả, đích của nút VIEW_RESULT",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "saleState" : {
+            "description" : "Trạng thái bán của sản phẩm; ON_SALE thì có nút mua",
+            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE" ],
+            "type" : "string"
+          },
+          "scopeLabel" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ],
+            "description" : "Tên phần (PART) hoặc môn (SUBJECT); null với FULL"
+          },
+          "state" : {
+            "description" : "Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)",
+            "enum" : [ "IN_PROGRESS", "CAN_START", "CHECKING", "EXHAUSTED", "NONE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "actions", "attemptsLeft", "attemptsTotal", "buildMode", "code", "examKind", "format", "hasPendingFulfillment", "name", "saleState", "state" ],
+        "type" : "object"
+      },
+      "MyExamsResponse" : {
+        "description" : "Danh sách thẻ \"Bài thi của tôi\": thẻ \"Đang kiểm tra\" trước, rồi các quyền dùng mới nhất trước",
+        "properties" : {
+          "items" : {
+            "description" : "Rỗng khi tài khoản chưa có bài nào",
+            "items" : {
+              "$ref" : "#/components/schemas/MyExamCard"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "items" ],
+        "type" : "object"
       },
       "OmittedEssayGroup" : {
         "description" : "Nhóm tự luận tạm bỏ qua: tên và điểm phần đó đã mang (TM 10.1, 2B K1)",
@@ -34364,6 +34673,294 @@
         "tags" : [ "Me" ]
       }
     },
+    "/api/v1/me/exam-access/query" : {
+      "post" : {
+        "operationId" : "queryMyExamAccess",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExamAccessQueryRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamAccessQueryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Hỏi trạng thái quyền dùng theo mã sản phẩm (tối đa 48 mã)",
+        "tags" : [ "Exam access" ]
+      }
+    },
+    "/api/v1/me/exams" : {
+      "get" : {
+        "operationId" : "listMyExams",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MyExamsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Thẻ bài thi của tài khoản đang đăng nhập (TM 12)",
+        "tags" : [ "My exams" ]
+      }
+    },
     "/api/v1/me/profile" : {
       "get" : {
         "operationId" : "getMyProfile",
@@ -35450,6 +36047,9 @@
     "description" : "Tra cứu nhật ký thao tác",
     "name" : "Audit"
   }, {
+    "description" : "Quyền dùng bài thi của tài khoản đang đăng nhập",
+    "name" : "Exam access"
+  }, {
     "description" : "Tra cứu lớp học hiện tại và lịch sử lớp của tài khoản",
     "name" : "Admin User Classes"
   }, {
@@ -35521,6 +36121,9 @@
   }, {
     "description" : "Ảnh và tệp đính kèm của ngân hàng câu hỏi",
     "name" : "Admin Question Assets"
+  }, {
+    "description" : "Bài thi của tài khoản đang đăng nhập",
+    "name" : "My exams"
   }, {
     "description" : "Quản lý vai trò và tập quyền của vai trò",
     "name" : "Admin Roles"

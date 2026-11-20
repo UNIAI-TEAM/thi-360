@@ -157,6 +157,29 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void countEndpointsRejectANullOrEmptyRowOfNodeGroupsAndAcceptWellFormedOnes() throws Exception {
+        String node = "\"" + QuestionTestSupport.KNOWLEDGE_CHAPTER_ID + "\"";
+        for (String groups : List.of("[null]", "[[]]", "[[null]]", "[[" + node + "],[]]", "[[" + node + "],null]")) {
+            String query = "{\"subjectCode\":\"TOAN\",\"knowledgeScope\":{\"nodeGroups\":" + groups + "}}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").exists());
+            }
+        }
+        for (String groups : List.of("null", "[]", "[[" + node + "]]", "[[" + node + "],[" + node + "]]")) {
+            String query = "{\"subjectCode\":\"TOAN\",\"knowledgeScope\":{\"nodeGroups\":" + groups + "}}";
+            for (String suffix : List.of("count", "count-subject")) {
+                String body = suffix.equals("count") ? query : "{\"subjectCode\":\"TOAN\",\"groups\":[" + query + "]}";
+                mockMvc.perform(post("/api/v1/admin/exams/available-questions/" + suffix)
+                        .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andExpect(status().isOk());
+            }
+        }
+    }
+
+    @Test
     void candidatesExposeServingScoringForStandaloneAndSetChildren() {
         UUID subject = UUID.randomUUID();
         UUID root = question(subject, "READY", 1, 2);

@@ -81,6 +81,9 @@ export default defineConfig({
         THI360_REGISTER_IP_DAY_LIMIT: process.env.THI360_REGISTER_IP_DAY_LIMIT ?? "5000",
         THI360_FORGOT_PER_IP_LIMIT: process.env.THI360_FORGOT_PER_IP_LIMIT ?? "600",
         THI360_RESET_PER_IP_LIMIT: process.env.THI360_RESET_PER_IP_LIMIT ?? "600",
+        // GET /api/v1/public/** is limited to 120 requests a minute per IP (TM 10.2); the e2e web server renders the
+        // catalog from loopback, so exempt it (plan B6, FS-1). The suite must never see a 429 from the catalog.
+        THI360_SECURITY_RATELIMIT_EXEMPTIPS: process.env.THI360_SECURITY_RATELIMIT_EXEMPTIPS ?? "127.0.0.1,::1",
       },
     },
     {

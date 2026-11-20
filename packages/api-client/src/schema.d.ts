@@ -2134,6 +2134,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/exam-access/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hỏi trạng thái quyền dùng theo mã sản phẩm (tối đa 48 mã) */
+        post: operations["queryMyExamAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thẻ bài thi của tài khoản đang đăng nhập (TM 12) */
+        get: operations["listMyExams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/profile": {
         parameters: {
             query?: never;
@@ -2462,6 +2496,12 @@ export interface components {
         AvailableQuestionsKnowledgeScope: {
             competencyCodes?: string[];
             everyChildInScope?: boolean;
+            /** @description SOURCE rules of a MAPID matrix: a set counts only when all its children carry the same node of a group (a descendant counts); applies to every entry of nodeGroups; stricter than everyChildInScope (UNI-2758) */
+            everyChildSameNode?: boolean;
+            /** @description MAPID nodes (and their descendants) the group must not draw from: ONLY_IN_GROUP of another group (UNI-2758) */
+            excludedNodeIds?: string[];
+            /** @description SOURCE rules that all apply: an AND of OR-groups, one group per applicable rule (the subject's and the group's); inside a group any node (or a descendant) matches. nodeIds keeps the legacy single scope (UNI-2758) */
+            nodeGroups?: string[][];
             nodeIds?: string[];
         };
         /** @description Bộ lọc nguồn câu hỏi của một nhóm */
@@ -3976,6 +4016,45 @@ export interface components {
             id?: string;
             points?: number;
         };
+        /** @description Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2) */
+        ExamAccessItem: {
+            /**
+             * Format: uuid
+             * @description Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS
+             */
+            activeAttemptId?: string | null;
+            /**
+             * Format: int32
+             * @description Lượt còn dùng được; 0 khi chưa có quyền dùng, hoặc khi lượt cuối đang được giữ
+             */
+            attemptsLeft: number;
+            /** @description Mã như học viên gửi (đã bỏ khoảng trắng đầu cuối) */
+            code: string;
+            /**
+             * Format: uuid
+             * @description Quyền dùng của tài khoản với bài này; trống khi chưa có
+             */
+            entitlementId?: string | null;
+            /** @description Có đơn đã thu tiền chưa cấp xong cho bài này (kể cả khi vẫn còn lượt dùng) */
+            hasPendingFulfillment: boolean;
+            /** @description Mã đơn đã thu tiền chưa cấp xong; trống khi không có */
+            pendingOrderCode?: string | null;
+            /**
+             * @description Giá trị đầu tiên thỏa theo thứ tự IN_PROGRESS, CAN_START, CHECKING, EXHAUSTED, NONE
+             * @enum {string}
+             */
+            state: "IN_PROGRESS" | "CAN_START" | "CHECKING" | "EXHAUSTED" | "NONE";
+        };
+        /** @description Mã sản phẩm cần hỏi quyền dùng (TM 10.2) */
+        ExamAccessQueryRequest: {
+            /** @description Mã sản phẩm, tối đa 48; mã trùng chỉ trả một dòng */
+            codes: string[];
+        };
+        /** @description Quyền dùng theo từng mã đã hỏi */
+        ExamAccessQueryResponse: {
+            /** @description Một dòng cho mỗi mã khác nhau, theo thứ tự gửi lên */
+            items: components["schemas"]["ExamAccessItem"][];
+        };
         ExamCheckAnswerQuota: {
             /** Format: int32 */
             achieved?: number;
@@ -4035,10 +4114,22 @@ export interface components {
             affectedCodes?: string[];
             answerType?: string;
             available?: number;
+            /**
+             * Format: int64
+             * @description Whole sets the source holds for the group
+             */
+            availableSets?: number;
+            /**
+             * Format: int64
+             * @description Single questions of the subject that match the group's source nodes
+             */
+            availableSingles?: number;
             blockId?: string;
             blockName?: string;
             code?: string;
             competencyCode?: string;
+            /** @description Kind of a MAPID_RULE_CONFLICT */
+            conflictKind?: string;
             difficultyCode?: string;
             dimension?: string;
             excludedPoints?: number;
@@ -4046,11 +4137,22 @@ export interface components {
             group?: string;
             key?: string;
             location?: components["schemas"]["ExamIssueLocation"];
+            /** @description Node ids of the rule a shortage names */
+            nodeIds?: string[];
             optionId?: string;
             partId?: string;
             partName?: string;
             questionCodes?: string[];
             required?: number;
+            /**
+             * Format: int64
+             * @description Whole sets the group needs (set-unit shortage of a SOURCE rule)
+             */
+            requiredSets?: number;
+            /** @description MAPID rule (UNI-2758) the issue names; the web scrolls to mapid-rule-<ruleId> */
+            ruleId?: string;
+            /** @description Every rule of a MAPID_RULE_CONFLICT, in declaration order */
+            ruleIds?: string[];
             sectionId?: string;
             severity?: string;
             subjectCode?: string;
@@ -4519,11 +4621,15 @@ export interface components {
             group?: string;
             key?: string;
             location?: components["schemas"]["ExamIssueLocation"];
+            /** @description Node ids of the rule the failure names */
+            nodeIds?: string[];
             optionId?: string;
             partId?: string;
             partName?: string;
             questionCodes?: string[];
             required?: number;
+            /** @description MAPID rule (UNI-2758) the failure names; the web scrolls to mapid-rule-<ruleId> */
+            ruleId?: string;
             sectionId?: string;
             /** @description Display segment code of DISPLAY_SEGMENT_MISMATCH */
             segmentCode?: string | null;
@@ -4774,6 +4880,9 @@ export interface components {
             choiceGroup?: "NATURAL" | "SOCIAL";
             id?: string;
             knowledgeScope?: components["schemas"]["KnowledgeScope"];
+            /** @enum {string} */
+            mapidMode?: "ALL" | "MATRIX";
+            mapidRules?: components["schemas"]["MapidRule"][];
             matrix?: components["schemas"]["BlockMatrix"];
             /** Format: int32 */
             questionCount?: number;
@@ -5329,6 +5438,18 @@ export interface components {
              */
             redirectTo: string;
         };
+        MapidRule: {
+            /** @enum {string} */
+            comparator?: "EXACT" | "AT_LEAST";
+            /** Format: int32 */
+            count?: number;
+            groupId?: string;
+            id?: string;
+            nodeIds?: string[];
+            percent?: number;
+            /** @enum {string} */
+            type?: "PRESENT" | "COUNT" | "ONLY_IN_GROUP" | "SOURCE";
+        };
         MatchingBody: {
             type: "MatchingBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -5409,6 +5530,77 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
+        /** @description Thẻ một bài thi trong "Bài thi của tôi" (TM 12): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId) */
+        MyExamCard: {
+            /** @description Nút của thẻ theo TM 12, nút chính đứng đầu */
+            actions: ("CONTINUE" | "START" | "VIEW_RESULT" | "HISTORY" | "REBUY" | "BUY_MORE" | "CHECKING")[];
+            /**
+             * Format: uuid
+             * @description Lượt đang mở (kể cả STARTING)
+             */
+            activeAttemptId?: string | null;
+            /**
+             * @description Trạng thái của lượt đang mở
+             * @enum {string|null}
+             */
+            activeAttemptState?: "STARTING" | "IN_PROGRESS" | null;
+            /**
+             * Format: int32
+             * @description Lượt còn dùng được, từ quyền đã cấp (không từ sản phẩm đang bán)
+             */
+            attemptsLeft: number;
+            /**
+             * Format: int32
+             * @description Tổng lượt của quyền sau khi trừ lượt đã thu hồi; 0 ở thẻ chưa có quyền
+             */
+            attemptsTotal: number;
+            /** @description STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2) */
+            buildMode: string;
+            /** @description Mã sản phẩm, cũng là mã bài thi */
+            code: string;
+            /** @description Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định */
+            coverUrl?: string | null;
+            /** @description Thời lượng một lượt, phút, theo các đường đã mua; khoảng khi các đường khác nhau */
+            durationMinutes?: components["schemas"]["IntRange"] | null;
+            /**
+             * Format: uuid
+             * @description Quyền dùng; trống ở thẻ "Đang kiểm tra" của đơn chưa cấp quyền
+             */
+            entitlementId?: string | null;
+            examKind: components["schemas"]["ExamKindRef"];
+            /** @description Hình thức (E4): FULL, PART hay SUBJECT */
+            format: string;
+            /** @description Có đơn đã thu tiền chưa cấp xong cho bài này */
+            hasPendingFulfillment: boolean;
+            /** @description Tên sản phẩm */
+            name: string;
+            /** @description Mã đơn đã thu tiền chưa cấp xong */
+            pendingOrderCode?: string | null;
+            /** @description Số câu học viên làm theo các đường đã mua; khoảng khi các đường khác nhau */
+            questionCount?: components["schemas"]["IntRange"] | null;
+            /**
+             * Format: uuid
+             * @description Lượt mới nhất đã có kết quả, đích của nút VIEW_RESULT
+             */
+            resultAttemptId?: string | null;
+            /**
+             * @description Trạng thái bán của sản phẩm; ON_SALE thì có nút mua
+             * @enum {string}
+             */
+            saleState: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE";
+            /** @description Tên phần (PART) hoặc môn (SUBJECT); null với FULL */
+            scopeLabel?: components["schemas"]["LocalizedName"] | null;
+            /**
+             * @description Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)
+             * @enum {string}
+             */
+            state: "IN_PROGRESS" | "CAN_START" | "CHECKING" | "EXHAUSTED" | "NONE";
+        };
+        /** @description Danh sách thẻ "Bài thi của tôi": thẻ "Đang kiểm tra" trước, rồi các quyền dùng mới nhất trước */
+        MyExamsResponse: {
+            /** @description Rỗng khi tài khoản chưa có bài nào */
+            items: components["schemas"]["MyExamCard"][];
+        };
         /** @description Nhóm tự luận tạm bỏ qua: tên và điểm phần đó đã mang (TM 10.1, 2B K1) */
         OmittedEssayGroup: {
             name: string;
@@ -27716,6 +27908,266 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    queryMyExamAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamAccessQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamAccessQueryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMyExams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyExamsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
             /** @description Too Many Requests */

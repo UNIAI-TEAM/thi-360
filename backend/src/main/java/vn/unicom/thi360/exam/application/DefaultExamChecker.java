@@ -351,7 +351,7 @@ public class DefaultExamChecker implements ExamChecker {
                 parts.add(part);
             }
         }
-        return new SolverInputBuilder.SolverInput(parts, input.candidates());
+        return input.withParts(parts);
     }
 
     private Evaluation invalidResult(ExamCheckSnapshotReader.Snapshot snapshot, ExamCheckScope scope,
