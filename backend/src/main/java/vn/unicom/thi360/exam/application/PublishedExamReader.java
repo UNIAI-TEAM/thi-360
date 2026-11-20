@@ -151,7 +151,7 @@ public class PublishedExamReader implements PublishedExamPort {
                 text(config, "timing"), integer(config, "durationMinutes"), decimal(config, "maxScore"),
                 decimal(config, "referenceMax"), text(config, "practiceScoring"), listing(config),
                 List.copyOf(mappedParts), List.copyOf(combinations), List.copyOf(omitted),
-                List.copyOf(row.publishedPaths()), List.copyOf(row.servingPaths()));
+                List.copyOf(row.publishedPaths()), List.copyOf(row.servingPaths()), text(config, "instructions"));
     }
 
     private Listing listing(JsonNode config) {

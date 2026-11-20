@@ -191,6 +191,15 @@ thi360:
       generate:
         # LT F5: deadline of paper generation, separate from the check/preview limits (thi360.exam.solver.*).
         deadline: ${THI360_EXAM_SOLVER_GENERATE_DEADLINE:30s}
+  attempt:
+    generation:
+      threads: ${THI360_ATTEMPT_GEN_THREADS:4}
+      queue-capacity: ${THI360_ATTEMPT_GEN_QUEUE_CAPACITY:32}
+      max-queue-wait: ${THI360_ATTEMPT_GEN_MAX_QUEUE_WAIT:PT60S}
+      stale-starting-after: ${THI360_ATTEMPT_STALE_STARTING_AFTER:PT2M}
+    scheduling:
+      enabled: true
+      stale-starting-interval-ms: 30000
   mail:
     from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
     tls: ${THI360_SMTP_TLS:starttls}
@@ -323,6 +332,9 @@ thi360:
         scheduling:
           enabled: false
   exam:
+    scheduling:
+      enabled: false
+  attempt:
     scheduling:
       enabled: false
   mail:

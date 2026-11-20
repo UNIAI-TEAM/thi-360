@@ -227,11 +227,12 @@ describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", 
     expect(section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
   });
 
-  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, Số câu của mục cũng chỉ đọc", async () => {
+  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, không có ô Số câu của mục", async () => {
     const group = (id: string) => ({ id, name: id, questionType: "SINGLE_CHOICE", questionCount: 5, requiredPointsPerQuestion: 1 });
     boot({}, 200, { blocks: [group("blk-1"), group("blk-2")], matrix: percentMatrix, topicQuotas: [topic] });
     open();
-    expect(await screen.findByRole("textbox", { name: "Số câu của mục" })).toHaveAttribute("readonly");
+    await screen.findByRole("heading", { name: /^Môn / });
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /^Số lượng/ })).not.toBeInTheDocument();
   });
 });

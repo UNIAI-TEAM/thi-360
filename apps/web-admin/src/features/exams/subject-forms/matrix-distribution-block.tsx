@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@thi360/ui";
+import { Button, Chip, cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
@@ -29,8 +29,9 @@ interface DimensionProps extends MatrixBlockProps {
 }
 
 /** Một hàng của MT (khối lớp hoặc độ khó): các ô, mức áp dụng theo kỳ (R-8), "Đã khai x/y" hoặc "Tổng x%, cần 100%" ngay dưới. */
-function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, total, axes, raw, onChange }: DimensionProps) {
+function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, kindCode, total, axes, raw, onChange }: DimensionProps) {
   const t = useTranslations("exams.subjectForm.matrix.distribution");
+  const tHsa = useTranslations("exams.subjectForm.matrix.hsa");
   const matrix = section.matrix;
   const twoColumns = entry.percentEntry === "TWO_COLUMNS";
   const unit = matrix?.unit ?? "COUNT";
@@ -41,20 +42,28 @@ function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, t
   const fieldBase = dimension === "grade" ? "GRADE" : "DIFFICULTY";
   const enforcement: QuotaEnforcement = dimensionEnforcement(matrix, dimension);
   const percentMismatch = unit === "PERCENT" && declared && !percentsAreComplete(declaredCodes.map((code) => matrixCell(matrix, dimension, code) ?? 0));
+  const gradeOptional = kindCode === "HSA" && (section.subjectCode === "SU" || section.subjectCode === "DIA") && dimension === "grade";
 
   return (
     <div data-form-field={fieldBase} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h4 className="text-label font-semibold text-text">{title}</h4>
-        <EnforcementControl
-          mode={entry.enforcement}
-          name={title}
-          value={enforcement}
-          declared={declared}
-          lockReason={matrix?.basis !== undefined && matrix.basis !== "QUESTION" ? "promptBasis" : undefined}
-          onChange={(next) => onChange((current) => ({ ...current, matrix: setDimensionEnforcement(current.matrix, dimension, next) }))}
-        />
+        {gradeOptional && !declared ? (
+          <Chip variant="tag" className="w-fit">
+            {tHsa("notApplied")}
+          </Chip>
+        ) : (
+          <EnforcementControl
+            mode={entry.enforcement}
+            name={title}
+            value={enforcement}
+            declared={declared}
+            lockReason={matrix?.basis !== undefined && matrix.basis !== "QUESTION" ? "promptBasis" : undefined}
+            onChange={(next) => onChange((current) => ({ ...current, matrix: setDimensionEnforcement(current.matrix, dimension, next) }))}
+          />
+        )}
       </div>
+      {gradeOptional && !declared && <p className="text-caption text-text-muted">{tHsa("gradeOptionalHint")}</p>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {codes.map((code) => (
           <MatrixCell

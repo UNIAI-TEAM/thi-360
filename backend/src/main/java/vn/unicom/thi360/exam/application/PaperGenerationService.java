@@ -120,8 +120,8 @@ public class PaperGenerationService implements PaperSolverPort {
                             + (result.subjectCode() == null ? "" : " subject " + result.subjectCode())
                             + (result.groupId() == null ? "" : " group " + result.groupId()));
         }
-        PaperSolverPort.GeneratedPaper paper = PaperGenerationAssembler.assemble(plan.partIds(), input.parts(),
-                result.path(), result.witness(), solved.dropped(), input.candidates().loadedCandidates());
+        PaperSolverPort.GeneratedPaper paper = PaperGenerationAssembler.assemble(plan.partIds(), plan.document(),
+                input.parts(), result.path(), result.witness(), solved.dropped(), input.candidates().loadedCandidates());
         requireTime(deadline, "in the assembly");
         return paper;
     }

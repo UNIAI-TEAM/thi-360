@@ -162,13 +162,14 @@ describe("Chỉ tiêu cấp bài tính theo đơn vị không phải câu khóa 
 });
 
 describe("Chỉ tiêu cấp bài của kỳ thi HSA có mức cố định (UNI-1701)", () => {
-  it("một môn, tính theo câu: Bắt buộc cố định, không còn nút radio, và bản nháp lưu Bắt buộc", async () => {
+  it("một môn, tính theo câu: Bắt buộc cố định không hiện chip hay chú thích, và bản nháp lưu Bắt buộc", async () => {
     const server = boot({ examQuotas: [gradeQuota()], kind: "HSA" });
     const user = userEvent.setup();
     open();
     const section = await screen.findByRole("region", { name: "Lớp tham khảo" });
     expect(within(section).queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
-    expect(within(section).getByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).toBeInTheDocument();
+    expect(within(section).queryByRole("group", { name: "Mức của Lớp tham khảo" })).not.toBeInTheDocument();
+    expect(within(section).queryByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ enforcement: string }> };

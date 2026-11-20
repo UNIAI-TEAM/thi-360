@@ -43,6 +43,8 @@ export function CreateExamScopeFields({
   errors,
   disabled,
   showBuildMode = true,
+  buildModeLocked = false,
+  buildModeHint,
   onChange,
 }: {
   kinds: readonly ExamKindOption[];
@@ -52,6 +54,9 @@ export function CreateExamScopeFields({
   errors: { partCode?: string; subjectCode?: string };
   disabled?: boolean;
   showBuildMode?: boolean;
+  /** Bài đã có phiên bản công bố (`/exams/new?exam=`): cách dựng bài chỉ đọc; `buildModeHint` nêu lý do ngay dưới nhóm. */
+  buildModeLocked?: boolean;
+  buildModeHint?: string;
   onChange: (change: Partial<ScopeSelection>) => void;
 }) {
   const t = useTranslations("exams.create.step1");
@@ -275,7 +280,8 @@ export function CreateExamScopeFields({
           name="buildMode"
           value={selection.buildMode ?? "STANDARD"}
           required
-          disabled={disabled}
+          disabled={disabled || buildModeLocked}
+          hint={buildModeHint}
           options={buildModes}
           onChange={(buildMode) => onChange({ buildMode })}
         />

@@ -73,9 +73,13 @@ public interface PaperSolverPort {
      * {@code groupId} is the block id of the snapshot, once per section. A block with passage slots (HSA / QDA
      * Literature) is one group: the picks of all its slots, whole roots, in slot order.
      */
-    record GeneratedGroup(String groupId, List<GeneratedQuestion> questions) {
+    record GeneratedGroup(String groupId, List<GeneratedQuestion> questions, boolean shuffleUnits) {
         public GeneratedGroup {
             questions = List.copyOf(questions);
+        }
+
+        public GeneratedGroup(String groupId, List<GeneratedQuestion> questions) {
+            this(groupId, questions, true);
         }
     }
 

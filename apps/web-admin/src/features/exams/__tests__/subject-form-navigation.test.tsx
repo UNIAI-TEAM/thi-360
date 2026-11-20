@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_ID } from "./fake-exams-server";
 import { registerFormBlockingRuleForTest } from "../subject-forms/blocking";
+import { findFormTargetElement, focusFormTarget, formTarget, MATRIX_MAPID_RULES_FIELD } from "../subject-forms/navigation";
 import { boot, checkCalls, installForms, openStructure, putCalls, qdaParts } from "./subject-form-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
@@ -245,5 +246,170 @@ describe("Đích MT thật (CR-2 AC-9)", () => {
     openStructure("?section=sec-ly");
     await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
     expect(screen.queryByRole("button", { name: /Thêm nhóm|Xóa nhóm|Lên|Xuống/ })).toBeNull();
+  });
+});
+
+/**
+ * CR-2H AC-10 (FTM B9, R-15): ?block= của HSA Toán/Hóa mở MT và đặt focus vào ô vai trò; lỗi MAPID_RULE_CONFLICT
+ * bấm "Đi tới quy tắc" mở HSA MT và đặt focus đúng dòng `[data-field="mapid-rule-<id>"]`.
+ */
+describe("Đích HSA MT và quy tắc MAPID (CR-2H AC-10)", () => {
+  beforeEach(() => restore());
+
+  const hsaParts = () => [
+    {
+      id: "part-1",
+      order: 1,
+      name: "Phần 1",
+      durationMinutes: 75,
+      questionCount: 67,
+      questionCountOnPaper: 67,
+      questionCountRequired: 67,
+      participation: { mode: "ALL" },
+      options: [],
+      sections: [
+        {
+          id: "sec-toan",
+          subjectCode: "TOAN",
+          questionCount: 50,
+          mapidMode: "MATRIX",
+          mapidRules: [
+            { id: "r1", type: "COUNT", groupId: "sec-toan-fill", nodeIds: ["kn-0D1"], comparator: "EXACT", count: 3 },
+            { id: "r2", type: "COUNT", groupId: "sec-toan-fill", nodeIds: ["kn-0D1"], comparator: "EXACT", count: 4 },
+          ],
+          blocks: [
+            { id: "sec-toan-single", name: "Trắc nghiệm độc lập", questionType: "SINGLE_CHOICE", questionCount: 32, requiredPointsPerQuestion: 1 },
+            { id: "sec-toan-fill", name: "Điền đáp án", questionType: "SHORT_ANSWER", questionCount: 15, requiredPointsPerQuestion: 1 },
+            { id: "sec-toan-set", name: "Chùm cuối", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3, requiredPointsPerQuestion: 1 },
+          ],
+        },
+        {
+          id: "sec-hoa",
+          subjectCode: "HOA",
+          questionCount: 17,
+          blocks: [
+            { id: "sec-hoa-single", name: "Trắc nghiệm độc lập", questionType: "SINGLE_CHOICE", questionCount: 13, requiredPointsPerQuestion: 1 },
+            { id: "sec-hoa-set", name: "Chùm", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3, requiredPointsPerQuestion: 1 },
+            { id: "sec-hoa-fill", name: "Trả lời ngắn", questionType: "SHORT_ANSWER", questionCount: 1, requiredPointsPerQuestion: 1 },
+          ],
+        },
+      ],
+    },
+  ];
+
+  it.each([
+    ["sec-toan-set", "Số chùm"],
+    ["sec-toan-fill", "Điền đáp án"],
+    ["sec-toan-single", "Trắc nghiệm"],
+    ["sec-hoa-set", "Số chùm"],
+    ["sec-hoa-fill", "Điền đáp án"],
+  ])("hsaMatrixTargets: ?block=%s mở HSA MT và đặt focus vào ô %s, không mở màn nhóm", async (blockId, name) => {
+    boot({ kind: "HSA", parts: hsaParts() });
+    openStructure(`?block=${blockId}`);
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("group", { name })).getByRole("textbox")).toHaveFocus());
+    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
+  });
+
+  it("mapidRuleTarget: bấm Đi tới quy tắc từ lỗi MAPID_RULE_CONFLICT mở HSA Toán MT và đặt focus đúng dòng quy tắc", async () => {
+    const user = userEvent.setup();
+    boot({
+      kind: "HSA",
+      parts: hsaParts(),
+      checkBody: {
+        examId: EXAM_ID,
+        status: "INVALID",
+        stale: false,
+        checkedAt: "2026-11-17T01:00:00Z",
+        durationSeconds: 3,
+        timeLimitSeconds: 30,
+        issueCount: 1,
+        partCount: 1,
+        totalPoints: 0,
+        printedQuestions: 67,
+        paths: [],
+        groups: [
+          {
+            group: "MATRIX",
+            status: "FAIL",
+            issues: [
+              {
+                key: "MAPID_RULE_CONFLICT|r1",
+                code: "MAPID_RULE_CONFLICT",
+                severity: "ERROR",
+                group: "MATRIX",
+                partId: "part-1",
+                sectionId: "sec-toan",
+                subjectCode: "TOAN",
+                blockId: null,
+                blockName: null,
+                ruleId: "r1",
+                ruleIds: ["r1", "r2"],
+                conflictKind: "EXACT_COUNTS_DIFFER",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    openStructure("?section=sec-hoa");
+    await screen.findByRole("navigation", { name: "Cấu trúc" });
+    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    const goToRule = await screen.findByRole("button", { name: /Đi tới quy tắc/ });
+    await user.click(goToRule);
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("mapid-rule-row-r1")).toHaveFocus());
+  });
+
+  it("formTarget & focusFormTarget: MAPID_RULE_CONFLICT và MAPID_RULE_GROUP_MISSING đặt focus trực tiếp vào dòng quy tắc hoặc fallback MAPID_RULES", () => {
+    const target = formTarget({ form: "MATRIX", notice: false }, { sectionId: "sec-toan", issueCode: "MAPID_RULE_CONFLICT", ruleId: "r1" });
+    expect(target).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "sec-toan", name: MATRIX_MAPID_RULES_FIELD, ruleId: "r1" } });
+
+    const groupMissing = formTarget({ form: "MATRIX", notice: false }, { sectionId: "sec-toan", issueCode: "MAPID_RULE_GROUP_MISSING" });
+    expect(groupMissing).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "sec-toan", name: MATRIX_MAPID_RULES_FIELD } });
+
+    const host = document.createElement("div");
+    const section = document.createElement("div");
+    section.setAttribute("data-form-field", MATRIX_MAPID_RULES_FIELD);
+    const table = document.createElement("div");
+    table.setAttribute("data-testid", "mapid-rules-table");
+    const row = document.createElement("div");
+    row.setAttribute("data-field", "mapid-rule-r1");
+    row.tabIndex = -1;
+    const childBtn = document.createElement("button");
+    row.appendChild(childBtn);
+    table.appendChild(row);
+    section.appendChild(table);
+    host.appendChild(section);
+    document.body.appendChild(host);
+    try {
+      expect(findFormTargetElement(host, target!)).toBe(row);
+      expect(focusFormTarget(host, target!)).toBe(true);
+      expect(document.activeElement).toBe(row);
+
+      row.remove();
+      expect(findFormTargetElement(host, target!)).toBe(table);
+      expect(focusFormTarget(host, target!)).toBe(true);
+      expect(document.activeElement).toBe(table);
+
+      table.remove();
+      expect(findFormTargetElement(host, groupMissing!)).toBe(section);
+      expect(focusFormTarget(host, groupMissing!)).toBe(true);
+      expect(document.activeElement).toBe(section);
+    } finally {
+      host.remove();
+    }
+  });
+
+  it("MAPID_RULES fallback focuses MapidModeField radio when mapidMode === 'ALL' (mapid-rules-table absent)", async () => {
+    const parts = hsaParts();
+    (parts[0]!.sections[0] as { mapidMode: string }).mapidMode = "ALL";
+    boot({ kind: "HSA", parts });
+    openStructure("?section=sec-toan");
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(screen.queryByTestId("mapid-rules-table")).not.toBeInTheDocument();
+    const target = formTarget({ form: "MATRIX", notice: false }, { sectionId: "sec-toan", issueCode: "MAPID_RULE_CONFLICT" })!;
+    expect(focusFormTarget(document, target)).toBe(true);
+    expect(screen.getByTestId("mapid-mode-all")).toHaveFocus();
   });
 });

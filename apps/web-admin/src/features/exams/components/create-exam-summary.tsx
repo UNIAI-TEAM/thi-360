@@ -43,10 +43,13 @@ export function CreateExamSummaryPanel({
   data,
   timing,
   issues,
+  editing = false,
 }: {
   data: CreateExamSummaryData;
   timing: ExamTiming;
   issues: readonly CreateExamIssue[];
+  /** Chế độ sửa (`/exams/new?exam=<id>`): bỏ ghi chú "Bài được tạo ở trạng thái Nháp...". */
+  editing?: boolean;
 }) {
   const t = useTranslations("exams.create.summary");
   const headingId = useId();
@@ -114,7 +117,7 @@ export function CreateExamSummaryPanel({
           )}
         </section>
 
-        <p className="text-caption text-text-muted">{t("draftNote")}</p>
+        {!editing && <p className="text-caption text-text-muted">{t("draftNote")}</p>}
       </Card>
     </section>
   );
