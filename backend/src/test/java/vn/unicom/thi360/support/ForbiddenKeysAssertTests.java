@@ -416,6 +416,49 @@ class ForbiddenKeysAssertTests {
         }
     }
 
+    @Test
+    void matchingAnswerPairsAllowedOnlyDirectlyUnderAnswerInAttemptAndAlwaysForbiddenInStorefront() {
+        String validAttemptState = """
+                {
+                  "attemptId": "11111111-1111-1111-1111-111111111111",
+                  "parts": [{
+                    "items": [{
+                      "itemId": "22222222-2222-2222-2222-222222222222",
+                      "questionType": "MATCHING",
+                      "answer": {"type": "MATCHING", "pairs": {"l1": "r1", "l2": null}},
+                      "questionBody": {"type": "MATCHING", "left": [{"id": "l1"}], "right": [{"id": "r1"}]}
+                    }]
+                  }]
+                }
+                """;
+        assertThatCode(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(validAttemptState))
+                .doesNotThrowAnyException();
+
+        // Storefront still rejects answer and answer.pairs
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys("{\"answer\":{\"pairs\":{\"l1\":\"r1\"}}}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.answer")
+                .hasMessageContaining("$.answer.pairs")
+                .hasMessageNotContaining("r1");
+
+        // All other locations of "pairs" in attempt payloads remain strictly forbidden
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"pairs\":{\"l1\":\"r1\"}}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.pairs");
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"body\":{\"pairs\":[{\"leftId\":\"l1\"}]}}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.body.pairs");
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"items\":[{\"pairs\":{\"l1\":\"r1\"}}]}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.items[0].pairs");
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"answer\":[{\"pairs\":{\"l1\":\"r1\"}}]}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.answer[0].pairs");
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"answer\":{\"nested\":{\"pairs\":{\"l1\":\"r1\"}}}}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.answer.nested.pairs");
+    }
+
     /** Toàn bộ thông báo, nguyên nhân và stack trace như JUnit/CI sẽ in. */
     private static String renderWithCauses(Throwable thrown) {
         StringWriter out = new StringWriter();
