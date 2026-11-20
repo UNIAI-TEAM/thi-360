@@ -1,5 +1,6 @@
 package vn.unicom.thi360.exam.application;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -10,6 +11,7 @@ import vn.unicom.thi360.exam.domain.solver.GroupWitness;
 import vn.unicom.thi360.exam.domain.solver.PaperSolver;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.QuestionPick;
+import vn.unicom.thi360.exam.domain.solver.QuotaRef;
 import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
 import vn.unicom.thi360.exam.domain.solver.SolveMode;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
@@ -75,18 +77,33 @@ final class PreviewPathSolver {
 
     static Result solveSection(PaperSolver solver, SolvePath path, CandidateSource source, long seed,
             boolean trim) {
-        PathResult full = solver.solvePath(path, source, SolveMode.generate(seed));
-        if (!trim || full.status() != SolveStatus.VALID) return new Result(full, List.of());
         SectionOnPath section = path.sections().getFirst();
-        SubjectWitness witness = full.witness().getFirst();
-        TrimPolicy.Result trimmed = TrimPolicy.trim(section, witness, source, seed);
-        if (trimmed == null) {
-            return new Result(new PathResult(path, SolveStatus.INVALID, SolveReason.NO_JOINT_SOLUTION,
-                    section.subjectCode(), null, List.of(), List.of(), null), List.of());
+        TrimPolicy.Result blocked = null;
+        // A witness of the full count may need every standalone question for the MAPID minimums of the subject;
+        // another one (next seeds) may not, exactly as PaperSolver.solvePick. Attempt 0 is the plain seed. The retries
+        // share one deadline, as in solvePick: the request never runs longer than the solver timeout (R3-1).
+        Instant deadline = solver.newDeadline();
+        for (int attempt = 0; attempt < PaperSolver.TRIM_ATTEMPTS; attempt++) {
+            long attemptSeed = seed + attempt;
+            PathResult full = solver.solvePath(path, source, SolveMode.generate(attemptSeed), deadline);
+            if (!trim || full.status() != SolveStatus.VALID) return new Result(full, List.of());
+            SubjectWitness witness = full.witness().getFirst();
+            TrimPolicy.Result trimmed = TrimPolicy.trim(section, witness, source, attemptSeed);
+            if (trimmed == null) return invalidTrim(path, section, null);
+            if (!trimmed.blocked()) {
+                SolvePath actual = SolvePath.of(path.pathIndex(),
+                        List.of(section.withQuestionCount(section.questionCount() - 1)));
+                return new Result(new PathResult(actual, SolveStatus.VALID, null, null, null,
+                        List.of(trimmed.witness()), List.of(), null), List.of(trimmed.droppedQuestion()));
+            }
+            blocked = trimmed;
         }
-        SolvePath actual = SolvePath.of(path.pathIndex(), List.of(section.withQuestionCount(section.questionCount() - 1)));
-        return new Result(new PathResult(actual, SolveStatus.VALID, null, null, null,
-                List.of(trimmed.witness()), List.of(), null), List.of(trimmed.droppedQuestion()));
+        return invalidTrim(path, section, blocked.blockedBy());
+    }
+
+    private static Result invalidTrim(SolvePath path, SectionOnPath section, QuotaRef blockedBy) {
+        return new Result(new PathResult(path, SolveStatus.INVALID, SolveReason.NO_JOINT_SOLUTION,
+                section.subjectCode(), null, List.of(), List.of(), blockedBy), List.of());
     }
 
     private static void addUsed(Set<String> used, List<SubjectWitness> witnesses,

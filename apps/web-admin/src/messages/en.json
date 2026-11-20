@@ -2197,7 +2197,6 @@
       "collapseTooltip": "Collapse",
       "removeTooltip": "Remove",
       "loading": "Loading the knowledge tree",
-      "sampleNote": "Sample tree for illustration only. The real tree comes from the Knowledge structure catalog and shows active nodes only.",
       "noneSelectedHint": "Nothing selected yet. Tick items in the tree to add them.",
       "selectedLegend": "Selected knowledge",
       "examOnceNote": "A question tagged with several knowledge items is still picked at most once per paper."
@@ -3917,6 +3916,7 @@
       "blockAdded": "Added group {name}.",
       "blockRemoved": "Removed group {name}. Save to apply.",
       "allocationBlocked": "Not saved: an allocation table still has an error. Fix it in the table and save again.",
+      "mapidGroupBlocked": "Not saved: the rule “{rule}” points to {hasGroup, select, yes {the deleted group “{group}”} other {a deleted group}}. Change its scope or delete the rule, then save again.",
       "totalChangeBlocked": "Not saved: the question count of {subject} changed. Choose Apply new numbers or Keep old numbers for this subject, then save again.",
       "rateBlocked": "Not saved: a row entered by percentage does not give whole sets. Fix the percentage in that row and save again.",
       "overviewSummary": "{count, number} questions · {minutes, number} min{shared, select, yes { shared} other {}} · {points} points",
@@ -4491,7 +4491,7 @@
           "typeSetOf": "{type} · sub-questions {child}",
           "typeLocked": "Answer type filled in by the template",
           "count": "{count, plural, one {# question} other {# questions}}",
-          "countSets": "{sets, number} sets × {size, number} sub-questions = {total, number} questions",
+          "countSets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# sub-question} other {# sub-questions}} = {total, plural, one {# question} other {# questions}}",
           "countRemainder": "The rest ({count, number} questions)",
           "countRemainderInvalid": "The rest (cannot be split)",
           "remainderConflict": "The subject has {count, plural, one {# group} other {# groups}} taking the rest; only one is allowed. The check reports an error until one is left.",
@@ -4822,7 +4822,9 @@
         "BLOCK_COUNT_LOCKED": "Block {block}: the template locks the {dimension, select, COUNT {row's question count} SET_COUNT {row's set count} SET_SIZE {row's set size} TYPE {row's question type} other {row's type and counts}}{hasCount, select, yes {; the template keeps {required, number}, the row has {available, number}} other {}}. Set the row back to the template.",
         "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
-        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}."
+        "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
+        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} other {Rules {rules} conflict and cannot all hold.}}",
+        "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -5206,6 +5208,10 @@
           "DIFFICULTY": "Difficulty {name}",
           "EXAM": "Exam quota {names}",
           "GRADE": "Grade {name}",
+          "MAPID": "{sentence}",
+          "MAPID_COUNT": "{sentence} · questions in the group",
+          "MAPID_OUTSIDE": "{sentence} · outside this group",
+          "MAPID_UNKNOWN": "MAPID rule {id}",
           "TOPIC": "Topic quota",
           "TOPIC_NAMED": "{name}",
           "UNCLASSIFIED": "Unclassified"
@@ -5222,7 +5228,7 @@
           "REFERENCE": "Reference",
           "REQUIRED": "Required"
         },
-        "legend": "Difference is Actual minus Required. Topic quotas are “at least”, so a higher actual still passes. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
+        "legend": "Difference is Actual minus Required. Topic quotas and MAPID “At least”/“Must include” rules pass when the actual meets the target; “Exact” rules and the two rows of “Only in this group” must match exactly. A deviating Reference row is only a warning and does not block; a pending-mapping row cannot be compared yet. A Required row that fails means no paper is generated.",
         "level": "{enforcement} · {unit}",
         "pendingNoData": "No reference data yet",
         "requiredNone": "—",
@@ -5755,6 +5761,152 @@
       "basisPOINTS": "Points",
       "basisFixed": "Unit: {unit}",
       "basisTotal": "Total: {total} {unit}"
+    },
+    "mapidRules": {
+      "actions": "Actions",
+      "add": "Add rule",
+      "addAria": "Add a MAPID rule for {subject}",
+      "caption": "MAPID rules of {subject}",
+      "counter": "{count, number}/{max, number} rules",
+      "delete": "Delete",
+      "deleteAria": "Delete rule: {sentence}",
+      "deletedGroup": "Deleted group",
+      "deletedGroupFix": "This rule points to a group that no longer exists. Change its scope or delete it before saving.",
+      "deletedGroupNamed": "Deleted group «{name}»",
+      "dialog": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "comparator": {
+          "AT_LEAST": "At least",
+          "EXACT": "Exactly",
+          "legend": "Comparison"
+        },
+        "count": "Questions",
+        "countAria": "Question count of the rule",
+        "denominator": "Denominator: {units, plural, one {# question} other {# questions}} of {scope}",
+        "denominatorUnknown": "Denominator: the question count of {scope} is not known",
+        "description": "Rule for {subject}. The remaining positions are drawn at random within the scope that is still valid.",
+        "entry": "Enter as",
+        "entryCount": "Questions",
+        "entryPercent": "Percent",
+        "issues": {
+          "COUNT_ABOVE_TOTAL": "The count is above the question count of the subject ({total, number}). Enter a number that is not larger than the question count of the subject.",
+          "GROUP_MISSING": "The selected group no longer exists. Choose the scope again.",
+          "NO_NODES": "Pick at least one MAPID.",
+          "NUMBER_INVALID": "The number is not valid. Fix it before saving.",
+          "ONLY_IN_GROUP_NEEDS_GROUP": "This rule only applies to one group. Choose a group.",
+          "PERCENT_DENOMINATOR_UNKNOWN": "The denominator is not known, so the percent cannot be converted. Enter the question counts of the subject and the other groups, or switch to entering a count.",
+          "PERCENT_POOL": "Percent is not available for an elective subject because its question count depends on the subjects the student picks. Switch to entering a question count.",
+          "PERCENT_RANGE": "Percent must be between 0 and 100."
+        },
+        "nodeRemove": "Remove MAPID {code} {name}",
+        "nodesEmpty": "No MAPID picked.",
+        "nodesLegend": "MAPID",
+        "percent": "Percent (%)",
+        "percentAria": "Percent of the rule",
+        "percentResult": "= {count, plural, one {# question} other {# questions}} out of {units, number}",
+        "percentUnknown": "The question count of the group is not known yet, so the percent cannot be turned into questions.",
+        "pick": "Pick MAPID",
+        "pickEdit": "Change MAPID",
+        "pickHint": "A question matches when it has at least one picked code. To require all three topics, add one rule per code.",
+        "pickHintSource": "A question matches this rule when it has at least one picked code. Every other “Source only” rule that applies to this scope (the group's own or the whole subject's) must match too: adding a rule narrows the source, never widens it.",
+        "pickerDescription": "Rule for {name}: pick a chapter, lesson or knowledge item. A picked node also matches questions on its child nodes.",
+        "save": "Save rule",
+        "scope": {
+          "groupHint": "{type} · {size}",
+          "legend": "Applies to",
+          "subject": "Whole subject",
+          "subjectHint": "{subject}, whole subject",
+          "subjectHintCount": "{subject}, {total, number} questions"
+        },
+        "size": {
+          "remainder": "takes the remainder",
+          "remainderUnits": "takes the remainder = {units, number}/{total, number} questions",
+          "sets": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, number}/{total, number} questions",
+          "setsNoTotal": "{sets, plural, one {# set} other {# sets}} × {size, plural, one {# child question} other {# child questions}} = {units, plural, one {# question} other {# questions}}",
+          "single": "{units, number}/{total, number} questions",
+          "singleNoTotal": "{units, plural, one {# question} other {# questions}}"
+        },
+        "title": "Add rule",
+        "titleEdit": "Edit rule",
+        "type": {
+          "COUNT": {
+            "description": "The number of questions with the MAPID equals, or is at least, a number, counting child questions of sets and randomly drawn questions.",
+            "label": "Count"
+          },
+          "ONLY_IN_GROUP": {
+            "description": "Limits where the topic can appear: other groups drop questions with the MAPID. Only available when applied to one group.",
+            "label": "Only appears in this group"
+          },
+          "PRESENT": {
+            "description": "The paper has at least 1 question with the MAPID. Randomly drawn positions may still add questions on the same topic.",
+            "label": "Must appear"
+          },
+          "SOURCE": {
+            "description": "Limits the source: this scope draws only questions with at least one picked MAPID. Every other source rule of the same scope, or of the whole subject, must match too. The topic can still appear in other groups.",
+            "label": "Source only from these MAPIDs"
+          },
+          "contrast": "Two rules are easy to mix up: “Only appears in this group” limits where the topic can appear (other groups drop that topic). “Source only from these MAPIDs” limits what the group draws from (the group takes only those topics, which can still appear in other groups). When several source rules apply, a question must match every one of them.",
+          "legend": "Rule type"
+        },
+        "withNumber": "With a count",
+        "withNumberHint": "For example: the topic appears only in this group and exactly 3 times."
+      },
+      "edit": "Edit",
+      "editAria": "Edit rule: {sentence}",
+      "empty": "No rules yet. Positions you do not declare are drawn at random from the exam structure.",
+      "group": {
+        "allMode": "The subject is set to Whole exam: this group has no MAPID limit.",
+        "managed": "The group's knowledge scope and topic quotas are set by the subject's MAPID rules.",
+        "none": "No MAPID rule applies to this group yet.",
+        "open": "Open the MAPID rules table",
+        "title": "MAPID source"
+      },
+      "groupDeleted": "{name} (deleted)",
+      "hint": "Declare only the topics you want to control. The remaining positions are drawn at random within the scope that is still valid.",
+      "issue": {
+        "goToRule": "Go to rule",
+        "goToRuleAria": "Go to rule: {issue}",
+        "quoted": "«{sentence}»",
+        "setShortage": "{group} needs {requiredSets, plural, one {# set} other {# sets}} with {setSize, plural, one {# sub-question} other {# sub-questions}} on the same topic. There {availableSingles, plural, one {is # single question} other {are # single questions}} and {availableSets, plural, one {# matching set} other {# matching sets}} available.",
+        "shortage": "Rule {rule} lacks source{hasCount, select, yes {: it needs {required, number} questions, {available, number} are available, {missing, number} short} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
+      },
+      "limit": "The limit of {max, number} rules is reached.",
+      "mode": {
+        "all": "Whole exam (no MAPID limit)",
+        "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",
+        "legend": "Knowledge scope",
+        "matrix": "By MAPID matrix",
+        "matrixHint": "Add rules for the whole subject or for one question group. The remaining positions are drawn at random.",
+        "paused": "{count, plural, one {# rule paused} other {# rules paused}}",
+        "pausedHint": "The rules stay in the draft; choose “By MAPID matrix” again to apply them.",
+        "pausedInvalid": "{count, plural, one {# rule points to a deleted group} other {# rules point to deleted groups}}. Switch to “By MAPID matrix” to fix or delete the rules before saving."
+      },
+      "rule": "Rule",
+      "scopeDeleted": "Deleted group",
+      "scopeSubject": "Whole subject",
+      "sentence": {
+        "COUNT_AT_LEAST": "{scope} · At least {amount} questions on {topics}",
+        "COUNT_EXACT": "{scope} · Exactly {amount} questions on {topics}",
+        "ONLY_IN_GROUP": "{topics} only appears in group {group}",
+        "ONLY_IN_GROUP_AT_LEAST": "{topics} only appears in group {group} · At least {amount} questions",
+        "ONLY_IN_GROUP_EXACT": "{topics} only appears in group {group} · Exactly {amount} questions",
+        "PRESENT": "{scope} · Must include {topics}",
+        "SOURCE": "{scope} · Source only from {topics}"
+      },
+      "short": {
+        "COUNT_AT_LEAST": "At least {amount} questions on {topics}",
+        "COUNT_EXACT": "Exactly {amount} questions on {topics}",
+        "ELSEWHERE": "Excludes {topics} (only appears in another group)",
+        "ONLY_IN_GROUP": "Only this group has {topics}",
+        "ONLY_IN_GROUP_AT_LEAST": "Only this group has {topics} · At least {amount} questions",
+        "ONLY_IN_GROUP_EXACT": "Only this group has {topics} · Exactly {amount} questions",
+        "PRESENT": "Must include {topics}",
+        "SOURCE": "Source only from {topics}"
+      },
+      "title": "MAPID rules",
+      "topicsPending": "(loading MAPID)",
+      "untitledGroup": "Untitled group"
     },
     "scopeField": {
       "legend": "Knowledge scope",

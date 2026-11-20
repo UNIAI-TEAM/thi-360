@@ -19,7 +19,17 @@ public interface QuestionSourcePort {
      */
     enum AudioRequirement { ANY, REQUIRED, FORBIDDEN }
 
-    /** Each knowledge subtree contains a selected node and its descendants; additional groups are ANDed. */
+    /**
+     * Knowledge conditions are an AND of OR-groups: {@code knowledgeGroups} is the first group (each inner list is a
+     * selected node with its descendants, any of them matches) and every entry of {@code additionalKnowledgeGroups}
+     * is one more group that must match too. {@code excludedKnowledge} lists nodes (already expanded to their
+     * descendants) that a candidate must not carry: a question is dropped when it, or for a set any live child or the
+     * set itself, is tagged with one.
+     * {@code everyChildSameNode} (a MAPID SOURCE rule) keeps a set only when ONE knowledge subtree of the first
+     * group holds a node of every child; {@code additionalEveryChildSameNode} states the same per additional group
+     * (index aligned, missing = false). Both are stricter than {@code everyChildInScope}, which accepts a mix of
+     * the subtrees.
+     */
     record Filter(
             UUID subjectId,
             List<List<UUID>> knowledgeGroups,
@@ -38,9 +48,56 @@ public interface QuestionSourcePort {
             List<List<String>> additionalCompetencyGroups,
             Boolean everyChildInScope,
             List<Boolean> additionalEveryChildInScope,
-            AudioRequirement audioRequirement) {
+            AudioRequirement audioRequirement,
+            List<UUID> excludedKnowledge,
+            Boolean everyChildSameNode,
+            List<Boolean> additionalEveryChildSameNode) {
         public Filter {
             audioRequirement = audioRequirement == null ? AudioRequirement.ANY : audioRequirement;
+            excludedKnowledge = excludedKnowledge == null ? List.of() : List.copyOf(excludedKnowledge);
+            additionalEveryChildSameNode = additionalEveryChildSameNode == null
+                    ? List.of() : List.copyOf(additionalEveryChildSameNode);
+        }
+        /** Without the same-node mode of the additional groups. */
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope, AudioRequirement audioRequirement,
+                List<UUID> excludedKnowledge, Boolean everyChildSameNode) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, audioRequirement, excludedKnowledge,
+                    everyChildSameNode, List.of());
+        }
+        /** Without the same-node mode: a set keeps its legacy {@code everyChildInScope} (union) meaning. */
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope, AudioRequirement audioRequirement,
+                List<UUID> excludedKnowledge) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, audioRequirement, excludedKnowledge, null);
+        }
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope, AudioRequirement audioRequirement) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, audioRequirement, List.of());
         }
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
                 QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,

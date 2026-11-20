@@ -57,7 +57,7 @@ final class ExamStructurePresentation {
                 .map(block -> withPositionRange(block, counter)).toList();
         return new ExamSection(section.id(), section.subjectCode(), section.questionCount(), section.knowledgeScope(),
                 section.answerQuotas(), section.matrix(), section.choiceGroup(), blocks, section.topicQuotas(),
-                section.audioRequirement());
+                section.audioRequirement(), section.mapidMode(), section.mapidRules());
     }
 
     private static QuestionBlock withPositionRange(QuestionBlock block, Counter counter) {

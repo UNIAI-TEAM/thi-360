@@ -11,6 +11,7 @@ import { type ChangeLevel, parseChangeWhere } from "../change-where";
 import { roundForDisplay } from "../display-number";
 import { useExamStructure } from "../queries";
 import type { BlockCheckResult, CheckIssue, CheckIssueCode, ExamPathRef, PathCheckResult } from "../review-types";
+import { useMapidIssueText } from "./use-mapid-issue-text";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
@@ -113,13 +114,14 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
  * Câu mô tả một vấn đề, dựng lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). Truyền `exam` thì vấn đề
  * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc.
  */
-export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
+export function useIssueText(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
   const tContent = useTranslations("content");
   const tFormat = useTranslations("questions.detail.body.answerFormats");
   const lookup = useLookup();
   const competencies = useContentReference().data?.competencies;
+  const mapidIssue = useMapidIssueText(exam, marked);
   return useCallback(
     (issue: CheckIssue) => {
       const where = exam ? findBlockContext(exam, issue.blockId) : null;
@@ -193,19 +195,22 @@ export function useIssueText(exam?: Pick<ExamDetail, "parts">) {
         segment,
         hasSegment: segment ? "yes" : "no",
       };
+      const mapid = mapidIssue(issue, where, values);
+      if (mapid.text !== null) return mapid.text;
+      const withMapid = { ...values, ...mapid.values };
       // Máy chủ chưa điền số câu cần/có (null): không in "cần 0 câu, hiện có 0 câu", dùng câu không nêu số.
       const noCount = issue.required == null || issue.available == null;
-      if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, values);
-      return t(issue.code, values);
+      if (noCount && COUNT_ISSUE_CODES[issue.code]) return tNoCount(issue.code, withMapid);
+      return t(issue.code, withMapid);
     },
-    [t, tNoCount, tContent, tFormat, lookup, competencies, exam],
+    [t, tNoCount, tContent, tFormat, lookup, competencies, exam, mapidIssue],
   );
 }
 
 /** Vấn đề kèm tên đường khi vấn đề thuộc một lựa chọn của phần tự chọn. */
-export function useIssueWithPath(paths: readonly ExamPathRef[]) {
+export function useIssueWithPath(paths: readonly ExamPathRef[], exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review");
-  const issueText = useIssueText();
+  const issueText = useIssueText(exam, marked);
   return useCallback(
     (issue: CheckIssue) => {
       const text = issueText(issue);

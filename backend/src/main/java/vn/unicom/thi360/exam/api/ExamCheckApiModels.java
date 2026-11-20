@@ -22,7 +22,21 @@ public final class ExamCheckApiModels {
                         String blockName, String optionId, String gradeCode, String difficultyCode,
                         String dimension, String competencyCode, String answerType, Integer subjectCount,
                         BigDecimal required, BigDecimal available, Long timeLimitSeconds, List<String> questionCodes,
-                        BigDecimal excludedPoints, Location location, List<String> affectedCodes) { }
+                        BigDecimal excludedPoints, Location location, List<String> affectedCodes,
+                        @Schema(description = "MAPID rule (UNI-2758) the issue names; the web scrolls to mapid-rule-<ruleId>")
+                        String ruleId,
+                        @Schema(description = "Every rule of a MAPID_RULE_CONFLICT, in declaration order")
+                        List<String> ruleIds,
+                        @Schema(description = "Kind of a MAPID_RULE_CONFLICT")
+                        String conflictKind,
+                        @Schema(description = "Node ids of the rule a shortage names")
+                        List<String> nodeIds,
+                        @Schema(description = "Whole sets the group needs (set-unit shortage of a SOURCE rule)")
+                        Long requiredSets,
+                        @Schema(description = "Whole sets the source holds for the group")
+                        Long availableSets,
+                        @Schema(description = "Single questions of the subject that match the group's source nodes")
+                        Long availableSingles) { }
     @Schema(name = "ExamCheckGroup")
     public record Group(String group, String status, List<Issue> issues) { }
     @Schema(name = "ExamCheckChoice")

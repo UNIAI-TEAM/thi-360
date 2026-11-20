@@ -12,6 +12,7 @@ import vn.unicom.thi360.shared.api.BusinessRuleException;
 public final class ExamStructureValidator {
     public static final int MAX_PATHS = 200;
     public static final int DEFAULT_MAX_TOPIC_QUOTAS = 8;
+    public static final int DEFAULT_MAX_MAPID_RULES = 20;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     /** Not legal as a question-set child (QuestionBodyValidator, QUESTION_CHILD_TYPE_NOT_ALLOWED). */
     private static final Set<QuestionType> NOT_CHILD_TYPES = EnumSet.of(QuestionType.QUESTION_SET, QuestionType.CLOZE);
@@ -20,15 +21,22 @@ public final class ExamStructureValidator {
     }
 
     public static void validate(ExamStructureDocument document) {
-        validate(document, DEFAULT_MAX_TOPIC_QUOTAS);
+        validate(document, DEFAULT_MAX_TOPIC_QUOTAS, DEFAULT_MAX_MAPID_RULES);
     }
 
     public static void validate(ExamStructureDocument document, int maxTopicQuotas) {
+        validate(document, maxTopicQuotas, DEFAULT_MAX_MAPID_RULES);
+    }
+
+    public static void validate(ExamStructureDocument document, int maxTopicQuotas, int maxMapidRules) {
         if (document == null) {
             invalid("structure", "structure is required");
         }
         if (maxTopicQuotas < 1) {
             throw new IllegalArgumentException("maxTopicQuotas must be positive");
+        }
+        if (maxMapidRules < 1) {
+            throw new IllegalArgumentException("maxMapidRules must be positive");
         }
         Set<String> ids = new HashSet<>();
         if (document.parts().size() > 10) {
@@ -46,7 +54,7 @@ public final class ExamStructureValidator {
             }
         }
         for (ExamPart part : document.parts()) {
-            validatePart(part, ids, maxTopicQuotas, fixedSubjects);
+            validatePart(part, ids, maxTopicQuotas, maxMapidRules, fixedSubjects);
         }
         validateExamQuotas(document.examQuotas());
         for (int i = 0; i < document.parts().size(); i++) {
@@ -64,7 +72,7 @@ public final class ExamStructureValidator {
         return pathCount(document.parts());
     }
 
-    private static void validatePart(ExamPart part, Set<String> ids, int maxTopicQuotas,
+    private static void validatePart(ExamPart part, Set<String> ids, int maxTopicQuotas, int maxMapidRules,
             Set<String> fixedSubjects) {
         id(part.id(), "parts.id", ids);
         nonNegative(part.durationMinutes(), "parts.durationMinutes");
@@ -84,7 +92,7 @@ public final class ExamStructureValidator {
             invalid("parts.subjectPool", "subjectPool requires codeSource");
         }
         for (ExamSection section : part.subjectPool()) {
-            validateSection(section, ids, maxTopicQuotas);
+            validateSection(section, ids, maxTopicQuotas, maxMapidRules);
             if (!fixedSubjects.add(section.subjectCode())) {
                 invalid("parts.subjectPool", "subjectPool subject is duplicated");
             }
@@ -102,12 +110,12 @@ public final class ExamStructureValidator {
             blockCount += section.blocks().size();
         }
         for (ExamSection section : part.sections()) {
-            validateSection(section, ids, maxTopicQuotas);
+            validateSection(section, ids, maxTopicQuotas, maxMapidRules);
             blockCount += section == null ? 0 : section.blocks().size();
         }
         int optionCount = 0;
         for (ExamPartOption option : part.options()) {
-            validateOption(option, ids, maxTopicQuotas);
+            validateOption(option, ids, maxTopicQuotas, maxMapidRules);
             optionCount++;
             if (option != null) {
                 blockCount += option.blocks().size();
@@ -125,7 +133,14 @@ public final class ExamStructureValidator {
         }
     }
 
-    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas) {
+    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas,
+            int maxMapidRules) {
+        validateSection(section, ids, maxTopicQuotas, maxMapidRules, null);
+    }
+
+    /** {@code choiceUnits}: the largest count of the subject-choice option the section belongs to, or null. */
+    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas,
+            int maxMapidRules, Integer choiceUnits) {
         if (section == null) {
             invalid("sections", "section must not be null");
         }
@@ -149,9 +164,82 @@ public final class ExamStructureValidator {
         for (QuestionBlock block : section.blocks()) {
             validateBlock(block, ids, maxTopicQuotas);
         }
+        validateMapidRules(section, maxMapidRules, choiceUnits);
     }
 
-    private static void validateOption(ExamPartOption option, Set<String> ids, int maxTopicQuotas) {
+    /**
+     * Shape of the MAPID rules of one section (UNI-1704 v2). Whether the rules contradict each other or the
+     * data is a check matter. Every error names {@code sections.mapidRules}.
+     */
+    private static void validateMapidRules(ExamSection section, int max, Integer choiceUnits) {
+        String field = "sections.mapidRules";
+        List<MapidRule> rules = section.mapidRules();
+        if (rules.isEmpty()) {
+            return;
+        }
+        if (section.mapidMode() == null) {
+            invalid(field, "mapidRules require mapidMode");
+        }
+        if (rules.size() > max) {
+            reject("MAPID rule limit exceeded", field, "MAX_MAPID_RULES", "STRUCTURE_FIELD_INVALID", field);
+        }
+        Set<String> blockIds = new HashSet<>();
+        for (QuestionBlock block : section.blocks()) {
+            blockIds.add(block.id());
+        }
+        // A number above the units of the whole section can never be met and, summed over rules, would overflow the
+        // solver's int arithmetic (UNI-2758 R1-7). A rule above its own group is a conflict the check reports, so it
+        // stays saveable; rules of an ALL section are dormant drafts and are not bounded.
+        Integer sectionUnits = section.mapidMode() != MapidMode.MATRIX ? null
+                : section.questionCount() != null ? section.questionCount() : choiceUnits;
+        Set<String> ids = new HashSet<>();
+        for (MapidRule rule : rules) {
+            if (rule == null || rule.type() == null || rule.id() == null || rule.id().isBlank()
+                    || !ids.add(rule.id())) {
+                invalid(field, "rule needs a unique id and a type");
+            }
+            if (rule.nodeIds().isEmpty() || rule.nodeIds().stream().anyMatch(id -> id == null)) {
+                invalid(field, "rule needs a non-empty list of node ids without nulls");
+            }
+            if (rule.groupId() != null && !blockIds.contains(rule.groupId())) {
+                invalid(field, "rule group is not a block of the section");
+            }
+            if (rule.count() != null && rule.count() < 0) {
+                invalid(field, "rule count must not be negative");
+            }
+            if (rule.count() != null && sectionUnits != null && rule.count() > sectionUnits) {
+                invalid(field, "rule count exceeds the question count of the section");
+            }
+            if (rule.percent() != null
+                    && (rule.percent().signum() < 0 || rule.percent().compareTo(ONE_HUNDRED) > 0)) {
+                invalid(field, "rule percent must be between 0 and 100");
+            }
+            boolean number = rule.count() != null || rule.percent() != null;
+            switch (rule.type()) {
+                case PRESENT, SOURCE -> {
+                    if (number) {
+                        invalid(field, "rule type takes no number");
+                    }
+                }
+                case COUNT -> {
+                    if (!number || rule.comparator() == null) {
+                        invalid(field, "count rule needs a number and a comparator");
+                    }
+                }
+                case ONLY_IN_GROUP -> {
+                    if (rule.groupId() == null) {
+                        invalid(field, "only-in-group rule needs a group");
+                    }
+                    if (number && rule.comparator() == null) {
+                        invalid(field, "only-in-group rule with a number needs a comparator");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void validateOption(ExamPartOption option, Set<String> ids, int maxTopicQuotas,
+            int maxMapidRules) {
         if (option == null || option.kind() == null) {
             invalid("options.kind", "option kind is invalid or unsupported");
         }
@@ -179,8 +267,11 @@ public final class ExamStructureValidator {
                 invalid("options.chooseSubjects", "chooseSubjects exceeds subject count");
             }
         }
+        Integer choiceUnits = option.kind() == OptionKind.SUBJECT_CHOICE && option.countsByPick() != null
+                ? option.countsByPick().stream().filter(java.util.Objects::nonNull).max(Integer::compare).orElse(null)
+                : null;
         for (ExamSection section : option.sections()) {
-            validateSection(section, ids, maxTopicQuotas);
+            validateSection(section, ids, maxTopicQuotas, maxMapidRules, choiceUnits);
         }
         for (QuestionBlock block : option.blocks()) {
             validateBlock(block, ids, maxTopicQuotas);

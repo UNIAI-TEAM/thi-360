@@ -487,7 +487,8 @@ public class ExamService {
             if (cutFromSubject) {
                 doc = selectSubjectPart(doc, scopeChoice.partCode(), template);
             }
-            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                    structureProperties.maxMapidRules());
             templateCode = template.getCode();
         } else {
             doc = emptyOverviewStructure(request.overview(), scopeChoice.subjectCode());
@@ -514,10 +515,12 @@ public class ExamService {
                                 row.subjectCode(), row.questionCount(), null, row.maxPoints())).toList();
             }
             doc = ExamOverview.apply(doc, rows);
-            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                    structureProperties.maxMapidRules());
         }
         if (template == null) {
-            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                    structureProperties.maxMapidRules());
             validateStructureReferences(doc);
         }
 
@@ -646,7 +649,7 @@ public class ExamService {
                 section.choiceGroup(), section.blocks(),
                 section.topicQuotas().stream()
                         .filter(q -> q.basis() != QuotaBasis.PROMPT).toList(),
-                section.audioRequirement());
+                section.audioRequirement(), section.mapidMode(), section.mapidRules());
     }
 
     /**
@@ -681,7 +684,8 @@ public class ExamService {
                 part.maxPoints(), part.sections().stream().map(section -> new ExamSection(
                         section.id(), subjectCode, section.questionCount(), section.knowledgeScope(),
                         section.answerQuotas(), section.matrix(), section.choiceGroup(), section.blocks(),
-                        section.topicQuotas(), section.audioRequirement())).toList(), part.options(),
+                        section.topicQuotas(), section.audioRequirement(), section.mapidMode(),
+                        section.mapidRules())).toList(), part.options(),
                 part.subjectPool(), part.codeSource(), part.displaySegments())).toList(), doc.examQuotas());
     }
 
@@ -767,7 +771,8 @@ public class ExamService {
                         : new ExamStructureDocument(List.of());
                 if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
                 if (cutFromSubject) doc = selectSubjectPart(doc, choice.partCode(), template);
-                ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+                ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                        structureProperties.maxMapidRules());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
                 Integer duration = request.durationMinutes() != null ? request.durationMinutes()
@@ -872,7 +877,8 @@ public class ExamService {
         requireRevision(request.expectedRevision(), exam.getRevision());
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
-        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                structureProperties.maxMapidRules());
         writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now());
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
@@ -962,7 +968,8 @@ public class ExamService {
                 doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
             }
         }
-        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                structureProperties.maxMapidRules());
         String previousMode = exam.getBuildMode();
         boolean modeChanged = !Objects.equals(previousMode, template.getBuildMode());
         ExamKindProfile crossingProfile = modeChanged
@@ -1082,7 +1089,9 @@ public class ExamService {
                 : codec().read(template.getStructure());
         ExamStructureDocument doc = ExamStructureOps.restoreTemplateOwned(incoming, storedDoc,
                 templateDoc);
-        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
+                structureProperties.maxMapidRules());
+        rejectMapidOutsideHsa(exam, doc);
         validateStructureReferences(doc);
         List<String> changedPartIds = changedPartIds(storedDoc, doc);
         writeStructure(exam, doc, true, actor, now);
@@ -1235,6 +1244,31 @@ public class ExamService {
                 code -> catalogLookup.findActiveItem("QUESTION_TAG", code).map(CatalogItemView::id).orElse(null));
     }
 
+    /** MAPID rules are an HSA feature (UNI-2758, Q4): any other exam kind cannot save a {@code mapidMode}. */
+    private void rejectMapidOutsideHsa(Exam exam, ExamStructureDocument doc) {
+        String kindCode = exam.getKindItemId() == null ? null
+                : catalogLookup.findItem(exam.getKindItemId()).map(CatalogItemView::code).orElse(null);
+        if ("HSA".equals(kindCode)) {
+            return;
+        }
+        List<ExamStructureInvalidException.Detail> details = new ArrayList<>();
+        for (int p = 0; p < doc.parts().size(); p++) {
+            ExamPart part = doc.parts().get(p);
+            List<ExamSection> sections = new ArrayList<>(part.sections());
+            sections.addAll(part.subjectPool());
+            part.options().forEach(option -> sections.addAll(option.sections()));
+            for (ExamSection section : sections) {
+                if (section.mapidMode() != null) {
+                    details.add(new ExamStructureInvalidException.Detail("parts[" + p + "].sections.mapidMode",
+                            "MAPID_KIND_NOT_ALLOWED", "STRUCTURE_FIELD_INVALID", List.of("sections.mapidMode")));
+                }
+            }
+        }
+        if (!details.isEmpty()) {
+            throw new ExamStructureInvalidException("MAPID rules are only available for the HSA exam kind", details);
+        }
+    }
+
     private void validateStructureReferences(ExamStructureDocument doc) {
         for (ExamPart part : doc.parts()) {
             for (ExamSection section : part.sections()) {
@@ -1264,6 +1298,7 @@ public class ExamService {
         requireActiveReference(SUBJECT_GROUP, section.subjectCode());
         validateScopeReferences(section.knowledgeScope());
         validateMatrixReferences(section.matrix());
+        section.mapidRules().forEach(rule -> validateKnowledgeIds(rule.nodeIds()));
         Set<String> groupIds = section.blocks().stream().map(QuestionBlock::id)
                 .collect(java.util.stream.Collectors.toSet());
         validateTopicReferences(section.topicQuotas(), groupIds);

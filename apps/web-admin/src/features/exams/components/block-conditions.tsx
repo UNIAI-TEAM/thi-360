@@ -27,6 +27,8 @@ export interface BlockConditionsProps {
   onChange: (patch: Partial<QuestionBlock>) => void;
   /** Menu "Thêm điều kiện" → MAPID: MAPID là phạm vi kiến thức của nhóm, nên chuyển sang trường đó. */
   onAddMapid: () => void;
+  /** MAPID của nhóm do bảng Quy tắc MAPID của môn quyết định (môn HSA dùng ma trận): menu không có mục MAPID. */
+  mapidManaged?: boolean;
 }
 
 /** Điều kiện đang hiện: có giá trị, hoặc vừa thêm và chưa điền. MAPID nằm ở trường Phạm vi kiến thức, không ở đây. */
@@ -40,7 +42,7 @@ function initialShown(block: QuestionBlock): Set<ConditionKind> {
  * hình dạng câu, định dạng đáp án, điểm mỗi câu. Mỗi điều kiện thêm và bỏ riêng; mọi câu của nhóm phải thỏa các điều kiện.
  * Điều kiện không áp cho loại câu của nhóm (hình dạng câu, định dạng đáp án) bị khóa trong menu.
  */
-export function BlockConditions({ block, reference, onChange, onAddMapid }: BlockConditionsProps) {
+export function BlockConditions({ block, reference, onChange, onAddMapid, mapidManaged = false }: BlockConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.conditions");
   const [shown, setShown] = useState(() => initialShown(block));
   const type = sourceType(block);
@@ -86,7 +88,7 @@ export function BlockConditions({ block, reference, onChange, onAddMapid }: Bloc
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent aria-label={t("menuLabel")} className="w-80 max-w-[calc(100vw-2rem)]">
-            {CONDITION_KINDS.map((kind) => {
+            {CONDITION_KINDS.filter((kind) => !(mapidManaged && kind === "MAPID")).map((kind) => {
               const state = stateOf(kind);
               return (
                 <DropdownMenuItem

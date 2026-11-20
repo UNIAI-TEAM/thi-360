@@ -143,6 +143,7 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
+      max-mapid-rules: ${THI360_EXAM_MAX_MAPID_RULES:20}
 ---
 spring:
   config:

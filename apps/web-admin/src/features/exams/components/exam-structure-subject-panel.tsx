@@ -10,19 +10,22 @@ import { applyTopicTotal, convertTopicEntry, ratePercent, topicCountFor, totalCh
 import { apportionByPercent, computeAllocation, convertMatrixUnit, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
-import { effectiveScope, effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
+import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
 import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { newBlock, type SectionContext } from "./exam-structure-draft";
-import { KnowledgeScopeField } from "./knowledge-scope-field";
+import { KnowledgeScopeField, MapidModeField } from "./knowledge-scope-field";
 import { AllocationGap } from "./allocation-gap";
 import { EditOverviewLink } from "./edit-overview-link";
 import { LOCKED_FIELD } from "./locked-field";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions, TotalChangeNotice } from "./subject-allocation-extras";
+import { useHsaExam, isHsaExam } from "../hsa-enforcement";
+import { deletedGroupRules, groupCountScope, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
+import { MapidRulesTable, useMapidRuleText } from "./mapid-rules-table";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
 
 /** Chỉ tiêu dạng trả lời nhập theo tỷ lệ quy về số câu của tổng `total` (phần dư lớn nhất); nhập theo số câu giữ nguyên. */
@@ -90,6 +93,9 @@ export function ExamStructureSubjectPanel({
   const tGap = useTranslations("exams.structure.gap");
   const tContent = useTranslations("content");
   const { section, option } = context;
+  // Môn HSA dùng ma trận có hai chế độ MAPID; môn khác, kỳ thi khác, và môn còn dữ liệu cũ không chuyển được giữ kiểu cũ.
+  const hsaContext = useHsaExam();
+  const mapidMode = hsaContext || isHsaExam(examKind) ? mapidViewMode(section) : null;
   const cases = sectionCaseCounts(section, option);
   const [caseIndex, setCaseIndex] = useState(0);
   const count = cases[Math.min(caseIndex, cases.length - 1)] ?? null;
@@ -108,7 +114,7 @@ export function ExamStructureSubjectPanel({
         questionType: block.questionType,
         answerTypes: block.questionType === null ? quotaTypes : [],
         childAnswerType: block.childAnswerType,
-        knowledgeScope: effectiveScope(block, section),
+        knowledgeScope: groupCountScope(block, section),
         tagCodes: block.tagCodes,
         requiredPointsPerQuestion: block.requiredPointsPerQuestion,
         itemShape: block.itemShape,
@@ -503,29 +509,52 @@ export function ExamStructureSubjectPanel({
           )}
         </div>
 
-        <KnowledgeScopeField
-          value={section.knowledgeScope}
-          onChange={setScope}
-          reference={reference}
-          subjectCode={section.subjectCode}
-          name={subjectName}
-          everyChild={{ checked: section.knowledgeScope?.everyChildInScope ?? false, onChange: setEveryChild }}
-        />
+        {mapidMode !== null ? (
+          <>
+            <MapidModeField
+              mode={mapidMode}
+              onModeChange={(mode) => onChange((current) => ({ ...current, mapidMode: mode }))}
+              ruleCount={section.mapidRules?.length ?? 0}
+              invalidCount={deletedGroupRules(section).length}
+            />
+            <ReferenceDistributions entries={references} labels={labels} subjectName={subjectName} onUse={copyReference} onApply={applyReference} />
+            {mapidMode === "MATRIX" && (
+              <MapidRulesTable
+                section={section}
+                groups={section.blocks}
+                subjectName={subjectName}
+                reference={reference}
+                onChange={(rules) => onChange((current) => ({ ...current, mapidRules: rules }))}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <KnowledgeScopeField
+              value={section.knowledgeScope}
+              onChange={setScope}
+              reference={reference}
+              subjectCode={section.subjectCode}
+              name={subjectName}
+              everyChild={{ checked: section.knowledgeScope?.everyChildInScope ?? false, onChange: setEveryChild }}
+            />
 
-        <ReferenceDistributions entries={references} labels={labels} subjectName={subjectName} onUse={copyReference} onApply={applyReference} />
+            <ReferenceDistributions entries={references} labels={labels} subjectName={subjectName} onUse={copyReference} onApply={applyReference} />
 
-        <TopicQuotaTable
-          id={section.id}
-          quotas={topicQuotas}
-          onChange={(next) => onChange((current) => ({ ...current, topicQuotas: next }))}
-          total={count ?? 0}
-          levelName={subjectName}
-          subjectCode={section.subjectCode}
-          reference={reference}
-          axes={axes}
-          labels={labels}
-          serverError={topicError}
-        />
+            <TopicQuotaTable
+              id={section.id}
+              quotas={topicQuotas}
+              onChange={(next) => onChange((current) => ({ ...current, topicQuotas: next }))}
+              total={count ?? 0}
+              levelName={subjectName}
+              subjectCode={section.subjectCode}
+              reference={reference}
+              axes={axes}
+              labels={labels}
+              serverError={topicError}
+            />
+          </>
+        )}
       </section>
 
       <GroupList
@@ -537,6 +566,8 @@ export function ExamStructureSubjectPanel({
         allocationRemainder={allocation.remainder}
         onSelectBlock={onSelectBlock}
         onAddBlock={onAddBlock}
+        reference={reference}
+        mapid={mapidMode === "MATRIX"}
       />
     </Card>
   );
@@ -597,6 +628,8 @@ function GroupList({
   allocationRemainder,
   onSelectBlock,
   onAddBlock,
+  reference,
+  mapid,
 }: {
   section: ExamSection;
   subjectName: string;
@@ -607,7 +640,11 @@ function GroupList({
   allocationRemainder: number | null;
   onSelectBlock: (blockId: string) => void;
   onAddBlock: () => void;
+  reference: ContentReference;
+  /** Môn ở chế độ Theo ma trận MAPID: cột "Phạm vi nguồn" hiện quy tắc có hiệu lực. */
+  mapid: boolean;
 }) {
+  const ruleText = useMapidRuleText(reference);
   const t = useTranslations("exams.structure.subject.groups");
   const tContent = useTranslations("content");
   const tRows = useTranslations("exams.structure.blockForm.rows");
@@ -646,6 +683,19 @@ function GroupList({
     if (source === "GROUP") return t("scopeOwn", { count: block.knowledgeScope?.nodeIds.length ?? 0 });
     return source === "SECTION" ? t("scopeSection") : t("scopeNone");
   };
+  // Môn ở chế độ Theo ma trận MAPID: cột này liệt kê quy tắc có hiệu lực với nguồn của nhóm (phạm vi và chỉ tiêu cũ không còn dùng).
+  const scopeCell = (block: QuestionBlock): ReactNode => {
+    if (!mapid) return scopeText(block);
+    const effective = groupEffectiveRules(section, block.id);
+    if (effective.length === 0) return t("scopeNone");
+    return (
+      <ul data-testid={`mapid-group-scope-${block.id}`} className="flex flex-col gap-0.5">
+        {effective.map((item) => (
+          <li key={item.rule.id}>{ruleText.short(section, item)}</li>
+        ))}
+      </ul>
+    );
+  };
   const sumQuestions = section.blocks.reduce((sumSoFar, block) => sumSoFar + questionsOf(block), 0);
   const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap";
 
@@ -677,23 +727,25 @@ function GroupList({
             <thead>
               <tr className="text-left text-caption text-text-muted">
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold whitespace-nowrap">{t("name")}</th>
+                {mapid && <th scope="col" className={headCell}>{t("scope")}</th>}
                 <th scope="col" className={headCell}>{t("type")}</th>
                 {audio && <th scope="col" className={headCell}>{t("audioHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "quantityHeader" : "countHeader")}</th>
                 {audio && <th scope="col" className={cn(headCell, "text-right")}>{t("totalHeader")}</th>}
                 <th scope="col" className={headCell}>{t(audio ? "shareHeader" : "rateHeader")}</th>
                 {audio && <th scope="col" className={headCell}>{t("availableHeader")}</th>}
-                <th scope="col" className={headCell}>{t("scope")}</th>
+                {!mapid && <th scope="col" className={headCell}>{t("scope")}</th>}
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold whitespace-nowrap"><span className="sr-only">{t("actions")}</span></th>
               </tr>
             </thead>
             <tbody>
               {section.blocks.map((block) => (
                 <tr key={block.id}>
-                  <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium whitespace-nowrap text-text">
+                  <th scope="row" className={cn("border-b border-border px-3 py-2 text-left font-medium text-text", !mapid && "whitespace-nowrap")}>
                     {block.name || t("untitled")}
                   </th>
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text">
+                  {mapid && <td className="min-w-56 border-b border-border px-2 py-2 text-text-secondary">{scopeCell(block)}</td>}
+                  <td className={cn("border-b border-border px-2 py-2 text-text", !mapid && "whitespace-nowrap")}>
                     <span className="inline-flex items-center gap-1.5">
                       {typeText(block)}
                       {block.answerTypeLocked && (
@@ -709,7 +761,7 @@ function GroupList({
                       <AudioChip audio={audio} />
                     </td>
                   )}
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{audio ? quantityText(block) : countText(block)}</td>
+                  <td className={cn("border-b border-border px-2 py-2 tabular-nums text-text", !mapid && "whitespace-nowrap")}>{audio ? quantityText(block) : countText(block)}</td>
                   {audio && <td className="border-b border-border px-2 py-2 text-right font-semibold whitespace-nowrap tabular-nums text-text">{format.number(questionsOf(block))}</td>}
                   <td className="border-b border-border px-2 py-2 whitespace-nowrap tabular-nums text-text">{rateText(block)}</td>
                   {audio && (
@@ -717,7 +769,7 @@ function GroupList({
                       <AvailableSource block={block} section={section} />
                     </td>
                   )}
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text-secondary">{scopeText(block)}</td>
+                  {!mapid && <td className="border-b border-border px-2 py-2 whitespace-nowrap text-text-secondary">{scopeCell(block)}</td>}
                   <td className="border-b border-border px-3 py-1 text-right">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("openAria", { name: block.name || t("untitled") })} onClick={() => onSelectBlock(block.id)}>
                       {t("open")}
