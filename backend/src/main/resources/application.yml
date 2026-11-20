@@ -380,3 +380,13 @@ thi360:
     mode: ${THI360_VNPAY_MODE:MOCK}
     mock-secret: dev-only-mock-vnpay-signing-key
     mock-tmn-code: DEV-MOCK
+---
+spring:
+  config:
+    activate:
+      on-profile: test & prod
+# Test tích hợp ghép profile prod cùng lớp nền test (vd. TestApiAbsentUnderProdIT) không dùng MOCK;
+# profile prod thật (không có test) vẫn giữ mặc định rỗng và VnpayModeStartupGuard vẫn chặn MOCK mọi lúc có prod.
+thi360:
+  vnpay:
+    mode: ${THI360_VNPAY_MODE:PRODUCTION}

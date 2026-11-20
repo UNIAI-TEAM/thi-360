@@ -60,6 +60,13 @@ class VnpayModeStartupTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("prod");
         assertThat(conditionMatches(prodWithDev)).isFalse();
+
+        MockEnvironment prodWithTest = new MockEnvironment().withProperty("thi360.vnpay.mode", "MOCK");
+        prodWithTest.setActiveProfiles("api", "worker", "test", "prod");
+        assertThatThrownBy(() -> VnpayModeStartupGuard.validate(prodWithTest))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("prod");
+        assertThat(conditionMatches(prodWithTest)).isFalse();
     }
 
     @Test
