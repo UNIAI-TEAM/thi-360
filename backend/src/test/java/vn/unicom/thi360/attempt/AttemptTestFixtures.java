@@ -8,6 +8,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,7 @@ import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService
 import vn.unicom.thi360.commerce.entitlement.application.GrantLine;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderCommand;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.security.Access;
 import vn.unicom.thi360.shared.security.AdminOriginFilter;
 import vn.unicom.thi360.shared.security.CurrentUser;
@@ -34,7 +36,15 @@ public final class AttemptTestFixtures {
 
     public static final Instant DEFAULT_CLOCK_START = Instant.parse("2026-11-20T10:00:00Z");
 
+    private static volatile JdbcTemplate activeJdbc;
+
     private AttemptTestFixtures() {
+    }
+
+    public static void bindJdbc(JdbcTemplate jdbc) {
+        if (jdbc != null) {
+            activeJdbc = jdbc;
+        }
     }
 
     /** Deterministic {@link MutableClock} starting at {@link #DEFAULT_CLOCK_START}. */
@@ -45,13 +55,20 @@ public final class AttemptTestFixtures {
         public MutableClock mutableClock() {
             return new MutableClock(Clock.fixed(DEFAULT_CLOCK_START, ZoneOffset.UTC));
         }
+
+        @Bean
+        public InitializingBean attemptTestFixturesJdbcBinder(JdbcTemplate jdbc) {
+            return () -> AttemptTestFixtures.bindJdbc(jdbc);
+        }
     }
 
     public static UUID createStudentAccount(JdbcTemplate jdbc, String label) {
+        bindJdbc(jdbc);
         return insertAccount(jdbc, label, "Attempt Student");
     }
 
     public static UUID createManageAccount(JdbcTemplate jdbc, String label) {
+        bindJdbc(jdbc);
         return insertAccount(jdbc, label, "Attempt Manage");
     }
 
@@ -91,7 +108,12 @@ public final class AttemptTestFixtures {
             String resultView,
             int examVersionNo) {
         UUID orderId = UUID.randomUUID();
-        String orderCode = "ORD-" + orderId.toString().substring(0, 8);
+        String orderCode = "ORD-" + orderId.toString().replace("-", "").substring(0, 12).toUpperCase();
+        JdbcTemplate jdbc = activeJdbc;
+        if (jdbc == null) {
+            throw new IllegalStateException("AttemptTestFixtures.bindJdbc(JdbcTemplate) must be called before grantExam");
+        }
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, userId, examId, orderCode);
         GrantLine line = new GrantLine(
                 examId,
                 examVersionNo,
@@ -105,10 +127,14 @@ public final class AttemptTestFixtures {
     }
 
     public static PublishedExamSetSupport.Built ensureDsBuilt(ApplicationContext context) {
+        if (context != null) {
+            bindJdbc(context.getBean(JdbcTemplate.class));
+        }
         return PublishedExamSetSupport.ensureBuilt(context);
     }
 
     public static UUID dsExamId(JdbcTemplate jdbc, String examCode) {
+        bindJdbc(jdbc);
         return jdbc.queryForObject("SELECT id FROM exam.exam WHERE code = ?", UUID.class, examCode);
     }
 
@@ -133,7 +159,7 @@ public final class AttemptTestFixtures {
         };
     }
 
-    /** Removes all attempt, entitlement, and account rows owned by {@code userId}, children first. */
+    /** Removes all attempt, entitlement, order, and account rows owned by {@code userId}, children first. */
     public static void cleanupUser(JdbcTemplate jdbc, UUID userId) {
         if (userId == null) {
             return;
@@ -142,17 +168,7 @@ public final class AttemptTestFixtures {
         jdbc.update("DELETE FROM attempt.attempt_item WHERE attempt_id IN (SELECT id FROM attempt.attempt WHERE user_id = ?)", userId);
         jdbc.update("DELETE FROM attempt.attempt_part WHERE attempt_id IN (SELECT id FROM attempt.attempt WHERE user_id = ?)", userId);
         jdbc.update("DELETE FROM attempt.attempt WHERE user_id = ?", userId);
-        jdbc.update("""
-                DELETE FROM commerce.entitlement_usage WHERE grant_id IN (
-                    SELECT g.id FROM commerce.entitlement_grant g
-                    JOIN commerce.entitlement e ON e.id = g.entitlement_id
-                    WHERE e.user_id = ?)
-                """, userId);
-        jdbc.update("""
-                DELETE FROM commerce.entitlement_grant WHERE entitlement_id IN (
-                    SELECT id FROM commerce.entitlement WHERE user_id = ?)
-                """, userId);
-        jdbc.update("DELETE FROM commerce.entitlement WHERE user_id = ?", userId);
+        CommerceTestFixtures.deleteStubOrdersForUser(jdbc, userId);
         jdbc.update("DELETE FROM shared.idempotency_key WHERE scope LIKE ?", userId + ":%");
         jdbc.update("DELETE FROM identity.platform_admin WHERE id = ?", userId);
         jdbc.update("DELETE FROM identity.user_account WHERE id = ?", userId);

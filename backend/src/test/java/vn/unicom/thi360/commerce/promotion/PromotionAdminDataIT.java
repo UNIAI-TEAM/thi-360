@@ -204,20 +204,24 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
     void totalDiscountCountsConfirmedOnly() throws Exception {
         Promotion voucher = saveVoucher(10, 5);
 
-        UUID orderConfirmed1 = UUID.randomUUID();
-        UUID orderConfirmed2 = UUID.randomUUID();
-        UUID orderReserved = UUID.randomUUID();
-        UUID orderReleased = UUID.randomUUID();
+        UUID u1 = UUID.randomUUID();
+        UUID u2 = UUID.randomUUID();
+        UUID u3 = UUID.randomUUID();
+        UUID u4 = UUID.randomUUID();
+        UUID orderConfirmed1 = stubOrder(u1, "DH-C1");
+        UUID orderConfirmed2 = stubOrder(u2, "DH-C2");
+        UUID orderReserved = stubOrder(u3, "DH-RES");
+        UUID orderReleased = stubOrder(u4, "DH-REL");
 
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), orderConfirmed1, "DH-C1", 15_000L);
+        redemptionService.reserve(voucher.getId(), u1, orderConfirmed1, "DH-C1", 15_000L);
         redemptionService.confirm(voucher.getId(), orderConfirmed1);
 
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), orderConfirmed2, "DH-C2", 25_000L);
+        redemptionService.reserve(voucher.getId(), u2, orderConfirmed2, "DH-C2", 25_000L);
         redemptionService.confirm(voucher.getId(), orderConfirmed2);
 
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), orderReserved, "DH-RES", 10_000L);
+        redemptionService.reserve(voucher.getId(), u3, orderReserved, "DH-RES", 10_000L);
 
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), orderReleased, "DH-REL", 30_000L);
+        redemptionService.reserve(voucher.getId(), u4, orderReleased, "DH-REL", 30_000L);
         redemptionService.release(voucher.getId(), orderReleased);
 
         mockMvc.perform(get(BASE + "/" + voucher.getId())

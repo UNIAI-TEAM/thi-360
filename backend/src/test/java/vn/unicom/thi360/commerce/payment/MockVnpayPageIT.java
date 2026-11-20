@@ -25,10 +25,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.classroom.application.DevClassSeeder;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
@@ -37,6 +39,7 @@ import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway;
 import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.PayRequest;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
+import vn.unicom.thi360.identity.application.DevDataInitializer;
 import vn.unicom.thi360.shared.security.AuthCookieService;
 
 /**
@@ -155,18 +158,27 @@ class MockVnpayPageIT extends AbstractIntegrationTest {
     }
 
     @Nested
-    @ActiveProfiles("e2e")
+    @ActiveProfiles(profiles = {"api", "dev"}, inheritProfiles = false)
     @TestPropertySource(properties = {
         "thi360.vnpay.mode=SANDBOX",
-        "thi360.devdata.published-exams.enabled=false"
+        "thi360.devdata.published-exams.enabled=false",
+        "thi360.s3.mode=memory",
+        "spring.datasource.hikari.maximum-pool-size=4"
     })
-    class SandboxModeInE2eProfile {
+    class SandboxModeInDevProfile {
+
+        // Identity và classroom seed cần Keycloak; test chỉ kiểm tra condition của /mock-vnpay trong profile dev.
+        @MockitoBean
+        private DevDataInitializer devDataInitializer;
+
+        @MockitoBean
+        private DevClassSeeder devClassSeeder;
 
         @Autowired
         private MockMvc sandboxMockMvc;
 
         @Test
-        void mockVnpayReturns404WhenModeIsSandboxEvenInMockEligibleProfile() throws Exception {
+        void mockVnpayReturns404WhenModeIsSandboxEvenInDevProfile() throws Exception {
             sandboxMockMvc.perform(get("/mock-vnpay"))
                     .andExpect(status().isNotFound());
             sandboxMockMvc.perform(get("/mock-vnpay/action").param("outcome", "success"))

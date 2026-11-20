@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService;
 import vn.unicom.thi360.commerce.order.application.OrderDeletionGuard;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
@@ -35,6 +36,7 @@ class OrderDeletionGuardIT extends AbstractIntegrationTest {
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private OrderDeletionGuard deletionGuard;
+    @Autowired private EntitlementGrantService grantService;
 
     private CommerceTestFixtures fixtures;
 
@@ -76,5 +78,32 @@ class OrderDeletionGuardIT extends AbstractIntegrationTest {
                         .with(admin)
                         .param("reason", "test blocked delete"))
                 .andExpect(status().isConflict());
+
+        // Kiểm tra thêm đơn PENDING_PAYMENT và FULFILLED đều chặn với COMMERCE / USER_HAS_ORDERS.
+        for (OrderState state : new OrderState[] {OrderState.PENDING_PAYMENT, OrderState.FULFILLED}) {
+            var accountWithState = fixtures.createLearner();
+            fixtures.insertStubOrder(
+                    accountWithState, product, state, PaymentMethod.VNPAY,
+                    200_000L, Instant.now().plusSeconds(900),
+                    state == OrderState.FULFILLED ? Instant.now() : null);
+            var stateBlockers = deletionGuard.check(accountWithState.id());
+            assertThat(stateBlockers).hasSize(1);
+            assertThat(stateBlockers.getFirst().source()).isEqualTo("COMMERCE");
+            assertThat(stateBlockers.getFirst().code()).isEqualTo("USER_HAS_ORDERS");
+        }
+
+        // Tài khoản có CẢ quyền dùng lẫn đơn hàng trả về ĐỦ CẢ HAI blocker (USER_HAS_TRANSACTIONS và USER_HAS_ORDERS).
+        var bothAccount = fixtures.createLearner();
+        var bothOrder = fixtures.insertStubOrder(
+                bothAccount, product, OrderState.FULFILLED, PaymentMethod.VNPAY,
+                200_000L, null, Instant.now());
+        fixtures.grantOrder(grantService, bothOrder.id(), bothOrder.code(), bothAccount.id(), product.examId(), 2);
+
+        mockMvc.perform(get("/api/v1/admin/users/" + bothAccount.id() + "/deletion-check").with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deletable").value(false))
+                .andExpect(jsonPath("$.blockers.length()").value(2))
+                .andExpect(jsonPath("$.blockers[*].code",
+                        Matchers.containsInAnyOrder("USER_HAS_TRANSACTIONS", "USER_HAS_ORDERS")));
     }
 }

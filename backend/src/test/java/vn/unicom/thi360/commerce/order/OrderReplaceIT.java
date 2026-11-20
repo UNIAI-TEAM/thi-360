@@ -7,8 +7,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -148,5 +156,121 @@ class OrderReplaceIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, secondOrderId))
                 .isEqualTo("REPLACED");
+    }
+
+    /** AC-9 concurrency: 10 concurrent POST /me/orders with distinct Idempotency-Keys -> zero 500s, strictly 1 PENDING_PAYMENT. */
+    @Test
+    void concurrentCreateRequestsLeaveSinglePendingOrder() throws Exception {
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        int threads = 10;
+        String payload = mapper.writeValueAsString(Map.of(
+                "code", product.code(),
+                "expectedAccountId", buyer.id(),
+                "expectedVersionNo", 1,
+                "expectedAmountDue", 200_000L));
+
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Integer> statuses = new ArrayList<>();
+        try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
+            List<Future<Integer>> futures = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                Callable<Integer> job = () -> {
+                    ready.countDown();
+                    start.await(15, TimeUnit.SECONDS);
+                    return mockMvc.perform(post("/api/v1/me/orders")
+                                    .with(fixtures.asLearner(buyer))
+                                    .header("Idempotency-Key", "conc-rep-" + UUID.randomUUID())
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(payload))
+                            .andReturn().getResponse().getStatus();
+                };
+                futures.add(pool.submit(job));
+            }
+            assertThat(ready.await(15, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (Future<Integer> f : futures) {
+                statuses.add(f.get(30, TimeUnit.SECONDS));
+            }
+        }
+
+        assertThat(statuses).hasSize(threads).allSatisfy(s -> assertThat(s).isLessThan(500));
+        assertThat(statuses).contains(201);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.purchase_order WHERE user_id = ? AND state = 'PENDING_PAYMENT'",
+                Integer.class, buyer.id())).isEqualTo(1);
+    }
+
+    /** AC-39: learner holding the last slot of total_limit=1 in a PENDING_PAYMENT order still quotes & orders; others fail 422 VOUCHER_EXHAUSTED. */
+    @Test
+    void pendingOrderHoldingLastVoucherSlotAllowsOwnQuoteAndOrderButBlocksOthers() throws Exception {
+        var buyerA = fixtures.createLearner();
+        var buyerB = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        var lastSlotVoucher = fixtures.createVoucher(
+                "AC39", DiscountType.AMOUNT, 50_000L, null,
+                1, 1, false, PromotionScope.ALL, PromotionAudienceType.ALL);
+
+        // 1. Learner A creates PENDING_PAYMENT order taking the last slot of lastSlotVoucher.
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyerA))
+                        .header("Idempotency-Key", "ac39-a1-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", lastSlotVoucher.getCode(),
+                                "expectedAccountId", buyerA.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 150_000L))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.order.amountDueVnd").value(150_000L));
+
+        // 2. Learner A calls /me/price-quote and /me/orders with the same voucher -> both succeed!
+        mockMvc.perform(post("/api/v1/me/price-quote")
+                        .with(fixtures.asLearner(buyerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", lastSlotVoucher.getCode()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.finalPrice").value(150_000L))
+                .andExpect(jsonPath("$.voucher.code").value(lastSlotVoucher.getCode()));
+
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyerA))
+                        .header("Idempotency-Key", "ac39-a2-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", lastSlotVoucher.getCode(),
+                                "expectedAccountId", buyerA.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 150_000L))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.order.amountDueVnd").value(150_000L));
+
+        // 3. Learner B calls /me/price-quote and /me/orders with the same voucher -> both get 422 VOUCHER_EXHAUSTED!
+        mockMvc.perform(post("/api/v1/me/price-quote")
+                        .with(fixtures.asLearner(buyerB))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", lastSlotVoucher.getCode()))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VOUCHER_EXHAUSTED"));
+
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyerB))
+                        .header("Idempotency-Key", "ac39-b1-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", lastSlotVoucher.getCode(),
+                                "expectedAccountId", buyerB.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 150_000L))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VOUCHER_EXHAUSTED"));
     }
 }

@@ -431,6 +431,99 @@ public class CommerceTestFixtures {
         }
     }
 
+    public static void insertMinimalStubOrder(
+            JdbcTemplate jdbc, UUID orderId, UUID userId, UUID examId, String orderCode) {
+        insertMinimalStubOrder(jdbc, orderId, userId, examId, orderCode, OrderState.PAID);
+    }
+
+    public static void insertMinimalStubOrder(
+            JdbcTemplate jdbc, UUID orderId, UUID userId, UUID examId, String orderCode, OrderState state) {
+        String effectiveCode = (orderCode != null && !orderCode.isBlank())
+                ? orderCode
+                : "STUB-" + UUID.randomUUID().toString().replace("-", "").substring(0, 14).toUpperCase();
+        UUID effectiveExamId = examId != null ? examId : UUID.randomUUID();
+        UUID effectiveUserId = userId != null ? userId : UUID.randomUUID();
+        String productCode = "STUB-" + effectiveExamId.toString().replace("-", "").substring(0, 10).toUpperCase();
+        Timestamp now = Timestamp.from(Instant.now());
+        Timestamp paidTs = (state == OrderState.PAID || state == OrderState.FULFILLED || state == OrderState.REFUNDED)
+                ? now
+                : null;
+        jdbc.update("""
+                INSERT INTO commerce.purchase_order
+                    (id, code, user_id, buyer_username, buyer_full_name, product_type, exam_id, exam_version_no,
+                     option_codes, product_code, product_name, list_price_vnd, discount_applied, amount_due_vnd,
+                     attempts_granted, benefits, result_view, payment_method, state, paid_at,
+                     created_at, updated_at, version)
+                VALUES (?, ?, ?, 'stub.buyer', 'Stub Buyer', 'EXAM', ?, 1,
+                        '{}'::text[], ?, 'Stub Exam', 100000, 'NONE', 100000,
+                        1, '{}'::jsonb, 'FULL_SOLUTION', 'VNPAY', ?, ?, ?, ?, 0)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                orderId,
+                effectiveCode,
+                effectiveUserId,
+                effectiveExamId,
+                productCode,
+                state.name(),
+                paidTs,
+                now,
+                now);
+    }
+
+    public static void deleteStubOrder(JdbcTemplate jdbc, UUID orderId) {
+        if (orderId == null) {
+            return;
+        }
+        jdbc.update("DELETE FROM commerce.payment_event WHERE payment_id IN (SELECT id FROM commerce.payment WHERE order_id = ?)", orderId);
+        jdbc.update("DELETE FROM commerce.payment WHERE order_id = ?", orderId);
+        jdbc.update("DELETE FROM commerce.order_history WHERE order_id = ?", orderId);
+        jdbc.update("DELETE FROM commerce.purchase_order_item WHERE order_id = ?", orderId);
+        jdbc.update("DELETE FROM commerce.promotion_redemption WHERE order_id = ?", orderId);
+        jdbc.update("DELETE FROM commerce.entitlement_usage WHERE grant_id IN (SELECT id FROM commerce.entitlement_grant WHERE order_id = ?)", orderId);
+        jdbc.update("DELETE FROM commerce.entitlement_grant WHERE order_id = ?", orderId);
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = NULL WHERE id = ? OR replaced_by_order_id = ?", orderId, orderId);
+        jdbc.update("DELETE FROM commerce.purchase_order WHERE id = ?", orderId);
+    }
+
+    public static void deleteStubOrdersForUser(JdbcTemplate jdbc, UUID userId) {
+        if (userId == null) {
+            return;
+        }
+        jdbc.update("""
+                DELETE FROM commerce.payment_event
+                WHERE payment_id IN (
+                    SELECT p.id FROM commerce.payment p
+                    JOIN commerce.purchase_order o ON o.id = p.order_id
+                    WHERE o.user_id = ?
+                )
+                """, userId);
+        jdbc.update("DELETE FROM commerce.payment WHERE order_id IN (SELECT id FROM commerce.purchase_order WHERE user_id = ?)", userId);
+        jdbc.update("DELETE FROM commerce.order_history WHERE order_id IN (SELECT id FROM commerce.purchase_order WHERE user_id = ?)", userId);
+        jdbc.update("DELETE FROM commerce.purchase_order_item WHERE order_id IN (SELECT id FROM commerce.purchase_order WHERE user_id = ?)", userId);
+        jdbc.update("DELETE FROM commerce.promotion_redemption WHERE user_id = ? OR order_id IN (SELECT id FROM commerce.purchase_order WHERE user_id = ?)", userId, userId);
+        jdbc.update("""
+                DELETE FROM commerce.entitlement_usage
+                WHERE grant_id IN (
+                    SELECT g.id FROM commerce.entitlement_grant g
+                    JOIN commerce.entitlement e ON e.id = g.entitlement_id
+                    WHERE e.user_id = ?
+                )
+                OR grant_id IN (
+                    SELECT g.id FROM commerce.entitlement_grant g
+                    JOIN commerce.purchase_order o ON o.id = g.order_id
+                    WHERE o.user_id = ?
+                )
+                """, userId, userId);
+        jdbc.update("""
+                DELETE FROM commerce.entitlement_grant
+                WHERE entitlement_id IN (SELECT id FROM commerce.entitlement WHERE user_id = ?)
+                   OR order_id IN (SELECT id FROM commerce.purchase_order WHERE user_id = ?)
+                """, userId, userId);
+        jdbc.update("DELETE FROM commerce.entitlement WHERE user_id = ?", userId);
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = NULL WHERE user_id = ?", userId);
+        jdbc.update("DELETE FROM commerce.purchase_order WHERE user_id = ?", userId);
+    }
+
     public static String shortToken() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }

@@ -175,11 +175,129 @@ class LatePaymentIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
                 Integer.class, buyer3.id(), product.examId())).isEqualTo(2);
+
+        // Ca 3: sản phẩm đã DISCONTINUED sau khi đặt đơn vẫn cấp quyền khi tiền về muộn trên đơn CANCELLED (AC-27 / BR-02).
+        var buyer4 = fixtures.createLearner();
+        var discProduct = fixtures.insertOnSaleProduct("HSA", 200_000L, 4);
+        String r3 = mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer4))
+                        .header("Idempotency-Key", "lc4-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", discProduct.code(),
+                                "expectedAccountId", buyer4.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 200_000L))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        var o3 = mapper.readTree(r3).path("order");
+        UUID o3Id = UUID.fromString(o3.path("id").asText());
+        String o3Code = o3.path("code").asText();
+        String o3Txn = o3.path("payments").get(0).path("txnRef").asText();
+        mockMvc.perform(post("/api/v1/me/orders/" + o3Code + "/cancel").with(fixtures.asLearner(buyer4)))
+                .andExpect(status().isOk());
+        fixtures.updateStorefrontPriceAndVersion(discProduct.examId(), 200_000L, 1, "DISCONTINUED");
+
+        callIpn(o3Txn, 200_000L, "93000013")
+                .andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o3Id))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, buyer4.id(), discProduct.examId())).isEqualTo(4);
     }
 
     @Test
-    void flagsDoubleChargeInBothDirectionsAcrossReplacedOrders() throws Exception {
-        // Chiều A: O1 REPLACED bởi O2; O2 trả trước (FULFILLED), sau đó O1 nhận 00/00 -> O1 giữ REPLACED, payment excess, cả O1 & O2 needs_review=true.
+    void flagWhenReplacementAlreadyPaid() throws Exception {
+        // O1 REPLACED bởi O2 (cùng dùng voucher total_limit=1); O2 trả trước -> FULFILLED, O2.needs_review=false.
+        // Sau đó O1 nhận 00/00 -> O1 trở thành PAID -> FULFILLED (coi như mua thêm), reclaim voucher (over_limit_count=1),
+        // payment của O1 được tính (is_duplicate=false) và O1.needs_review=true (DOUBLE_CHARGE_REPLACED_ORDER).
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+        var sharedOneShot = fixtures.createVoucher(
+                "AC48A", DiscountType.AMOUNT, 50_000L, null,
+                1, 5, true, PromotionScope.ALL, PromotionAudienceType.ALL);
+
+        String r1 = mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer))
+                        .header("Idempotency-Key", "dc1-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", sharedOneShot.getCode(),
+                                "expectedAccountId", buyer.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 150_000L))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        var o1 = mapper.readTree(r1).path("order");
+        UUID o1Id = UUID.fromString(o1.path("id").asText());
+        UUID p1Id = UUID.fromString(o1.path("payments").get(0).path("id").asText());
+        String p1Txn = o1.path("payments").get(0).path("txnRef").asText();
+
+        // Thay thế O1 bằng O2 (không voucher, đổi giá trị để ép REPLACED) rồi để buyer khác chiếm lượt voucher.
+        String r2 = mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer))
+                        .header("Idempotency-Key", "dc2-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "expectedAccountId", buyer.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 200_000L))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        var o2 = mapper.readTree(r2).path("order");
+        UUID o2Id = UUID.fromString(o2.path("id").asText());
+        String p2Txn = o2.path("payments").get(0).path("txnRef").asText();
+
+        var otherBuyer = fixtures.createLearner();
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(otherBuyer))
+                        .header("Idempotency-Key", "dc-other-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "voucherCode", sharedOneShot.getCode(),
+                                "expectedAccountId", otherBuyer.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 150_000L))))
+                .andExpect(status().isCreated());
+
+        // O2 trả trước.
+        callIpn(p2Txn, 200_000L, "93000021").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o2Id))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o2Id))
+                .isFalse();
+
+        // O1 nhận tiền muộn sau khi O2 đã trả.
+        callIpn(p1Txn, 150_000L, "93000022").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o1Id))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, p1Id))
+                .isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("SELECT is_duplicate FROM commerce.payment WHERE id = ?", Boolean.class, p1Id))
+                .isFalse();
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o1Id))
+                .isTrue();
+        assertThat(jdbc.queryForObject("SELECT review_reason FROM commerce.purchase_order WHERE id = ?", String.class, o1Id))
+                .isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, buyer.id(), product.examId())).isEqualTo(4);
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.promotion_redemption WHERE order_id = ? AND promotion_id = ?",
+                String.class, o1Id, sharedOneShot.getId())).isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject(
+                "SELECT over_limit_count FROM commerce.promotion WHERE id = ?", Integer.class, sharedOneShot.getId()))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void flagWhenReplacementPaysLater() throws Exception {
+        // O1 REPLACED bởi O2; O1 trả trước khi O2 chưa trả -> FULFILLED với needs_review=false;
+        // sau đó O2 trả -> FULFILLED và O1 bị gắn needs_review=true (DOUBLE_CHARGE_REPLACED_ORDER).
         var buyer = fixtures.createLearner();
         var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 1);
         var o2 = fixtures.insertStubOrder(
@@ -193,40 +311,83 @@ class LatePaymentIT extends AbstractIntegrationTest {
         jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", o2.id(), o1.id());
         var p1 = fixtures.insertStubPayment(o1, 1, 200_000L, PaymentState.CREATED);
 
-        callIpn(p2.txnRef(), 200_000L, "93000021").andExpect(jsonPath("$.RspCode").value("00"));
-        callIpn(p1.txnRef(), 200_000L, "93000022").andExpect(jsonPath("$.RspCode").value("00"));
-
+        callIpn(p1.txnRef(), 200_000L, "93000031").andExpect(jsonPath("$.RspCode").value("00"));
         assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o1.id()))
-                .isEqualTo("REPLACED");
-        assertThat(jdbc.queryForObject("SELECT is_duplicate FROM commerce.payment WHERE id = ?", Boolean.class, p1.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o1.id()))
+                .isFalse();
+
+        callIpn(p2.txnRef(), 200_000L, "93000032").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o2.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o1.id()))
                 .isTrue();
         assertThat(jdbc.queryForObject("SELECT review_reason FROM commerce.purchase_order WHERE id = ?", String.class, o1.id()))
                 .isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
-        assertThat(jdbc.queryForObject("SELECT review_reason FROM commerce.purchase_order WHERE id = ?", String.class, o2.id()))
-                .isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o2.id()))
+                .isFalse();
+    }
 
-        // Chiều B: O3 REPLACED bởi O4; O3 trả trước khi O4 chưa trả -> O3 thành FULFILLED; sau đó O4 trả -> cả O3 & O4 gắn DOUBLE_CHARGE_REPLACED_ORDER.
-        var buyerB = fixtures.createLearner();
-        var o4 = fixtures.insertStubOrder(
-                buyerB, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+    @Test
+    void noFlagWithoutDoubleCharge() throws Exception {
+        // (a) O1 REPLACED bởi O2 đang PENDING_PAYMENT (chưa trả) -> O1 nhận tiền thành FULFILLED, needs_review=false.
+        var buyerA = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 1);
+        var o2Pending = fixtures.insertStubOrder(
+                buyerA, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
                 200_000L, Instant.now().plusSeconds(900), null);
-        var p4 = fixtures.insertStubPayment(o4, 1, 200_000L, PaymentState.CREATED);
-
-        var o3 = fixtures.insertStubOrder(
-                buyerB, product, OrderState.REPLACED, PaymentMethod.VNPAY,
+        var o1Replaced = fixtures.insertStubOrder(
+                buyerA, product, OrderState.REPLACED, PaymentMethod.VNPAY,
                 200_000L, Instant.now().plusSeconds(900), null);
-        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", o4.id(), o3.id());
-        var p3 = fixtures.insertStubPayment(o3, 1, 200_000L, PaymentState.CREATED);
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?",
+                o2Pending.id(), o1Replaced.id());
+        var p1 = fixtures.insertStubPayment(o1Replaced, 1, 200_000L, PaymentState.CREATED);
 
-        callIpn(p3.txnRef(), 200_000L, "93000031").andExpect(jsonPath("$.RspCode").value("00"));
-        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o3.id()))
+        callIpn(p1.txnRef(), 200_000L, "93000041").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, o1Replaced.id()))
                 .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, o1Replaced.id()))
+                .isFalse();
 
-        callIpn(p4.txnRef(), 200_000L, "93000032").andExpect(jsonPath("$.RspCode").value("00"));
-        assertThat(jdbc.queryForObject("SELECT review_reason FROM commerce.purchase_order WHERE id = ?", String.class, o3.id()))
-                .isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
-        assertThat(jdbc.queryForObject("SELECT review_reason FROM commerce.purchase_order WHERE id = ?", String.class, o4.id()))
-                .isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
+        // (b) Đơn CANCELLED nhận tiền muộn -> FULFILLED, needs_review=false.
+        var buyerB = fixtures.createLearner();
+        var cancelledOrder = fixtures.insertStubOrder(
+                buyerB, product, OrderState.CANCELLED, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var pCancelled = fixtures.insertStubPayment(cancelledOrder, 1, 200_000L, PaymentState.CREATED);
+
+        callIpn(pCancelled.txnRef(), 200_000L, "93000042").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, cancelledOrder.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject("SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, cancelledOrder.id()))
+                .isFalse();
+    }
+
+    @Test
+    void marksDuplicatePaymentOnPaidOrFulfilledOrderWithoutGrantingExtra() throws Exception {
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+        var paidOrder = fixtures.insertStubOrder(
+                buyer, product, OrderState.PAID, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), Instant.now());
+        var pPaid = fixtures.insertStubPayment(paidOrder, 1, 200_000L, PaymentState.CREATED);
+
+        callIpn(pPaid.txnRef(), 200_000L, "93000051").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT is_duplicate FROM commerce.payment WHERE id = ?", Boolean.class, pPaid.id()))
+                .isTrue();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
+                Integer.class, paidOrder.id())).isZero();
+
+        var fulfilledOrder = fixtures.insertStubOrder(
+                buyer, product, OrderState.FULFILLED, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), Instant.now());
+        var pFulfilled = fixtures.insertStubPayment(fulfilledOrder, 1, 200_000L, PaymentState.CREATED);
+
+        callIpn(pFulfilled.txnRef(), 200_000L, "93000052").andExpect(jsonPath("$.RspCode").value("00"));
+        assertThat(jdbc.queryForObject("SELECT is_duplicate FROM commerce.payment WHERE id = ?", Boolean.class, pFulfilled.id()))
+                .isTrue();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
+                Integer.class, fulfilledOrder.id())).isZero();
     }
 
     private org.springframework.test.web.servlet.ResultActions callIpn(

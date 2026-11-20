@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -14,6 +15,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,30 @@ class VnpayIpnConcurrencyIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void handlesTenSequentialDuplicateIpnsIdempotently() throws Exception {
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        var order = fixtures.insertStubOrder(
+                buyer, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var payment = fixtures.insertStubPayment(order, 1, 200_000L, PaymentState.CREATED);
+
+        List<String> rspCodes = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            rspCodes.add(callSignedIpn(payment.txnRef(), 200_000L, "91000001"));
+        }
+
+        assertThat(rspCodes.getFirst()).isEqualTo("00");
+        assertThat(rspCodes.subList(1, 10)).containsOnly("02");
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, order.id()))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
+                Integer.class, order.id())).isEqualTo(1);
+    }
+
+    @Test
     void handlesConcurrentDuplicateIpnForSameTxnRefIdempotently() throws Exception {
         var buyer = fixtures.createLearner();
         var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
@@ -62,11 +88,14 @@ class VnpayIpnConcurrencyIT extends AbstractIntegrationTest {
                 200_000L, Instant.now().plusSeconds(900), null);
         var payment = fixtures.insertStubPayment(order, 1, 200_000L, PaymentState.CREATED);
 
-        List<String> rspCodes = runConcurrently(List.of(
-                () -> callSignedIpn(payment.txnRef(), 200_000L, "91000011"),
-                () -> callSignedIpn(payment.txnRef(), 200_000L, "91000011")));
+        List<Callable<String>> jobs = new ArrayList<>(20);
+        for (int i = 0; i < 20; i++) {
+            jobs.add(() -> callSignedIpn(payment.txnRef(), 200_000L, "91000011"));
+        }
+        List<String> rspCodes = runConcurrently(jobs);
 
-        assertThat(rspCodes).containsExactlyInAnyOrder("00", "02");
+        assertThat(Collections.frequency(rspCodes, "00")).isEqualTo(1);
+        assertThat(Collections.frequency(rspCodes, "02")).isEqualTo(19);
         assertThat(jdbc.queryForObject(
                 "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, order.id()))
                 .isEqualTo("FULFILLED");
@@ -112,15 +141,15 @@ class VnpayIpnConcurrencyIT extends AbstractIntegrationTest {
             for (Callable<String> job : jobs) {
                 futures.add(pool.submit(() -> {
                     ready.countDown();
-                    start.await();
+                    start.await(15, TimeUnit.SECONDS);
                     return job.call();
                 }));
             }
-            ready.await();
+            assertThat(ready.await(15, TimeUnit.SECONDS)).isTrue();
             start.countDown();
             List<String> results = new ArrayList<>();
             for (Future<String> future : futures) {
-                results.add(future.get());
+                results.add(future.get(30, TimeUnit.SECONDS));
             }
             return results;
         }
