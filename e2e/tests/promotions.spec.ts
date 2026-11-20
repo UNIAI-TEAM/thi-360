@@ -81,7 +81,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       }
 
       await page.getByRole("tab", { name: "Mã ưu đãi" }).click();
-      await page.getByRole("link", { name: "Tạo khuyến mãi" }).click();
+      await page.locator("main").getByRole("link", { name: "Tạo voucher" }).first().click();
       await expect(page).toHaveURL(/\/promotions\/new\?kind=VOUCHER/);
 
       await page.getByLabel(/Tên khuyến mãi/).fill(`${TAG}-VOUCHER`);
@@ -295,6 +295,7 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
   test.setTimeout(90_000);
 
   let browser: Browser;
+  let autoPromoId: string;
   let promoId: string;
   let sessionCookies: Awaited<ReturnType<BrowserContext["cookies"]>>;
 
@@ -306,6 +307,15 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
     await bootstrap.close();
 
     const api = await adminApi();
+    const createdAuto = await createPromotionViaApi(api, {
+      kind: "AUTO",
+      name: `${TAG}-AUTO-MATRIX`,
+      description: `${TAG} auto matrix fixture`,
+      discountType: "AMOUNT",
+      discountValue: 26000,
+    });
+    autoPromoId = createdAuto.id;
+
     const created = await createPromotionViaApi(api, {
       kind: "VOUCHER",
       code: `${TAG}SHOT`.slice(0, 20),
@@ -318,6 +328,7 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
 
   test.afterAll(async () => {
     const api = await adminApi();
+    await cleanupPromotion(api, autoPromoId);
     await cleanupPromotion(api, promoId);
     await api.api.dispose();
     await browser.close();
@@ -334,12 +345,15 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
     test(`ảnh màn: ${cell.width}px ${cell.mode} ${cell.lang}`, async () => {
       const { context, page } = await openCell(cell);
       try {
-        // 1. List
+        // 1. List (populated AUTO tab)
         await page.goto(`${ADMIN_URL}/promotions`);
         await expect(
           page.getByRole("heading", { name: cell.lang === "vi" ? "Khuyến mãi" : "Promotions" }),
         ).toBeVisible();
-        await expectMatrixClean(page, "promotions-list", cell);
+        await expect(page.getByRole("link", { name: `${TAG}-AUTO-MATRIX` })).toBeVisible();
+        await expectMatrixClean(page, "promotions-list", cell, {
+          elementOverflow: { scope: "main", allowAccessibleScroller: false },
+        });
 
         // 2. Create
         await page.goto(`${ADMIN_URL}/promotions/new`);
@@ -362,6 +376,7 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
             name: cell.lang === "vi" ? "Chỉnh sửa khuyến mãi" : "Edit promotion",
           }),
         ).toBeVisible();
+        await expect(page.getByLabel(/Tên khuyến mãi|Promotion name/)).toHaveValue(`${TAG}-MATRIX`);
         await expectMatrixClean(page, "promotions-edit", cell);
       } finally {
         await context.close();
