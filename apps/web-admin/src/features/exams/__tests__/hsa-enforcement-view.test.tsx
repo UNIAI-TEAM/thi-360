@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
+import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -15,6 +16,13 @@ vi.mock("@/features/content/api", async (importOriginal) => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
+
+// CR-3a bật DS cho HSA Tiếng Anh; các ca này kiểm hành vi MD của HSA-C (nút "Áp dụng phân bổ này", chip lớp Tiếng Anh) nên ghim MD, chỉ đổi fixture (AD-76), không đổi assert.
+let restoreForm: () => void;
+beforeEach(() => {
+  restoreForm = patchSubjectFormEntry("HSA", "ANH", { enabled: false });
+});
+afterEach(() => restoreForm());
 
 const referenceMatrix = {
   mode: "SEPARATE",

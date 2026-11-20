@@ -45,6 +45,10 @@ export interface TopicQuotaTableProps {
   labels: MatrixLabels;
   serverError?: TopicQuotaServerError;
   readOnly?: boolean;
+  /** `COUNT_ONLY` ẩn nút Số câu / Tỷ lệ (R-9: HSA, QDA, BCA, THPTQG không nhập %); mặc định giữ hành vi MD, MT. */
+  entry?: "COUNT_ONLY";
+  /** Ẩn cột Giới hạn khối lớp (R-11, AD-118); dữ liệu `gradeCodes` đã có giữ nguyên. Mặc định `false` (MD, MT). */
+  hideGrade?: boolean;
 }
 
 /**
@@ -64,6 +68,8 @@ export function TopicQuotaTable({
   labels,
   serverError = null,
   readOnly = false,
+  entry: entryRestriction,
+  hideGrade = false,
 }: TopicQuotaTableProps) {
   const t = useTranslations("exams.topicQuota");
   const matrixText = useTranslations("exams.matrix");
@@ -71,7 +77,8 @@ export function TopicQuotaTable({
   const headingId = useId();
   const [entry, setEntry] = useState<EntryMode>(() => topicEntryMode(quotas));
   const [picking, setPicking] = useState<string | null>(null);
-  const mode: EntryMode = quotas.length === 0 ? entry : topicEntryMode(quotas);
+  const countOnly = entryRestriction === "COUNT_ONLY";
+  const mode: EntryMode = countOnly ? "COUNT" : quotas.length === 0 ? entry : topicEntryMode(quotas);
   const percentMode = mode === "PERCENT";
   const view = topicQuotaView(quotas, total);
   const knowledgeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference]);
@@ -130,7 +137,7 @@ export function TopicQuotaTable({
         </div>
         {!readOnly && (
           <div className="flex flex-wrap items-end gap-3">
-            {total > 0 && (
+            {total > 0 && !countOnly && (
               <ChoiceCardGroup
                 variant="pill"
                 legend={t("entry")}
@@ -163,7 +170,7 @@ export function TopicQuotaTable({
                 <th scope="col" className="border-b border-border bg-subtle px-3 py-2 font-semibold">{t("topic")}</th>
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("count")}</th>
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("rate")}</th>
-                <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("gradeLimit")}</th>
+                {!hideGrade && <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("gradeLimit")}</th>}
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("difficultyLimit")}</th>
                 <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("level")}</th>
                 <th scope="col" className="sticky right-0 z-1 border-b border-l border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
@@ -265,17 +272,19 @@ export function TopicQuotaTable({
                         <span className="inline-block min-h-9 py-1.5 whitespace-nowrap text-text">{rate(view.rates[index] ?? null)}</span>
                       )}
                     </td>
-                    <td className="border-b border-border px-2 py-2 align-top">
-                      <CodeFilter
-                        name={t("gradeLimit")}
-                        allLabel={t("allGrades")}
-                        value={quota.gradeCodes ?? []}
-                        codes={axes.grades}
-                        label={labels.grade}
-                        disabled={readOnly}
-                        onChange={(gradeCodes) => patch(quota.id, { gradeCodes })}
-                      />
-                    </td>
+                    {!hideGrade && (
+                      <td className="border-b border-border px-2 py-2 align-top">
+                        <CodeFilter
+                          name={t("gradeLimit")}
+                          allLabel={t("allGrades")}
+                          value={quota.gradeCodes ?? []}
+                          codes={axes.grades}
+                          label={labels.grade}
+                          disabled={readOnly}
+                          onChange={(gradeCodes) => patch(quota.id, { gradeCodes })}
+                        />
+                      </td>
+                    )}
                     <td className="border-b border-border px-2 py-2 align-top">
                       <CodeFilter
                         name={t("difficultyLimit")}
@@ -314,7 +323,7 @@ export function TopicQuotaTable({
                 <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">{t("rest")}</th>
                 <td className="border-b border-border px-2 py-2 text-text">{t("countValue", { count: view.rest })}</td>
                 <td className="border-b border-border px-2 py-2 text-text">{rate(view.restRate)}</td>
-                <td colSpan={4} className="border-b border-border px-2 py-2 text-caption text-text-muted">{t("restNote")}</td>
+                <td colSpan={hideGrade ? 3 : 4} className="border-b border-border px-2 py-2 text-caption text-text-muted">{t("restNote")}</td>
               </tr>
             </tbody>
             <tfoot>
@@ -333,7 +342,7 @@ export function TopicQuotaTable({
                     )}
                   </div>
                 </td>
-                <td colSpan={4} />
+                <td colSpan={hideGrade ? 3 : 4} />
               </tr>
             </tfoot>
           </table>

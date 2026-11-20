@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
 import {
   type Apportionment,
+  type BlockIssue,
   combinedGrid,
   computeAllocation,
   convertMatrixMode,
@@ -49,6 +50,13 @@ export interface BlockMatrixEditorProps {
    * Mặc định `true`.
    */
   declared?: boolean;
+  /** Chiều hiện ở riêng từng chiều; mặc định cả lớp và độ khó. Chiều không hiện giữ nguyên dữ liệu và không tính vào cảnh báo tổng (FTM R-11). */
+  dimensions?: readonly ("GRADE" | "DIFFICULTY")[];
+  /**
+   * Dạng gọn của Danh sách dòng (FTM R-13): riêng từng chiều theo câu, không có lựa chọn Kết hợp/Riêng, Số câu/Tỷ lệ, mức áp dụng,
+   * đơn vị đếm và phân bổ theo năng lực; chiều không còn ô nào ghi mảng rỗng. Mặc định `false`: hành vi của màn nhóm (MD).
+   */
+  compact?: boolean;
 }
 
 const CELL_INPUT = "h-9 w-16 px-2";
@@ -67,6 +75,8 @@ export function BlockMatrixEditor({
   available,
   availableState,
   declared = true,
+  dimensions = ["GRADE", "DIFFICULTY"],
+  compact = false,
 }: BlockMatrixEditorProps) {
   const t = useTranslations("exams.matrix");
   const format = useFormatter();
@@ -134,8 +144,12 @@ export function BlockMatrixEditor({
     const codes = dimension === "byGrade" ? axes.grades : axes.difficulties;
     const values = dimensionValues(matrix[dimension], codes);
     values[index] = value;
-    onChange({ ...matrix, [dimension]: toDimension(values, codes) });
+    onChange({ ...matrix, [dimension]: compact && values.every((item) => item === 0) ? [] : toDimension(values, codes) });
   };
+  const shownIssue = (issue: BlockIssue) =>
+    !("dimension" in issue) ||
+    issue.dimension === "COMBINED" ||
+    (issue.dimension === "COMPETENCY" ? !compact : dimensions.includes(issue.dimension));
 
   const competencyOn = hasCompetencyDimension(matrix);
   const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
@@ -162,6 +176,7 @@ export function BlockMatrixEditor({
 
   // Cùng một danh sách báo lỗi cho cả hai nhánh: cơ sở không phải câu vẫn bị chặn lưu khi tổng % lệch, nên lỗi phải hiện.
   const issueMessages = issues
+    .filter(shownIssue)
     .map((issue) => {
       const dimension =
         "dimension" in issue && issue.dimension !== "COMBINED"
@@ -197,6 +212,8 @@ export function BlockMatrixEditor({
       <h3 id={titleId} className="text-title font-semibold text-text">
         {t("title")}
       </h3>
+      {!compact && (
+        <>
       <div className="flex flex-wrap gap-x-6 gap-y-3">
         <ChoiceCardGroup
           variant="pill"
@@ -249,6 +266,8 @@ export function BlockMatrixEditor({
           <p className="text-label text-text-secondary">{t("basisFixed", { unit: t("basisQUESTION") })}</p>
         )}
       </div>
+        </>
+      )}
       {switched && (
         <p role="status" className="flex items-start gap-2 rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -363,21 +382,23 @@ export function BlockMatrixEditor({
                 { key: "byGrade", codes: axes.grades, label: labels.grade, conversion: allocation.gradeConversion },
                 { key: "byDifficulty", codes: axes.difficulties, label: labels.difficulty, conversion: allocation.difficultyConversion },
               ] as const
-            ).map((dimension) => {
+            ).filter((dimension) => dimensions.includes(dimension.key === "byGrade" ? "GRADE" : "DIFFICULTY")).map((dimension) => {
               const values = dimensionValues(matrix[dimension.key], dimension.codes);
               const counts = dimension.key === "byGrade" ? allocation.byGrade : allocation.byDifficulty;
               const inputTotal = dimension.key === "byGrade" ? allocation.inputGradeTotal : allocation.inputDifficultyTotal;
               const countTotal = dimension.key === "byGrade" ? allocation.gradeTotal : allocation.difficultyTotal;
               return (
                 <div key={dimension.key} className="flex min-w-0 flex-col gap-2">
-                <EnforcementToggle
-                  legend={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
-                  name={`${block.id}-${dimension.key}-enforcement`}
-                  value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
-                  basis={matrix.basis}
-                  undeclared={hsaMatrixUndeclared(matrix, dimension.key === "byGrade" ? "grade" : "difficulty")}
-                  onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
-                />
+                {!compact && (
+                  <EnforcementToggle
+                    legend={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
+                    name={`${block.id}-${dimension.key}-enforcement`}
+                    value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
+                    basis={matrix.basis}
+                    undeclared={hsaMatrixUndeclared(matrix, dimension.key === "byGrade" ? "grade" : "difficulty")}
+                    onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
+                  />
+                )}
                 <MatrixTable
                   caption={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
                   captionVisible
@@ -444,7 +465,7 @@ export function BlockMatrixEditor({
         </>
       )}
 
-      {(competencies.length > 0 || competencyOn) && (
+      {!compact && (competencies.length > 0 || competencyOn) && (
         <section aria-label={t("byCompetencyCaption")} className="flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <Switch
@@ -537,10 +558,10 @@ export function BlockMatrixEditor({
             ...(matrix.mode === "COMBINED"
               ? [{ label: null, total: allocation.total, pending: referenceOnly && allocation.total === 0 }]
               : [
-                  { label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 },
-                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 },
+                  ...(dimensions.includes("GRADE") ? [{ label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 }] : []),
+                  ...(dimensions.includes("DIFFICULTY") ? [{ label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 }] : []),
                 ]),
-            ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
+            ...(!compact && allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
           ]}
           messages={issueMessages}
           declared={declared}
