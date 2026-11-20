@@ -297,4 +297,116 @@ describe("PromotionDetail BS §10 metrics & change history (AC-19)", () => {
     expect(textOutsideExamContent).not.toContain(" đ");
     expect(textOutsideExamContent).toContain("Active");
   });
+
+  it("R1-33: PromotionDetailView hiển thị thẻ cảnh báo chạm giá sàn khi capWarnings khác rỗng", async () => {
+    fakeApi.get(EXAMS_PATH, ok({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 }));
+    fakeApi.get(
+      PROMO_DETAIL_PATH,
+      ok(
+        promotionDetailFixture({
+          id: PROMO_ID_1,
+          capWarnings: [
+            {
+              examId: EXAM_ID_1,
+              examName: "Đề HSA Floor Cap Detail",
+              listPrice: 120000,
+              floorPrice: 50000,
+              discountedPrice: 50000,
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithPermissions(<PromotionDetailView promotionId={PROMO_ID_1} />);
+
+    expect(await screen.findByRole("heading", { name: "Cảnh báo chạm giá sàn (1)" })).toBeInTheDocument();
+    expect(screen.getAllByText("Đề HSA Floor Cap Detail").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("120.000 đ").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("50.000 đ").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("R1-62: lịch sử nhiều lần đổi discountType (PERCENT -> AMOUNT) giữ đúng đơn vị theo mốc thời gian", () => {
+    const { container } = renderWithPermissions(
+      <PromotionHistoryCard
+        discountType="AMOUNT"
+        history={[
+          {
+            id: "h-latest-amount-edit",
+            action: "UPDATED",
+            actorUsername: "ops.c",
+            occurredAt: "2026-11-20T05:00:00Z",
+            changes: [
+              {
+                field: "discountValue",
+                oldValue: 20000 as unknown as Record<string, never>,
+                newValue: 25000 as unknown as Record<string, never>,
+              },
+            ],
+          },
+          {
+            id: "h-switch-to-amount",
+            action: "UPDATED",
+            actorUsername: "ops.b",
+            occurredAt: "2026-11-19T05:00:00Z",
+            changes: [
+              {
+                field: "discountType",
+                oldValue: "PERCENT" as unknown as Record<string, never>,
+                newValue: "AMOUNT" as unknown as Record<string, never>,
+              },
+              {
+                field: "discountValue",
+                oldValue: 15 as unknown as Record<string, never>,
+                newValue: 20000 as unknown as Record<string, never>,
+              },
+            ],
+          },
+          {
+            id: "h-oldest-percent-create",
+            action: "CREATED",
+            actorUsername: "ops.a",
+            occurredAt: "2026-11-18T05:00:00Z",
+            changes: [
+              {
+                field: "discountValue",
+                oldValue: null as unknown as Record<string, never>,
+                newValue: 15 as unknown as Record<string, never>,
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const items = Array.from(container.querySelectorAll("ol > li"));
+    expect(items).toHaveLength(3);
+    // Mới nhất: AMOUNT 20.000 đ -> 25.000 đ
+    expect(within(items[0]! as HTMLElement).getByText(/20\.000 đ/)).toBeInTheDocument();
+    expect(within(items[0]! as HTMLElement).getByText(/25\.000 đ/)).toBeInTheDocument();
+    // Chuyển đổi: old=15% -> new=20.000 đ
+    expect(within(items[1]! as HTMLElement).getByText(/15%/)).toBeInTheDocument();
+    expect(within(items[1]! as HTMLElement).getByText(/20\.000 đ/)).toBeInTheDocument();
+    // Cũ nhất trước khi đổi: vẫn phải là 15% thay vì 15 đ
+    expect(within(items[2]! as HTMLElement).getByText(/15%/)).toBeInTheDocument();
+    expect(items[2]!.textContent).not.toContain("15 đ");
+  });
+
+  it("R1-7/R1-29/R1-56: hiển thị phạm vi BUNDLE bằng nhãn đã bản địa hóa trên trang chi tiết", async () => {
+    fakeApi.get(EXAMS_PATH, ok({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 }));
+    fakeApi.get(
+      PROMO_DETAIL_PATH,
+      ok(
+        promotionDetailFixture({
+          id: PROMO_ID_1,
+          scope: "BUNDLE",
+          scopeItems: [],
+        }),
+      ),
+    );
+
+    const { container } = renderWithPermissions(<PromotionDetailView promotionId={PROMO_ID_1} />);
+    expect(await screen.findByText("Gói đề thi")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("BUNDLE");
+  });
 });

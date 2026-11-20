@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import { PromotionCapWarningCard } from "../components/promotion-cap-warning-card";
@@ -34,6 +35,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -163,5 +165,35 @@ describe("PromotionCapWarningCard on detail (AC-15)", () => {
   it("không render thẻ cảnh báo khi capWarnings rỗng", () => {
     const { container } = renderWithPermissions(<PromotionCapWarningCard warnings={[]} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("R1-49: dùng container width (useCardMode) chuyển đổi duy nhất table ở desktop sang CardList trên mobile", () => {
+    const setWidth = installContainerWidth(800);
+    renderWithPermissions(
+      <PromotionCapWarningCard
+        warnings={[
+          {
+            examId: EXAM_ID_1,
+            examName: "HSA Floor Capped Exam",
+            listPrice: 120000,
+            floorPrice: 50000,
+            discountedPrice: 50000,
+          },
+        ]}
+      />,
+    );
+
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    for (const th of table.querySelectorAll("th")) {
+      expect(th).toHaveAttribute("scope", "col");
+    }
+    const scrollRegion = screen.getByRole("region");
+    expect(scrollRegion).toHaveAttribute("tabindex", "0");
+
+    setWidth(PHONE_CONTENT_WIDTH);
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByRole("list")).toBeInTheDocument();
   });
 });

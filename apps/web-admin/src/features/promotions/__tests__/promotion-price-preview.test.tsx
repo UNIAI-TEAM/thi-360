@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -205,5 +205,89 @@ describe("PromotionPricePreviewCard (AC-5)", () => {
       .map((el) => el.textContent ?? "")
       .filter((txt) => /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(txt));
     expect(leakedVietnamese).toEqual([]);
+  });
+
+  it("R1-28/R1-40/R1-16: báo lỗi kèm nút Thử lại cho tải danh sách bài thi và gọi /price-preview; hỗ trợ tìm kiếm bài thi", async () => {
+    let examFails = true;
+    let previewFails = true;
+    fakeApi.get(EXAMS_PATH, (call) => {
+      if (examFails) return fail(500, { code: "INTERNAL_ERROR" });
+      const q = (call.options?.params as { query?: Record<string, unknown> })?.query?.q;
+      const items =
+        q === "TSA"
+          ? [
+              {
+                id: EXAM_ID_2,
+                code: "TSA-01",
+                name: "TSA Exam 01",
+                kind: "TSA",
+                scope: "FULL",
+                status: "PUBLISHED",
+              },
+            ]
+          : [
+              {
+                id: EXAM_ID_1,
+                code: "HSA-01",
+                name: "HSA Exam 01",
+                kind: "HSA",
+                scope: "FULL",
+                status: "PUBLISHED",
+              },
+            ];
+      return ok({
+        items,
+        page: 0,
+        size: 100,
+        totalItems: items.length,
+        totalPages: 1,
+      });
+    });
+    fakeApi.post(PROMO_PREVIEW_PATH, () => {
+      if (previewFails) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok({
+        attemptsGranted: 1,
+        changed: true,
+        discountApplied: "PROMOTION_ONLY",
+        listPrice: 100000,
+        finalPrice: 80000,
+        productCode: "HSA-01",
+        productName: "HSA Exam 01",
+        versionNo: 1,
+        voucherNotBetter: false,
+      });
+    });
+
+    const user = userEvent.setup();
+    renderWithPermissions(<PromotionPricePreviewCard promotionId={PROMO_ID_1} />);
+
+    // 1) Lỗi tải danh sách bài thi -> hiện alert + Thử lại -> phục hồi
+    const examAlert = await screen.findByRole("alert");
+    expect(examAlert).toHaveTextContent(/hệ thống|thử lại/i);
+    examFails = false;
+    await user.click(within(examAlert).getByRole("button", { name: "Thử lại" }));
+
+    // 2) Tải xong danh sách bài thi, gọi price-preview gặp 500 -> hiện alert + Thử lại -> phục hồi
+    const previewAlert = await screen.findByRole("alert");
+    expect(previewAlert).toBeInTheDocument();
+    previewFails = false;
+    await user.click(within(previewAlert).getByRole("button", { name: "Thử lại" }));
+
+    expect(await screen.findByText("80.000 đ")).toBeInTheDocument();
+
+    // 3) Tìm kiếm bài thi gửi q + size: 100 tới EXAMS_PATH và chọn kết quả mới
+    const searchInput = screen.getByRole("textbox", { name: "Tìm bài thi để xem trước giá" });
+    await user.type(searchInput, "TSA");
+
+    await waitFor(() => {
+      const searchCall = fakeApi.calls.find(
+        (c) =>
+          c.path === EXAMS_PATH &&
+          (c.options?.params as { query?: Record<string, unknown> })?.query?.q === "TSA",
+      );
+      expect(searchCall?.options?.params).toMatchObject({
+        query: { q: "TSA", status: "PUBLISHED", size: 100 },
+      });
+    });
   });
 });
