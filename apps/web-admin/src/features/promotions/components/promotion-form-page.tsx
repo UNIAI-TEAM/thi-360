@@ -44,13 +44,23 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
   const t = useTranslations("promotions");
   const tErrors = useTranslations("promotions.errors");
   const query = usePromotionDetailQuery(promotionId);
-  const [hasConflict, setHasConflict] = useState(false);
+  const [conflictReason, setConflictReason] = useState<"version" | "in_use" | null>(null);
+  const [reloadSeq, setReloadSeq] = useState(0);
 
   useSetBreadcrumbLeaf(query.data ? query.data.name : t("edit.title"));
 
   const handleReloadLatest = async () => {
-    setHasConflict(false);
+    setConflictReason(null);
     await query.refetch();
+    setReloadSeq((seq) => seq + 1);
+  };
+
+  const handleConflict = async (reason: "version" | "in_use") => {
+    setConflictReason(reason);
+    if (reason === "in_use") {
+      await query.refetch();
+      setReloadSeq((seq) => seq + 1);
+    }
   };
 
   if (query.isLoading) {
@@ -77,7 +87,7 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
   }
 
   const detail = query.data;
-  const conflictBanner = hasConflict ? (
+  const conflictBanner = conflictReason ? (
     <div
       role="alert"
       className="flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger-bg p-4 text-danger sm:flex-row sm:items-center sm:justify-between"
@@ -85,8 +95,16 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
       <div className="flex items-start gap-3">
         <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0" />
         <div className="flex flex-col gap-0.5">
-          <p className="text-body font-semibold">{t("form.banner.conflictTitle")}</p>
-          <p className="text-caption">{t("form.banner.conflictDescription")}</p>
+          <p className="text-body font-semibold">
+            {conflictReason === "in_use"
+              ? t("form.banner.inUseConflictTitle")
+              : t("form.banner.conflictTitle")}
+          </p>
+          <p className="text-caption">
+            {conflictReason === "in_use"
+              ? t("form.banner.inUseConflictDescription")
+              : t("form.banner.conflictDescription")}
+          </p>
         </div>
       </div>
       <Button
@@ -116,10 +134,10 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
       />
 
       <PromotionForm
-        key={`${detail.revision}:${detail.updatedAt}`}
+        key={`${detail.revision}:${detail.usedCount}:${reloadSeq}`}
         mode="edit"
         initialDetail={detail}
-        onVersionConflict={() => setHasConflict(true)}
+        onConflict={handleConflict}
         conflictBanner={conflictBanner}
       />
     </div>

@@ -13,6 +13,8 @@ export const promotionKeys = {
   examPicker: (q: string) => [...promotionKeys.all, "exam-picker", q] as const,
   classPicker: (q: string) => [...promotionKeys.all, "class-picker", q] as const,
   userPicker: (q: string) => [...promotionKeys.all, "user-picker", q] as const,
+  pricePreviewsFor: (promotionId: string) =>
+    [...promotionKeys.all, "price-preview", promotionId] as const,
   pricePreview: (promotionId: string, examId: string) =>
-    [...promotionKeys.all, "price-preview", promotionId, examId] as const,
+    [...promotionKeys.pricePreviewsFor(promotionId), examId] as const,
 };

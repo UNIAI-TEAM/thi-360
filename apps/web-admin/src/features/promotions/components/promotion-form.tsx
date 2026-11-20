@@ -19,7 +19,7 @@ import { AlertCircle, CheckCircle2, Lock, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { type FormEvent, useId, useMemo, useRef, useState } from "react";
 import { Controller, type FieldPath, useForm, useWatch } from "react-hook-form";
 
 import { withIdempotencyKey } from "@/features/content/idempotency";
@@ -34,6 +34,9 @@ import { promotionErrorCode, promotionFieldErrors, resolvePromotionErrorMessage 
 import { formatDiscountSummary, formatPositiveInteger, formatVnd, parseDigits } from "../format";
 import { useCreatePromotionMutation, useUpdatePromotionMutation } from "../queries";
 import {
+  PROMOTION_CODE_MAX_LENGTH,
+  PROMOTION_DESCRIPTION_MAX_LENGTH,
+  PROMOTION_NAME_MAX_LENGTH,
   type PromotionFormValues,
   buildCreatePromotionRequest,
   buildPromotionFormSchema,
@@ -120,13 +123,13 @@ export function PromotionForm({
   mode,
   initialKind = "AUTO",
   initialDetail,
-  onVersionConflict,
+  onConflict,
   conflictBanner,
 }: {
   mode: "create" | "edit";
   initialKind?: PromotionKind;
   initialDetail?: PromotionDetail;
-  onVersionConflict?: () => void;
+  onConflict?: (reason: "version" | "in_use") => void | Promise<void>;
   conflictBanner?: React.ReactNode;
 }) {
   const t = useTranslations("promotions");
@@ -175,9 +178,12 @@ export function PromotionForm({
   const updateMutation = useUpdatePromotionMutation(initialDetail?.id ?? "");
   const [formBannerError, setFormBannerError] = useState<string | null>(null);
   const [suggestingCode, setSuggestingCode] = useState(false);
+  const submittingRef = useRef(false);
 
   const values = useWatch({ control, defaultValue: defaultValues }) as PromotionFormValues;
   const pending = createMutation.isPending || updateMutation.isPending;
+  const isBundleScope = values.scope === "BUNDLE";
+  const scopeDisabled = isUsed || isBundleScope;
 
   const nameSectionId = useId();
   const scheduleSectionId = useId();
@@ -204,6 +210,8 @@ export function PromotionForm({
   };
 
   const onSubmit = async (submittedValues: PromotionFormValues) => {
+    if (pending || submittingRef.current) return;
+    submittingRef.current = true;
     setFormBannerError(null);
     try {
       if (mode === "create") {
@@ -226,9 +234,21 @@ export function PromotionForm({
       router.push(`/promotions/${initialDetail.id}`);
     } catch (err) {
       const errCode = promotionErrorCode(err);
-      if (errCode === "VERSION_CONFLICT" || errCode === "PROMOTION_IN_USE") {
-        onVersionConflict?.();
-        setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+      if (errCode === "VERSION_CONFLICT") {
+        if (onConflict) {
+          await onConflict("version");
+        } else {
+          setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+        }
+        return;
+      }
+
+      if (errCode === "PROMOTION_IN_USE") {
+        if (onConflict) {
+          await onConflict("in_use");
+        } else {
+          setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+        }
         return;
       }
 
@@ -292,7 +312,17 @@ export function PromotionForm({
       }
 
       setFormBannerError(resolvePromotionErrorMessage(err, tErrors, { usedCount }));
+    } finally {
+      submittingRef.current = false;
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (pending || submittingRef.current) {
+      event.preventDefault();
+      return;
+    }
+    void handleSubmit(onSubmit)(event);
   };
 
   const todoItems = useMemo(() => {
@@ -312,7 +342,12 @@ export function PromotionForm({
     }
     if (values.kind === "VOUCHER") {
       const upper = values.code.trim().toUpperCase();
-      if (!upper || upper.length < 3 || !/^[A-Z0-9-]+$/.test(upper)) {
+      if (
+        !upper ||
+        upper.length < 3 ||
+        upper.length > PROMOTION_CODE_MAX_LENGTH ||
+        !/^[A-Z0-9-]+$/.test(upper)
+      ) {
         items.push({
           key: "code",
           label: t("form.aside.todoItems.code"),
@@ -442,7 +477,7 @@ export function PromotionForm({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <form
           id={formId}
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleFormSubmit}
           noValidate
           className="flex min-w-0 flex-col gap-5"
         >
@@ -498,6 +533,7 @@ export function PromotionForm({
               {(controlProps) => (
                 <Input
                   {...controlProps}
+                  maxLength={PROMOTION_NAME_MAX_LENGTH}
                   placeholder={t("form.fields.namePlaceholder")}
                   {...register("name")}
                 />
@@ -519,16 +555,26 @@ export function PromotionForm({
                 >
                   {(controlProps) => (
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        {...controlProps}
-                        disabled={isUsed}
-                        placeholder={t("form.fields.codePlaceholder")}
-                        className="font-mono uppercase"
-                        {...register("code", {
-                          onChange: (event) => {
-                            event.target.value = String(event.target.value).toUpperCase();
-                          },
-                        })}
+                      <Controller
+                        control={control}
+                        name="code"
+                        render={({ field }) => (
+                          <Input
+                            {...controlProps}
+                            disabled={isUsed}
+                            maxLength={PROMOTION_CODE_MAX_LENGTH}
+                            autoComplete="off"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                            placeholder={t("form.fields.codePlaceholder")}
+                            className="font-mono uppercase"
+                            name={field.name}
+                            ref={field.ref}
+                            value={field.value}
+                            onBlur={field.onBlur}
+                            onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+                          />
+                        )}
                       />
                       <Button
                         type="button"
@@ -551,6 +597,7 @@ export function PromotionForm({
                 <Textarea
                   {...controlProps}
                   rows={3}
+                  maxLength={PROMOTION_DESCRIPTION_MAX_LENGTH}
                   placeholder={t("form.fields.descriptionPlaceholder")}
                   {...register("description")}
                 />
@@ -661,16 +708,22 @@ export function PromotionForm({
                 error={errors.discountValue?.message}
               >
                 {(controlProps) => (
-                  <Input
-                    {...controlProps}
-                    type="text"
-                    inputMode="numeric"
-                    disabled={isUsed}
-                    {...register("discountValue", {
-                      onChange: (event) => {
-                        event.target.value = formatPositiveInteger(event.target.value);
-                      },
-                    })}
+                  <Controller
+                    control={control}
+                    name="discountValue"
+                    render={({ field }) => (
+                      <Input
+                        {...controlProps}
+                        type="text"
+                        inputMode="numeric"
+                        disabled={isUsed}
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(event) => field.onChange(formatPositiveInteger(event.target.value))}
+                      />
+                    )}
                   />
                 )}
               </FormField>
@@ -687,17 +740,23 @@ export function PromotionForm({
                 error={errors.maxDiscountVnd?.message}
               >
                 {(controlProps) => (
-                  <Input
-                    {...controlProps}
-                    type="text"
-                    inputMode="numeric"
-                    disabled={isUsed}
-                    placeholder={t("form.fields.maxDiscountVndPlaceholder")}
-                    {...register("maxDiscountVnd", {
-                      onChange: (event) => {
-                        event.target.value = formatPositiveInteger(event.target.value);
-                      },
-                    })}
+                  <Controller
+                    control={control}
+                    name="maxDiscountVnd"
+                    render={({ field }) => (
+                      <Input
+                        {...controlProps}
+                        type="text"
+                        inputMode="numeric"
+                        disabled={isUsed}
+                        placeholder={t("form.fields.maxDiscountVndPlaceholder")}
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(event) => field.onChange(formatPositiveInteger(event.target.value))}
+                      />
+                    )}
                   />
                 )}
               </FormField>
@@ -714,16 +773,23 @@ export function PromotionForm({
                 error={errors.totalLimit?.message}
               >
                 {(controlProps) => (
-                  <Input
-                    {...controlProps}
-                    type="text"
-                    inputMode="numeric"
-                    placeholder={t("form.fields.totalLimitPlaceholder")}
-                    {...register("totalLimit", {
-                      onChange: (event) => {
-                        event.target.value = formatPositiveInteger(event.target.value);
-                      },
-                    })}
+                  <Controller
+                    control={control}
+                    name="totalLimit"
+                    render={({ field }) => (
+                      <Input
+                        {...controlProps}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder={t("form.fields.totalLimitPlaceholder")}
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(event) => field.onChange(formatPositiveInteger(event.target.value))}
+                      />
+                    )}
                   />
                 )}
               </FormField>
@@ -735,17 +801,24 @@ export function PromotionForm({
                   error={errors.perUserLimit?.message}
                 >
                   {(controlProps) => (
-                    <Input
-                      {...controlProps}
-                      type="text"
-                      inputMode="numeric"
-                      disabled={isUsed}
-                      placeholder={t("common.unlimited")}
-                      {...register("perUserLimit", {
-                        onChange: (event) => {
-                          event.target.value = formatPositiveInteger(event.target.value);
-                        },
-                      })}
+                    <Controller
+                      control={control}
+                      name="perUserLimit"
+                      render={({ field }) => (
+                        <Input
+                          {...controlProps}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={10}
+                          disabled={isUsed}
+                          placeholder={t("common.unlimited")}
+                          name={field.name}
+                          ref={field.ref}
+                          value={field.value}
+                          onBlur={field.onBlur}
+                          onChange={(event) => field.onChange(formatPositiveInteger(event.target.value))}
+                        />
+                      )}
                     />
                   )}
                 </FormField>
@@ -785,8 +858,26 @@ export function PromotionForm({
           <Card id={scopeSectionId} className="flex flex-col gap-4 p-5">
             <div className="flex items-center gap-2">
               <h2 className="text-title font-semibold text-text">{t("form.sections.scope")}</h2>
-              {isUsed && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
+              {scopeDisabled && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
             </div>
+
+            {isBundleScope && (
+              <div className="flex flex-col gap-2 rounded-md border border-border bg-subtle p-3">
+                <p className="flex items-center gap-1.5 text-caption font-medium text-text-secondary">
+                  <Lock aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                  <span>{t("form.fields.scopeBundleNotice")}</span>
+                </p>
+                {initialDetail?.scopeItems && initialDetail.scopeItems.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {initialDetail.scopeItems.map((item) => (
+                      <Chip key={item.id} variant="tag">
+                        <span data-exam-content>{item.name ?? item.code ?? item.id.slice(0, 8)}</span>
+                      </Chip>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div
               className="grid grid-cols-1 gap-3 sm:grid-cols-3"
@@ -801,9 +892,9 @@ export function PromotionForm({
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    disabled={isUsed}
+                    disabled={scopeDisabled}
                     onClick={() => {
-                      if (!isUsed) {
+                      if (!scopeDisabled) {
                         setValue("scope", option, { shouldDirty: true, shouldValidate: true });
                         clearErrors(["examKindIds", "examIds"]);
                       }
@@ -811,7 +902,7 @@ export function PromotionForm({
                     className={cn(
                       "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors duration-150 motion-reduce:transition-none",
                       selected ? "border-primary-600 bg-primary-50" : "border-border bg-surface hover:bg-subtle",
-                      isUsed && "cursor-not-allowed opacity-70",
+                      scopeDisabled && "cursor-not-allowed opacity-70",
                       focusRing,
                     )}
                   >
@@ -911,15 +1002,16 @@ export function PromotionForm({
                   selectedUserIds={values.audienceUserIds}
                   onChangeClasses={(next) => {
                     setValue("audienceClassIds", next, { shouldDirty: true, shouldValidate: true });
-                    clearErrors("audienceClassIds");
+                    clearErrors(["audienceClassIds", "audienceUserIds"]);
                   }}
                   onChangeUsers={(next) => {
                     setValue("audienceUserIds", next, { shouldDirty: true, shouldValidate: true });
+                    clearErrors(["audienceClassIds", "audienceUserIds"]);
                   }}
                   disabled={isUsed}
                   initialClasses={initialDetail?.audienceClasses}
                   initialUsers={initialDetail?.audienceUsers}
-                  error={errors.audienceClassIds?.message}
+                  error={errors.audienceClassIds?.message ?? errors.audienceUserIds?.message}
                 />
               )}
             </Card>

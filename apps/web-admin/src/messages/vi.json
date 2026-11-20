@@ -7901,9 +7901,9 @@
     },
     "fieldErrors": {
       "audienceTargetsRequired": "Chọn ít nhất một lớp hoặc một học viên khi giới hạn đối tượng.",
-      "codeFormat": "Mã ưu đãi chỉ gồm chữ in hoa, số và dấu gạch ngang (từ 3 đến 32 ký tự).",
+      "codeFormat": "Mã ưu đãi chỉ gồm chữ in hoa, số và dấu gạch ngang (từ 3 đến 50 ký tự).",
       "codeRequired": "Vui lòng nhập mã ưu đãi.",
-      "descriptionTooLong": "Mô tả không được vượt quá 500 ký tự.",
+      "descriptionTooLong": "Mô tả không được vượt quá 2000 ký tự.",
       "discountAmountMin": "Số tiền giảm phải lớn hơn 0.",
       "discountPercentRange": "Phần trăm giảm phải từ 1 đến 100.",
       "discountValueRequired": "Vui lòng nhập mức giảm hợp lệ.",
@@ -7912,12 +7912,14 @@
       "endsAtRequired": "Vui lòng chọn thời điểm kết thúc.",
       "maxDiscountMin": "Giảm tối đa phải lớn hơn 0.",
       "nameRequired": "Vui lòng nhập tên khuyến mãi.",
-      "nameTooLong": "Tên khuyến mãi không được vượt quá 120 ký tự.",
+      "nameTooLong": "Tên khuyến mãi không được vượt quá 200 ký tự.",
+      "perUserLimitMax": "Giới hạn mỗi học viên không được vượt quá 2.147.483.647.",
       "perUserLimitMin": "Giới hạn mỗi học viên phải là số nguyên lớn hơn 0.",
       "scopeExamsRequired": "Chọn ít nhất một bài thi áp dụng.",
       "scopeKindsRequired": "Chọn ít nhất một loại bài thi áp dụng.",
       "startsAtRequired": "Vui lòng chọn thời điểm bắt đầu.",
       "suggestCodeFailed": "Không thể gợi ý mã lúc này. Vui lòng thử lại.",
+      "totalLimitMax": "Tổng lượt áp dụng tối đa không được vượt quá 2.147.483.647.",
       "totalLimitMin": "Tổng lượt áp dụng phải là số nguyên lớn hơn 0.",
       "totalLimitTooLow": "Tổng lượt tối đa không được nhỏ hơn số lượt đã sử dụng."
     },
@@ -7947,7 +7949,9 @@
         "conflictDescription": "Dữ liệu trên máy chủ mới hơn bản bạn đang sửa. Bấm tải lại bản mới nhất trước khi lưu lại.",
         "conflictTitle": "Xung đột phiên bản (412)",
         "formErrorTitle": "Không thể lưu khuyến mãi",
-        "inUseDescription": "Khuyến mãi này đã có {count} lượt sử dụng. Để tránh sai lệch đơn hàng và giữ chỗ, các trường loại, mã ưu đãi, mức giảm, điều kiện tối thiểu, thời điểm bắt đầu, cộng dồn, phạm vi và đối tượng đều bị khóa. Bạn chỉ có thể sửa tên, mô tả, gia hạn kết thúc, tăng tổng lượt tối đa hoặc dừng/tiếp tục.",
+        "inUseConflictDescription": "Hệ thống đã tự động tải lại dữ liệu mới nhất và khóa các trường không thể sửa sau khi phát sinh lượt sử dụng.",
+        "inUseConflictTitle": "Khuyến mãi vừa phát sinh lượt sử dụng",
+        "inUseDescription": "Khuyến mãi này đã có {count} lượt sử dụng. Để tránh sai lệch đơn hàng và giữ chỗ, các trường loại, mã ưu đãi, mức giảm, thời điểm bắt đầu, cộng dồn, phạm vi và đối tượng đều bị khóa. Bạn chỉ có thể sửa tên, mô tả, gia hạn kết thúc, tăng tổng lượt tối đa hoặc dừng/tiếp tục.",
         "inUseTitle": "Một số trường đã bị khóa do đã có lượt sử dụng"
       },
       "fields": {
@@ -8000,6 +8004,7 @@
         "perUserLimit": "Giới hạn mỗi học viên",
         "perUserLimitHint": "Để trống nếu một học viên được dùng nhiều lần.",
         "scope": "Phạm vi áp dụng",
+        "scopeBundleNotice": "Khuyến mãi này áp dụng theo gói đề thi nên phạm vi đang ở chế độ chỉ đọc.",
         "scopeOptions": {
           "ALL": "Tất cả bài thi",
           "ALLHint": "Áp dụng cho toàn bộ bài thi đang mở bán.",
@@ -8139,6 +8144,7 @@
       "errorTitle": "Không tải được danh sách",
       "scopeSummary": {
         "ALL": "Tất cả bài thi",
+        "BUNDLE": "Gói đề thi",
         "EXAM": "Bài thi chỉ định",
         "EXAM_KIND": "Theo loại bài thi"
       },
@@ -8211,6 +8217,7 @@
     },
     "scopeLabels": {
       "ALL": "Tất cả bài thi",
+      "BUNDLE": "Gói đề thi",
       "EXAM": "Bài thi ({count})",
       "EXAM_KIND": "Loại bài thi ({count})"
     },

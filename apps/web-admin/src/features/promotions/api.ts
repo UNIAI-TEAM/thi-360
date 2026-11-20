@@ -1,3 +1,5 @@
+import type { paths } from "@thi360/api-client";
+
 import { createBrowserApiClient } from "@/lib/api/client";
 
 import { toPromotionApiError } from "./errors";
@@ -61,15 +63,12 @@ export async function getPromotion(
   signal?: AbortSignal,
 ): Promise<PromotionDetail> {
   const client = createBrowserApiClient();
-  const query: {
-    page?: number;
-    size?: number;
-    redemptionState?: "RESERVED" | "CONFIRMED" | "RELEASED";
-    redemptionQ?: string;
-  } = {};
+  const query: NonNullable<
+    paths["/api/v1/admin/promotions/{id}"]["get"]["parameters"]["query"]
+  > = {};
 
-  if (typeof params?.page === "number") query.page = params.page;
-  if (typeof params?.size === "number") query.size = params.size;
+  if (typeof params?.page === "number") query.redemptionPage = params.page;
+  if (typeof params?.size === "number") query.redemptionSize = params.size;
   if (params?.redemptionState && params.redemptionState !== "ALL") {
     query.redemptionState = params.redemptionState;
   }

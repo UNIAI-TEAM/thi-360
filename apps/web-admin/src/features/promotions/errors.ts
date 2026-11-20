@@ -98,7 +98,7 @@ export function resolvePromotionErrorMessage(
     if (error.status >= 500) return tErrors("INTERNAL_ERROR");
     return tErrors("GENERIC");
   }
-  if (error instanceof TypeError || error instanceof Error) {
+  if (error instanceof TypeError) {
     return tErrors("NETWORK");
   }
   return tErrors("GENERIC");

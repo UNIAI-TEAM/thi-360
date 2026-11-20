@@ -7901,9 +7901,9 @@
     },
     "fieldErrors": {
       "audienceTargetsRequired": "Select at least one class or student when restricting the audience.",
-      "codeFormat": "Voucher code may only contain uppercase letters, numbers, and hyphens (3 to 32 characters).",
+      "codeFormat": "Voucher code may only contain uppercase letters, numbers, and hyphens (3 to 50 characters).",
       "codeRequired": "Please enter a voucher code.",
-      "descriptionTooLong": "Description must not exceed 500 characters.",
+      "descriptionTooLong": "Description must not exceed 2000 characters.",
       "discountAmountMin": "Discount amount must be greater than 0.",
       "discountPercentRange": "Discount percentage must be between 1 and 100.",
       "discountValueRequired": "Please enter a valid discount value.",
@@ -7912,12 +7912,14 @@
       "endsAtRequired": "Please select an end time.",
       "maxDiscountMin": "Maximum discount must be greater than 0.",
       "nameRequired": "Please enter a promotion name.",
-      "nameTooLong": "Promotion name must not exceed 120 characters.",
+      "nameTooLong": "Promotion name must not exceed 200 characters.",
+      "perUserLimitMax": "Per-student limit must not exceed 2,147,483,647.",
       "perUserLimitMin": "Per-student limit must be a positive integer.",
       "scopeExamsRequired": "Select at least one exam.",
       "scopeKindsRequired": "Select at least one exam kind.",
       "startsAtRequired": "Please select a start time.",
       "suggestCodeFailed": "Unable to suggest a code right now. Please try again.",
+      "totalLimitMax": "Total limit must not exceed 2,147,483,647.",
       "totalLimitMin": "Total limit must be a positive integer.",
       "totalLimitTooLow": "Total limit cannot be less than current redemptions."
     },
@@ -7947,7 +7949,9 @@
         "conflictDescription": "The server holds a newer revision than the one you are editing. Reload the latest version before saving.",
         "conflictTitle": "Version conflict (412)",
         "formErrorTitle": "Unable to save promotion",
-        "inUseDescription": "This promotion already has {count} redemptions. To protect active checkouts and reservations, type, voucher code, discount rules, minimum order, start time, combinable setting, scope, and audience are locked. You can still update name, description, end time, total limit, or status.",
+        "inUseConflictDescription": "The latest promotion details were reloaded automatically and restricted fields are now locked.",
+        "inUseConflictTitle": "Promotion just received redemptions",
+        "inUseDescription": "This promotion already has {count} redemptions. To protect active checkouts and reservations, type, voucher code, discount rules, start time, combinable setting, scope, and audience are locked. You can still update name, description, end time, total limit, or status.",
         "inUseTitle": "Locked fields due to existing redemptions"
       },
       "fields": {
@@ -8000,6 +8004,7 @@
         "perUserLimit": "Per-student limit",
         "perUserLimitHint": "Leave blank for unlimited uses per student.",
         "scope": "Scope",
+        "scopeBundleNotice": "This promotion targets exam bundles and its scope is read-only here.",
         "scopeOptions": {
           "ALL": "All exams",
           "ALLHint": "Applies to all published exams.",
@@ -8139,6 +8144,7 @@
       "errorTitle": "Unable to load list",
       "scopeSummary": {
         "ALL": "All exams",
+        "BUNDLE": "Exam bundles",
         "EXAM": "Specific exams",
         "EXAM_KIND": "By exam kind"
       },
@@ -8211,6 +8217,7 @@
     },
     "scopeLabels": {
       "ALL": "All exams",
+      "BUNDLE": "Exam bundles",
       "EXAM": "Exams ({count})",
       "EXAM_KIND": "Exam kinds ({count})"
     },

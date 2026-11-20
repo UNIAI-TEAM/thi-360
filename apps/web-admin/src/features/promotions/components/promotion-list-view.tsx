@@ -177,6 +177,7 @@ export function PromotionListView() {
     (item: PromotionSummary) => {
       if (item.scope === "EXAM") return t("list.scopeSummary.EXAM");
       if (item.scope === "EXAM_KIND") return t("list.scopeSummary.EXAM_KIND");
+      if (item.scope === "BUNDLE") return t("list.scopeSummary.BUNDLE");
       return t("list.scopeSummary.ALL");
     },
     [t],

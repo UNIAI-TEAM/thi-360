@@ -116,6 +116,7 @@ export function useUpdatePromotionMutation(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: promotionKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: promotionKeys.detailBase(id) });
+      void queryClient.invalidateQueries({ queryKey: promotionKeys.pricePreviewsFor(id) });
     },
   });
 }
@@ -128,6 +129,9 @@ export function useStopPromotionMutation() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: promotionKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: promotionKeys.detailBase(variables.id) });
+      void queryClient.invalidateQueries({
+        queryKey: promotionKeys.pricePreviewsFor(variables.id),
+      });
     },
   });
 }
@@ -140,6 +144,9 @@ export function useResumePromotionMutation() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: promotionKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: promotionKeys.detailBase(variables.id) });
+      void queryClient.invalidateQueries({
+        queryKey: promotionKeys.pricePreviewsFor(variables.id),
+      });
     },
   });
 }
@@ -151,6 +158,7 @@ export function useDeletePromotionMutation() {
     onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: promotionKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: promotionKeys.detailBase(id) });
+      void queryClient.invalidateQueries({ queryKey: promotionKeys.pricePreviewsFor(id) });
     },
   });
 }

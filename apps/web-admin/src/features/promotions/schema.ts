@@ -19,6 +19,10 @@ import type {
 } from "./types";
 
 const VOUCHER_CODE_REGEX = /^[A-Z0-9-]+$/;
+export const MAX_INT32 = 2_147_483_647;
+export const PROMOTION_NAME_MAX_LENGTH = 200;
+export const PROMOTION_DESCRIPTION_MAX_LENGTH = 2000;
+export const PROMOTION_CODE_MAX_LENGTH = 50;
 
 export interface PromotionFormValues {
   kind: PromotionKind;
@@ -67,7 +71,7 @@ export function buildPromotionFormSchema(
       totalLimit: z.string(),
       perUserLimit: z.string(),
       combinable: z.boolean(),
-      scope: z.enum(["ALL", "EXAM_KIND", "EXAM"]),
+      scope: z.enum(["ALL", "EXAM_KIND", "EXAM", "BUNDLE"]),
       examKindIds: z.array(z.string()),
       examIds: z.array(z.string()),
       audience: z.enum(["ALL", "NEW_ACCOUNT", "SELECTED"]),
@@ -83,7 +87,7 @@ export function buildPromotionFormSchema(
           path: ["name"],
           message: tFieldErrors("nameRequired"),
         });
-      } else if (trimmedName.length > 120) {
+      } else if (trimmedName.length > PROMOTION_NAME_MAX_LENGTH) {
         ctx.addIssue({
           code: "custom",
           path: ["name"],
@@ -91,7 +95,7 @@ export function buildPromotionFormSchema(
         });
       }
 
-      if (values.description.trim().length > 500) {
+      if (values.description.trim().length > PROMOTION_DESCRIPTION_MAX_LENGTH) {
         ctx.addIssue({
           code: "custom",
           path: ["description"],
@@ -138,6 +142,12 @@ export function buildPromotionFormSchema(
             code: "custom",
             path: ["totalLimit"],
             message: tFieldErrors("totalLimitMin"),
+          });
+        } else if (parsedLimit > MAX_INT32) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["totalLimit"],
+            message: tFieldErrors("totalLimitMax"),
           });
         } else if (options.mode === "edit" && parsedLimit < options.usedCount) {
           ctx.addIssue({
@@ -193,7 +203,11 @@ export function buildPromotionFormSchema(
             path: ["code"],
             message: tFieldErrors("codeRequired"),
           });
-        } else if (upperCode.length < 3 || upperCode.length > 50 || !VOUCHER_CODE_REGEX.test(upperCode)) {
+        } else if (
+          upperCode.length < 3 ||
+          upperCode.length > PROMOTION_CODE_MAX_LENGTH ||
+          !VOUCHER_CODE_REGEX.test(upperCode)
+        ) {
           ctx.addIssue({
             code: "custom",
             path: ["code"],
@@ -208,6 +222,12 @@ export function buildPromotionFormSchema(
               code: "custom",
               path: ["perUserLimit"],
               message: tFieldErrors("perUserLimitMin"),
+            });
+          } else if (perUser > MAX_INT32) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["perUserLimit"],
+              message: tFieldErrors("perUserLimitMax"),
             });
           }
         }
@@ -269,7 +289,9 @@ export function createInitialFormValues(initialKind: PromotionKind = "AUTO"): Pr
 
 export function detailToFormValues(detail: PromotionDetail): PromotionFormValues {
   const scope: PromotionScope =
-    detail.scope === "EXAM_KIND" || detail.scope === "EXAM" ? detail.scope : "ALL";
+    detail.scope === "EXAM_KIND" || detail.scope === "EXAM" || detail.scope === "BUNDLE"
+      ? detail.scope
+      : "ALL";
   const examKindIds = detail.scopeItems.filter((item) => item.type === "EXAM_KIND").map((item) => item.id);
   const examIds = detail.scopeItems.filter((item) => item.type === "EXAM").map((item) => item.id);
   const audience: PromotionAudience =
@@ -402,11 +424,13 @@ export function buildUpdatePromotionRequest(
     if (startsIso) body.startsAt = startsIso;
   }
 
-  body.scope = values.scope;
-  if (values.scope === "EXAM_KIND") {
-    body.examKindIds = values.examKindIds;
-  } else if (values.scope === "EXAM") {
-    body.examIds = values.examIds;
+  if (detail.scope !== "BUNDLE" && values.scope !== "BUNDLE") {
+    body.scope = values.scope;
+    if (values.scope === "EXAM_KIND") {
+      body.examKindIds = values.examKindIds;
+    } else if (values.scope === "EXAM") {
+      body.examIds = values.examIds;
+    }
   }
 
   if (detail.kind === "VOUCHER") {

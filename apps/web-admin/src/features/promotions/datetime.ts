@@ -18,17 +18,31 @@ export function isoToVietnamDatetimeLocal(iso: string | null | undefined): strin
 /** Convert `<input type="datetime-local">` (interpreted as Asia/Ho_Chi_Minh UTC+7) to an ISO-8601 instant. */
 export function vietnamDatetimeLocalToIso(localValue: string): string | null {
   const trimmed = localValue.trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(trimmed);
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(trimmed);
   if (!match) return null;
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
   const hour = Number(match[4]);
   const minute = Number(match[5]);
-  const utcMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0) - VN_OFFSET_MS;
-  const date = new Date(utcMs);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
+  const second = match[6] ? Number(match[6]) : 0;
+  const ms = match[7] ? Number(match[7].padEnd(3, "0")) : 0;
+  const check = new Date(Date.UTC(year, month - 1, day, hour, minute, second, ms));
+  if (
+    Number.isNaN(check.getTime()) ||
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day ||
+    check.getUTCHours() !== hour ||
+    check.getUTCMinutes() !== minute ||
+    check.getUTCSeconds() !== second ||
+    check.getUTCMilliseconds() !== ms
+  ) {
+    return null;
+  }
+  const date = new Date(check.getTime() - VN_OFFSET_MS);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 export function parseVietnamDatetimeLocalMs(localValue: string): number | null {

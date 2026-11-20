@@ -283,7 +283,9 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
         ? t("scopeLabels.EXAM_KIND", { count: detail.scopeItems.length })
         : detail.scope === "EXAM"
           ? t("scopeLabels.EXAM", { count: detail.scopeItems.length })
-          : detail.scope;
+          : detail.scope === "BUNDLE"
+            ? t("scopeLabels.BUNDLE")
+            : detail.scope;
 
   const audienceSummaryText =
     detail.kind === "AUTO"

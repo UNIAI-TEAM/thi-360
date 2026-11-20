@@ -19,7 +19,7 @@ export type PromotionKind = PromotionSummary["kind"];
 export type PromotionDiscountType = PromotionSummary["discountType"];
 export type PromotionStatus = PromotionSummary["status"];
 export type PromotionState = PromotionSummary["state"];
-export type PromotionScope = "ALL" | "EXAM_KIND" | "EXAM";
+export type PromotionScope = PromotionSummary["scope"];
 export type PromotionAudience = "ALL" | "NEW_ACCOUNT" | "SELECTED";
 
 export type PromotionStateFilter = "ALL" | "UPCOMING" | "RUNNING" | "ENDED" | "STOPPED";
