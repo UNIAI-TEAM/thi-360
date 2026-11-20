@@ -88,8 +88,9 @@ export function TopicQuotaTable({
     onChange(
       quotas.map((quota) => {
         if (quota.id !== quotaId) return quota;
-        const { percent: _percent, ...rest } = quota;
-        return { ...rest, count };
+        const next: TopicQuota = { ...quota, count };
+        delete next.percent;
+        return next;
       }),
     );
   const setEntryMode = (next: EntryMode) => {
