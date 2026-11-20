@@ -3,6 +3,7 @@
 import { cn, FormField, Input } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { parseNumberText } from "../components/block-number-input";
 import { LOCKED_FIELD } from "../components/locked-field";
 import { CountPercentInput } from "./count-percent-input";
 import { LockReason } from "./lock-reason";
@@ -64,14 +65,32 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
   const write = (input: StructureInput) => onChange((current) => writeStructure(current, input).section);
   const rawInputOf = (field: string) => (rawInput: { text: string; code: string } | null) => (rawInput ? raw.set(field, rawInput.text, rawInput.code) : raw.clear(field));
 
+  // T đang chờ (R-3): chữ đã gõ ở ô Trắc nghiệm nhỏ hơn câu con còn ở kho nhập thô, không thì T của bản nháp. Đổi số chùm hay câu con tính theo T này,
+  // nên không bao giờ tự nâng T lên theo câu con; câu con vượt T thì lỗi ở ô Trắc nghiệm và chặn lưu.
+  const choiceRaw = raw.get(MATRIX_FIELDS.choice);
+  const belowRaw = choiceRaw?.code === MATRIX_ISSUE_CODES.choiceBelowChildren ? choiceRaw : null;
+  const pendingChoice = belowRaw ? (parseNumberText(belowRaw.text, false) ?? structure.choice) : structure.choice;
+  /** Giữ hay gỡ lỗi "Ít hơn số câu con" theo T và số câu con mới; không đụng tới mục nhập thô khác của ô (số sai). */
+  const settleChoice = (children: number, choice: number) => {
+    if (single !== null && children > choice) {
+      if (!choiceRaw || belowRaw) raw.set(MATRIX_FIELDS.choice, String(choice), MATRIX_ISSUE_CODES.choiceBelowChildren);
+    } else if (belowRaw) raw.clear(MATRIX_FIELDS.choice);
+  };
+
   const writeCount = (key: RowKey, count: number) => {
     if (key === "CHOICE") {
       if (count < structure.children) raw.set(MATRIX_FIELDS.choice, String(count), MATRIX_ISSUE_CODES.choiceBelowChildren);
       else write({ choice: count });
     } else if (key === "SINGLE") write({ choice: count + structure.children });
-    else if (key === "SETS") write({ sets: count });
-    else if (key === "CHILDREN") write({ children: count, choice: structure.single + count });
-    else write({ fill: count });
+    else if (key === "SETS" || key === "CHILDREN") {
+      const children = key === "SETS" ? count * (structure.setSize ?? 0) : count;
+      const input: StructureInput = key === "SETS" ? { sets: count } : { children: count };
+      if (twoColumns) write(key === "CHILDREN" ? { ...input, choice: structure.single + children } : input);
+      else {
+        write({ ...input, choice: pendingChoice });
+        settleChoice(children, pendingChoice);
+      }
+    } else write({ fill: count });
   };
 
   /** Hai cột (V-ACT): tỷ lệ gõ ở một vai trò chờ các vai trò còn lại; đủ 100% mới quy ra số bằng phần dư lớn nhất. */
@@ -101,7 +120,7 @@ export function MatrixStructureBlock(props: MatrixBlockProps) {
     write({ choice: countOf("SINGLE") + countOf("CHILDREN"), ...(set && structure.flexible ? { children: countOf("CHILDREN") } : {}), ...(fill ? { fill: countOf("FILL") } : {}) });
   };
 
-  const valueOf = (key: RowKey) => (key === "CHOICE" ? structure.choice : key === "SINGLE" ? structure.single : key === "SETS" ? (structure.sets ?? 0) : key === "CHILDREN" ? structure.children : structure.fill);
+  const valueOf = (key: RowKey) => (key === "CHOICE" ? pendingChoice : key === "SINGLE" ? structure.single : key === "SETS" ? (structure.sets ?? 0) : key === "CHILDREN" ? structure.children : structure.fill);
   const row = (key: RowKey, field: string, label: string, hint?: string) => {
     // Ô của nhóm nào mang `data-form-block` của nhóm đó (đích `?block=`); Trắc nghiệm theo nhóm câu đơn, không có thì theo nhóm chùm.
     const blockId = key === "CHOICE" || key === "SINGLE" ? (single?.id ?? set?.id) : key === "FILL" ? fill?.id : set?.id;

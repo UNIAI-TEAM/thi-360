@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { patchSubjectFormEntry } from "../subject-forms/registry";
+import type { FakeServer } from "./fake-exams-server";
 import { boot, checkCalls, openStructure, putCalls, requestLog, sectionsOf, wireBlock, wirePart, wireSection, type Wire } from "./subject-form-harness";
 import { matrixOf, structureInput, wireBcaHistory, wireQdaScience } from "./subject-matrix-harness";
 
@@ -133,6 +134,80 @@ describe("MT của QDA, BCA: Cấu trúc câu (R-3)", () => {
         { answerType: "QUESTION_SET", value: 3 },
       ],
     });
+  });
+});
+
+describe("MT: Số chùm vượt Trắc nghiệm (R-3, R1-4, R1-7)", () => {
+  const choice = () => within(screen.getByRole("group", { name: "Trắc nghiệm" }));
+  const single = () => screen.getByRole("textbox", { name: "Trắc nghiệm đơn" });
+  const savedBlocks = (server: FakeServer, sectionId: string) => sectionsOf(putCalls(server)[0]!.body)[sectionId]!.blocks as Wire[];
+
+  it("BCA Sử T = 10: 3 chùm (9 câu con) vừa đủ; 4 chùm (12) báo lỗi tại Trắc nghiệm, T vẫn 10, không PUT, focus vào Trắc nghiệm; về 3 chùm thì lưu 9 và câu đơn 1", async () => {
+    const user = userEvent.setup();
+    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
+    await type(user, structureInput("Số chùm"), "3");
+    expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument();
+    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
+    expect(single()).toHaveValue("1");
+
+    await type(user, structureInput("Số chùm"), "4");
+    expect(await choice().findByText("Ít hơn số câu con của chùm (12)")).toBeInTheDocument();
+    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(server)).toHaveLength(0);
+    await waitFor(() => expect(structureInput("Trắc nghiệm")).toHaveFocus());
+
+    await type(user, structureInput("Số chùm"), "3");
+    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
+    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const [singleBlock, setBlock] = savedBlocks(server, "sec-su") as [Wire, Wire];
+    expect(singleBlock).toMatchObject({ questionCount: 1 });
+    expect(setBlock).toMatchObject({ setCount: 3, setSize: 3, questionCount: 9 });
+  });
+
+  it("biên: T = 12 và 4 chùm (12 câu con) không lỗi, câu đơn về 0, lưu được; 5 chùm (15) lỗi tại Trắc nghiệm và T vẫn 12", async () => {
+    const user = userEvent.setup();
+    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
+    await type(user, structureInput("Trắc nghiệm"), "12");
+    await type(user, structureInput("Số chùm"), "4");
+    expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument();
+    expect(single()).toHaveValue("0");
+    expect(structureInput("Trắc nghiệm")).toHaveValue("12");
+
+    await type(user, structureInput("Số chùm"), "5");
+    expect(await choice().findByText("Ít hơn số câu con của chùm (15)")).toBeInTheDocument();
+    expect(structureInput("Trắc nghiệm")).toHaveValue("12");
+    await type(user, structureInput("Số chùm"), "4");
+    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const [singleBlock, setBlock] = savedBlocks(server, "sec-su") as [Wire, Wire];
+    expect(singleBlock).toMatchObject({ questionCount: 0 });
+    expect(setBlock).toMatchObject({ setCount: 4, setSize: 3, questionCount: 12 });
+  });
+
+  it("R1-7: T gõ nhỏ hơn câu con rồi đổi Số chùm theo T đã gõ: lỗi gỡ khi câu con vừa T, và nhóm đơn tính từ T đã gõ chứ không từ T của bản nháp", async () => {
+    const user = userEvent.setup();
+    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
+    await type(user, structureInput("Số chùm"), "3");
+    await type(user, structureInput("Trắc nghiệm"), "8");
+    expect(await choice().findByText("Ít hơn số câu con của chùm (9)")).toBeInTheDocument();
+
+    await type(user, structureInput("Số chùm"), "4");
+    expect(await choice().findByText("Ít hơn số câu con của chùm (12)")).toBeInTheDocument();
+    expect(structureInput("Trắc nghiệm")).toHaveValue("8");
+
+    await type(user, structureInput("Số chùm"), "2");
+    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
+    expect(structureInput("Trắc nghiệm")).toHaveValue("8");
+    expect(single()).toHaveValue("2");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const [singleBlock, setBlock] = savedBlocks(server, "sec-su") as [Wire, Wire];
+    expect(singleBlock).toMatchObject({ questionCount: 2 });
+    expect(setBlock).toMatchObject({ setCount: 2, questionCount: 6 });
   });
 });
 
