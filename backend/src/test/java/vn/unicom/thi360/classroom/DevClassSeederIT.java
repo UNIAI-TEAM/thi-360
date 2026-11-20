@@ -32,6 +32,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.AbstractKeycloakIntegrationTest;
@@ -53,6 +54,7 @@ import vn.unicom.thi360.shared.security.ClientIpResolver;
 
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles({"api", "worker", "test", "dev"})
+@TestPropertySource(properties = "thi360.devdata.published-exams.enabled=false")
 @ExtendWith(OutputCaptureExtension.class)
 class DevClassSeederIT extends AbstractKeycloakIntegrationTest {
 

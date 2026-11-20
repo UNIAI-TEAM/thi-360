@@ -1,0 +1,941 @@
+{
+  "version": 1,
+  "note": "Single source of the published exam set built by exam/devdata (DS). Codes are stable keys; do not rename.",
+  "actor": "sys.admin",
+  "listingBenefits": {
+    "aiExplanation": true,
+    "strengthWeakness": true,
+    "practice": true
+  },
+  "accounts": [
+    {
+      "username": "sys.admin",
+      "role": "SYSTEM_ADMIN"
+    },
+    {
+      "username": "content.admin",
+      "role": "CONTENT_ADMIN"
+    },
+    {
+      "username": "ops.admin",
+      "role": "OPERATIONS"
+    },
+    {
+      "username": "student01",
+      "role": "STUDENT"
+    },
+    {
+      "username": "student02",
+      "role": "STUDENT"
+    },
+    {
+      "username": "student03",
+      "role": "STUDENT"
+    },
+    {
+      "username": "student04",
+      "role": "STUDENT"
+    },
+    {
+      "username": "student05",
+      "role": "STUDENT"
+    }
+  ],
+  "discontinuedExam": "DS-HSA-MATH-DISCONTINUED",
+  "voucherExam": "DS-HSA-MATH-VOUCHER",
+  "scoreOnlyExam": "DS-HSA-MATH-SCORE-ONLY",
+  "reviewExam": "DS-HSA-REVIEW",
+  "imageQuestion": {
+    "examCode": "DS-HSA-SUBJECT-TOAN",
+    "questionCode": "DS-Q-IMAGE-001",
+    "assets": [
+      {
+        "role": "PROMPT",
+        "fileName": "ds-image-prompt.png"
+      },
+      {
+        "role": "OPTION",
+        "fileName": "ds-image-option.png"
+      },
+      {
+        "role": "SOLUTION",
+        "fileName": "ds-image-solution.png"
+      }
+    ]
+  },
+  "exams": [
+    {
+      "code": "DS-HSA-FULL",
+      "productCode": "DS-HSA-FULL",
+      "name": "HSA đầy đủ (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "HSA_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-HSA-FULL-MINI",
+      "listing": {
+        "priceVnd": 199000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-PART-MATH",
+      "productCode": "DS-HSA-PART-MATH",
+      "name": "HSA theo phần Toán (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "PART",
+      "partCode": "TOAN",
+      "subjectCode": null,
+      "template": "HSA_PART_MATH",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-HSA-PART-MATH-MINI",
+      "listing": {
+        "priceVnd": 79000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-SUBJECT-TOAN",
+      "productCode": "DS-HSA-SUBJECT-TOAN",
+      "name": "HSA theo môn Toán (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "HSA_SUBJECT_TOAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-HSA-SUBJECT-TOAN-MINI",
+      "listing": {
+        "priceVnd": 59000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-QDA-FULL",
+      "productCode": "DS-QDA-FULL",
+      "name": "QDA đầy đủ (bộ dữ liệu)",
+      "kind": "QDA",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "QDA_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-QDA-FULL-MINI",
+      "listing": {
+        "priceVnd": 199000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-QDA-PART-SCIENCE",
+      "productCode": "DS-QDA-PART-SCIENCE",
+      "name": "QDA theo phần Khoa học (bộ dữ liệu)",
+      "kind": "QDA",
+      "scope": "PART",
+      "partCode": "SCIENCE",
+      "subjectCode": null,
+      "template": "QDA_PART_SCIENCE",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-QDA-PART-SCIENCE-MINI",
+      "listing": {
+        "priceVnd": 79000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-BCA-FULL",
+      "productCode": "DS-BCA-FULL",
+      "name": "BCA đầy đủ (bộ dữ liệu)",
+      "kind": "BCA",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "BCA_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-BCA-FULL-MINI",
+      "listing": {
+        "priceVnd": 149000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-BCA-PART-TN-TU-CHON",
+      "productCode": "DS-BCA-PART-TN-TU-CHON",
+      "name": "BCA theo phần trắc nghiệm tự chọn (bộ dữ liệu)",
+      "kind": "BCA",
+      "scope": "PART",
+      "partCode": "TN_TU_CHON",
+      "subjectCode": null,
+      "template": "BCA_PART_TN_TU_CHON",
+      "buildMode": "STANDARD",
+      "durationMinutes": 30,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-BCA-PART-TN-TU-CHON-MINI",
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VACT-FULL",
+      "productCode": "DS-VACT-FULL",
+      "name": "V-ACT đầy đủ (bộ dữ liệu)",
+      "kind": "VACT",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "VACT_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 149000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VACT-PART-LANGUAGE",
+      "productCode": "DS-VACT-PART-LANGUAGE",
+      "name": "V-ACT theo phần Sử dụng ngôn ngữ (bộ dữ liệu)",
+      "kind": "VACT",
+      "scope": "PART",
+      "partCode": "LANGUAGE",
+      "subjectCode": null,
+      "template": "VACT_PART_LANGUAGE",
+      "buildMode": "STANDARD",
+      "durationMinutes": 60,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-VACT-PART-LANGUAGE-MINI",
+      "listing": {
+        "priceVnd": 69000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VACT-SUBJECT-TOAN",
+      "productCode": "DS-VACT-SUBJECT-TOAN",
+      "name": "V-ACT theo môn Toán (bộ dữ liệu)",
+      "kind": "VACT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "VACT_SUBJECT_TOAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": 45,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-VACT-SUBJECT-TOAN-MINI",
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SP2E-MATH-2025",
+      "productCode": "DS-SP2E-MATH-2025",
+      "name": "SP2E Toán minh họa cũ (bộ dữ liệu)",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "SP2E_MATH_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-SP2E-MATH-2025-MINI",
+      "listing": {
+        "priceVnd": 39000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SP2E-MATH-2026",
+      "productCode": "DS-SP2E-MATH-2026",
+      "name": "SP2E Toán 2026 (bộ dữ liệu)",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "SP2E_MATH_2026",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-SP2E-MATH-2026-MINI",
+      "listing": {
+        "priceVnd": 39000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SPT-INFORMATICS",
+      "productCode": "DS-SPT-INFORMATICS",
+      "name": "SPT Tin học (bộ dữ liệu)",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "INFORMATICS",
+      "template": "SPT_INFORMATICS_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": 45,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-SPT-INFORMATICS-MINI",
+      "listing": {
+        "priceVnd": 39000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-THPTQG-INFORMATICS",
+      "productCode": "DS-THPTQG-INFORMATICS",
+      "name": "THPTQG Tin học (bộ dữ liệu)",
+      "kind": "THPTQG",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "INFORMATICS",
+      "template": "THPTQG_INFORMATICS_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-THPTQG-INFORMATICS-MINI",
+      "listing": {
+        "priceVnd": 39000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-THPTQG-MATH-P1",
+      "productCode": "DS-THPTQG-MATH-P1",
+      "name": "THPTQG Toán Phần I (bộ dữ liệu)",
+      "kind": "THPTQG",
+      "scope": "PART",
+      "partCode": "P1",
+      "subjectCode": "TOAN",
+      "template": "THPTQG_MATH_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": 30,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-THPTQG-MATH-P1-MINI",
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-REVIEW",
+      "productCode": "DS-HSA-REVIEW",
+      "name": "HSA bài ôn Toán (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "HSA_REVIEW",
+      "buildMode": "REVIEW",
+      "durationMinutes": 30,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-HSA-REVIEW-MINI",
+      "listing": {
+        "priceVnd": 29000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSCA-TOAN",
+      "productCode": "DS-HSCA-TOAN",
+      "name": "H-SCA Toán (bộ dữ liệu)",
+      "kind": "HSCA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "HSCA_SUBJECT_TOAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSCA-ANH",
+      "productCode": "DS-HSCA-ANH",
+      "name": "H-SCA Tiếng Anh (bộ dữ liệu)",
+      "kind": "HSCA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "ANH",
+      "template": "HSCA_SUBJECT_ANH",
+      "buildMode": "STANDARD",
+      "durationMinutes": 60,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": "DS-HSCA-ANH-MINI",
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSCA-HOA",
+      "productCode": "DS-HSCA-HOA",
+      "name": "H-SCA Hóa học (bộ dữ liệu)",
+      "kind": "HSCA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "HOA",
+      "template": "HSCA_SUBJECT_HOA",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VSAT-TOAN",
+      "productCode": "DS-VSAT-TOAN",
+      "name": "V-SAT Toán (bộ dữ liệu)",
+      "kind": "VSAT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "VSAT_SUBJECT_TOAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VSAT-VAN",
+      "productCode": "DS-VSAT-VAN",
+      "name": "V-SAT Ngữ văn (bộ dữ liệu)",
+      "kind": "VSAT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "VAN",
+      "template": "VSAT_SUBJECT_VAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": 60,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VSAT-ANH",
+      "productCode": "DS-VSAT-ANH",
+      "name": "V-SAT Tiếng Anh (bộ dữ liệu)",
+      "kind": "VSAT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "ANH",
+      "template": "VSAT_SUBJECT_ANH",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "FULL",
+      "purpose": "MAIN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-FULL-MINI",
+      "productCode": "DS-HSA-FULL-MINI",
+      "name": "HSA đầy đủ (thu nhỏ)",
+      "kind": "HSA",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "HSA_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-HSA-FULL",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      },
+      "sectionUnits": {
+        "LY": 8,
+        "HOA": 8,
+        "SINH": 8,
+        "SU": 8,
+        "DIA": 8
+      }
+    },
+    {
+      "code": "DS-HSA-PART-MATH-MINI",
+      "productCode": "DS-HSA-PART-MATH-MINI",
+      "name": "HSA theo phần Toán (thu nhỏ)",
+      "kind": "HSA",
+      "scope": "PART",
+      "partCode": "TOAN",
+      "subjectCode": null,
+      "template": "HSA_PART_MATH",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-HSA-PART-MATH",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-SUBJECT-TOAN-MINI",
+      "productCode": "DS-HSA-SUBJECT-TOAN-MINI",
+      "name": "HSA theo môn Toán (thu nhỏ)",
+      "kind": "HSA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "HSA_SUBJECT_TOAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-HSA-SUBJECT-TOAN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-QDA-FULL-MINI",
+      "productCode": "DS-QDA-FULL-MINI",
+      "name": "QDA đầy đủ (thu nhỏ)",
+      "kind": "QDA",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "QDA_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-QDA-FULL",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      },
+      "sectionUnits": {
+        "LY": 11,
+        "HOA": 11,
+        "SINH": 11,
+        "SU": 11,
+        "DIA": 11
+      }
+    },
+    {
+      "code": "DS-QDA-PART-SCIENCE-MINI",
+      "productCode": "DS-QDA-PART-SCIENCE-MINI",
+      "name": "QDA theo phần Khoa học (thu nhỏ)",
+      "kind": "QDA",
+      "scope": "PART",
+      "partCode": "SCIENCE",
+      "subjectCode": null,
+      "template": "QDA_PART_SCIENCE",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-QDA-PART-SCIENCE",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      },
+      "sectionUnits": {
+        "SU": 5,
+        "DIA": 5
+      }
+    },
+    {
+      "code": "DS-BCA-FULL-MINI",
+      "productCode": "DS-BCA-FULL-MINI",
+      "name": "BCA đầy đủ (thu nhỏ)",
+      "kind": "BCA",
+      "scope": "FULL",
+      "partCode": null,
+      "subjectCode": null,
+      "template": "BCA_FULL",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-BCA-FULL",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-BCA-PART-TN-TU-CHON-MINI",
+      "productCode": "DS-BCA-PART-TN-TU-CHON-MINI",
+      "name": "BCA theo phần trắc nghiệm tự chọn (thu nhỏ)",
+      "kind": "BCA",
+      "scope": "PART",
+      "partCode": "TN_TU_CHON",
+      "subjectCode": null,
+      "template": "BCA_PART_TN_TU_CHON",
+      "buildMode": "STANDARD",
+      "durationMinutes": 30,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-BCA-PART-TN-TU-CHON",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VACT-PART-LANGUAGE-MINI",
+      "productCode": "DS-VACT-PART-LANGUAGE-MINI",
+      "name": "V-ACT theo phần Sử dụng ngôn ngữ (thu nhỏ)",
+      "kind": "VACT",
+      "scope": "PART",
+      "partCode": "LANGUAGE",
+      "subjectCode": null,
+      "template": "VACT_PART_LANGUAGE",
+      "buildMode": "STANDARD",
+      "durationMinutes": 60,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-VACT-PART-LANGUAGE",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-VACT-SUBJECT-TOAN-MINI",
+      "productCode": "DS-VACT-SUBJECT-TOAN-MINI",
+      "name": "V-ACT theo môn Toán (thu nhỏ)",
+      "kind": "VACT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "VACT_SUBJECT_TOAN",
+      "buildMode": "STANDARD",
+      "durationMinutes": 45,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-VACT-SUBJECT-TOAN",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SP2E-MATH-2025-MINI",
+      "productCode": "DS-SP2E-MATH-2025-MINI",
+      "name": "SP2E Toán minh họa cũ (thu nhỏ)",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "SP2E_MATH_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-SP2E-MATH-2025",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SP2E-MATH-2026-MINI",
+      "productCode": "DS-SP2E-MATH-2026-MINI",
+      "name": "SP2E Toán 2026 (thu nhỏ)",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "SP2E_MATH_2026",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-SP2E-MATH-2026",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SPT-INFORMATICS-MINI",
+      "productCode": "DS-SPT-INFORMATICS-MINI",
+      "name": "SPT Tin học (thu nhỏ)",
+      "kind": "SPT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "INFORMATICS",
+      "template": "SPT_INFORMATICS_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": 45,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-SPT-INFORMATICS",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-THPTQG-INFORMATICS-MINI",
+      "productCode": "DS-THPTQG-INFORMATICS-MINI",
+      "name": "THPTQG Tin học (thu nhỏ)",
+      "kind": "THPTQG",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "INFORMATICS",
+      "template": "THPTQG_INFORMATICS_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-THPTQG-INFORMATICS",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-THPTQG-MATH-P1-MINI",
+      "productCode": "DS-THPTQG-MATH-P1-MINI",
+      "name": "THPTQG Toán Phần I (thu nhỏ)",
+      "kind": "THPTQG",
+      "scope": "PART",
+      "partCode": "P1",
+      "subjectCode": "TOAN",
+      "template": "THPTQG_MATH_2025",
+      "buildMode": "STANDARD",
+      "durationMinutes": 30,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-THPTQG-MATH-P1",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-REVIEW-MINI",
+      "productCode": "DS-HSA-REVIEW-MINI",
+      "name": "HSA bài ôn Toán (thu nhỏ)",
+      "kind": "HSA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "TOAN",
+      "template": "HSA_REVIEW",
+      "buildMode": "REVIEW",
+      "durationMinutes": 30,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniOf": "DS-HSA-REVIEW",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSCA-ANH-MINI",
+      "productCode": "DS-HSCA-ANH-MINI",
+      "name": "H-SCA Tiếng Anh (thu nhỏ)",
+      "kind": "HSCA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "ANH",
+      "template": "HSCA_SUBJECT_ANH",
+      "buildMode": "STANDARD",
+      "durationMinutes": 10,
+      "size": "MINI",
+      "purpose": "MINI",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 19000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      },
+      "miniOf": "DS-HSCA-ANH"
+    },
+    {
+      "code": "DS-HSA-MATH-VOUCHER",
+      "productCode": "DS-HSA-MATH-VOUCHER",
+      "name": "HSA Toán dùng với voucher 100% (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "PART",
+      "partCode": "TOAN",
+      "subjectCode": null,
+      "template": "HSA_PART_MATH",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "MINI",
+      "purpose": "VOUCHER_100",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-MATH-DISCONTINUED",
+      "productCode": "DS-HSA-MATH-DISCONTINUED",
+      "name": "HSA Toán đã ngừng bán (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "PART",
+      "partCode": "TOAN",
+      "subjectCode": null,
+      "template": "HSA_PART_MATH",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "MINI",
+      "purpose": "DISCONTINUED",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 49000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-HSA-MATH-SCORE-ONLY",
+      "productCode": "DS-HSA-MATH-SCORE-ONLY",
+      "name": "HSA Toán chỉ xem điểm (bộ dữ liệu)",
+      "kind": "HSA",
+      "scope": "PART",
+      "partCode": "TOAN",
+      "subjectCode": null,
+      "template": "HSA_PART_MATH",
+      "buildMode": "STANDARD",
+      "durationMinutes": null,
+      "size": "MINI",
+      "purpose": "SCORE_ONLY",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 29000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE"
+      }
+    }
+  ],
+  "hscaChemistry": {
+    "examCode": "DS-HSCA-HOA",
+    "familyCode": "HSCA-HOA-SA",
+    "answerFormat": "CHEM_FORMULA",
+    "answers": [
+      "H2O",
+      "Na+",
+      "Cl-",
+      "NH4+",
+      "OH-",
+      "CO2",
+      "NaCl",
+      "Fe3+",
+      "Cu2+",
+      "HCl",
+      "CH4",
+      "SO4(2-)"
+    ]
+  }
+}
