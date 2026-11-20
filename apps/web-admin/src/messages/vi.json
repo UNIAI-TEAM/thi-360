@@ -7785,5 +7785,479 @@
       "latexPlaceholder": "x^2 + y^2 = z^2",
       "title": "Chèn công thức"
     }
+  },
+  "promotions": {
+    "actions": {
+      "backToDetail": "Quay lại chi tiết",
+      "backToList": "Quay lại danh sách",
+      "cancel": "Hủy",
+      "clearFilters": "Xóa bộ lọc",
+      "clearSearch": "Xóa từ khóa tìm kiếm",
+      "create": "Tạo khuyến mãi",
+      "createVoucher": "Tạo voucher",
+      "delete": "Xóa",
+      "deleteDisabledUsed": "Không thể xóa vì khuyến mãi đã có lượt sử dụng.",
+      "edit": "Chỉnh sửa",
+      "reload": "Tải lại",
+      "reloadLatest": "Tải bản mới nhất",
+      "resume": "Tiếp tục",
+      "retry": "Thử lại",
+      "save": "Lưu thay đổi",
+      "saving": "Đang lưu...",
+      "stop": "Dừng",
+      "suggestCode": "Gợi ý mã",
+      "suggestingCode": "Đang tạo...",
+      "viewDetail": "Xem chi tiết"
+    },
+    "audienceLabels": {
+      "ALL": "Tất cả học viên",
+      "NEW_ACCOUNT": "Tài khoản mới",
+      "SELECTED": "Chỉ định ({classes, plural, other {# lớp}}, {users, plural, other {# học viên}})",
+      "SELECTEDClasses": "Theo lớp ({count})",
+      "SELECTEDUsers": "Theo học viên ({count})",
+      "unknownClass": "Lớp #{id}",
+      "unknownUser": "Học viên #{id}"
+    },
+    "capWarning": {
+      "badge": "Chạm giá sàn",
+      "cardDescription": "Một số bài thi sau khi áp dụng khuyến mãi sẽ chạm giá sàn tối thiểu nên hệ thống sẽ giữ ở mức giá sàn.",
+      "cardTitle": "Cảnh báo chạm giá sàn ({count})",
+      "discountedPrice": "Sau giảm",
+      "examName": "Bài thi",
+      "floorPrice": "Giá sàn",
+      "inlineSummary": "Giá bị giữ ở mức tối thiểu {floor} tại {count, plural, other {# bài thi}}",
+      "listMore": "+{count} bài khác",
+      "listPrefix": "Chạm giá sàn:",
+      "listPrice": "Giá gốc",
+      "tableLabel": "Danh sách bài thi chạm giá sàn"
+    },
+    "common": {
+      "loading": "Đang tải...",
+      "noDescription": "Chưa có mô tả",
+      "unlimited": "Không giới hạn"
+    },
+    "create": {
+      "description": "Thiết lập khuyến mãi tự động hoặc mã ưu đãi áp dụng khi học viên mua bài thi.",
+      "title": "Tạo khuyến mãi"
+    },
+    "detail": {
+      "createdAt": "Tạo lúc",
+      "description": "Thông tin cấu hình, lượt sử dụng, xem trước giá và lịch sử thay đổi.",
+      "errorDescription": "Không tải được thông tin khuyến mãi. Vui lòng thử lại.",
+      "errorTitle": "Không tải được chi tiết",
+      "info": {
+        "audience": "Đối tượng",
+        "code": "Mã ưu đãi",
+        "combinable": "Cộng dồn",
+        "combinableNo": "Không cộng dồn",
+        "combinableYes": "Cho phép cộng dồn",
+        "description": "Mô tả",
+        "discount": "Mức giảm",
+        "maxDiscount": "Giảm tối đa",
+        "perUserLimit": "Mỗi học viên",
+        "scope": "Phạm vi áp dụng",
+        "schedule": "Hiệu lực",
+        "stackingNote": "Khuyến mãi tự động luôn áp dụng độc lập, không cộng dồn cùng mã ưu đãi.",
+        "title": "Thông tin cấu hình"
+      },
+      "metrics": {
+        "confirmedReserved": "{confirmed} đã xác nhận · {reserved} đang giữ",
+        "discountValue": "Mức giảm",
+        "period": "Thời gian",
+        "periodRange": "{startsAt} - {endsAt}",
+        "totalDiscountPaid": "Tổng đã giảm",
+        "usage": "Đã sử dụng",
+        "usageWithLimit": "{used} / {limit}",
+        "usageWithoutLimit": "{used} / Không giới hạn"
+      },
+      "notFoundDescription": "Khuyến mãi không tồn tại hoặc đã bị xóa.",
+      "notFoundTitle": "Không tìm thấy khuyến mãi",
+      "revision": "Phiên bản #{revision}",
+      "subtitleAuto": "Khuyến mãi tự động",
+      "subtitleVoucher": "Mã ưu đãi {code}",
+      "title": "Chi tiết khuyến mãi",
+      "updatedAt": "Cập nhật"
+    },
+    "dialogs": {
+      "delete": {
+        "confirm": "Xóa khuyến mãi",
+        "description": "Xóa vĩnh viễn \"{name}\"? Thao tác này không thể hoàn tác.",
+        "errorInUse": "Khuyến mãi vừa phát sinh lượt sử dụng nên không thể xóa. Hệ thống đã tải lại thông tin mới nhất.",
+        "title": "Xác nhận xóa khuyến mãi"
+      },
+      "resume": {
+        "confirm": "Tiếp tục",
+        "description": "Tiếp tục áp dụng \"{name}\" theo lịch hiệu lực đã cấu hình?",
+        "title": "Tiếp tục khuyến mãi"
+      },
+      "stop": {
+        "confirm": "Dừng khuyến mãi",
+        "description": "Dừng \"{name}\" ngay lập tức? Các giữ chỗ cũ (nếu có) vẫn xử lý theo quy tắc thanh toán.",
+        "title": "Dừng khuyến mãi"
+      }
+    },
+    "discountLabels": {
+      "amount": "-{amount}",
+      "perUserOnce": "{limit} lượt/học viên",
+      "percent": "-{percent}%",
+      "percentWithCap": "-{percent}% (tối đa {cap})"
+    },
+    "edit": {
+      "description": "Cập nhật thông tin khuyến mãi. Một số trường bị khóa sau khi đã có lượt sử dụng.",
+      "errorDescription": "Không tải được khuyến mãi để chỉnh sửa.",
+      "errorTitle": "Không tải được dữ liệu",
+      "title": "Chỉnh sửa khuyến mãi"
+    },
+    "errors": {
+      "CONFLICT": "Dữ liệu xung đột với trạng thái hiện tại. Vui lòng kiểm tra lại.",
+      "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này.",
+      "GENERIC": "Không thể hoàn thành thao tác. Vui lòng thử lại.",
+      "INTERNAL_ERROR": "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.",
+      "NETWORK": "Không kết nối được tới máy chủ. Vui lòng kiểm tra mạng và thử lại.",
+      "NOT_FOUND": "Khuyến mãi không còn tồn tại.",
+      "PRODUCT_GONE": "Bài thi này không còn bán hoặc chưa sẵn sàng áp dụng.",
+      "PROMOTION_ENDED": "Khuyến mãi đã kết thúc nên không thể tiếp tục.",
+      "PROMOTION_ENDS_AT_PAST": "Thời điểm kết thúc phải nằm trong tương lai.",
+      "PROMOTION_IN_USE": "Khuyến mãi vừa có lượt sử dụng nên các trường bị khóa không thể sửa hoặc xóa. Đang tải bản mới nhất.",
+      "PROMOTION_SCOPE_INVALID": "Phạm vi áp dụng cần ít nhất một mục hợp lệ hoặc bài thi đã chọn không ở trạng thái sẵn sàng.",
+      "PROMOTION_TOTAL_LIMIT_BELOW_USED": "Tổng lượt tối đa phải lớn hơn hoặc bằng số lượt đã sử dụng ({used}).",
+      "PROMOTION_TOTAL_LIMIT_BELOW_USED_GENERIC": "Tổng lượt tối đa không được nhỏ hơn số lượt đã sử dụng.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng đợi một lát rồi thử lại.",
+      "VALIDATION_FAILED": "Một số thông tin chưa hợp lệ. Vui lòng kiểm tra lại các trường được đánh dấu.",
+      "VERSION_CONFLICT": "Khuyến mãi vừa được người khác cập nhật. Hãy tải lại bản mới nhất trước khi lưu.",
+      "VOUCHER_CODE_TAKEN": "Mã ưu đãi này đã tồn tại. Vui lòng chọn mã khác hoặc bấm Gợi ý mã."
+    },
+    "fieldErrors": {
+      "audienceTargetsRequired": "Chọn ít nhất một lớp hoặc một học viên khi giới hạn đối tượng.",
+      "codeFormat": "Mã ưu đãi chỉ gồm chữ in hoa, số và dấu gạch ngang (từ 3 đến 50 ký tự).",
+      "codeRequired": "Vui lòng nhập mã ưu đãi.",
+      "descriptionTooLong": "Mô tả không được vượt quá 2000 ký tự.",
+      "discountAmountMin": "Số tiền giảm phải lớn hơn 0.",
+      "discountPercentRange": "Phần trăm giảm phải từ 1 đến 100.",
+      "discountValueRequired": "Vui lòng nhập mức giảm hợp lệ.",
+      "endsAfterStarts": "Thời điểm kết thúc phải sau thời điểm bắt đầu.",
+      "endsAtFuture": "Thời điểm kết thúc phải nằm ở tương lai.",
+      "endsAtRequired": "Vui lòng chọn thời điểm kết thúc.",
+      "maxDiscountMin": "Giảm tối đa phải lớn hơn 0.",
+      "nameRequired": "Vui lòng nhập tên khuyến mãi.",
+      "nameTooLong": "Tên khuyến mãi không được vượt quá 200 ký tự.",
+      "perUserLimitMax": "Giới hạn mỗi học viên không được vượt quá 2.147.483.647.",
+      "perUserLimitMin": "Giới hạn mỗi học viên phải là số nguyên lớn hơn 0.",
+      "scopeExamsRequired": "Chọn ít nhất một bài thi áp dụng.",
+      "scopeKindsRequired": "Chọn ít nhất một loại bài thi áp dụng.",
+      "startsAtRequired": "Vui lòng chọn thời điểm bắt đầu.",
+      "suggestCodeFailed": "Không thể gợi ý mã lúc này. Vui lòng thử lại.",
+      "totalLimitMax": "Tổng lượt áp dụng tối đa không được vượt quá 2.147.483.647.",
+      "totalLimitMin": "Tổng lượt áp dụng phải là số nguyên lớn hơn 0.",
+      "totalLimitTooLow": "Tổng lượt tối đa không được nhỏ hơn số lượt đã sử dụng."
+    },
+    "form": {
+      "aside": {
+        "summaryAudience": "Đối tượng",
+        "summaryDiscount": "Mức giảm",
+        "summaryKind": "Loại",
+        "summaryPeriod": "Thời gian",
+        "summaryPlaceholder": "Chưa thiết lập",
+        "summaryScope": "Phạm vi",
+        "summaryTitle": "Tóm tắt khuyến mãi",
+        "todoComplete": "Đủ thông tin bắt buộc, sẵn sàng lưu.",
+        "todoItems": {
+          "audienceTargets": "Chọn ít nhất một lớp hoặc học viên",
+          "code": "Nhập mã ưu đãi hợp lệ",
+          "discountValue": "Nhập mức giảm hợp lệ",
+          "endsAt": "Chọn thời điểm kết thúc sau lúc bắt đầu",
+          "name": "Nhập tên khuyến mãi",
+          "scopeTargets": "Chọn ít nhất một mục phạm vi",
+          "startsAt": "Chọn thời điểm bắt đầu"
+        },
+        "todoRemaining": "Cần hoàn thiện ({count})",
+        "todoTitle": "Việc cần làm"
+      },
+      "banner": {
+        "conflictDescription": "Dữ liệu trên máy chủ mới hơn bản bạn đang sửa. Bấm tải lại bản mới nhất trước khi lưu lại.",
+        "conflictTitle": "Xung đột phiên bản (412)",
+        "formErrorTitle": "Không thể lưu khuyến mãi",
+        "inUseConflictDescription": "Hệ thống đã tự động tải lại dữ liệu mới nhất và khóa các trường không thể sửa sau khi phát sinh lượt sử dụng.",
+        "inUseConflictTitle": "Khuyến mãi vừa phát sinh lượt sử dụng",
+        "inUseDescription": "Khuyến mãi này đã có {count, plural, other {# lượt sử dụng}}. Để tránh sai lệch đơn hàng và giữ chỗ, các trường loại, mã ưu đãi, mức giảm, thời điểm bắt đầu, cộng dồn, phạm vi và đối tượng đều bị khóa. Bạn chỉ có thể sửa tên, mô tả, gia hạn kết thúc, tăng tổng lượt tối đa hoặc dừng/tiếp tục.",
+        "inUseTitle": "Một số trường đã bị khóa do đã có lượt sử dụng"
+      },
+      "fields": {
+        "audience": "Đối tượng áp dụng",
+        "audienceHint": "Chỉ áp dụng cho voucher; khuyến mãi tự động luôn áp dụng cho tất cả học viên.",
+        "audienceOptions": {
+          "ALL": "Tất cả học viên",
+          "ALLHint": "Mọi học viên có thể dùng mã nếu đạt điều kiện.",
+          "NEW_ACCOUNT": "Tài khoản mới",
+          "NEW_ACCOUNTHint": "Chỉ áp dụng cho tài khoản mới đủ điều kiện.",
+          "SELECTED": "Lớp hoặc học viên chỉ định",
+          "SELECTEDHint": "Chỉ áp dụng cho các lớp hoặc học viên được chọn bên dưới."
+        },
+        "classesLabel": "Chọn lớp học",
+        "classesNoPermission": "Tài khoản hiện tại không có quyền xem danh sách lớp (CLASS.VIEW). Chỉ có thể giữ nguyên hoặc bỏ bớt lớp đã gắn.",
+        "classesPlaceholder": "Tìm tên hoặc mã lớp...",
+        "classesSelected": "Đã chọn ({count, plural, other {# lớp}})",
+        "code": "Mã ưu đãi",
+        "codeHint": "Chữ in hoa, số và gạch ngang (-). Hệ thống tự chuyển sang chữ hoa.",
+        "codePlaceholder": "VD: SUMMER2026",
+        "combinable": "Cộng dồn khuyến mãi",
+        "combinableHint": "Cho phép áp dụng cùng mã cộng dồn khác trên một đơn hàng.",
+        "combinableLabel": "Cho phép cộng dồn khi thanh toán",
+        "description": "Mô tả",
+        "descriptionPlaceholder": "Ghi chú mục đích chương trình hoặc điều kiện lưu ý...",
+        "discountType": "Kiểu giảm",
+        "discountTypeAmount": "Giảm số tiền cố định (đ)",
+        "discountTypePercent": "Giảm theo phần trăm (%)",
+        "discountValueAmount": "Số tiền giảm (đ)",
+        "discountValueAmountHint": "Hiển thị: {formatted}",
+        "discountValuePercent": "Phần trăm giảm (%)",
+        "endsAt": "Kết thúc lúc (UTC+7)",
+        "examKindsLabel": "Chọn loại bài thi",
+        "examsLabel": "Chọn bài thi đang bán",
+        "examsNoPermission": "Tài khoản hiện tại không có quyền xem danh sách bài thi (EXAM.VIEW).",
+        "examsPlaceholder": "Tìm tên hoặc mã bài thi...",
+        "examsSelected": "Đã chọn ({count, plural, other {# bài thi}})",
+        "kind": "Loại khuyến mãi",
+        "kindAuto": "Khuyến mãi tự động",
+        "kindAutoHint": "Tự động trừ vào giá khi học viên xem hoặc mua bài thi phù hợp.",
+        "kindVoucher": "Mã ưu đãi (Voucher)",
+        "kindVoucherHint": "Học viên nhập mã lúc thanh toán; hỗ trợ giới hạn mỗi người và đối tượng.",
+        "maxDiscountVnd": "Giảm tối đa (đ)",
+        "maxDiscountVndHint": "Để trống nếu không trần số tiền giảm. Hiển thị: {formatted}",
+        "maxDiscountVndPlaceholder": "Không giới hạn",
+        "minOrderVnd": "Giá trị đơn tối thiểu (đ)",
+        "minOrderVndHint": "0đ nghĩa là không yêu cầu giá trị đơn tối thiểu.",
+        "name": "Tên khuyến mãi",
+        "namePlaceholder": "VD: Ưu đãi khai giảng khối 12",
+        "perUserLimit": "Giới hạn mỗi học viên",
+        "perUserLimitHint": "Để trống nếu một học viên được dùng nhiều lần.",
+        "scope": "Phạm vi áp dụng",
+        "scopeBundleNotice": "Khuyến mãi này áp dụng theo gói đề thi nên phạm vi đang ở chế độ chỉ đọc.",
+        "scopeOptions": {
+          "ALL": "Tất cả bài thi",
+          "ALLHint": "Áp dụng cho toàn bộ bài thi đang mở bán.",
+          "EXAM": "Bài thi chỉ định",
+          "EXAMHint": "Chỉ áp dụng cho các bài thi được chọn bên dưới.",
+          "EXAM_KIND": "Theo loại bài thi",
+          "EXAM_KINDHint": "Áp dụng cho tất cả bài thi thuộc loại đã chọn."
+        },
+        "startsAt": "Bắt đầu lúc (UTC+7)",
+        "status": "Trạng thái",
+        "statusActive": "Hoạt động",
+        "statusStopped": "Đã dừng",
+        "totalLimit": "Tổng lượt áp dụng tối đa",
+        "totalLimitHint": "Để trống nếu không giới hạn tổng lượt. Khi đã có lượt dùng phải >= {used}.",
+        "totalLimitHintUnlimited": "Để trống nếu không giới hạn.",
+        "totalLimitPlaceholder": "Không giới hạn",
+        "usersLabel": "Chọn học viên",
+        "usersNoPermission": "Tài khoản hiện tại không có quyền xem danh sách học viên (USER.VIEW). Chỉ có thể giữ nguyên hoặc bỏ bớt học viên đã gắn.",
+        "usersPlaceholder": "Tên, tài khoản hoặc email",
+        "usersSelected": "Đã chọn ({count, plural, other {# học viên}})"
+      },
+      "lockedChip": "Đã khóa",
+      "picker": {
+        "empty": "Không tìm thấy mục phù hợp.",
+        "error": "Không tải được danh sách chọn.",
+        "loading": "Đang tìm...",
+        "removeItem": "Bỏ {label}"
+      },
+      "sections": {
+        "audience": "5. Đối tượng áp dụng",
+        "general": "1. Thông tin chung",
+        "limits": "3. Mức giảm và giới hạn",
+        "schedule": "2. Thời gian hiệu lực",
+        "scope": "4. Phạm vi áp dụng"
+      },
+      "toast": {
+        "created": "Đã tạo khuyến mãi thành công.",
+        "deleted": "Đã xóa khuyến mãi.",
+        "resumed": "Đã tiếp tục khuyến mãi.",
+        "stopped": "Đã dừng khuyến mãi.",
+        "updated": "Đã lưu thay đổi khuyến mãi."
+      }
+    },
+    "history": {
+      "actions": {
+        "CREATED": "Tạo mới",
+        "DELETED": "Xóa",
+        "RESUMED": "Tiếp tục",
+        "STOPPED": "Dừng",
+        "UPDATED": "Cập nhật"
+      },
+      "actorFallback": "Quản trị viên",
+      "arrow": "{from} → {to}",
+      "boolFalse": "Không",
+      "boolTrue": "Có",
+      "description": "Mọi thay đổi cấu hình và trạng thái được ghi lại theo thứ tự mới nhất trước.",
+      "emptyDescription": "Chưa có bản ghi thay đổi nào cho khuyến mãi này.",
+      "emptyTitle": "Chưa có lịch sử thay đổi",
+      "emptyValue": "Trống",
+      "fields": {
+        "audience": "Đối tượng",
+        "audienceClassIds": "Lớp áp dụng",
+        "audienceUserIds": "Học viên áp dụng",
+        "code": "Mã ưu đãi",
+        "combinable": "Cộng dồn",
+        "deletedAt": "Thời điểm xóa",
+        "description": "Mô tả",
+        "discountType": "Kiểu giảm",
+        "discountValue": "Mức giảm",
+        "endsAt": "Kết thúc",
+        "examIds": "Bài thi áp dụng",
+        "examKindIds": "Loại bài thi",
+        "kind": "Loại",
+        "maxDiscountVnd": "Giảm tối đa",
+        "minOrderVnd": "Đơn tối thiểu",
+        "name": "Tên khuyến mãi",
+        "perUserLimit": "Giới hạn mỗi học viên",
+        "scope": "Phạm vi",
+        "startsAt": "Bắt đầu",
+        "status": "Trạng thái",
+        "totalLimit": "Tổng lượt tối đa"
+      },
+      "listCounts": {
+        "audienceClassIds": "{count, plural, other {# lớp học}}",
+        "audienceUserIds": "{count, plural, other {# học viên}}",
+        "examIds": "{count, plural, other {# bài thi}}",
+        "examKindIds": "{count, plural, other {# loại bài thi}}"
+      },
+      "title": "Lịch sử thay đổi",
+      "values": {
+        "audience": {
+          "ALL": "Tất cả học viên",
+          "NEW_ACCOUNT": "Tài khoản mới",
+          "SELECTED": "Lớp / học viên chỉ định"
+        },
+        "discountType": {
+          "AMOUNT": "Số tiền cố định (đ)",
+          "PERCENT": "Phần trăm (%)"
+        },
+        "scope": {
+          "ALL": "Tất cả bài thi",
+          "BUNDLE": "Bộ đề chỉ định",
+          "EXAM": "Bài thi chỉ định",
+          "EXAM_KIND": "Theo loại bài thi"
+        },
+        "status": {
+          "ACTIVE": "Hoạt động",
+          "STOPPED": "Đã dừng"
+        }
+      }
+    },
+    "kinds": {
+      "AUTO": "Tự động",
+      "VOUCHER": "Mã ưu đãi"
+    },
+    "list": {
+      "audienceSummary": {
+        "ALL": "Tất cả học viên",
+        "NEW_ACCOUNT": "Tài khoản mới",
+        "SELECTED": "Lớp / học viên chỉ định"
+      },
+      "columns": {
+        "actions": "Thao tác",
+        "discount": "Mức giảm",
+        "nameAndCode": "Tên & mã",
+        "period": "Hiệu lực",
+        "scopeAndAudience": "Phạm vi & đối tượng",
+        "status": "Trạng thái",
+        "used": "Đã dùng"
+      },
+      "description": "Quản lý khuyến mãi tự động và mã ưu đãi áp dụng cho bài thi.",
+      "emptyDescription": "Chưa có chương trình nào trong nhóm này. Tạo khuyến mãi để bắt đầu ưu đãi.",
+      "emptyFilteredDescription": "Không tìm thấy khuyến mãi khớp bộ lọc hoặc từ khóa tìm kiếm.",
+      "emptyFilteredTitle": "Không có kết quả phù hợp",
+      "emptyTitle": "Chưa có khuyến mãi",
+      "errorDescription": "Không tải được danh sách khuyến mãi. Vui lòng thử lại.",
+      "errorTitle": "Không tải được danh sách",
+      "offlineDescription": "Máy đang mất kết nối nên chưa tải được dữ liệu mới. Danh sách tự tải lại khi có mạng, hoặc bấm Thử lại.",
+      "offlineTitle": "Mất kết nối mạng",
+      "scopeSummary": {
+        "ALL": "Tất cả bài thi",
+        "BUNDLE": "Gói đề thi",
+        "EXAM": "Bài thi chỉ định",
+        "EXAM_KIND": "Theo loại bài thi"
+      },
+      "searchAria": "Tìm khuyến mãi theo tên hoặc mã",
+      "searchPlaceholder": "Tìm theo tên hoặc mã ưu đãi...",
+      "stateFilters": {
+        "ALL": "Tất cả",
+        "ENDED": "Đã kết thúc",
+        "RUNNING": "Đang chạy",
+        "STOPPED": "Đã dừng",
+        "UPCOMING": "Sắp diễn ra"
+      },
+      "stateGroupAria": "Lọc theo trạng thái hiệu lực",
+      "summaryCount": "{total, plural, other {# khuyến mãi}}",
+      "tabs": {
+        "AUTO": "Khuyến mãi tự động",
+        "VOUCHER": "Mã ưu đãi"
+      },
+      "title": "Khuyến mãi"
+    },
+    "pricePreview": {
+      "appliedStatus": "Áp dụng: {label}",
+      "autoTag": "Khuyến mãi tự động",
+      "description": "Kiểm tra giá thực tế của một bài thi sau khi áp dụng khuyến mãi và ngưỡng giá sàn.",
+      "discountAmount": "Số tiền giảm",
+      "discountedPrice": "Giá sau giảm",
+      "emptyExams": "Chưa có bài thi phù hợp để xem trước.",
+      "errorGeneric": "Không tính được giá xem trước. Vui lòng thử lại.",
+      "examLabel": "Chọn bài thi để kiểm tra",
+      "examPlaceholder": "Chọn bài thi...",
+      "finalDiscountAmount": "Mức giảm thực tế",
+      "floorBadge": "Đã giữ ở giá sàn",
+      "floorPrice": "Giá sàn",
+      "listPrice": "Giá niêm yết",
+      "loadingQuote": "Đang tính giá xem trước...",
+      "noDiscountReason": "Không giảm thêm giá trên bài thi này.",
+      "saveFirstReason": "Hãy lưu khuyến mãi trước để hệ thống xem trước giá thực tế kèm giá sàn.",
+      "searchAria": "Tìm bài thi để xem trước giá",
+      "searchPlaceholder": "Tìm bài thi theo tên hoặc mã...",
+      "title": "Xem trước giá bài thi",
+      "voucherTag": "Mã ưu đãi"
+    },
+    "redemptions": {
+      "columns": {
+        "discountVnd": "Số tiền giảm",
+        "orderCode": "Đơn hàng",
+        "state": "Trạng thái",
+        "student": "Học viên",
+        "timestamp": "Thời gian"
+      },
+      "description": "Theo dõi các lần giữ chỗ và xác nhận áp dụng khuyến mãi trong đơn hàng.",
+      "emptyFilteredDescription": "Không tìm thấy lượt sử dụng khớp từ khóa hoặc trạng thái đang chọn.",
+      "emptyFilteredTitle": "Không có lượt khớp bộ lọc",
+      "emptyNeverUsedDescription": "Khuyến mãi này chưa được áp dụng cho đơn hàng nào.",
+      "emptyNeverUsedTitle": "Chưa có lượt sử dụng",
+      "errorDescription": "Không tải được danh sách lượt sử dụng.",
+      "errorTitle": "Không tải được lượt sử dụng",
+      "filters": {
+        "ALL": "Tất cả",
+        "CONFIRMED": "Đã xác nhận",
+        "RELEASED": "Đã hoàn trả",
+        "RESERVED": "Đang giữ chỗ"
+      },
+      "searchAria": "Tìm lượt sử dụng theo học viên hoặc mã đơn",
+      "searchPlaceholder": "Tìm theo mã đơn hoặc tài khoản",
+      "statusLabels": {
+        "CONFIRMED": "Đã xác nhận",
+        "RELEASED": "Đã hoàn trả",
+        "RESERVED": "Đang giữ chỗ"
+      },
+      "title": "Lượt sử dụng"
+    },
+    "scopeLabels": {
+      "ALL": "Tất cả bài thi",
+      "BUNDLE": "Gói đề thi",
+      "EXAM": "Bài thi ({count})",
+      "EXAM_KIND": "Loại bài thi ({count})"
+    },
+    "states": {
+      "ENDED": "Đã kết thúc",
+      "RUNNING": "Đang chạy",
+      "STOPPED": "Đã dừng",
+      "UPCOMING": "Sắp diễn ra"
+    }
   }
 }

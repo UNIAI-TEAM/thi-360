@@ -55,7 +55,15 @@ public class AttemptGuard {
         return loadOwnedAttempt(attemptId, userId);
     }
 
-    /** Verifies ownership, lazy close, active edit session, open attempt state, and shared deadline. */
+    /**
+     * Verifies ownership, lazy close, active edit session, open attempt state, and shared deadline.
+     *
+     * <p>Because {@link AttemptOverdueCloser} joins an active read-write outer transaction
+     * ({@code PROPAGATION_REQUIRED}), callers that run inside {@code @Transactional} and throw
+     * {@code 409 TIME_UP} should either call this guard before opening the outer transaction or
+     * invoke {@link OverdueAttemptCloser#closeIfOverdue} outside the rolled-back transaction
+     * (matching {@link AttemptLifecycleService} and {@link AttemptStartService}).
+     */
     public Attempt requireEditableAttempt(UUID attemptId, UUID userId, UUID sessionId) {
         requireOwnership(attemptId, userId);
         Instant now = clock.instant();
@@ -66,7 +74,15 @@ public class AttemptGuard {
         return attempt;
     }
 
-    /** Verifies ownership, lazy close, edit session, open attempt, open part, and effective deadline. */
+    /**
+     * Verifies ownership, lazy close, edit session, open attempt, open part, and effective deadline.
+     *
+     * <p>Because {@link AttemptOverdueCloser} joins an active read-write outer transaction
+     * ({@code PROPAGATION_REQUIRED}), callers that run inside {@code @Transactional} and throw
+     * {@code 409 TIME_UP} should either call this guard before opening the outer transaction or
+     * invoke {@link OverdueAttemptCloser#closeIfOverdue} outside the rolled-back transaction
+     * (matching {@link AttemptLifecycleService} and {@link AttemptStartService}).
+     */
     public EditablePart requireEditablePart(UUID attemptId, UUID partId, UUID userId, UUID sessionId) {
         requireOwnership(attemptId, userId);
         Instant now = clock.instant();

@@ -23,8 +23,10 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
+import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
@@ -130,6 +132,71 @@ abstract class AbstractAttemptDsIT extends AbstractIntegrationTest {
                         get("/api/v1/me/attempts/{attemptId}", attemptId)
                                 .with(AttemptTestFixtures.asExamUser(userId, "learner")))
                 .andReturn();
+    }
+
+    protected MvcResult performFinishPart(
+            UUID userId,
+            UUID attemptId,
+            UUID partId,
+            UUID sessionId,
+            FinishPartRequest request)
+            throws Exception {
+        var req =
+                post("/api/v1/me/attempts/{attemptId}/parts/{partId}/finish", attemptId, partId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (sessionId != null) {
+            req = req.header("X-Attempt-Session", sessionId.toString());
+        }
+        if (request != null) {
+            req =
+                    req.contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request));
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
+    protected MvcResult performSubmit(
+            UUID userId,
+            UUID attemptId,
+            String idempotencyKey,
+            UUID sessionId,
+            SubmitAttemptRequest request)
+            throws Exception {
+        var req =
+                post("/api/v1/me/attempts/{attemptId}/submit", attemptId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (idempotencyKey != null) {
+            req = req.header("Idempotency-Key", idempotencyKey);
+        }
+        if (sessionId != null) {
+            req = req.header("X-Attempt-Session", sessionId.toString());
+        }
+        if (request != null) {
+            req =
+                    req.contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request));
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
+    protected Attempt startAndAwaitOpen(
+            UUID userId, String keyPrefix, UUID entitlementId, PreChoiceInput preChoice)
+            throws Exception {
+        MvcResult startRes = performStart(userId, keyPrefix + "-" + UUID.randomUUID(), entitlementId, preChoice);
+        assertThat(startRes.getResponse().getStatus()).isEqualTo(202);
+        UUID attemptId = UUID.fromString(json(startRes).path("attemptId").asText());
+        return awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+    }
+
+    protected int countOutboxEvents(UUID attemptId, String topic) {
+        Integer count =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM shared.outbox_event WHERE topic = ? AND payload->>'attemptId' = ?",
+                        Integer.class,
+                        topic,
+                        attemptId.toString());
+        assertThat(count).isNotNull();
+        return count;
     }
 
     protected Attempt awaitTerminalStartState(UUID attemptId, AttemptState... targets)

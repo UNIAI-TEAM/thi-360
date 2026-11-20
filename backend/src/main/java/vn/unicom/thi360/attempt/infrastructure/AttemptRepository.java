@@ -80,4 +80,120 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
             nativeQuery = true)
     Optional<Attempt> findLatestResultAttempt(
             @Param("userId") UUID userId, @Param("entitlementId") UUID entitlementId);
+
+    @Query(
+            value = """
+                    SELECT EXISTS (
+                        SELECT 1 FROM attempt.attempt a
+                        WHERE a.id = :attemptId
+                          AND a.state = 'IN_PROGRESS'
+                          AND (
+                              (a.timing = 'SHARED' AND a.deadline_at IS NOT NULL AND a.deadline_at <= :now)
+                              OR EXISTS (
+                                  SELECT 1 FROM attempt.attempt_part p
+                                  WHERE p.attempt_id = a.id
+                                    AND (
+                                        (a.timing = 'PER_PART' AND p.state = 'OPEN' AND p.deadline_at IS NOT NULL AND p.deadline_at <= :now)
+                                        OR (p.state = 'AWAITING_CHOICE' AND p.choice_deadline_at IS NOT NULL AND p.choice_deadline_at <= :now)
+                                    )
+                              )
+                          )
+                    )
+                    """,
+            nativeQuery = true)
+    boolean hasOverdueDeadline(@Param("attemptId") UUID attemptId, @Param("now") Instant now);
+
+    @Query(
+            value = """
+                    SELECT due.id
+                    FROM (
+                        SELECT a.id AS id, a.deadline_at AS due_at
+                        FROM attempt.attempt a
+                        WHERE a.state = 'IN_PROGRESS'
+                          AND a.timing = 'SHARED'
+                          AND a.deadline_at IS NOT NULL
+                          AND a.deadline_at <= :now
+                        UNION ALL
+                        SELECT a.id AS id, p.deadline_at AS due_at
+                        FROM attempt.attempt a
+                        JOIN attempt.attempt_part p ON p.attempt_id = a.id
+                        WHERE a.state = 'IN_PROGRESS'
+                          AND a.timing = 'PER_PART'
+                          AND p.state = 'OPEN'
+                          AND p.deadline_at IS NOT NULL
+                          AND p.deadline_at <= :now
+                        UNION ALL
+                        SELECT a.id AS id, p.choice_deadline_at AS due_at
+                        FROM attempt.attempt a
+                        JOIN attempt.attempt_part p ON p.attempt_id = a.id
+                        WHERE a.state = 'IN_PROGRESS'
+                          AND p.state = 'AWAITING_CHOICE'
+                          AND p.choice_deadline_at IS NOT NULL
+                          AND p.choice_deadline_at <= :now
+                    ) due
+                    GROUP BY due.id
+                    ORDER BY MIN(due.due_at) ASC, due.id ASC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<UUID> findOverdueAttemptIds(@Param("now") Instant now, @Param("limit") int limit);
+
+    @Query(
+            value = """
+                    SELECT due.id
+                    FROM (
+                        SELECT a.id AS id, a.deadline_at AS due_at
+                        FROM attempt.attempt a
+                        WHERE a.state = 'IN_PROGRESS'
+                          AND a.timing = 'SHARED'
+                          AND a.deadline_at IS NOT NULL
+                          AND a.deadline_at <= :now
+                          AND a.id NOT IN (:excludedIds)
+                        UNION ALL
+                        SELECT a.id AS id, p.deadline_at AS due_at
+                        FROM attempt.attempt a
+                        JOIN attempt.attempt_part p ON p.attempt_id = a.id
+                        WHERE a.state = 'IN_PROGRESS'
+                          AND a.timing = 'PER_PART'
+                          AND p.state = 'OPEN'
+                          AND p.deadline_at IS NOT NULL
+                          AND p.deadline_at <= :now
+                          AND a.id NOT IN (:excludedIds)
+                        UNION ALL
+                        SELECT a.id AS id, p.choice_deadline_at AS due_at
+                        FROM attempt.attempt a
+                        JOIN attempt.attempt_part p ON p.attempt_id = a.id
+                        WHERE a.state = 'IN_PROGRESS'
+                          AND p.state = 'AWAITING_CHOICE'
+                          AND p.choice_deadline_at IS NOT NULL
+                          AND p.choice_deadline_at <= :now
+                          AND a.id NOT IN (:excludedIds)
+                    ) due
+                    GROUP BY due.id
+                    ORDER BY MIN(due.due_at) ASC, due.id ASC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<UUID> findOverdueAttemptIdsNotIn(
+            @Param("now") Instant now,
+            @Param("excludedIds") Collection<UUID> excludedIds,
+            @Param("limit") int limit);
+
+    default List<UUID> findOverdueAttemptIdsExcluding(
+            Instant now, Collection<UUID> excludedIds, int limit) {
+        if (excludedIds == null || excludedIds.isEmpty()) {
+            return findOverdueAttemptIds(now, limit);
+        }
+        return findOverdueAttemptIdsNotIn(now, excludedIds, limit);
+    }
+
+    @Query(
+            value = """
+                    SELECT * FROM attempt.attempt
+                    WHERE id = :id
+                      AND state = 'IN_PROGRESS'
+                    FOR UPDATE SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    Optional<Attempt> lockInProgressByIdSkipLocked(@Param("id") UUID id);
 }

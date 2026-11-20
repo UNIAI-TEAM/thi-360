@@ -1,9 +1,13 @@
 package vn.unicom.thi360.attempt.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.persistence.EntityManager;
@@ -15,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -30,6 +35,9 @@ import vn.unicom.thi360.attempt.application.AttemptPathResolver.ResolvedStartPla
 import vn.unicom.thi360.attempt.application.AttemptStartService.StartCommandResult;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.AttemptTiming;
+import vn.unicom.thi360.attempt.domain.EndReason;
+import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
@@ -44,6 +52,7 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 
 /**
@@ -232,6 +241,207 @@ class AttemptStartServiceTest {
         assertThat(resumed.getBody()).isNotNull();
         assertThat(resumed.getBody().state()).isEqualTo(AttemptState.IN_PROGRESS);
         assertThat(resumed.getBody().resumed()).isTrue();
+    }
+
+    @Test
+    void startAttemptReclosesOverdueAttemptAfterRollbackWhenReserveThrowsNoAttemptsLeft() {
+        Instant now = Instant.parse("2026-11-20T10:00:00Z");
+        Clock clock = Clock.fixed(now, ZoneOffset.UTC);
+
+        AttemptAccessGate accessGate = mock(AttemptAccessGate.class);
+        EntitlementPort entitlementPort = mock(EntitlementPort.class);
+        PublishedExamPort publishedExamPort = mock(PublishedExamPort.class);
+        PaperSolverPort paperSolverPort = mock(PaperSolverPort.class);
+        QuestionSourcePort questionSourcePort = mock(QuestionSourcePort.class);
+        AttemptPathResolver pathResolver = mock(AttemptPathResolver.class);
+        AttemptPaperAssembler paperAssembler = mock(AttemptPaperAssembler.class);
+        AttemptRepository attemptRepository = mock(AttemptRepository.class);
+        AttemptPartRepository attemptPartRepository = mock(AttemptPartRepository.class);
+        AttemptItemRepository attemptItemRepository = mock(AttemptItemRepository.class);
+        AttemptEventRepository attemptEventRepository = mock(AttemptEventRepository.class);
+        GenerationExecutor generationExecutor = mock(GenerationExecutor.class);
+        IdempotentCommand idempotentCommand = mock(IdempotentCommand.class);
+        OverdueAttemptCloser overdueAttemptCloser = mock(OverdueAttemptCloser.class);
+        EntityManager entityManager = mock(EntityManager.class);
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformTransactionManager txManager = mock(PlatformTransactionManager.class);
+
+        AttemptStartService service =
+                new AttemptStartService(
+                        accessGate,
+                        entitlementPort,
+                        publishedExamPort,
+                        paperSolverPort,
+                        questionSourcePort,
+                        pathResolver,
+                        paperAssembler,
+                        attemptRepository,
+                        attemptPartRepository,
+                        attemptItemRepository,
+                        attemptEventRepository,
+                        generationExecutor,
+                        idempotentCommand,
+                        overdueAttemptCloser,
+                        entityManager,
+                        jdbcTemplate,
+                        txManager,
+                        clock);
+
+        UUID userId = UUID.randomUUID();
+        UUID examId = UUID.randomUUID();
+        UUID entitlementId = UUID.randomUUID();
+        UUID grantId = UUID.randomUUID();
+        UUID overdueId = UUID.randomUUID();
+
+        Attempt overdueInProg =
+                Attempt.start(
+                        overdueId,
+                        userId,
+                        examId,
+                        1,
+                        entitlementId,
+                        grantId,
+                        "Exam",
+                        UUID.randomUUID(),
+                        "HSA",
+                        "FULL",
+                        null,
+                        null,
+                        AttemptTiming.SHARED,
+                        NavigationMode.SEQUENTIAL,
+                        Map.of(),
+                        1L,
+                        UUID.randomUUID(),
+                        "SCORE_AND_ANSWERS",
+                        null,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        "k-orig",
+                        now.minusSeconds(3600));
+        overdueInProg.open(1, now.minusSeconds(3500), now.minusSeconds(60));
+
+        Attempt closedAttempt =
+                Attempt.start(
+                        overdueId,
+                        userId,
+                        examId,
+                        1,
+                        entitlementId,
+                        grantId,
+                        "Exam",
+                        UUID.randomUUID(),
+                        "HSA",
+                        "FULL",
+                        null,
+                        null,
+                        AttemptTiming.SHARED,
+                        NavigationMode.SEQUENTIAL,
+                        Map.of(),
+                        1L,
+                        UUID.randomUUID(),
+                        "SCORE_AND_ANSWERS",
+                        null,
+                        BigDecimal.TEN,
+                        BigDecimal.TEN,
+                        "k-orig",
+                        now.minusSeconds(3600));
+        closedAttempt.open(1, now.minusSeconds(3500), now.minusSeconds(60));
+        closedAttempt.close(EndReason.TIME_UP, now.minusSeconds(60), now);
+
+        when(accessGate.requireLearner()).thenReturn(userId);
+        when(entitlementPort.describe(userId, entitlementId))
+                .thenReturn(
+                        new EntitlementDescription(
+                                examId,
+                                0,
+                                grantId,
+                                GrantSource.PURCHASE,
+                                "ORD-1",
+                                now,
+                                List.of()));
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), any(), any()))
+                .thenReturn(1);
+        when(attemptRepository.findByUserIdAndExamIdAndStateIn(any(), any(), any()))
+                .thenReturn(Optional.of(overdueInProg));
+
+        AtomicInteger closerCalls = new AtomicInteger();
+        doAnswer(
+                        inv -> {
+                            if (closerCalls.incrementAndGet() == 1) {
+                                when(attemptRepository.findById(overdueId))
+                                        .thenReturn(Optional.of(closedAttempt));
+                            }
+                            return null;
+                        })
+                .when(overdueAttemptCloser)
+                .closeIfOverdue(overdueId, now);
+
+        PublishedVersion version =
+                new PublishedVersion(
+                        examId,
+                        1,
+                        "SERVING",
+                        "PUBLISHED",
+                        now,
+                        "EX-1",
+                        "Exam",
+                        UUID.randomUUID(),
+                        "HSA",
+                        "FULL",
+                        null,
+                        null,
+                        "STANDARD",
+                        "SHARED",
+                        60,
+                        BigDecimal.TEN,
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of("default"),
+                        List.of("default"));
+        ServingPath path =
+                new ServingPath("default", 1, List.of(), 5, BigDecimal.TEN, 60, List.of(), List.of());
+        ServingExam serving = new ServingExam(examId, "PUBLISHED", version, List.of(path));
+        when(publishedExamPort.findServing(examId)).thenReturn(Optional.of(serving));
+        when(pathResolver.resolveStartPlan(serving, List.of(), null))
+                .thenReturn(
+                        new ResolvedStartPlan(
+                                version,
+                                path,
+                                60,
+                                BigDecimal.TEN,
+                                Map.of(),
+                                List.of("p1"),
+                                List.of(),
+                                List.of(
+                                        new PlannedPart(
+                                                "p1",
+                                                "Part 1",
+                                                0,
+                                                ChoiceTiming.NONE,
+                                                60,
+                                                5,
+                                                BigDecimal.TEN)),
+                                "path-1"));
+        when(entitlementPort.reserve(any(), any(), any()))
+                .thenThrow(new ConflictException("NO_ATTEMPTS_LEFT"));
+        when(idempotentCommand.execute(any(), any(), any(), eq(StartCommandResult.class), any()))
+                .thenAnswer(
+                        inv -> {
+                            @SuppressWarnings("unchecked")
+                            Supplier<StartCommandResult> supplier = inv.getArgument(4);
+                            return supplier.get();
+                        });
+
+        assertThatThrownBy(
+                        () -> service.startAttempt("k-exhausted", new StartAttemptRequest(entitlementId, null)))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "NO_ATTEMPTS_LEFT");
+
+        verify(overdueAttemptCloser, times(2)).closeIfOverdue(overdueId, now);
     }
 
     private static Integer eq(Integer val) {
