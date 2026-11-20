@@ -46,7 +46,6 @@ function renderPanel(initial: ExamSection) {
     const [section, setSection] = useState(initial);
     return (
       <ExamStructureSubjectPanel
-        examId="exam-1"
         context={{ part: makePart(section), option: null, section, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
         subjectName="Toán học"
         axes={{ grades: reference.grades.map((grade) => grade.code), difficulties: reference.difficulties.map((item) => item.code) }}

@@ -52,7 +52,7 @@ test("HSA Tự thiết lập: chỉ số câu, thời lượng, thang điểm �
   await page.waitForURL(/\/exams\/[^/]+\/review/, { timeout: 60_000 });
 });
 
-test("HSA dùng cấu trúc môn: số câu của phần và mục chỉ đọc, đường dẫn về tổng quan; số câu của nhóm sửa được", async ({ context, page }) => {
+test("HSA dùng cấu trúc môn: màn môn không còn ô Số câu của mục; số câu của phần chỉ đọc; số câu của nhóm sửa được", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const admin = await adminApi();
   const id = await createExam(admin, {
@@ -67,11 +67,13 @@ test("HSA dùng cấu trúc môn: số câu của phần và mục chỉ đọc,
   const list = page.getByRole("navigation", { name: "Cấu trúc" });
   await expect(list).toBeVisible();
 
-  // Màn môn: Số câu của mục chỉ đọc, đường dẫn Sửa thông tin tổng quan cạnh ô dẫn về bước 1 (màn Tạo bài thi ở chế độ sửa).
-  const sectionCount = page.getByRole("textbox", { name: "Số câu của mục" });
-  await expect(sectionCount).toHaveAttribute("readonly", "");
-  const link = sectionCount.locator("xpath=..").getByRole("link", { name: "Sửa thông tin tổng quan" });
-  await expect(link).toHaveAttribute("href", `/exams/new?exam=${id}`);
+  // Màn môn: không còn ô Số câu của mục (UNI-2753); tiêu đề vẫn nêu số câu, đường dẫn Sửa thông tin tổng quan ở đầu màn vẫn về bước 1.
+  await expect(page.getByRole("heading", { name: /^Môn / })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Số câu của mục" })).toHaveCount(0);
+  await expect(page.getByLabel("Tổng hợp cấu trúc").locator("..").getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute(
+    "href",
+    `/exams/new?exam=${id}`,
+  );
 
   // Màn phần: số câu phải làm và trên đề chỉ đọc. Mục đầu danh sách là "Tổng quan bài" (FE-3b), không phải phần.
   await list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]").first().click();

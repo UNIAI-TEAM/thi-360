@@ -1,22 +1,19 @@
 "use client";
 
-import { Badge, Card, cn, FormField, Input, StatusChip } from "@thi360/ui";
+import { Badge, Card, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import { EditOverviewLink } from "../components/edit-overview-link";
-import { LOCKED_FIELD } from "../components/locked-field";
 import { LockReason } from "./lock-reason";
 
 export interface SubjectFormHeaderProps {
   subjectName: string;
   /** Nhóm của môn trong phương án chọn môn (Tự nhiên, Xã hội); `null` ngoài phương án đó. */
   choiceGroupLabel?: string | null;
-  /** Số câu của mục (chỉ đọc, sửa ở Thông tin tổng quan); `null` khi chưa biết. */
+  /** Số câu của mục (sửa ở Thông tin tổng quan); `null` khi chưa biết. */
   count: number | null;
   /** Số câu đã phân bổ vào các nhóm. */
   allocated: number;
-  examId: string;
-  /** Mẫu khóa số câu của mục (H27). */
+  /** Mẫu khóa số câu của mục (H27): dòng số câu ở đầu môn ghi lý do. */
   templateLocked?: boolean;
   /** Nút bên phải đầu môn (Kiểm tra môn). */
   action?: ReactNode;
@@ -24,10 +21,10 @@ export interface SubjectFormHeaderProps {
 }
 
 /**
- * Đầu môn dùng chung của MT và DS (FTM R-7, R-15): tên môn, "Đã phân bổ x/y câu" kèm thiếu hoặc vượt (chữ, không chỉ màu), số câu
- * chỉ đọc kèm đường dẫn "Sửa thông tin tổng quan". Dùng cùng khóa chữ với màn môn mặc định để hai màn không lệch nhau.
+ * Đầu môn dùng chung của MT và DS (FTM R-7, R-15): tên môn, dòng số câu của môn (kèm lý do khi mẫu khóa), "Đã phân bổ x/y câu" kèm thiếu
+ * hoặc vượt (chữ, không chỉ màu). Không có ô số câu: số câu chỉ sửa ở bước 1 (UNI-2753). Dùng cùng khóa chữ với màn môn mặc định.
  */
-export function SubjectFormHeader({ subjectName, choiceGroupLabel = null, count, allocated, examId, templateLocked = false, action, children }: SubjectFormHeaderProps) {
+export function SubjectFormHeader({ subjectName, choiceGroupLabel = null, count, allocated, templateLocked = false, action, children }: SubjectFormHeaderProps) {
   const t = useTranslations("exams.structure.subject");
   const tGap = useTranslations("exams.structure.gap");
   const missing = count === null ? null : count - allocated;
@@ -40,7 +37,10 @@ export function SubjectFormHeader({ subjectName, choiceGroupLabel = null, count,
             {t("title", { subject: subjectName })}
             {choiceGroupLabel && <Badge className="font-medium">{choiceGroupLabel}</Badge>}
           </h2>
-          <p className="text-caption text-text-muted">{count === null ? t("countUnknown") : t("countFixed", { count })}</p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-text-muted">
+            {count === null ? t("countUnknown") : t("countFixed", { count })}
+            {templateLocked && <LockReason code="templateTotal" />}
+          </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <p role="status" className="flex flex-wrap items-center gap-2 text-body">
@@ -57,19 +57,6 @@ export function SubjectFormHeader({ subjectName, choiceGroupLabel = null, count,
           {action}
         </div>
       </div>
-      {count !== null && (
-        <div className="flex max-w-md flex-col gap-1.5">
-          <FormField label={t("countField.label")} hint={templateLocked ? undefined : t("countField.hint")}>
-            {(controlProps) => (
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <Input {...controlProps} value={String(count)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
-                {templateLocked && <LockReason code="templateTotal" />}
-                <EditOverviewLink examId={examId} className="h-auto p-0" />
-              </span>
-            )}
-          </FormField>
-        </div>
-      )}
       {children}
     </Card>
   );

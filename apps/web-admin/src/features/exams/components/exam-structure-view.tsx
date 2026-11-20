@@ -771,7 +771,6 @@ function StructureEditor({
               reference={reference}
               onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
               headerAction={checkAction}
-              examId={exam.id}
               templateLocked={templateLocked}
               sourceVerified={sourceVerified(sectionContext.section)}
               topicError={topicError}
@@ -796,7 +795,6 @@ function StructureEditor({
                 onSelectBlock={(blockId) => select({ kind: "block", blockId })}
                 onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
                 headerAction={checkAction}
-                examId={exam.id}
                 templateLocked={templateLocked}
                 sourceVerified={sourceVerified(sectionContext.section)}
                 topicError={topicError}

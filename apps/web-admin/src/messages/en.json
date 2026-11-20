@@ -4422,10 +4422,7 @@
         "matches": "Matches the subject's question count",
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
-          "label": "Questions in this subject",
-          "hint": "The question count comes from the overview; the part and its groups must match.",
-          "locked": "Template locks the count",
-          "lockedHint": "The template keeps the question count of each subject. The allocation inside the subject can still be edited."
+          "locked": "Template locks the count"
         },
         "totalChange": {
           "grades": "Grades: {values}",

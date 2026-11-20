@@ -4422,10 +4422,7 @@
         "matches": "Khớp số câu của môn",
         "sourceEnough": "Đủ nguồn theo ma trận",
         "countField": {
-          "label": "Số câu của mục",
-          "hint": "Số câu lấy từ thông tin tổng quan; phần và các nhóm phải khớp.",
-          "locked": "Mẫu đã khóa số câu",
-          "lockedHint": "Mẫu giữ nguyên số câu của từng mục. Phân bổ bên trong mục vẫn sửa được."
+          "locked": "Mẫu đã khóa số câu"
         },
         "totalChange": {
           "grades": "Khối lớp: {values}",

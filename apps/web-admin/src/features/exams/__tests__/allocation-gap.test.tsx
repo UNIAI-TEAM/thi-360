@@ -60,7 +60,6 @@ function renderSubject(section: ExamSection) {
   const part = { id: "p1", sections: [section], options: [] } as unknown as ExamPart;
   return renderWithProviders(
     <ExamStructureSubjectPanel
-      examId="exam-1"
       context={{ part, option: null, section, location: { partId: "p1", optionId: null, sectionId: "s1" } }}
       subjectName="Toán học"
       axes={{ grades: GRADES, difficulties: DIFFICULTIES }}
