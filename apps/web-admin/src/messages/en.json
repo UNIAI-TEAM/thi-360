@@ -6611,14 +6611,14 @@
         "split": {
           "apply": "Split",
           "cancel": "Cancel",
-          "childAria": "{unit, select, set {Sets} other {Questions}} of child row {index, number}",
+          "childAria": "{unit, select, set {Sets of child row {index, number}} other {Questions of child row {index, number}}}",
           "childSets": "sets, {size, number} questions each ({count, number} questions)",
           "childSingle": "questions",
           "errors": {
-            "notPositive": "Child row {index, number} needs at least 1 {unit, select, set {set} other {question}}",
-            "total": "The child rows add up to {total, number}, the parent row has {units, number} {unit, select, set {sets} other {questions}}"
+            "notPositive": "Child row {index, number} needs at least {unit, select, set {1 set} other {1 question}}",
+            "total": "The child rows add up to {total, number}, the parent row has {unit, select, set {{units, number} sets} other {{units, number} questions}}"
           },
-          "hint": "The parent row ({units, number} {unit, select, set {sets} other {questions}}) is replaced by the child rows; the first child keeps the parent row identity. The audio requirement of the section does not change.",
+          "hint": "The parent row ({unit, select, set {{units, number} sets} other {{units, number} questions}}) is replaced by the child rows; the first child keeps the parent row identity. The audio requirement of the section does not change.",
           "partsLabel": "Number of rows after the split",
           "partsOption": "{count, number} rows",
           "title": "Split row {name}"

@@ -1,10 +1,11 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { createRawInputStore } from "../subject-forms/raw-input-store";
 import { RowSplitPanel } from "../subject-forms/row-split-panel";
-import { setBlock } from "./subject-form-builders";
+import { block, setBlock } from "./subject-form-builders";
 
 describe("row split draft", () => {
   it("restores invalid children after unmount and clears them on cancel", async () => {
@@ -23,5 +24,31 @@ describe("row split draft", () => {
     await user.click(screen.getByRole("button", { name: "Hủy" }));
     expect(rawInputs.hasRawInputs()).toBe(false);
     expect(props.onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("renders set and question split labels and validation messages in vi and en", async () => {
+    const user = userEvent.setup();
+    const enSet = renderWithProviders(
+      <RowSplitPanel block={setBlock("read", 4, 10)} units={4} sectionId="s-set" rawInputs={createRawInputStore()} onApply={vi.fn()} onCancel={vi.fn()} />,
+      { locale: "en", messages: en },
+    );
+    expect(screen.getByText(/The parent row \(4 sets\) is replaced/)).toBeInTheDocument();
+    const setChild = screen.getByRole("textbox", { name: "Sets of child row 1" });
+    await user.clear(setChild);
+    await user.type(setChild, "0");
+    expect(screen.getByText("Child row 1 needs at least 1 set")).toBeInTheDocument();
+    expect(screen.getByText("The child rows add up to 2, the parent row has 4 sets")).toBeInTheDocument();
+    enSet.unmount();
+
+    renderWithProviders(
+      <RowSplitPanel block={block("single", { questionCount: 10 })} units={10} sectionId="s-single" rawInputs={createRawInputStore()} onApply={vi.fn()} onCancel={vi.fn()} />,
+      { locale: "en", messages: en },
+    );
+    expect(screen.getByText(/The parent row \(10 questions\) is replaced/)).toBeInTheDocument();
+    const singleChild = screen.getByRole("textbox", { name: "Questions of child row 1" });
+    await user.clear(singleChild);
+    await user.type(singleChild, "0");
+    expect(screen.getByText("Child row 1 needs at least 1 question")).toBeInTheDocument();
+    expect(screen.getByText("The child rows add up to 5, the parent row has 10 questions")).toBeInTheDocument();
   });
 });

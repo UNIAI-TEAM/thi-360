@@ -6611,14 +6611,14 @@
         "split": {
           "apply": "Tách",
           "cancel": "Hủy",
-          "childAria": "Số {unit, select, set {chùm} other {câu}} của dòng con {index, number}",
+          "childAria": "{unit, select, set {Số chùm của dòng con {index, number}} other {Số câu của dòng con {index, number}}}",
           "childSets": "chùm, mỗi chùm {size, number} câu ({count, number} câu)",
           "childSingle": "câu",
           "errors": {
-            "notPositive": "Dòng con {index, number} phải có ít nhất 1 {unit, select, set {chùm} other {câu}}",
-            "total": "Tổng các dòng con là {total, number}, dòng cha có {units, number} {unit, select, set {chùm} other {câu}}"
+            "notPositive": "Dòng con {index, number} phải có ít nhất {unit, select, set {1 chùm} other {1 câu}}",
+            "total": "Tổng các dòng con là {total, number}, dòng cha có {unit, select, set {{units, number} chùm} other {{units, number} câu}}"
           },
-          "hint": "Dòng cha ({units, number} {unit, select, set {chùm} other {câu}}) được thay bằng các dòng con; dòng con đầu giữ mã của dòng cha. Yêu cầu audio của mục không đổi.",
+          "hint": "Dòng cha ({unit, select, set {{units, number} chùm} other {{units, number} câu}}) được thay bằng các dòng con; dòng con đầu giữ mã của dòng cha. Yêu cầu audio của mục không đổi.",
           "partsLabel": "Số dòng sau khi tách",
           "partsOption": "{count, number} dòng",
           "title": "Tách dòng {name}"
