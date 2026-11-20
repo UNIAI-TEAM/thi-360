@@ -2,7 +2,7 @@ import { useState } from "react";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { registerFormBlockingRuleForTest } from "../subject-forms/blocking";
-import { registerSubjectFormRenderer, type SubjectFormRendererProps } from "../subject-forms/form-renderers";
+import { registerSubjectFormRenderer, removeSubjectFormRendererForTest, type SubjectFormRendererProps } from "../subject-forms/form-renderers";
 import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
 
@@ -201,7 +201,11 @@ export function installForms({ renderers = true }: { renderers?: boolean } = {})
     patchSubjectFormEntry("QDA", "LY", { enabled: true }),
     patchSubjectFormEntry("QDA", "HOA", { enabled: true }),
     patchSubjectFormEntry("QDA", "VAN", { enabled: true }),
-    ...(renderers ? [registerSubjectFormRenderer("MATRIX", TestMatrixForm), registerSubjectFormRenderer("ROWS", TestRowsForm)] : []),
+    // Từ CR-2a MT của QDA bật thật; các test CR-1 dựng Toán làm môn MD ("cờ tắt"), nên giữ Toán ở MD để chúng đo đúng điều đã đo.
+    patchSubjectFormEntry("QDA", "TOAN", { enabled: false }),
+    ...(renderers
+      ? [registerSubjectFormRenderer("MATRIX", TestMatrixForm), registerSubjectFormRenderer("ROWS", TestRowsForm)]
+      : [removeSubjectFormRendererForTest("MATRIX"), removeSubjectFormRendererForTest("ROWS")]),
     registerFormBlockingRuleForTest((section, context) => (context.form === "MATRIX" ? single13Rule(section) : [])),
   ];
   return () => {
@@ -217,9 +221,10 @@ export function sectionsOf(body: unknown): Record<string, Wire> {
 
 /**
  * Cặp thiếu trường / `null` mà `api-mapping.ts` đã chuẩn hóa như vậy hôm nay (plan B4): wire có thể bỏ trường, màn luôn điền
- * `tagCodes: []`, `answerTypeLocked: false` rồi gửi lại. Gọi tên ở đây để so hai wire không loại trừ ngầm điều gì khác.
+ * `tagCodes: []`, `answerTypeLocked: false` rồi gửi lại; ma trận của wire mẫu (fixture B8) bỏ `cells`, bản đã nạp luôn có `cells: []`
+ * (CR-2). Gọi tên ở đây để so hai wire không loại trừ ngầm điều gì khác.
  */
-export const MAPPING_DEFAULTED_FIELDS: Readonly<Record<string, unknown>> = { tagCodes: [], answerTypeLocked: false };
+export const MAPPING_DEFAULTED_FIELDS: Readonly<Record<string, unknown>> = { tagCodes: [], answerTypeLocked: false, cells: [] };
 
 /** Bỏ `null`, `undefined` và các trường mặc định có tên ở `MAPPING_DEFAULTED_FIELDS` để so hai wire theo nghĩa. */
 export function withoutMappingDefaults(value: unknown): unknown {

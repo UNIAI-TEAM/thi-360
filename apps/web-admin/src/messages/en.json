@@ -6485,6 +6485,70 @@
           "rowOmitted": "This row is temporarily skipped",
           "templateTotal": "The section total comes from the template and cannot change"
         }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Add condition",
+          "conditionMenu": "Extra conditions",
+          "declared": "Declared {declared, number}/{total, number}",
+          "difficulty": "Difficulty",
+          "grade": "Grade",
+          "gradeCondition": "Grade",
+          "hint": "Leave a cell empty when you do not need to control it.",
+          "percentAria": "Percentage of {label}",
+          "percentNeeds100": "Total {total, number}%, needs 100%",
+          "percentTotal": "Total {total, number}%",
+          "title": "Grade and difficulty"
+        },
+        "errors": {
+          "choiceBelowChildren": "Fewer than the sub-questions of the sets ({children, number})",
+          "percentTotal": "Total {total}%, needs 100%",
+          "setMin": "At least 1 set",
+          "setRange": "Sets must be between {min, number} and {max, number}",
+          "shortAnswerMin": "At least {min, number} fill-in answers needed"
+        },
+        "scope": {
+          "addQuota": "Add topic quota",
+          "addQuotaHint": "Opens the table of minimum questions per topic.",
+          "hint": "Limit where the questions come from, by MAPID.",
+          "title": "Scope and topic quotas"
+        },
+        "setSource": {
+          "add": "Add condition",
+          "added": "Added",
+          "empty": "No condition: the sets follow the scope of the subject.",
+          "groupName": "Question sets",
+          "hint": "MAPID and tags for the question sets only; single questions are not affected.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Source tags"
+          },
+          "kindHint": {
+            "MAPID": "Only take sets under these MAPIDs",
+            "TAGS": "Filter sets by tag, for example the kind of passage"
+          },
+          "menuLabel": "Conditions of the set source",
+          "remove": "Remove",
+          "removeAria": "Remove the {kind} condition of the set source",
+          "title": "Set source"
+        },
+        "structure": {
+          "children": "Sub-questions in sets",
+          "childrenHint": "Total number of sub-questions; whole sets are chosen automatically",
+          "choice": "Multiple choice",
+          "choiceHint": "Includes the sub-questions of the sets",
+          "choiceTotal": "Multiple choice (with sub-questions)",
+          "choiceTotalHint": "Calculated: single questions plus sub-questions",
+          "fill": "Fill-in answer",
+          "fillMin": "At least {min, number}",
+          "hint": "Enter the number of questions of each kind. Single questions are calculated.",
+          "setSize": "{size, number} sub-questions per set",
+          "sets": "Number of sets",
+          "single": "Single questions",
+          "singleAuto": "Single questions",
+          "singleAutoHint": "Calculated: multiple choice minus the sub-questions of the sets",
+          "title": "Question structure"
+        }
       }
     }
   },

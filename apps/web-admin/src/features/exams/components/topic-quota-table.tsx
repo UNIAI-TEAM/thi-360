@@ -191,7 +191,7 @@ export function TopicQuotaTable({
                           <span className="flex flex-wrap items-center gap-1.5">
                             {nodes.map((node) => (
                               <span key={node.nodeId} className="inline-flex max-w-full rounded-full border border-border bg-subtle px-2.5 py-0.5 text-caption text-text">
-                                <span className="min-w-0 wrap-anywhere">
+                                <span className="min-w-0 wrap-anywhere" data-exam-content>
                                   <span className="font-semibold">{node.code}</span> {node.name}
                                 </span>
                               </span>
