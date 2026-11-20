@@ -195,7 +195,39 @@ class MyExamsApiIT extends AbstractExamAccessIT {
         assertThat(entitlementCard.get("state").asText()).isEqualTo("CAN_START");
         assertThat(entitlementCard.get("hasPendingFulfillment").asBoolean()).isTrue();
         assertThat(entitlementCard.get("pendingOrderCode").asText()).isEqualTo("ORD-TOPUP1");
-        assertThat(actions(entitlementCard)).containsExactly("START", "BUY_MORE");
+        assertThat(actions(entitlementCard)).as("no second purchase while an order is pending")
+                .containsExactly("START");
+    }
+
+    @Test
+    void paidOrderOnExhaustedExamIsTheOnlyCheckingCard() throws Exception {
+        UUID userId = activeAccount();
+        Product product = onSale();
+        var line = grant(userId, product.examId(), 1);
+        useAttempt(userId, line.entitlementId());
+        pendingOrders.add(userId, "ORD-REBUY1", product.examId());
+
+        JsonNode items = myExams(learner(userId)).get("items");
+
+        assertThat(items).as("the paid order and the entitlement: two cards").hasSize(2);
+        JsonNode orderCard = items.get(0);
+        assertThat(orderCard.get("state").asText()).isEqualTo("CHECKING");
+        assertThat(orderCard.get("pendingOrderCode").asText()).isEqualTo("ORD-REBUY1");
+        assertThat(actions(orderCard)).containsExactly("CHECKING");
+        JsonNode entitlementCard = items.get(1);
+        assertThat(entitlementCard.get("state").asText())
+                .as("the entitlement keeps its own exhausted state; the order alone is CHECKING")
+                .isEqualTo("EXHAUSTED");
+        assertThat(entitlementCard.get("hasPendingFulfillment").asBoolean()).isTrue();
+        assertThat(entitlementCard.get("pendingOrderCode").asText()).isEqualTo("ORD-REBUY1");
+        assertThat(actions(entitlementCard)).as("history, but no second purchase while the order is pending")
+                .containsExactly("HISTORY");
+        assertThat(items.findValuesAsText("state")).as("exactly one card with state CHECKING")
+                .containsExactly("CHECKING", "EXHAUSTED");
+
+        // TM 10.2 query precedence is unchanged: the product is CHECKING while the paid order is unfulfilled.
+        assertThat(only(queryAccess(learner(userId), product.code())).get("state").asText())
+                .isEqualTo("CHECKING");
     }
 
     @Test

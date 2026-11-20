@@ -30,9 +30,11 @@ public enum MyExamAction {
      * @param hasHistory the entitlement has had an attempt (used, held, open or with a result); an exhausted card has
      *        History whatever its attempts were (all of them may have been revoked unused)
      * @param onSale the product is still on sale
+     * @param pendingOrder a paid order of the account waits for fulfillment: a second purchase is never offered while
+     *        it is pending (the order's own card shows {@link #CHECKING})
      */
     public static List<MyExamAction> of(ExamAccessState state, int attemptsLeft, boolean openAttempt,
-            boolean hasResult, boolean hasHistory, boolean onSale) {
+            boolean hasResult, boolean hasHistory, boolean onSale, boolean pendingOrder) {
         List<MyExamAction> actions = new ArrayList<>();
         if (state == ExamAccessState.CHECKING) {
             actions.add(CHECKING);
@@ -48,7 +50,7 @@ public enum MyExamAction {
         if (hasHistory || state == ExamAccessState.EXHAUSTED) {
             actions.add(HISTORY);
         }
-        if (onSale) {
+        if (onSale && !pendingOrder) {
             if (state == ExamAccessState.EXHAUSTED) {
                 actions.add(REBUY);
             } else if (attemptsLeft > 0 && state != ExamAccessState.CHECKING) {

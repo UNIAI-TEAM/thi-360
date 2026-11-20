@@ -121,7 +121,8 @@ public class MyExamsService {
         ProductCard stored = read(product.card());
         boolean hasEntitlement = entitlement != null;
         int attemptsLeft = hasEntitlement ? entitlement.attemptsLeft() : 0;
-        ExamAccessState state = ExamAccessState.of(hasEntitlement, attemptsLeft, open != null, pendingOrderCode != null);
+        ExamAccessState state = ExamAccessState.of(hasEntitlement, attemptsLeft, open != null,
+                pendingOrderCode != null && !hasEntitlement);
         boolean hasHistory = open != null || result != null
                 || (hasEntitlement && entitlement.attemptsUsed() + entitlement.attemptsReserved() > 0);
         boolean onSale = product.saleState() == SaleState.ON_SALE;
@@ -156,7 +157,8 @@ public class MyExamsService {
                 result == null ? null : result.attemptId(),
                 pendingOrderCode != null,
                 pendingOrderCode,
-                MyExamAction.of(state, attemptsLeft, open != null, result != null, hasHistory, onSale));
+                MyExamAction.of(state, attemptsLeft, open != null, result != null, hasHistory, onSale,
+                        pendingOrderCode != null));
     }
 
     /**
