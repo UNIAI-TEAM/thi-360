@@ -17,7 +17,10 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import vn.unicom.thi360.attempt.api.AnswerChange;
 import vn.unicom.thi360.attempt.api.ClaimSessionRequest;
+import vn.unicom.thi360.attempt.api.SaveAnswersRequest;
+import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
@@ -114,7 +117,21 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
         assertThat(takeoverRes.getResponse().getStatus()).isEqualTo(200);
         assertThat(UUID.fromString(json(takeoverRes).path("sessionId").asText())).isEqualTo(sidB);
 
-        // Old session gets 409 ATTEMPT_SESSION_REVOKED across heartbeat, finish, and submit
+        // Old session gets 409 ATTEMPT_SESSION_REVOKED across answers, heartbeat, finish, and submit
+        UUID p0ItemId = attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId()).getFirst().getId();
+        MvcResult oldAnswers =
+                performPutAnswers(
+                        userId,
+                        attempt.getId(),
+                        sidA,
+                        new SaveAnswersRequest(
+                                List.of(new AnswerChange(p0ItemId, 1L, new AnswerValue.SingleChoice("a"))),
+                                null,
+                                null));
+        assertThat(oldAnswers.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(oldAnswers).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+        assertThat(attemptItemRepository.findById(p0ItemId).orElseThrow().getAnswer()).isNull();
+
         MvcResult oldHeartbeat = performHeartbeat(userId, attempt.getId(), sidA);
         assertThat(oldHeartbeat.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(oldHeartbeat).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
@@ -191,6 +208,23 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
         assertThat(performClaimSession(userId, attempt.getId(), new ClaimSessionRequest(sid2, true))
                 .getResponse().getStatus()).isEqualTo(200);
 
+        String sentinelText = "SENTINEL_SECRET_ANSWER_DO_NOT_LOG";
+        UUID missingItemId = UUID.randomUUID();
+        MvcResult rejectedSave =
+                performPutAnswers(
+                        userId,
+                        attempt.getId(),
+                        sid2,
+                        new SaveAnswersRequest(
+                                List.of(
+                                        new AnswerChange(
+                                                missingItemId,
+                                                7L,
+                                                new AnswerValue.ShortAnswer(sentinelText))),
+                                null,
+                                null));
+        assertThat(rejectedSave.getResponse().getStatus()).isEqualTo(200);
+
         List<AttemptEvent> events = attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId());
         List<AttemptEvent> claimed = events.stream()
                 .filter(e -> e.getType() == AttemptEventType.SESSION_CLAIMED)
@@ -208,9 +242,20 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
         assertThat(takenOver.getSessionId()).isEqualTo(sid2);
         assertThat(takenOver.getData()).containsEntry("previousSessionId", sid1.toString());
 
+        AttemptEvent saveRejected = events.stream()
+                .filter(e -> e.getType() == AttemptEventType.SAVE_REJECTED)
+                .findFirst()
+                .orElseThrow();
+        assertThat(saveRejected.getSessionId()).isEqualTo(sid2);
+        assertThat(saveRejected.getData())
+                .containsEntry("itemId", missingItemId.toString())
+                .containsEntry("seq", 7)
+                .containsEntry("reason", "NOT_IN_SCOPE");
+
         for (AttemptEvent evt : events) {
             String raw = objectMapper.writeValueAsString(evt.getData());
-            assertThat(raw).doesNotContain("\"answer\"")
+            assertThat(raw).doesNotContain(sentinelText)
+                    .doesNotContain("\"answer\"")
                     .doesNotContain("\"optionId\"")
                     .doesNotContain("\"optionIds\"")
                     .doesNotContain("\"text\"")
@@ -316,25 +361,5 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
         MvcResult expiredClaim = performClaimSession(owner, attempt.getId(), new ClaimSessionRequest(sid, false));
         assertThat(expiredClaim.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(expiredClaim).path("code").asText()).isEqualTo("TIME_UP");
-    }
-
-    private MvcResult performClaimSession(UUID userId, UUID attemptId, ClaimSessionRequest request)
-            throws Exception {
-        var req = post("/api/v1/me/attempts/{attemptId}/session", attemptId)
-                .with(AttemptTestFixtures.asExamUser(userId, "learner"));
-        if (request != null) {
-            req = req.contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request));
-        }
-        return mockMvc.perform(req).andReturn();
-    }
-
-    private MvcResult performHeartbeat(UUID userId, UUID attemptId, UUID sessionId) throws Exception {
-        var req = post("/api/v1/me/attempts/{attemptId}/heartbeat", attemptId)
-                .with(AttemptTestFixtures.asExamUser(userId, "learner"));
-        if (sessionId != null) {
-            req = req.header("X-Attempt-Session", sessionId.toString());
-        }
-        return mockMvc.perform(req).andReturn();
     }
 }

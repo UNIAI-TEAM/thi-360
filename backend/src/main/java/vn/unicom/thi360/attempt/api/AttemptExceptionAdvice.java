@@ -7,12 +7,15 @@ import org.slf4j.MDC;
 import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.unicom.thi360.attempt.application.AttemptOpenElsewhereException;
+import vn.unicom.thi360.attempt.application.AttemptRateLimitedException;
+import vn.unicom.thi360.shared.api.ApiError;
 import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
@@ -21,7 +24,7 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
  * {@code ATTEMPT_OPEN_ELSEWHERE} with {@code lastSeenAt}; 429 {@code RATE_LIMITED} with
  * {@code Retry-After}) without altering {@code GlobalExceptionHandler} (plan B2).
  */
-@RestControllerAdvice(assignableTypes = {AttemptSessionController.class})
+@RestControllerAdvice(assignableTypes = {AttemptSessionController.class, AttemptAnswerController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AttemptExceptionAdvice {
 
@@ -42,6 +45,18 @@ public class AttemptExceptionAdvice {
                 .body(
                         new AttemptSessionConflictResponse(
                                 code, message, List.of(), resolveTraceId(request), ex.getLastSeenAt()));
+    }
+
+    @ExceptionHandler(AttemptRateLimitedException.class)
+    public ResponseEntity<ApiError> handleRateLimited(
+            AttemptRateLimitedException ex, HttpServletRequest request) {
+        Locale locale = LocaleConfig.resolveLocale(request);
+        String code = ex.getCode();
+        String message = messageSource.getMessage(code, null, code, locale);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(ApiError.of(code, message, List.of(), resolveTraceId(request)));
     }
 
     private static String resolveTraceId(HttpServletRequest request) {

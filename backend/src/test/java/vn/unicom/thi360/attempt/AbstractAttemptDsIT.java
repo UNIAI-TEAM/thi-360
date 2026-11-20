@@ -3,6 +3,7 @@ package vn.unicom.thi360.attempt;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,12 +24,16 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.attempt.api.ClaimSessionRequest;
 import vn.unicom.thi360.attempt.api.FinishPartRequest;
+import vn.unicom.thi360.attempt.api.SaveAnswersRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
@@ -134,6 +139,53 @@ abstract class AbstractAttemptDsIT extends AbstractIntegrationTest {
                 .andReturn();
     }
 
+    protected MvcResult performClaimSession(UUID userId, UUID attemptId, ClaimSessionRequest request)
+            throws Exception {
+        var req =
+                post("/api/v1/me/attempts/{attemptId}/session", attemptId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (request != null) {
+            req =
+                    req.contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request));
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
+    protected UUID claimSession(UUID userId, UUID attemptId) throws Exception {
+        MvcResult res = performClaimSession(userId, attemptId, null);
+        assertThat(res.getResponse().getStatus()).isEqualTo(200);
+        return UUID.fromString(json(res).path("sessionId").asText());
+    }
+
+    protected MvcResult performHeartbeat(UUID userId, UUID attemptId, UUID sessionId)
+            throws Exception {
+        var req =
+                post("/api/v1/me/attempts/{attemptId}/heartbeat", attemptId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (sessionId != null) {
+            req = req.header("X-Attempt-Session", sessionId.toString());
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
+    protected MvcResult performPutAnswers(
+            UUID userId, UUID attemptId, UUID sessionId, SaveAnswersRequest request)
+            throws Exception {
+        var req =
+                put("/api/v1/me/attempts/{attemptId}/answers", attemptId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (sessionId != null) {
+            req = req.header("X-Attempt-Session", sessionId.toString());
+        }
+        if (request != null) {
+            req =
+                    req.contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request));
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
     protected MvcResult performFinishPart(
             UUID userId,
             UUID attemptId,
@@ -219,6 +271,17 @@ abstract class AbstractAttemptDsIT extends AbstractIntegrationTest {
                         + targetSet
                         + ", actual="
                         + (latest == null ? "MISSING" : latest.getState()));
+    }
+
+    protected List<AttemptItem> singleChoiceItems(UUID partId) {
+        return attemptItemRepository.findByPartIdOrderByOrdAsc(partId).stream()
+                .filter(
+                        i ->
+                                i.isInScope()
+                                        && i.getQuestionType() == QuestionType.SINGLE_CHOICE
+                                        && i.getOptionOrder() != null
+                                        && i.getOptionOrder().size() >= 2)
+                .toList();
     }
 
     protected JsonNode json(MvcResult result) throws Exception {
