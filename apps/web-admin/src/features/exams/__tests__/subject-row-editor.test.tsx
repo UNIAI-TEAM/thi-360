@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
@@ -278,11 +278,31 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(percentField()).toHaveValue("25"));
-    expect(percentField()).toHaveFocus();
+    await waitFor(() => expect(percentField()).toHaveFocus());
     expect(screen.getByText("Tỷ lệ này ra 10 câu, không chia được thành chùm 4 câu")).toBeInTheDocument();
     await typeInto(user, percentField(), "20");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+  });
+
+  it("closing editor and immediately clicking Save keeps focus on the error input after rAF flushes", async () => {
+    const user = userEvent.setup();
+    const rows = [wireBlock("s1", { questionCount: 28 }), wireBlock("set1", { name: "Chum", questionType: "QUESTION_SET", setCount: 3, setSize: 4, questionCount: 12 })];
+    const { server } = boot({ kind: "SP2E", parts: sp2eForty(rows) });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "set1", "Chum");
+    await typeInto(user, percentField(), "25");
+
+    // Đóng rồi bấm Lưu ngay trong cùng một khung hình để rAF trả focus cũ chạy sau khi mở lại ô lỗi.
+    fireEvent.click(screen.getByRole("button", { name: "Về danh sách" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(server)).toHaveLength(0);
+    await waitFor(() => expect(percentField()).toHaveFocus());
+
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    expect(percentField()).toHaveFocus();
   });
 
   it("wholeSetsOnly: nhập 10 câu không chia được chùm 4 thì báo đúng 10 và chặn lưu", async () => {

@@ -56,12 +56,20 @@ export function RowListForm({
   const tBlock = useTranslations("exams.structure.block");
   const queryClient = useQueryClient();
   const rootRef = useRef<HTMLDivElement>(null);
+  const closeFocusRafRef = useRef<number | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
   const [focusField, setFocusField] = useState<string | null>(null);
   const { section, part, option } = context;
   const kindCode = examKind ?? "";
   const entry = subjectFormFor(kindCode, section.subjectCode);
+
+  const cancelCloseFocus = () => {
+    if (closeFocusRafRef.current !== null) {
+      cancelAnimationFrame(closeFocusRafRef.current);
+      closeFocusRafRef.current = null;
+    }
+  };
 
   // Bài và mẫu đã nằm trong bộ nhớ đệm của khung (view tải trước khi vẽ môn): đọc thẳng, không đăng ký truy vấn nên mở môn không thêm request.
   const exam = queryClient.getQueryData<ExamDetail>(EXAMS_QUERY_KEYS.detail(examId));
@@ -70,6 +78,7 @@ export function RowListForm({
 
   const openRow = useEffectEvent((blockId: string, field: string | null) => {
     if (!readRow(section, blockId)) return false;
+    cancelCloseFocus();
     setOpenId(blockId);
     setFocusField(field);
     setFocusNonce((nonce) => nonce + 1);
@@ -83,7 +92,13 @@ export function RowListForm({
       if (openRow(blockId, field)) event.preventDefault();
     };
     root.addEventListener(ROW_TARGET_EVENT, onTarget);
-    return () => root.removeEventListener(ROW_TARGET_EVENT, onTarget);
+    return () => {
+      root.removeEventListener(ROW_TARGET_EVENT, onTarget);
+      if (closeFocusRafRef.current !== null) {
+        cancelAnimationFrame(closeFocusRafRef.current);
+        closeFocusRafRef.current = null;
+      }
+    };
   }, []);
 
   if (!entry) return null;
@@ -100,10 +115,23 @@ export function RowListForm({
   const editing = openId === null ? null : readRow(section, openId);
   const editingIndex = editing ? section.blocks.findIndex((block) => block.id === editing.id) : -1;
 
+  const openFromRow = (blockId: string) => {
+    cancelCloseFocus();
+    setOpenId(blockId);
+    setFocusField(null);
+  };
+
   const closeEditor = () => {
     const id = openId;
+    cancelCloseFocus();
     setOpenId(null);
-    if (id) requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>(`[data-form-row="${CSS.escape(id)}"] button`)?.focus());
+    setFocusField(null);
+    if (id) {
+      closeFocusRafRef.current = requestAnimationFrame(() => {
+        closeFocusRafRef.current = null;
+        rootRef.current?.querySelector<HTMLElement>(`[data-form-row="${CSS.escape(id)}"] button`)?.focus();
+      });
+    }
   };
 
   const kindText = (block: QuestionBlock) => {
@@ -256,7 +284,7 @@ export function RowListForm({
                         <td className="border-b border-border px-3 py-2 whitespace-nowrap tabular-nums text-text-secondary" data-row-figures>{figuresText(block)}</td>
                         {!readOnlyNotice && (
                           <td className="border-b border-border px-3 py-1 text-right">
-                            <Button type="button" variant="secondary" size="sm" aria-label={t("table.editAria", { name })} aria-expanded={openId === block.id} onClick={() => setOpenId(block.id)}>
+                            <Button type="button" variant="secondary" size="sm" aria-label={t("table.editAria", { name })} aria-expanded={openId === block.id} onClick={() => openFromRow(block.id)}>
                               {t("table.edit")}
                             </Button>
                           </td>
