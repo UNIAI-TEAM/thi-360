@@ -380,7 +380,11 @@ class MyExamsApiIT extends AbstractExamAccessIT {
 
     @Test
     void worksWithDefaultAttemptStatusProvider() throws Exception {
-        assertThat(attemptModule.getIfAvailable()).as("no attempt module in this context").isNull();
+        assertThat(AttemptStatusProvider.EMPTY.findOpenAttempt(UUID.randomUUID(), UUID.randomUUID()))
+                .isEmpty();
+        assertThat(AttemptStatusProvider.EMPTY.findLatestResultAttempt(UUID.randomUUID(), UUID.randomUUID()))
+                .isEmpty();
+        assertThat(attemptModule.getIfAvailable()).isNotNull();
         UUID userId = activeAccount();
         Product product = onSale();
         grant(userId, product.examId(), 2);

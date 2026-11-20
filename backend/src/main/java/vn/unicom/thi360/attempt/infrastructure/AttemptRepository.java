@@ -54,4 +54,20 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
                     """,
             nativeQuery = true)
     List<Attempt> findStaleStartingForUpdate(@Param("cutoff") Instant cutoff, @Param("limit") int limit);
+
+    Optional<Attempt> findFirstByUserIdAndEntitlementIdAndStateInOrderByCreatedAtDesc(
+            UUID userId, UUID entitlementId, Collection<AttemptState> states);
+
+    @Query(
+            value = """
+                    SELECT * FROM attempt.attempt
+                    WHERE user_id = :userId
+                      AND entitlement_id = :entitlementId
+                      AND state IN ('GRADING', 'PENDING_REVIEW', 'SCORED', 'GRADING_ERROR')
+                    ORDER BY finished_at DESC NULLS LAST, created_at DESC
+                    LIMIT 1
+                    """,
+            nativeQuery = true)
+    Optional<Attempt> findLatestResultAttempt(
+            @Param("userId") UUID userId, @Param("entitlementId") UUID entitlementId);
 }

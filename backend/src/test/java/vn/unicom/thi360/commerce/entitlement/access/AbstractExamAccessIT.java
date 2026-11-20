@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import vn.unicom.thi360.commerce.spi.AttemptStatusProvider;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -59,9 +59,50 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
         FakePendingOrderLookup fakePendingOrderLookup() {
             return new FakePendingOrderLookup();
         }
-    }
 
-    private static final String ATTEMPTS_BEAN = "fakeAttemptStatusProvider";
+        @Bean
+        @Primary
+        SwitchableAttemptStatusProvider switchableAttemptStatusProvider(
+                @org.springframework.beans.factory.annotation.Autowired(required = false)
+                        @org.springframework.beans.factory.annotation.Qualifier(
+                                "attemptStatusProviderImpl")
+                        AttemptStatusProvider realProvider) {
+            return new SwitchableAttemptStatusProvider(realProvider);
+        }
+
+        static class SwitchableAttemptStatusProvider implements AttemptStatusProvider {
+            private final AttemptStatusProvider fallback;
+            private volatile FakeAttemptStatusProvider activeFake;
+
+            SwitchableAttemptStatusProvider(AttemptStatusProvider fallback) {
+                this.fallback = fallback != null ? fallback : AttemptStatusProvider.EMPTY;
+            }
+
+            void useFake(FakeAttemptStatusProvider fake) {
+                this.activeFake = fake;
+            }
+
+            void clearFake() {
+                this.activeFake = null;
+            }
+
+            private AttemptStatusProvider delegate() {
+                FakeAttemptStatusProvider fake = this.activeFake;
+                return fake != null ? fake : this.fallback;
+            }
+
+            @Override
+            public java.util.Optional<OpenAttempt> findOpenAttempt(UUID userId, UUID entitlementId) {
+                return delegate().findOpenAttempt(userId, entitlementId);
+            }
+
+            @Override
+            public java.util.Optional<ResultAttempt> findLatestResultAttempt(
+                    UUID userId, UUID entitlementId) {
+                return delegate().findLatestResultAttempt(userId, entitlementId);
+            }
+        }
+    }
 
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected ObjectMapper mapper;
@@ -74,12 +115,14 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
     private final List<UUID> accountIds = new ArrayList<>();
     private final List<UUID> examIds = new ArrayList<>();
     private FakeAttemptStatusProvider attemptsFake;
+    @org.springframework.beans.factory.annotation.Autowired
+    private FakesConfig.SwitchableAttemptStatusProvider attemptsDelegate;
 
     @AfterEach
     void removeAccessData() {
         pendingOrders.clear();
         if (attemptsFake != null) {
-            ((DefaultListableBeanFactory) context.getBeanFactory()).destroySingleton(ATTEMPTS_BEAN);
+            attemptsDelegate.clearFake();
             attemptsFake = null;
         }
         for (UUID userId : accountIds) {
@@ -227,11 +270,11 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
         return attemptId;
     }
 
-    /** The attempt module, present in the context from now until the end of the test. */
+    /** The attempt module fake override, active from now until the end of the test. */
     protected FakeAttemptStatusProvider attempts() {
         if (attemptsFake == null) {
             attemptsFake = new FakeAttemptStatusProvider();
-            ((DefaultListableBeanFactory) context.getBeanFactory()).registerSingleton(ATTEMPTS_BEAN, attemptsFake);
+            attemptsDelegate.useFake(attemptsFake);
         }
         return attemptsFake;
     }
