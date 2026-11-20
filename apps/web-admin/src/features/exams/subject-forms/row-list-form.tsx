@@ -20,6 +20,7 @@ import { ROW_TARGET_EVENT } from "./navigation";
 import { LockReason } from "./lock-reason";
 import { ReferenceBlock } from "./reference-block";
 import { RowEditor } from "./row-editor";
+import { COUNT_FIELD, SPLIT_FIELD } from "./row-fields";
 import { applyNewTotal, conditionSummary, gradeVisible, keepOldTotal, lockReasonsOf, readRow, rowAnswerType, rowFigures, rowLocks, rowsLockedOf, writeRow, type RowContext } from "./row-list-model";
 import { replaceWithSplit, splitBlock, splitState } from "./row-split";
 import { subjectFormFor } from "./registry";
@@ -371,12 +372,14 @@ export function RowListForm({
           sectionCount={count}
           rawInputs={rawInputs}
           split={splitState(editing, section, entry, rowContext)}
-          onSplit={(parts) =>
+          onSplit={(parts) => {
+            rawInputs.clear(section.id, editing.id, COUNT_FIELD);
+            rawInputs.clear(section.id, editing.id, SPLIT_FIELD);
             onChange((current) => {
               const parent = readRow(current, editing.id);
               return parent ? replaceWithSplit(current, parent.id, splitBlock(parent, parts)) : current;
-            })
-          }
+            });
+          }}
         />
       )}
 

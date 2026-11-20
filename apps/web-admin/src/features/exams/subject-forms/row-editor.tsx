@@ -93,8 +93,17 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   const lockId = useId();
   const [droppedSlots, setDroppedSlots] = useState<number[]>([]);
   const [splitOpen, setSplitOpen] = useState(() => rawInputs.get(section.id, block.id, SPLIT_FIELD) !== null);
+  const [lastSplitStatus, setLastSplitStatus] = useState(split.status);
+  if (split.status !== lastSplitStatus) {
+    setLastSplitStatus(split.status);
+    if (split.status !== "OPEN") setSplitOpen(false);
+  }
   const splitReasonId = useId();
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
+
+  useEffect(() => {
+    if (split.status !== "OPEN") rawInputs.clear(section.id, block.id, SPLIT_FIELD);
+  }, [split.status, section.id, block.id, rawInputs]);
 
   // Mở màn (bằng nút Sửa, `?block=`, bấm lỗi) thì focus vào tiêu đề: đích của điều hướng vẽ muộn hơn khung (R1-8), nên màn tự đặt focus.
   useEffect(() => {
@@ -122,7 +131,12 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   const answerType = rowAnswerType(block);
   const range = block.positionRange;
 
+  const clearRowRaw = () => {
+    rawInputs.clear(section.id, block.id, COUNT_FIELD);
+    rawInputs.clear(section.id, block.id, SPLIT_FIELD);
+  };
   const setSets = (setCount: number, setSize: number) => {
+    clearRowRaw();
     const { patch, dropped } = resizeSets(block, setCount, setSize);
     onChange(patch);
     setDroppedSlots(dropped);
@@ -160,6 +174,7 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   };
 
   const positionKind = POSITION_PAIRS[`${kindCode}:${section.subjectCode}`];
+  const positionsLocked = positionKind === "TEMPLATE" || (locks.counts && (block.childConditions ?? []).some((item) => item.answerType !== undefined));
   const extras: ExtraCondition[] = [
     {
       key: "scope",
@@ -221,7 +236,10 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
             hint: t("conditions.positions.hint"),
             state: (block.childConditions?.length ?? 0) > 0 ? ("added" as const) : !isSet || flexible || positionKind === "TEMPLATE" ? ("unavailable" as const) : ("available" as const),
             unavailableHint: positionKind === "TEMPLATE" ? t("conditions.positions.template") : t("conditions.positions.unavailable"),
-            onRemove: () => onChange({ childConditions: undefined }),
+            removable: !positionsLocked,
+            onRemove: () => {
+              if (!positionsLocked) onChange({ childConditions: undefined });
+            },
             body: <BlockSetConditions block={block} reference={reference} subjectCode={section.subjectCode} onChange={onChange} locked={locks.counts || positionKind === "TEMPLATE"} show="positions" />,
           } satisfies ExtraCondition,
         ]
@@ -334,7 +352,10 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
             { value: "single", label: tForm("mode.single") },
             { value: "set", label: tForm("mode.set") },
           ]}
-          onChange={(mode) => onChange(modePatch(block, mode))}
+          onChange={(mode) => {
+            clearRowRaw();
+            onChange(modePatch(block, mode));
+          }}
         />
         {isSet && !flexible ? (
           <>

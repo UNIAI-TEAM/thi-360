@@ -79,6 +79,8 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
   const percentable = entry.percentEntry === "COUNT_OR_PERCENT";
   const unit: MatrixUnit = matrix?.unit ?? pendingUnit ?? "COUNT";
   const questionBasis = (matrix?.basis ?? "QUESTION") === "QUESTION";
+  const applicable = entry.enforcement === "REFERENCE_WITH_APPLY";
+  const combinedDeclared = matrix?.cells.some((cell) => cell.value > 0) ?? false;
   const percentIssues = validateMatrix(matrix, count, axes).filter((issue): issue is PercentIssue => issue.code === "PERCENT_TOTAL");
   const quotaEntries = entry.enforcement === "REFERENCE_WITH_APPLY" ? referenceQuotaEntries(section.subjectCode, examQuotas, showGrade) : [];
   const topicQuotas = section.topicQuotas ?? [];
@@ -156,12 +158,12 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
         {combined && matrix ? (
           <section className="flex flex-col gap-2" data-reference-dimension="COMBINED">
             <EnforcementControl
-              mode={entry.enforcement}
+              mode={applicable && questionBasis && !combinedDeclared ? "DECLARED_REQUIRED" : entry.enforcement}
               name={t("conditions.combined.label")}
-              value={dimensionEnforcement(matrix, "GRADE")}
-              declared={matrix.cells.some((cell) => cell.value > 0)}
+              value={combinedDeclared ? dimensionEnforcement(matrix, "GRADE") : "REFERENCE"}
+              declared={combinedDeclared}
               lockReason={questionBasis ? undefined : "promptBasis"}
-              onChange={(value) => setMatrix(setDimensionEnforcement(matrix, "GRADE", value))}
+              onChange={applicable && questionBasis && combinedDeclared ? (value) => setMatrix(setDimensionEnforcement(matrix, "GRADE", value)) : undefined}
             />
             <CombinedTable
               matrix={matrix}
@@ -253,7 +255,7 @@ function DimensionBlock({ dimension, section, entry, axes, labels, subjectName, 
           {t("dimensionTitle", { subject: subjectName, dimension: title })}
         </h4>
         <EnforcementControl
-          mode={enforcementModeOf(entry, matrix, dimension)}
+          mode={applicable && !promptBasis && declared.cells === 0 ? "DECLARED_REQUIRED" : enforcementModeOf(entry, matrix, dimension)}
           name={title}
           value={shownEnforcement}
           declared={declared.cells > 0}

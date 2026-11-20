@@ -338,6 +338,39 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ basis: "QUESTION", difficultyEnforcement: "REQUIRED" });
   });
+  it("undeclaredApplyShowsChip: Phân bổ đối chiếu trống không hiện công tắc chết; nhập một ô mới hiện công tắc bật được REQUIRED", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 25 })]));
+    const { server } = boot({ kind: "SP2E", parts: rows });
+    const first = openStructure("?section=sec-toan");
+    await first.findByRole("heading", { name: "Các dòng lấy câu" });
+    const ref = await openReference(user);
+    expect(within(ref).queryByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeNull();
+    const difficulty = ref.querySelector<HTMLElement>('[data-reference-dimension="DIFFICULTY"]')!;
+    expect(within(difficulty).getByText("Chưa khai báo")).toBeInTheDocument();
+    await user.type(within(difficulty).getAllByRole("textbox", { name: /số câu/ })[0]!, "10");
+    await user.click(within(difficulty).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ difficultyEnforcement: "REQUIRED" });
+    first.unmount();
+
+    const { server: server2 } = boot({ kind: "VSAT", parts: rows, examOverrides: { scope: "PART" } });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const vsatRef = await openReference(user);
+    await user.click(within(vsatRef).getByRole("button", { name: "Thêm điều kiện của Phân bổ đối chiếu" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Kết hợp Lớp × Độ khó/ }));
+    await user.click(within(vsatRef).getByRole("button", { name: "Xác nhận chuyển" }));
+    const combined = vsatRef.querySelector<HTMLElement>('[data-reference-dimension="COMBINED"]')!;
+    expect(within(combined).queryByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeNull();
+    expect(within(combined).getByText("Chưa khai báo")).toBeInTheDocument();
+    await user.type(within(combined).getAllByRole("textbox")[0]!, "10");
+    await user.click(within(combined).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server2)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "COMBINED", gradeEnforcement: "REQUIRED", difficultyEnforcement: "REQUIRED" });
+  });
   it("referencePercentGuard: tổng 90% chặn PUT, đủ 100% lưu PERCENT và tải lại", async () => {
     const user = userEvent.setup();
     const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 40 })]));

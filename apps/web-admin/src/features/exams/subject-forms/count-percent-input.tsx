@@ -53,6 +53,7 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
   const [countText, setCountText] = useState(() => rawSource === "PERCENT" ? String(count) : rawText ?? String(count));
   const [percentText, setPercentText] = useState(() => rawSource === "PERCENT" ? rawText ?? "" : "");
   const [lastCount, setLastCount] = useState(count);
+  const [lastSetSize, setLastSetSize] = useState(setSize);
   const [problem, setProblem] = useState<Problem>(() => {
     if (rawText === undefined) return null;
     const percent = rawSource === "PERCENT";
@@ -70,6 +71,13 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
     setLastCount(count);
     if (parseNumberText(countText, false) !== count) {
       setCountText(String(count));
+      setPercentText("");
+      setProblem(null);
+    }
+  }
+  if (setSize !== lastSetSize) {
+    setLastSetSize(setSize);
+    if (rawText === undefined && problem?.code === "setNotWhole") {
       setPercentText("");
       setProblem(null);
     }

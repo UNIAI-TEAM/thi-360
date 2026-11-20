@@ -32,6 +32,8 @@ export interface ExtraCondition {
   state: "available" | "added" | "unavailable";
   /** Lý do khi `state = "unavailable"`. */
   unavailableHint?: string;
+  /** Có nút Bỏ hay không; mặc định `true` (MD giữ nguyên; DS khóa điều kiện vị trí do mẫu đặt). */
+  removable?: boolean;
   /** Giá trị khi gỡ mục; không làm gì khi mục chưa có giá trị. */
   onRemove: () => void;
   body: ReactNode;
@@ -203,22 +205,24 @@ export function BlockConditions({ block, reference, onChange, onAddMapid, kinds 
         <div key={extra.key} className="flex flex-col gap-2 rounded-md border border-border bg-subtle/40 p-3" data-condition={extra.key}>
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-label font-semibold text-text">{extra.label}</h4>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              aria-label={t("remove", { kind: extra.label })}
-              onClick={() => {
-                setShownExtras((current) => {
-                  const next = new Set(current);
-                  next.delete(extra.key);
-                  return next;
-                });
-                extra.onRemove();
-              }}
-            >
-              {t("removeLabel")}
-            </Button>
+            {extra.removable !== false && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                aria-label={t("remove", { kind: extra.label })}
+                onClick={() => {
+                  setShownExtras((current) => {
+                    const next = new Set(current);
+                    next.delete(extra.key);
+                    return next;
+                  });
+                  extra.onRemove();
+                }}
+              >
+                {t("removeLabel")}
+              </Button>
+            )}
           </div>
           {extra.body}
         </div>

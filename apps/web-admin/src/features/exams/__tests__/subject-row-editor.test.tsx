@@ -441,3 +441,137 @@ describe("Danh sách dòng: tách và lưu", () => {
     expect(screen.queryByText(/Tổng Theo năng lực/)).toBeNull();
   });
 });
+
+describe("Danh sách dòng: điều kiện theo vị trí câu con (R1-1, R1-12)", () => {
+  const childConditions = [
+    { from: 1, to: 2, nodeIds: [], itemShape: { statements: 4 }, answerType: "TRUE_FALSE" },
+    { from: 3, to: 8, nodeIds: [], answerType: "SINGLE_CHOICE" },
+  ];
+
+  it("VSAT:ANH khóa điều kiện vị trí do mẫu đặt (không có nút Bỏ, giữ nguyên childConditions; dòng trống thì unavailable)", async () => {
+    const user = userEvent.setup();
+    const reading = wireBlock("read-1", { name: "Bai doc", questionType: "QUESTION_SET", setCount: 1, setSize: 8, questionCount: 8, childConditions });
+    const other = wireBlock("cloze-1", { name: "Doc dien", questionType: "CLOZE", setCount: 1, setSize: 5, questionCount: 5 });
+    const { server } = boot({ kind: "VSAT", parts: oneSection(wireSection("sec-anh", "ANH", [reading, other])) });
+    openStructure("?section=sec-anh");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+
+    await edit(user, "read-1", "Bai doc");
+    expect(document.querySelector('[data-condition="positions"]')).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Bỏ điều kiện Theo vị trí câu con" })).toBeNull();
+    const nameInput = screen.getByRole("textbox", { name: /Tên nhóm/ });
+    await user.type(nameInput, " moi");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(blockOf(putCalls(server)[0]!.body, "sec-anh", "read-1").childConditions).toEqual(childConditions);
+
+    await edit(user, "cloze-1", "Doc dien");
+    await user.click(screen.getByRole("button", { name: "Thêm điều kiện" }));
+    const item = await screen.findByRole("menuitem", { name: /Theo vị trí câu con/ });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveTextContent("Do mẫu đặt, không thêm điều kiện này");
+  });
+
+  it("SP2E:ANH khóa dòng H42 giữ nút Bỏ bị ẩn khi có dạng câu con; bản sửa được thêm và bỏ được", async () => {
+    const user = userEvent.setup();
+    const lockedRow = wireBlock("set-1", { name: "Doc hieu", questionType: "QUESTION_SET", setCount: 1, setSize: 8, questionCount: 8, childConditions });
+    const template = {
+      active: true,
+      scope: "SUBJECT",
+      timing: "SHARED",
+      buildMode: "STANDARD",
+      isDefault: true,
+      publishable: true,
+      fixedCounts: false,
+      fixedBlockCounts: true,
+      omittedLocked: false,
+      kindCode: "SP2E",
+      maxScore: 10,
+      code: "SP2E_ANH",
+      structure: { parts: [] },
+    };
+    boot({ kind: "SP2E", parts: oneSection(wireSection("sec-anh", "ANH", [lockedRow])), templates: [template], examOverrides: { scope: "SUBJECT", templateCode: "SP2E_ANH" } });
+    const lockedView = openStructure("?section=sec-anh");
+    await lockedView.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "set-1", "Doc hieu");
+    expect(document.querySelector('[data-condition="positions"]')).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Bỏ điều kiện Theo vị trí câu con" })).toBeNull();
+    lockedView.unmount();
+
+    const editableRow = wireBlock("set-2", { name: "Doc hieu 2", questionType: "QUESTION_SET", setCount: 2, setSize: 4, questionCount: 8 });
+    boot({ kind: "SP2E", parts: oneSection(wireSection("sec-anh", "ANH", [editableRow])), templates: [template], examOverrides: { scope: "PART", templateCode: "SP2E_ANH" } });
+    openStructure("?section=sec-anh");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "set-2", "Doc hieu 2");
+    await user.click(screen.getByRole("button", { name: "Thêm điều kiện" }));
+    await user.click(await screen.findByRole("menuitem", { name: /^Theo vị trí câu con/ }));
+    expect(document.querySelector('[data-condition="positions"]')).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "Thêm điều kiện theo vị trí" }));
+    expect(screen.getByRole("group", { name: "Điều kiện vị trí 1" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Bỏ điều kiện Theo vị trí câu con" }));
+    expect(document.querySelector('[data-condition="positions"]')).toBeNull();
+  });
+});
+
+describe("Danh sách dòng: dọn nhập thô cũ khi sửa số chùm, đổi chế độ, ẩn tách dòng (R1-3)", () => {
+  it("nhập 25% không chia hết cỡ chùm rồi sửa Số chùm hoặc đổi sang Câu đơn đều xóa nhập thô và cho phép Lưu", async () => {
+    const user = userEvent.setup();
+    const rows = [wireBlock("s1", { questionCount: 28 }), wireBlock("set1", { name: "Chum", questionType: "QUESTION_SET", setCount: 3, setSize: 4, questionCount: 12 })];
+    const { server } = boot({ kind: "SP2E", parts: sp2eForty(rows) });
+    const first = openStructure("?section=sec-toan");
+    await first.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "set1", "Chum");
+    await typeInto(user, percentField(), "25");
+    expect(await screen.findByText("Tỷ lệ này ra 10 câu, không chia được thành chùm 4 câu")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(server)).toHaveLength(0);
+
+    await typeInto(user, screen.getByRole("textbox", { name: "Số chùm" }), "2");
+    expect(screen.queryByText(/không chia được thành chùm/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(blockOf(putCalls(server)[0]!.body, "sec-toan", "set1")).toMatchObject({ setCount: 2, setSize: 4, questionCount: 8 });
+    first.unmount();
+
+    const { server: server2 } = boot({ kind: "SP2E", parts: sp2eForty(rows) });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "set1", "Chum");
+    await typeInto(user, percentField(), "25");
+    await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
+    expect(screen.queryByText(/không chia được thành chùm/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
+    expect(blockOf(putCalls(server2)[0]!.body, "sec-toan", "set1")).toMatchObject({ questionType: "SINGLE_CHOICE", questionCount: 12 });
+  });
+
+  it("gõ 0 ở Tách dòng rồi giảm Số chùm về 1 hoặc đổi Câu đơn sang Câu chùm đều xóa SPLIT_FIELD và cho phép Lưu", async () => {
+    const user = userEvent.setup();
+    const setRow = wireBlock("read", { name: "Doc", questionType: "QUESTION_SET", setCount: 2, setSize: 10, questionCount: 20 });
+    const { server } = boot({ kind: "HSCA", parts: oneSection(wireSection("sec-anh", "ANH", [setRow])) });
+    const first = openStructure("?section=sec-anh");
+    await first.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "read", "Doc");
+    await user.click(screen.getByRole("button", { name: "Tách dòng" }));
+    await typeInto(user, screen.getByRole("textbox", { name: "Số chùm của dòng con 1" }), "0");
+    await typeInto(user, screen.getByRole("textbox", { name: "Số chùm" }), "1");
+    expect(screen.queryByRole("textbox", { name: "Số chùm của dòng con 1" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(blockOf(putCalls(server)[0]!.body, "sec-anh", "read")).toMatchObject({ setCount: 1, questionCount: 10 });
+    first.unmount();
+
+    const singleRow = wireBlock("s1", { name: "Don", questionCount: 10 });
+    const { server: server2 } = boot({ kind: "HSCA", parts: oneSection(wireSection("sec-anh", "ANH", [singleRow])) });
+    openStructure("?section=sec-anh");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "s1", "Don");
+    await user.click(screen.getByRole("button", { name: "Tách dòng" }));
+    await typeInto(user, screen.getByRole("textbox", { name: "Số câu của dòng con 1" }), "0");
+    await user.click(screen.getByRole("radio", { name: "Câu chùm" }));
+    expect(screen.queryByRole("textbox", { name: "Số câu của dòng con 1" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
+    expect(blockOf(putCalls(server2)[0]!.body, "sec-anh", "s1")).toMatchObject({ questionType: "QUESTION_SET", setCount: 1, setSize: 10 });
+  });
+});
