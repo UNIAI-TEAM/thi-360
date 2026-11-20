@@ -1,4 +1,6 @@
 import { expect, request as playwrightRequest, type Browser, type Page, test } from "@playwright/test";
+import { loginAdmin } from "./helpers/editor-qa";
+import { discontinuedExam, waitForPublishedExamSet } from "./helpers/published-exam-set";
 import {
   cellLabel,
   expectMatrixClean,
@@ -12,32 +14,56 @@ import {
  * AC-20 (UNI-2730, FS-1): `/`, `/exams/<code>`, trang ngừng bán và trang 404 đúng khi sáng và tối, vi và en, 390px và
  * 1280px: không tràn ngang, tương phản >= 4,5, không lẫn ngôn ngữ. Gọi `helpers/visual-matrix.ts` của FS-4, không sửa.
  * Tên bài, tên phần, ngữ liệu mô tả là nội dung đề (`data-exam-content`) nên phép kiểm lẫn ngôn ngữ bỏ qua.
- * Trang ngừng bán cần `THI360_E2E_DISCONTINUED_CODE` (mã trong tệp hằng số của DS); thiếu thì ca đó bỏ qua.
+ * Chỉ ô có sản phẩm (chi tiết, ngừng bán) dùng dữ liệu DS: chúng chờ bộ DS và lấy bài đầu danh mục khi chạy, không
+ * qua `beforeAll` chung, nên ô trang giới thiệu và 404 chạy được dù danh mục trống hay DS chưa xong.
  */
 const API_URL = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 const WEB_URL = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-const DISCONTINUED_CODE = process.env.THI360_E2E_DISCONTINUED_CODE?.trim();
 
 let browser: Browser;
-let productCode = "";
 
 test.beforeAll(async () => {
   browser = await launchMatrixBrowser();
-  const api = await playwrightRequest.newContext();
-  try {
-    const response = await api.get(`${API_URL}/api/v1/public/storefront/products?size=12`);
-    expect(response.status(), "cần dữ liệu DS và bảng chiếu đã dựng").toBe(200);
-    const page = (await response.json()) as { items: Array<{ code: string }> };
-    expect(page.items.length, "DS phải công bố ít nhất một bài đang bán").toBeGreaterThan(0);
-    productCode = page.items[0]!.code;
-  } finally {
-    await api.dispose();
-  }
 });
 
 test.afterAll(async () => {
   await browser.close();
 });
+
+let dsReady: Promise<void> | undefined;
+let firstProduct: Promise<string> | undefined;
+
+/** Chờ bộ DS đủ ở danh sách quản trị (một lần cho cả lần chạy); chỉ ô có sản phẩm gọi. */
+function waitForDsData(): Promise<void> {
+  dsReady ??= (async () => {
+    const context = await browser.newContext();
+    try {
+      await loginAdmin(context, "vi");
+      await waitForPublishedExamSet(context.request, { timeoutMs: 240_000 });
+    } finally {
+      await context.close();
+    }
+  })();
+  return dsReady;
+}
+
+/** Mã bài đầu danh mục công khai sau khi DS xong. */
+function firstProductCode(): Promise<string> {
+  firstProduct ??= (async () => {
+    await waitForDsData();
+    const api = await playwrightRequest.newContext();
+    try {
+      const response = await api.get(`${API_URL}/api/v1/public/storefront/products?size=12`);
+      expect(response.status(), "cần dữ liệu DS và bảng chiếu đã dựng").toBe(200);
+      const page = (await response.json()) as { items: Array<{ code: string }> };
+      expect(page.items.length, "DS phải công bố ít nhất một bài đang bán").toBeGreaterThan(0);
+      return page.items[0]!.code;
+    } finally {
+      await api.dispose();
+    }
+  })();
+  return firstProduct;
+}
 
 async function settle(page: Page): Promise<void> {
   // Phần theo phiên chạy phía trình duyệt: chờ hết khung giữ chỗ trước khi đo.
@@ -71,18 +97,20 @@ const HEADING = {
   buy: { vi: "Mua bài thi", en: "Buy exam" },
 } as const;
 
+// Chờ DS có thể lâu (tối đa 240 giây) nên ô có sản phẩm có hạn riêng; ô giới thiệu và 404 không chờ gì.
+const DS_CELL_TIMEOUT_MS = 360_000;
+
 for (const cell of matrixCells()) {
   test(`trang giới thiệu: ${cellLabel(cell)}`, async () => {
     test.setTimeout(120_000);
     await check("storefront-landing", "/", cell, async (page) => {
       await expect(page.getByRole("heading", { level: 2, name: HEADING.catalog[cell.lang] })).toBeVisible();
-      await expect(page.getByRole("article").first()).toBeVisible();
-      await expect(page.getByRole("link", { name: HEADING.buy[cell.lang] }).first()).toBeVisible();
     });
   });
 
   test(`chi tiết bài thi: ${cellLabel(cell)}`, async () => {
-    test.setTimeout(120_000);
+    test.setTimeout(DS_CELL_TIMEOUT_MS);
+    const productCode = await firstProductCode();
     await check("storefront-detail", `/exams/${productCode}`, cell, async (page) => {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(page.getByRole("complementary").getByRole("link", { name: HEADING.buy[cell.lang] })).toBeVisible();
@@ -90,9 +118,9 @@ for (const cell of matrixCells()) {
   });
 
   test(`bài thi đã ngừng bán: ${cellLabel(cell)}`, async () => {
-    test.skip(!DISCONTINUED_CODE, "chưa đặt THI360_E2E_DISCONTINUED_CODE (mã bài ngừng bán trong tệp hằng số của DS)");
-    test.setTimeout(120_000);
-    await check("storefront-gone", `/exams/${DISCONTINUED_CODE}`, cell, async (page) => {
+    test.setTimeout(DS_CELL_TIMEOUT_MS);
+    await waitForDsData();
+    await check("storefront-gone", `/exams/${discontinuedExam().productCode}`, cell, async (page) => {
       await expect(page.getByRole("heading", { level: 1, name: HEADING.gone[cell.lang] })).toBeVisible();
     });
   });

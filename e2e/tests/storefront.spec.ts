@@ -1,16 +1,36 @@
 import { expect, request as playwrightRequest, type Page, test } from "@playwright/test";
+import { loginAdmin } from "./helpers/editor-qa";
+import {
+  allExams,
+  discontinuedExam,
+  publishedExamSet,
+  reviewExam,
+  waitForPublishedExamSet,
+} from "./helpers/published-exam-set";
 
 /**
  * Trang giới thiệu, danh mục và chi tiết bài thi của web học viên (UNI-2730, FS-1, AC-1..AC-4, AC-6, AC-8, AC-9,
- * AC-11, AC-17, AC-18). Dữ liệu là các bài đã công bố của bộ dữ liệu DS; spec đọc danh mục thật qua API công khai nên
- * không ghi cứng mã bài. Bài đã ngừng bán không hiện ở danh mục: đặt `THI360_E2E_DISCONTINUED_CODE` (mã trong tệp hằng
- * số của DS), thiếu thì ca đó bỏ qua và ghi lý do. Backend chạy profile `e2e` kèm `THI360_SECURITY_RATELIMIT_EXEMPTIPS`
- * (xem `playwright.config.ts`): bộ này không có phản hồi 429.
+ * AC-11, AC-17, AC-18). Dữ liệu là bộ bài đã công bố của DS (`helpers/published-exam-set.ts`): `beforeAll` chờ bộ đó
+ * xuất hiện đủ ở danh sách quản trị, nên bài ngừng bán và bài ôn luôn có và không ca nào bị bỏ qua. Backend chạy
+ * profile `e2e` kèm `THI360_SECURITY_RATELIMIT_EXEMPTIPS` (xem `playwright.config.ts`): bộ này không có phản hồi 429.
  */
 const API_URL = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 const WEB_URL = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
-const DISCONTINUED_CODE = process.env.THI360_E2E_DISCONTINUED_CODE?.trim();
+const CATALOG_PAGE_SIZE = 12;
+/** Bài đang bán trong bộ DS: mọi bài đã công bố trừ bài ngừng bán (mỗi bài đã công bố được chiếu thành một sản phẩm). */
+const ON_SALE_COUNT = allExams().filter((exam) => exam.code !== publishedExamSet().discontinuedExam).length;
+
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(300_000);
+  const context = await browser.newContext();
+  try {
+    await loginAdmin(context, "vi");
+    await waitForPublishedExamSet(context.request, { timeoutMs: 240_000 });
+  } finally {
+    await context.close();
+  }
+});
 
 interface Card {
   code: string;
@@ -121,8 +141,10 @@ test.describe("Danh mục ở trang giới thiệu", () => {
   });
 
   test("AC-3: chuyển trang giữ điều kiện; bấm thẻ mở đúng /exams/<code>", async ({ page }) => {
-    const catalog = await readCatalog("size=12");
-    test.skip(catalog.totalPages < 2, "DS công bố không quá 12 bài đang bán nên chưa có trang 2 (cỡ trang cố định 12)");
+    // Bộ DS có hơn một trang bài đang bán (đếm từ tệp json): trang 2 phải có, không bỏ qua.
+    expect(ON_SALE_COUNT, "bộ DS phải có hơn một trang bài đang bán").toBeGreaterThan(CATALOG_PAGE_SIZE);
+    const catalog = await readCatalog(`size=${CATALOG_PAGE_SIZE}`);
+    expect(catalog.totalPages, "danh mục công khai phải có trang 2").toBeGreaterThanOrEqual(2);
 
     await page.goto(`${WEB_URL}/?sort=PRICE_ASC`);
     await page.getByRole("button", { name: "Trang 2" }).click();
@@ -138,14 +160,12 @@ test.describe("Danh mục ở trang giới thiệu", () => {
   });
 
   test("AC-18: bài ôn đang bán có nhãn Bài ôn trên thẻ và trang chi tiết", async ({ page }) => {
-    const catalog = await readCatalog();
-    const review = catalog.items.find((item) => item.buildMode === "REVIEW");
-    test.skip(!review, "DS chưa công bố bài ôn đang bán");
+    const review = reviewExam();
 
-    await page.goto(`${WEB_URL}/?q=${encodeURIComponent(review!.code)}`);
-    await expect(cardFor(page, review!.name).getByText("Bài ôn", { exact: true })).toBeVisible();
+    await page.goto(`${WEB_URL}/?q=${encodeURIComponent(review.productCode)}`);
+    await expect(cardFor(page, review.name).getByText("Bài ôn", { exact: true })).toBeVisible();
 
-    await page.goto(`${WEB_URL}/exams/${review!.code}`);
+    await page.goto(`${WEB_URL}/exams/${review.productCode}`);
     await expect(page.getByText("Bài ôn", { exact: true }).first()).toBeVisible();
   });
 });
@@ -225,9 +245,9 @@ test.describe("Chi tiết bài thi và nút theo quyền", () => {
   });
 
   test("AC-8: mã ngừng bán hiện 'Bài thi đã ngừng bán'; nút Bài thi của tôi chỉ có khi đã đăng nhập", async ({ page }) => {
-    test.skip(!DISCONTINUED_CODE, "chưa đặt THI360_E2E_DISCONTINUED_CODE (mã bài ngừng bán trong tệp hằng số của DS)");
+    const discontinued = discontinuedExam().productCode;
 
-    await page.goto(`${WEB_URL}/exams/${DISCONTINUED_CODE}`);
+    await page.goto(`${WEB_URL}/exams/${discontinued}`);
     await expect(page.getByRole("heading", { level: 1, name: "Bài thi đã ngừng bán" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Về danh mục bài thi" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Bài thi của tôi" })).toHaveCount(0);
@@ -235,7 +255,7 @@ test.describe("Chi tiết bài thi và nút theo quyền", () => {
     await page.goto(`${WEB_URL}/login`);
     await signIn(page, "student01");
     await page.waitForURL(`${WEB_URL}/home`);
-    await page.goto(`${WEB_URL}/exams/${DISCONTINUED_CODE}`);
+    await page.goto(`${WEB_URL}/exams/${discontinued}`);
     await expect(page.getByRole("main").getByRole("link", { name: "Bài thi của tôi" })).toBeVisible();
   });
 });
