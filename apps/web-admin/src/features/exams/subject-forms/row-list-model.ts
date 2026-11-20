@@ -185,8 +185,8 @@ export function dimensionDeclared(matrix: BlockMatrix | null, dimension: MatrixD
  * rỗng (đúng kiểu `BlockMatrix`), không `null`. Chiều kia, ô kết hợp, đơn vị và mức không đụng tới: lớp bị ẩn giữ nguyên dữ liệu
  * (R-11). `matrix = null` mở đầu bằng ma trận trống riêng từng chiều theo câu. Mức áp dụng chỉ ghi khi cặp đặt mức mặc định:
  * `FIXED_REFERENCE` (BCA) ghi `REFERENCE` ở chiều vừa khai; `REFERENCE_WITH_APPLY` (V-ACT, SP2E, SPT, H-SCA, V-SAT, mặc định Chỉ đối chiếu)
- * ghi `REFERENCE` cho cả hai chiều chưa có mức, để chiều chưa khai không bị coi là Bắt buộc; HSA có HSA-C, QDA và THPTQG để mặc định
- * `REQUIRED` (trường thiếu).
+ * ghi `REFERENCE` cho cả hai chiều chưa có mức, để chiều chưa khai không bị coi là Bắt buộc, và đặt lại chiều vừa xóa hết ô về `REFERENCE`
+ * (tránh kẹt `REQUIRED` khi công tắc đã ẩn); HSA có HSA-C, QDA và THPTQG để mặc định `REQUIRED` (trường thiếu).
  */
 export function setDimensionCell(
   matrix: BlockMatrix | null,
@@ -207,6 +207,7 @@ export function setDimensionCell(
     [keyOf(dimension)]: ordered,
     ...(enforcement === "FIXED_REFERENCE" && ordered.length > 0 ? { [enforcementKeyOf(dimension)]: "REFERENCE" as const } : {}),
     ...(referenceDefault ? { gradeEnforcement: base.gradeEnforcement ?? ("REFERENCE" as const), difficultyEnforcement: base.difficultyEnforcement ?? ("REFERENCE" as const) } : {}),
+    ...(enforcement === "REFERENCE_WITH_APPLY" && ordered.length === 0 ? { [enforcementKeyOf(dimension)]: "REFERENCE" as const } : {}),
   };
 }
 

@@ -397,6 +397,62 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
     expect(sectionsOf(putCalls(server2)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "COMBINED", gradeEnforcement: "REQUIRED", difficultyEnforcement: "REQUIRED" });
   });
+  it("clearingRequiredDimensionOrCombinedResetsToReference: xóa hết ô sau khi bật Áp dụng khi sinh đề ở % đặt lại REFERENCE và lưu được (R2-1)", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 25 })]));
+    const { server } = boot({ kind: "SP2E", parts: rows });
+    const first = openStructure("?section=sec-toan");
+    await first.findByRole("heading", { name: "Các dòng lấy câu" });
+    const ref = await openReference(user);
+    await user.click(within(within(ref).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" }));
+    const grade = ref.querySelector<HTMLElement>('[data-reference-dimension="GRADE"]')!;
+    const gradeCell = within(grade).getAllByRole("textbox", { name: /Khối lớp: .*tỷ lệ/ })[0]!;
+    await user.type(gradeCell, "100");
+    const difficulty = ref.querySelector<HTMLElement>('[data-reference-dimension="DIFFICULTY"]')!;
+    const difficultyCell = within(difficulty).getAllByRole("textbox", { name: /Độ khó: .*tỷ lệ/ })[0]!;
+    await user.type(difficultyCell, "100");
+    await user.click(within(difficulty).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
+    await user.clear(difficultyCell);
+    expect(within(difficulty).getByText("Chưa khai báo")).toBeInTheDocument();
+    expect(within(difficulty).queryByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeNull();
+    expect(within(difficulty).queryByRole("alert")).toBeNull();
+    expect(within(ref).queryByText(/Tổng tỷ lệ 0%/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({
+      unit: "PERCENT",
+      gradeEnforcement: "REFERENCE",
+      difficultyEnforcement: "REFERENCE",
+      byDifficulty: [],
+    });
+    first.unmount();
+
+    const { server: server2 } = boot({ kind: "VSAT", parts: rows, examOverrides: { scope: "PART" } });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const vsatRef = await openReference(user);
+    await user.click(within(vsatRef).getByRole("button", { name: "Thêm điều kiện của Phân bổ đối chiếu" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Kết hợp Lớp × Độ khó/ }));
+    await user.click(within(vsatRef).getByRole("button", { name: "Xác nhận chuyển" }));
+    await user.click(within(within(vsatRef).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" }));
+    const combined = vsatRef.querySelector<HTMLElement>('[data-reference-dimension="COMBINED"]')!;
+    const combinedCell = within(combined).getAllByRole("textbox")[0]!;
+    await user.type(combinedCell, "100");
+    await user.click(within(combined).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
+    await user.clear(combinedCell);
+    expect(within(combined).getByText("Chưa khai báo")).toBeInTheDocument();
+    expect(within(combined).queryByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeNull();
+    expect(within(combined).queryByRole("alert")).toBeNull();
+    expect(within(vsatRef).queryByText(/Tổng tỷ lệ 0%/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server2)[0]!.body)["sec-toan"]!.matrix).toMatchObject({
+      mode: "COMBINED",
+      unit: "PERCENT",
+      gradeEnforcement: "REFERENCE",
+      difficultyEnforcement: "REFERENCE",
+    });
+  });
   it("referencePercentGuard: tổng 90% chặn PUT, đủ 100% lưu PERCENT và tải lại", async () => {
     const user = userEvent.setup();
     const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 40 })]));

@@ -118,7 +118,12 @@ export function CombinedTable({ matrix, axes, labels, count, percentError, onCha
   const setCell = (row: number, column: number, value: number | null) => {
     const next = grid.map((cells) => [...cells]);
     next[row]![column] = Math.max(0, value ?? 0);
-    onChange({ ...matrix, cells: gridToCells(next, axes) });
+    const resetEnforcement =
+      next.flat().every((cell) => cell === 0) &&
+      (matrix.gradeEnforcement === "REQUIRED" || matrix.difficultyEnforcement === "REQUIRED")
+        ? { gradeEnforcement: "REFERENCE" as const, difficultyEnforcement: "REFERENCE" as const }
+        : {};
+    onChange({ ...matrix, ...resetEnforcement, cells: gridToCells(next, axes) });
   };
 
   return (

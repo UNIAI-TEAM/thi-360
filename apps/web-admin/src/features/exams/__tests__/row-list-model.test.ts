@@ -132,6 +132,32 @@ describe("row-list-model: chiều ma trận của Phân bổ đối chiếu (R-8
     const hidden = (kind: string, subject: string) => !gradeVisible(entryOf(kind, subject));
     expect([hidden("HSA", "ANH"), hidden("HSA", "VAN"), hidden("THPTQG", "ECON_LAW"), hidden("THPTQG", "TOAN"), hidden("VSAT", "DIA"), hidden("VSAT", "SU")]).toEqual([true, false, true, false, true, false]);
   });
+
+  it("setDimensionCell đặt lại difficultyEnforcement từ REQUIRED về REFERENCE khi xóa ô cuối trên REFERENCE_WITH_APPLY và giữ nguyên gradeEnforcement (R2-1)", () => {
+    const initial: BlockMatrix = {
+      mode: "SEPARATE",
+      unit: "PERCENT",
+      basis: "QUESTION",
+      gradeEnforcement: "REQUIRED",
+      difficultyEnforcement: "REQUIRED",
+      cells: [],
+      byGrade: [{ code: "GRADE_10", value: 100 }],
+      byDifficulty: [
+        { code: "NB", value: 40 },
+        { code: "TH", value: 60 },
+      ],
+    };
+    const partial = setDimensionCell(initial, "DIFFICULTY", "NB", null, AXES, "REFERENCE_WITH_APPLY");
+    expect(partial.difficultyEnforcement).toBe("REQUIRED");
+    expect(partial.gradeEnforcement).toBe("REQUIRED");
+
+    const cleared = setDimensionCell(partial, "DIFFICULTY", "TH", null, AXES, "REFERENCE_WITH_APPLY");
+    expect(cleared.byDifficulty).toEqual([]);
+    expect(cleared.difficultyEnforcement).toBe("REFERENCE");
+    expect(cleared.byGrade).toEqual([{ code: "GRADE_10", value: 100 }]);
+    expect(cleared.gradeEnforcement).toBe("REQUIRED");
+    expect(validateMatrix(cleared, 20, AXES)).toEqual([]);
+  });
 });
 
 describe("row-list-model: mọi mẫu DS của fixture", () => {
