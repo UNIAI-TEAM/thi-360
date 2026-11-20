@@ -423,9 +423,14 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
         if (f.statementPoints() != null) {
             // FU-BE9-2: every statement of a TRUE_FALSE question carries exactly this many points (SP2E, 0.2 each).
             params.addValue(p + "statementPoints", f.statementPoints());
-            parts.add("(q.type <> 'TRUE_FALSE' or not exists (select 1 "
-                    + "from jsonb_array_elements(v.snapshot #> '{body,statements}') st "
-                    + "where coalesce((st->>'points')::numeric, -1) <> :" + p + "statementPoints))");
+            parts.add("(q.type <> 'TRUE_FALSE' or (jsonb_typeof(v.snapshot #> '{body,statements}') = 'array' "
+                    + "and jsonb_array_length(case when jsonb_typeof(v.snapshot #> '{body,statements}') = 'array' "
+                    + "then v.snapshot #> '{body,statements}' else '[]'::jsonb end) > 0 "
+                    + "and not exists (select 1 from jsonb_array_elements(case "
+                    + "when jsonb_typeof(v.snapshot #> '{body,statements}') = 'array' "
+                    + "then v.snapshot #> '{body,statements}' else '[]'::jsonb end) st "
+                    + "where case when jsonb_typeof(st->'points') = 'number' "
+                    + "then (st->>'points')::numeric <> :" + p + "statementPoints else true end)))");
         }
         if (f.audioRequirement() == AudioRequirement.REQUIRED) {
             parts.add(rootHasAudio());
@@ -615,10 +620,12 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                 ),
                 units as (
                   select raw_units.*,
-                         case when answer_type = 'TRUE_FALSE' then coalesce(jsonb_array_length(unit_snapshot #> '{body,statements}'), 0)
+                         case when answer_type = 'TRUE_FALSE' then case when jsonb_typeof(unit_snapshot #> '{body,statements}') = 'array'
+                                   then jsonb_array_length(unit_snapshot #> '{body,statements}') else 0 end
                               when answer_type = 'MATCHING' then coalesce(jsonb_array_length(unit_snapshot #> '{body,left}'), 0)
                               else 1 end command_count,
-                         case when answer_type = 'TRUE_FALSE' then jsonb_array_length(unit_snapshot #> '{body,statements}') end statement_count,
+                         case when answer_type = 'TRUE_FALSE' and jsonb_typeof(unit_snapshot #> '{body,statements}') = 'array'
+                              then jsonb_array_length(unit_snapshot #> '{body,statements}') end statement_count,
                          case when answer_type = 'MATCHING' then jsonb_array_length(unit_snapshot #> '{body,left}') end left_count,
                          case when answer_type = 'MATCHING' then jsonb_array_length(unit_snapshot #> '{body,right}') end right_count,
                          case when answer_type = 'SHORT_ANSWER' then unit_snapshot #>> '{body,answerFormat}' end answer_format,

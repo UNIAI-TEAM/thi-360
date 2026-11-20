@@ -240,7 +240,7 @@ final class ExamCheckPathPresenter {
             int fixed = section.groups().stream().mapToInt(ExamCheckPathPresenter::fixedCount).sum();
             for (QuestionBlock block : info.section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
-                int count = block.questionCount() == null
+                int count = vn.unicom.thi360.exam.domain.BlockCounts.isRemainder(block)
                         ? Math.max(0, (section.questionCount() == null ? 0 : section.questionCount()) - fixed)
                         : fixedCount(block);
                 if (!subjectChoice) totalQuestions += count;

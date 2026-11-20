@@ -236,10 +236,10 @@ public class ExamPreviewService {
                 ? snapshot.durationMinutes() : generatedPartMinutes;
         String kindCode = snapshot.exam().getKindItemId() == null ? null
                 : catalog.findItem(snapshot.exam().getKindItemId()).map(CatalogItemView::code).orElse(null);
+        Instant generatedAt = Instant.now(clock);
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
                 request.seed(), selectedParts, kindCode, snapshot.timing(), trialMinutes));
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
-        Instant generatedAt = Instant.now(clock);
         return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), generatedAt,
                 "GENERATED", paper, null, null, previewId, compliance, droppedQuestions,
                 generatedAt.plus(PreviewSnapshotStore.TTL));

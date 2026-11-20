@@ -89,6 +89,45 @@ class ExamCheckUnitFingerprintTests {
         assertThat(afterUnrelated).isEqualTo(beforeUnrelated);
     }
 
+    @Test
+    void questionTagChangeInvalidatesOnlyReferencingSubjectUnit() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        CatalogItemView tagAActive = tagItem(groupId, UUID.randomUUID(), "TAG_A", CatalogStatus.ACTIVE);
+        CatalogItemView tagAInactive = tagItem(groupId, tagAActive.id(), "TAG_A", CatalogStatus.INACTIVE);
+        CatalogItemView tagBActive = tagItem(groupId, UUID.randomUUID(), "TAG_B", CatalogStatus.ACTIVE);
+
+        CatalogLookup lookup = mock(CatalogLookup.class);
+        when(lookup.listGroupItems("QUESTION_TAG"))
+                .thenReturn(List.of(tagAActive, tagBActive), List.of(tagAInactive, tagBActive));
+
+        ExamSection affected = sectionWithTag("sec-a", "TOAN", "TAG_A");
+        ExamSection unrelated = sectionWithTag("sec-b", "LY", "TAG_B");
+
+        var beforeSlice = new ExamCheckUnitCatalogSlice(lookup, mapper);
+        var beforeAffected = fingerprint.calculate("TOAN", List.of(affected), List.of(), config, 1L, beforeSlice, List.of());
+        var beforeUnrelated = fingerprint.calculate("LY", List.of(unrelated), List.of(), config, 1L, beforeSlice, List.of());
+
+        var afterSlice = new ExamCheckUnitCatalogSlice(lookup, mapper);
+        var afterAffected = fingerprint.calculate("TOAN", List.of(affected), List.of(), config, 1L, afterSlice, List.of());
+        var afterUnrelated = fingerprint.calculate("LY", List.of(unrelated), List.of(), config, 1L, afterSlice, List.of());
+
+        assertThat(afterAffected.key()).isEqualTo(beforeAffected.key());
+        assertThat(afterAffected.fingerprint()).isNotEqualTo(beforeAffected.fingerprint());
+        assertThat(afterUnrelated).isEqualTo(beforeUnrelated);
+    }
+
+    private CatalogItemView tagItem(UUID groupId, UUID id, String code, CatalogStatus status) {
+        return new CatalogItemView(id, groupId, "QUESTION_TAG", code, code.toLowerCase(java.util.Locale.ROOT), 0,
+                code, code, status, status, false, null, (short) 0, "/" + code + "/");
+    }
+
+    private ExamSection sectionWithTag(String id, String subject, String tagCode) throws Exception {
+        return mapper.readValue("""
+                {"id":"%s","subjectCode":"%s","questionCount":2,
+                 "blocks":[{"id":"block-%s","name":"B","questionType":"SINGLE_CHOICE","questionCount":2,"tagCodes":["%s"]}]}
+                """.formatted(id, subject, id, tagCode), ExamSection.class);
+    }
+
     private CatalogItemView knowledgeItem(UUID groupId, UUID id, String code, UUID parentId, short depth, String path) {
         return new CatalogItemView(id, groupId, "KNOWLEDGE", code, code.toLowerCase(java.util.Locale.ROOT), 0,
                 code, code, CatalogStatus.ACTIVE, CatalogStatus.ACTIVE, false, parentId, depth, path);

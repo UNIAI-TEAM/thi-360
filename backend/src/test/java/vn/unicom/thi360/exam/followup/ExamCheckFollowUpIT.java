@@ -421,9 +421,71 @@ class ExamCheckFollowUpIT extends AbstractIntegrationTest {
         assertThat(result.findValuesAsText("code")).contains("SET_SHORTAGE").doesNotContain("CHILD_CONDITION_SHORTAGE");
     }
 
+    private void singleChoice(Subject subject, String points) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
+                + "VALUES (?,?,'SINGLE_CHOICE','READY',?,1,?)", id, "Q-" + id, subject.id(), new java.math.BigDecimal(points));
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", id,
+                "{\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true},{\"id\":\"b\",\"correct\":false}]}}");
+    }
+
+    private void questionSet(Subject subject, int children, String pointsPerChild) {
+        UUID root = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id,code,type,status,subject_item_id,current_version_no,points) "
+                + "VALUES (?,?,'QUESTION_SET','READY',?,1,?)", root, "QS-" + root, subject.id(),
+                new java.math.BigDecimal(pointsPerChild).multiply(java.math.BigDecimal.valueOf(children)));
+        StringBuilder snapshot = new StringBuilder("{\"type\":\"QUESTION_SET\",\"children\":[");
+        String child = "\"body\":{\"type\":\"SINGLE_CHOICE\",\"options\":[{\"id\":\"a\",\"correct\":true},{\"id\":\"b\",\"correct\":false}]}";
+        for (int position = 0; position < children; position++) {
+            UUID id = UUID.randomUUID();
+            jdbc.update("INSERT INTO questionbank.question(id,code,type,status,parent_id,position,points) "
+                    + "VALUES (?,?,'SINGLE_CHOICE','READY',?,?,?)", id, "QSC-" + id, root, position,
+                    new java.math.BigDecimal(pointsPerChild));
+            jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)",
+                    id, "{" + child + "}");
+            snapshot.append(position > 0 ? "," : "").append("{\"id\":\"").append(id).append("\",").append(child).append("}");
+        }
+        jdbc.update("INSERT INTO questionbank.question_version(question_id,version_no,snapshot) VALUES (?,1,?::jsonb)", root,
+                "{\"body\":" + snapshot.append("]}") + "}");
+    }
+
+    /** R1-2: a set block with setCount/setSize and questionCount == null is not treated as a remainder block in path totals. */
+    @Test
+    void setBlockWithNullQuestionCountCountsTowardPathTotals() throws Exception {
+        Subject subject = subject();
+        for (int i = 0; i < 3; i++) questionSet(subject, 3, "1");
+        for (int i = 0; i < 5; i++) singleChoice(subject, "0.5");
+
+        JsonNode setOnly = checkBlock("HSA", subject, 6,
+                "{\"id\":\"b\",\"questionType\":\"QUESTION_SET\",\"childAnswerType\":\"SINGLE_CHOICE\","
+                        + "\"setCount\":2,\"setSize\":3,\"requiredPointsPerQuestion\":1}");
+        assertThat(setOnly.path("status").asText()).as(setOnly.toString()).isEqualTo("VALID");
+        assertThat(setOnly.path("paths").get(0).path("totalQuestions").asInt()).isEqualTo(6);
+        assertThat(setOnly.path("paths").get(0).path("totalPoints").decimalValue()).isEqualByComparingTo("6");
+
+        UUID mixedId = UUID.randomUUID();
+        jdbc.update("INSERT INTO exam.exam (id,code,code_normalized,name,kind_item_id,scope,timing,question_count,duration_minutes) "
+                + "VALUES (?,?,?,'SetAndRemainder',?,'FULL','SHARED',10,60)", mixedId, mixedId.toString(), mixedId.toString(), kind("HSA"));
+        jdbc.update("INSERT INTO exam.exam_structure (exam_id,parts,structure_hash) VALUES (?,?::jsonb,'fu-r1-2')", mixedId, """
+                {"parts":[{"id":"p","order":1,"name":"P","questionCount":10,"sections":[
+                  {"id":"s","subjectCode":"%s","questionCount":10,"blocks":[
+                    {"id":"set","questionType":"QUESTION_SET","childAnswerType":"SINGLE_CHOICE","setCount":2,"setSize":3,"requiredPointsPerQuestion":1},
+                    {"id":"rest","questionType":"SINGLE_CHOICE","requiredPointsPerQuestion":0.5}]}]}]}
+                """.formatted(subject.code()));
+        jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?),(?,?,?,?,?,?)",
+                UUID.randomUUID(), mixedId, "set", "p", "s", subject.id(),
+                UUID.randomUUID(), mixedId, "rest", "p", "s", subject.id());
+        entityManager.clear();
+        JsonNode mixed = check(mixedId);
+        assertThat(mixed.path("status").asText()).as(mixed.toString()).isEqualTo("VALID");
+        assertThat(mixed.path("paths").get(0).path("totalQuestions").asInt()).isEqualTo(10);
+        assertThat(mixed.path("paths").get(0).path("totalPoints").decimalValue()).isEqualByComparingTo("8");
+    }
+
     /**
      * BE-13 R3-1 (FU-BE13-3): a V-ACT exam scored RAW that loads a review template keeps its scoring and the audit
-     * says scoringReset = false; a LINEAR one is reset as before.
+     * says scoringReset = false; subsequent metadata PATCH sending practiceScoring=RAW succeeds (R1-5), while a LINEAR
+     * REVIEW exam still rejects transitioning to RAW.
      */
     @Test
     void be13R31Regression() throws Exception {
@@ -455,5 +517,38 @@ class ExamCheckFollowUpIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForList("SELECT payload->'after'->>'scoringReset' FROM shared.outbox_event "
                 + "WHERE topic='audit' AND payload->>'action'='EXAM.TEMPLATE_LOAD' AND payload->>'targetId'=?", String.class, id))
                 .containsExactly("false");
+
+        JsonNode patched = mapper.readTree(mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/v1/admin/exams/{id}", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"R31 updated\",\"practiceScoring\":\"RAW\",\"expectedRevision\":"
+                                + loaded.path("revision").asLong() + "}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(patched.path("name").asText()).isEqualTo("R31 updated");
+        assertThat(patched.path("practiceScoring").asText()).isEqualTo("RAW");
+        assertThat(patched.path("buildMode").asText()).isEqualTo("REVIEW");
+
+        // A REVIEW exam scored LINEAR must still reject transitioning to RAW.
+        JsonNode linear = mapper.readTree(mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"VACT\",\"scope\":\"SUBJECT\",\"subjectCode\":\"ANH\",\"durationMinutes\":45,"
+                                + "\"name\":\"R31-LIN\",\"code\":\"R31L-" + UUID.randomUUID().toString().substring(0, 8) + "\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String linearId = linear.path("id").asText();
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/structure/template", linearId).with(asUser(Permissions.EXAM_MODIFY))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"templateCode\":\"VACT_REVIEW\",\"confirmReplace\":true,\"overviewPolicy\":\"USE_TEMPLATE\","
+                                + "\"expectedRevision\":" + linear.path("revision").asLong() + "}"))
+                .andExpect(status().isOk());
+        long linearRev = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exams/{id}", linearId)
+                        .with(asUser(Permissions.EXAM_VIEW))).andReturn().getResponse().getContentAsString())
+                .path("revision").asLong();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/v1/admin/exams/{id}", linearId)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"practiceScoring\":\"RAW\",\"expectedRevision\":" + linearRev + "}"))
+                .andExpect(status().isUnprocessableEntity());
     }
 }

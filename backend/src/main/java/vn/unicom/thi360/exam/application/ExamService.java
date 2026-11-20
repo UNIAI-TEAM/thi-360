@@ -819,7 +819,7 @@ public class ExamService {
                 writeStructure(exam, doc, false, actor, now);
             }
         }
-        if (!scopeChanged) {
+        if (!scopeChanged && !"RAW".equals(exam.getPracticeScoring())) {
             rejectRawReview(request.practiceScoring(), exam.getBuildMode());
         }
 
