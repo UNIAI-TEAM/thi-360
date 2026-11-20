@@ -329,12 +329,13 @@ public class SolverInputBuilder {
             CompiledMapidRules compiled = MapidRuleCompiler.compile(declared);
             if (declared.mapidMode() != null) mapid.put(declared.id(), compiled);
             ExamSection section = compiled.effectiveSection();
+            boolean matrix = section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX;
             UUID subject = subjects.computeIfAbsent(section.subjectCode(), code ->
                     catalog.findActiveItem("SUBJECT", code).map(CatalogItemView::id).orElse(null));
             List<GroupQuota> groups = new ArrayList<>();
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
-                GroupQuota parent = group(block, knowledge, knowledgeById, descendants);
+                GroupQuota parent = group(block, knowledge, knowledgeById, descendants, matrix);
                 int count = block.slots().isEmpty() ? 1 : block.setCount();
                 SlotParentQuota shared = block.slots().isEmpty() ? null
                         : new SlotParentQuota(block.id(), parent.matrix(), parent.competencies(),
@@ -391,7 +392,8 @@ public class SolverInputBuilder {
             }
             result.add(new SectionOnPath(section.subjectCode(), section.id(), choice ? null : section.questionCount(),
                     subjectQuota(section, knowledge, knowledgeById, descendants,
-                            examQuotas.getOrDefault(section.subjectCode(), List.of()), compiled.caps()), groups,
+                            examQuotas.getOrDefault(section.subjectCode(), List.of()), compiled.caps(),
+                            matrix), groups,
                     section.choiceGroup() == null ? null : section.choiceGroup().name()));
         }
         return result;
@@ -441,7 +443,8 @@ public class SolverInputBuilder {
     }
 
     private static GroupQuota group(QuestionBlock block, List<CatalogItemView> knowledge,
-            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
+            boolean mapid) {
         boolean set = block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE;
         List<CompetencyQuota> competencies = new ArrayList<>();
         if (block.matrix() != null) {
@@ -458,13 +461,13 @@ public class SolverInputBuilder {
                 set ? block.setCount() : null, set ? block.setSize() : null,
                 set && block.childAnswerType() != null ? block.childAnswerType().name() : null,
                 matrix(block.matrix()), competencies, List.of(), block.requiredPointsPerQuestion(), null,
-                null, topics(block.topicQuotas(), knowledge, knowledgeById, descendants));
+                null, topics(block.topicQuotas(), knowledge, knowledgeById, descendants, mapid));
     }
 
     private static SubjectQuota subjectQuota(ExamSection section, List<CatalogItemView> knowledge,
             Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
             List<vn.unicom.thi360.exam.domain.solver.ExamDimensionQuota> examQuotas,
-            List<CompiledMapidRules.Cap> caps) {
+            List<CompiledMapidRules.Cap> caps, boolean mapid) {
         SubjectQuota.AnswerQuotas answers = null;
         if (section.answerQuotas() != null) {
             answers = new SubjectQuota.AnswerQuotas(section.answerQuotas().items().stream()
@@ -473,12 +476,12 @@ public class SolverInputBuilder {
                             : QuotaUnit.valueOf(section.answerQuotas().unit().name()));
         }
         return new SubjectQuota(answers, matrix(section.matrix()),
-                topics(section.topicQuotas(), knowledge, knowledgeById, descendants), examQuotas,
+                topics(section.topicQuotas(), knowledge, knowledgeById, descendants, mapid), examQuotas,
                 caps.stream().map(cap -> new TopicCap(cap.ruleId(),
                         cap.scope() == CompiledMapidRules.Cap.Scope.GROUP ? cap.groupId() : null,
                         withDescendants(cap.nodeIds(), knowledge, knowledgeById, descendants).stream()
                                 .map(UUID::toString).toList(), cap.max())).toList(),
-                section.mapidMode() == vn.unicom.thi360.exam.domain.MapidMode.MATRIX);
+                mapid);
     }
 
     /** The nodes and every descendant of each, without duplicates; unknown nodes stay out, as for topic quotas. */
@@ -494,7 +497,8 @@ public class SolverInputBuilder {
 
     private static List<vn.unicom.thi360.exam.domain.solver.TopicQuota> topics(
             List<vn.unicom.thi360.exam.domain.TopicQuota> quotas, List<CatalogItemView> knowledge,
-            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants) {
+            Map<UUID, CatalogItemView> knowledgeById, Map<UUID, List<UUID>> descendants,
+            boolean mapid) {
         return quotas.stream().filter(q -> q.enforcement() != QuotaEnforcement.REFERENCE)
                 .map(q -> new vn.unicom.thi360.exam.domain.solver.TopicQuota(q.id(),
                         q.nodeIds().stream().flatMap(id -> descendants.computeIfAbsent(id, key -> {
@@ -503,7 +507,7 @@ public class SolverInputBuilder {
                             return knowledge.stream().filter(node -> node.path().startsWith(root.path()))
                                     .map(CatalogItemView::id).toList();
                         }).stream()).map(UUID::toString).distinct().toList(),
-                        q.count(), q.gradeCodes(), q.difficultyCodes(), q.groupIds())).toList();
+                        q.count(), q.gradeCodes(), q.difficultyCodes(), q.groupIds(), mapid)).toList();
     }
 
     private static MatrixQuota matrix(BlockMatrix matrix) {

@@ -15,7 +15,9 @@ import java.util.Set;
  * @param matrix       chỉ tiêu lớp × độ khó của môn; null khi không kiểm soát
  * @param caps         cận trên số đơn vị mang một MAPID (UNI-2758), của cả môn hoặc của một nhóm
  * @param mapidMatrix  true khi mọi chỉ tiêu chủ đề của môn đến từ luật MAPID (mapidMode MATRIX): các số tối thiểu
- *                     đó là cứng, nên cắt 17 → 16 không được phá chúng; chỉ tiêu chủ đề cũ giữ cách dự phòng H3
+ *                     đó là cứng, nên cắt 17 → 16 không được phá chúng; chỉ tiêu chủ đề cũ giữ cách dự phòng H3.
+ *                     Là cờ mode của section, không phải bằng chứng có chỉ tiêu — PathSearch tự kiểm tra nội
+ *                     dung qua {@link TopicQuota#mapid}
  */
 public record SubjectQuota(AnswerQuotas answerQuotas, MatrixQuota matrix, List<TopicQuota> topicQuotas,
         List<ExamDimensionQuota> examQuotas, List<TopicCap> caps, boolean mapidMatrix) {

@@ -12,14 +12,16 @@ import org.junit.jupiter.api.Test;
 class MapidSubjectGroupMatrixRegressionTest {
     @Test
     void overlappingSubjectCapAndGroupMinimumWithHsaMatrix() {
-        TopicQuota subjectMin = new TopicQuota("exact", List.of("X"), 3, List.of(), List.of(), List.of());
-        TopicQuota groupMin = new TopicQuota("min", List.of("X"), 2, List.of(), List.of(), List.of());
+        TopicQuota subjectMin = new TopicQuota("exact", List.of("X"), 3, List.of(), List.of(),
+                List.of(), true);
+        TopicQuota groupMin = new TopicQuota("min", List.of("X"), 2, List.of(), List.of(),
+                List.of(), true);
         MatrixQuota matrix = new MatrixQuota.Separate(
                 List.of(new DimensionQuota("G10", 3), new DimensionQuota("G11", 20), new DimensionQuota("G12", 27)),
                 List.of(new DimensionQuota("NB", 2), new DimensionQuota("TH", 21),
                         new DimensionQuota("VD", 20), new DimensionQuota("VDC", 7)));
         SubjectQuota quota = new SubjectQuota(null, matrix, List.of(subjectMin), List.of(),
-                List.of(new TopicCap("exact", null, List.of("X"), 3)));
+                List.of(new TopicCap("exact", null, List.of("X"), 3)), true);
         GroupQuota sc = new GroupQuota("SC", GroupQuota.GroupKind.SINGLE, 32, "SINGLE_CHOICE", null, null, null,
                 null, List.of(), List.of(), null, null);
         GroupQuota sa = new GroupQuota("SA", GroupQuota.GroupKind.SINGLE, 15, "SHORT_ANSWER", null, null, null,

@@ -14,10 +14,6 @@ import java.util.Set;
  * Quay lui có cắt nhánh cho một bài toán con theo môn (spec 5.4 bước 2), trên <b>lớp đóng góp</b>
  * chứ không trên từng câu.
  *
- * <p>Một lớp đóng góp = một vector đóng góp trên toàn bộ chỉ tiêu (phía môn + chỉ tiêu các nhóm);
- * thành viên của lớp là các ứng viên usable của từng nhóm có cùng vector đó. Số lớp bị chặn bởi số
- * vector khác nhau, không tăng theo số ứng viên.
- *
  * <p>Ba tầng theo spec, lồng vào một phép duyệt duy nhất để đảm bảo duyệt hết:
  * <ol>
  *   <li><b>Chùm trước</b>: cặp (nhóm, lớp) của ứng viên nhiều đơn vị được duyệt trước — mỗi chùm
@@ -32,9 +28,10 @@ import java.util.Set;
  * </ol>
  *
  * <p>Thứ tự duyệt xác định: chùm trước, rồi theo nhóm và lớp; riêng bài toán con có cận MAPID
- * hoặc chỉ tiêu chủ đề từ ma trận MAPID duyệt nhóm có chỉ tiêu chủ đề trước (R5-1: đề kế thừa
- * không MAPID phải giữ nguyên thứ tự và cùng một đề cho một hạt giống). Thành viên theo thứ tự
- * ứng viên (cố định với CHECK, xáo với GENERATE).
+ * hoặc chỉ tiêu chủ đề do biên dịch MAPID MATRIX phát ra ({@link TopicQuota#mapid}) duyệt nhóm có
+ * chỉ tiêu chủ đề MATRIX trước (R5-1: đề kế thừa phải giữ nguyên thứ tự và cùng một đề cho một hạt
+ * giống, kể cả khi một section anh em cùng môn ở mode MATRIX nhưng không có luật nào). Thành viên
+ * theo thứ tự ứng viên (cố định với CHECK, xáo với GENERATE).
  */
 final class PathSearch {
 
@@ -218,17 +215,18 @@ final class PathSearch {
                 }
             }
         }
-        // R5-1: ưu tiên nhóm có chỉ tiêu chủ đề chỉ khi bài toán con có cận MAPID hoặc chỉ tiêu chủ đề
-        // biên dịch từ MATRIX; cấu trúc kế thừa không cận phải giữ đúng thứ tự duyệt như develop.
-        topicOpt = !ctx.caps().isEmpty()
-                || ctx.sections().stream().anyMatch(s -> s.subjectQuota().mapidMatrix());
+        // R5-1 (chặt): ưu tiên nhóm có chỉ tiêu chủ đề và cận cung chủ đề chỉ khi bài toán con thật
+        // sự có nội dung MAPID — một cận TopicCap hoặc một chỉ tiêu chủ đề do biên dịch MATRIX phát
+        // ra (TopicQuota.mapid). Cờ mode của section anh em không đủ: một section MATRIX rỗng luật
+        // không được đổi thứ tự duyệt của các nhóm kế thừa.
+        topicOpt = !ctx.caps().isEmpty() || hasMatrixTopicMin();
         boolean[] groupHasTopicMin = new boolean[ctx.groups().size()];
         for (int g = 0; topicOpt && g < groupHasTopicMin.length; g++) {
             GroupQuota group = ctx.groups().get(g).group();
             List<TopicQuota> own = group.slotParent() == null
                     ? group.topicQuotas() : group.slotParent().topicQuotas();
             for (TopicQuota quota : own) {
-                if (quota.count() > 0) {
+                if (isMatrixTopicMin(quota)) {
                     groupHasTopicMin[g] = true;
                     break;
                 }
@@ -340,6 +338,29 @@ final class PathSearch {
             }
             suffixUnits[p][pairGroup[p]] += pairUnits[p] * pairMembers[p].size();
         }
+    }
+
+    /** A minimum {@link TopicQuota} compiled from a MAPID MATRIX rule. */
+    private static boolean isMatrixTopicMin(TopicQuota quota) {
+        return quota.count() > 0 && quota.mapid();
+    }
+
+    /** The sub-problem carries at least one MATRIX-compiled topic minimum (section or group scope). */
+    private boolean hasMatrixTopicMin() {
+        for (int s = 0; s < ctx.sections().size(); s++) {
+            for (TopicQuota quota : ctx.sections().get(s).subjectQuota().topicQuotas()) {
+                if (isMatrixTopicMin(quota)) return true;
+            }
+        }
+        for (int g = 0; g < ctx.groups().size(); g++) {
+            GroupQuota group = ctx.groups().get(g).group();
+            List<TopicQuota> own = group.slotParent() == null
+                    ? group.topicQuotas() : group.slotParent().topicQuotas();
+            for (TopicQuota quota : own) {
+                if (isMatrixTopicMin(quota)) return true;
+            }
+        }
+        return false;
     }
 
     private void buildTopicBounds() {
