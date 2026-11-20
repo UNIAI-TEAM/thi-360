@@ -197,9 +197,9 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
     await expect(page.getByLabel("Liên lớp", { exact: true })).toBeVisible();
     const difficulty = page.getByRole("heading", { level: 4, name: "Độ khó" }).locator("xpath=ancestor::*[@data-form-field][1]");
-    await difficulty.getByRole("textbox", { name: "Tỷ lệ của Nhận biết" }).fill("25");
-    await difficulty.getByRole("textbox", { name: "Tỷ lệ của Thông hiểu" }).fill("50");
-    await difficulty.getByRole("textbox", { name: "Tỷ lệ của Vận dụng" }).fill("25");
+    await difficulty.getByRole("textbox", { name: "Tỷ lệ của Nhận biết", exact: true }).fill("25");
+    await difficulty.getByRole("textbox", { name: "Tỷ lệ của Thông hiểu", exact: true }).fill("50");
+    await difficulty.getByRole("textbox", { name: "Tỷ lệ của Vận dụng", exact: true }).fill("25");
     await expect(difficulty.getByLabel("Nhận biết", { exact: true })).toHaveValue("8");
     await expect(difficulty.getByLabel("Thông hiểu", { exact: true })).toHaveValue("15");
     await expect(difficulty.getByLabel("Vận dụng", { exact: true })).toHaveValue("7");
@@ -209,11 +209,11 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
     expect(saved?.byDifficulty?.map((row) => row.value)).toEqual([25, 50, 25]);
 
     await page.reload();
-    await expect(page.getByRole("textbox", { name: "Tỷ lệ của Nhận biết" })).toHaveValue("25");
+    await expect(page.getByRole("textbox", { name: "Tỷ lệ của Nhận biết", exact: true })).toHaveValue("25");
 
-    await page.getByRole("textbox", { name: "Tỷ lệ của Trắc nghiệm đơn" }).fill("30");
+    await page.getByRole("textbox", { name: "Tỷ lệ của Trắc nghiệm đơn", exact: true }).fill("30");
     await expect(page.getByText("Tổng tỷ lệ 30%, cần 100%")).toBeVisible();
-    await page.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm" }).fill("70");
+    await page.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm", exact: true }).fill("70");
     await expect(page.getByLabel("Trắc nghiệm đơn", { exact: true })).toHaveValue("9");
     await expect(page.getByLabel("Câu con trong chùm", { exact: true })).toHaveValue("21");
     await saveInUi(page, exam.id);
