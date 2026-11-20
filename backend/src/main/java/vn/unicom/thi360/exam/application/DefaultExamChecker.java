@@ -271,7 +271,9 @@ public class DefaultExamChecker implements ExamChecker {
                 }
             }
         }
-        return evaluation.withUnits(markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
+        var completed = evaluation.withUnits(markWitnessFailures(computed.changed(), computed.reused(), witnessIssues, owners));
+        // Include time spent outside deadline-aware pool reads and in final assembly: an expired run cannot stamp.
+        return clock.instant().isBefore(deadline) ? completed : completed.withAssemblyCutShort();
     }
 
     /** The subjects of the sections the solver received for the options of each part: placeholder options hold none. */
