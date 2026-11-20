@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { NavTab, NavTabs } from "./nav-tabs";
 
@@ -58,5 +58,70 @@ describe("NavTabs", () => {
       // Không có viền (kể cả trong suốt) ở trạng thái thường: chế độ tương phản cao sẽ tô nó thành gạch chân.
       expect(link.className).not.toMatch(/(^|\s)after:border-(b-2|transparent)(\s|$)/);
     }
+  });
+
+  describe("thanh không đủ chỗ", () => {
+    const ids = ["t1", "t2", "t3", "t4", "t5"];
+
+    function Many({ current }: { current: string }) {
+      return (
+        <NavTabs aria-label="Bài thi">
+          {ids.map((id) => (
+            <NavTab key={id} href={`/${id}`} current={id === current}>
+              {`Mục ${id}`}
+            </NavTab>
+          ))}
+        </NavTabs>
+      );
+    }
+
+    /** Thanh rộng 300px từ x=100, mỗi mục rộng 120px xếp liền nhau, trừ phần đã cuộn. */
+    function layout(list: HTMLElement) {
+      list.getBoundingClientRect = () => ({ left: 100, right: 400, top: 0, bottom: 40, width: 300, height: 40 }) as DOMRect;
+      within(list)
+        .getAllByRole("link")
+        .forEach((link, index) => {
+          Object.defineProperty(link, "offsetHeight", { configurable: true, value: 40 });
+          link.getBoundingClientRect = () => {
+            const left = 100 + index * 120 - list.scrollLeft;
+            return { left, right: left + 120, top: 0, bottom: 40, width: 120, height: 40 } as DOMRect;
+          };
+        });
+    }
+
+    function listOf(nav: HTMLElement): HTMLElement {
+      const list = nav.querySelector("ul");
+      if (!list) throw new Error("thiếu danh sách");
+      return list;
+    }
+
+    it("chuyển sang mục bị khuất ở cuối thì chỉ thanh cuộn tới, lộ thêm một phần mục kế bên", async () => {
+      const { rerender } = render(<Many current="t1" />);
+      const list = listOf(screen.getByRole("navigation", { name: "Bài thi" }));
+      layout(list);
+      rerender(<Many current="t5" />);
+      // Mục t5 chiếm x=580..700: cần cuộn 700 + 40 - 400 = 340.
+      await waitFor(() => expect(list.scrollLeft).toBe(340));
+    });
+
+    it("chuyển về mục bị khuất ở đầu thì cuộn ngược lại", async () => {
+      const { rerender } = render(<Many current="t5" />);
+      const list = listOf(screen.getByRole("navigation", { name: "Bài thi" }));
+      layout(list);
+      list.scrollLeft = 300;
+      rerender(<Many current="t2" />);
+      // Với scrollLeft=300, mục t2 chiếm x=-80..40, nằm trước mép đầu x=100.
+      await waitFor(() => expect(list.scrollLeft).toBe(80));
+    });
+
+    it("mục đang mở đã hiện trọn thì không cuộn", async () => {
+      const { rerender } = render(<Many current="t1" />);
+      const list = listOf(screen.getByRole("navigation", { name: "Bài thi" }));
+      layout(list);
+      list.scrollLeft = 60;
+      rerender(<Many current="t2" />);
+      await waitFor(() => expect(screen.getByRole("link", { name: "Mục t2" })).toHaveAttribute("aria-current", "page"));
+      expect(list.scrollLeft).toBe(60);
+    });
   });
 });
