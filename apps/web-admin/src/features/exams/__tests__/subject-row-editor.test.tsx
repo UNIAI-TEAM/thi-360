@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/test/render";
+import { BlockMatrixEditor } from "../components/block-matrix-editor";
 import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { boot, checkCalls, openStructure, putCalls, sectionsOf, wireBlock, wireSection, type Wire } from "./subject-form-harness";
 import { oneSection, qdaLiteratureSection } from "./subject-row-builders";
@@ -374,5 +376,48 @@ describe("Danh sách dòng: tách và lưu", () => {
     await edit(user, "read", "Doc");
     expect(screen.getByRole("button", { name: "Tách dòng" })).toBeDisabled();
     expect(screen.getByText(reason)).toBeInTheDocument();
+  });
+
+  it("compact matrix editor hides competency switch, table, status and issues even when byCompetency is present", () => {
+    const axes = { grades: ["GRADE_12"], difficulties: ["RECOGNITION"] };
+    const labels = { grade: (code: string) => code, difficulty: (code: string) => code };
+    renderWithProviders(
+      <BlockMatrixEditor
+        block={{
+          id: "blk-c",
+          name: "Row",
+          questionType: "SINGLE_CHOICE",
+          questionCount: 10,
+          setCount: null,
+          setSize: null,
+          requiredPointsPerQuestion: null,
+          knowledgeScope: null,
+          tagCodes: [],
+          childAnswerType: null,
+          templateGroupCode: null,
+          answerTypeLocked: false,
+          matrix: {
+            mode: "SEPARATE",
+            unit: "COUNT",
+            cells: [],
+            byGrade: [],
+            byDifficulty: [{ code: "RECOGNITION", value: 10 }],
+            byCompetency: [{ code: "VACT-TD-LOGIC", value: 4 }],
+          },
+        }}
+        axes={axes}
+        labels={labels}
+        competencies={[]}
+        available={undefined}
+        availableState="loading"
+        dimensions={["DIFFICULTY"]}
+        compact
+        onChange={() => undefined}
+      />,
+    );
+    expect(screen.queryByRole("switch", { name: "Phân bổ theo năng lực" })).toBeNull();
+    expect(screen.queryByRole("table", { name: "Theo năng lực" })).toBeNull();
+    expect(screen.queryByText(/Theo năng lực:/)).toBeNull();
+    expect(screen.queryByText(/Tổng Theo năng lực/)).toBeNull();
   });
 });

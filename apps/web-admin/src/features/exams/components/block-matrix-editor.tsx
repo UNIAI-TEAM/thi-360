@@ -53,8 +53,8 @@ export interface BlockMatrixEditorProps {
   /** Chiều hiện ở riêng từng chiều; mặc định cả lớp và độ khó. Chiều không hiện giữ nguyên dữ liệu và không tính vào cảnh báo tổng (FTM R-11). */
   dimensions?: readonly ("GRADE" | "DIFFICULTY")[];
   /**
-   * Dạng gọn của Danh sách dòng (FTM R-13): riêng từng chiều theo câu, không có lựa chọn Kết hợp/Riêng, Số câu/Tỷ lệ, mức áp dụng và
-   * đơn vị đếm; chiều không còn ô nào ghi mảng rỗng. Mặc định `false`: hành vi của màn nhóm (MD).
+   * Dạng gọn của Danh sách dòng (FTM R-13): riêng từng chiều theo câu, không có lựa chọn Kết hợp/Riêng, Số câu/Tỷ lệ, mức áp dụng,
+   * đơn vị đếm và phân bổ theo năng lực; chiều không còn ô nào ghi mảng rỗng. Mặc định `false`: hành vi của màn nhóm (MD).
    */
   compact?: boolean;
 }
@@ -147,7 +147,9 @@ export function BlockMatrixEditor({
     onChange({ ...matrix, [dimension]: compact && values.every((item) => item === 0) ? [] : toDimension(values, codes) });
   };
   const shownIssue = (issue: BlockIssue) =>
-    !("dimension" in issue) || issue.dimension === "COMBINED" || issue.dimension === "COMPETENCY" || dimensions.includes(issue.dimension);
+    !("dimension" in issue) ||
+    issue.dimension === "COMBINED" ||
+    (issue.dimension === "COMPETENCY" ? !compact : dimensions.includes(issue.dimension));
 
   const competencyOn = hasCompetencyDimension(matrix);
   const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
@@ -430,7 +432,7 @@ export function BlockMatrixEditor({
         </>
       )}
 
-      {(competencies.length > 0 || competencyOn) && (
+      {!compact && (competencies.length > 0 || competencyOn) && (
         <section aria-label={t("byCompetencyCaption")} className="flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <Switch
@@ -526,7 +528,7 @@ export function BlockMatrixEditor({
                   ...(dimensions.includes("GRADE") ? [{ label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 }] : []),
                   ...(dimensions.includes("DIFFICULTY") ? [{ label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 }] : []),
                 ]),
-            ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
+            ...(!compact && allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
           ]}
           messages={issues.filter(shownIssue).map((issue) => {
             const dimension =
