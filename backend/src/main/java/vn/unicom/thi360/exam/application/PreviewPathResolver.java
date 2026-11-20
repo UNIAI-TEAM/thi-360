@@ -23,8 +23,15 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 final class PreviewPathResolver {
     record Resolved(SolvePath path, PathRef pathRef) {}
 
-    /** Validate request selection against the draft without constructing strict solver records. */
-    static PathRef resolveDraft(ExamStructureDocument document, String pathId, List<String> subjectCodes) {
+    private record Selection(List<PathChoice> names, List<ExamPartOption> choices) { }
+
+    /** The options a request path takes from the draft, by (part, option): an option id alone may repeat across parts. */
+    static List<ChosenOption> selectedOptions(ExamStructureDocument document, String pathId) {
+        return select(document, pathId).names().stream()
+                .map(choice -> new ChosenOption(choice.partId(), choice.optionId())).toList();
+    }
+
+    private static Selection select(ExamStructureDocument document, String pathId) {
         String[] ids = "default".equals(pathId) ? new String[0] : pathId.split("\\+", -1);
         int pos = 0;
         List<PathChoice> names = new ArrayList<>();
@@ -55,6 +62,14 @@ final class PreviewPathResolver {
             }
         }
         if (pos != ids.length) throw missing(pathId);
+        return new Selection(names, choices);
+    }
+
+    /** Validate request selection against the draft without constructing strict solver records. */
+    static PathRef resolveDraft(ExamStructureDocument document, String pathId, List<String> subjectCodes) {
+        Selection selection = select(document, pathId);
+        List<PathChoice> names = selection.names();
+        List<ExamPartOption> choices = selection.choices();
         List<String> codes = subjectCodes == null ? List.of() : subjectCodes;
         if (codes.stream().anyMatch(code -> code == null || code.isBlank())
                 || new HashSet<>(codes).size() != codes.size()) {

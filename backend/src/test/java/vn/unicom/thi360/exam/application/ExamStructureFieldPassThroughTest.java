@@ -90,7 +90,7 @@ class ExamStructureFieldPassThroughTest {
         var otherSectionMasked = ExamCheckDraftInputs.maskSections(stored, Set.of("s2"));
         assertIntact(otherSectionMasked, "check input: another section masked", true);
 
-        var optionMasked = DefaultExamChecker.maskInvalidOptions(stored, Set.of("opt"));
+        var optionMasked = DefaultExamChecker.maskInvalidOptions(stored, Set.of(new vn.unicom.thi360.exam.domain.solver.ChosenOption("p", "opt")));
         assertIntact(optionMasked, "check input: option masked", true);
         assertThat(optionMasked.parts().getFirst().options().getFirst().sections()).isEmpty();
 

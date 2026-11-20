@@ -114,7 +114,7 @@ export function errorCodeOf(error: unknown): string | undefined {
 
 /**
  * Lý do của 409 `CHECK_REQUIRED` khi công bố: backend gửi trong `fieldErrors[0]` ({field: "reason", code: lý do};
- * spec 5.2 — NO_CHECK, STRUCTURE_CHANGED, CONFIG_CHANGED, SOURCE_CHANGED, PATH_NOT_VALID, ...). `null` khi không phải
+ * spec 5.2 — NO_CHECK, STRUCTURE_CHANGED, CONFIG_CHANGED, SOURCE_CHANGED, RULES_CHANGED, PATH_NOT_VALID, ...). `null` khi không phải
  * lỗi đó; `"UNKNOWN"` khi thiếu lý do.
  */
 export function checkRequiredReason(error: unknown): string | null {
@@ -379,6 +379,7 @@ const INVALID_REASONS: Record<string, true> = {
   STRUCTURE_CHANGED: true,
   CONFIG_CHANGED: true,
   SOURCE_CHANGED: true,
+  RULES_CHANGED: true,
 };
 const PREVIEW_CHECK_CODES: Record<string, true> = {
   NO_DUPLICATES: true,

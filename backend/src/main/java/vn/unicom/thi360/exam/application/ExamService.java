@@ -247,6 +247,7 @@ public class ExamService {
                     + " ON qs.subject_item_id = sr.key::uuid"
                     + " WHERE sr.value::bigint IS DISTINCT FROM COALESCE(qs.revision, 0))"
                     + " THEN 'NEEDS_RECHECK'"
+                    + " WHEN " + checkValidity.rulesChanged("cr", "e", "es") + " THEN 'NEEDS_RECHECK'"
                     + " ELSE cr.result->>'status' END) = ?");
             params.add(catalogLookup.revision());
             params.add(wanted);

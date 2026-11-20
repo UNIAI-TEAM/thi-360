@@ -4751,7 +4751,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
         "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
-        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố."
+        "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
+        "RULES_CHANGED": "Quy tắc kiểm tra đã đổi sau lần kiểm tra này. Kiểm tra lại cả bài trước khi công bố."
       },
       "runError": "Không chạy được kiểm tra. Thử lại.",
       "live": {
@@ -5073,6 +5074,9 @@
         "OMITTED_BLOCK_LOCKED": "Khối {block}: nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được. Hãy tắt nhóm này.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {Thang đang là {required, number}, tổng điểm của bài là {available, number}. Chênh {excluded, number} điểm, đúng bằng điểm của phần đã lược {part}. Đặt thang {available, number}.} other {Thang điểm đang tính cả điểm của phần đã lược {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {phân đoạn {segment}} other {một phân đoạn}} {dimension, select, COMMANDS {có {available, number} lệnh trong khi khai báo {required, number} lệnh} POINTS {có {available, number} điểm trong khi khai báo {required, number} điểm} other {lệch so với giá trị khai báo}}.",
+        "SECTION_SET_COUNT_RANGE": "Môn {subject}: số chùm phải từ 1 đến 2 và mỗi chùm có 3 câu con.",
+        "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu Điền đáp án (loại Trả lời ngắn).",
+        "STORED_ID_COLLISION": "Id đã lưu \"{id}\" trùng tên giữ chỗ cho chùm trực tiếp của một tùy chọn (id tùy chọn cộng :blocks), nên không đường nào của bài thi này kiểm tra hay công bố được. Hãy đổi tên hoặc tạo lại mục mang id này, rồi kiểm tra lại.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
         "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc.",
         "STATEMENT_POINTS_UNEVEN": "Khối {block}: câu {codes} có các ý Đúng/Sai không chia điểm đều, trong khi khối chấm theo từng ý cần mọi ý bằng điểm nhau. Thay câu này bằng câu khác."
@@ -5577,6 +5581,7 @@
           "STRUCTURE_CHANGED": "Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "CONFIG_CHANGED": "Cấu hình bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
           "SOURCE_CHANGED": "Nguồn câu hỏi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.",
+          "RULES_CHANGED": "Quy tắc kiểm tra đã được cập nhật sau lần kiểm tra gần nhất. Kiểm tra lại cả bài rồi công bố.",
           "PATH_NOT_VALID": "Có đường lựa chọn không còn hợp lệ. Kiểm tra lại cấu hình rồi công bố.",
           "UNKNOWN": "Cấu hình cần được kiểm tra lại trước khi công bố."
         },
@@ -6492,6 +6497,70 @@
           "rowNoSetSize": "Dòng không có cỡ chùm cố định",
           "rowOmitted": "Dòng đang tạm bỏ qua",
           "templateTotal": "Số câu của mục theo mẫu, không đổi"
+        }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Thêm điều kiện",
+          "conditionMenu": "Điều kiện thêm",
+          "declared": "Đã khai {declared, number}/{total, number}",
+          "difficulty": "Độ khó",
+          "grade": "Khối lớp",
+          "gradeCondition": "Khối lớp",
+          "hint": "Ô nào không cần kiểm soát thì để trống.",
+          "percentAria": "Tỷ lệ của {label}",
+          "percentNeeds100": "Tổng tỷ lệ {total, number}%, cần 100%",
+          "percentTotal": "Tổng tỷ lệ {total, number}%",
+          "title": "Khối lớp và độ khó"
+        },
+        "errors": {
+          "choiceBelowChildren": "Ít hơn số câu con của chùm ({children, number})",
+          "percentTotal": "Tổng tỷ lệ {total}%, cần 100%",
+          "setMin": "Ít nhất 1 chùm",
+          "setRange": "Số chùm từ {min, number} đến {max, number}",
+          "shortAnswerMin": "Cần ít nhất {min, number} câu điền đáp án"
+        },
+        "scope": {
+          "addQuota": "Thêm chỉ tiêu chủ đề",
+          "addQuotaHint": "Mở bảng số câu tối thiểu theo từng chủ đề.",
+          "hint": "Giới hạn nguồn câu hỏi theo MAPID.",
+          "title": "Phạm vi và chỉ tiêu chủ đề"
+        },
+        "setSource": {
+          "add": "Thêm điều kiện",
+          "added": "Đã thêm",
+          "empty": "Chưa có điều kiện: chùm lấy theo phạm vi của môn.",
+          "groupName": "Câu chùm",
+          "hint": "MAPID và nhãn của riêng nhóm câu chùm; câu đơn không đổi.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Nhãn nguồn"
+          },
+          "kindHint": {
+            "MAPID": "Chỉ lấy chùm thuộc các MAPID này",
+            "TAGS": "Lọc chùm theo nhãn, ví dụ loại ngữ liệu"
+          },
+          "menuLabel": "Điều kiện của nguồn chùm",
+          "remove": "Bỏ",
+          "removeAria": "Bỏ điều kiện {kind} của nguồn chùm",
+          "title": "Nguồn chùm"
+        },
+        "structure": {
+          "children": "Câu con trong chùm",
+          "childrenHint": "Tổng số câu con; hệ thống tự chọn các chùm nguyên",
+          "choice": "Trắc nghiệm",
+          "choiceHint": "Gồm cả câu con của chùm",
+          "choiceTotal": "Trắc nghiệm (gồm câu con)",
+          "choiceTotalHint": "Tự tính: câu đơn cộng câu con",
+          "fill": "Điền đáp án",
+          "fillMin": "Ít nhất {min, number}",
+          "hint": "Nhập số câu của từng dạng. Trắc nghiệm đơn tự tính.",
+          "setSize": "Mỗi chùm {size, number} câu con",
+          "sets": "Số chùm",
+          "single": "Trắc nghiệm đơn",
+          "singleAuto": "Trắc nghiệm đơn",
+          "singleAutoHint": "Tự tính: Trắc nghiệm trừ câu con của chùm",
+          "title": "Cấu trúc câu"
         }
       }
     }

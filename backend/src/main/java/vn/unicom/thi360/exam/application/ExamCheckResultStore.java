@@ -14,8 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.shared.ids.Ids;
 
 /**
- * Atomically saves a completed check only while its input exam revision and the template policy it was solved
- * against still match.
+ * Atomically saves a whole-exam check only while its input exam revision and the template policy it was solved
+ * against still match. Only a result whose checker evaluated the rules is stamped ({@link ExamCheckRulesStamp});
+ * incomplete runs never receive a stamp. One-subject and one-part checks never reach this store.
  */
 @Service
 public class ExamCheckResultStore {
@@ -45,9 +46,16 @@ public class ExamCheckResultStore {
         }
     }
 
+    /** Saves a result that was evaluated under the current rules (stamped). */
     @Transactional
     public boolean save(Input input, String status, int issueCount, Instant checkedAt,
                         long durationMs, JsonNode result, JsonNode witness) {
+        return save(input, status, issueCount, checkedAt, durationMs, result, witness, true);
+    }
+
+    @Transactional
+    public boolean save(Input input, String status, int issueCount, Instant checkedAt,
+                        long durationMs, JsonNode result, JsonNode witness, boolean rulesEvaluated) {
         boolean captured = input.templatePolicy() != null;
         String policy = captured ? json(input.templatePolicy()) : null;
         List<Object> update = new ArrayList<>(List.of(status, issueCount, Timestamp.from(checkedAt),
@@ -76,7 +84,7 @@ public class ExamCheckResultStore {
         insert.add(input.catalogRevision());
         insert.add(input.fingerprint());
         insert.add(json(input.sourceRevisions()));
-        insert.add(json(result));
+        insert.add(json(rulesEvaluated ? ExamCheckRulesStamp.stamped(result) : result));
         insert.add(json(witness));
         insert.add(Timestamp.from(checkedAt));
         insert.add(durationMs);

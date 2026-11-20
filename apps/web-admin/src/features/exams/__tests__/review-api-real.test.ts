@@ -4,6 +4,7 @@ import {
   errorCodeOf,
   generatePreview,
   getCheckRun,
+  getExamCheck,
   publishExam,
   runExamCheck,
   startDeepCheck,
@@ -147,5 +148,62 @@ describe("review-api nhanh that", () => {
     expect(checkRequiredReason(error)).toBeNull();
     expect(errorCodeOf(error)).toBe("EXAM_REVISION_CONFLICT");
     expect(requests[0]!.headers.get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+});
+
+describe("newCodesAndRulesChanged", () => {
+  it("GET kiểm tra: hai mã mới và lý do RULES_CHANGED qua adapter thật", async () => {
+    respondWith({
+      status: 200,
+      body: {
+        examId: EXAM,
+        status: "INVALID",
+        stale: true,
+        invalidReason: "RULES_CHANGED",
+        checkedAt: "2026-11-17T01:00:00Z",
+        paths: [
+          {
+            pathId: "default",
+            result: "INVALID",
+            issues: [
+              { code: "SECTION_SET_COUNT_RANGE", severity: "ERROR", group: "QUESTION_SET", sectionId: "sec-phys", subjectCode: "LY" },
+              { code: "SHORT_ANSWER_MIN", severity: "ERROR", group: "STRUCTURE", sectionId: "sec-chem", subjectCode: "HOA" },
+            ],
+          },
+        ],
+      },
+    });
+
+    const result = await getExamCheck({ examId: EXAM });
+
+    expect(requests[0]).toMatchObject({ method: "GET" });
+    expect(result?.invalidReason).toBe("RULES_CHANGED");
+    expect(result?.paths[0]!.issues.map((issue) => [issue.code, issue.sectionId, issue.subjectCode])).toEqual([
+      ["SECTION_SET_COUNT_RANGE", "sec-phys", "LY"],
+      ["SHORT_ANSWER_MIN", "sec-chem", "HOA"],
+    ]);
+  });
+
+  it("kiểm tra đồng bộ cũng giữ RULES_CHANGED; lý do lạ vẫn về null", async () => {
+    respondWith(
+      { status: 200, body: { examId: EXAM, status: "VALID", stale: true, invalidReason: "RULES_CHANGED", paths: [] } },
+      { status: 200, body: { examId: EXAM, status: "VALID", stale: true, invalidReason: "SOMETHING_NEW", paths: [] } },
+    );
+
+    expect((await runExamCheck({ examId: EXAM })).invalidReason).toBe("RULES_CHANGED");
+    expect((await runExamCheck({ examId: EXAM })).invalidReason).toBeNull();
+  });
+
+  it("công bố: 409 CHECK_REQUIRED lý do RULES_CHANGED mang lý do", async () => {
+    respondWith({
+      status: 409,
+      body: { code: "CHECK_REQUIRED", fieldErrors: [{ field: "reason", code: "RULES_CHANGED" }] },
+    });
+
+    const error = await publishExam({ examId: EXAM, pathIds: ["default"], note: null, expectedRevision: 7 }).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(checkRequiredReason(error)).toBe("RULES_CHANGED");
   });
 });

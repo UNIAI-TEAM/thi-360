@@ -143,3 +143,54 @@ describe("Điều hướng theo biểu mẫu (FTM R-15)", () => {
     await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
   });
 });
+
+/**
+ * CR-2 AC-9 (FTM AC 59 cho MT): `?block=`, bấm lỗi kiểm tra và tóm tắt của nhóm thuộc môn MT thật vào đúng ô của vai trò nhóm và đặt focus,
+ * cả khi đi qua Lưu và chuyển; không mở editor nhóm đầy đủ. Cờ và màn của sản phẩm (đỏ trước: ở gốc `?block=` của nhóm QDA mở editor nhóm).
+ */
+describe("Đích MT thật (CR-2 AC-9)", () => {
+  beforeEach(() => restore());
+
+  it.each([
+    ["sec-ly-set", "Số chùm"],
+    ["sec-ly-fill", "Điền đáp án"],
+    ["sec-ly-single", "Trắc nghiệm"],
+  ])("matrixTargets: ?block=%s mở môn MT và đặt focus vào ô %s, không mở màn nhóm", async (blockId, name) => {
+    boot();
+    openStructure(`?block=${blockId}`);
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("group", { name })).getByRole("textbox")).toHaveFocus());
+    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
+  });
+
+  it("matrixTargets: bấm lỗi kiểm tra của nhóm chùm vào ô Số chùm, không mở màn nhóm", async () => {
+    const user = userEvent.setup();
+    boot({ checkBody: failedCheck("sec-hoa-set", "sec-hoa", "HOA") });
+    openStructure("?section=sec-ly");
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Số chùm" })).getByRole("textbox")).toHaveFocus());
+    expect(window.location.search).toBe("?block=sec-hoa-set");
+    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
+  });
+
+  it("matrixTargets: đi qua Lưu và chuyển (Tiếp tục khi bản nháp bẩn) rồi tới ô của lỗi kiểm tra", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ checkBody: failedCheck("sec-hoa-fill", "sec-hoa", "HOA") });
+    openStructure("?section=sec-ly");
+    const fill = await screen.findByRole("textbox", { name: "Điền đáp án" });
+    await user.clear(fill);
+    await user.type(fill, "2");
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Điền đáp án" })).getByRole("textbox")).toHaveFocus());
+    expect(window.location.search).toBe("?block=sec-hoa-fill");
+  });
+
+  it("khung không lộ nút thêm, xóa, đổi thứ tự nhóm khi mở MT thật", async () => {
+    boot();
+    openStructure("?section=sec-ly");
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    expect(screen.queryByRole("button", { name: /Thêm nhóm|Xóa nhóm|Lên|Xuống/ })).toBeNull();
+  });
+});

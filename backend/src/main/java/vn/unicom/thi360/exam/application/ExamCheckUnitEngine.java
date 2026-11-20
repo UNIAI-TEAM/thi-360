@@ -41,8 +41,12 @@ public class ExamCheckUnitEngine {
 
     record Proof(SolveStatus status, SolveReason reason, String subjectCode, String groupId,
                  QuotaRef failingQuota, List<SubjectWitness> witnesses) { }
+    /**
+     * {@code complete}: every unit the run attempted reached a verdict (VALID or INVALID). Decided here, from the unit
+     * proofs, because the fold of the units of a tuple into one path verdict loses an UNCONFIRMED next to an INVALID.
+     */
     record Computation(SolveOutcome outcome, List<ExamCheckUnitStore.Unit> changed,
-                       List<ExamCheckUnitStore.Unit> reused) { }
+                       List<ExamCheckUnitStore.Unit> reused, boolean complete) { }
 
     Computation solve(ExamCheckSnapshotReader.Snapshot snapshot, SolverInputBuilder.SolverInput input,
             ExamCheckRules rules, Instant deadline, Duration budget, ExamCheckScope scope) {
@@ -51,10 +55,10 @@ public class ExamCheckUnitEngine {
             plan = ExamCheckUnitPlanner.plan(input.parts(), limits.maxPaths(), limits.maxChoiceSubjects());
         } catch (ExamCheckUnitPlanner.TooManyPaths ex) {
             return new Computation(new SolveOutcome(SolveStatus.UNCONFIRMED, SolveReason.PATH_LIMIT_EXCEEDED,
-                    List.of(), SolveStats.EMPTY), List.of(), List.of());
+                    List.of(), SolveStats.EMPTY), List.of(), List.of(), false);
         } catch (ExamCheckUnitPlanner.TooManyChoiceSubjects ex) {
             return new Computation(new SolveOutcome(SolveStatus.INVALID, SolveReason.CHOICE_SUBJECT_LIMIT_EXCEEDED,
-                    List.of(), SolveStats.EMPTY), List.of(), List.of());
+                    List.of(), SolveStats.EMPTY), List.of(), List.of(), false);
         }
         var persisted = store.load(snapshot.exam().getId());
         var inputInfo = snapshot.persistenceInput();
@@ -158,8 +162,10 @@ public class ExamCheckUnitEngine {
         }
         SolveStatus status = paths.isEmpty() ? SolveStatus.INVALID : SolveStatus.VALID;
         for (var path : paths) status = worst(status, path.status());
+        boolean complete = !paths.isEmpty() && proofs.values().stream().noneMatch(proof -> proof.status() == SolveStatus.UNCONFIRMED);
         return new Computation(new SolveOutcome(status, null, paths,
-                new SolveStats(plan.paths().stream().mapToLong(path -> path.tuples().size()).sum(), solved, reused)), changed, reusedUnits);
+                new SolveStats(plan.paths().stream().mapToLong(path -> path.tuples().size()).sum(), solved, reused)), changed, reusedUnits,
+                complete);
     }
 
     List<ExamCheckUnitStore.Unit> invalidUnits(ExamCheckSnapshotReader.Snapshot snapshot,
@@ -180,8 +186,8 @@ public class ExamCheckUnitEngine {
                 }
                 if (issue.hasNonNull("optionId")) {
                     return DefaultExamChecker.optionSharesSubjectOnPath(snapshot.structure(),
-                            issue.path("optionId").asText(), Set.copyOf(unit.key().sectionIds()),
-                            Set.of(unit.key().subjectCode()));
+                            issue.path("partId").asText(), issue.path("optionId").asText(),
+                            Set.copyOf(unit.key().sectionIds()), Set.of(unit.key().subjectCode()));
                 }
                 if (!issue.hasNonNull("partId")) return true;
                 String partId = issue.path("partId").asText();

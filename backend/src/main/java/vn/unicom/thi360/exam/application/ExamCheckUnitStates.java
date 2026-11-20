@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamCheckApiModels.SectionState;
 import vn.unicom.thi360.exam.domain.ExamSection;
+import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.solver.PathResult;
 import vn.unicom.thi360.exam.domain.solver.SolvePath;
 import vn.unicom.thi360.exam.domain.solver.SolveStatus;
@@ -51,14 +52,15 @@ public class ExamCheckUnitStates {
     public List<SectionState> states(UUID examId) {
         var snapshot = snapshots.read(examId);
         var document = snapshot.structure();
+        if (ExamStoredIdCollision.find(document).isPresent()) return allIncomplete(document);
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), document);
         // Only the locked-count template facts feed sections; the exam-level publish ban marks no section.
         var rules = new ExamCheckRules(mapper, snapshot.exam(), document, combinations,
                 ExamCheckUnitCombinations.topicParents(catalog, document),
-                templateFacts.forSections(snapshot.exam()));
+                templateFacts.forSections(snapshot.exam()), templateFacts.kindCode(snapshot.exam()));
         Set<String> incomplete = new HashSet<>();
         Set<String> invalidParts = new HashSet<>();
-        Set<String> invalidOptions = new HashSet<>();
+        Set<vn.unicom.thi360.exam.domain.solver.ChosenOption> invalidOptions = new HashSet<>();
         Set<String> invalidPartSubjects = new HashSet<>();
         Map<String, Set<String>> missingCodes = new LinkedHashMap<>();
         for (ObjectNode issue : rules.unrepresentable()) {
@@ -71,7 +73,8 @@ public class ExamCheckUnitStates {
             }
             markIncomplete(incomplete, issue);
             if (!issue.hasNonNull("sectionId") && issue.hasNonNull("optionId")) {
-                invalidOptions.add(issue.path("optionId").asText());
+                invalidOptions.add(new vn.unicom.thi360.exam.domain.solver.ChosenOption(
+                        issue.path("partId").asText(), issue.path("optionId").asText()));
             }
             if (!issue.hasNonNull("sectionId") && !issue.hasNonNull("optionId") && issue.hasNonNull("partId")) {
                 invalidParts.add(issue.path("partId").asText());
@@ -91,7 +94,7 @@ public class ExamCheckUnitStates {
             }
         }
         for (var part : document.parts()) for (var option : part.options()) {
-            if (invalidOptions.contains(option.id())) {
+            if (invalidOptions.contains(new vn.unicom.thi360.exam.domain.solver.ChosenOption(part.id(), option.id()))) {
                 option.sections().forEach(section -> incomplete.add(section.id()));
                 if (!option.blocks().isEmpty()) incomplete.add(option.id() + ":blocks");
             }
@@ -146,6 +149,31 @@ public class ExamCheckUnitStates {
                     String id = option.id() + ":blocks";
                     result.add(new SectionState(part.id(), id, option.code(), incomplete.contains(id)
                             ? "INCOMPLETE" : status.getOrDefault(id, "NEEDS_CHECK")));
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    /**
+     * ADV:CR-4:21: nothing of a draft with an ambiguous stored id is certifiable, so every section reads as incomplete
+     * and no saved unit proof is consulted.
+     */
+    private static List<SectionState> allIncomplete(ExamStructureDocument document) {
+        List<SectionState> result = new ArrayList<>();
+        for (var part : document.parts()) {
+            for (var section : part.sections()) {
+                result.add(new SectionState(part.id(), section.id(), section.subjectCode(), "INCOMPLETE"));
+            }
+            for (var section : part.subjectPool()) {
+                result.add(new SectionState(part.id(), section.id(), section.subjectCode(), "INCOMPLETE"));
+            }
+            for (var option : part.options()) {
+                for (var section : option.sections()) {
+                    result.add(new SectionState(part.id(), section.id(), section.subjectCode(), "INCOMPLETE"));
+                }
+                if (!option.blocks().isEmpty()) {
+                    result.add(new SectionState(part.id(), option.id() + ":blocks", option.code(), "INCOMPLETE"));
                 }
             }
         }

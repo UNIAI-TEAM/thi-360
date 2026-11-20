@@ -33,6 +33,8 @@ export interface CountPercentInputProps {
   onRawInput?: (raw: CountPercentRaw | null) => void;
   /** Lỗi từ nơi gọi (giới hạn R-12...), hiện tại ô. */
   error?: string;
+  /** Chữ đã gõ còn giữ ở kho nhập thô khi ô mở lại (R-15): hiện thay cho số đã lưu. */
+  rawText?: string;
 }
 
 type Problem = { code: CountPercentRaw["code"]; count: number } | null;
@@ -42,10 +44,10 @@ type Problem = { code: CountPercentRaw["code"]; count: number } | null;
  * quy ra và mẫu số trước khi lưu ("30% của 40 câu = 12 câu"); quy đổi dùng `percent.ts`. Giá trị sai (không phải số, tỷ lệ quy ra
  * không chia hết cỡ chùm) không vào bản nháp mà báo qua `onRawInput`.
  */
-export function CountPercentInput({ label, entry, total, count, setSize = null, fieldName, onChange, onRawInput, error }: CountPercentInputProps) {
+export function CountPercentInput({ label, entry, total, count, setSize = null, fieldName, onChange, onRawInput, error, rawText }: CountPercentInputProps) {
   const t = useTranslations("exams.subjectForm.common.countPercent");
   const id = useId();
-  const [countText, setCountText] = useState(() => String(count));
+  const [countText, setCountText] = useState(() => rawText ?? String(count));
   const [percentText, setPercentText] = useState("");
   const [lastCount, setLastCount] = useState(count);
   const [problem, setProblem] = useState<Problem>(null);

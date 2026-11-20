@@ -59,6 +59,7 @@ public final class ExamCheckRules {
     private final Map<String, Map<String, List<String>>> combinationsByPart;
     private final Map<UUID, UUID> topicParents;
     private final TemplateFacts template;
+    private final String kindCode;
     private final Map<String, SectionContext> sections = new LinkedHashMap<>();
     private final Map<String, ExamPartOption> options = new LinkedHashMap<>();
     private final Map<String, ExamPart> parts = new LinkedHashMap<>();
@@ -83,6 +84,17 @@ public final class ExamCheckRules {
     public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
                           Map<String, Map<String, List<String>>> combinationsByPart,
                           Map<UUID, UUID> topicParents, TemplateFacts template) {
+        this(mapper, exam, document, combinationsByPart, topicParents, template, null);
+    }
+
+    /**
+     * {@code kindCode} is the catalog code of the exam's kind; the per-subject limits of
+     * {@link SubjectFormLimits} apply to it only, and are skipped when it is null.
+     */
+    public ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document,
+                          Map<String, Map<String, List<String>>> combinationsByPart,
+                          Map<UUID, UUID> topicParents, TemplateFacts template, String kindCode) {
+        this.kindCode = kindCode;
         this.template = template;
         this.topicParents = topicParents;
         this.combinationsByPart = combinationsByPart;
@@ -91,16 +103,16 @@ public final class ExamCheckRules {
         this.issues = new ExamCheckIssues(mapper);
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
-            for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section));
-            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionContext(part, null, section));
+            for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section, false));
+            for (ExamSection section : part.subjectPool()) sections.put(section.id(), new SectionContext(part, null, section, false));
             for (ExamPartOption option : part.options()) {
                 options.put(option.id(), option);
-                for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section));
+                for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section, false));
                 if (!option.blocks().isEmpty()) {
                     int count = option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
-                    sections.put(synthetic.id(), new SectionContext(part, option.id(), synthetic));
+                    sections.put(synthetic.id(), new SectionContext(part, option.id(), synthetic, true));
                 }
             }
         }
@@ -1019,12 +1031,36 @@ public final class ExamCheckRules {
         return failure;
     }
 
+    /**
+     * R-12 issues in saved code-source pool entries whose subject is on no evaluated path. {@code evaluatedSubjects}
+     * maps a part to the subjects of the sections of its options that the solver actually received: a combination that
+     * lacks a pool subject is a placeholder with no sections, so a subject kept only by such combinations is unused
+     * too, although the active catalog lists it.
+     */
+    List<ObjectNode> unusedPoolLimits(Map<String, Set<String>> evaluatedSubjects) {
+        List<ObjectNode> found = new ArrayList<>();
+        for (ExamPart part : document.parts()) {
+            if (part.codeSource() == null) continue;
+            Set<String> used = evaluatedSubjects.getOrDefault(part.id(), Set.of());
+            for (ExamSection section : part.subjectPool()) {
+                if (used.contains(section.subjectCode())) continue;
+                SectionContext context = sections.get(section.id());
+                if (context == null) continue;
+                int count = section.questionCount() == null ? 0 : section.questionCount();
+                int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+                subjectFormLimits(found, context, count, fixed);
+            }
+        }
+        return dedupe(found);
+    }
+
     List<ObjectNode> path(PathResult result) {
         List<ObjectNode> found = new ArrayList<>();
         for (var selected : result.path().chosen()) {
             ExamPartOption option = options.get(selected.optionId());
             ExamPart part = parts.get(selected.partId());
-            if (option == null || part == null) continue;
+            // An option id is authored; a generated option ("partId:CODE") with the same id has no authored record.
+            if (option == null || part == null || !part.options().contains(option)) continue;
             if (Boolean.FALSE.equals(option.expertConfirmed())) found.add(issue("OPTION_UNCONFIRMED", "STRUCTURE", part, option.id(), null));
             if (option.kind() == OptionKind.SUBJECT_CHOICE) {
                 ObjectNode invalid = choiceIssue(part, option);
@@ -1203,6 +1239,7 @@ public final class ExamCheckRules {
         int min = possible.stream().mapToInt(Integer::intValue).min().orElse(count);
         int max = possible.stream().mapToInt(Integer::intValue).max().orElse(count);
         int fixed = section.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
+        subjectFormLimits(found, context, count, fixed);
         List<QuestionBlock> remaining = section.blocks().stream().filter(block -> !Boolean.TRUE.equals(block.omitted()) && block.questionCount() == null && !isSet(block)).toList();
         if (remaining.size() > 1 || (!remaining.isEmpty() && fixed > min)) {
             ObjectNode issue = sectionIssue("SECTION_TOTAL_MISMATCH", "STRUCTURE", context, varies ? count : null);
@@ -1240,6 +1277,71 @@ public final class ExamCheckRules {
             }
             matrix(found, context, block, block.matrix(), groupCount, "MATRIX_TOTAL_MISMATCH", false, varies ? count : null);
         }
+    }
+
+    /**
+     * FTM R-12: the set count and set size of the science subjects of HSA and QDA, and the short-answer minimum of
+     * Lý, Hóa, Sinh. Standard exams only; a review exam keeps its own shape. Located at the subject, not at a block.
+     * The rule reads the sections of {@code sections}, {@code subjectPool} and {@code options[].sections}; the blocks
+     * a SUBJECT option holds directly ({@code options[].blocks}) carry no stored {@code subjectCode}, so the holder this
+     * class builds for them ({@code SectionContext.directBlocks}) is no subject section here, and
+     * {@link ExamCheckValidity#rulesChanged} reads the same three arrays.
+     */
+    private void subjectFormLimits(List<ObjectNode> found, SectionContext context, int count, int fixed) {
+        if (isReview() || context.directBlocks()) return;
+        ExamSection section = context.section;
+        SubjectFormLimits.Limit limit = SubjectFormLimits.of(kindCode, section.subjectCode()).orElse(null);
+        if (limit == null) return;
+        int sets = 0;
+        boolean unknownSets = false;
+        boolean badSize = false;
+        Integer wrongSize = null;
+        for (QuestionBlock block : section.blocks()) {
+            if (Boolean.TRUE.equals(block.omitted()) || block.questionType() != QuestionType.QUESTION_SET) continue;
+            // A flexible-size set (no setCount, no setSize) cannot promise sets of the required size.
+            if (block.setCount() == null) unknownSets = true;
+            else sets += Math.max(0, block.setCount());
+            if (block.setSize() != null && block.setSize() != limit.setSize() && wrongSize == null) wrongSize = block.setSize();
+            if (block.setCount() == null || block.setSize() == null || block.setSize() != limit.setSize()) badSize = true;
+        }
+        boolean outOfRange = sets < limit.setCountMin() || sets > limit.setCountMax();
+        if (outOfRange || badSize) {
+            ObjectNode failure = sectionIssue("SECTION_SET_COUNT_RANGE", "QUESTION_SET", context, null);
+            failure.put("required", outOfRange ? Math.max(limit.setCountMin(), Math.min(limit.setCountMax(), sets)) : limit.setSize());
+            // Not a number when the section does not say: a flexible set leaves its count or its size undetermined.
+            Integer available = outOfRange ? (unknownSets ? null : Integer.valueOf(sets)) : wrongSize;
+            if (available == null) failure.putNull("available"); else failure.put("available", available);
+            found.add(issues.key(failure));
+        }
+        Integer shortAnswers = shortAnswerCount(section, count, fixed);
+        if (shortAnswers != null && shortAnswers < limit.shortAnswerMin()) {
+            ObjectNode failure = sectionIssue("SHORT_ANSWER_MIN", "STRUCTURE", context, null);
+            failure.put("required", limit.shortAnswerMin());
+            failure.put("available", shortAnswers);
+            found.add(issues.key(failure));
+        }
+    }
+
+    /**
+     * Questions of the short-answer type that the section requires: by block type, or by the answer-type quota, resolved
+     * with the solver's own quota conversion ({@link ExamCheckQuantities#rows}). Null when the quota cannot be resolved
+     * (missing or fractional value, PERCENT not adding up to 100); the answer-quota rules report that case.
+     */
+    private static Integer shortAnswerCount(ExamSection section, int count, int fixed) {
+        if (section.answerQuotas() != null) {
+            var items = section.answerQuotas().items();
+            int[] rows = ExamCheckQuantities.rows(items.stream().map(item -> item.value()).toList(), section.answerQuotas().unit(), count);
+            if (rows == null) return null;
+            int total = 0;
+            for (int i = 0; i < rows.length; i++) if (items.get(i).answerType() == QuestionType.SHORT_ANSWER) total += rows[i];
+            return total;
+        }
+        int total = 0;
+        for (QuestionBlock block : section.blocks()) {
+            if (Boolean.TRUE.equals(block.omitted()) || block.questionType() != QuestionType.SHORT_ANSWER) continue;
+            total += block.questionCount() == null ? Math.max(0, count - fixed) : block.questionCount();
+        }
+        return total;
     }
 
     private void matrix(List<ObjectNode> found, SectionContext context, QuestionBlock block, BlockMatrix matrix,
@@ -1394,5 +1496,9 @@ public final class ExamCheckRules {
         found.forEach(issue -> result.putIfAbsent(issue.path("key").asText(), issue));
         return List.copyOf(result.values());
     }
-    private record SectionContext(ExamPart part, String optionId, ExamSection section) { }
+    /**
+     * {@code directBlocks} is the provenance of the section: true only for the holder this class builds for the blocks a
+     * SUBJECT option holds directly, which is no persisted section. The id never says so; a stored section may carry any id.
+     */
+    private record SectionContext(ExamPart part, String optionId, ExamSection section, boolean directBlocks) { }
 }

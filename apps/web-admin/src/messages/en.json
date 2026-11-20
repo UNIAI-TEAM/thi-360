@@ -4751,7 +4751,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
         "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
-        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing.",
+        "RULES_CHANGED": "The check rules changed after this check. Run the check on the whole exam again before publishing."
       },
       "runError": "The check could not run. Try again.",
       "live": {
@@ -5073,6 +5074,9 @@
         "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
+        "SECTION_SET_COUNT_RANGE": "Subject {subject}: the number of sets must be 1 to 2, with 3 sub-questions per set.",
+        "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required.",
+        "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the item with this id, then check again.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} other {Rules {rules} conflict and cannot all hold.}}",
         "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule.",
         "STATEMENT_POINTS_UNEVEN": "Block {block}: question {codes} awards unequal points to its True/False statements, while a block scored per statement needs every statement to carry the same points. Replace this question."
@@ -5577,6 +5581,7 @@
           "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
           "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
           "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "RULES_CHANGED": "The check rules were updated after the latest check. Check the whole exam again, then publish.",
           "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
           "UNKNOWN": "The configuration must be checked again before publishing."
         },
@@ -6492,6 +6497,70 @@
           "rowNoSetSize": "This row has no fixed set size",
           "rowOmitted": "This row is temporarily skipped",
           "templateTotal": "The section total comes from the template and cannot change"
+        }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Add condition",
+          "conditionMenu": "Extra conditions",
+          "declared": "Declared {declared, number}/{total, number}",
+          "difficulty": "Difficulty",
+          "grade": "Grade",
+          "gradeCondition": "Grade",
+          "hint": "Leave a cell empty when you do not need to control it.",
+          "percentAria": "Percentage of {label}",
+          "percentNeeds100": "Total {total, number}%, needs 100%",
+          "percentTotal": "Total {total, number}%",
+          "title": "Grade and difficulty"
+        },
+        "errors": {
+          "choiceBelowChildren": "Fewer than the sub-questions of the sets ({children, number})",
+          "percentTotal": "Total {total}%, needs 100%",
+          "setMin": "At least 1 set",
+          "setRange": "Sets must be between {min, number} and {max, number}",
+          "shortAnswerMin": "At least {min, number} fill-in answers needed"
+        },
+        "scope": {
+          "addQuota": "Add topic quota",
+          "addQuotaHint": "Opens the table of minimum questions per topic.",
+          "hint": "Limit where the questions come from, by MAPID.",
+          "title": "Scope and topic quotas"
+        },
+        "setSource": {
+          "add": "Add condition",
+          "added": "Added",
+          "empty": "No condition: the sets follow the scope of the subject.",
+          "groupName": "Question sets",
+          "hint": "MAPID and tags for the question sets only; single questions are not affected.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Source tags"
+          },
+          "kindHint": {
+            "MAPID": "Only take sets under these MAPIDs",
+            "TAGS": "Filter sets by tag, for example the kind of passage"
+          },
+          "menuLabel": "Conditions of the set source",
+          "remove": "Remove",
+          "removeAria": "Remove the {kind} condition of the set source",
+          "title": "Set source"
+        },
+        "structure": {
+          "children": "Sub-questions in sets",
+          "childrenHint": "Total number of sub-questions; whole sets are chosen automatically",
+          "choice": "Multiple choice",
+          "choiceHint": "Includes the sub-questions of the sets",
+          "choiceTotal": "Multiple choice (with sub-questions)",
+          "choiceTotalHint": "Calculated: single questions plus sub-questions",
+          "fill": "Fill-in answer",
+          "fillMin": "At least {min, number}",
+          "hint": "Enter the number of questions of each kind. Single questions are calculated.",
+          "setSize": "{size, number} sub-questions per set",
+          "sets": "Number of sets",
+          "single": "Single questions",
+          "singleAuto": "Single questions",
+          "singleAutoHint": "Calculated: multiple choice minus the sub-questions of the sets",
+          "title": "Question structure"
         }
       }
     }

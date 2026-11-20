@@ -48,6 +48,12 @@ public class ExamCheckTemplateFacts {
         return template(exam, standard, unpublishable);
     }
 
+    /** Catalog code of the exam's kind, or null when the exam has no known kind; the per-subject limits read it. */
+    String kindCode(Exam exam) {
+        if (exam.getKindItemId() == null) return null;
+        return catalog.findItem(exam.getKindItemId()).map(item -> item.code()).orElse(null);
+    }
+
     /**
      * The facts that mark a section in the section states: every lock of the loaded template (H27, H42, H43) and no
      * publish ban, so the exam-level ban marks no section.

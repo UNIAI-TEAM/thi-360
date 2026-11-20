@@ -94,7 +94,7 @@ export const CHECK_GROUPS = [
 ] as const;
 export type CheckGroup = (typeof CHECK_GROUPS)[number];
 
-/** Mã vấn đề của kiểm tra cấu hình và xem trước. Mã do backend thêm (BE-5b:13, BE-5b:17) nằm cuối danh sách. */
+/** Mã vấn đề của kiểm tra cấu hình và xem trước. Mã do backend thêm (BE-5b:13, BE-5b:17, UNI-2762) nằm cuối danh sách. */
 export const CHECK_ISSUE_CODES = [
   "INFO_MISSING",
   "OPTION_EMPTY",
@@ -155,6 +155,9 @@ export const CHECK_ISSUE_CODES = [
   "OMITTED_BLOCK_LOCKED",
   "SCALE_INCLUDES_EXCLUDED_PART",
   "DISPLAY_SEGMENT_MISMATCH",
+  "SECTION_SET_COUNT_RANGE",
+  "SHORT_ANSWER_MIN",
+  "STORED_ID_COLLISION",
   "MAPID_RULE_CONFLICT",
   "MAPID_RULE_GROUP_MISSING",
   "STATEMENT_POINTS_UNEVEN",
@@ -364,8 +367,11 @@ export interface ExamCheckOutcome {
   maxScore: number | null;
 }
 
-/** Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi. */
-export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED";
+/**
+ * Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi, hoặc quy tắc kiểm tra đã
+ * đổi (RULES_CHANGED, R-12: kết quả lưu trước quy tắc Khoa học của HSA, QDA; chỉ lần kiểm tra cả bài mới xóa lý do này).
+ */
+export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED" | "RULES_CHANGED";
 
 export interface ExamCheckResult extends ExamCheckOutcome {
   examId: string;

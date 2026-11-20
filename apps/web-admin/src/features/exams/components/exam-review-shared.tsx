@@ -252,6 +252,8 @@ function useIssueTranslate(exam?: Pick<ExamDetail, "parts">, marked = false) {
       const values: Record<string, ReactNode> = {
         block: blockText,
         subject,
+        // Id đã lưu bị trùng (STORED_ID_COLLISION): máy chủ đặt id đó ở `blockId` của lỗi cấp cả bài.
+        id: issue.blockId ?? "",
         part: partOverride ?? (partName ? named(partName) : ""),
         place,
         hasPlace: blockName || subject || partName ? "yes" : "no",
