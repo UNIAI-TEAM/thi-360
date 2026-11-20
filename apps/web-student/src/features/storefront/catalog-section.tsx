@@ -127,7 +127,7 @@ export function CatalogResults({
       );
     case "ready": {
       const { page } = view;
-      const from = page.page * page.size + 1;
+      const from = Math.min(page.page * page.size + 1, page.totalItems);
       const to = Math.min((page.page + 1) * page.size, page.totalItems);
       return (
         <>
@@ -250,9 +250,19 @@ export function CatalogSection({
     go({ ...query, kind, part: code, subject: "", page: 1 });
   }
 
+  // Trang vượt trang cuối (bookmark cũ, danh mục đã nhỏ lại): đưa về trang cuối và hiện khung tải cho tới khi dữ liệu về.
+  const overLastPage =
+    products.status === "ok" && products.data.totalPages >= 1 && query.page > products.data.totalPages;
+  useEffect(() => {
+    if (overLastPage && products.status === "ok") {
+      go({ ...query, page: products.data.totalPages });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overLastPage, query, products]);
+
   const emptyCatalog =
     products.status === "ok" && products.data.totalItems === 0 && !hasActiveFilters(query);
-  const view: CatalogView = pending
+  const view: CatalogView = pending || overLastPage
     ? { kind: "loading" }
     : products.status === "error" || filters.status === "error"
       ? { kind: "error" }

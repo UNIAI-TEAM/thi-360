@@ -182,4 +182,19 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
 
     expect(screen.queryByRole("navigation", { name: "Phân trang danh mục" })).toBeNull();
   });
+
+  it("trang vượt trang cuối: đưa về trang cuối, không hiện lưới rỗng hay khoảng đảo", async () => {
+    renderWithProviders(
+      <CatalogSection
+        query={{ ...EMPTY_CATALOG_QUERY, page: 5 }}
+        filters={FILTERS}
+        products={page({ items: [], page: 4, totalItems: 24, totalPages: 2 })}
+      />,
+    );
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/?page=2", { scroll: false }));
+    expect(screen.queryByText(/Hiển thị/)).toBeNull();
+    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.getByRole("status", { name: "Đang tải danh mục" })).toBeInTheDocument();
+  });
 });
