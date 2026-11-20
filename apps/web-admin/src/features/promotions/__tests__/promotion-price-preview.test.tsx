@@ -4,14 +4,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
+import { PromotionForm } from "../components/promotion-form";
 import { PromotionPricePreviewCard } from "../components/promotion-price-preview";
 import {
   EXAM_ID_1,
   EXAM_ID_2,
+  EXAM_KINDS_PATH,
   EXAMS_PATH,
   OPS_PROMO_PERMISSIONS,
   PROMO_ID_1,
   PROMO_PREVIEW_PATH,
+  promotionDetailFixture,
   renderWithPermissions,
 } from "./promotion-fixtures";
 
@@ -19,6 +22,12 @@ vi.mock("@/lib/api/client", async () => {
   const fake = await import("@/test/fake-api");
   return { createBrowserApiClient: fake.fakeBrowserApiClient };
 });
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => `/promotions/${PROMO_ID_1}/edit`,
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 withRealApi();
 
@@ -125,5 +134,76 @@ describe("PromotionPricePreviewCard (AC-5)", () => {
       expect(screen.getByText("160.000 đ")).toBeInTheDocument();
     });
     expect(fakeApi.calls.some((c) => c.path === EXAMS_PATH)).toBe(false);
+  });
+
+  it("chế độ en-GB: hiển thị tiền VND, hàng giá sàn dùng bg-warning-bg (>= 4.5:1) và không rò rỉ tên đề tiếng Việt qua Select trong form sửa", async () => {
+    fakeApi.get(EXAM_KINDS_PATH, ok([]));
+    fakeApi.get(
+      EXAMS_PATH,
+      ok({
+        items: [
+          {
+            id: EXAM_ID_1,
+            code: "HSA-01",
+            name: "Đề luyện tổng hợp HSA số 1",
+            kind: "HSA",
+            scope: "FULL",
+            status: "PUBLISHED",
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    );
+    fakeApi.post(
+      PROMO_PREVIEW_PATH,
+      ok({
+        attemptsGranted: 1,
+        changed: true,
+        discountApplied: "PROMOTION_ONLY",
+        listPrice: 19000,
+        finalPrice: 5000,
+        productCode: "HSA-01",
+        productName: "Đề luyện tổng hợp HSA số 1",
+        versionNo: 1,
+        voucherNotBetter: false,
+      }),
+    );
+
+    const { container } = renderWithPermissions(
+      <PromotionForm
+        mode="edit"
+        initialDetail={promotionDetailFixture({
+          id: PROMO_ID_1,
+          kind: "AUTO",
+          discountType: "AMOUNT",
+          discountValue: 26000,
+          capWarnings: [
+            {
+              examId: EXAM_ID_1,
+              examName: "Đề luyện tổng hợp HSA số 1",
+              listPrice: 19000,
+              floorPrice: 5000,
+              discountedPrice: 5000,
+            },
+          ],
+        })}
+      />,
+      { locale: "en-GB" },
+    );
+
+    const floorPriceValue = await screen.findAllByText("5,000 VND");
+    expect(floorPriceValue.length).toBeGreaterThanOrEqual(2);
+    const floorRow = floorPriceValue[0]!.closest("div");
+    expect(floorRow?.className).toContain("bg-warning-bg");
+
+    // Ensure no <option> or text node outside [data-exam-content] contains Vietnamese exam title
+    const leakedVietnamese = Array.from(container.querySelectorAll("*"))
+      .filter((el) => !el.closest("[data-exam-content]") && el.children.length === 0)
+      .map((el) => el.textContent ?? "")
+      .filter((txt) => /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(txt));
+    expect(leakedVietnamese).toEqual([]);
   });
 });

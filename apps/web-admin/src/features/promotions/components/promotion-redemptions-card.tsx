@@ -206,8 +206,8 @@ export function PromotionRedemptionsCard({
           <p className="text-caption text-text-muted">{t("redemptions.description")}</p>
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-xs">
+        <div className="flex flex-col gap-3">
+          <div className="relative w-full max-w-md">
             <Search
               aria-hidden
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"

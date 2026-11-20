@@ -1,3 +1,5 @@
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
+
 export function parseDigits(raw: string): number | null {
   const digits = raw.replace(/\D+/g, "");
   if (!digits) return null;
@@ -6,10 +8,16 @@ export function parseDigits(raw: string): number | null {
   return parsed;
 }
 
+export function formatNumber(value: number, locale = "vi"): string {
+  const isEn = normalizeUiLocale(locale) === "en";
+  return new Intl.NumberFormat(isEn ? "en-GB" : "vi-VN").format(value);
+}
+
 export function formatVnd(amount: number | null | undefined, locale = "vi"): string {
-  if (amount == null || !Number.isFinite(amount)) return locale === "en" ? "0 VND" : "0 \u0111";
-  const bcp47 = locale === "en" ? "en-US" : "vi-VN";
-  const suffix = locale === "en" ? " VND" : " \u0111";
+  const isEn = normalizeUiLocale(locale) === "en";
+  if (amount == null || !Number.isFinite(amount)) return isEn ? "0 VND" : "0 \u0111";
+  const bcp47 = isEn ? "en-GB" : "vi-VN";
+  const suffix = isEn ? " VND" : " \u0111";
   return `${new Intl.NumberFormat(bcp47).format(Math.trunc(amount))}${suffix}`;
 }
 

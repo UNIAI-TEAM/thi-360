@@ -1,4 +1,4 @@
-import { APP_TIME_ZONE } from "@thi360/web-kit/preferences";
+import { APP_TIME_ZONE, normalizeUiLocale } from "@thi360/web-kit/preferences";
 
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -53,7 +53,8 @@ export function formatPromotionDateTime(iso: string | null | undefined, locale: 
   if (!iso) return "";
   const ms = Date.parse(iso);
   if (Number.isNaN(ms)) return "";
-  const bcp47 = locale === "en" ? "en-GB" : "vi-VN";
+  const isEn = normalizeUiLocale(locale) === "en";
+  const bcp47 = isEn ? "en-GB" : "vi-VN";
   return new Intl.DateTimeFormat(bcp47, {
     timeZone: APP_TIME_ZONE,
     day: "2-digit",

@@ -47,6 +47,16 @@ const STATE_FILTER_OPTIONS: readonly PromotionStateFilter[] = [
   "STOPPED",
 ];
 
+/**
+ * Ẩn cột phụ theo bề rộng vùng chứa (DESIGN.md mục 5.9): dưới 68rem (1280px có sidebar) ẩn Phạm vi & đối tượng
+ * và tóm tắt ở cột đầu; dưới 52rem ẩn thêm Hiệu lực.
+ */
+const DROP_LOW_PRIORITY_COLUMNS = [
+  "@container",
+  "@max-[68rem]:[&_:is(th,td):has([data-col=scopeAndAudience])]:hidden",
+  "@max-[52rem]:[&_:is(th,td):has([data-col=period])]:hidden",
+].join(" ");
+
 function parseInitialKind(raw: string | null): PromotionKind {
   return raw === "VOUCHER" ? "VOUCHER" : "AUTO";
 }
@@ -190,21 +200,28 @@ export function PromotionListView() {
         enableSorting: false,
         cell: ({ row }) => {
           const item = row.original;
+          const summaryParts = [
+            scopeSummaryText(item),
+            ...(item.kind === "VOUCHER" ? [audienceSummaryText(item)] : []),
+          ];
           return (
-            <div className="flex min-w-52 flex-col gap-0.5 py-1">
+            <div className="flex min-w-40 max-w-[13rem] flex-col gap-0.5 py-1">
               <Link
                 href={`/promotions/${item.id}`}
                 className={cn("font-semibold text-primary-text hover:underline", focusRing)}
               >
-                <span data-exam-content className="line-clamp-2">
+                <span data-exam-content className="line-clamp-2 wrap-anywhere">
                   {item.name}
                 </span>
               </Link>
               {item.code && (
-                <span data-exam-content className="font-mono text-caption text-text-muted">
+                <span data-exam-content className="font-mono text-caption wrap-anywhere text-text-muted">
                   {item.code}
                 </span>
               )}
+              <span className="hidden text-caption text-text-muted @max-[68rem]:block">
+                {summaryParts.join(" · ")}
+              </span>
               <PromotionCapWarningInline warnings={item.capWarnings} />
             </div>
           );
@@ -217,7 +234,7 @@ export function PromotionListView() {
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <div className="flex flex-col gap-0.5 whitespace-nowrap tabular-nums">
+            <div className="flex max-w-[8rem] flex-col gap-0.5 tabular-nums">
               <span className="font-medium text-text">
                 {formatDiscountSummary(
                   item.discountType,
@@ -238,12 +255,12 @@ export function PromotionListView() {
       },
       {
         id: "scopeAndAudience",
-        header: t("list.columns.scopeAndAudience"),
+        header: () => <span data-col="scopeAndAudience">{t("list.columns.scopeAndAudience")}</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <div className="flex min-w-36 flex-col gap-0.5">
+            <div data-col="scopeAndAudience" className="flex min-w-28 flex-col gap-0.5">
               <span className="text-body text-text">{scopeSummaryText(item)}</span>
               {item.kind === "VOUCHER" && (
                 <span className="text-caption text-text-muted">{audienceSummaryText(item)}</span>
@@ -254,10 +271,13 @@ export function PromotionListView() {
       },
       {
         id: "period",
-        header: t("list.columns.period"),
+        header: () => <span data-col="period">{t("list.columns.period")}</span>,
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5 whitespace-nowrap text-caption text-text-secondary tabular-nums">
+          <div
+            data-col="period"
+            className="flex flex-col gap-0.5 whitespace-nowrap text-caption text-text-secondary tabular-nums"
+          >
             <span>{formatPromotionDateTime(row.original.startsAt, locale)}</span>
             <span className="text-text-muted">{formatPromotionDateTime(row.original.endsAt, locale)}</span>
           </div>
@@ -270,7 +290,7 @@ export function PromotionListView() {
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <span className="whitespace-nowrap text-text tabular-nums">
+            <span className="block max-w-[6.5rem] text-text tabular-nums">
               {item.totalLimit != null
                 ? t("detail.metrics.usageWithLimit", { used: item.usedCount, limit: item.totalLimit })
                 : t("detail.metrics.usageWithoutLimit", { used: item.usedCount })}
@@ -384,6 +404,8 @@ export function PromotionListView() {
     />
   ) : undefined;
 
+  const createCtaLabel = kind === "VOUCHER" ? t("actions.createVoucher") : t("actions.create");
+
   const emptyNode = isFiltered ? (
     <EmptyState
       icon={<Search />}
@@ -405,7 +427,7 @@ export function PromotionListView() {
           <Button asChild>
             <Link href={`/promotions/new?kind=${kind}`}>
               <Plus />
-              <span>{t("actions.create")}</span>
+              <span>{createCtaLabel}</span>
             </Link>
           </Button>
         ) : undefined
@@ -480,19 +502,21 @@ export function PromotionListView() {
         )}
       </div>
 
-      <Table
-        columns={columns}
-        data={items}
-        getRowId={(row) => row.id}
-        loading={listQuery.isLoading}
-        loadingRows={PAGE_SIZE}
-        refreshing={listQuery.isFetching && !listQuery.isLoading}
-        error={errorNode}
-        empty={emptyNode}
-        cards={cards}
-        stickyColumns={canModify ? { start: true, end: true } : { start: true }}
-        aria-label={t("list.title")}
-      />
+      <div className={DROP_LOW_PRIORITY_COLUMNS}>
+        <Table
+          columns={columns}
+          data={items}
+          getRowId={(row) => row.id}
+          loading={listQuery.isLoading}
+          loadingRows={PAGE_SIZE}
+          refreshing={listQuery.isFetching && !listQuery.isLoading}
+          error={errorNode}
+          empty={emptyNode}
+          cards={cards}
+          stickyColumns={canModify ? { start: true, end: true } : { start: true }}
+          aria-label={t("list.title")}
+        />
+      </div>
 
       {totalItems > PAGE_SIZE && (
         <div className="border-t border-border p-4">
@@ -517,7 +541,7 @@ export function PromotionListView() {
             <Button asChild>
               <Link href={`/promotions/new?kind=${kind}`}>
                 <Plus />
-                <span>{t("actions.create")}</span>
+                <span>{createCtaLabel}</span>
               </Link>
             </Button>
           ) : undefined

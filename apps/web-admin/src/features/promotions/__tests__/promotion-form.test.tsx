@@ -7,9 +7,11 @@ import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import { PromotionForm } from "../components/promotion-form";
 import { PromotionEditPage } from "../components/promotion-form-page";
+import { ExamKindPicker } from "../components/promotion-target-pickers";
 import {
   EXAM_KINDS_PATH,
   EXAMS_PATH,
+  KIND_ID_1,
   OPS_PROMO_PERMISSIONS,
   PROMO_DETAIL_PATH,
   PROMO_ID_1,
@@ -160,6 +162,8 @@ describe("PromotionForm & PromotionEditPage (AC-2, AC-3, AC-4, AC-9, AC-10)", ()
     expect(screen.getByLabelText(/Giới hạn mỗi học viên/)).toBeDisabled();
     expect(screen.getByRole("radio", { name: /Tất cả bài thi/ })).toBeDisabled();
     expect(screen.getByRole("radio", { name: /Tất cả học viên/ })).toBeDisabled();
+    expect(screen.getByText("Cho phép cộng dồn khi thanh toán")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText(/Khi đã có lượt dùng phải >= 5/)).toBeInTheDocument();
 
     // Sửa totalLimit < usedCount (5) -> báo lỗi tại chỗ
     const totalLimitInput = screen.getByLabelText(/Tổng lượt áp dụng tối đa/);
@@ -239,5 +243,48 @@ describe("PromotionForm & PromotionEditPage (AC-2, AC-3, AC-4, AC-9, AC-10)", ()
     const patchCalls = fakeApi.calls.filter((c) => c.method === "PATCH");
     expect(patchCalls[0]?.options?.body).toMatchObject({ expectedRevision: 2 });
     expect(patchCalls[1]?.options?.body).toMatchObject({ expectedRevision: 3 });
+  });
+
+  it("chế độ tạo mới hiện hint totalLimit sạch và thẻ Đối tượng dùng token border-primary-600 (không dùng border-primary)", () => {
+    renderWithPermissions(<PromotionForm mode="create" initialKind="VOUCHER" />);
+
+    expect(screen.getByText("Để trống nếu không giới hạn.")).toBeInTheDocument();
+    expect(screen.queryByText(/Khi đã có lượt dùng phải >=/)).not.toBeInTheDocument();
+
+    const selectedAudienceCard = screen.getByRole("radio", { name: /Tất cả học viên/ });
+    expect(selectedAudienceCard.className).toContain("border-primary-600");
+    expect(selectedAudienceCard.className).not.toMatch(/\bborder-primary\b(?!-)/);
+  });
+
+  it("ExamKindPicker ở chế độ en-GB dùng pickName (nameEn hoặc rơi về nameVi) và không bọc data-exam-content", async () => {
+    fakeApi.get(
+      EXAM_KINDS_PATH,
+      ok([
+        {
+          id: KIND_ID_1,
+          code: "HSA",
+          nameVi: "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
+          nameEn: "VNU Hanoi Competency Assessment (HSA)",
+        },
+        {
+          id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          code: "CUSTOM",
+          nameVi: "Kỳ thi thử nội bộ",
+        },
+      ]),
+    );
+
+    renderWithPermissions(<ExamKindPicker selectedIds={[KIND_ID_1]} onChange={vi.fn()} />, {
+      locale: "en-GB",
+    });
+
+    const englishKind = await screen.findByText("VNU Hanoi Competency Assessment (HSA)");
+    expect(englishKind).toBeInTheDocument();
+    expect(englishKind.closest("[data-exam-content]")).toBeNull();
+    expect(screen.queryByText("Đánh giá năng lực ĐHQG Hà Nội (HSA)")).not.toBeInTheDocument();
+
+    // Fallback to nameVi when nameEn is missing
+    const fallbackKind = screen.getByText("Kỳ thi thử nội bộ");
+    expect(fallbackKind.closest("[data-exam-content]")).toBeNull();
   });
 });

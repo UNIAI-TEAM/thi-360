@@ -7766,6 +7766,7 @@
       "cancel": "Hủy",
       "clearFilters": "Xóa bộ lọc",
       "create": "Tạo khuyến mãi",
+      "createVoucher": "Tạo voucher",
       "delete": "Xóa",
       "deleteDisabledUsed": "Không thể xóa vì khuyến mãi đã có lượt sử dụng.",
       "edit": "Chỉnh sửa",
@@ -7796,6 +7797,7 @@
       "discountedPrice": "Sau giảm",
       "examName": "Bài thi",
       "floorPrice": "Giá sàn",
+      "inlineSummary": "Giá bị giữ ở mức tối thiểu {floor} tại {count, plural, other {# bài thi}}",
       "listMore": "+{count} bài khác",
       "listPrefix": "Chạm giá sàn:",
       "listPrice": "Giá gốc",
@@ -7961,7 +7963,7 @@
         },
         "classesLabel": "Chọn lớp học",
         "classesNoPermission": "Tài khoản hiện tại không có quyền xem danh sách lớp (CLASS.VIEW). Chỉ có thể giữ nguyên hoặc bỏ bớt lớp đã gắn.",
-        "classesPlaceholder": "Tìm theo tên hoặc mã lớp...",
+        "classesPlaceholder": "Tìm tên hoặc mã lớp...",
         "classesSelected": "Đã chọn ({count} lớp)",
         "code": "Mã ưu đãi",
         "codeHint": "Chữ in hoa, số và gạch ngang (-). Hệ thống tự chuyển sang chữ hoa.",
@@ -7981,7 +7983,7 @@
         "examKindsLabel": "Chọn loại bài thi",
         "examsLabel": "Chọn bài thi đang bán",
         "examsNoPermission": "Tài khoản hiện tại không có quyền xem danh sách bài thi (EXAM.VIEW).",
-        "examsPlaceholder": "Tìm bài thi theo tên hoặc mã...",
+        "examsPlaceholder": "Tìm tên hoặc mã bài thi...",
         "examsSelected": "Đã chọn ({count} bài thi)",
         "kind": "Loại khuyến mãi",
         "kindAuto": "Khuyến mãi tự động",
@@ -8012,10 +8014,11 @@
         "statusStopped": "Đã dừng",
         "totalLimit": "Tổng lượt áp dụng tối đa",
         "totalLimitHint": "Để trống nếu không giới hạn tổng lượt. Khi đã có lượt dùng phải >= {used}.",
+        "totalLimitHintUnlimited": "Để trống nếu không giới hạn.",
         "totalLimitPlaceholder": "Không giới hạn",
         "usersLabel": "Chọn học viên",
         "usersNoPermission": "Tài khoản hiện tại không có quyền xem danh sách học viên (USER.VIEW). Chỉ có thể giữ nguyên hoặc bỏ bớt học viên đã gắn.",
-        "usersPlaceholder": "Tìm theo tên, tài khoản hoặc email...",
+        "usersPlaceholder": "Tên, tài khoản hoặc email",
         "usersSelected": "Đã chọn ({count} học viên)"
       },
       "lockedChip": "Đã khóa",
@@ -8062,6 +8065,7 @@
         "audienceUserIds": "Học viên áp dụng",
         "code": "Mã ưu đãi",
         "combinable": "Cộng dồn",
+        "deletedAt": "Thời điểm xóa",
         "description": "Mô tả",
         "discountType": "Kiểu giảm",
         "discountValue": "Mức giảm",
@@ -8078,7 +8082,34 @@
         "status": "Trạng thái",
         "totalLimit": "Tổng lượt tối đa"
       },
-      "title": "Lịch sử thay đổi"
+      "listCounts": {
+        "audienceClassIds": "{count, plural, other {# lớp học}}",
+        "audienceUserIds": "{count, plural, other {# học viên}}",
+        "examIds": "{count, plural, other {# bài thi}}",
+        "examKindIds": "{count, plural, other {# loại bài thi}}"
+      },
+      "title": "Lịch sử thay đổi",
+      "values": {
+        "audience": {
+          "ALL": "Tất cả học viên",
+          "NEW_ACCOUNT": "Tài khoản mới",
+          "SELECTED": "Lớp / học viên chỉ định"
+        },
+        "discountType": {
+          "AMOUNT": "Số tiền cố định (đ)",
+          "PERCENT": "Phần trăm (%)"
+        },
+        "scope": {
+          "ALL": "Tất cả bài thi",
+          "BUNDLE": "Bộ đề chỉ định",
+          "EXAM": "Bài thi chỉ định",
+          "EXAM_KIND": "Theo loại bài thi"
+        },
+        "status": {
+          "ACTIVE": "Hoạt động",
+          "STOPPED": "Đã dừng"
+        }
+      }
     },
     "kinds": {
       "AUTO": "Tự động",
@@ -8170,7 +8201,7 @@
         "RESERVED": "Đang giữ chỗ"
       },
       "searchAria": "Tìm lượt sử dụng theo học viên hoặc mã đơn",
-      "searchPlaceholder": "Tìm theo học viên, email hoặc mã đơn...",
+      "searchPlaceholder": "Tìm theo mã đơn hoặc tài khoản",
       "statusLabels": {
         "CONFIRMED": "Đã xác nhận",
         "RELEASED": "Đã hoàn trả",

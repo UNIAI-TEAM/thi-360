@@ -97,17 +97,19 @@ export function PromotionPricePreviewCard({
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={selectId}>{t("pricePreview.examLabel")}</Label>
-            <Select
-              id={selectId}
-              value={activeExamId}
-              onValueChange={setSelectedExamId}
-              options={candidates.map((c) => ({
-                value: c.id,
-                textValue: c.label,
-                label: <span data-exam-content>{c.label}</span>,
-              }))}
-              placeholder={t("pricePreview.examPlaceholder")}
-            />
+            <div data-exam-content>
+              <Select
+                id={selectId}
+                value={activeExamId}
+                onValueChange={setSelectedExamId}
+                options={candidates.map((c) => ({
+                  value: c.id,
+                  textValue: c.label,
+                  label: <span data-exam-content>{c.label}</span>,
+                }))}
+                placeholder={t("pricePreview.examPlaceholder")}
+              />
+            </div>
           </div>
 
           {previewQuery.isLoading && (
@@ -138,8 +140,8 @@ export function PromotionPricePreviewCard({
                 </dd>
               </div>
               {matchingCapWarning && (
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-text-muted">{t("pricePreview.floorPrice")}</dt>
+                <div className="flex items-center justify-between gap-2 rounded-sm border border-warning/30 bg-warning-bg px-2 py-1">
+                  <dt className="font-medium text-warning">{t("pricePreview.floorPrice")}</dt>
                   <dd className="font-medium text-warning tabular-nums">
                     {formatVnd(matchingCapWarning.floorPrice, locale)}
                   </dd>

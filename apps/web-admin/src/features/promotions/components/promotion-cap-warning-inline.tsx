@@ -1,29 +1,23 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
+import { formatVnd } from "../format";
 import type { CapWarning } from "../types";
 
 export function PromotionCapWarningInline({ warnings }: { warnings: readonly CapWarning[] }) {
   const t = useTranslations("promotions.capWarning");
+  const locale = useLocale();
   if (!warnings || warnings.length === 0) return null;
 
-  const firstNames = warnings.slice(0, 2);
-  const extraCount = warnings.length - firstNames.length;
+  const floorText = formatVnd(warnings[0]!.floorPrice, locale);
 
   return (
-    <div className="mt-1 inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border border-warning/30 bg-warning-bg px-2 py-0.5 text-caption text-warning">
-      <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
-      <span className="font-medium">{t("badge")}</span>
-      <span className="truncate">
-        {firstNames.map((item, idx) => (
-          <span key={item.examId}>
-            {idx > 0 ? ", " : ": "}
-            <span data-exam-content>{item.examName}</span>
-          </span>
-        ))}
-        {extraCount > 0 ? ` ${t("listMore", { count: extraCount })}` : ""}
+    <div className="mt-1 flex max-w-full items-start gap-1.5 rounded-md border border-warning/30 bg-warning-bg px-2 py-1 text-caption text-warning">
+      <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+      <span className="min-w-0 font-medium">
+        {t("inlineSummary", { floor: floorText, count: warnings.length })}
       </span>
     </div>
   );

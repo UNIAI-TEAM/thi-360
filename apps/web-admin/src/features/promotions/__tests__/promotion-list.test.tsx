@@ -80,12 +80,14 @@ describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
     renderWithPermissions(<PromotionListView />);
 
     expect(await screen.findByText("Tự động HSA")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tạo khuyến mãi" })).toBeInTheDocument();
     expect(fakeApi.calls[0]?.options).toMatchObject({
       params: { query: { kind: "AUTO", page: 0, size: 20 } },
     });
 
     await user.click(screen.getByRole("tab", { name: "Mã ưu đãi" }));
     expect(await screen.findByText("Voucher Tháng 11")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tạo voucher" })).toBeInTheDocument();
     expect(screen.getByText("NOV2026")).toBeInTheDocument();
 
     // Lọc trạng thái: Sắp diễn ra -> gửi status=ACTIVE & state=UPCOMING

@@ -27,6 +27,8 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { usePermissions } from "@/features/session/session-provider";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
+import { pickName } from "@thi360/web-kit/i18n";
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 
 import { formatPromotionDateTime } from "../datetime";
 import { promotionErrorCode, resolvePromotionErrorMessage } from "../errors";
@@ -51,6 +53,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
   const t = useTranslations("promotions");
   const tErrors = useTranslations("promotions.errors");
   const locale = useLocale();
+  const uiLocale = normalizeUiLocale(locale);
   const router = useRouter();
   const { can } = usePermissions();
   const canModify = can("PROMOTION.MODIFY");
@@ -501,10 +504,18 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
                   {detail.scopeItems.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {detail.scopeItems.map((item) => {
-                        const text =
-                          locale === "en" && item.nameEn
-                            ? item.nameEn
-                            : (item.name ?? item.code ?? item.id.slice(0, 8));
+                        if (item.type === "EXAM_KIND") {
+                          const kindText =
+                            pickName({ nameVi: item.name, nameEn: item.nameEn }, uiLocale) ||
+                            item.code ||
+                            item.id.slice(0, 8);
+                          return (
+                            <Chip key={item.id} variant="tag">
+                              <span>{kindText}</span>
+                            </Chip>
+                          );
+                        }
+                        const text = item.name ?? item.code ?? item.id.slice(0, 8);
                         return (
                           <Chip key={item.id} variant="tag">
                             <span data-exam-content>{text}</span>
@@ -582,7 +593,7 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
             onRetry={() => void detailQuery.refetch()}
           />
 
-          <PromotionHistoryCard history={detail.history} />
+          <PromotionHistoryCard history={detail.history} discountType={detail.discountType} />
         </div>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-4">

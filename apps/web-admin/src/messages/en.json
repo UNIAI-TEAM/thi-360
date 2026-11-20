@@ -7766,6 +7766,7 @@
       "cancel": "Cancel",
       "clearFilters": "Clear filters",
       "create": "Create promotion",
+      "createVoucher": "Create voucher",
       "delete": "Delete",
       "deleteDisabledUsed": "Cannot delete because this promotion already has redemptions.",
       "edit": "Edit",
@@ -7796,6 +7797,7 @@
       "discountedPrice": "Discounted",
       "examName": "Exam",
       "floorPrice": "Floor price",
+      "inlineSummary": "Price capped at floor {floor} on {count, plural, one {# exam} other {# exams}}",
       "listMore": "+{count} more",
       "listPrefix": "Hits floor price:",
       "listPrice": "List price",
@@ -7961,7 +7963,7 @@
         },
         "classesLabel": "Select classes",
         "classesNoPermission": "Your account lacks CLASS.VIEW permission. Existing assigned classes are preserved or can be removed.",
-        "classesPlaceholder": "Search by class name or code...",
+        "classesPlaceholder": "Search class name or code...",
         "classesSelected": "Selected ({count} classes)",
         "code": "Voucher code",
         "codeHint": "Uppercase letters, numbers, and hyphens (-). Automatically uppercased.",
@@ -7981,7 +7983,7 @@
         "examKindsLabel": "Select exam kinds",
         "examsLabel": "Select published exams",
         "examsNoPermission": "Your account lacks EXAM.VIEW permission to browse exams.",
-        "examsPlaceholder": "Search published exams by title or code...",
+        "examsPlaceholder": "Search exam title or code...",
         "examsSelected": "Selected ({count} exams)",
         "kind": "Promotion type",
         "kindAuto": "Automatic promotion",
@@ -8012,10 +8014,11 @@
         "statusStopped": "Stopped",
         "totalLimit": "Total usage limit",
         "totalLimitHint": "Leave blank for unlimited total uses. Once used, must be >= {used}.",
+        "totalLimitHintUnlimited": "Leave blank for unlimited.",
         "totalLimitPlaceholder": "Unlimited",
         "usersLabel": "Select students",
         "usersNoPermission": "Your account lacks USER.VIEW permission. Existing assigned students are preserved or can be removed.",
-        "usersPlaceholder": "Search by name, username, or email...",
+        "usersPlaceholder": "Name, username, or email",
         "usersSelected": "Selected ({count} students)"
       },
       "lockedChip": "Locked",
@@ -8062,6 +8065,7 @@
         "audienceUserIds": "Target students",
         "code": "Voucher code",
         "combinable": "Combinable",
+        "deletedAt": "Deleted at",
         "description": "Description",
         "discountType": "Discount type",
         "discountValue": "Discount value",
@@ -8078,7 +8082,34 @@
         "status": "Status",
         "totalLimit": "Total limit"
       },
-      "title": "Change history"
+      "listCounts": {
+        "audienceClassIds": "{count, plural, one {# class} other {# classes}}",
+        "audienceUserIds": "{count, plural, one {# student} other {# students}}",
+        "examIds": "{count, plural, one {# exam} other {# exams}}",
+        "examKindIds": "{count, plural, one {# exam kind} other {# exam kinds}}"
+      },
+      "title": "Change history",
+      "values": {
+        "audience": {
+          "ALL": "All students",
+          "NEW_ACCOUNT": "New accounts",
+          "SELECTED": "Selected classes / students"
+        },
+        "discountType": {
+          "AMOUNT": "Fixed amount (VND)",
+          "PERCENT": "Percentage (%)"
+        },
+        "scope": {
+          "ALL": "All exams",
+          "BUNDLE": "Specific bundles",
+          "EXAM": "Specific exams",
+          "EXAM_KIND": "By exam kind"
+        },
+        "status": {
+          "ACTIVE": "Active",
+          "STOPPED": "Stopped"
+        }
+      }
     },
     "kinds": {
       "AUTO": "Automatic",
@@ -8170,7 +8201,7 @@
         "RESERVED": "Reserved"
       },
       "searchAria": "Search redemptions by student or order code",
-      "searchPlaceholder": "Search by student, email, or order code...",
+      "searchPlaceholder": "Search by order code or account",
       "statusLabels": {
         "CONFIRMED": "Confirmed",
         "RELEASED": "Released",

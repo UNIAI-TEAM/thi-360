@@ -1,6 +1,10 @@
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
+import type { AbstractIntlMessages } from "next-intl";
 import type { ReactElement } from "react";
 
 import { SessionProvider } from "@/features/session/session-provider";
+import en from "@/messages/en.json";
+import vi from "@/messages/vi.json";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
 
@@ -117,13 +121,14 @@ export function pageOfPromotions(items: PromotionSummary[], totalItems = items.l
 
 export function renderWithPermissions(
   ui: ReactElement,
-  options: { permissions?: string[]; locale?: string } = {},
+  options: { permissions?: string[]; locale?: string; messages?: AbstractIntlMessages } = {},
 ) {
-  const { permissions = FULL_PROMO_PERMISSIONS, locale = "vi" } = options;
+  const { permissions = FULL_PROMO_PERMISSIONS, locale = "vi", messages } = options;
+  const resolvedMessages = messages ?? (normalizeUiLocale(locale) === "en" ? en : vi);
   return renderWithProviders(
     <SessionProvider loadSession={async () => ({ ...TEST_ADMIN_SESSION, permissions })}>
       {ui}
     </SessionProvider>,
-    { locale },
+    { locale, messages: resolvedMessages },
   );
 }

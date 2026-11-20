@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import { PromotionCapWarningCard } from "../components/promotion-cap-warning-card";
+import { PromotionCapWarningInline } from "../components/promotion-cap-warning-inline";
 import { PromotionListView } from "../components/promotion-list-view";
 import {
   EXAM_ID_1,
@@ -78,10 +79,49 @@ describe("Promotion cap warnings on list (AC-15)", () => {
 
     renderWithPermissions(<PromotionListView />);
 
-    expect(await screen.findByText("Chạm giá sàn")).toBeInTheDocument();
-    expect(screen.getByText("HSA Full Test 01")).toBeInTheDocument();
-    expect(screen.getByText("QDA Practice 02")).toBeInTheDocument();
-    expect(screen.getByText(/\+1 bài khác/)).toBeInTheDocument();
+    expect(await screen.findByText("Giá bị giữ ở mức tối thiểu 50.000 đ tại 3 bài thi")).toBeInTheDocument();
+  });
+
+  it("hiện cảnh báo chạm giá sàn chuẩn en-GB (số ít / số nhiều và VND)", () => {
+    const { rerender } = renderWithPermissions(
+      <PromotionCapWarningInline
+        warnings={[
+          {
+            examId: EXAM_ID_1,
+            examName: "HSA Full Test 01",
+            listPrice: 19000,
+            floorPrice: 5000,
+            discountedPrice: 5000,
+          },
+        ]}
+      />,
+      { locale: "en-GB" },
+    );
+
+    expect(screen.getByText("Price capped at floor 5,000 VND on 1 exam")).toBeInTheDocument();
+
+    rerender(
+      <PromotionCapWarningInline
+        warnings={[
+          {
+            examId: EXAM_ID_1,
+            examName: "HSA Full Test 01",
+            listPrice: 19000,
+            floorPrice: 5000,
+            discountedPrice: 5000,
+          },
+          {
+            examId: EXAM_ID_2,
+            examName: "QDA Practice 02",
+            listPrice: 19000,
+            floorPrice: 5000,
+            discountedPrice: 5000,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Price capped at floor 5,000 VND on 2 exams")).toBeInTheDocument();
   });
 
   it("không hiện huy hiệu cảnh báo khi capWarnings rỗng", async () => {
@@ -93,7 +133,7 @@ describe("Promotion cap warnings on list (AC-15)", () => {
     renderWithPermissions(<PromotionListView />);
 
     await screen.findByText("No Cap Deal");
-    expect(screen.queryByText("Chạm giá sàn")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Giá bị giữ ở mức tối thiểu/)).not.toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { Checkbox, Chip, Input, Label, cn, focusRing } from "@thi360/ui";
+import { pickName } from "@thi360/web-kit/i18n";
+import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import { Search, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -71,7 +73,7 @@ export function ExamKindPicker({
   error?: string;
 }) {
   const t = useTranslations("promotions");
-  const locale = useLocale();
+  const uiLocale = normalizeUiLocale(useLocale());
   const query = useExamKindOptionsQuery(true);
 
   const options = useMemo(() => {
@@ -107,12 +109,13 @@ export function ExamKindPicker({
           {options.map((item) => {
             const checked = selectedIds.includes(item.id);
             const displayName =
-              locale === "en" && item.nameEn ? item.nameEn : item.nameVi || item.code;
+              pickName({ nameVi: item.nameVi, nameEn: item.nameEn }, uiLocale) || item.code;
             const checkboxId = `exam-kind-${item.id}`;
             return (
               <label
                 key={item.id}
                 htmlFor={checkboxId}
+                aria-disabled={disabled || undefined}
                 className={cn(
                   "flex items-center gap-2.5 rounded-md border px-3 py-2 text-body transition-colors duration-150 motion-reduce:transition-none",
                   checked ? "border-primary-600 bg-primary-50" : "border-border bg-surface",
@@ -127,10 +130,8 @@ export function ExamKindPicker({
                     if (!disabled) onChange(toggleId(selectedIds, item.id));
                   }}
                 />
-                <span className="min-w-0 flex-1 truncate">
-                  <span data-exam-content className="font-medium text-text">
-                    {displayName}
-                  </span>
+                <span className="min-w-0 flex-1 line-clamp-2 font-medium text-text">
+                  {displayName}
                 </span>
               </label>
             );
@@ -203,9 +204,9 @@ export function ExamScopePicker({
             return (
               <span
                 key={id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-subtle px-2.5 py-1 text-caption text-text"
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-subtle px-2.5 py-1 text-caption text-text"
               >
-                <span data-exam-content className="max-w-56 truncate">
+                <span data-exam-content className="min-w-0 wrap-anywhere">
                   {label}
                 </span>
                 {!disabled && (
@@ -276,7 +277,7 @@ export function ExamScopePicker({
                           onChange(toggleId(selectedIds, exam.id));
                         }}
                       />
-                      <span className="min-w-0 flex-1 truncate">
+                      <span className="min-w-0 flex-1 line-clamp-2 wrap-anywhere">
                         <span data-exam-content className="font-medium text-text">
                           {exam.name}
                         </span>
@@ -388,9 +389,9 @@ export function AudienceTargetsPicker({
                 return (
                   <span
                     key={id}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-1 text-caption text-text"
+                    className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-1 text-caption text-text"
                   >
-                    <span data-exam-content className="max-w-44 truncate">
+                    <span data-exam-content className="min-w-0 wrap-anywhere">
                       {clsLabel}
                     </span>
                     {!disabled && (
@@ -462,7 +463,7 @@ export function AudienceTargetsPicker({
                                 onChangeClasses(toggleId(selectedClassIds, cls.id));
                               }}
                             />
-                            <span data-exam-content className="min-w-0 flex-1 truncate font-medium text-text">
+                            <span data-exam-content className="min-w-0 flex-1 line-clamp-2 wrap-anywhere font-medium text-text">
                               {cls.code} - {cls.name}
                             </span>
                           </label>
@@ -486,9 +487,9 @@ export function AudienceTargetsPicker({
                 return (
                   <span
                     key={id}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-1 text-caption text-text"
+                    className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-subtle px-2.5 py-1 text-caption text-text"
                   >
-                    <span data-exam-content className="max-w-44 truncate">
+                    <span data-exam-content className="min-w-0 wrap-anywhere">
                       {usrLabel}
                     </span>
                     {!disabled && (
@@ -560,7 +561,7 @@ export function AudienceTargetsPicker({
                                 onChangeUsers(toggleId(selectedUserIds, usr.id));
                               }}
                             />
-                            <span data-exam-content className="min-w-0 flex-1 truncate font-medium text-text">
+                            <span data-exam-content className="min-w-0 flex-1 line-clamp-2 wrap-anywhere font-medium text-text">
                               {usr.fullName} (@{usr.username})
                             </span>
                           </label>

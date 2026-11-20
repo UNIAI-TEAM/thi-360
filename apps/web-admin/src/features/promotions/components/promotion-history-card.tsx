@@ -5,8 +5,12 @@ import { History } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { formatPromotionDateTime } from "../datetime";
-import { formatVnd } from "../format";
-import type { PromotionChangeLogView } from "../types";
+import { formatNumber, formatVnd } from "../format";
+import type {
+  PromotionChangeLogView,
+  PromotionDiscountType,
+  PromotionFieldChange,
+} from "../types";
 
 const ACTION_TONE: Record<PromotionChangeLogView["action"], StatusTone> = {
   CREATED: "success",
@@ -22,6 +26,7 @@ const KNOWN_FIELDS = new Set([
   "audienceUserIds",
   "code",
   "combinable",
+  "deletedAt",
   "description",
   "discountType",
   "discountValue",
@@ -30,6 +35,7 @@ const KNOWN_FIELDS = new Set([
   "examKindIds",
   "kind",
   "maxDiscountVnd",
+  "minOrderVnd",
   "name",
   "perUserLimit",
   "scope",
@@ -38,37 +44,93 @@ const KNOWN_FIELDS = new Set([
   "totalLimit",
 ]);
 
+const FREE_TEXT_FIELDS = new Set(["name", "description", "code"]);
+const DATE_FIELDS = new Set(["startsAt", "endsAt", "deletedAt"]);
+const VND_FIELDS = new Set(["maxDiscountVnd", "minOrderVnd"]);
+const COUNT_FIELDS = new Set(["totalLimit", "perUserLimit"]);
+const ID_LIST_FIELDS = new Set(["examKindIds", "examIds", "audienceClassIds", "audienceUserIds"]);
+
+const KNOWN_ENUM_VALUES: Record<string, ReadonlySet<string>> = {
+  kind: new Set(["AUTO", "VOUCHER"]),
+  discountType: new Set(["PERCENT", "AMOUNT"]),
+  scope: new Set(["ALL", "EXAM_KIND", "EXAM", "BUNDLE"]),
+  audience: new Set(["ALL", "NEW_ACCOUNT", "SELECTED"]),
+  status: new Set(["ACTIVE", "STOPPED"]),
+};
+
+function isEmptyHistoryValue(value: unknown): boolean {
+  return value === null || value === undefined || value === "";
+}
+
+function resolveDiscountTypeForChange(
+  changes: readonly PromotionFieldChange[],
+  which: "oldValue" | "newValue",
+  fallback?: PromotionDiscountType,
+): PromotionDiscountType | undefined {
+  const dtChange = changes.find((c) => c.field === "discountType");
+  const candidate: unknown = dtChange ? dtChange[which] : undefined;
+  if (candidate === "PERCENT" || candidate === "AMOUNT") return candidate;
+  return fallback;
+}
+
 function formatHistoryValue(
   field: string,
   value: unknown,
   locale: string,
-  tHistory: (key: string) => string,
+  tHistory: (key: string, values?: Record<string, string | number>) => string,
+  tKinds: (key: string) => string,
+  resolvedDiscountType?: PromotionDiscountType,
 ): string {
-  if (value === null || value === undefined || value === "") {
+  if (isEmptyHistoryValue(value)) {
     return tHistory("emptyValue");
   }
   if (typeof value === "boolean") {
     return value ? tHistory("boolTrue") : tHistory("boolFalse");
   }
   if (Array.isArray(value)) {
-    return value.length === 0 ? tHistory("emptyValue") : value.join(", ");
+    if (value.length === 0) return tHistory("emptyValue");
+    if (ID_LIST_FIELDS.has(field)) {
+      return tHistory(`listCounts.${field}`, { count: value.length });
+    }
+    return value.join(", ");
   }
-  if ((field === "startsAt" || field === "endsAt") && typeof value === "string") {
+  if (DATE_FIELDS.has(field) && typeof value === "string") {
     const formatted = formatPromotionDateTime(value, locale);
     return formatted || value;
   }
-  if (field === "maxDiscountVnd" && typeof value === "number") {
+  if (VND_FIELDS.has(field) && typeof value === "number") {
     return formatVnd(value, locale);
+  }
+  if (field === "discountValue" && typeof value === "number") {
+    if (resolvedDiscountType === "AMOUNT") {
+      return formatVnd(value, locale);
+    }
+    if (resolvedDiscountType === "PERCENT") {
+      return `${formatNumber(value, locale)}%`;
+    }
+    return formatNumber(value, locale);
+  }
+  if (COUNT_FIELDS.has(field) && typeof value === "number") {
+    return formatNumber(value, locale);
+  }
+  if (typeof value === "string" && field in KNOWN_ENUM_VALUES && KNOWN_ENUM_VALUES[field]!.has(value)) {
+    if (field === "kind") {
+      return tKinds(value);
+    }
+    return tHistory(`values.${field}.${value}`);
   }
   return String(value);
 }
 
 export function PromotionHistoryCard({
   history,
+  discountType,
 }: {
   history: readonly PromotionChangeLogView[];
+  discountType?: PromotionDiscountType;
 }) {
   const t = useTranslations("promotions.history");
+  const tKinds = useTranslations("promotions.kinds");
   const locale = useLocale();
 
   const sortedHistory = [...history].sort((a, b) => {
@@ -94,14 +156,20 @@ export function PromotionHistoryCard({
           {sortedHistory.map((entry) => {
             const tone = ACTION_TONE[entry.action] ?? "neutral";
             const actionLabel = t(`actions.${entry.action}`);
+            const oldDiscountType = resolveDiscountTypeForChange(entry.changes, "oldValue", discountType);
+            const newDiscountType = resolveDiscountTypeForChange(entry.changes, "newValue", discountType);
             return (
               <li key={entry.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusChip tone={tone}>{actionLabel}</StatusChip>
-                    <span className="text-body font-medium text-text" data-exam-content>
-                      {entry.actorUsername ?? t("actorFallback")}
-                    </span>
+                    {entry.actorUsername ? (
+                      <span className="text-body font-medium text-text" data-exam-content>
+                        {entry.actorUsername}
+                      </span>
+                    ) : (
+                      <span className="text-body font-medium text-text">{t("actorFallback")}</span>
+                    )}
                   </div>
                   <span className="text-caption text-text-muted tabular-nums">
                     {formatPromotionDateTime(entry.occurredAt, locale)}
@@ -114,13 +182,32 @@ export function PromotionHistoryCard({
                       const fieldLabel = KNOWN_FIELDS.has(change.field)
                         ? t(`fields.${change.field}`)
                         : change.field;
-                      const fromText = formatHistoryValue(change.field, change.oldValue, locale, t);
-                      const toText = formatHistoryValue(change.field, change.newValue, locale, t);
+                      const fromText = formatHistoryValue(
+                        change.field,
+                        change.oldValue,
+                        locale,
+                        t,
+                        tKinds,
+                        oldDiscountType,
+                      );
+                      const toText = formatHistoryValue(
+                        change.field,
+                        change.newValue,
+                        locale,
+                        t,
+                        tKinds,
+                        newDiscountType,
+                      );
+                      const isFreeText = FREE_TEXT_FIELDS.has(change.field);
+                      const wrapFrom = isFreeText && !isEmptyHistoryValue(change.oldValue);
+                      const wrapTo = isFreeText && !isEmptyHistoryValue(change.newValue);
                       return (
                         <li key={change.field} className="flex flex-wrap items-baseline gap-1.5">
                           <span className="font-medium text-text">{fieldLabel}:</span>
-                          <span data-exam-content className="wrap-anywhere">
-                            {t("arrow", { from: fromText, to: toText })}
+                          <span className="wrap-anywhere">
+                            {wrapFrom ? <span data-exam-content>{fromText}</span> : fromText}
+                            {" \u2192 "}
+                            {wrapTo ? <span data-exam-content>{toText}</span> : toText}
                           </span>
                         </li>
                       );

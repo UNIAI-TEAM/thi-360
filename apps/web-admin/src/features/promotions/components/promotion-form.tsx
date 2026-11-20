@@ -169,6 +169,7 @@ export function PromotionForm({
   });
 
   const formInstanceScope = useId();
+  const formId = useId();
 
   const createMutation = useCreatePromotionMutation();
   const updateMutation = useUpdatePromotionMutation(initialDetail?.id ?? "");
@@ -409,7 +410,7 @@ export function PromotionForm({
   const endIsoPreview = vietnamDatetimeLocalToIso(values.endsAt);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       {conflictBanner}
 
       {isUsed && (
@@ -439,7 +440,12 @@ export function PromotionForm({
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-5">
+        <form
+          id={formId}
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+          className="flex min-w-0 flex-col gap-5"
+        >
           {/* 1. General info */}
           <Card id={nameSectionId} className="flex flex-col gap-4 p-5">
             <h2 className="text-title font-semibold text-text">{t("form.sections.general")}</h2>
@@ -700,7 +706,11 @@ export function PromotionForm({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 label={t("form.fields.totalLimit")}
-                hint={t("form.fields.totalLimitHint", { used: usedCount })}
+                hint={
+                  usedCount > 0
+                    ? t("form.fields.totalLimitHint", { used: usedCount })
+                    : t("form.fields.totalLimitHintUnlimited")
+                }
                 error={errors.totalLimit?.message}
               >
                 {(controlProps) => (
@@ -757,7 +767,11 @@ export function PromotionForm({
                       />
                     )}
                   />
-                  <Label htmlFor="promo-combinable" className="cursor-pointer">
+                  <Label
+                    htmlFor="promo-combinable"
+                    aria-disabled={isUsed || undefined}
+                    className={isUsed ? "cursor-not-allowed" : "cursor-pointer"}
+                  >
                     {t("form.fields.combinableLabel")}
                   </Label>
                   {isUsed && <Chip variant="tag">{t("form.lockedChip")}</Chip>}
@@ -875,7 +889,7 @@ export function PromotionForm({
                       }}
                       className={cn(
                         "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors duration-150 motion-reduce:transition-none",
-                        selected ? "border-primary bg-primary-50/40" : "border-border bg-surface hover:bg-subtle",
+                        selected ? "border-primary-600 bg-primary-50" : "border-border bg-surface hover:bg-subtle",
                         isUsed && "cursor-not-allowed opacity-70",
                         focusRing,
                       )}
@@ -910,7 +924,7 @@ export function PromotionForm({
               )}
             </Card>
           )}
-        </div>
+        </form>
 
         {/* Sticky Sidebar Aside */}
         <aside className="flex flex-col gap-4 lg:sticky lg:top-4">
@@ -948,7 +962,13 @@ export function PromotionForm({
             </dl>
 
             <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <Button type="submit" disabled={pending} aria-busy={pending || undefined} className="w-full">
+              <Button
+                type="submit"
+                form={formId}
+                disabled={pending}
+                aria-busy={pending || undefined}
+                className="w-full"
+              >
                 {pending
                   ? t("actions.saving")
                   : mode === "create"
@@ -1007,6 +1027,6 @@ export function PromotionForm({
           />
         </aside>
       </div>
-    </form>
+    </div>
   );
 }
