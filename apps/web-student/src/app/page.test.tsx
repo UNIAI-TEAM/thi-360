@@ -68,6 +68,20 @@ describe("web-student landing page", () => {
     expect(screen.getByRole("link", { name: /Khám phá bài thi/ })).toHaveAttribute("href", "#exams");
   });
 
+  it("không câu trả lời nào của FAQ là chuỗi giữ chỗ trong ngoặc vuông, ở cả hai ngôn ngữ", async () => {
+    for (const options of [undefined, { locale: "en", messages: enMessages }] as const) {
+      const view = await renderLanding(options);
+      const answers = Array.from(view.container.querySelectorAll("#faq details > :not(summary)"));
+      expect(answers).toHaveLength(6);
+      for (const answer of answers) expect(answer.textContent?.trim()).not.toMatch(/^\[.*\]$/);
+      view.unmount();
+    }
+    for (const messages of [viMessages, enMessages]) {
+      for (const item of Object.values(messages.landing.faq.items)) expect(item.answer).not.toMatch(/^\[.*\]$/);
+      expect(messages.storefront.detail.policy.refundPending).not.toMatch(/^\[.*\]$/);
+    }
+  });
+
   it("không còn chữ chỉ nói HSA và QDA, không nói tới thời hạn sử dụng (C8), ở cả hai ngôn ngữ", async () => {
     const vi_ = await renderLanding();
     const viText = vi_.container.textContent ?? "";

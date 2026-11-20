@@ -335,15 +335,15 @@
           "question": "Bài thi FULL, theo phần, theo môn khác nhau thế nào?"
         },
         "otherAccount": {
-          "answer": "[NỘI DUNG TRẢ LỜI CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+          "answer": "Quy định về việc mua cho tài khoản khác do đơn vị vận hành công bố. Cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ bên dưới.",
           "question": "Tôi có thể mua cho tài khoản khác không?"
         },
         "paidNoExam": {
-          "answer": "[NỘI DUNG TRẢ LỜI CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+          "answer": "Hãy giữ mã đơn và liên hệ hỗ trợ qua các kênh ở khối Bạn cần hỗ trợ bên dưới để được tra cứu. Bài đã được cấp cho tài khoản của bạn nằm ở trang Bài thi của tôi.",
           "question": "Thanh toán thành công nhưng chưa thấy bài thì làm gì?"
         },
         "refund": {
-          "answer": "[CHÍNH SÁCH HOÀN TIỀN CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+          "answer": "Việc hoàn tiền theo chính sách do đơn vị vận hành công bố. Cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ bên dưới.",
           "question": "Khi nào được hoàn tiền?"
         },
         "voucher": {
@@ -564,7 +564,7 @@
         "contactPending": "Thông tin liên hệ đang được cập nhật.",
         "priceNote": "Giá bán bằng VND, đã gồm thuế, phí.",
         "refund": "Hoàn tiền khi lỗi hệ thống: {policy}",
-        "refundPending": "[CHÍNH SÁCH HOÀN TIỀN CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
+        "refundPending": "theo chính sách do đơn vị vận hành công bố; cần hỗ trợ, hãy liên hệ qua các kênh ở khối Bạn cần hỗ trợ trên trang chủ.",
         "title": "Giá và chính sách"
       },
       "priceHeading": "Giá bán",

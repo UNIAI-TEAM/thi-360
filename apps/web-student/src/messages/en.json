@@ -335,15 +335,15 @@
           "question": "How do FULL, section and subject exams differ?"
         },
         "otherAccount": {
-          "answer": "[ANSWER PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+          "answer": "Rules about buying for another account are published by the operating unit. If you need help, contact support through the channels in the Need help? block below.",
           "question": "Can I buy for another account?"
         },
         "paidNoExam": {
-          "answer": "[ANSWER PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+          "answer": "Keep your order code and contact support through the channels in the Need help? block below so we can look it up. Exams already granted to your account are in My exams.",
           "question": "My payment succeeded but I cannot see the exam. What now?"
         },
         "refund": {
-          "answer": "[REFUND POLICY PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+          "answer": "Refunds follow the policy published by the operating unit. If you need help, contact support through the channels in the Need help? block below.",
           "question": "When can I get a refund?"
         },
         "voucher": {
@@ -564,7 +564,7 @@
         "contactPending": "Contact information is being updated.",
         "priceNote": "Prices are in VND, tax and fees included.",
         "refund": "Refund for system errors: {policy}",
-        "refundPending": "[REFUND POLICY PENDING CONFIRMATION FROM THE OPERATING UNIT]",
+        "refundPending": "per the policy published by the operating unit; if you need help, contact support through the channels in the Need help? block on the home page.",
         "title": "Price and policy"
       },
       "priceHeading": "Price",
