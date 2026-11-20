@@ -1,5 +1,6 @@
 package vn.unicom.thi360.exam.api;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,5 +12,6 @@ public record ExamStructureSummaryResponse(List<Row> parts) {
                       Integer target, Integer allocated, Integer difference,
                       Integer setCount, Integer childCount, Integer commandCount,
                       BigDecimal maxPoints, Integer essayCount, Integer objectiveCount,
+                      @ArraySchema(schema = @Schema(ref = "#/components/schemas/ExamStructureSummaryRow"))
                       List<Row> children) { }
 }

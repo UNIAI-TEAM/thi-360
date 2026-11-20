@@ -133,6 +133,45 @@ public class ExamTemplateService {
                 t.isPublishable(),
                 t.isFixedCounts(),
                 t.isFixedBlockCounts(),
-                t.isOmittedLocked());
+                t.isOmittedLocked(),
+                partSummaries(structure));
+    }
+
+    /**
+     * One summary per template part: the question count per question type of its blocks that are not omitted. A part
+     * with options takes the blocks of the first option only, because a paper is built from one option.
+     */
+    static List<ExamTemplateResponse.PartSummary> partSummaries(JsonNode structure) {
+        List<ExamTemplateResponse.PartSummary> summaries = new ArrayList<>();
+        for (JsonNode part : structure.path("parts")) {
+            List<JsonNode> blocks = new ArrayList<>();
+            collectBlocks(part.path("sections"), blocks);
+            collectBlocks(part.path("subjectPool"), blocks);
+            JsonNode firstOption = part.path("options").path(0);
+            if (blocks.isEmpty() && !firstOption.isMissingNode()) {
+                collectBlocks(firstOption.path("sections"), blocks);
+                firstOption.path("blocks").forEach(blocks::add);
+            }
+            java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+            for (JsonNode block : blocks) {
+                if (block.path("omitted").asBoolean(false)) continue;
+                int count = block.hasNonNull("questionCount") ? block.path("questionCount").asInt()
+                        : block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
+                counts.merge(block.path("questionType").asText("ANY"), count, Integer::sum);
+            }
+            summaries.add(new ExamTemplateResponse.PartSummary(
+                    part.hasNonNull("id") ? part.path("id").asText() : null,
+                    part.hasNonNull("order") ? part.path("order").asInt() : null,
+                    part.path("name").asText(""),
+                    part.hasNonNull("questionCount") ? part.path("questionCount").asInt() : null,
+                    counts.entrySet().stream()
+                            .map(entry -> new ExamTemplateResponse.QuestionTypeCount(entry.getKey(), entry.getValue()))
+                            .toList()));
+        }
+        return summaries;
+    }
+
+    private static void collectBlocks(JsonNode sections, List<JsonNode> into) {
+        for (JsonNode section : sections) section.path("blocks").forEach(into::add);
     }
 }

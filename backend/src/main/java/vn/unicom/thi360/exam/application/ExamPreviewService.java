@@ -49,20 +49,25 @@ public class ExamPreviewService {
         this.attachmentPort = attachmentPort;
     }
 
-    public PreviewResult generate(UUID id, GeneratePreviewRequest request) {
+    /** Normalized preview request: the controller derives path and subjects from the explicit target. */
+    public record Command(String pathId, long seed, Integer version, List<String> subjectCodes, PreviewTarget target,
+                          UUID basePreviewId, List<String> regeneratePartIds) {
+    }
+
+    public PreviewResult generate(UUID id, Command request) {
         PreviewSnapshotStore.Snapshot base = request.basePreviewId() == null ? null
                 : previewSnapshots.find(request.basePreviewId());
         if (request.basePreviewId() != null && (base == null || !id.equals(base.examId())
                 || !java.util.Objects.equals(request.version(), base.version()))) {
             throw new PreviewExpiredException();
         }
-        boolean sectionRequest = request.target() != null && "SECTION".equals(request.target().kind());
+        boolean sectionRequest = "SECTION".equals(request.target().kind());
         var snapshot = request.version() == null ? store.load(id)
                 : sectionRequest ? store.loadVersionForSection(id, request.version(), request.target().sectionId())
                 : store.loadVersion(id, request.version(), request.pathId());
         ExamStructureDocument sourceDocument = new ExamStructureCodec(mapper).read(snapshot.parts());
         ExamStructureDocument document = sourceDocument;
-        PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
+        PreviewSectionTarget.Selection sectionTarget = sectionRequest
                 ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
                 : null;
         if (sectionTarget != null) document = sectionTarget.document();
@@ -96,7 +101,7 @@ public class ExamPreviewService {
                 || resolved.path().picks().stream().flatMap(List::stream)
                         .flatMap(pick -> pick.resolvedSections().stream())
                         .anyMatch(section -> !section.groups().isEmpty());
-        if (!hasSelectedGroups && request.target() != null) {
+        if (!hasSelectedGroups) {
             ObjectNode issue = mapper.createObjectNode();
             issue.put("key", "INFO_MISSING");
             issue.put("code", "INFO_MISSING");
@@ -104,20 +109,6 @@ public class ExamPreviewService {
             issue.put("group", "STRUCTURE");
             return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                     "FAILED", null, "INVALID", List.of(previewIssue(issue, request.pathId())), null, null, null);
-        }
-        if (request.target() == null) {
-            PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
-                    null, List.of(), List.of(), null);
-            List<ObjectNode> staticIssues = ExamCheckRules.issuesForPath(mapper, snapshot.exam(),
-                    document, selectedPath);
-            if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
-                String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
-                        ? "INVALID" : "UNCONFIRMED";
-                return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                        "FAILED", null, reason,
-                        staticIssues.stream().map(issue -> previewIssue(issue, request.pathId())).toList(),
-                        null, null, null);
-            }
         }
         PreviewPartIndex partIndex = new PreviewPartIndex(document);
         PreviewRegeneration.Selection regeneration = base == null ? null
@@ -174,10 +165,10 @@ public class ExamPreviewService {
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
                 document, request.seed(), mapper, regeneration == null ? Map.of() : regeneration.retained());
         if (sectionTarget != null) paper = segmentsOfCompletePartsOnly(paper, sourceDocument);
-        // H40 rule 3 holds for every complete segmented part, whatever the request shape (explicit target, legacy
-        // pathId/seed, a section that generated the whole part). A partial projection carries no segments, see above.
+        // H40 rule 3 holds for every complete segmented part, whatever the target (EXAM, PATH, or a section that
+        // generated the whole part). A partial projection carries no segments, see above.
         List<PreviewIssue> totals = new ArrayList<>();
-        if (request.target() != null && sectionTarget == null) {
+        if (sectionTarget == null) {
             totals.addAll(previewPartTotals(document, paper, request.pathId()));
         }
         totals.addAll(previewSegmentTotals(paper, paperBuilder.unitFacts(), request.pathId()));
@@ -235,8 +226,10 @@ public class ExamPreviewService {
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
                 request.seed(), selectedParts, kindCode, snapshot.timing(), trialMinutes));
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
-        return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                "GENERATED", paper, null, null, previewId, compliance, droppedQuestions);
+        Instant generatedAt = Instant.now(clock);
+        return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), generatedAt,
+                "GENERATED", paper, null, null, previewId, compliance, droppedQuestions,
+                generatedAt.plus(PreviewSnapshotStore.TTL));
     }
 
 

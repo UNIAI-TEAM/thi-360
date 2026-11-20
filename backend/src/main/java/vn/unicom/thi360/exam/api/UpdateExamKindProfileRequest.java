@@ -31,7 +31,7 @@ public record UpdateExamKindProfileRequest(
         @Schema(description = "RAW | LINEAR", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank
         String practiceScoring,
-        @Schema(description = "Bảng điểm Đúng/Sai nhiều ý; null khi kỳ thi không dùng")
+        @Schema(description = "Bảng điểm Đúng/Sai nhiều ý; null khi kỳ thi không dùng", implementation = ExamTrueFalseScoring.class)
         JsonNode trueFalseScoring,
         @Schema(description = "ALL_OR_NOTHING | PARTIAL; null khi không dùng")
         @Size(max = 30)

@@ -41,15 +41,17 @@ public class ExamPreviewController {
             String kind, String sectionId, String pathId, List<String> subjectCodes, Integer sectionQuestionCount) {
     }
 
+    /**
+     * {@code pathId} and {@code subjectCodes} at the root are the retired pre-target request shape (FU-QA-PREVIEW-LEGACY):
+     * they stay declared only so that a body carrying them is answered with 400 instead of being ignored.
+     */
     @Schema(name = "ExamPreviewRequest")
     public record GeneratePreviewRequest(
-            @Schema(deprecated = true, description = "Legacy path selection; use target when BE-8 is available")
-            String pathId,
+            @Schema(hidden = true) String pathId,
             Long seed,
             Integer version,
-            @Schema(deprecated = true, description = "Legacy subject selection; use target.subjectCodes")
-            List<String> subjectCodes,
-            @Schema(nullable = true) PreviewTarget target,
+            @Schema(hidden = true) List<String> subjectCodes,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PreviewTarget target,
             UUID basePreviewId,
             List<String> regeneratePartIds) {
     }
@@ -198,7 +200,15 @@ public class ExamPreviewController {
 
     @Schema(name = "ExamPreviewCompliance")
     public record Compliance(String criterion, String scope, BigDecimal required, BigDecimal actual,
-                             String enforcement, String basis, String note) {
+                             String enforcement, String basis, String note,
+                             @Schema(types = {"number", "null"}, description = "Required count before the contribution of the dropped question was removed from required; null when nothing was dropped on this row")
+                             BigDecimal originalRequired,
+                             @Schema(types = {"string", "null"}, description = "Topic name of a TOPIC row: the quota name, else the Vietnamese names of its knowledge nodes; null on other rows")
+                             String topicName) {
+        public Compliance(String criterion, String scope, BigDecimal required, BigDecimal actual,
+                          String enforcement, String basis, String note) {
+            this(criterion, scope, required, actual, enforcement, basis, note, null, null);
+        }
     }
 
     /** {@code status=GENERATED} kèm {@code paper}; {@code status=FAILED} kèm {@code reason,issues}. */
@@ -208,7 +218,15 @@ public class ExamPreviewController {
                                 String reason, List<PreviewIssue> issues,
                                 @Schema(types = {"string", "null"}, format = "uuid") UUID previewId,
                                 @Schema(types = {"array", "null"}) List<Compliance> compliance,
-                                @Schema(types = {"array", "null"}) List<PreviewQuestion> droppedQuestions) {
+                                @Schema(types = {"array", "null"}) List<PreviewQuestion> droppedQuestions,
+                                @Schema(types = {"string", "null"}, format = "date-time", description = "When the stored preview (previewId) expires if it is not extended; null on FAILED")
+                                Instant expiresAt) {
+        public PreviewResult(UUID examId, PathRef path, Integer version, long seed, Instant generatedAt,
+                             String status, PreviewPaper paper, String reason, List<PreviewIssue> issues,
+                             UUID previewId, List<Compliance> compliance, List<PreviewQuestion> droppedQuestions) {
+            this(examId, path, version, seed, generatedAt, status, paper, reason, issues, previewId, compliance,
+                    droppedQuestions, null);
+        }
     }
 
     @PostMapping("/exams/{id}/preview")
@@ -216,27 +234,22 @@ public class ExamPreviewController {
     @Operation(operationId = "previewExam", summary = "Sinh đề xem trước một đường (có hạt giống)")
     public PreviewResult preview(@PathVariable UUID id,
             @Valid @RequestBody GeneratePreviewRequest request) {
-        if (request.target() != null) {
-            if ((request.basePreviewId() == null) != (request.regeneratePartIds() == null)) {
-                throw new ValidationException((String) null);
-            }
-            PreviewTarget target = request.target();
-            if (!"SECTION".equals(target.kind()) && !"PATH".equals(target.kind()) && !"EXAM".equals(target.kind())) {
-                throw new ValidationException((String) null);
-            }
-            if ("SECTION".equals(target.kind()) && (target.sectionId() == null || target.sectionId().isBlank())) {
-                throw new ValidationException((String) null);
-            }
-            String pathId = "PATH".equals(target.kind()) ? target.pathId() : "default";
-            if (pathId == null || pathId.isBlank()) throw new ValidationException((String) null);
-            long seed = request.seed() == null ? java.util.concurrent.ThreadLocalRandom.current().nextLong() : request.seed();
-            request = new GeneratePreviewRequest(pathId, seed, request.version(),
-                    "SECTION".equals(target.kind()) ? null : target.subjectCodes(), target,
-                    request.basePreviewId(), request.regeneratePartIds());
-        } else if (request.pathId() == null || request.pathId().isBlank() || request.seed() == null
-                || request.basePreviewId() != null || request.regeneratePartIds() != null) {
+        if (request.pathId() != null || request.subjectCodes() != null || request.target() == null
+                || (request.basePreviewId() == null) != (request.regeneratePartIds() == null)) {
             throw new ValidationException((String) null);
         }
-        return preview.generate(id, request);
+        PreviewTarget target = request.target();
+        if (!"SECTION".equals(target.kind()) && !"PATH".equals(target.kind()) && !"EXAM".equals(target.kind())) {
+            throw new ValidationException((String) null);
+        }
+        if ("SECTION".equals(target.kind()) && (target.sectionId() == null || target.sectionId().isBlank())) {
+            throw new ValidationException((String) null);
+        }
+        String pathId = "PATH".equals(target.kind()) ? target.pathId() : "default";
+        if (pathId == null || pathId.isBlank()) throw new ValidationException((String) null);
+        long seed = request.seed() == null ? java.util.concurrent.ThreadLocalRandom.current().nextLong() : request.seed();
+        return preview.generate(id, new ExamPreviewService.Command(pathId, seed, request.version(),
+                "SECTION".equals(target.kind()) ? null : target.subjectCodes(), target,
+                request.basePreviewId(), request.regeneratePartIds()));
     }
 }

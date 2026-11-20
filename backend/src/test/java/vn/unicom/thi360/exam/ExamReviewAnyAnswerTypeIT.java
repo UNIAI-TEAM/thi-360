@@ -31,6 +31,7 @@ class ExamReviewAnyAnswerTypeIT extends AbstractIntegrationTest {
     private static final UUID TOAN = UUID.fromString("00000000-0000-7000-8200-000000000201");
     private static final String RULE = "GROUP_ANSWER_TYPE_MISSING";
     private static final int COUNT = 10;
+    @Autowired private vn.unicom.thi360.exam.application.ExamPreviewStore previewStore;
 
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
@@ -62,9 +63,9 @@ class ExamReviewAnyAnswerTypeIT extends AbstractIntegrationTest {
         assertDrawnPaper(trial);
     }
 
-    /** UNI-2752 R1-1: a published review version keeps its build mode for the deprecated pathId + seed preview. */
+    /** UNI-2752 R1-1: a published review version keeps its build mode for the target preview of that version. */
     @Test
-    void publishedReviewVersionStillGeneratesThroughThePathIdPreview() throws Exception {
+    void publishedReviewVersionStillGeneratesThroughTheVersionPreview() throws Exception {
         isolateToanPool(4, 8);
         String id = createReview();
         JsonNode check = check(id);
@@ -79,18 +80,17 @@ class ExamReviewAnyAnswerTypeIT extends AbstractIntegrationTest {
         assertDrawnPaper(trial);
     }
 
-    /** A version published before the mode was stored has no buildMode and behaves as STANDARD, as it always did. */
+    /** A version published before the mode was stored has no buildMode and is read as STANDARD, as it always was. */
     @Test
     void versionSnapshotWithoutAStoredModeIsStandard() throws Exception {
         isolateToanPool(4, 8);
         String id = createReview();
         publish(id, check(id));
+        assertThat(previewStore.loadVersion(UUID.fromString(id), 1).exam().getBuildMode()).isEqualTo("REVIEW");
         assertThat(jdbc.update("UPDATE exam.exam_version SET config = config - 'buildMode' WHERE exam_id = ? AND version_no = 1",
                 UUID.fromString(id))).isOne();
 
-        JsonNode trial = pathPreview(id);
-        assertThat(trial.path("status").asText()).as("old version trial %s", trial).isEqualTo("FAILED");
-        assertThat(trial.path("issues").findValuesAsText("code")).as("trial %s", trial).contains(RULE);
+        assertThat(previewStore.loadVersion(UUID.fromString(id), 1).exam().getBuildMode()).isEqualTo("STANDARD");
     }
 
     @Test
@@ -144,11 +144,11 @@ class ExamReviewAnyAnswerTypeIT extends AbstractIntegrationTest {
         entityManager.clear();
     }
 
-    /** The deprecated request: a path and a seed, no target. */
+    /** A preview of the published version 1 through the default path. */
     private JsonNode pathPreview(String id) throws Exception {
         return mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/{id}/preview", id)
                         .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pathId\":\"default\",\"seed\":3,\"version\":1}"))
+                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":3,\"version\":1}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
 

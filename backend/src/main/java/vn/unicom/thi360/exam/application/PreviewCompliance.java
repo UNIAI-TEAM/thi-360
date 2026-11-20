@@ -211,11 +211,21 @@ final class PreviewCompliance {
                     : datum -> matchesTopic(datum, quota, knowledge);
             BigDecimal removed = sum(data, basis, datum -> datum.dropped() && matches.test(datum));
             BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && matches.test(datum));
-            result.add(new Compliance("TOPIC:" + quota.id(), scope,
-                    BigDecimal.valueOf(quota.count()).subtract(removed), actual, enforcement.name(),
-                    basis.name() + (assigned ? "" : "_INDEPENDENT"),
-                    data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null));
+            BigDecimal original = BigDecimal.valueOf(quota.count());
+            result.add(new Compliance("TOPIC:" + quota.id(), scope, original.subtract(removed), actual,
+                    enforcement.name(), basis.name() + (assigned ? "" : "_INDEPENDENT"),
+                    data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null,
+                    removed.signum() > 0 ? original : null, topicName(quota, knowledge)));
         }
+    }
+
+    /** The quota's own name, else the Vietnamese names of its knowledge nodes; null when neither exists. */
+    private static String topicName(TopicQuota quota, Map<java.util.UUID, CatalogItemView> knowledge) {
+        if (quota.name() != null && !quota.name().isBlank()) return quota.name();
+        String names = quota.nodeIds().stream().map(knowledge::get).filter(Objects::nonNull)
+                .map(CatalogItemView::nameVi).filter(name -> name != null && !name.isBlank())
+                .collect(java.util.stream.Collectors.joining(", "));
+        return names.isEmpty() ? null : names;
     }
 
     private static boolean matchesTopic(Datum datum, TopicQuota quota,
@@ -306,7 +316,8 @@ final class PreviewCompliance {
         BigDecimal removed = sum(data, basis, datum -> datum.dropped() && matches.test(datum));
         BigDecimal actual = sum(data, basis, datum -> !datum.dropped() && matches.test(datum));
         result.add(new Compliance(criterion, scope, required.subtract(removed), actual,
-                enforcement.name(), basis.name(), data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null));
+                enforcement.name(), basis.name(), data.stream().anyMatch(Datum::dropped) ? "dropped 1" : null,
+                removed.signum() > 0 ? required : null, null));
     }
 
     private static BigDecimal sum(List<Datum> data, QuotaBasis basis, Predicate<Datum> filter) {
