@@ -1,9 +1,12 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import enMessages from "@/messages/en.json";
+import { renderWithProviders } from "@/test/render";
+import { ExamStructureView } from "../components/exam-structure-view";
 import { registerMatrixKindSlot } from "../subject-forms/matrix-form";
 import { patchSubjectFormEntry } from "../subject-forms/registry";
-import type { FakeServer } from "./fake-exams-server";
+import { EXAM_ID, type FakeServer } from "./fake-exams-server";
 import { boot, checkCalls, openStructure, putCalls, requestLog, sectionsOf, wireBlock, wirePart, wireSection, type Wire } from "./subject-form-harness";
 import { matrixOf, structureInput, wireBcaHistory, wireQdaScience } from "./subject-matrix-harness";
 
@@ -351,6 +354,56 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
     expect(single).toEqual(expect.objectContaining({ id: seeded[0]!.id, tagCodes: [] }));
     expect(fill).toEqual(expect.objectContaining({ id: seeded[2]!.id, tagCodes: [] }));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.knowledgeScope ?? null).toBeNull();
+  });
+
+  it("AD-135: bản en dùng nhãn đã dịch Question sets cho aria-label của MatrixSetSource, không rò tên Chùm tiếng Việt và giữ nguyên set.name trong payload", async () => {
+    const user = userEvent.setup();
+    const hoa = wireQdaScience("sec-hoa", "HOA");
+    (hoa.blocks as Wire[])[1]!.name = "Chùm";
+    const { server } = boot({ kind: "BCA", parts: [wirePart([hoa])] });
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-hoa`);
+    renderWithProviders(<ExamStructureView examId={EXAM_ID} />, { locale: "en", messages: enMessages });
+
+    const source = (await screen.findByRole("heading", { level: 4, name: "Set source" })).closest("[data-form-field]") as HTMLElement;
+    await user.click(within(source).getByRole("button", { name: "Add condition" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Source tags/ }));
+
+    const searchInput = within(source).getByRole("searchbox");
+    const searchLabel = searchInput.getAttribute("aria-label") ?? "";
+    expect(searchLabel).toBe("Search tags of Question sets");
+    expect(searchLabel).not.toContain("Chùm");
+    expect(searchLabel).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
+
+    const tags = await within(source).findAllByRole("checkbox");
+    await user.click(tags[0]!);
+    const selectedList = within(source).getByRole("list", { name: /Question sets/ });
+    expect(selectedList.getAttribute("aria-label")).not.toContain("Chùm");
+
+    // R1-5: mở nhánh MAPID (`KnowledgeScopeField`, matrix-set-source.tsx:80) trên bản en → KnowledgePickerDialog phải dùng "Question sets", không rò "Chùm".
+    await user.click(within(source).getByRole("button", { name: "Add condition" }));
+    await user.click(await screen.findByRole("menuitem", { name: /^MAPID/ }));
+    const mapidCondition = source.querySelector('[data-condition="MAPID"]') as HTMLElement | null;
+    expect(mapidCondition).not.toBeNull();
+    await user.click(within(mapidCondition!).getByRole("radio", { name: "By topic" }));
+    await user.click(within(mapidCondition!).getByRole("button", { name: "Choose knowledge" }));
+
+    const picker = await screen.findByRole("dialog", { name: "Choose knowledge (MAPID)" });
+    const pickerDesc = within(picker).getByText(/^Scope of /);
+    expect(pickerDesc).toHaveTextContent("Question sets");
+    expect(pickerDesc).not.toHaveTextContent("Chùm");
+    expect(pickerDesc.textContent).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
+    await user.click(within(picker).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    for (const el of source.querySelectorAll("[aria-label]")) {
+      expect(el.getAttribute("aria-label")).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
+    }
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const [, savedSet] = sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.blocks as Wire[];
+    expect(savedSet!.name).toBe("Chùm");
+    expect((savedSet!.tagCodes as string[]).length).toBe(1);
   });
 });
 

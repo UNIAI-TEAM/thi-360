@@ -42,7 +42,7 @@ export function MatrixSetSource({ section, subjectName, reference, onChange }: M
     patchSet(kind === "MAPID" ? { knowledgeScope: null } : { tagCodes: [] });
   };
   const kinds: SourceCondition[] = ["MAPID", "TAGS"];
-  const name = set.name || t("groupName");
+  const scopeLabel = t("groupName");
 
   return (
     <div data-form-field={MATRIX_FIELDS.setSource} className="flex flex-col gap-3 rounded-md border border-border bg-subtle/40 p-3">
@@ -77,7 +77,7 @@ export function MatrixSetSource({ section, subjectName, reference, onChange }: M
             inherited={{ scope: section.knowledgeScope }}
             reference={reference}
             subjectCode={section.subjectCode}
-            name={`${subjectName} · ${name}`}
+            name={`${subjectName} · ${scopeLabel}`}
             openRequest={openRequest}
           />
           <Button type="button" variant="link" size="sm" className="self-start" aria-label={t("removeAria", { kind: t("kind.MAPID") })} onClick={() => remove("MAPID")}>
@@ -88,7 +88,7 @@ export function MatrixSetSource({ section, subjectName, reference, onChange }: M
       {shown.has("TAGS") && (
         <div className="flex flex-col gap-2" data-condition="TAGS">
           <h5 className="text-label font-semibold text-text">{t("kind.TAGS")}</h5>
-          <BlockTagPicker value={set.tagCodes} onChange={(tagCodes) => patchSet({ tagCodes })} options={reference.tags} scopeName={name} />
+          <BlockTagPicker value={set.tagCodes} onChange={(tagCodes) => patchSet({ tagCodes })} options={reference.tags} scopeName={scopeLabel} />
           <Button type="button" variant="link" size="sm" className="self-start" aria-label={t("removeAria", { kind: t("kind.TAGS") })} onClick={() => remove("TAGS")}>
             {t("remove")}
           </Button>
