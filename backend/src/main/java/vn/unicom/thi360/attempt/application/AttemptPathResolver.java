@@ -338,6 +338,22 @@ public class AttemptPathResolver {
         return null;
     }
 
+    public static boolean isAfterStartChoicePart(PublishedVersion version, String partCode) {
+        if (version == null || partCode == null) {
+            return false;
+        }
+        return findPartById(version, partCode)
+                .map(
+                        part ->
+                                classifyPart(
+                                                version,
+                                                part,
+                                                List.of(),
+                                                Map.of(version.versionNo(), version))
+                                        == ChoiceTiming.AFTER_START)
+                .orElse(false);
+    }
+
     static ChoiceTiming classifyPart(
             PublishedVersion baseVersion,
             Part part,

@@ -80,4 +80,57 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
             nativeQuery = true)
     Optional<Attempt> findLatestResultAttempt(
             @Param("userId") UUID userId, @Param("entitlementId") UUID entitlementId);
+
+    @Query(
+            value = """
+                    SELECT EXISTS (
+                        SELECT 1 FROM attempt.attempt a
+                        WHERE a.id = :attemptId
+                          AND a.state = 'IN_PROGRESS'
+                          AND (
+                              (a.timing = 'SHARED' AND a.deadline_at IS NOT NULL AND a.deadline_at <= :now)
+                              OR EXISTS (
+                                  SELECT 1 FROM attempt.attempt_part p
+                                  WHERE p.attempt_id = a.id
+                                    AND (
+                                        (p.state = 'OPEN' AND p.deadline_at IS NOT NULL AND p.deadline_at <= :now)
+                                        OR (p.state = 'AWAITING_CHOICE' AND p.choice_deadline_at IS NOT NULL AND p.choice_deadline_at <= :now)
+                                    )
+                              )
+                          )
+                    )
+                    """,
+            nativeQuery = true)
+    boolean hasOverdueDeadline(@Param("attemptId") UUID attemptId, @Param("now") Instant now);
+
+    @Query(
+            value = """
+                    SELECT a.id FROM attempt.attempt a
+                    WHERE a.state = 'IN_PROGRESS'
+                      AND (
+                          (a.timing = 'SHARED' AND a.deadline_at IS NOT NULL AND a.deadline_at <= :now)
+                          OR EXISTS (
+                              SELECT 1 FROM attempt.attempt_part p
+                              WHERE p.attempt_id = a.id
+                                AND (
+                                    (p.state = 'OPEN' AND p.deadline_at IS NOT NULL AND p.deadline_at <= :now)
+                                    OR (p.state = 'AWAITING_CHOICE' AND p.choice_deadline_at IS NOT NULL AND p.choice_deadline_at <= :now)
+                                )
+                          )
+                      )
+                    ORDER BY COALESCE(a.deadline_at, a.started_at, a.created_at) ASC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<UUID> findOverdueAttemptIds(@Param("now") Instant now, @Param("limit") int limit);
+
+    @Query(
+            value = """
+                    SELECT * FROM attempt.attempt
+                    WHERE id = :id
+                      AND state = 'IN_PROGRESS'
+                    FOR UPDATE SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    Optional<Attempt> lockInProgressByIdSkipLocked(@Param("id") UUID id);
 }
