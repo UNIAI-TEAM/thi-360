@@ -167,5 +167,6 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(dialog).not.toBeInTheDocument();
+    await waitFor(() => expect(addBtn).toHaveFocus());
   });
 });

@@ -307,14 +307,17 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
       questionType: "SHORT_ANSWER",
       questionCount: 1,
       requiredPointsPerQuestion: 1,
-      tagCodes: [],
-      templateGroupCode: "SU_FILL_TEST",
+      tagCodes: ["SU_TU_LIEU_LICH_SU"],
     });
     const put = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/structure`, {
       headers: admin.headers,
       data: { parts: initial.parts, examQuotas: initial.examQuotas ?? [], expectedRevision: initial.revision },
     });
     expect(put.status(), await put.text()).toBe(200);
+    const beforeSu = sectionOf(await getStructure(admin, exam.id), "SU");
+    const beforeUi = roleBlock(beforeSu, "SHORT_ANSWER")!;
+    const beforeSingleCode = roleBlock(beforeSu, null)?.templateGroupCode;
+    expect(beforeSingleCode).toBeTruthy();
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${su.id}`);
     await expect(field(page, "Điền đáp án")).toHaveValue("1");
@@ -323,13 +326,31 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
 
     await page.reload();
     await expect(field(page, "Điền đáp án")).toHaveValue("0");
-    const afterZero = roleBlock(sectionOf(await getStructure(admin, exam.id), "SU"), "SHORT_ANSWER");
-    expect(afterZero).toMatchObject({ id: fillId, questionCount: 0, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_TEST" });
+    const afterZeroSu = sectionOf(await getStructure(admin, exam.id), "SU");
+    const afterZero = roleBlock(afterZeroSu, "SHORT_ANSWER");
+    expect(afterZero).toMatchObject({
+      id: fillId,
+      name: "Trả lời ngắn",
+      questionCount: 0,
+      requiredPointsPerQuestion: 1,
+      tagCodes: ["SU_TU_LIEU_LICH_SU"],
+    });
+    expect(afterZero?.templateGroupCode ?? null).toBe(beforeUi.templateGroupCode ?? null);
+    expect(roleBlock(afterZeroSu, null)?.templateGroupCode).toBe(beforeSingleCode);
 
     await typeInto(page, "Điền đáp án", "1");
     await saveInUi(page, exam.id);
-    const afterRestore = roleBlock(sectionOf(await getStructure(admin, exam.id), "SU"), "SHORT_ANSWER");
-    expect(afterRestore).toMatchObject({ id: fillId, questionCount: 1, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_TEST" });
+    const afterRestoreSu = sectionOf(await getStructure(admin, exam.id), "SU");
+    const afterRestore = roleBlock(afterRestoreSu, "SHORT_ANSWER");
+    expect(afterRestore).toMatchObject({
+      id: fillId,
+      name: "Trả lời ngắn",
+      questionCount: 1,
+      requiredPointsPerQuestion: 1,
+      tagCodes: ["SU_TU_LIEU_LICH_SU"],
+    });
+    expect(afterRestore?.templateGroupCode ?? null).toBe(beforeUi.templateGroupCode ?? null);
+    expect(roleBlock(afterRestoreSu, null)?.templateGroupCode).toBe(beforeSingleCode);
   });
 
   test("hsaMathRulesInMatrix: HSA Toán MT thêm quy tắc 2 và 5 trong MapidRuleDialog nhúng rồi sinh thử tuân thủ", async ({ context, page }) => {

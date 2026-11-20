@@ -94,14 +94,14 @@ async function expectRowsSetGroup(page: Page, id: string, subjectName: RegExp): 
   await rows.filter({ hasText: /Đọc hiểu/ }).first().getByRole("button", { name: /^Sửa dòng/ }).click();
   const editor = page.locator("[data-form-row-editor]");
   await expect(editor).toBeVisible();
-  await expect(editor.locator("[data-form-slots] [data-form-slot]").first()).toBeVisible();
+  await expect(page.locator("[data-form-slots] [data-form-slot]").first()).toBeVisible();
   await expect(editor.getByRole("radio", { name: "Câu chùm" })).toBeChecked();
 }
 
 test.describe("HSA: nhóm Bộ câu hỏi (UNI-1700 AC-1)", () => {
   for (const [partCode, label, subjectName, kind, subjects] of [
-    ["TOAN", "Toán", /^Toán/, "MATRIX", ["TOAN"]],
-    ["VAN", "Văn", /^Ngữ văn/, "ROWS", ["VAN"]],
+    ["TOAN", "Toán", /^Môn Toán/, "MATRIX", ["TOAN"]],
+    ["VAN", "Văn", /^Môn Ngữ văn/, "ROWS", ["VAN"]],
   ] as const) {
     test(`HSA theo phần ${label}: nhóm Bộ câu hỏi hiện ở bước 2 và sinh thử lấy nguyên chùm`, async ({ context, page }) => {
       await loginAdmin(context, "vi");

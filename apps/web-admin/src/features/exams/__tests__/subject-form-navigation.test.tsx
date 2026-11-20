@@ -400,4 +400,16 @@ describe("Đích HSA MT và quy tắc MAPID (CR-2H AC-10)", () => {
       host.remove();
     }
   });
+
+  it("MAPID_RULES fallback focuses MapidModeField radio when mapidMode === 'ALL' (mapid-rules-table absent)", async () => {
+    const parts = hsaParts();
+    (parts[0]!.sections[0] as { mapidMode: string }).mapidMode = "ALL";
+    boot({ kind: "HSA", parts });
+    openStructure("?section=sec-toan");
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(screen.queryByTestId("mapid-rules-table")).not.toBeInTheDocument();
+    const target = formTarget({ form: "MATRIX", notice: false }, { sectionId: "sec-toan", issueCode: "MAPID_RULE_CONFLICT" })!;
+    expect(focusFormTarget(document, target)).toBe(true);
+    expect(screen.getByTestId("mapid-mode-all")).toHaveFocus();
+  });
 });
