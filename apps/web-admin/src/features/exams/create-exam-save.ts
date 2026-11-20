@@ -41,8 +41,6 @@ interface UseExamInfoSaveOptions {
   rows: readonly OverviewRow[];
   /** Biểu mẫu thông tin có thay đổi chưa lưu: không thì chỉ ghi cấu trúc. */
   formDirty: boolean;
-  /** Bài đã công bố: phạm vi không đổi được nên mã trùng (409) không phải lỗi của ô mã. */
-  lockScope: boolean;
   setError: UseFormSetError<ExamInfoFormValues>;
   /** Giữ (hoặc thả) khóa của biểu mẫu để lưu cấu trúc không làm dựng lại biểu mẫu giữa chừng (tab Thông tin chung). */
   onHold?: (hold: boolean) => void;
@@ -51,7 +49,7 @@ interface UseExamInfoSaveOptions {
   /** Lưu thông tin lỗi: hộp xác nhận nạp lại (nếu có) đóng, lỗi hiện trên biểu mẫu. */
   onFailed: () => void;
   /** Số liệu bảng tổng quan đã ghi vào cấu trúc: các ô đã sửa không còn là "chưa lưu". */
-  onStructureSaved?: () => void;
+  onStructureSaved?: (saved: ExamDetail) => void;
 }
 
 /**
@@ -61,7 +59,7 @@ interface UseExamInfoSaveOptions {
  * Lỗi thì không gửi gì khác và giữ nguyên giá trị người dùng đã gõ; xong mới ghi thông tin chung (chỉ khi biểu mẫu có
  * thay đổi) bằng revision mới của bài. Đổi phạm vi thì máy chủ nạp mẫu mới nhất khớp (`confirmReplace`).
  */
-export function useExamInfoSave({ exam, structure, rows, formDirty, lockScope, setError, onHold, onSaved, onFailed, onStructureSaved }: UseExamInfoSaveOptions) {
+export function useExamInfoSave({ exam, structure, rows, formDirty, setError, onHold, onSaved, onFailed, onStructureSaved }: UseExamInfoSaveOptions) {
   const t = useTranslations("exams.general");
   const tExams = useTranslations("exams");
   const update = useUpdateExamInfo(exam?.id ?? "");
@@ -88,9 +86,10 @@ export function useExamInfoSave({ exam, structure, rows, formDirty, lockScope, s
       onError: (error) => {
         onFailed();
         const status = getErrorStatus(error);
-        if (status === 409 && apiErrorCode(error) === "EXAM_SCOPE_LOCKED") {
+        const code = apiErrorCode(error);
+        if (status === 409 && code === "EXAM_SCOPE_LOCKED") {
           setSubmitError(t("scopeLocked"));
-        } else if (status === 409 && !lockScope) {
+        } else if (status === 409 && code === "EXAM_CODE_TAKEN") {
           setError("code", { message: tExams("create.errors.codeTaken") }, { shouldFocus: true });
         } else if (status === 412) {
           setSubmitError(t("saveConflict"));
@@ -100,10 +99,10 @@ export function useExamInfoSave({ exam, structure, rows, formDirty, lockScope, s
             return field ? [{ field, code: item.code }] : [];
           });
           if (fields.length === 0) setSubmitError(t("saveInvalid"));
-          fields.forEach(({ field, code }, index) =>
+          fields.forEach(({ field, code: fieldCode }, index) =>
             setError(
               field,
-              { message: code === "EXAM_DURATION_REQUIRED" ? tExams("create.validation.sharedDurationPositive") : t("fieldInvalid") },
+              { message: fieldCode === "EXAM_DURATION_REQUIRED" ? tExams("create.validation.sharedDurationPositive") : t("fieldInvalid") },
               { shouldFocus: index === 0 },
             ),
           );
@@ -132,7 +131,7 @@ export function useExamInfoSave({ exam, structure, rows, formDirty, lockScope, s
       setSubmitError(status === 412 ? t("saveConflict") : status === 422 ? tExams("structure.saveInvalid") : tExams("structure.saveError"));
       return;
     }
-    onStructureSaved?.();
+    onStructureSaved?.(saved);
     if (!formDirty) {
       onHold?.(false);
       done(checkStatus !== "UNCHECKED");

@@ -157,7 +157,7 @@ function FooterField({
 }
 
 /** Ô Điểm tối đa của bài trong dòng của bảng (bài ôn): cùng trường và cùng lỗi với ô dưới bảng trước đây; `data-field` để Tóm tắt dẫn tới ô lỗi. */
-function MaxScoreCell({ state }: { state: OverviewNumberField }) {
+function MaxScoreCell({ state, locked }: { state: OverviewNumberField; locked?: boolean }) {
   const t = useTranslations("exams.create.overview");
   const errorId = useId();
   return (
@@ -165,10 +165,12 @@ function MaxScoreCell({ state }: { state: OverviewNumberField }) {
       <Input
         {...NUMERIC}
         value={state.value}
+        readOnly={locked}
+        aria-readonly={locked || undefined}
         aria-label={t("maxScore")}
         aria-invalid={Boolean(state.error)}
         aria-describedby={state.error ? errorId : undefined}
-        className={cellInput}
+        className={cn(cellInput, locked && LOCKED_FIELD)}
         onChange={(event) => state.onChange(event.target.value)}
       />
       {state.error && (
@@ -368,7 +370,7 @@ export function ExamOverviewTable({
                   {maxScoreColumn && (
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
-                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} /> : <span className="px-3 py-2 text-text-muted">—</span>}
+                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} locked={readOnly} /> : <span className="px-3 py-2 text-text-muted">—</span>}
                       </div>
                     </td>
                   )}

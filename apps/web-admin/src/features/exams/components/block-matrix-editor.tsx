@@ -647,6 +647,7 @@ function TotalCell({
       <output className="inline-flex items-center justify-end gap-1">
         {state && <TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
         {state && <span className="sr-only">{t(state === "over" ? "totalOver" : "totalUnder")}</span>}
+        {state && " "}
         {children}
       </output>
     </td>

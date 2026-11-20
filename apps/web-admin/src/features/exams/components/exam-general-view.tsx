@@ -210,7 +210,6 @@ function ExamGeneralForm({
     structure,
     rows,
     formDirty: formState.isDirty,
-    lockScope,
     setError,
     onHold,
     onSaved: (message) => {

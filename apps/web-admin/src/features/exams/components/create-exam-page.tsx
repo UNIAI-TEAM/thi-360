@@ -50,6 +50,7 @@ import {
   overviewRowsFromTemplate,
   type OverviewRow,
   overviewTotals,
+  rebaseOverviewRows,
   rowsDifferFromTemplate,
   updateRowCell,
   validateOverview,
@@ -82,7 +83,7 @@ function subscribeToLocation(onChange: () => void) {
 function useEditingExamId(): string | null | undefined {
   return useSyncExternalStore(
     subscribeToLocation,
-    () => new URLSearchParams(window.location.search).get("exam"),
+    () => new URLSearchParams(window.location.search).get("exam")?.trim() || null,
     () => undefined,
   );
 }
@@ -91,6 +92,98 @@ function useEditingExamId(): string | null | undefined {
 interface ExistingExam {
   exam: ExamDetail;
   structure: ExamStructure;
+}
+
+interface CreateExamLayoutProps {
+  backHref: string;
+  backLabel: string;
+  showStepper: boolean;
+  children: ReactNode;
+}
+
+function CreateExamLayout({ backHref, backLabel, showStepper, children }: CreateExamLayoutProps) {
+  const t = useTranslations("exams.create");
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <Link
+          href={backHref}
+          className={cn(
+            "inline-flex w-fit items-center gap-1 rounded-sm text-body font-medium text-text-secondary hover:text-text",
+            focusRing,
+          )}
+        >
+          <ChevronLeft aria-hidden className="size-4" />
+          {backLabel}
+        </Link>
+        <PageHeader title={t("title")} description={t("description")} />
+        {showStepper && <CreateExamStepper />}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function templatesState(templatesQuery: ReturnType<typeof useExamTemplates>): TemplatesStatus {
+  // Đang thử lại sau lỗi thì coi như đang tải: khối tổng quan hiện khung chờ thay vì lỗi cũ.
+  if (templatesQuery.data) return "ready";
+  return templatesQuery.isError && !templatesQuery.isFetching ? "error" : "loading";
+}
+
+function useCatalogLoadBody(
+  templatesQuery: ReturnType<typeof useExamTemplates>,
+  referenceQuery: ReturnType<typeof useContentReference>,
+  editing: boolean,
+): ReactNode | null {
+  const t = useTranslations("exams.create");
+  const tEditor = useTranslations("exams.editor");
+  const catalogForbidden = [templatesQuery, referenceQuery].some((query) => query.isError && getErrorStatus(query.error) === 403);
+  if (catalogForbidden) {
+    return (
+      <Card padding="md">
+        <EmptyState
+          icon={<Lock />}
+          headingLevel={2}
+          title={t("forbiddenTitle")}
+          description={t("forbiddenDescription", { permission: CREATE_PERMISSION })}
+          action={
+            editing ? (
+              <Button asChild variant="secondary">
+                <Link href={EXAMS_HREF}>{tEditor("backToList")}</Link>
+              </Button>
+            ) : undefined
+          }
+        />
+      </Card>
+    );
+  }
+  if (referenceQuery.isError) {
+    return (
+      <Card padding="md">
+        <EmptyState
+          icon={<TriangleAlert />}
+          headingLevel={2}
+          title={t("loadErrorTitle")}
+          description={t("loadErrorDescription")}
+          action={
+            <Button variant="secondary" loading={referenceQuery.isFetching} onClick={() => void referenceQuery.refetch()}>
+              {t("retry")}
+            </Button>
+          }
+        />
+      </Card>
+    );
+  }
+  return null;
+}
+
+function LoadingSkeletons() {
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true">
+      <Skeleton className="h-72" />
+      <Skeleton className="h-56" />
+    </div>
+  );
 }
 
 /**
@@ -109,46 +202,25 @@ export function CreateExamPage() {
   const templatesQuery = useExamTemplates();
   const referenceQuery = useContentReference();
   const editingId = useEditingExamId();
-  const forbidden = [templatesQuery, referenceQuery].some((query) => query.isError && getErrorStatus(query.error) === 403);
+  const catalogErrorBody = useCatalogLoadBody(templatesQuery, referenceQuery, Boolean(editingId));
+
+  if (editingId) {
+    return (
+      <EditExamLoader
+        key={editingId}
+        examId={editingId}
+        templatesQuery={templatesQuery}
+        referenceQuery={referenceQuery}
+        catalogErrorBody={catalogErrorBody}
+      />
+    );
+  }
 
   let body: ReactNode;
-  let showStepper = true;
-  if (forbidden) {
-    showStepper = false;
-    body = (
-      <Card padding="md">
-        <EmptyState
-          icon={<Lock />}
-          headingLevel={2}
-          title={t("forbiddenTitle")}
-          description={t("forbiddenDescription", { permission: CREATE_PERMISSION })}
-        />
-      </Card>
-    );
-  } else if (referenceQuery.isError) {
-    showStepper = false;
-    body = (
-      <Card padding="md">
-        <EmptyState
-          icon={<TriangleAlert />}
-          headingLevel={2}
-          title={t("loadErrorTitle")}
-          description={t("loadErrorDescription")}
-          action={
-            <Button variant="secondary" onClick={() => void referenceQuery.refetch()}>
-              {t("retry")}
-            </Button>
-          }
-        />
-      </Card>
-    );
+  if (catalogErrorBody) {
+    body = catalogErrorBody;
   } else if (!referenceQuery.data || editingId === undefined) {
-    body = (
-      <div className="flex flex-col gap-4" aria-busy="true">
-        <Skeleton className="h-72" />
-        <Skeleton className="h-56" />
-      </div>
-    );
+    body = <LoadingSkeletons />;
   } else if (referenceQuery.data.examKinds.length === 0) {
     body = (
       <Card padding="md">
@@ -156,92 +228,125 @@ export function CreateExamPage() {
       </Card>
     );
   } else {
-    // Đang thử lại sau lỗi thì coi như đang tải: khối tổng quan hiện khung chờ thay vì lỗi cũ.
-    const templatesStatus: TemplatesStatus = templatesQuery.data
-      ? "ready"
-      : templatesQuery.isError && !templatesQuery.isFetching
-        ? "error"
-        : "loading";
-    const reference = referenceQuery.data;
     body = (
-      <ExistingExamGate examId={editingId}>
-        {(existing) => (
-          <CreateExamForm
-            key={existing?.exam.id ?? "new"}
-            templates={templatesQuery.data ?? NO_TEMPLATES}
-            templatesStatus={templatesStatus}
-            onRetryTemplates={() => void templatesQuery.refetch()}
-            reference={reference}
-            existing={existing}
-          />
-        )}
-      </ExistingExamGate>
+      <CreateExamForm
+        key="new"
+        templates={templatesQuery.data ?? NO_TEMPLATES}
+        templatesStatus={templatesState(templatesQuery)}
+        onRetryTemplates={() => void templatesQuery.refetch()}
+        reference={referenceQuery.data}
+      />
     );
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <Link
-          href={editingId ? examTabHref(editingId, "structure") : EXAMS_HREF}
-          className={cn(
-            "inline-flex w-fit items-center gap-1 rounded-sm text-body font-medium text-text-secondary hover:text-text",
-            focusRing,
-          )}
-        >
-          <ChevronLeft aria-hidden className="size-4" />
-          {t(editingId ? "backToStructure" : "backToList")}
-        </Link>
-        <PageHeader title={t("title")} description={t("description")} />
-        {showStepper && <CreateExamStepper />}
-      </div>
+    <CreateExamLayout backHref={EXAMS_HREF} backLabel={t("backToList")} showStepper={!catalogErrorBody}>
       {body}
-    </div>
+    </CreateExamLayout>
   );
 }
 
-/**
- * Chế độ sửa (`?exam=<id>`): đọc bài và cấu trúc đã lưu rồi giao cho biểu mẫu; tạo mới (`examId = null`) giao ngay.
- * Bài và cấu trúc đã có thì giữ nguyên khi tải lại nền (biểu mẫu không dựng lại giữa chừng).
- */
-function ExistingExamGate({ examId, children }: { examId: string | null; children: (existing: ExistingExam | undefined) => ReactNode }) {
-  if (examId === null) return children(undefined);
-  return <EditExamLoader examId={examId}>{children}</EditExamLoader>;
+interface EditExamLoaderProps {
+  examId: string;
+  templatesQuery: ReturnType<typeof useExamTemplates>;
+  referenceQuery: ReturnType<typeof useContentReference>;
+  catalogErrorBody: ReactNode | null;
 }
 
-function EditExamLoader({ examId, children }: { examId: string; children: (existing: ExistingExam | undefined) => ReactNode }) {
+function EditExamLoader({ examId, templatesQuery, referenceQuery, catalogErrorBody }: EditExamLoaderProps) {
   const t = useTranslations("exams.create");
+  const tEditor = useTranslations("exams.editor");
+  const tForbidden = useTranslations("forbidden");
   const examQuery = useExam(examId);
   const structureQuery = useExamStructure(examId);
-  if (examQuery.data && structureQuery.data) return children({ exam: examQuery.data, structure: structureQuery.data });
-  if (examQuery.isError || structureQuery.isError) {
-    return (
+  // Giữ lại lỗi vừa gặp trong lúc bấm Thử lại (vì TanStack Query đưa status về pending khi data còn trống) để nút báo đang tải và tránh nhấp nháy thanh bước.
+  const [retriedError, setRetriedError] = useState<unknown>(null);
+
+  const liveExamError = examQuery.isError ? examQuery.error : structureQuery.isError ? structureQuery.error : null;
+  const isExamFetching = examQuery.isFetching || structureQuery.isFetching;
+  const examError = liveExamError ?? (isExamFetching ? retriedError : null);
+  const examForbidden = getErrorStatus(examError) === 403;
+  const examNotFound = getErrorStatus(examError) === 404;
+  const hasLoadError = Boolean(catalogErrorBody || examError);
+
+  let body: ReactNode;
+  if (catalogErrorBody) {
+    body = catalogErrorBody;
+  } else if (examForbidden) {
+    body = (
       <Card padding="md">
         <EmptyState
-          icon={<TriangleAlert />}
+          icon={<Lock />}
           headingLevel={2}
-          title={t("loadErrorTitle")}
-          description={t("loadErrorDescription")}
+          title={tForbidden("title")}
+          description={tForbidden("descriptionAnonymous")}
           action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                void examQuery.refetch();
-                void structureQuery.refetch();
-              }}
-            >
-              {t("retry")}
+            <Button asChild variant="secondary">
+              <Link href={EXAMS_HREF}>{tEditor("backToList")}</Link>
             </Button>
           }
         />
       </Card>
     );
+  } else if (examError) {
+    body = (
+      <Card padding="md">
+        <EmptyState
+          icon={<TriangleAlert />}
+          headingLevel={2}
+          title={examNotFound ? tEditor("notFoundTitle") : tEditor("errorTitle")}
+          description={examNotFound ? tEditor("notFoundDescription") : tEditor("errorDescription")}
+          action={
+            examNotFound ? (
+              <Button asChild variant="secondary">
+                <Link href={EXAMS_HREF}>{tEditor("backToList")}</Link>
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                loading={isExamFetching}
+                onClick={() => {
+                  setRetriedError(examError);
+                  if (examQuery.isError) void examQuery.refetch();
+                  if (structureQuery.isError) void structureQuery.refetch();
+                }}
+              >
+                {tEditor("retry")}
+              </Button>
+            )
+          }
+        />
+      </Card>
+    );
+  } else if (!referenceQuery.data || !examQuery.data || !structureQuery.data) {
+    body = <LoadingSkeletons />;
+  } else if (referenceQuery.data.examKinds.length === 0) {
+    body = (
+      <Card padding="md">
+        <EmptyState icon={<TriangleAlert />} headingLevel={2} title={t("step1.noKindsTitle")} description={t("step1.noKindsDescription")} />
+      </Card>
+    );
+  } else {
+    body = (
+      <CreateExamForm
+        key={examQuery.data.id}
+        templates={templatesQuery.data ?? NO_TEMPLATES}
+        templatesStatus={templatesState(templatesQuery)}
+        onRetryTemplates={() => void templatesQuery.refetch()}
+        reference={referenceQuery.data}
+        existing={{ exam: examQuery.data, structure: structureQuery.data }}
+      />
+    );
   }
+
   return (
-    <div className="flex flex-col gap-4" aria-busy="true">
-      <Skeleton className="h-72" />
-      <Skeleton className="h-56" />
-    </div>
+    <CreateExamLayout
+      backHref={hasLoadError ? EXAMS_HREF : examTabHref(examId, "structure")}
+      backLabel={t(hasLoadError ? "backToList" : "backToStructure")}
+      showStepper={!hasLoadError}
+    >
+      {body}
+    </CreateExamLayout>
   );
 }
 
@@ -506,12 +611,12 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   /** Chế độ sửa: bảng đang hiện số đã lưu của bài và người dùng đã sửa (không tính bảng xem trước của phạm vi mới). */
   const overviewChanged = editingSaved && rowsDifferFromTemplate(rows);
   const guard = useUnsavedChangesGuard((formState.isDirty || tableEdited) && !createExam.isSuccess && !saved);
+  const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const { update, structureUpdate, submitError, setSubmitError, save, saveOverviewThenInfo } = useExamInfoSave({
     exam,
     structure: existing?.structure,
     rows,
     formDirty: formState.isDirty,
-    lockScope,
     setError,
     onSaved: (message) => {
       setConfirmReplace(null);
@@ -520,6 +625,10 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
       if (exam) router.push(examTabHref(exam.id, "structure"));
     },
     onFailed: () => setConfirmReplace(null),
+    onStructureSaved: (savedDetail) => {
+      setRows((current) => rebaseOverviewRows(current));
+      setSavedRevision(savedDetail.revision);
+    },
   });
 
   /** Nạp lại lựa chọn mới; `markDirty = false` khi nạp vì mẫu vừa tải về (người dùng chưa sửa gì). */
@@ -581,7 +690,8 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   // ------------------------------------------------------------ bảng tổng quan
 
-  const overviewIssues = useMemo(() => validateOverview(rows), [rows]);
+  const suppressOverviewIssues = previewOnly || lockScope;
+  const overviewIssues = useMemo(() => (suppressOverviewIssues ? [] : validateOverview(rows)), [suppressOverviewIssues, rows]);
   const issueText = (issue: OverviewIssue) => tOverview(`errors.${issue.code}`);
   const cellIssues = useMemo(() => {
     const map = new Map<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>();
@@ -619,8 +729,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
 
   const onSubmit = handleSubmit((submitted) => {
     setSubmitError(null);
-    // Chế độ sửa chỉ chặn khi chính bảng của bài bị sửa sai; bảng xem trước của phạm vi mới do máy chủ nạp lại.
-    const blocking = overviewIssues.length > 0 && (exam === undefined || overviewChanged);
+    const blocking = overviewIssues.length > 0;
     if (blocking) {
       const first = overviewIssues[0]!;
       focusField(`${first.rowKey}.${first.field}`);
@@ -628,8 +737,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
     }
     if (exam && savedScope) {
       const changed = !sameSelection(savedScope, selection);
+      const effectiveExam = savedRevision !== null ? { ...exam, revision: Math.max(exam.revision, savedRevision) } : exam;
       const request = buildUpdateInfoRequest({
-        exam,
+        exam: effectiveExam,
         submitted,
         kinds,
         appliedTemplate,
@@ -880,6 +990,8 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
                 <Skeleton className="h-10 w-1/2" />
                 <span className="sr-only">{tOverview("loading")}</span>
               </div>
+            ) : editingSaved && rows.length === 0 ? (
+              <p className="text-body text-text-secondary">{tGeneral("overview.empty")}</p>
             ) : (
               <ExamOverviewTable
                 rows={rows}
@@ -946,6 +1058,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
           }}
           timing={values.timing}
           issues={issues}
+          editing={exam !== undefined}
         />
       </div>
 

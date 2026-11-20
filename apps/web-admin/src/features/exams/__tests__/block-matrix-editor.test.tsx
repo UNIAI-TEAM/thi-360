@@ -140,6 +140,7 @@ describe("BlockMatrixEditor: ô Tổng theo trạng thái phân bổ (UNI-2756)"
     expect(cell).toHaveAttribute("data-state", "over");
     expect(cell).toHaveClass("bg-danger-bg", "text-danger");
     expect(within(cell).getByText("vượt")).toHaveClass("sr-only");
+    expect(cell).toHaveTextContent(/^vượt 76$/);
   });
 
   it("thiếu: ô Tổng dùng token cảnh báo, data-state=under", () => {
@@ -148,6 +149,7 @@ describe("BlockMatrixEditor: ô Tổng theo trạng thái phân bổ (UNI-2756)"
     expect(cell).toHaveAttribute("data-state", "under");
     expect(cell).toHaveClass("bg-warning-bg", "text-warning");
     expect(within(cell).getByText("thiếu")).toHaveClass("sr-only");
+    expect(cell).toHaveTextContent(/^thiếu 30$/);
   });
 
   it("khớp: ô Tổng giữ nguyên, không data-state, không màu trạng thái", () => {

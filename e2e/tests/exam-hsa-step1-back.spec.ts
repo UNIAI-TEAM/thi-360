@@ -141,8 +141,9 @@ test("HSA Toàn bài: đổi sang Theo môn ở bước 1 hỏi nạp lại cấ
   const exam = await getExam(await adminApi(), id);
   expect(exam.scope).toBe("SUBJECT");
   expect(exam.templateCode).toBe("HSA_SUBJECT_TOAN");
-  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   await expect(page.getByRole("navigation", { name: "Cấu trúc" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /^Môn Toán học/ })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Cấu trúc" }).getByText("Ngôn ngữ – Văn học")).toHaveCount(0);
 });
 
 interface ExamListBody {
@@ -186,6 +187,10 @@ test("AC-1697-5a HSA Theo môn: đổi sang Tự thiết lập bài ôn cảnh b
   await dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click();
   await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
 
+  await expect(page.getByRole("heading", { level: 2, name: /^Bài ôn · Toán học/ })).toBeVisible();
+  await expect(page.getByText("Số câu, thời lượng và thang điểm lấy từ bước 1. Bài ôn có một phần, một môn, một nhóm.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /^Môn Toán học/ })).toHaveCount(0);
+
   const exam = await getExam(await adminApi(), id);
   expect(await buildModeOf(id)).toBe("REVIEW");
   expect(exam.templateCode).toBe("HSA_REVIEW");
@@ -212,6 +217,10 @@ test("AC-1697-5a HSA Theo môn + Tự thiết lập: đổi lại sang cấu tr�
   const dialog = await changeBuildModeAndContinue(page, /^Dùng cấu trúc môn/);
   await dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click();
   await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+
+  await expect(page.getByRole("navigation", { name: "Cấu trúc" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /^Môn Toán học/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /^Bài ôn · Toán học/ })).toHaveCount(0);
 
   const exam = await getExam(await adminApi(), id);
   expect(await buildModeOf(id)).toBe("STANDARD");

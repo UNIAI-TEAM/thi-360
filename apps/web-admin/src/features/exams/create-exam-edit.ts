@@ -79,7 +79,7 @@ export function buildUpdateInfoRequest({
     buildMode: submitted.scope === "SUBJECT" ? (submitted.buildMode ?? "STANDARD") : "STANDARD",
     durationMinutes: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
     maxScore,
-    yearsConfirmed: yearsDiffer(appliedTemplate) ? submitted.yearsConfirmed : true,
+    yearsConfirmed: yearsDiffer(appliedTemplate ?? exam) ? submitted.yearsConfirmed : true,
     description: submitted.description.trim() || null,
     instructions: submitted.instructions.trim() || null,
     confirmReplace: changed,

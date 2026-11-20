@@ -249,6 +249,23 @@ export function updateRowCell(rows: readonly OverviewRow[], key: string, field: 
   return rows.map((row) => (row.key === key ? { ...row, [field]: text } : row));
 }
 
+/** Cập nhật mốc `base` theo giá trị số hợp lệ vừa lưu vào cấu trúc để ô đã lưu không còn tính là chưa lưu. */
+export function rebaseOverviewRows(rows: readonly OverviewRow[]): OverviewRow[] {
+  return rows.map((row) => {
+    const questionCount = numberOrNull(row.questionCount);
+    const durationMinutes = numberOrNull(row.durationMinutes);
+    const maxPoints = numberOrNull(row.maxPoints);
+    return {
+      ...row,
+      base: {
+        questionCount: row.questionCount.trim() !== "" && questionCount !== null ? questionCount : row.base.questionCount,
+        durationMinutes: row.durationMinutes.trim() !== "" && durationMinutes !== null ? durationMinutes : row.base.durationMinutes,
+        maxPoints: row.maxPoints.trim() !== "" && maxPoints !== null ? maxPoints : row.base.maxPoints,
+      },
+    };
+  });
+}
+
 /**
  * Sửa nội dung nhập (bảng tổng quan, thời lượng chung, thang điểm, mô tả, hướng dẫn) kể từ lần nạp mẫu gần nhất.
  * Đổi kỳ thi/phạm vi/môn/phần/`buildMode` khi `dirty` phải hỏi xác nhận vì nạp lại bảng (2B 15.1).
