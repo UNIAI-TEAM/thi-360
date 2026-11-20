@@ -3862,7 +3862,10 @@
       "close": "Đóng",
       "partChange": "{before} → {after}",
       "partNone": "chưa có",
-      "partWithMeta": "{name} · {meta}"
+      "partWithMeta": "{name} · {meta}",
+      "typeAny": "Dạng câu chưa ghi",
+      "typeChange": "{type}: {from, number} → {to, number} câu",
+      "typeNew": "{type}: {count, number} câu"
     },
     "structure": {
       "title": "Cấu trúc và ma trận",
@@ -3985,7 +3988,9 @@
           "blockRemoved": "Xóa nhóm {name} khỏi {subject}.",
           "blockRenamed": "Đổi tên nhóm {from} thành {to}.",
           "blockSettings": "{name}: đổi cấu hình nhóm.",
+          "blocksReordered": "{subject}: đổi thứ tự các nhóm.",
           "empty": "chưa đặt",
+          "partAdded": "Thêm phần {name}.",
           "partNumber": {
             "durationMinutes": "{part}: thời lượng {from} → {to}.",
             "maxPoints": "{part}: điểm tối đa {from} → {to}.",
@@ -3993,10 +3998,14 @@
             "questionCountOnPaper": "{part}: số câu trên đề {from} → {to}.",
             "questionCountRequired": "{part}: số câu phải làm {from} → {to}."
           },
+          "partRemoved": "Xóa phần {name}.",
           "partRenamed": "Đổi tên phần {from} thành {to}.",
           "partSettings": "{part}: đổi thiết lập phần.",
+          "sectionAdded": "Thêm môn {subject}.",
           "sectionCount": "{subject}: số câu {from} → {to}.",
-          "sectionSettings": "{subject}: đổi chỉ tiêu cấp môn."
+          "sectionRemoved": "Xóa môn {subject}.",
+          "sectionSettings": "{subject}: đổi chỉ tiêu cấp môn.",
+          "structureChanged": "Đổi thứ tự hoặc thiết lập khác của cấu trúc."
         },
         "changesIntro": "Còn thay đổi chưa lưu:",
         "changesMore": "và {count, number} thay đổi khác.",
@@ -5069,7 +5078,8 @@
         "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu Điền đáp án (loại Trả lời ngắn).",
         "STORED_ID_COLLISION": "Id đã lưu \"{id}\" trùng tên giữ chỗ cho chùm trực tiếp của một tùy chọn (id tùy chọn cộng :blocks), nên không đường nào của bài thi này kiểm tra hay công bố được. Hãy đổi tên hoặc tạo lại mục mang id này, rồi kiểm tra lại.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
-        "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc."
+        "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc.",
+        "STATEMENT_POINTS_UNEVEN": "Khối {block}: câu {codes} có các ý Đúng/Sai không chia điểm đều, trong khi khối chấm theo từng ý cần mọi ý bằng điểm nhau. Thay câu này bằng câu khác."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -5492,6 +5502,7 @@
         "requiredNone": "—",
         "requiredAtLeast": "ít nhất {value}",
         "requiredDropped": "{value} (môn đã bỏ {count, number} câu)",
+        "requiredOriginal": "{value} ({original}, đã bỏ {count, number} câu)",
         "result": {
           "MISSING_LABEL": "Thiếu nhãn",
           "OK": "Đạt",
@@ -5502,6 +5513,7 @@
         "scope": {
           "EXAM": "Cả bài"
         },
+        "structureUnavailable": "Chưa tải được cấu trúc bài nên các dòng chỉ tiêu chủ đề tham khảo chưa đối chiếu được.",
         "tableLabel": "Yêu cầu và thực tế của đề thử",
         "title": "Yêu cầu / Thực tế / Chênh lệch",
         "unit": {
@@ -5523,8 +5535,9 @@
         "showShuffled": "Xem thứ tự đã đảo"
       },
       "originalOrderNote": "Đang xem thứ tự gốc: câu theo thứ tự bộ giải chọn, phương án theo thứ tự lúc soạn. Đề thật dùng thứ tự đã đảo bằng hạt giống.",
-      "resultMeta": "{questions, number} câu · hạt giống {seed} · giữ trong {minutes, number} phút · câu ghi sổ xem trước, không trừ lượt",
+      "resultMeta": "{questions, number} câu · hạt giống {seed} · {retention} · câu ghi sổ xem trước, không trừ lượt",
       "resultTitle": "Đề thử · {label}",
+      "retention": "giữ trong {minutes, number} phút{state, select, left { (còn {left, number} phút)} expired { (đã hết hạn)} other {}}",
       "scope": {
         "count": "Số câu của môn",
         "countOption": "{count, number} câu{full, select, yes {} other { (bỏ 1 câu)}}",

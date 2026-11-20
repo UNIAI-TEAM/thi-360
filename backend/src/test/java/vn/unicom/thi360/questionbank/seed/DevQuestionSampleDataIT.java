@@ -136,6 +136,22 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
         assertDiaSetTagging();
     }
 
+    /** Item 12 (UNI-2700): each new Địa lí resource tag finds at least three READY dev questions, in snapshot and in question_tag. */
+    @Test
+    void geographyResourceTagsHaveDevQuestions() throws Exception {
+        for (String tag : List.of("DIA_BAN_DO", "DIA_ATLAT")) {
+            assertThat(jdbc.queryForObject("""
+                    select count(*) from questionbank.question q
+                    join questionbank.question_tag qt on qt.question_id = q.id
+                    join catalog.catalog_item i on i.id = qt.tag_item_id and i.code = ?
+                    join catalog.catalog_item s on s.id = q.subject_item_id and s.code = 'DIA'
+                    join questionbank.question_version v on v.question_id = q.id and v.version_no = q.current_version_no
+                    where q.status = 'READY' and q.deleted_at is null and q.parent_id is null
+                      and jsonb_exists(v.snapshot -> 'tagItemIds', i.id::text)
+                    """, Integer.class, tag)).as(tag).isGreaterThanOrEqualTo(3);
+        }
+    }
+
     @Test
     @Transactional
     void anOldHeadDatabaseConvergesOnlyWhereTheSeedStateIsUntouched() throws Exception {
@@ -229,7 +245,7 @@ class DevQuestionSampleDataIT extends AbstractIntegrationTest {
     void sampleAudioIsSeededOnceAndEveryRowMatchesItsFile() throws Exception {
         List<Map<String, Object>> assets = jdbc.queryForList("""
                 select id, object_key, file_name, mime, size, sha256 from questionbank.question_asset
-                where starts_with(object_key, ?) order by object_key
+                where starts_with(object_key, ?) and mime = 'audio/mpeg' order by object_key
                 """, ASSET_PREFIX);
         assertThat(assets).hasSize(AUDIO_ROOTS);
         assertThat(assets.stream().map(row -> row.get("object_key")).distinct()).hasSize(AUDIO_ROOTS);

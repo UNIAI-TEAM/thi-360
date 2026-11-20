@@ -354,6 +354,39 @@ describe("Table: vùng cuộn ngang dùng được bằng bàn phím", () => {
     expect(scroller).toHaveFocus();
   });
 
+  it("aria-labelledby: nhiều bảng cùng loại phân biệt được bằng tiêu đề của từng mục, cả khi tràn ngang", () => {
+    const instances = installResizeObserver();
+    render(
+      <>
+        <h3 id="path-a">Đường A</h3>
+        <Table<Person>
+          aria-label="Danh sách người"
+          aria-labelledby="path-a"
+          columns={columns}
+          data={[]}
+          getRowId={(person) => person.id}
+          empty={<p>Không có người nào</p>}
+        />
+        <h3 id="path-b">Đường B</h3>
+        <Table<Person>
+          aria-label="Danh sách người"
+          aria-labelledby="path-b"
+          columns={columns}
+          data={[]}
+          getRowId={(person) => person.id}
+          empty={<p>Không có người nào</p>}
+        />
+      </>,
+    );
+    const tableA = screen.getByRole("table", { name: "Đường A" });
+    expect(screen.getByRole("table", { name: "Đường B" })).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Danh sách người" })).toBeNull();
+    expect(tableA).not.toHaveAttribute("aria-label");
+
+    resize(tableA.parentElement as HTMLElement, instances, { scrollWidth: 1200, clientWidth: 800 });
+    expect(screen.getByRole("region", { name: "Đường A" })).toBe(tableA.parentElement);
+  });
+
   it("theo dõi cả khung bọc lẫn bảng, và bỏ điểm dừng khi hết tràn", () => {
     const instances = installResizeObserver();
     const { unmount } = render(<Harness />);

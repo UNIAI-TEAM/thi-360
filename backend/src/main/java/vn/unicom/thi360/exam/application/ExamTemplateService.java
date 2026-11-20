@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.exam.api.ExamTemplateResponse;
 import vn.unicom.thi360.exam.domain.ExamTemplate;
+import vn.unicom.thi360.exam.domain.ExamTemplateCheckFacts;
 import vn.unicom.thi360.exam.infrastructure.ExamTemplateRepository;
 
 /** Đọc nguyên mẫu cấu trúc (exam_template) và chọn mẫu khớp phạm vi (spec 5.2). */
@@ -46,6 +47,33 @@ public class ExamTemplateService {
     ExamTemplate findProvenance(String templateCode) {
         if (templateCode == null || templateCode.isBlank()) return null;
         return templateRepository.findById(templateCode.trim()).orElse(null);
+    }
+
+    /**
+     * The template {@link #findBestMatch} would pick for the SUBJECT scope of a kind and subject, as its flag columns
+     * only (FU-BE15-R1-5). The order is the one of {@code findBestMatch}: default first, then the latest structure year,
+     * then the highest code; null when the subject has no active standard template.
+     */
+    @Transactional(readOnly = true)
+    public ExamTemplateCheckFacts findSubjectStandardFacts(String kindCode, String subjectCode) {
+        return templateRepository.findSubjectStandardFacts(kindCode, subjectCode).stream()
+                .max(Comparator.comparing(ExamTemplateCheckFacts::defaultTemplate)
+                        .thenComparing(facts -> facts.structureYear() == null ? 0 : facts.structureYear())
+                        .thenComparing(ExamTemplateCheckFacts::code))
+                .orElse(null);
+    }
+
+    /** The flag columns of the template an exam was loaded from, even when it is retired; null when it is unknown. */
+    @Transactional(readOnly = true)
+    public ExamTemplateCheckFacts findCheckFacts(String templateCode) {
+        if (templateCode == null || templateCode.isBlank()) return null;
+        return templateRepository.findCheckFacts(templateCode.trim()).orElse(null);
+    }
+
+    /** The structure JSON of one template: read only when a lock of that template applies to the exam being checked. */
+    @Transactional(readOnly = true)
+    public JsonNode readStructure(String templateCode) {
+        return templateRepository.findStructureByCode(templateCode).orElseThrow();
     }
 
     /** Select only the configured default; review templates are shared by subjects. */
@@ -133,6 +161,93 @@ public class ExamTemplateService {
                 t.isPublishable(),
                 t.isFixedCounts(),
                 t.isFixedBlockCounts(),
-                t.isOmittedLocked());
+                t.isOmittedLocked(),
+                partSummaries(structure));
+    }
+
+    /**
+     * One summary per template part: the question count per question type of its non-omitted blocks, matching FE
+     * {@code partTypeCounts} and {@link vn.unicom.thi360.exam.domain.BlockCounts}. Choice parts inspect the first
+     * option unless it is {@code SUBJECT_CHOICE} (whose sections cover more subjects than one paper takes);
+     * {@code subjectPool}-only parts and {@code SUBJECT_CHOICE} parts return empty counts, and non-positive counts
+     * (such as unconfigured review placeholders) are omitted.
+     */
+    static List<ExamTemplateResponse.PartSummary> partSummaries(JsonNode structure) {
+        List<ExamTemplateResponse.PartSummary> summaries = new ArrayList<>();
+        for (JsonNode part : structure.path("parts")) {
+            java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+            boolean choice = "CHOICE".equals(part.path("participation").path("mode").asText())
+                    || "CHOICE".equals(part.path("mode").asText())
+                    || (part.path("sections").isEmpty() && !part.path("options").path(0).isMissingNode());
+            if (choice) {
+                JsonNode firstOption = part.path("options").path(0);
+                if (!firstOption.isMissingNode() && !"SUBJECT_CHOICE".equals(firstOption.path("kind").asText())) {
+                    addSectionBlockCounts(firstOption.path("sections"), counts);
+                    addDirectBlockCounts(firstOption.path("blocks"), counts);
+                }
+            } else {
+                addSectionBlockCounts(part.path("sections"), counts);
+            }
+            summaries.add(new ExamTemplateResponse.PartSummary(
+                    part.hasNonNull("id") ? part.path("id").asText() : null,
+                    part.hasNonNull("order") ? part.path("order").asInt() : null,
+                    part.path("name").asText(""),
+                    part.hasNonNull("questionCount") ? part.path("questionCount").asInt() : null,
+                    counts.entrySet().stream()
+                            .map(entry -> new ExamTemplateResponse.QuestionTypeCount(entry.getKey(), entry.getValue()))
+                            .toList()));
+        }
+        return summaries;
+    }
+
+    private static void addSectionBlockCounts(JsonNode sections, java.util.Map<String, Integer> counts) {
+        for (JsonNode section : sections) {
+            JsonNode blocks = section.path("blocks");
+            int fixedInSection = 0;
+            int remainderBlocks = 0;
+            for (JsonNode block : blocks) {
+                if (block.path("omitted").asBoolean(false)) continue;
+                String type = block.path("questionType").asText("ANY");
+                if (isRemainderBlock(block, type)) {
+                    remainderBlocks++;
+                } else {
+                    fixedInSection += fixedBlockCount(block, type);
+                }
+            }
+            int remainderCount = remainderBlocks == 1 && section.hasNonNull("questionCount")
+                    ? Math.max(0, section.path("questionCount").asInt() - fixedInSection)
+                    : 0;
+            for (JsonNode block : blocks) {
+                if (block.path("omitted").asBoolean(false)) continue;
+                String type = block.path("questionType").asText("ANY");
+                int count = isRemainderBlock(block, type) ? remainderCount : fixedBlockCount(block, type);
+                if (count > 0) counts.merge(type, count, Integer::sum);
+            }
+        }
+    }
+
+    private static void addDirectBlockCounts(JsonNode blocks, java.util.Map<String, Integer> counts) {
+        for (JsonNode block : blocks) {
+            if (block.path("omitted").asBoolean(false)) continue;
+            String type = block.path("questionType").asText("ANY");
+            int count = fixedBlockCount(block, type);
+            if (count > 0) counts.merge(type, count, Integer::sum);
+        }
+    }
+
+    private static boolean isRemainderBlock(JsonNode block, String type) {
+        return !"QUESTION_SET".equals(type) && !"CLOZE".equals(type) && !block.hasNonNull("questionCount");
+    }
+
+    private static int fixedBlockCount(JsonNode block, String type) {
+        if ("QUESTION_SET".equals(type) || "CLOZE".equals(type)) {
+            int setCount = block.path("setCount").asInt(0);
+            int setSize = block.path("setSize").asInt(0);
+            if (setCount > 0 && setSize > 0) {
+                long product = (long) setCount * setSize;
+                return product > Integer.MAX_VALUE ? 0 : (int) product;
+            }
+        }
+        return block.hasNonNull("questionCount") ? block.path("questionCount").asInt(0) : 0;
     }
 }

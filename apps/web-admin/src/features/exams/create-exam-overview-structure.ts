@@ -36,6 +36,7 @@ export function overviewRowsFromParts(
       kind: "part",
       label: part.name,
       subjectCode: "",
+      partIndex: index,
       partId: part.id,
       questionCount: text(base.questionCount),
       durationMinutes: text(base.durationMinutes),

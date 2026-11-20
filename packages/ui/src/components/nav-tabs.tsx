@@ -1,6 +1,9 @@
+"use client";
+
 import { Slot } from "@radix-ui/react-slot";
-import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { cn } from "../lib/cn";
+import { followActiveTab } from "../lib/reveal-tab";
 import { focusRing } from "../lib/styles";
 
 export type NavTabsProps = Omit<ComponentProps<"nav">, "aria-label"> & {
@@ -14,11 +17,22 @@ export type NavTabsProps = Omit<ComponentProps<"nav">, "aria-label"> & {
  * dành cho việc đổi nội dung trong cùng một trang. Nhờ vậy mở được ở tab trình duyệt mới và nút Back đúng nghĩa.
  */
 export function NavTabs({ className, children, ...props }: NavTabsProps) {
+  const listRef = useRef<HTMLUListElement | null>(null);
+
+  // Cùng việc với `TabsList`: mục đang mở (kể cả lần hiển thị đầu và khi chuyển trang) cuộn vào tầm nhìn ở 390px.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    return followActiveTab(list, '[aria-current="page"]', "aria-current");
+  }, []);
+
   return (
     <nav className={cn("min-w-0", className)} {...props}>
       {/* Một hàng, cuộn ngang khi không đủ chỗ; không xuống dòng để thứ tự và mục đang chọn luôn dễ theo dõi. */}
       {/* Cùng mẫu với `TabsList`: đệm 4px bù bằng lề âm để vùng cuộn không cắt vòng focus; thanh cuộn mảnh báo còn mục bị che. */}
-      <ul className="-m-1 flex list-none items-center gap-1 overflow-x-auto p-1 [scrollbar-width:thin]">{children}</ul>
+      <ul ref={listRef} className="-m-1 flex list-none items-center gap-1 overflow-x-auto p-1 [scrollbar-width:thin]">
+        {children}
+      </ul>
     </nav>
   );
 }

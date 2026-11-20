@@ -3,10 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
-import { mapExamDetail } from "../api-mapping";
+import { mapExamDetail, mapExamTemplate } from "../api-mapping";
+import { BlockEditor } from "../components/block-editor";
+import { ExamOverviewPanel } from "../components/exam-overview-panel";
+import { ExamOverviewTable } from "../components/exam-overview-table";
 import { ExamReviewCheck } from "../components/exam-review-check";
 import { ExamReviewView } from "../components/exam-review-view";
 import { ExamVersionsView } from "../components/exam-versions-view";
+import { StructureVersionPicker } from "../components/structure-version-picker";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 import { HSA_001_CHECK } from "./review-fixtures";
 
@@ -239,5 +243,257 @@ describe("hộp thoại công bố bản en", () => {
     expect(names.filter((text) => UI_WORDS.test(text))).toEqual([]);
     // Nhãn của ô chọn vẫn là tên đường.
     expect(within(dialog).getByRole("checkbox", { name: "Tiếng Anh" })).toBeInTheDocument();
+  });
+});
+
+describe("R1-4 / F-VIS-04: tên mẫu/DB ở cấu trúc, tổng quan, phiên bản và bảng tổng quan nằm trong data-exam-content", () => {
+  it("ExamOverviewPanel bản en: không lọt tên bài, tên phần hay tên chỉ tiêu tiếng Việt ra ngoài", () => {
+    const exam = mapExamDetail(
+      examDetailWire({
+        parts: [
+          {
+            ...FIXED_PART,
+            id: "p1",
+            name: "Phần I · Trắc nghiệm",
+            sections: [{ id: "s1", subjectCode: "MATH", questionCount: 10, blocks: [{ id: "b1", name: "Nhóm đại số", questionCount: 10, requiredPointsPerQuestion: 1 }] }],
+          },
+          {
+            id: "p2",
+            order: 2,
+            name: "Phần II · Tự luận",
+            durationMinutes: 60,
+            questionCount: 5,
+            participation: { mode: "CHOICE", choose: 1 },
+            sections: [],
+            options: [{ id: "o1", kind: "BRANCH", code: "B1", name: "Nhánh tự chọn", sections: [{ id: "s2", subjectCode: "PHYSICS", questionCount: 5, blocks: [{ id: "b2", name: "Cơ học", questionCount: 5, requiredPointsPerQuestion: 2 }] }] }],
+          },
+        ] as never,
+      }),
+    );
+    const { container } = renderWithProviders(
+      <ExamOverviewPanel
+        examName="Đề minh họa đánh giá năng lực"
+        summary="15 questions"
+        parts={exam.parts}
+        quotas={[
+          {
+            id: "q-grade",
+            name: "Chỉ tiêu khối lớp cả đề",
+            dimension: "GRADE",
+            basis: "QUESTION",
+            enforcement: "REFERENCE",
+            subjectCodes: ["MATH"],
+            buckets: [{ codes: ["GRADE_12"], count: 10 }],
+          },
+        ]}
+        onQuotas={() => undefined}
+        names={{ subject: (code) => code, combination: (code) => code }}
+        labels={{ grade: (code) => code, difficulty: (code) => code }}
+      />,
+      { locale: "en", messages: en },
+    );
+
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+    const tagged = examContentTexts(container);
+    expect(tagged).toContain("Đề minh họa đánh giá năng lực");
+    expect(tagged).toContain("Phần I · Trắc nghiệm");
+    expect(tagged).toContain("Phần II · Tự luận");
+    expect(tagged).toContain("Chỉ tiêu khối lớp cả đề");
+    expect(screen.getByRole("region", { name: "Chỉ tiêu khối lớp cả đề" })).toBeInTheDocument();
+  });
+
+  it("ExamVersionsView bản en: đường chưa công bố, thay đổi (where + nút mở) và lịch sử nằm trong data-exam-content", async () => {
+    const paths = [{ pathId: "opt-en", choices: [{ partId: "p-ch", optionId: "opt-en", kind: "BRANCH", code: "EN", name: "Tiếng Anh" }] }];
+    new FakeServer()
+      .on("GET", EXAM_PATH, {
+        status: 200,
+        body: examDetailWire({
+          parts: [
+            {
+              ...FIXED_PART,
+              id: "part-1",
+              name: "Phần I · Trắc nghiệm",
+              sections: [
+                {
+                  id: "sec-1",
+                  subjectCode: "MATH",
+                  questionCount: 10,
+                  blocks: [{ id: "blk-1", name: "Nghị luận xã hội", questionType: "SINGLE_CHOICE", questionCount: 10 }],
+                },
+              ],
+            },
+          ] as never,
+        }),
+      })
+      .on("GET", `${EXAM_PATH}/versions`, {
+        status: 200,
+        body: {
+          examId: EXAM_ID,
+          workingCopy: {
+            editedBy: { id: "u1", name: "Admin A" },
+            savedAt: "2026-11-17T02:00:00Z",
+            baseVersion: 1,
+            check: { status: "VALID", issueCount: 0, checkedAt: "2026-11-17T01:00:00Z" },
+            unpublishedPaths: paths,
+          },
+          changes: [
+            { id: "chg-1", kind: "BLOCK_CHANGED", where: "parts/parts/part-1/sections/sec-1/blocks/blk-1/questionCount", before: "10", after: "12" },
+          ],
+          items: [
+            {
+              version: 1,
+              state: "SERVING",
+              publishedAt: "2026-11-10T01:00:00Z",
+              publishedBy: { id: "u1", name: "Admin A" },
+              attemptCount: 3,
+              publishedPaths: [
+                ...paths,
+                { pathId: "opt-sci", choices: [{ partId: "p-ch", optionId: "opt-sci", kind: "SUBJECT_CHOICE", code: "SCI", name: "Khoa học" }] },
+              ],
+              servingPaths: paths,
+            },
+          ],
+        },
+      })
+      .install();
+
+    const { container } = renderWithProviders(<ExamVersionsView examId={EXAM_ID} />, { locale: "en", messages: en });
+    await screen.findByText("Serving");
+
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+    const tagged = examContentTexts(container);
+    expect(tagged).toContain("Phần I · Trắc nghiệm");
+    expect(tagged).toContain("Nghị luận xã hội");
+    expect(tagged).toContain("Tiếng Anh");
+    expect(tagged).toContain("Khoa học");
+    const openChange = screen.getByRole("link", { name: /^Open the change in / });
+    expect(openChange.getAttribute("aria-label")).toBe("Open the change in");
+    expect(openChange).toHaveAccessibleName(/Phần I · Trắc nghiệm/);
+  });
+
+  it("StructureVersionPicker bản en: nhãn mẫu, tóm tắt, khối Nếu chọn và hộp thoại đổi phiên bản không lọt tiếng Việt", async () => {
+    const exam = mapExamDetail(examDetailWire({ kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", templateCode: "SP2E_2026" }));
+    const makeTemplate = (code: string, label: string, summary: string) =>
+      mapExamTemplate({
+        active: true,
+        publishable: true,
+        fixedCounts: false,
+        fixedBlockCounts: false,
+        omittedLocked: false,
+        buildMode: "STANDARD",
+        isDefault: code === "SP2E_2026",
+        code,
+        kindCode: "SP2E",
+        scope: "SUBJECT",
+        subjectCode: "MATH",
+        timing: "PER_PART",
+        label,
+        summary,
+        structure: { parts: [{ id: "p1", order: 1, name: "Phần I · Đại số", questionCount: 10, durationMinutes: 45, participation: { mode: "ALL" }, sections: [] }] },
+        parts: [],
+      } as never);
+    const t2026 = makeTemplate("SP2E_2026", "SP2E – Toán – Cấu trúc 2026", "40 câu, thang 10 điểm, 90 phút.");
+    const t2025 = makeTemplate("SP2E_2025", "SP2E – Toán – Đề minh họa 2025", "30 câu, thang 10 điểm, 60 phút.");
+
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(
+      <StructureVersionPicker
+        exam={exam}
+        templates={[t2026, t2025]}
+        dirty={false}
+        currentParts={exam.parts}
+        onApplied={() => undefined}
+        onAnnounce={() => undefined}
+      />,
+      { locale: "en", messages: en },
+    );
+
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+    await user.click(screen.getByRole("combobox", { name: /Structure version/ }));
+    expect(vietnameseOutsideExamContent(document.body)).toEqual([]);
+    await user.click(await screen.findByRole("option", { name: "SP2E – Toán – Đề minh họa 2025" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(vietnameseOutsideExamContent(dialog)).toEqual([]);
+  });
+
+  it("ExamOverviewTable bản en: tên phần và aria-label của NumberCell không lọt tiếng Việt", () => {
+    const { container } = renderWithProviders(
+      <ExamOverviewTable
+        rows={[
+          {
+            key: "part-0",
+            kind: "part",
+            partIndex: 0,
+            subjectCode: "",
+            label: "Phần I · Trắc nghiệm",
+            questionCount: "20",
+            durationMinutes: "45",
+            maxPoints: "5",
+            choice: false,
+            group: false,
+            lockedCount: false,
+            base: { questionCount: 20, durationMinutes: 45, maxPoints: 5 },
+          },
+        ]}
+        timing="PER_PART"
+        showPoints
+        onCellChange={() => undefined}
+        issues={new Map()}
+        subjectName={(code) => code}
+      />,
+      { locale: "en", messages: en },
+    );
+
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+    const input = screen.getByRole("textbox", { name: "Questions of Phần I · Trắc nghiệm" });
+    expect(input.getAttribute("aria-label")).toBe("Questions of");
+    expect(screen.getByRole("textbox", { name: "Duration of Phần I · Trắc nghiệm" }).getAttribute("aria-label")).toBe("Duration of");
+    expect(screen.getByRole("textbox", { name: "Points of Phần I · Trắc nghiệm" }).getAttribute("aria-label")).toBe("Points of");
+  });
+
+  it("BlockEditor bản en: các nút moveUp/moveDown/remove không lọt tên nhóm tiếng Việt trong aria-label", () => {
+    const blockData = {
+      id: "blk-vi",
+      name: "Chùm Toán học",
+      questionType: "SINGLE_CHOICE" as const,
+      questionCount: 10,
+      setCount: null,
+      setSize: null,
+      requiredPointsPerQuestion: 1,
+      knowledgeScope: null,
+      tagCodes: [],
+      matrix: null,
+      childAnswerType: null,
+      templateGroupCode: null,
+      answerTypeLocked: false,
+    };
+    const { container } = renderWithProviders(
+      <BlockEditor
+        block={blockData}
+        section={{ id: "s1", subjectCode: "MATH", questionCount: 10, knowledgeScope: null, answerQuotas: null, matrix: null, choiceGroup: null, blocks: [blockData] }}
+        subjectCode="MATH"
+        locationText="Part 1 · Math · group 1 / 2"
+        position={2}
+        siblingCount={3}
+        axes={{ grades: [], difficulties: [] }}
+        labels={{ grade: (code) => code, difficulty: (code) => code }}
+        reference={undefined}
+        scoringDefaults={null}
+        competencies={[]}
+        onChange={() => undefined}
+        onMove={() => undefined}
+        onRemove={() => undefined}
+        onOpenSection={() => undefined}
+      />,
+      { locale: "en", messages: en },
+    );
+
+    expect(vietnameseOutsideExamContent(container)).toEqual([]);
+    const up = screen.getByRole("button", { name: "Move group Chùm Toán học up" });
+    const down = screen.getByRole("button", { name: "Move group Chùm Toán học down" });
+    const remove = screen.getByRole("button", { name: "Remove group Chùm Toán học" });
+    expect(up.getAttribute("aria-label")).toBe("Move group");
+    expect(down.getAttribute("aria-label")).toBe("Move group");
+    expect(remove.getAttribute("aria-label")).toBe("Remove group");
   });
 });

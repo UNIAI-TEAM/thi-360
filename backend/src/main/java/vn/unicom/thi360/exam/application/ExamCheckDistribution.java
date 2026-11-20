@@ -104,7 +104,7 @@ final class ExamCheckDistribution {
     private final Map<String, ExamPart> sectionParts = new LinkedHashMap<>();
     private final Map<String, String> sectionOptions = new LinkedHashMap<>();
 
-    private ExamCheckDistribution(ObjectMapper mapper, ExamStructureDocument document) {
+    ExamCheckDistribution(ObjectMapper mapper, ExamStructureDocument document) {
         this.document = document;
         this.issues = new ExamCheckIssues(mapper);
         for (ExamPart part : document.parts()) {
@@ -114,15 +114,22 @@ final class ExamCheckDistribution {
                 for (ExamSection section : option.sections()) index(part, option.id(), section);
                 if (!option.blocks().isEmpty()) {
                     int count = option.blocks().stream()
-                            .mapToInt(b -> b.questionCount() != null ? b.questionCount()
-                                    : (b.setCount() != null && b.setSize() != null
-                                            ? b.setCount() * b.setSize() : 0))
+                            .mapToInt(b -> {
+                                Integer n = vn.unicom.thi360.exam.domain.BlockCounts.declared(b);
+                                return n == null ? 0 : n;
+                            })
                             .sum();
                     index(part, option.id(), new ExamSection(option.id() + ":blocks", option.code(),
                             count, null, null, null, null, option.blocks()));
                 }
             }
         }
+    }
+
+    /** Exposed for unit verification of synthetic option-level section counts. */
+    Integer sectionQuestionCount(String sectionId) {
+        ExamSection section = sections.get(sectionId);
+        return section == null ? null : section.questionCount();
     }
 
     private void index(ExamPart part, String optionId, ExamSection section) {

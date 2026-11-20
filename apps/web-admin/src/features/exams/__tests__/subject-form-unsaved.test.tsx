@@ -51,6 +51,7 @@ const template = (code: string, year: number) => ({
   publishable: true,
   fixedCounts: false,
   structure: { parts: [] },
+  parts: [],
 });
 const TEMPLATES = [template("QDA_2026", 2026), template("QDA_2025", 2025)];
 

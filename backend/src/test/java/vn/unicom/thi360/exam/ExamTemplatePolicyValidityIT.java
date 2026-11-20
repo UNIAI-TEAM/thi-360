@@ -58,7 +58,8 @@ class ExamTemplatePolicyValidityIT extends AbstractIntegrationTest {
         assertStaleAndPublishRefused(id);
 
         JsonNode recheck = check(id);
-        assertThat(policy(id)).isEqualTo("{\"fixedCounts\": true}");
+        assertThat(mapper.readTree(policy(id)).fieldNames()).toIterable().containsExactlyInAnyOrder("fixedCounts", "lockHash");
+        assertThat(mapper.readTree(policy(id)).path("fixedCounts").asBoolean()).isTrue();
         assertThat(validity.assess(List.of(id)).get(id).status()).isEqualTo(recheck.path("status").asText());
     }
 
@@ -72,6 +73,37 @@ class ExamTemplatePolicyValidityIT extends AbstractIntegrationTest {
         assertThat(listedAs(id, "VALID")).isTrue();
 
         mockMvc.perform(publish(id, result)).andExpect(status().isOk());
+    }
+
+    @Test
+    void twoActiveDefaultTemplatesResolveUnpublishableByYearThenCode() throws Exception {
+        flags("publishable = true, fixed_counts = false");
+        UUID id = examId("TEST-THPTQG-02");
+        assertThat(check(id).path("status").asText()).isEqualTo("VALID");
+
+        // Same year (2025), lower C-collation code ('...2024_OLD' < '...2025'): publishable=true winner keeps it VALID.
+        insertDefaultLiterature("THPTQG_LITERATURE_2024_OLD", 2025, false);
+        assertThat(validity.assess(List.of(id)).get(id).status()).isEqualTo("VALID");
+
+        // Same year (2025), higher C-collation code ('...2025_Z' > '...2025'): unpublishable winner makes it stale.
+        insertDefaultLiterature("THPTQG_LITERATURE_2025_Z", 2025, false);
+        assertStaleAndPublishRefused(id);
+        JsonNode tieCheck = check(id);
+        assertThat(tieCheck.path("status").asText()).isEqualTo("INVALID");
+        assertThat(tieCheck.path("groups").findValuesAsText("code")).contains("TEMPLATE_NOT_PUBLISHABLE");
+
+        // Newer structure_year (2026) beats 2025 regardless of code, flipping back to publishable=true -> VALID on recheck.
+        insertDefaultLiterature("THPTQG_LITERATURE_2026_A", 2026, true);
+        assertStaleAndPublishRefused(id);
+        assertThat(check(id).path("status").asText()).isEqualTo("VALID");
+    }
+
+    private void insertDefaultLiterature(String code, int structureYear, boolean publishable) {
+        jdbc.update("INSERT INTO exam.exam_template (code, kind_code, scope, subject_code, structure_year, matrix_year, "
+                + "timing, build_mode, is_default, publishable, structure, active) "
+                + "VALUES (?, 'THPTQG', 'SUBJECT', 'VAN', ?, ?, 'PER_PART', 'STANDARD', true, ?, "
+                + "'{\"parts\":[]}'::jsonb, true)", code, structureYear, structureYear, publishable);
+        entityManager.clear();
     }
 
     /** The check reads templates through JPA; drop the session cache so it sees the changed flag like a new request. */

@@ -65,6 +65,7 @@ const wireTemplate = (code: string, fields: Wire, parts: Wire[]): Wire => ({
   ...fields,
   code,
   structure: { parts },
+  parts: [],
 });
 const omittedPart = (order: number, name: string, subjectCode: string) =>
   part(order, name, 0, [section(subjectCode, 0, {}, [block("Viết", 1, { questionType: "ESSAY", omitted: true })])]);

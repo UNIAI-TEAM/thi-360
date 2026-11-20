@@ -145,7 +145,12 @@ export function KnowledgeScopeField({
                 icon={<CircleMinus />}
                 className="size-8"
                 aria-label={t("remove", { code: ref.code, name: ref.name })}
-                onClick={() => onChange(withNodeIds(value, (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId), blockLevel))}
+                onClick={() => {
+                  const rest = (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId);
+                  // Bỏ chip cuối thì dữ liệu về phạm vi của môn (nodeIds rỗng): giao diện về "Toàn môn" theo, không kẹt ở "Theo chủ đề" trống.
+                  if (rest.length === 0) setTopicMode(false);
+                  onChange(withNodeIds(value, rest, blockLevel));
+                }}
               />
             </span>
           ))}

@@ -10,6 +10,9 @@ import {
   DialogTitle,
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
+import type { TypeCount } from "../types";
+import { ExamName, richNodes } from "./exam-review-shared";
 
 /** Một phần của cấu trúc: tên, số câu, thời lượng (`shared`: bài dùng thời lượng chung; `null`: mẫu chưa ghi). */
 export interface ReloadPartSide {
@@ -17,6 +20,8 @@ export interface ReloadPartSide {
   questionCount: number;
   durationMinutes: number | null;
   shared: boolean;
+  /** Số câu theo dạng câu của phần (mẫu: từ API; cấu trúc đang có: tính từ nhóm); bỏ trống: không hiện dòng theo dạng câu. */
+  typeCounts?: readonly TypeCount[];
 }
 
 /**
@@ -30,7 +35,7 @@ export interface ReloadPartRow extends ReloadPartSide {
 export interface ReloadStructureDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  title: ReactNode;
   description: string;
   /** Các phần sẽ thay cấu trúc hiện tại (PBI-04 mục 5.3, mục 6: chỉ thay sau khi quản trị viên xác nhận). */
   parts: readonly ReloadPartRow[];
@@ -66,6 +71,21 @@ export function ReloadStructureDialog({
   onConfirm,
 }: ReloadStructureDialogProps) {
   const t = useTranslations("exams.reload");
+  const tType = useTranslations("content.questionType");
+  const typeLabel = (type: TypeCount["questionType"]) => (type === "ANY" ? t("typeAny") : tType.has(type) ? tType(type) : type);
+  /**
+   * Dòng thay đổi theo dạng câu của một phần (bản vẽ `DoiPhienBan2B`: "10 trắc nghiệm → 5 ghép đôi"): mỗi dạng có ở một
+   * trong hai phía mà số câu khác nhau; phần mới chưa có phía trước thì liệt kê dạng của phần sẽ nạp.
+   */
+  const typeChanges = (part: ReloadPartRow): Array<{ type: TypeCount["questionType"]; from: number | null; to: number }> => {
+    const after = part.typeCounts ?? [];
+    const before = part.before ? (part.before.typeCounts ?? []) : null;
+    const countOf = (list: readonly TypeCount[], type: TypeCount["questionType"]) => list.find((item) => item.questionType === type)?.questionCount ?? 0;
+    const types = [...new Set([...(before ?? []).map((item) => item.questionType), ...after.map((item) => item.questionType)])];
+    return types
+      .map((type) => ({ type, from: before === null ? null : countOf(before, type), to: countOf(after, type) }))
+      .filter((change) => (change.from === null ? change.to > 0 : change.from !== change.to));
+  };
   const sideMeta = (side: ReloadPartSide) =>
     side.shared
       ? t("partMetaShared", { questions: side.questionCount })
@@ -86,24 +106,38 @@ export function ReloadStructureDialog({
             <p className="text-body text-text-muted">{t("noParts")}</p>
           ) : (
             <ol className="flex max-h-64 flex-col overflow-y-auto rounded-md border border-border">
-              {parts.map((part, index) => (
-                <li
-                  key={index}
-                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-border px-3 py-2 last:border-b-0"
-                >
-                  <span className="min-w-0 font-medium wrap-break-word text-text">
-                    {t("partName", { order: index + 1, name: part.name })}
-                  </span>
-                  <span className="text-caption text-text-muted tabular-nums">
-                    {part.before === undefined
-                      ? sideMeta(part)
-                      : t("partChange", {
-                          before: part.before ? t("partWithMeta", { name: part.before.name, meta: sideMeta(part.before) }) : t("partNone"),
-                          after: sideMeta(part),
-                        })}
-                  </span>
-                </li>
-              ))}
+              {parts.map((part, index) => {
+                const changes = typeChanges(part);
+                return (
+                  <li
+                    key={index}
+                    className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-border px-3 py-2 last:border-b-0"
+                  >
+                    <span className="min-w-0 font-medium wrap-break-word text-text">
+                      {richNodes(t, "partName", { order: index + 1, name: <ExamName>{part.name}</ExamName> })}
+                    </span>
+                    <span className="text-caption text-text-muted tabular-nums">
+                      {part.before === undefined
+                        ? sideMeta(part)
+                        : richNodes(t, "partChange", {
+                            before: part.before ? richNodes(t, "partWithMeta", { name: <ExamName>{part.before.name}</ExamName>, meta: sideMeta(part.before) }) : t("partNone"),
+                            after: sideMeta(part),
+                          })}
+                    </span>
+                    {changes.length > 0 && (
+                      <ul className="flex basis-full flex-col gap-0.5 ps-3 text-caption text-text-secondary tabular-nums">
+                        {changes.map((change) => (
+                          <li key={change.type}>
+                            {change.from === null
+                              ? t("typeNew", { type: typeLabel(change.type), count: change.to })
+                              : t("typeChange", { type: typeLabel(change.type), from: change.from, to: change.to })}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
             </ol>
           )}
         </section>
