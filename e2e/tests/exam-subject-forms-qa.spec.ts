@@ -320,29 +320,45 @@ test("R-12 máy chủ (SECTION_SET_COUNT_RANGE, SHORT_ANSWER_MIN), Kiểm tra th
     timeout: SOLVER_TIMEOUT_MS,
   });
   expect(validCheckRes.status()).toBe(200);
-  expect((await validCheckRes.json()).status).toBe("VALID");
+  const validCheck = (await validCheckRes.json()) as { status: string; paths: Array<{ pathId: string }> };
+  expect(validCheck.status).toBe("VALID");
 
   const vsatStruct = await getStructure(admin, vsatId);
   const vsatParts = structuredClone(vsatStruct.parts);
   const firstBlock = allSections({ ...vsatStruct, parts: vsatParts })[0]!.blocks![0]!;
   firstBlock.name = `${firstBlock.name ?? "Block"} QA`;
-  await putStructure(admin, vsatId, vsatParts, vsatStruct.examQuotas, vsatStruct.revision);
+  const updatedVsat = await putStructure(admin, vsatId, vsatParts, vsatStruct.examQuotas, vsatStruct.revision);
 
   await page.goto(`${ADMIN_URL}/exams/${vsatId}/versions`);
   await page.getByRole("button", { name: "Công bố", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  const submitPublish = dialog.getByRole("button", { name: "Công bố 1 đường lựa chọn", exact: true });
-  await expect(submitPublish).toBeEnabled();
-  const [publishRes] = await Promise.all([
-    page.waitForResponse((res) => res.url().endsWith(`/exams/${vsatId}/publish`) && res.request().method() === "POST"),
-    submitPublish.click(),
-  ]);
-  expect(publishRes.status()).toBe(409);
-  expect((await publishRes.json()).code).toBe("CHECK_REQUIRED");
-  await expect(dialog).toContainText("Cấu trúc bài thi đã đổi sau lần kiểm tra gần nhất. Kiểm tra lại rồi công bố.");
-  await expect(dialog).not.toContainText("Cấu hình cần được kiểm tra lại trước khi công bố.");
-  await expect(dialog.getByRole("link", { name: "Kiểm tra lại" })).toHaveAttribute("href", `/exams/${vsatId}/review`);
+  await expect(dialog).toContainText("Cần kiểm tra cấu hình trên nguồn câu hỏi hiện tại trước khi công bố.");
+  await expect(dialog.getByRole("link", { name: "Đến Kiểm tra cấu hình" })).toHaveAttribute(
+    "href",
+    `/exams/${vsatId}/review`,
+  );
+  await dialog.getByRole("button", { name: "Hủy", exact: true }).click();
+  await expect(dialog).toBeHidden();
+
+  const publishRes = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${vsatId}/publish`, {
+    headers: { ...admin.headers, "idempotency-key": crypto.randomUUID() },
+    data: {
+      pathIds: validCheck.paths.map((path) => path.pathId),
+      expectedRevision: updatedVsat.revision,
+      note: "CR-5 check",
+    },
+    timeout: SOLVER_TIMEOUT_MS,
+  });
+  expect(publishRes.status(), await publishRes.text()).toBe(409);
+  const publishBody = (await publishRes.json()) as {
+    code?: string;
+    fieldErrors?: Array<{ field?: string; code?: string; message?: string }>;
+  };
+  expect(publishBody.code).toBe("CHECK_REQUIRED");
+  expect(publishBody.fieldErrors).toEqual(
+    expect.arrayContaining([expect.objectContaining({ field: "reason", code: "STRUCTURE_CHANGED" })]),
+  );
 });
 
 test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, và V-SAT Toán 67 lệnh khóa áp dụng + Phần II bật Bắt buộc (AC-24, AC-28)", async ({
@@ -372,6 +388,7 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
     kind: "BCA",
     scope: "SUBJECT",
     subjectCode: "VAN",
+    durationMinutes: 90,
     code: examCode("CR5-BCA-VAN"),
     name: `CR5 BCA Van ${RUN_ID}`,
   });
@@ -385,16 +402,19 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   await page.getByRole("menuitem", { name: /^MAPID \(lọc\)/ }).click();
   await bcaEditor.getByRole("radio", { name: /^Theo chủ đề/ }).check();
   await bcaEditor.getByRole("button", { name: "Chọn kiến thức" }).click();
-  const picker = page.getByRole("dialog");
+  const picker = page.getByRole("dialog", { name: /Chọn kiến thức/ });
   await picker.getByPlaceholder("Tìm theo mã hoặc tên").fill(vanTree.leafCode);
-  await expect(picker.getByRole("checkbox")).toHaveCount(1);
-  await picker.getByRole("checkbox").check();
+  const leafCheckbox = picker.getByRole("checkbox", { name: new RegExp(`^${vanTree.leafCode} `) });
+  await expect(leafCheckbox).toHaveCount(1);
+  await leafCheckbox.check();
   await picker.getByRole("button", { name: /^Áp dụng/ }).click();
   await expect(picker).toBeHidden();
-  await Promise.all([
+  const [bcaSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${bcaVanId}/structure`) && res.request().method() === "PUT"),
     page.getByRole("button", { name: "Lưu", exact: true }).click(),
   ]);
+  expect(bcaSaveRes.status(), await bcaSaveRes.text()).toBe(200);
+  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeDisabled();
   const bcaAfter = await getStructure(admin, bcaVanId);
   expect(allSections(bcaAfter)[0]!.blocks?.[0]?.knowledgeScope?.nodeIds).toContain(vanTree.leafId);
 
@@ -420,8 +440,14 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
     await expect(quotaSwitches.nth(i)).toHaveAccessibleDescription(/Phân bố theo lệnh hỏi chỉ dùng để đối chiếu/);
   }
 
-  const structureNav = page.getByRole("navigation").filter({ has: page.locator("button[data-list-item]") }).first();
-  await structureNav.getByRole("button", { name: /Phần II/ }).click();
+  const structureNav = page.getByRole("navigation", { name: "Cấu trúc" });
+  const partTwoSectionButton = structureNav
+    .locator(":scope > ol > li")
+    .filter({ has: page.locator(":scope > button[data-list-item]", { hasText: /Phần II/ }) })
+    .locator("ol button[data-list-item]");
+  await partTwoSectionButton.click();
+  await expect(partTwoSectionButton).toHaveAttribute("aria-current", "true");
+  await expect(page.locator('[data-subject-form="ROWS"]')).toContainText("6 câu");
   await page.locator("[data-reference-block] summary").click();
   const difficultySection = page.locator('[data-reference-dimension="DIFFICULTY"]');
   await difficultySection.getByRole("textbox", { name: /^Độ khó: .*, số câu$/ }).first().fill("6");
@@ -430,10 +456,12 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   await difficultySwitch.click();
   await expect(difficultySwitch).toBeChecked();
 
-  await Promise.all([
+  const [vsatSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${vsatId}/structure`) && res.request().method() === "PUT"),
     page.getByRole("button", { name: "Lưu", exact: true }).click(),
   ]);
+  expect(vsatSaveRes.status(), await vsatSaveRes.text()).toBe(200);
+  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeDisabled();
 
   const vsatSaved = await getStructure(admin, vsatId);
   expect(vsatSaved.parts[1]!.sections![0]!.matrix?.difficultyEnforcement).toBe("REQUIRED");
@@ -443,7 +471,7 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   expect(savedQuotas.every((quota) => quota.basis === "PROMPT" && quota.enforcement === "REFERENCE")).toBe(true);
 
   await page.reload();
-  await structureNav.getByRole("button", { name: /Phần II/ }).click();
+  await expect(partTwoSectionButton).toHaveAttribute("aria-current", "true");
   await page.locator("[data-reference-block] summary").click();
   await expect(page.locator('[data-reference-dimension="DIFFICULTY"]').getByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeChecked();
   await expect(page.locator("[data-reference-quotas]").getByRole("switch", { name: "Áp dụng khi sinh đề" }).first()).toBeDisabled();
