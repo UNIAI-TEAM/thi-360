@@ -18,7 +18,7 @@ test.setTimeout(SOLVER_TIMEOUT_MS);
  *  1) R-2: cặp chuẩn không khớp lùi về MD kèm FullFormNotice, ghim hết phiên dù đã sửa khớp, lưu và tải lại mới về MT;
  *     giữ nguyên gradeEnforcement REFERENCE của HSA Tiếng Anh khi mở DS và lưu.
  *  2) R-12 sống: QDA Lý 3 chùm → SECTION_SET_COUNT_RANGE và HSA Hóa 0 điền → SHORT_ANSWER_MIN hiện đúng câu ở /review
- *     (không rơi về INFO_MISSING), điều hướng về /structure; HSA Sử 0 điền không lỗi; hộp Công bố nhận 409 CHECK_REQUIRED.
+ *     (không rơi về INFO_MISSING), điều hướng về /structure; HSA Sử 0 điền không lỗi; hộp Công bố cảnh báo NEEDS_RECHECK và POST /publish trả 409 CHECK_REQUIRED.
  *  3) DS đặc thù: THPTQG Văn chỉ đọc không có nút Sửa vs BCA Văn sửa MAPID trên dòng tự luận; V-SAT Toán 67 lệnh
  *     PROMPT/REFERENCE khóa công tắc áp dụng còn Phần II bật Áp dụng khi sinh đề và giữ sau tải lại.
  *  4) Sau FU #155 (V202611200710/0712/0713): GET /api/v1/admin/exam-templates khớp BCA REFERENCE, REVIEW UUID + Bài ôn,
@@ -193,11 +193,14 @@ test("R-2 lùi MD có thông báo, ghim hết phiên, tải lại về MT và gi
   const nameInput = rowEditor.getByRole("textbox", { name: "Tên nhóm" });
   const currentRowName = await nameInput.inputValue();
   await nameInput.fill(`${currentRowName} QA`);
-  await Promise.all([
+  const [anhSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${hsaAnhId}/structure`) && res.request().method() === "PUT"),
     page.getByRole("button", { name: "Lưu", exact: true }).click(),
   ]);
+  expect(anhSaveRes.status(), await anhSaveRes.text()).toBe(200);
+  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeDisabled();
   const anhAfter = await getStructure(admin, hsaAnhId);
+  expect(allSections(anhAfter)[0]!.blocks?.[0]?.name).toBe(`${currentRowName} QA`);
   expect(allSections(anhAfter)[0]!.matrix?.gradeEnforcement).toBe("REFERENCE");
 });
 
@@ -306,7 +309,7 @@ test("R-12 máy chủ (SECTION_SET_COUNT_RANGE, SHORT_ANSWER_MIN), Kiểm tra th
   expect(suCodes).not.toContain("SECTION_SET_COUNT_RANGE");
   expect(suCodes).not.toContain("SHORT_ANSWER_MIN");
 
-  // (c) Hộp Công bố thật nhận 409 CHECK_REQUIRED khi kết quả kiểm tra đã cũ so với bản nháp (STRUCTURE_CHANGED).
+  // AC-60: Hộp Công bố hiện cảnh báo cần kiểm tra lại trên UI (NEEDS_RECHECK) và POST /publish trực tiếp trả 409 CHECK_REQUIRED (STRUCTURE_CHANGED).
   const vsatId = await createApiExam(admin, {
     kind: "VSAT",
     scope: "SUBJECT",

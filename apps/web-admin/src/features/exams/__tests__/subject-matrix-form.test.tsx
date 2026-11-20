@@ -370,7 +370,7 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
 
     const searchInput = within(source).getByRole("searchbox");
     const searchLabel = searchInput.getAttribute("aria-label") ?? "";
-    expect(searchLabel).toContain("Question sets");
+    expect(searchLabel).toBe("Search tags of Question sets");
     expect(searchLabel).not.toContain("Chùm");
     expect(searchLabel).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
 
@@ -378,6 +378,23 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
     await user.click(tags[0]!);
     const selectedList = within(source).getByRole("list", { name: /Question sets/ });
     expect(selectedList.getAttribute("aria-label")).not.toContain("Chùm");
+
+    // R1-5: mở nhánh MAPID (`KnowledgeScopeField`, matrix-set-source.tsx:80) trên bản en → KnowledgePickerDialog phải dùng "Question sets", không rò "Chùm".
+    await user.click(within(source).getByRole("button", { name: "Add condition" }));
+    await user.click(await screen.findByRole("menuitem", { name: /^MAPID/ }));
+    const mapidCondition = source.querySelector('[data-condition="MAPID"]') as HTMLElement | null;
+    expect(mapidCondition).not.toBeNull();
+    await user.click(within(mapidCondition!).getByRole("radio", { name: "By topic" }));
+    await user.click(within(mapidCondition!).getByRole("button", { name: "Choose knowledge" }));
+
+    const picker = await screen.findByRole("dialog", { name: "Choose knowledge (MAPID)" });
+    const pickerDesc = within(picker).getByText(/^Scope of /);
+    expect(pickerDesc).toHaveTextContent("Question sets");
+    expect(pickerDesc).not.toHaveTextContent("Chùm");
+    expect(pickerDesc.textContent).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
+    await user.click(within(picker).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
     for (const el of source.querySelectorAll("[aria-label]")) {
       expect(el.getAttribute("aria-label")).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
     }
