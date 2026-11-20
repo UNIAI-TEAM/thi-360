@@ -12,9 +12,11 @@ import {
   wireBlock,
   wireScience,
   wireSection,
+  wirePart,
   withoutMappingDefaults,
   type Wire,
 } from "./subject-form-harness";
+import { wireQdaScience } from "./subject-matrix-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -191,5 +193,73 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(withoutMappingDefaults(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"])).toEqual(withoutMappingDefaults(wireScience("sec-hoa", "HOA")));
+  });
+});
+
+/**
+ * CR-2 AC-7, AC-9 (FTM AC 35 phần QDA, AC 59): luật MT thật của `matrix-blocking.ts` (giới hạn R-12) trên `StructureEditor` thật, với màn MT
+ * thật và cờ của sản phẩm. Khác các ca ở trên (màn và luật thử), mỗi ca ở đây bỏ chỗ cắm thử trước khi dựng.
+ */
+describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
+  beforeEach(() => restore());
+  const science = (id: string, subject: string, sets = 1) => wireQdaScience(id, subject, { sets });
+  const typeSets = async (user: UserEvent, value: string) => {
+    const input = await screen.findByRole("textbox", { name: "Số chùm" });
+    await user.clear(input);
+    await user.type(input, value);
+  };
+
+  it("matrixLimitsBlockAllSaves: Lý 2 → 3 chùm rồi chuyển môn: Lưu và chuyển, Kiểm tra, Tiếp tục không gửi request, focus về ô Số chùm của Lý", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ parts: [wirePart([science("sec-ly", "LY", 2), science("sec-hoa", "HOA")])] });
+    openStructure("?section=sec-ly");
+    await typeSets(user, "3");
+    expect(await screen.findByText("Số chùm từ 1 đến 2")).toBeInTheDocument();
+    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Còn lỗi cần sửa trước khi lưu hoặc kiểm tra.");
+    expect(putCalls(server)).toHaveLength(0);
+    await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Số chùm" })).toHaveFocus());
+    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    expect(putCalls(server)).toHaveLength(0);
+    expect(checkCalls(server)).toHaveLength(0);
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("lỗi của môn MT chưa mở chặn Lưu từ môn khác và đưa tới ô lỗi; sửa đúng thì lưu được, môn khác không đổi", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ parts: [wirePart([science("sec-ly", "LY"), science("sec-hoa", "HOA")])] });
+    openStructure("?section=sec-ly");
+    await typeSets(user, "3");
+    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Ở lại" }));
+    await typeSets(user, "2");
+    await waitFor(() => expect(screen.queryByText("Số chùm từ 1 đến 2")).toBeNull());
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const sent = sectionsOf(putCalls(server)[0]!.body);
+    expect((sent["sec-ly"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 2, questionCount: 6 });
+    expect((sent["sec-hoa"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 1, questionCount: 3 });
+  });
+
+  it("legacyViolationOpensDefault: bài QDA cũ lưu nháp 3 chùm ở Lý mở MD kèm dòng chữ; Hóa vẫn lưu được; Lưu gửi Lý như đã nạp", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ parts: [wirePart([science("sec-ly", "LY", 3), science("sec-hoa", "HOA")])] });
+    openStructure("?section=sec-ly");
+    expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Số chùm" })).toBeNull();
+    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
+    const fill = await screen.findByRole("textbox", { name: "Điền đáp án" });
+    await user.clear(fill);
+    await user.type(fill, "2");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const sent = sectionsOf(putCalls(server)[0]!.body);
+    expect((sent["sec-ly"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 3, setSize: 3, questionCount: 9 });
+    expect((sent["sec-hoa"]!.blocks as Wire[])[2]).toMatchObject({ questionCount: 2 });
   });
 });

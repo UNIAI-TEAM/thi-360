@@ -37,9 +37,11 @@ test("QDA FULL: phần 3 liệt kê đủ 6 môn từ mẫu, thêm chỉ tiêu c
 
   // Mở môn đầu tiên, thêm một chỉ tiêu chủ đề (chờ mapping) và lưu.
   await subjects.getByRole("button", { name: /^Thiết lập môn/ }).first().click();
+  // MT (FTM R-6): "Thêm chỉ tiêu chủ đề" của khối phạm vi chỉ mở bảng; thêm dòng là nút của chính bảng (chờ mapping).
   await page.getByRole("button", { name: "Thêm chỉ tiêu chủ đề" }).click();
+  await page.locator("[data-topic-add]").click();
   await expect(page.getByText("Chờ mapping")).toBeVisible();
-  // Mọi dạng biểu mẫu theo môn đang tắt (FTM B7): môn mở bằng màn mặc định, không có dòng chữ "thiết lập đầy đủ".
+  // Môn Khoa học của QDA mở MT (FTM B7), không có dòng chữ "thiết lập đầy đủ" của MD.
   await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
   await page.getByRole("button", { name: "Lưu", exact: true }).click();
   await expect(page.getByText("Có thay đổi chưa lưu")).toHaveCount(0);

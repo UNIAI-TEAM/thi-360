@@ -2,11 +2,13 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getExamStructure, updateExamStructure } from "../api.http";
-import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { selectAllSubjectForms } from "../subject-forms/selection";
 import { EXAM_ID } from "./fake-exams-server";
-import { block, part, scienceSection, standardExam } from "./subject-form-builders";
+import { sectionGroups } from "../components/exam-structure-draft";
+import { patchSubjectFormEntry, subjectFormFor } from "../subject-forms/registry";
+import { block, part, scienceSection, standardExam, standardFixtureTemplates } from "./subject-form-builders";
 import { bcaLiteratureSection, hsaLiteratureSection, oneSection, qdaLiteratureSection, thptqgLiteratureSection, thptqgPhysicsParts } from "./subject-row-builders";
+import standardTemplates from "./fixtures/exam-templates-dot3.json";
 import {
   boot,
   installForms,
@@ -277,5 +279,79 @@ describe("Chọn biểu mẫu không gọi request (FTM mục 9)", () => {
     expect(withForms).toEqual(withoutForms);
     expect(withForms).toContain(`GET ${STRUCTURE}`);
     expect(withForms.some((line) => line.includes(TEMPLATES))).toBe(true);
+  });
+});
+
+/**
+ * CR-2 AC-8 (FTM AC 6, AC 40 cho MT; plan B4): mở môn MT thật của mọi mẫu chuẩn QDA, BCA trong fixture rồi Lưu không sửa gì thì thân `PUT`
+ * (chặn ở `api.http.ts`) bằng bản đã nạp, so toàn bộ wire với các loại trừ có tên của `diffWire`. Cờ và màn của sản phẩm.
+ */
+describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
+  beforeEach(() => restore());
+  const MATRIX_KINDS = ["QDA", "BCA", "VACT"];
+
+  it("matrixFormSaveIsIdentity: mọi mẫu MT của QDA, BCA, V-ACT mở môn MT đầu tiên không ghi gì vào bản nháp, và wire qua tải rồi lưu không đổi", async () => {
+    const covered: string[] = [];
+    const mapped = new Map(standardFixtureTemplates().map((template) => [template.code, template]));
+    for (const template of standardTemplates.templates.filter((item) => MATRIX_KINDS.includes(item.kindCode))) {
+      const target = mapped
+        .get(template.code)!
+        .parts.flatMap((item) => sectionGroups(item).flatMap((group) => group.sections))
+        .find((candidate) => {
+          const entry = subjectFormFor(template.kindCode, candidate.subjectCode);
+          return entry?.enabled === true && entry.form === "MATRIX";
+        });
+      if (!target) continue;
+      const wireParts = template.structure.parts as unknown as Wire[];
+      const { server } = boot({ kind: template.kindCode, parts: wireParts });
+      const view = openStructure(`?section=${target.id}`);
+      await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+      // Mở MT không ghi gì vào bản nháp: nút Lưu vẫn khóa, không có "thay đổi chưa lưu".
+      expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
+      expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
+      view.unmount();
+      // Thân PUT bằng bản đã nạp, chặn ở `api.http.ts` (không đổi gì trên đường tải rồi lưu).
+      const loaded = await getExamStructure(EXAM_ID);
+      await updateExamStructure(EXAM_ID, { parts: loaded.parts, examQuotas: loaded.examQuotas ?? [], expectedRevision: loaded.revision });
+      const sent = putCalls(server)[0]!.body as { parts: Wire[] };
+      expect(diffWire(wireParts, sent.parts), template.code).toEqual([]);
+      covered.push(template.code);
+    }
+    expect(covered).toEqual(expect.arrayContaining(["QDA_FULL", "QDA_PART_MATH", "QDA_PART_SCIENCE", "QDA_SUBJECT_LY", "BCA_FULL", "BCA_PART_TN_BAT_BUOC", "BCA_SUBJECT_SU", "VACT_FULL", "VACT_SUBJECT_TOAN", "VACT_SUBJECT_VIETNAMESE"]));
+  }, 180_000);
+
+  it("matrixFormSaveIsIdentity: sửa một ô của MT thì chỉ trường đó đổi trong thân PUT (QDA Lý từ mẫu: Điền 1 → 2)", async () => {
+    const user = userEvent.setup();
+    const template = standardTemplates.templates.find((item) => item.code === "QDA_SUBJECT_LY")!;
+    const wireParts = template.structure.parts as unknown as Wire[];
+    const { server } = boot({ kind: "QDA", parts: wireParts });
+    const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
+    openStructure(`?section=${sectionId}`);
+    const fill = await screen.findByRole("textbox", { name: "Điền đáp án" });
+    await user.clear(fill);
+    await user.type(fill, "2");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const sent = putCalls(server)[0]!.body as { parts: Wire[] };
+    expect(diffWire(wireParts, sent.parts)).toEqual(["$[0].sections[0].blocks[2].questionCount: 1 -> 2"]);
+  });
+
+  it("vactFlexibleKeepsNulls: V-ACT Toán từ mẫu, sửa tổng câu con 18 → 15: thân PUT chỉ đổi `questionCount` của nhóm chùm, `setCount`, `setSize` vẫn null", async () => {
+    const user = userEvent.setup();
+    const template = standardTemplates.templates.find((item) => item.code === "VACT_SUBJECT_TOAN")!;
+    const wireParts = template.structure.parts as unknown as Wire[];
+    const { server } = boot({ kind: "VACT", parts: wireParts });
+    const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
+    openStructure(`?section=${sectionId}`);
+    const children = await screen.findByLabelText("Câu con trong chùm");
+    await user.clear(children);
+    await user.type(children, "15");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const sent = putCalls(server)[0]!.body as { parts: Wire[] };
+    expect(diffWire(wireParts, sent.parts)).toEqual(["$[0].sections[0].blocks[1].questionCount: 18 -> 15"]);
+    const set = ((sent.parts[0]!.sections as Wire[])[0]!.blocks as Wire[])[1]!;
+    expect(set.setCount ?? null).toBeNull();
+    expect(set.setSize ?? null).toBeNull();
   });
 });

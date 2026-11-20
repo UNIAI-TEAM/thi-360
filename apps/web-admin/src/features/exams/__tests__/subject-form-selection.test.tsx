@@ -67,9 +67,9 @@ describe("Thứ tự chọn biểu mẫu (FTM R-1)", () => {
   it("dạng tắt ra MD không dòng chữ; bật thì ra dạng của mục", () => {
     const target = scienceSection("s", "LY");
     const parts = [part("p", [target])];
-    expect(selectSubjectForm(standardExam("QDA"), target, parts)).toEqual({ form: "DEFAULT", notice: false });
-    enable("QDA", "LY");
-    expect(selectSubjectForm(standardExam("QDA"), target, parts)).toEqual({ form: "MATRIX", notice: false });
+    expect(selectSubjectForm(standardExam("HSA"), target, parts)).toEqual({ form: "DEFAULT", notice: false });
+    enable("HSA", "LY");
+    expect(selectSubjectForm(standardExam("HSA"), target, parts)).toEqual({ form: "MATRIX", notice: false });
   });
 
   it("dạng bật mà không khớp ra MD kèm dòng chữ và lý do", () => {

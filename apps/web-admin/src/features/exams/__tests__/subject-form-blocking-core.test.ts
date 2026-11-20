@@ -86,8 +86,9 @@ describe("Lỗi chặn lưu (blocking.ts)", () => {
 describe("Điều hướng theo biểu mẫu (navigation.ts)", () => {
   const sel = (form: "MATRIX" | "ROWS" | "DEFAULT" | "REVIEW") => ({ form, notice: false });
 
-  it("MT: ô của môn (mặc định Cấu trúc câu); DS: dòng; MD, ON: đích cũ; không có nhóm: chỉ mở môn", () => {
-    expect(formTarget(sel("MATRIX"), { sectionId: "s", blockId: "b" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "STRUCTURE" } });
+  it("MT: ô của môn (mặc định Cấu trúc câu, kèm nhóm); DS: dòng; MD, ON: đích cũ; không có nhóm: chỉ mở môn", () => {
+    expect(formTarget(sel("MATRIX"), { sectionId: "s", blockId: "b" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "STRUCTURE", blockId: "b" } });
+    expect(formTarget(sel("MATRIX"), { sectionId: "s" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "STRUCTURE" } });
     expect(formTarget(sel("MATRIX"), { sectionId: "s", field: "SET_SOURCE" })).toEqual({ kind: "MATRIX_FIELD", field: { sectionId: "s", name: "SET_SOURCE" } });
     expect(formTarget(sel("ROWS"), { sectionId: "s", blockId: "b" })).toEqual({ kind: "ROW", blockId: "b" });
     expect(formTarget(sel("ROWS"), { sectionId: "s" })).toBeNull();
