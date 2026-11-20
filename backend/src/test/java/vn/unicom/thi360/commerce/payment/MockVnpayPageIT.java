@@ -1,0 +1,176 @@
+package vn.unicom.thi360.commerce.payment;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.order.domain.OrderState;
+import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
+import vn.unicom.thi360.commerce.payment.domain.PaymentState;
+import vn.unicom.thi360.commerce.payment.gateway.MockVnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.PayRequest;
+import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
+import vn.unicom.thi360.shared.security.AuthCookieService;
+
+/**
+ * AC-17 & AC-18: kiểm tra trang {@code /mock-vnpay}, cookie hết hạn, loại trừ khỏi OpenAPI, và 404 khi ở chế độ {@code SANDBOX}.
+ */
+class MockVnpayPageIT extends AbstractIntegrationTest {
+
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private ObjectMapper mapper;
+    @Autowired private CatalogLookup catalogLookup;
+    @Autowired private PromotionRepository promotionRepository;
+    @Autowired private VnpayGateway vnpayGateway;
+
+    private CommerceTestFixtures fixtures;
+
+    @BeforeEach
+    void setUp() {
+        fixtures = new CommerceTestFixtures(jdbc, mapper, catalogLookup, promotionRepository, testSecuritySupport);
+    }
+
+    @AfterEach
+    void tearDown() {
+        fixtures.cleanup();
+    }
+
+    @Test
+    void rendersMockPageEvenWithExpiredCookieAndHandlesNoResponseAndRejectsInvalidSignature() throws Exception {
+        assertThat(vnpayGateway).isInstanceOf(MockVnpayGateway.class);
+
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        var order = fixtures.insertStubOrder(
+                buyer, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var payment = fixtures.insertStubPayment(order, 1, 200_000L, PaymentState.CREATED);
+
+        String payUrl = vnpayGateway.pay(new PayRequest(
+                payment.txnRef(), order.code(), 200_000L,
+                "Thanh toan don " + order.code(), "vn",
+                "http://localhost:3000/checkout/result",
+                "127.0.0.1", "20261121100000", "20261121101500"));
+
+        // Gọi /mock-vnpay khi trình duyệt còn cookie hết hạn vẫn trả 200 HTML đủ 3 nút hành động.
+        String html = mockMvc.perform(getDecodedUrl(payUrl)
+                        .cookie(new Cookie(AuthCookieService.ACCESS_TOKEN_COOKIE, "expired.invalid.jwt")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(html)
+                .contains("data-mock-action=\"success\"")
+                .contains("data-mock-action=\"failed\"")
+                .contains("data-mock-action=\"no_response\"")
+                .contains("data-ipn-url=");
+
+        // Chữ ký sai bị từ chối 422 VNPAY_SIGNATURE_INVALID.
+        String tamperedUrl = payUrl.replace("vnp_Amount=20000000", "vnp_Amount=100");
+        mockMvc.perform(getDecodedUrl(tamperedUrl))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("VNPAY_SIGNATURE_INVALID"));
+
+        // "Không trả lời": 302 tới vnp_ReturnUrl kèm chữ ký hợp lệ, payment giữ CREATED.
+        String noResponseAction = payUrl.replace("/mock-vnpay?", "/mock-vnpay/action?outcome=no_response&");
+        String location = mockMvc.perform(getDecodedUrl(noResponseAction))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location", Matchers.startsWith("http://localhost:3000/checkout/result?")))
+                .andReturn().getResponse().getHeader("Location");
+
+        assertThat(vnpayGateway.verify(parseQueryParams(location))).isTrue();
+        String paymentState = jdbc.queryForObject(
+                "SELECT state FROM commerce.payment WHERE id = ?", String.class, payment.id());
+        assertThat(paymentState).isEqualTo("CREATED");
+    }
+
+    @Test
+    void mockVnpayIsExcludedFromOpenApi() throws Exception {
+        String raw = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        JsonNode paths = mapper.readTree(raw).path("paths");
+        assertThat(paths.fieldNames()).toIterable().noneMatch(p -> p.contains("mock-vnpay"));
+    }
+
+    @Nested
+    @ActiveProfiles("e2e")
+    @TestPropertySource(properties = {
+        "thi360.vnpay.mode=SANDBOX",
+        "thi360.devdata.published-exams.enabled=false"
+    })
+    class SandboxModeInE2eProfile {
+
+        @Autowired
+        private MockMvc sandboxMockMvc;
+
+        @Test
+        void mockVnpayReturns404WhenModeIsSandboxEvenInMockEligibleProfile() throws Exception {
+            sandboxMockMvc.perform(get("/mock-vnpay"))
+                    .andExpect(status().isNotFound());
+            sandboxMockMvc.perform(get("/mock-vnpay/action").param("outcome", "success"))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    /**
+     * Tái lập cách servlet container giải mã query {@code application/x-www-form-urlencoded}
+     * ({@code +} -> khoảng trắng, {@code %XX} -> UTF-8) trước khi đưa vào {@code @RequestParam}.
+     */
+    private static MockHttpServletRequestBuilder getDecodedUrl(String fullUrl) {
+        URI uri = URI.create(fullUrl);
+        MockHttpServletRequestBuilder builder = get(uri.getRawPath());
+        String query = uri.getRawQuery();
+        if (query != null && !query.isBlank()) {
+            for (String pair : query.split("&")) {
+                int idx = pair.indexOf('=');
+                if (idx <= 0) {
+                    continue;
+                }
+                String k = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+                String v = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+                builder.param(k, v);
+            }
+        }
+        return builder;
+    }
+
+    private static Map<String, String> parseQueryParams(String url) {
+        String query = URI.create(url).getRawQuery();
+        Map<String, String> map = new LinkedHashMap<>();
+        for (String pair : query.split("&")) {
+            int idx = pair.indexOf('=');
+            String k = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
+            String v = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
+            map.put(k, v);
+        }
+        return map;
+    }
+}
