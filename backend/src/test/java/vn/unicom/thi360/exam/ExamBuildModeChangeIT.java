@@ -59,6 +59,14 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
         // The whole standard part set was replaced, not patched.
         assertThat(after.path("questionCount").asInt()).isLessThan(before.path("questionCount").asInt());
         assertThat(edited(id)).isFalse();
+
+        entityManager.flush();
+        JsonNode audit = mapper.readTree(jdbc.queryForObject(
+                "SELECT payload::text FROM shared.outbox_event WHERE topic='audit' "
+                        + "AND payload->>'action'='EXAM.UPDATE' AND payload->>'targetId'=?",
+                String.class, id));
+        assertThat(audit.path("before").path("buildMode").asText()).isEqualTo("STANDARD");
+        assertThat(audit.path("after").path("buildMode").asText()).isEqualTo("REVIEW");
     }
 
     @Test
@@ -139,6 +147,18 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
     void nullOrUnchangedBuildModeKeepsThePlainInfoUpdate() throws Exception {
         JsonNode exam = created(subject("HSA", "TOAN", "REVIEW"));
         String id = exam.path("id").asText();
+        JsonNode initialStructure = structure(id);
+        JsonNode editedParts = initialStructure.path("parts").deepCopy();
+        ((ObjectNode) editedParts.get(0)).put("name", "Edited review");
+        ObjectNode structureUpdate = mapper.createObjectNode();
+        structureUpdate.set("parts", editedParts);
+        structureUpdate.put("expectedRevision", initialStructure.path("revision").asLong());
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content(structureUpdate.toString()))
+                .andExpect(status().isOk());
+        assertThat(edited(id)).isTrue();
+
         JsonNode before = detail(id);
         JsonNode partsBefore = structure(id).path("parts").deepCopy();
         long revision = before.path("revision").asLong();
@@ -146,7 +166,7 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
         // No buildMode: a plain info update, structure untouched.
         patchInfo(id, "{\"name\":\"Tên mới\"}")
                 .andExpect(status().isOk());
-        // Same buildMode: still no rebuild.
+        // Same buildMode: still no rebuild, even on an edited draft without confirmReplace.
         patchInfo(id, "{\"buildMode\":\"REVIEW\",\"description\":\"d2\"}")
                 .andExpect(status().isOk());
 
@@ -156,10 +176,150 @@ class ExamBuildModeChangeIT extends AbstractIntegrationTest {
         assertThat(after.path("name").asText()).isEqualTo("Tên mới");
         assertThat(after.path("description").asText()).isEqualTo("d2");
         assertThat(after.path("revision").asLong()).isGreaterThan(revision);
+        assertThat(edited(id)).isTrue();
         assertThat(structure(id).path("parts")).isEqualTo(partsBefore);
     }
 
+    @Test
+    void publishedExamAllowsPlainUpdateWhenBuildModeIsUnchanged() throws Exception {
+        JsonNode exam = created(subject("HSA", "TOAN", null));
+        String id = exam.path("id").asText();
+        markPublished(id);
+        JsonNode partsBefore = structure(id).path("parts").deepCopy();
+
+        patchInfo(id, "{\"buildMode\":\"STANDARD\",\"description\":\"d2\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description").value("d2"))
+                .andExpect(jsonPath("$.buildMode").value("STANDARD"))
+                .andExpect(jsonPath("$.templateCode").value("HSA_SUBJECT_TOAN"));
+
+        assertThat(structure(id).path("parts")).isEqualTo(partsBefore);
+    }
+
+    @Test
+    void unchangedBuildModeSkipsCatalogLookupOnInactiveSubject() throws Exception {
+        JsonNode exam = created(subject("HSA", "TOAN", null));
+        String id = exam.path("id").asText();
+        entityManager.flush();
+        jdbc.update("UPDATE exam.exam SET status = 'DISCONTINUED', serving_version = 1 WHERE id = ?",
+                UUID.fromString(id));
+        jdbc.update("UPDATE catalog.catalog_item SET status = 2 "
+                + "WHERE id = (SELECT subject_item_id FROM exam.exam WHERE id = ?)",
+                UUID.fromString(id));
+        entityManager.clear();
+
+        patchInfo(id, "{\"buildMode\":\"STANDARD\",\"name\":\"Renamed\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Renamed"))
+                .andExpect(jsonPath("$.buildMode").value("STANDARD"));
+    }
+
+    @Test
+    void scopeChangeToSubjectWithReviewRebuildsIntoReview() throws Exception {
+        for (JsonNode exam : new JsonNode[] {created(part("HSA", "TOAN")), created(full("HSA"))}) {
+            String id = exam.path("id").asText();
+            patchInfo(id, "{\"scope\":\"SUBJECT\",\"subjectCode\":\"TOAN\","
+                            + "\"buildMode\":\"REVIEW\",\"confirmReplace\":true}")
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.scope").value("SUBJECT"))
+                    .andExpect(jsonPath("$.buildMode").value("REVIEW"))
+                    .andExpect(jsonPath("$.templateCode").value("HSA_REVIEW"))
+                    .andExpect(jsonPath("$.parts[0].sections[0].subjectCode").value("TOAN"));
+        }
+    }
+
+    @Test
+    void scopeChangeFromSubjectToFullWithReviewIsRejected() throws Exception {
+        JsonNode exam = created(subject("HSA", "TOAN", "REVIEW"));
+        String id = exam.path("id").asText();
+
+        patchInfo(id, "{\"scope\":\"FULL\",\"buildMode\":\"REVIEW\",\"confirmReplace\":true}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+
+        JsonNode after = detail(id);
+        assertThat(after.path("scope").asText()).isEqualTo("SUBJECT");
+        assertThat(after.path("buildMode").asText()).isEqualTo("REVIEW");
+    }
+
+    @Test
+    void unrecognizedBuildModeIsRejectedEvenWithConfirmReplaceAndWhenPublished() throws Exception {
+        JsonNode exam = created(subject("HSA", "TOAN", null));
+        String id = exam.path("id").asText();
+
+        patchInfo(id, "{\"buildMode\":\"BOGUS\",\"confirmReplace\":true}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        assertThat(detail(id).path("buildMode").asText()).isEqualTo("STANDARD");
+
+        markPublished(id);
+        patchInfo(id, "{\"buildMode\":\"BOGUS\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        assertThat(detail(id).path("buildMode").asText()).isEqualTo("STANDARD");
+    }
+
+    @Test
+    void reviewOnEditedNonSubjectDraftIsRejectedBeforeConfirmReplace() throws Exception {
+        JsonNode exam = created(part("HSA", "TOAN"));
+        String id = exam.path("id").asText();
+        JsonNode structure = structure(id);
+        mockMvc.perform(put("/api/v1/admin/exams/{id}/structure", id)
+                        .with(asUser(Permissions.EXAM_MODIFY)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"parts\":[],\"expectedRevision\":"
+                                + structure.path("revision").asLong() + "}"))
+                .andExpect(status().isOk());
+        assertThat(edited(id)).isTrue();
+
+        patchInfo(id, "{\"buildMode\":\"REVIEW\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EXAM_STRUCTURE_INVALID"));
+        assertThat(detail(id).path("buildMode").asText()).isEqualTo("STANDARD");
+    }
+
+    @Test
+    void scoringConfirmationFollowsPostRebuildPracticeScoring() throws Exception {
+        JsonNode standard = created(subject("HSA", "TOAN", null));
+        String standardId = standard.path("id").asText();
+        assertThat(standard.path("practiceScoring").asText()).isEqualTo("RAW");
+        patchInfo(standardId, "{\"buildMode\":\"REVIEW\",\"practiceScoring\":\"LINEAR\","
+                        + "\"confirmReplace\":true}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.buildMode").value("REVIEW"))
+                .andExpect(jsonPath("$.practiceScoring").value("LINEAR"));
+
+        JsonNode review = created(subject("HSA", "TOAN", "REVIEW"));
+        String reviewId = review.path("id").asText();
+        assertThat(review.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        patchInfo(reviewId, "{\"buildMode\":\"STANDARD\",\"practiceScoring\":\"LINEAR\","
+                        + "\"confirmReplace\":true}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("SCORING_CONFIRM_REQUIRED"));
+        JsonNode unchanged = detail(reviewId);
+        assertThat(unchanged.path("buildMode").asText()).isEqualTo("REVIEW");
+        assertThat(unchanged.path("practiceScoring").asText()).isEqualTo("LINEAR");
+        assertThat(unchanged.path("templateCode").asText()).isEqualTo("HSA_REVIEW");
+        assertThat(unchanged.path("revision").asLong()).isEqualTo(review.path("revision").asLong());
+
+        patchInfo(reviewId, "{\"buildMode\":\"STANDARD\",\"practiceScoring\":\"LINEAR\","
+                        + "\"confirmReplace\":true,\"confirmScoring\":true}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.buildMode").value("STANDARD"))
+                .andExpect(jsonPath("$.practiceScoring").value("LINEAR"));
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    /** FULL exam of the kind. */
+    private org.springframework.test.web.servlet.ResultActions full(String kind) throws Exception {
+        ObjectNode body = mapper.createObjectNode()
+                .put("kind", kind).put("scope", "FULL")
+                .put("name", "BMC " + kind + " FULL")
+                .put("code", "BM-" + UUID.randomUUID().toString().substring(0, 8));
+        return mockMvc.perform(post("/api/v1/admin/exams").with(asUser(Permissions.EXAM_MODIFY))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .contentType(MediaType.APPLICATION_JSON).content(body.toString()));
+    }
 
     /** SUBJECT exam of the kind; {@code mode} null means the create default (STANDARD). */
     private org.springframework.test.web.servlet.ResultActions subject(String kind, String subject,

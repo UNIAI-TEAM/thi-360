@@ -712,10 +712,9 @@ public class ExamService {
         if (request.practiceScoring() != null && !Set.of("RAW", "LINEAR").contains(request.practiceScoring())) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
-        if ("LINEAR".equals(request.practiceScoring()) && !"LINEAR".equals(exam.getPracticeScoring())
-                && !Boolean.TRUE.equals(request.confirmScoring())) {
-            throw new BusinessRuleException(ExamErrorCodes.SCORING_CONFIRM_REQUIRED,
-                    messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
+        boolean modeRequested = request.buildMode() != null;
+        if (modeRequested && !Set.of("STANDARD", "REVIEW").contains(request.buildMode())) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
         Map<String, Object> before = examInfoSnapshot(exam);
         Instant now = Instant.now(clock);
@@ -725,11 +724,12 @@ public class ExamService {
                 || request.partCode() != null || request.subjectCode() != null
                 || request.structureYear() != null || request.matrixYear() != null;
         // A buildMode change replaces the working structure like a scope change (UNI-2751): same
-        // template-load path, same confirmReplace / EXAM_SCOPE_LOCKED rules; the requested mode is
-        // validated as on create (REVIEW only for SUBJECT) once the effective scope is resolved.
-        boolean modeRequested = request.buildMode() != null;
+        // template-load path, same confirmReplace / EXAM_SCOPE_LOCKED rules; unchanged buildMode
+        // without scope fields skips catalog lookups so plain metadata edits stay independent.
+        boolean requestedModeChanged = modeRequested
+                && !Objects.equals(request.buildMode(), exam.getBuildMode());
         boolean scopeChanged = false;
-        if (scopeRequested || modeRequested) {
+        if (scopeRequested || requestedModeChanged) {
             CatalogItemView kindItem = request.kind() != null ? requireKindItem(request.kind())
                     : catalogLookup.findItem(exam.getKindItemId())
                             .orElseThrow(() -> examNotFound(examId));
@@ -742,8 +742,6 @@ public class ExamService {
                     : exam.getStructureYear();
             Integer matrixYear = request.matrixYear() != null ? request.matrixYear()
                     : exam.getMatrixYear();
-            boolean requestedModeChanged = modeRequested
-                    && !Objects.equals(request.buildMode(), exam.getBuildMode());
             scopeChanged = requestedModeChanged
                     || !Objects.equals(kindItem.id(), exam.getKindItemId())
                     || !Objects.equals(scope, exam.getScope())
@@ -756,12 +754,6 @@ public class ExamService {
                     throw new ConflictException(ExamErrorCodes.SCOPE_LOCKED,
                             messages.get(ExamErrorCodes.SCOPE_LOCKED));
                 }
-                ExamStructure structure = structureRepository.findById(examId).orElse(null);
-                if (structure != null && structure.isEdited()
-                        && !Boolean.TRUE.equals(request.confirmReplace())) {
-                    throw new ConflictException(ExamErrorCodes.REPLACE_CONFIRM,
-                            messages.get(ExamErrorCodes.REPLACE_CONFIRM));
-                }
                 ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
                 ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
                 String mode = requireBuildMode(
@@ -769,6 +761,12 @@ public class ExamService {
                                 : "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD",
                         choice.scope());
                 rejectRawReview(request.practiceScoring(), mode);
+                ExamStructure structure = structureRepository.findById(examId).orElse(null);
+                if (structure != null && structure.isEdited()
+                        && !Boolean.TRUE.equals(request.confirmReplace())) {
+                    throw new ConflictException(ExamErrorCodes.REPLACE_CONFIRM,
+                            messages.get(ExamErrorCodes.REPLACE_CONFIRM));
+                }
                 boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
                 // H41 (BE-21): same dedicated PART lookup as doCreate.
                 boolean cutFromSubject = false;
@@ -808,10 +806,12 @@ public class ExamService {
                         : subjectPart ? doc.parts().getFirst().maxPoints()
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
+                String rebuiltScoring = review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring();
+                requireScoringConfirmation(request, rebuiltScoring);
                 exam.applyScoringProfile(review ? maxScore : subjectPart ? null
                                 : scopedReferenceMax(profile, choice.scope(),
                                         request.maxScore() != null ? request.maxScore() : maxScore),
-                        review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring());
+                        rebuiltScoring);
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
@@ -827,6 +827,7 @@ public class ExamService {
         }
         if (!scopeChanged) {
             rejectRawReview(request.practiceScoring(), exam.getBuildMode());
+            requireScoringConfirmation(request, exam.getPracticeScoring());
         }
 
         String code = exam.getCode();
@@ -1653,6 +1654,15 @@ public class ExamService {
     private static void rejectRawReview(String requestedScoring, String buildMode) {
         if ("RAW".equals(requestedScoring) && "REVIEW".equals(buildMode)) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+    }
+
+    /** Requires explicit confirmation when the effective post-rebuild profile changes into LINEAR. */
+    private void requireScoringConfirmation(UpdateExamInfoRequest request, String effectiveScoring) {
+        if ("LINEAR".equals(request.practiceScoring()) && !"LINEAR".equals(effectiveScoring)
+                && !Boolean.TRUE.equals(request.confirmScoring())) {
+            throw new BusinessRuleException(ExamErrorCodes.SCORING_CONFIRM_REQUIRED,
+                    messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
         }
     }
 
