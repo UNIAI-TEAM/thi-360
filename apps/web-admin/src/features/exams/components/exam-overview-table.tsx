@@ -6,6 +6,7 @@ import { useId } from "react";
 import type { ExamTiming } from "../types";
 import type { OverviewBlockInfo, OverviewRow } from "../create-exam-overview";
 import { overviewTotals } from "../create-exam-overview";
+import { labelAfterName, labelBeforeName } from "./exam-review-shared";
 import { LOCKED_FIELD } from "./locked-field";
 import { ScrollableTable } from "./scrollable-table";
 
@@ -63,32 +64,45 @@ const cellInput = "h-9 w-20 text-end";
 function NumberCell({
   row,
   field,
+  nameId,
   error,
   locked,
   onCellChange,
 }: {
   row: OverviewRow;
   field: "questionCount" | "durationMinutes" | "maxPoints";
+  nameId: string;
   error: string | undefined;
   /** Mẫu `fixedCounts` (H27): ô chỉ đọc — không cho sửa; vẫn trong thứ tự tab như bản vẽ (`readonly aria-readonly`). */
   locked?: boolean;
   onCellChange: ExamOverviewTableProps["onCellChange"];
 }) {
   const t = useTranslations("exams.create.overview");
+  const inputId = useId();
+  const afterId = useId();
   const errorId = useId();
+  const before = labelBeforeName(t, `cell.${field}`, "name");
+  const after = labelAfterName(t, `cell.${field}`, "name");
   return (
     <div data-field={`${row.key}.${field}`}>
       <Input
         {...NUMERIC}
+        id={inputId}
         value={row[field]}
         readOnly={locked}
         aria-readonly={locked || undefined}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
-        aria-label={t(`cell.${field}`, { name: row.label })}
+        aria-label={before}
+        aria-labelledby={[inputId, nameId, after ? afterId : null].filter(Boolean).join(" ")}
         className={cn(cellInput, locked && LOCKED_FIELD)}
         onChange={(event) => onCellChange(row.key, field, event.target.value)}
       />
+      {after && (
+        <span id={afterId} hidden>
+          {after}
+        </span>
+      )}
       {error && (
         <p id={errorId} className="mt-1 text-caption text-danger">
           {error}
@@ -178,6 +192,7 @@ export function ExamOverviewTable({
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
   const format = useFormatter();
+  const tableId = useId();
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? sharedTotal ?? "");
   const showDuration = timing === "PER_PART";
   // H-SCA, V-SAT: dòng lấy câu của mẫu (chỉ đọc) kèm cột Tỷ lệ trong phần, Lệnh hỏi (V-SAT) và Điểm tối đa; kỳ thi khác không có.
@@ -237,6 +252,7 @@ export function ExamOverviewTable({
               const rowIssues = issues.get(row.key);
               const display = label(row);
               const cellRow = { ...row, label: display };
+              const rowNameId = `${tableId}-${row.key}-name`;
               if (row.kind === "omitted") {
                 return (
                   <tr key={row.key} className="border-b border-border text-text-muted last:border-b-0">
@@ -288,7 +304,9 @@ export function ExamOverviewTable({
                 <tr key={row.key} className="border-b border-border last:border-b-0">
                   <td className={cn("px-3 py-2 align-top", row.kind === "section" && "pl-8 text-text-secondary")}>
                     {row.kind === "section" ? <span className="me-1 text-text-muted">–</span> : null}
-                    {row.kind === "part" ? <span data-exam-content>{display}</span> : display}
+                    <span id={rowNameId} data-exam-content={row.kind === "part" ? "" : undefined}>
+                      {display}
+                    </span>
                     {row.choice && <span className="ms-2 text-caption text-text-muted">{t("choiceNote")}</span>}
                   </td>
                   <td className="px-3 py-2 align-top">
@@ -299,6 +317,7 @@ export function ExamOverviewTable({
                         <NumberCell
                           row={cellRow}
                           field="questionCount"
+                          nameId={rowNameId}
                           error={rowIssues?.questionCount}
                           locked={readOnly || row.lockedCount}
                           onCellChange={onCellChange}
@@ -326,7 +345,7 @@ export function ExamOverviewTable({
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
                         {row.kind === "part" ? (
-                          <NumberCell row={cellRow} field="durationMinutes" error={rowIssues?.durationMinutes} locked={readOnly} onCellChange={onCellChange} />
+                          <NumberCell row={cellRow} field="durationMinutes" nameId={rowNameId} error={rowIssues?.durationMinutes} locked={readOnly} onCellChange={onCellChange} />
                         ) : (
                           <span className="px-3 py-2 text-text-muted">—</span>
                         )}
@@ -337,7 +356,7 @@ export function ExamOverviewTable({
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
                         {row.kind === "part" ? (
-                          <NumberCell row={cellRow} field="maxPoints" error={rowIssues?.maxPoints} locked={readOnly} onCellChange={onCellChange} />
+                          <NumberCell row={cellRow} field="maxPoints" nameId={rowNameId} error={rowIssues?.maxPoints} locked={readOnly} onCellChange={onCellChange} />
                         ) : (
                           <span className="px-3 py-2 text-text-muted">{row.maxPoints || "—"}</span>
                         )}

@@ -386,6 +386,24 @@ export function pathLabelCodes(paths: readonly ExamPathRef[], single: string): s
     .join(", ");
 }
 
+/** Như `pathLabelCodes` nhưng tên lựa chọn của mẫu nằm trong `ExamName`; tổ hợp và `single` giữ ngoài vùng nội dung đề. */
+export function pathLabelCodeNodes(paths: readonly ExamPathRef[], single: string): ReactNode {
+  if (paths.length === 0) return "";
+  return paths.map((path, pathIndex) => (
+    <Fragment key={path.pathId || pathIndex}>
+      {pathIndex > 0 && ", "}
+      {path.choices.length
+        ? path.choices.map((choice, choiceIndex) => (
+            <Fragment key={`${choice.partId}-${choice.optionId}-${choiceIndex}`}>
+              {choiceIndex > 0 && " + "}
+              {choice.kind === "COMBINATION" ? choice.code : <ExamName>{choice.name}</ExamName>}
+            </Fragment>
+          ))
+        : single}
+    </Fragment>
+  ));
+}
+
 /**
  * Liên kết chỉ có icon trong cột Thao tác: cùng cỡ, vòng focus, tooltip với `IconButton` của kit (DESIGN.md 5.9),
  * nhưng là `<Link>` vì dẫn sang trang khác. `label` là phần giao diện của nhãn; `nameId` (id của tên đối tượng đang hiện
@@ -435,36 +453,70 @@ export function IconLink({
   );
 }
 
+type WherePart = { text: string; exam: boolean };
+
 /** Tên các phần tử của cấu trúc hiện tại theo id, để dựng nhãn vị trí thay đổi. `null`: không có tên dùng được. */
 function structureNames(
   parts: readonly ExamPart[],
   subjectName: (code: string) => string,
-): Record<ChangeLevel, Map<string, string | null>> {
-  const names: Record<ChangeLevel, Map<string, string | null>> = {
+): Record<ChangeLevel, Map<string, WherePart | null>> {
+  const names: Record<ChangeLevel, Map<string, WherePart | null>> = {
     part: new Map(),
     section: new Map(),
     block: new Map(),
     option: new Map(),
   };
   const visitBlocks = (blocks: readonly { id: string; name: string }[] | undefined) => {
-    for (const block of blocks ?? []) names.block.set(block.id, block.name.trim() || null);
+    for (const block of blocks ?? []) {
+      const text = block.name.trim();
+      names.block.set(block.id, text ? { text, exam: true } : null);
+    }
   };
   const visitSections = (sections: readonly ExamSection[]) => {
     for (const section of sections) {
-      names.section.set(section.id, subjectName(section.subjectCode));
+      names.section.set(section.id, { text: subjectName(section.subjectCode), exam: false });
       visitBlocks(section.blocks);
     }
   };
   for (const part of parts) {
-    names.part.set(part.id, part.name.trim() || null);
+    const partText = part.name.trim();
+    names.part.set(part.id, partText ? { text: partText, exam: true } : null);
     visitSections(part.sections);
     for (const option of part.options) {
-      names.option.set(option.id, option.kind === "COMBINATION" ? option.code : (option.name ?? option.code));
+      names.option.set(
+        option.id,
+        option.kind === "COMBINATION"
+          ? { text: option.code, exam: false }
+          : { text: option.name ?? option.code, exam: true },
+      );
       visitSections(option.sections);
       visitBlocks(option.blocks);
     }
   }
   return names;
+}
+
+function useChangeWhereParts(exam: ExamDetail) {
+  const t = useTranslations("exams.versions.changes.where");
+  const lookup = useLookup();
+  const names = useMemo(() => structureNames(exam.parts, lookup.subject), [exam.parts, lookup]);
+  return useCallback(
+    (where: string): WherePart[] => {
+      const target = parseChangeWhere(where);
+      if (!target) return where ? [{ text: where, exam: true }] : [];
+      const labels: WherePart[] = target.steps.map((step) =>
+        step.id === null
+          ? { text: t(`all.${step.level}`), exam: false }
+          : (names[step.level].get(step.id) ?? { text: t(`item.${step.level}`), exam: false }),
+      );
+      // Thông tin bán nằm trong bản chụp ở `config/listing/<trường>`: mở đầu bằng "Thông tin bán" thay vì "Cấu hình bài thi".
+      if (target.config) labels.unshift({ text: t(target.fields[0] === "listing" ? "listing" : "config"), exam: false });
+      const field = target.fields.find((name) => t.has(`field.${name}`));
+      if (field) labels.push({ text: t(`field.${field}`), exam: false });
+      return labels.length > 0 ? labels : [{ text: t("structure"), exam: false }];
+    },
+    [t, names],
+  );
 }
 
 /**
@@ -473,22 +525,21 @@ function structureNames(
  * mẫu đã là chữ mô tả) giữ nguyên.
  */
 export function useChangeWhere(exam: ExamDetail) {
-  const t = useTranslations("exams.versions.changes.where");
-  const lookup = useLookup();
-  const names = useMemo(() => structureNames(exam.parts, lookup.subject), [exam.parts, lookup]);
+  const parts = useChangeWhereParts(exam);
+  return useCallback((where: string) => parts(where).map((item) => item.text).join(" · "), [parts]);
+}
+
+/** Như `useChangeWhere` nhưng tên phần, khối, lựa chọn của mẫu nằm trong `ExamName`. */
+export function useChangeWhereNode(exam: ExamDetail) {
+  const parts = useChangeWhereParts(exam);
   return useCallback(
-    (where: string) => {
-      const target = parseChangeWhere(where);
-      if (!target) return where;
-      const labels = target.steps.map((step) =>
-        step.id === null ? t(`all.${step.level}`) : (names[step.level].get(step.id) ?? t(`item.${step.level}`)),
-      );
-      // Thông tin bán nằm trong bản chụp ở `config/listing/<trường>`: mở đầu bằng "Thông tin bán" thay vì "Cấu hình bài thi".
-      if (target.config) labels.unshift(t(target.fields[0] === "listing" ? "listing" : "config"));
-      const field = target.fields.find((name) => t.has(`field.${name}`));
-      if (field) labels.push(t(`field.${field}`));
-      return labels.length > 0 ? labels.join(" · ") : t("structure");
-    },
-    [t, names],
+    (where: string): ReactNode =>
+      parts(where).map((item, index) => (
+        <Fragment key={index}>
+          {index > 0 && " · "}
+          {item.exam ? <ExamName>{item.text}</ExamName> : item.text}
+        </Fragment>
+      )),
+    [parts],
   );
 }

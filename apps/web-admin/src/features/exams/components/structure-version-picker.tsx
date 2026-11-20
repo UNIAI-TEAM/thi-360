@@ -8,6 +8,7 @@ import { partTypeCounts } from "../part-type-counts";
 import { useApplyExamTemplate } from "../queries";
 import { ExamsApiError } from "../review-api";
 import type { ExamDetail, ExamPart, ExamTemplate, StructureOverviewPolicy } from "../types";
+import { ExamName, richNodes } from "./exam-review-shared";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
 import { StructureOverviewConfirmDialog } from "./structure-overview-confirm-dialog";
 
@@ -126,21 +127,29 @@ export function StructureVersionPicker({ exam, templates, dirty, currentParts, o
                   const next = available.find((template) => template.code === code);
                   if (next && next.code !== exam.templateCode) setPending(next);
                 }}
-                options={available.map((template) => ({ value: template.code, label: versionLabel(template) }))}
+                options={available.map((template) => ({
+                  value: template.code,
+                  label: <ExamName>{versionLabel(template)}</ExamName>,
+                  textValue: versionLabel(template),
+                }))}
               />
             )}
           </FormField>
           {current && (current.summary || current.expertNote) && (
             <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted" data-testid="structure-version-summary">
-              {current.summary && <span>{current.summary}</span>}
+              {current.summary && <ExamName>{current.summary}</ExamName>}
               {current.expertNote && <StatusChip tone="warning">{t("expertPending")}</StatusChip>}
             </div>
           )}
         </div>
         {previews.map((template) => (
           <div key={template.code} className="flex min-w-0 flex-[1_1_18rem] flex-col gap-1" data-testid="structure-version-preview">
-            <span className="text-caption text-text-muted">{t("previewTitle", { name: versionLabel(template) })}</span>
-            <span className="text-body text-text-secondary">{template.summary}</span>
+            <span className="text-caption text-text-muted">
+              {richNodes(t, "previewTitle", { name: <ExamName>{versionLabel(template)}</ExamName> })}
+            </span>
+            <span className="text-body text-text-secondary">
+              <ExamName>{template.summary}</ExamName>
+            </span>
           </div>
         ))}
       </div>
@@ -150,7 +159,7 @@ export function StructureVersionPicker({ exam, templates, dirty, currentParts, o
           if (!open) close();
         }}
         step={t("step", { step: 1 })}
-        title={t("reloadTitle", { name: pending ? versionLabel(pending) : "" })}
+        title={richNodes(t, "reloadTitle", { name: pending ? <ExamName>{versionLabel(pending)}</ExamName> : "" })}
         description={t("reloadDescription")}
         parts={pending ? rowsOf(pending, currentParts) : []}
         note={dirty ? t("reloadNoteDirty") : t("reloadNote")}

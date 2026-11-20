@@ -95,10 +95,16 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           // Tên chủ đề do máy chủ gửi kèm từng dòng (`topicName`); chưa có thì lấy ở chỉ tiêu của cấu trúc. Độ khó của chỉ tiêu
           // chỉ có ở cấu trúc nên hiện thêm khi cấu trúc đã tải.
           const quota = quotas?.get(ref.code);
-          const name = row.topicName ?? quota?.name;
+          const name = row.topicName?.trim() || quota?.name?.trim();
           if (name) {
             const levels = (quota?.difficultyCodes ?? []).map((code) => lookup.difficulty(code)).filter(Boolean);
-            return <ExamName>{[name, ...levels].join(" · ")}</ExamName>;
+            return levels.length > 0 ? (
+              <>
+                <ExamName>{name}</ExamName> · {levels.join(" · ")}
+              </>
+            ) : (
+              <ExamName>{name}</ExamName>
+            );
           }
           return t("criterion.TOPIC");
         }
@@ -202,6 +208,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   }, [t, tContent, format, lookup, reference, paper, assigned, quotas, structureUnavailable, rules, sentence]);
 
   if (compliance.length === 0 && dropped.length === 0) return null;
+  const hasPendingStructure = structureUnavailable && compliance.some((row) => topicQuotaPending(row, quotas, true));
   const deviations = compliance.filter(
     (row) => !topicQuotaPending(row, quotas, structureUnavailable) && complianceLevel(row, rules) !== "OK",
   );
@@ -214,11 +221,11 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           {t("title")}
         </h3>
         {compliance.length > 0 &&
-          (deviations.length === 0 ? (
-            <StatusChip tone="success">{t("allPassed")}</StatusChip>
-          ) : (
+          (deviations.length > 0 ? (
             <StatusChip tone={blocking ? "danger" : "warning"}>{t("deviations", { count: deviations.length })}</StatusChip>
-          ))}
+          ) : !hasPendingStructure ? (
+            <StatusChip tone="success">{t("allPassed")}</StatusChip>
+          ) : null)}
       </div>
       {structureQuery.isError && (
         <p role="note" className="flex items-start gap-2 text-caption text-text-muted">

@@ -24,7 +24,7 @@ import { blockFieldAnchor, focusBlockField, type BlockField } from "./block-form
 import { blockFieldFromUrl, clearBlockFieldFromUrl, consumeBlockFieldRequest, useBlockFieldRequest } from "./block-field-focus";
 import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
-import { ExamName, richNodes } from "./exam-review-shared";
+import { ExamName, labelAfterName, labelBeforeName, richNodes } from "./exam-review-shared";
 import { BlockNumberInput, parseNumberText } from "./block-number-input";
 import { BlockRadioGroup } from "./block-radio-group";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
@@ -128,6 +128,7 @@ export function BlockEditor({
   const tForm = useTranslations("exams.structure.blockForm");
   const tContent = useTranslations("content");
   const titleId = useId();
+  const nameId = useId();
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [mapidRequest, setMapidRequest] = useState(0);
   const [droppedSlots, setDroppedSlots] = useState<number[]>([]);
@@ -289,13 +290,14 @@ export function BlockEditor({
 
   const typeLabel = (type: QuestionType) => tContent(`questionType.${type}`);
   const range = block.positionRange;
+  const blockNameNode = block.name ? <ExamName>{block.name}</ExamName> : t("untitled");
 
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 id={titleId} className="flex flex-wrap items-center gap-2 text-h3 font-bold wrap-break-word text-text">
-            {richNodes(t, "title", { name: block.name ? <ExamName>{block.name}</ExamName> : t("untitled") })}
+            {richNodes(t, "title", { name: <span id={nameId}>{blockNameNode}</span> })}
             {range && <Badge className="font-medium">{tForm("positionRange", { from: range.from, to: range.to, same: range.from === range.to ? "yes" : "no" })}</Badge>}
             {block.questionType === "ESSAY" && <Badge className="font-medium">{t("manualGrading")}</Badge>}
             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
@@ -309,23 +311,29 @@ export function BlockEditor({
         <div className="flex flex-wrap items-center justify-end gap-2">
           {headerAction}
           <div className="flex items-center gap-0.5">
-            <IconButton
+            <BlockIconAction
               icon={<ArrowUp />}
-              aria-label={t("moveUp", { name: block.name })}
+              labelKey="moveUp"
+              nameNode={blockNameNode}
+              nameId={nameId}
               disabled={position <= 1}
               onClick={() => onMove(-1)}
             />
-            <IconButton
+            <BlockIconAction
               icon={<ArrowDown />}
-              aria-label={t("moveDown", { name: block.name })}
+              labelKey="moveDown"
+              nameNode={blockNameNode}
+              nameId={nameId}
               disabled={position >= siblingCount}
               onClick={() => onMove(1)}
             />
-            <IconButton
+            <BlockIconAction
               icon={<Trash2 />}
+              labelKey="remove"
+              nameNode={blockNameNode}
+              nameId={nameId}
               disabled={rowsLocked}
               tone="danger"
-              aria-label={t("remove", { name: block.name })}
               onClick={() => setConfirmRemove(true)}
             />
           </div>
@@ -657,6 +665,50 @@ export function BlockEditor({
         }}
       />
     </Card>
+  );
+}
+
+/** Nút icon đầu thẻ nhóm: tách nhãn giao diện khỏi tên nhóm (`ExamName`) qua `aria-labelledby` (DESIGN.md mục 8). */
+function BlockIconAction({
+  icon,
+  labelKey,
+  nameNode,
+  nameId,
+  disabled,
+  tone,
+  onClick,
+}: {
+  icon: ReactNode;
+  labelKey: "moveUp" | "moveDown" | "remove";
+  nameNode: ReactNode;
+  nameId: string;
+  disabled?: boolean;
+  tone?: "danger";
+  onClick: () => void;
+}) {
+  const t = useTranslations("exams.structure.block");
+  const buttonId = useId();
+  const afterId = useId();
+  const before = labelBeforeName(t, labelKey, "name");
+  const after = labelAfterName(t, labelKey, "name");
+  return (
+    <>
+      <IconButton
+        id={buttonId}
+        icon={icon}
+        tone={tone}
+        aria-label={before}
+        aria-labelledby={[buttonId, nameId, after ? afterId : null].filter(Boolean).join(" ")}
+        tooltip={richNodes(t, labelKey, { name: nameNode })}
+        disabled={disabled}
+        onClick={onClick}
+      />
+      {after && (
+        <span id={afterId} hidden>
+          {after}
+        </span>
+      )}
+    </>
   );
 }
 
