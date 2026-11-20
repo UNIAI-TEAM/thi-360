@@ -46,8 +46,9 @@ export function examScope(exam: ExamDetail): ScopeSelection {
 }
 
 /**
- * Yêu cầu `PATCH /exams/{id}` từ biểu mẫu Thông tin bài thi. `changed`: kỳ thi, phạm vi, phần hoặc môn đã đổi nên máy chủ
- * nạp lại cấu trúc theo mẫu mới nhất (`confirmReplace`). Cách dựng bài không có trong yêu cầu: máy chủ giữ giá trị đã lưu.
+ * Yêu cầu `PATCH /exams/{id}` từ biểu mẫu Thông tin bài thi. `changed`: kỳ thi, phạm vi, phần, môn hoặc cách dựng bài đã
+ * đổi nên máy chủ nạp lại cấu trúc theo mẫu mới nhất (`confirmReplace`). Cách dựng bài chỉ gửi khi Theo môn; phạm vi khác
+ * gửi `STANDARD` như máy chủ chuẩn hóa (`requireBuildMode`).
  */
 export function buildUpdateInfoRequest({
   exam,
@@ -75,6 +76,7 @@ export function buildUpdateInfoRequest({
       submitted.scope === "SUBJECT" || (submitted.scope === "PART" && partNeedsSubject(kinds, submitted.kind))
         ? submitted.subjectCode || null
         : null,
+    buildMode: submitted.scope === "SUBJECT" ? (submitted.buildMode ?? "STANDARD") : "STANDARD",
     durationMinutes: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
     maxScore,
     yearsConfirmed: yearsDiffer(appliedTemplate) ? submitted.yearsConfirmed : true,

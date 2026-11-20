@@ -5875,6 +5875,12 @@
         "durationHintPrefilled": "Prefilled from the template; you can edit it.",
         "durationHintPartCut": "A by-part exam does not take the whole-subject duration.",
         "durationHintEmpty": "This subject's template leaves the duration empty.",
+        "buildModeChange": {
+          "title": "Change how the exam is built?",
+          "description": "Changing how the exam is built recreates the structure as for a new exam. The current structure, matrix and question groups will be replaced.",
+          "confirm": "Recreate structure",
+          "cancel": "Go back"
+        },
         "buildModeLegend": "How to build the exam",
         "buildModeStandard": "Use the {kind} subject structure",
         "buildModeStandardHint": "Loads the full subject structure from the default template.",

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { UseFormSetError } from "react-hook-form";
 import { getErrorStatus } from "@/lib/api/query-client";
+import { apiErrorCode } from "@/features/content/api-error";
 import type { ReloadPartRow } from "./components/reload-structure-dialog";
 import type { OverviewRow } from "./create-exam-overview";
 import { applyOverviewToParts } from "./create-exam-overview-structure";
@@ -27,6 +28,8 @@ export interface PendingInfoSave {
   request: UpdateExamInfoRequest;
   /** Các phần sẽ được nạp lại theo mẫu mới nhất của phạm vi mới (hiện ở hộp xác nhận). */
   parts: ReloadPartRow[];
+  /** `true` khi lần lưu này đổi cách dựng bài: hộp xác nhận cảnh báo dựng lại cấu trúc như đề mới (AC-1697-5). */
+  modeChange?: boolean;
 }
 
 interface UseExamInfoSaveOptions {
@@ -85,12 +88,13 @@ export function useExamInfoSave({ exam, structure, rows, formDirty, lockScope, s
       onError: (error) => {
         onFailed();
         const status = getErrorStatus(error);
-        if (status === 409 && !lockScope) {
+        if (status === 409 && apiErrorCode(error) === "EXAM_SCOPE_LOCKED") {
+          setSubmitError(t("scopeLocked"));
+        } else if (status === 409 && !lockScope) {
           setError("code", { message: tExams("create.errors.codeTaken") }, { shouldFocus: true });
         } else if (status === 412) {
           setSubmitError(t("saveConflict"));
         } else if (status === 400 || status === 422) {
-          // Lỗi theo trường gắn vào ô nhập tương ứng; không gắn được thì báo chung (không in chữ của máy chủ).
           const fields = (error instanceof ExamsApiError ? error.fieldErrors : []).flatMap((item) => {
             const field = FORM_FIELD_OF[item.field ?? ""];
             return field ? [{ field, code: item.code }] : [];

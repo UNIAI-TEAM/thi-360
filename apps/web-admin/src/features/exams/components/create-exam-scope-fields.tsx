@@ -54,7 +54,7 @@ export function CreateExamScopeFields({
   errors: { partCode?: string; subjectCode?: string };
   disabled?: boolean;
   showBuildMode?: boolean;
-  /** Chế độ sửa bài đã tạo (`/exams/new?exam=`): cách dựng bài chỉ đọc; `buildModeHint` nêu lý do ngay dưới nhóm. */
+  /** Bài đã có phiên bản công bố (`/exams/new?exam=`): cách dựng bài chỉ đọc; `buildModeHint` nêu lý do ngay dưới nhóm. */
   buildModeLocked?: boolean;
   buildModeHint?: string;
   onChange: (change: Partial<ScopeSelection>) => void;

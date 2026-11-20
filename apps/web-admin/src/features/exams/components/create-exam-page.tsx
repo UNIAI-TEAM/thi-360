@@ -101,7 +101,8 @@ interface ExistingExam {
  *
  * `/exams/new?exam=<id>` là bước 1 của bài đã tạo (đường quay lại từ bước Cấu trúc, UNI-2751): cùng màn, điền sẵn theo bài
  * và cấu trúc đã lưu; "Lưu và tiếp tục" ghi (cấu trúc rồi thông tin, như tab Thông tin chung) và về bước 2. Đổi kỳ thi,
- * phạm vi, phần hoặc môn thì hỏi nạp lại cấu trúc trước khi lưu.
+ * phạm vi, phần, môn hoặc cách dựng bài thì hỏi nạp lại hoặc tạo lại cấu trúc trước khi lưu (bài đã có phiên bản công
+ * bố không đổi được các mục này).
  */
 export function CreateExamPage() {
   const t = useTranslations("exams.create");
@@ -546,8 +547,7 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   };
 
   const requestScope = (change: Partial<ScopeSelection>) => {
-    // Chế độ sửa: máy chủ giữ cách dựng bài đã lưu khi phạm vi mới là Theo môn (như tab Thông tin chung).
-    const next = resolveScope(templates, kinds, reference.subjects, selection, exam ? { ...change, buildMode: exam.buildMode } : change);
+    const next = resolveScope(templates, kinds, reference.subjects, selection, change);
     if (sameSelection(next, selection)) {
       setPendingSelection(null);
       return;
@@ -565,7 +565,11 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
   // lựa chọn hiện tại; bảng đã sửa thì hỏi trước như mọi lần nạp lại.
   const templatesApplied = useRef(templatesStatus === "ready");
   const reloadForTemplates = useEffectEvent(() => {
-    const next = resolveScope(templates, kinds, reference.subjects, selection, exam ? { buildMode: exam.buildMode } : {});
+    if (editingSaved) {
+      if (!tableEdited) applyScope(selection, false);
+      return;
+    }
+    const next = resolveScope(templates, kinds, reference.subjects, selection, {});
     if (tableEdited) setPendingSelection(next);
     else applyScope(next, false);
   });
@@ -637,6 +641,10 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
         parts: changed
           ? reloadPartRows({ templates, kinds, combinations: reference.combinations, partName: partNames.partName, subjectName, next: selection })
           : [],
+        modeChange:
+          savedScope.scope === "SUBJECT" &&
+          selection.scope === "SUBJECT" &&
+          (savedScope.buildMode ?? "STANDARD") !== (selection.buildMode ?? "STANDARD"),
       };
       if (changed) setConfirmReplace(pending);
       else if (overviewChanged) void saveOverviewThenInfo(pending);
@@ -792,8 +800,8 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               selection={selection}
               errors={{ partCode: formState.errors.partCode?.message, subjectCode: formState.errors.subjectCode?.message }}
               disabled={lockScope}
-              // Chế độ sửa: cách dựng bài chỉ đọc (máy chủ chưa nhận `buildMode` khi sửa); bài đã công bố nêu lý do.
-              buildModeLocked={exam !== undefined}
+              // Chế độ sửa: cách dựng bài đổi được khi bài chưa công bố (máy chủ dựng lại cấu trúc); đã công bố thì chỉ đọc kèm lý do.
+              buildModeLocked={lockScope}
               buildModeHint={lockScope ? tStep("buildModePublished") : undefined}
               onChange={requestScope}
             />
@@ -947,10 +955,11 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
         onOpenChange={(open) => {
           if (!open) setConfirmReplace(null);
         }}
-        title={tGeneral("replaceTitle")}
-        description={tGeneral("replaceDescription")}
+        title={confirmReplace?.modeChange ? tStep("buildModeChange.title") : tGeneral("replaceTitle")}
+        description={confirmReplace?.modeChange ? tStep("buildModeChange.description") : tGeneral("replaceDescription")}
         parts={confirmReplace?.parts ?? []}
-        confirmLabel={tGeneral("replaceConfirm")}
+        confirmLabel={confirmReplace?.modeChange ? tStep("buildModeChange.confirm") : tGeneral("replaceConfirm")}
+        cancelLabel={confirmReplace?.modeChange ? tStep("buildModeChange.cancel") : undefined}
         loading={update.isPending}
         onConfirm={() => {
           if (confirmReplace) save(confirmReplace);

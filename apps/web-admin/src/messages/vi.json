@@ -5875,6 +5875,12 @@
         "durationHintPrefilled": "Điền sẵn theo mẫu, sửa được.",
         "durationHintPartCut": "Bài theo phần không lấy thời lượng của cả môn.",
         "durationHintEmpty": "Mẫu của môn này để trống thời lượng.",
+        "buildModeChange": {
+          "title": "Đổi cách dựng bài?",
+          "description": "Đổi cách dựng bài sẽ tạo lại cấu trúc như đề mới. Cấu trúc, ma trận và nhóm lấy câu hiện tại sẽ bị thay.",
+          "confirm": "Tạo lại cấu trúc",
+          "cancel": "Quay lại"
+        },
         "buildModeLegend": "Cách dựng bài",
         "buildModeStandard": "Dùng cấu trúc môn {kind}",
         "buildModeStandardHint": "Nạp cấu trúc đầy đủ của môn theo mẫu mặc định.",

@@ -105,6 +105,24 @@ async function open() {
 
 const countOf = (name: string) => screen.getByRole("textbox", { name: `Số câu của ${name}` });
 
+/** Mẫu Theo môn (STANDARD) của Toán và mẫu bài ôn HSA như máy chủ trả: có mẫu thì môn đã lưu được giữ khi đổi cách dựng bài. */
+function subjectTemplates(server: ExamsBackend) {
+  const hsaFull = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_FULL")!;
+  const standard = toWireTemplate({ ...structuredClone(hsaFull), code: "HSA_SUBJECT_MATH", scope: "SUBJECT", subjectCode: "MATH", parts: [structuredClone(hsaFull.parts[0]!)] });
+  const review = {
+    ...toWireTemplate({
+      ...structuredClone(hsaFull),
+      code: "HSA_REVIEW",
+      scope: "SUBJECT",
+      subjectCode: null,
+      maxScore: null,
+      parts: [{ ...structuredClone(hsaFull.parts[0]!), name: "Review", questionCount: 0, durationMinutes: null, sections: [] }],
+    }),
+    buildMode: "REVIEW" as const,
+  };
+  server.server.on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [...FIXTURE_TEMPLATES.map(toWireTemplate), standard, review] });
+}
+
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
 });
@@ -174,10 +192,72 @@ describe("Bước 1 ở chế độ sửa (/exams/new?exam=<id>, UNI-2751)", () 
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
   }, 30_000);
 
-  it("AC-1697-5: bài đã công bố: phạm vi và cách dựng bài chỉ đọc kèm lý do", async () => {
+  it("AC-1697-5a: bài chưa công bố đổi được cách dựng bài; Lưu và tiếp tục hỏi xác nhận, xác nhận gửi buildMode + confirmReplace và máy chủ dựng lại cấu trúc", async () => {
+    setup({ scope: "SUBJECT", subjectCode: "MATH", parts: [hsaPart(1, "Toán", 50, 75, "MATH")] }, subjectTemplates);
+    const user = userEvent.setup();
+    await open();
+    const buildModeGroup = screen.getByRole("group", { name: /Cách dựng bài/ });
+    expect(buildModeGroup).toBeEnabled();
+    await user.click(screen.getByRole("radio", { name: /^Tự thiết lập bài ôn/ }));
+    await user.click(screen.getAllByRole("button", { name: CONTINUE })[0]!);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Đổi cách dựng bài sẽ tạo lại cấu trúc như đề mới. Cấu trúc, ma trận và nhóm lấy câu hiện tại sẽ bị thay."),
+    ).toBeInTheDocument();
+    expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
+    await user.click(within(dialog).getByRole("button", { name: "Tạo lại cấu trúc" }));
+    await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
+    expect(backend.calls("PATCH", EXAM_PATH)[0]!.body).toMatchObject({
+      scope: "SUBJECT",
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      confirmReplace: true,
+      expectedRevision: seeded.revision,
+    });
+    expect(backend.app(EXAM_ID).buildMode).toBe("REVIEW");
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
+  }, 30_000);
+
+  it("AC-1697-5b: Quay lại ở hộp xác nhận đổi cách dựng bài không gửi gì, cách dựng bài đã lưu giữ nguyên", async () => {
+    setup({ scope: "SUBJECT", subjectCode: "MATH", parts: [hsaPart(1, "Toán", 50, 75, "MATH")] }, subjectTemplates);
+    const user = userEvent.setup();
+    await open();
+    await user.click(screen.getByRole("radio", { name: /^Tự thiết lập bài ôn/ }));
+    await user.click(screen.getAllByRole("button", { name: CONTINUE })[0]!);
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Quay lại" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
+    expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
+    expect(backend.app(EXAM_ID).buildMode).toBe("STANDARD");
+    expect(routerMock.push).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("AC-1697-5c: bài đã công bố: phạm vi và cách dựng bài chỉ đọc kèm lý do", async () => {
     setup({ scope: "SUBJECT", subjectCode: "MATH", buildMode: "REVIEW", servingVersion: 1, parts: [hsaPart(1, "Review", 50, 75, "MATH")] });
     await open();
     expect(screen.getByRole("group", { name: /Cách dựng bài/ })).toBeDisabled();
     expect(screen.getByText("Bài đã có phiên bản công bố; muốn đổi cách dựng bài hãy tạo bài mới")).toBeInTheDocument();
+  }, 30_000);
+
+  it("máy chủ từ chối đổi cách dựng bài (409 EXAM_SCOPE_LOCKED): câu lỗi khóa phạm vi hiện ra, không treo màn hình", async () => {
+    setup({ scope: "SUBJECT", subjectCode: "MATH", parts: [hsaPart(1, "Toán", 50, 75, "MATH")] }, (server) => {
+      subjectTemplates(server);
+      server.server.on("PATCH", EXAM_PATH, {
+        status: 409,
+        body: { code: "EXAM_SCOPE_LOCKED", message: "Phạm vi bài thi đã bị khóa vì bài đã có phiên bản công bố." },
+      });
+    });
+    const user = userEvent.setup();
+    await open();
+    await user.click(screen.getByRole("radio", { name: /^Tự thiết lập bài ôn/ }));
+    await user.click(screen.getAllByRole("button", { name: CONTINUE })[0]!);
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Tạo lại cấu trúc" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Bài đã công bố nên không đổi được kỳ thi, phạm vi, phần và môn");
+    expect(backend.app(EXAM_ID).buildMode).toBe("STANDARD");
   }, 30_000);
 });

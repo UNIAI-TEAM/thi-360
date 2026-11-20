@@ -658,8 +658,8 @@ export interface ExamOverviewRow {
 }
 
 /**
- * Sửa Thông tin chung. Đổi kỳ thi, phạm vi, phần hoặc môn thì cấu trúc được nạp lại theo mẫu (giao diện hỏi xác nhận
- * trước, `confirmReplace`); bài đã công bố không đổi được (409 `EXAM_SCOPE_LOCKED`).
+ * Sửa Thông tin chung. Đổi kỳ thi, phạm vi, phần, môn hoặc cách dựng bài thì cấu trúc được nạp lại theo mẫu (giao diện
+ * hỏi xác nhận trước, `confirmReplace`); bài đã công bố không đổi được (409 `EXAM_SCOPE_LOCKED`).
  */
 export interface UpdateExamInfoRequest {
   name: string;
@@ -668,6 +668,8 @@ export interface UpdateExamInfoRequest {
   scope: ExamScope;
   partCode?: string | null;
   subjectCode?: string | null;
+  /** Kiểu xây bài Theo môn; đổi thì cấu trúc dựng lại như tạo mới. Phạm vi khác gửi `STANDARD` (REVIEW chỉ hợp lệ khi Theo môn). */
+  buildMode?: ExamBuildMode | null;
   description: string | null;
   instructions?: string | null;
   durationMinutes?: number | null;

@@ -9,6 +9,7 @@ import {
   type StructurePart,
   type UiExamSpec,
 } from "./helpers/wave-2b";
+import { examByCode } from "./helpers/published-exam-set";
 
 test.setTimeout(240_000);
 
@@ -142,6 +143,126 @@ test("HSA Toàn bài: đổi sang Theo môn ở bước 1 hỏi nạp lại cấ
   expect(exam.templateCode).toBe("HSA_SUBJECT_TOAN");
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   await expect(page.getByRole("navigation", { name: "Cấu trúc" })).toBeVisible();
+});
+
+interface ExamListBody {
+  items: Array<{ id: string; code: string }>;
+}
+
+interface ApiErrorBody {
+  code?: string;
+}
+
+/** Cách dựng bài đọc từ `GET /exams/{id}`; `CreatedExam` của helper chưa mang trường này. */
+async function buildModeOf(id: string): Promise<string | undefined> {
+  const response = await (await adminApi()).api.get(`${ADMIN_URL}/api/v1/admin/exams/${id}`);
+  expect(response.status(), await response.text()).toBe(200);
+  const body: { buildMode?: string } = await response.json();
+  return body.buildMode;
+}
+
+/** Bước 1 mở lại, đổi cách dựng bài rồi "Lưu và tiếp tục": hộp cảnh báo hiện trước khi gửi gì; trả hộp để kịch bản xác nhận hay hủy. */
+async function changeBuildModeAndContinue(page: Page, mode: RegExp) {
+  await page.getByRole("radio", { name: mode }).check();
+  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByText("Đổi cách dựng bài sẽ tạo lại cấu trúc như đề mới. Cấu trúc, ma trận và nhóm lấy câu hiện tại sẽ bị thay."),
+  ).toBeVisible();
+  return dialog;
+}
+
+test("AC-1697-5a HSA Theo môn: đổi sang Tự thiết lập bài ôn cảnh báo, xác nhận xong bước 2 hiện bảng Tự thiết lập mới", async ({ context, page }) => {
+  await loginAdmin(context, "vi");
+  const spec: UiExamSpec = { kind: "HSA", scope: "SUBJECT", subject: "TOAN", code: examCode("E2E-HSA-MBACK"), name: "HSA đổi cách dựng bài nghiệm thu" };
+  const id = await createExamInUi(page, spec);
+  expect(await buildModeOf(id)).toBe("STANDARD");
+  await backToStep1(page, id, spec);
+
+  const dialog = await changeBuildModeAndContinue(page, /^Tự thiết lập bài ôn/);
+  // Chưa xác nhận thì chưa đổi gì ở máy chủ.
+  expect(await buildModeOf(id)).toBe("STANDARD");
+  await dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click();
+  await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+
+  const exam = await getExam(await adminApi(), id);
+  expect(await buildModeOf(id)).toBe("REVIEW");
+  expect(exam.templateCode).toBe("HSA_REVIEW");
+  // Cùng bài (mã, tên giữ nguyên); cấu trúc là mặc định của bài ôn: một phần.
+  expect(exam.code).toBe(spec.code);
+  expect((await getStructure(await adminApi(), id)).parts).toHaveLength(1);
+});
+
+test("AC-1697-5a HSA Theo môn + Tự thiết lập: đổi lại sang cấu trúc môn nạp cấu trúc mặc định của môn", async ({ context, page }) => {
+  await loginAdmin(context, "vi");
+  const spec: UiExamSpec = {
+    kind: "HSA",
+    scope: "SUBJECT",
+    subject: "TOAN",
+    review: true,
+    code: examCode("E2E-HSA-MBACK2"),
+    name: "HSA đổi lại cách dựng bài nghiệm thu",
+    overview: { questionCount: 10, durationMinutes: 15, maxScore: 10 },
+  };
+  const id = await createExamInUi(page, spec);
+  expect(await buildModeOf(id)).toBe("REVIEW");
+  await backToStep1(page, id, spec);
+
+  const dialog = await changeBuildModeAndContinue(page, /^Dùng cấu trúc môn/);
+  await dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click();
+  await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+
+  const exam = await getExam(await adminApi(), id);
+  expect(await buildModeOf(id)).toBe("STANDARD");
+  expect(exam.templateCode).toBe("HSA_SUBJECT_TOAN");
+  expect(exam.questionCount).toBeGreaterThan(10);
+});
+
+test("AC-1697-5b HSA Theo môn: Quay lại ở hộp cảnh báo không lưu gì, màn vẫn ở bước 1 và cách dựng bài giữ nguyên", async ({ context, page }) => {
+  await loginAdmin(context, "vi");
+  const spec: UiExamSpec = { kind: "HSA", scope: "SUBJECT", subject: "TOAN", code: examCode("E2E-HSA-MCANCEL"), name: "HSA hủy đổi cách dựng bài nghiệm thu" };
+  const id = await createExamInUi(page, spec);
+  const before = await getExam(await adminApi(), id);
+  await backToStep1(page, id, spec);
+
+  const dialog = await changeBuildModeAndContinue(page, /^Tự thiết lập bài ôn/);
+  await dialog.getByRole("button", { name: "Quay lại" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(new RegExp(`/exams/new\\?exam=${id}$`));
+
+  const after = await getExam(await adminApi(), id);
+  expect(await buildModeOf(id)).toBe("STANDARD");
+  expect(after.revision).toBe(before.revision);
+  expect(after.templateCode).toBe(before.templateCode);
+});
+
+test("AC-1697-5c bài đã công bố: cách dựng bài chỉ đọc kèm lý do, máy chủ từ chối đổi trực tiếp bằng API", async ({ context, page }) => {
+  await loginAdmin(context, "vi");
+  const admin = await adminApi();
+  const published = examByCode("DS-HSA-SUBJECT-TOAN");
+  const list = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams?q=${encodeURIComponent(published.code)}&size=10`);
+  expect(list.status(), await list.text()).toBe(200);
+  const listed: ExamListBody = await list.json();
+  const found = listed.items.find((item) => item.code === published.code);
+  expect(found, `bài đã công bố ${published.code} không có trong danh sách`).toBeDefined();
+  const id = found!.id;
+  const exam = await getExam(admin, id);
+  expect(exam.servingVersion ?? null).not.toBeNull();
+
+  await page.goto(`${ADMIN_URL}/exams/new?exam=${id}`);
+  await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
+  await expect(page.getByRole("group", { name: /^Cách dựng bài/ })).toBeDisabled();
+  await expect(page.getByText("Bài đã có phiên bản công bố; muốn đổi cách dựng bài hãy tạo bài mới")).toBeVisible();
+
+  const refused = await admin.api.patch(`${ADMIN_URL}/api/v1/admin/exams/${id}`, {
+    headers: admin.headers,
+    data: { buildMode: "REVIEW", confirmReplace: true, expectedRevision: exam.revision },
+  });
+  expect(refused.status(), await refused.text()).toBe(409);
+  const refusal: ApiErrorBody = await refused.json();
+  expect(refusal.code).toBe("EXAM_SCOPE_LOCKED");
+  expect(await buildModeOf(id)).toBe("STANDARD");
 });
 
 test("tab Thông tin chung của bài đã lưu không đổi: vẫn là bố cục tab với cột Tình trạng", async ({ context, page }) => {
