@@ -129,14 +129,14 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
     await difficulty.getByLabel("Nhận biết", { exact: true }).fill("10");
     await difficulty.getByLabel("Thông hiểu", { exact: true }).fill("10");
     await difficulty.getByLabel("Vận dụng", { exact: true }).fill(String(target - 20));
-    await expect(page.getByText(`Đã khai ${target}/${target}`)).toBeVisible();
+    await expect(difficulty.getByText(`Đã khai ${target}/${target}`)).toBeVisible();
     await saveInUi(page, exam.id);
     const matrix = sectionOf(await getStructure(admin, exam.id), "LY").matrix;
     expect(matrix?.byDifficulty?.map((row) => [row.code, row.value])).toHaveLength(3);
     expect(await checkSection(admin, exam.id, ly.id!)).not.toContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
 
     await difficulty.getByLabel("Thông hiểu", { exact: true }).fill("5");
-    await expect(page.getByText(`Đã khai ${target - 5}/${target}`)).toBeVisible();
+    await expect(difficulty.getByText(`Đã khai ${target - 5}/${target}`)).toBeVisible();
     await saveInUi(page, exam.id);
     expect(await checkSection(admin, exam.id, ly.id!)).toContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
   });
@@ -144,7 +144,8 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
   test("QDA Toán: Phạm vi kiến thức và nút Thêm chỉ tiêu chủ đề; chưa có dòng thì không hiện bảng", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
-    const exam = await createExam(admin, { kind: "QDA", scope: "PART", partCode: "MATH" }, "QDA-T");
+    // Mẫu QDA_PART_MATH có mã phần `TOAN` (không có `MATH`).
+    const exam = await createExam(admin, { kind: "QDA", scope: "PART", partCode: "TOAN" }, "QDA-T");
     const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
     await expect(page.getByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).toBeVisible();
@@ -158,7 +159,8 @@ test.describe("MT của BCA: số chùm của Sử (FTM AC 44 b, AC 53, AC 27 ph
   test("BCA Sử T = 10: 0 chùm báo \"Ít nhất 1 chùm\" và không lưu; 2 chùm lưu chùm 2 × 3 = 6, nhóm đơn 4, giữ nhãn, Kiểm tra không có SET_SIZE_MISMATCH", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
-    const exam = await createExam(admin, { kind: "BCA", scope: "SUBJECT", subjectCode: "SU" }, "BCA-S");
+    // Mẫu SUBJECT của BCA tính giờ chung (SHARED): bài tạo phải có `durationMinutes`.
+    const exam = await createExam(admin, { kind: "BCA", scope: "SUBJECT", subjectCode: "SU", durationMinutes: 60 }, "BCA-S");
     const before = sectionOf(await getStructure(admin, exam.id), "SU");
     const setBefore = roleBlock(before, "QUESTION_SET")!;
     const singleBefore = roleBlock(before, null)!;
@@ -189,7 +191,7 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
   test("V-ACT Toán: độ khó 25/50/25% của 30 hiện 8/15/7, lưu PERCENT 25/50/25, tải lại vẫn %; Cấu trúc câu 30%/70% lưu 9/21, chùm cỡ linh hoạt giữ null", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
-    const exam = await createExam(admin, { kind: "VACT", scope: "SUBJECT", subjectCode: "TOAN" }, "VACT-T");
+    const exam = await createExam(admin, { kind: "VACT", scope: "SUBJECT", subjectCode: "TOAN", durationMinutes: 60 }, "VACT-T");
     const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
@@ -224,7 +226,7 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
   test("V-ACT Tiếng Việt: không có hàng khối lớp khi chưa có số, thêm từ Thêm điều kiện; bảng mạch luôn hiện", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
-    const exam = await createExam(admin, { kind: "VACT", scope: "SUBJECT", subjectCode: "VIETNAMESE" }, "VACT-V");
+    const exam = await createExam(admin, { kind: "VACT", scope: "SUBJECT", subjectCode: "VIETNAMESE", durationMinutes: 60 }, "VACT-V");
     const vn = sectionOf(await getStructure(admin, exam.id), "VIETNAMESE");
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${vn.id}`);
     await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
