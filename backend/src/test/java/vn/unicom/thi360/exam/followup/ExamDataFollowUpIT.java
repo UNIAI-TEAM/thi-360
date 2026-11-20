@@ -202,4 +202,22 @@ class ExamDataFollowUpIT extends AbstractIntegrationTest {
             seeder.seed();
         }
     }
+
+    /** Item 9 (DS:5): the 12 H-SCA Hoa fill-ins answer with an ion or a symbol, not an integer; the other subjects keep integers. */
+    @Test
+    void hscaChemistryFillInsAreIonStrings() {
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT q.code, v.snapshot #>> '{body,answerFormat}' AS format, v.snapshot #>> '{body,answers,0}' AS answer
+                FROM questionbank.question q JOIN questionbank.question_version v ON v.question_id = q.id AND v.version_no = 1
+                WHERE q.code LIKE 'SEED-HSCA-HOA-SA-%' ORDER BY q.code
+                """);
+        assertThat(rows).hasSize(12);
+        for (Map<String, Object> row : rows) {
+            assertThat(row.get("format")).as((String) row.get("code")).isEqualTo("TEXT");
+            assertThat((String) row.get("answer")).as((String) row.get("code")).doesNotMatch("\\d+");
+        }
+        assertThat(jdbc.queryForList("SELECT DISTINCT v.snapshot #>> '{body,answerFormat}' FROM questionbank.question q "
+                + "JOIN questionbank.question_version v ON v.question_id = q.id AND v.version_no = 1 "
+                + "WHERE q.code LIKE 'SEED-HSCA-TOAN-SA-%'", String.class)).containsExactly("INTEGER");
+    }
 }

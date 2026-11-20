@@ -1206,7 +1206,10 @@ UNION ALL
 SELECT md5('thi360-hsca-' || s.code || '-sa-' || n)::uuid, 'SEED-HSCA-' || s.code || '-SA-' || lpad(n::text, 3, '0'),
        'SHORT_ANSWER', s.code, (ARRAY['G10', 'G11', 'G12'])[1 + n % 3], (ARRAY['NB', 'TH', 'VD'])[1 + (n / 3) % 3],
        0.25, 'H-SCA ' || s.code || ' short answer ' || n,
-       jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'INTEGER', 'answers', jsonb_build_array(n::text), 'inputHint', '')
+       CASE WHEN s.code = 'HOA' THEN jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'TEXT', 'answers',
+                jsonb_build_array((ARRAY['Na+', 'K+', 'Ca2+', 'Mg2+', 'Fe3+', 'Cu2+', 'Zn2+', 'Al3+', 'Cl-', 'SO4 2-', 'NO3-', 'OH-'])[n]),
+                'inputHint', '')
+            ELSE jsonb_build_object('type', 'SHORT_ANSWER', 'answerFormat', 'INTEGER', 'answers', jsonb_build_array(n::text), 'inputHint', '') END
 FROM unnest(ARRAY['TOAN', 'LY', 'HOA', 'SINH']) AS s(code) CROSS JOIN generate_series(1, 12) n;
 
 -- H-SCA English listening, single questions (spec 4.3): audio on the question itself, one point.
@@ -1632,6 +1635,32 @@ SET revision = questionbank.question_source_revision.revision + EXCLUDED.revisio
 DROP TABLE seed_dia_fix, seed_dia_legacy;
 
 DROP TABLE seed_be14_classification;
+
+-- FU item 9 (UNI-2700, DS:5): the 12 H-SCA Hoa short answers asked for an integer where a fill-in is an ion or a symbol. A database
+-- seeded earlier gets the strings too, only where the row is untouched: version 1 only, never edited or published again.
+WITH fixed AS (
+    SELECT q.id, q.code, q.subject_item_id,
+           jsonb_set(jsonb_set(v.snapshot, '{body,answerFormat}', '"TEXT"'), '{body,answers}',
+               jsonb_build_array((ARRAY['Na+', 'K+', 'Ca2+', 'Mg2+', 'Fe3+', 'Cu2+', 'Zn2+', 'Al3+', 'Cl-', 'SO4 2-', 'NO3-', 'OH-'])
+                   [substring(q.code from '[0-9]+$')::integer])) AS snapshot
+    FROM questionbank.question q
+    JOIN questionbank.question_version v ON v.question_id = q.id AND v.version_no = 1
+    WHERE q.code ~ '^SEED-HSCA-HOA-SA-0(0[1-9]|1[0-2])$' AND q.current_version_no = 1 AND q.working_version_no IS NULL
+      AND v.snapshot #>> '{body,answerFormat}' = 'INTEGER'
+      AND NOT EXISTS (SELECT 1 FROM questionbank.question_version o WHERE o.question_id = q.id AND o.version_no <> 1)
+), versions AS (
+    UPDATE questionbank.question_version v SET snapshot = f.snapshot FROM fixed f
+    WHERE v.question_id = f.id AND v.version_no = 1 RETURNING v.question_id
+), texts AS (
+    UPDATE questionbank.question q
+    SET content_text = pg_temp.seed_plain(f.snapshot ->> 'content', f.snapshot -> 'body'),
+        search_text = lower(f.code || ' ' || pg_temp.seed_plain(f.snapshot ->> 'content', f.snapshot -> 'body'))
+    FROM fixed f WHERE q.id = f.id AND EXISTS (SELECT 1 FROM versions x WHERE x.question_id = q.id) RETURNING q.subject_item_id
+)
+INSERT INTO questionbank.question_source_revision (subject_item_id, revision)
+SELECT subject_item_id, count(*) FROM texts GROUP BY subject_item_id
+ON CONFLICT (subject_item_id) DO UPDATE
+SET revision = questionbank.question_source_revision.revision + EXCLUDED.revision;
 
 -- Roots keep their audio reference even if an admin later edits them (version 1 stays referenced).
 INSERT INTO questionbank.question_asset_ref (asset_id, question_id, version_no)
