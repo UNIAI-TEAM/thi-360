@@ -63,8 +63,13 @@ export function useSubjectTotalChange({ section, axes, labels, confirmedCount, o
     const difficulty = (code: string) => labels.difficulty(code);
     if (section.matrix?.unit === "PERCENT") {
       const next = computeAllocation({ questionCount: sectionCount, matrix: section.matrix }, axes);
-      noticeLines.push(t("totalChange.grades", { values: axes.grades.map((code, index) => `${grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
-      noticeLines.push(t("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
+      // Biểu mẫu MT: chiều chưa khai (không ô nào) không phải điều kiện của bài nên bỏ cả dòng; chiều đã khai chỉ nêu các ô đã khai (R-4).
+      const listOf = (codes: readonly string[], counts: readonly number[], label: (code: string) => string, rows: ReadonlyArray<{ code: string }>) =>
+        codes.flatMap((code, index) => (declaredOnly && !rows.some((row) => row.code === code) ? [] : [`${label(code)} ${counts[index] ?? 0}`])).join(" · ");
+      const grades = listOf(axes.grades, next.byGrade, grade, section.matrix.byGrade);
+      const difficulties = listOf(axes.difficulties, next.byDifficulty, difficulty, section.matrix.byDifficulty);
+      if (!declaredOnly || grades !== "") noticeLines.push(t("totalChange.grades", { values: grades }));
+      if (!declaredOnly || difficulties !== "") noticeLines.push(t("totalChange.difficulties", { values: difficulties }));
     }
     if (quotas?.unit === "PERCENT") {
       const next = apportionByPercent(

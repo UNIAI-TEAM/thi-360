@@ -178,7 +178,7 @@ describe("Đổi tổng ở môn MT (QDA)", () => {
  * chặn tới khi chọn Áp dụng số mới (hoặc Giữ số cũ); sau đó lưu `unit: PERCENT` giữ 25/50/25. Giữ số cũ đổi về số câu của tổng cũ (8/15/7).
  */
 describe("Đổi tổng ở môn MT có bảng theo tỷ lệ (V-ACT Toán)", () => {
-  const vactServer = () => {
+  const vactServer = (byGrade: Array<{ code: string; value: number }> = []) => {
     const section = {
       id: "sec-vact",
       subjectCode: "TOAN",
@@ -191,7 +191,7 @@ describe("Đổi tổng ở môn MT có bảng theo tỷ lệ (V-ACT Toán)", ()
         mode: "SEPARATE",
         unit: "PERCENT",
         cells: [],
-        byGrade: [],
+        byGrade,
         byDifficulty: [
           { code: "RECOGNITION", value: 25 },
           { code: "COMPREHENSION", value: 50 },
@@ -218,7 +218,9 @@ describe("Đổi tổng ở môn MT có bảng theo tỷ lệ (V-ACT Toán)", ()
 
     await user.click(await screen.findByRole("button", { name: "Đặt tổng môn thành 40 (MT)" }));
     expect(await screen.findByText(/Tổng đổi thành 40 câu \(trước đó 30 câu\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Độ khó: Nhận biết 10 · Thông hiểu 20 · Vận dụng 10/)).toBeInTheDocument();
+    // R1-8: độ khó không kể ô chưa khai (Vận dụng cao) và khối lớp chưa khai không phải điều kiện của MT, nên không có dòng Khối lớp.
+    expect(screen.getByText(/^Độ khó: /)).toHaveTextContent(/^Độ khó: Nhận biết 10 · Thông hiểu 20 · Vận dụng 10$/);
+    expect(screen.queryByText(/^Khối lớp: /)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
@@ -245,5 +247,16 @@ describe("Đổi tổng ở môn MT có bảng theo tỷ lệ (V-ACT Toán)", ()
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as Sent & { parts: Array<{ sections: Array<{ matrix: { byGrade: unknown[] } }> }> };
     expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ unit: "COUNT", byDifficulty: [{ value: 8 }, { value: 15 }, { value: 7 }], byGrade: [] });
+  });
+
+  it("totalChangePercentMatrix: chiều khối lớp đã khai chỉ liệt kê ô đã khai (Lớp 12 40), không liệt kê Lớp 10, 11, Liên lớp", async () => {
+    vactServer([{ code: "GRADE_12", value: 100 }]);
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-vact`);
+    renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
+
+    await user.click(await screen.findByRole("button", { name: "Đặt tổng môn thành 40 (MT)" }));
+    const line = await screen.findByText(/^Khối lớp: /);
+    expect(line).toHaveTextContent(/^Khối lớp: Lớp 12 40$/);
   });
 });
