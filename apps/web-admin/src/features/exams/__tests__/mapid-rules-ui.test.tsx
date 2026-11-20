@@ -399,10 +399,12 @@ describe("Môn và kỳ thi khác giữ nguyên", () => {
   });
 });
 
-it("marks stored group names within rule sentences", () => {
+it("marks stored group names and topic names within rule sentences (R1-7)", () => {
   renderPanel(makeSection({ mapidMode: "MATRIX", mapidRules: [
     { id: "marked", type: "PRESENT", groupId: "b-short", nodeIds: [TOPIC.id] },
   ] }));
   const row = screen.getByTestId("mapid-rule-row-marked");
-  expect(row.querySelector("[data-exam-content]")).toHaveTextContent("Trả lời ngắn");
+  const markedTexts = Array.from(row.querySelectorAll("[data-exam-content]")).map((el) => el.textContent);
+  expect(markedTexts).toContain("Trả lời ngắn");
+  expect(markedTexts).toContain("Mệnh đề và tập hợp");
 });

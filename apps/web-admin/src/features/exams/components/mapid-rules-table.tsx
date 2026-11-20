@@ -59,7 +59,7 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
       return t(`sentence.${data.kind}`, {
         scope: scopeText(data, marked),
         group: groupName(data.group, data.deletedGroupName, marked),
-        topics: topics(rule.nodeIds),
+        topics: topics(rule.nodeIds, marked),
         amount: data.amount ?? "",
       });
     },

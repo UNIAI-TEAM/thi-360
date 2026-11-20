@@ -17,7 +17,7 @@ import {
 } from "@thi360/ui";
 import { CircleMinus, ListTree, Replace, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { KnowledgePickerDialog } from "@/features/content/components/knowledge-picker-dialog";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
@@ -69,9 +69,21 @@ export interface MapidRuleDialogProps {
  */
 export function MapidRuleDialog(props: MapidRuleDialogProps) {
   const t = useTranslations("exams.mapidRules.dialog");
+  const contentRef = useRef<HTMLDivElement>(null);
+  const prevRuleKeyRef = useRef<string | null>(null);
+  const currentKey = props.open ? (props.rule?.id ?? "new") : null;
+
+  useEffect(() => {
+    const prevKey = prevRuleKeyRef.current;
+    prevRuleKeyRef.current = currentKey;
+    if (prevKey !== null && currentKey !== null && prevKey !== currentKey) {
+      contentRef.current?.querySelector<HTMLElement>('[data-testid="mapid-rule-scope"] [role="combobox"]')?.focus();
+    }
+  }, [currentKey]);
+
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent size="xl" closeLabel={t("close")}>
+      <DialogContent ref={contentRef} size="xl" closeLabel={t("close")}>
         {props.open && <RuleForm key={props.rule?.id ?? "new"} {...props} />}
       </DialogContent>
     </Dialog>
@@ -249,7 +261,9 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     !numberInvalid &&
     !issues.includes("PERCENT_RANGE") &&
     !issues.includes("PERCENT_POOL") &&
-    !issues.includes("PERCENT_DENOMINATOR_UNKNOWN");
+    !issues.includes("PERCENT_DENOMINATOR_UNKNOWN") &&
+    !issues.includes("COUNT_ABOVE_GROUP") &&
+    !issues.includes("COUNT_ABOVE_TOTAL");
 
   const crossCheck = useMemo(() => {
     if (!canEvaluateCrossRow) return { kind: "OK" } as const;
@@ -271,6 +285,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     if (groupGone) return t("summary.pendingScope");
     if (form.type === null) return t("summary.pendingType");
     if (form.nodeIds.length === 0) return t("summary.pendingNodes");
+    if (needsNumber && (numberInvalid || issues.includes("PERCENT_RANGE"))) return t("summary.pendingCondition");
     const topics = formatTopics(form.nodeIds, true);
     const scopePhrase =
       form.groupId === null
@@ -489,7 +504,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                     </span>
                     <IconButton
                       icon={<CircleMinus />}
-                      className="size-8"
+                      className="relative size-8 before:pointer-coarse:absolute before:pointer-coarse:-inset-1.5"
                       aria-label={t("nodeRemove", { code: ref.code, name: ref.name })}
                       onClick={() => patch({ nodeIds: form.nodeIds.filter((id) => id !== ref.nodeId) })}
                     />
@@ -555,6 +570,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                     {(controlProps) => (
                       <BlockNumberInput
                         {...controlProps}
+                        key={`${form.type}-${form.entry}`}
                         data-testid="mapid-rule-count"
                         className="w-24"
                         aria-label={t("countAria")}
@@ -571,6 +587,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                     {(controlProps) => (
                       <BlockNumberInput
                         {...controlProps}
+                        key={`${form.type}-${form.entry}`}
                         data-testid="mapid-rule-percent"
                         className="w-24"
                         aria-label={t("percentAria")}
@@ -614,9 +631,9 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
             </div>
           )}
 
-          <div data-testid="mapid-rule-summary" className="rounded-md border border-border bg-subtle px-3 py-2.5">
+          <div data-testid="mapid-rule-summary" className="min-w-0 max-w-full rounded-md border border-border bg-subtle px-3 py-2.5">
             <p className="text-caption font-medium text-text-secondary">{t("summary.label")}</p>
-            <p className="mt-0.5 text-body text-text">
+            <p className="mt-0.5 text-body text-text wrap-anywhere">
               <ExamContentText text={summaryText} />
             </p>
           </div>
@@ -627,28 +644,30 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
               data-testid="mapid-rule-cross-check"
               role={isBlockingCrossCheck ? "alert" : "note"}
               className={cn(
-                "flex flex-col gap-2.5 rounded-md border px-3 py-2.5 text-body text-text",
+                "flex min-w-0 max-w-full flex-col gap-2.5 rounded-md border px-3 py-2.5 text-body text-text",
                 isBlockingCrossCheck ? "border-danger/40 bg-danger-bg" : "border-warning/40 bg-warning-bg",
               )}
             >
-              <div className="flex items-start gap-2">
+              <div className="flex min-w-0 items-start gap-2">
                 <TriangleAlert aria-hidden className={cn("mt-0.5 size-4 shrink-0", isBlockingCrossCheck ? "text-danger" : "text-warning")} />
-                <p className="min-w-0 flex-1">
+                <p className="min-w-0 flex-1 wrap-anywhere">
                   <ExamContentText text={crossCheckMessage} />
                 </p>
               </div>
               {(crossCheck.kind === "SUBSUMES" || (onOpenRule && crossCheck.relatedRules.length > 0)) && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-0 max-w-full flex-wrap gap-2">
                   {crossCheck.kind === "SUBSUMES" && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={!canSave}
+                      className="h-auto min-h-9 min-w-0 max-w-full whitespace-normal py-1.5 text-left [&>span]:min-w-0 [&>span]:max-w-full"
                       data-testid="mapid-rule-replace"
                       onClick={() => onSave(ruleFromForm(form, view), { replaceIds: crossCheck.relatedRules.map((item) => item.id) })}
                     >
                       <Replace />
-                      <span>{t("conflict.replaceRule")}</span>
+                      <span className="min-w-0 wrap-anywhere">{t("conflict.replaceRule")}</span>
                     </Button>
                   )}
                   {onOpenRule &&
@@ -658,11 +677,12 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                         type="button"
                         variant="secondary"
                         size="sm"
+                        className="h-auto min-h-9 min-w-0 max-w-full whitespace-normal py-1.5 text-left [&>span]:min-w-0 [&>span]:max-w-full"
                         data-testid={`mapid-rule-open-${related.id}`}
                         aria-label={t("conflict.openRuleNamed", { rule: ruleSentenceText(related, false) })}
                         onClick={() => onOpenRule(related.id)}
                       >
-                        <span>
+                        <span className="min-w-0 wrap-anywhere">
                           {crossCheck.relatedRules.length === 1 ? (
                             t("conflict.openRule")
                           ) : (

@@ -5874,6 +5874,7 @@
           "SOURCE_GROUP": "Nhóm {group} chỉ lấy câu thuộc {topics}. Các nhóm khác vẫn có thể lấy câu thuộc chủ đề này.",
           "SOURCE_SUBJECT": "Toàn môn chỉ lấy câu thuộc {topics}.",
           "label": "Tóm tắt quy tắc",
+          "pendingCondition": "Nhập giá trị hợp lệ để xem câu tóm tắt quy tắc.",
           "pendingNodes": "Chọn ít nhất một MAPID để xem tóm tắt quy tắc.",
           "pendingScope": "Chọn lại phạm vi áp dụng để xem tóm tắt quy tắc.",
           "pendingType": "Chọn loại quy tắc để xem tóm tắt quy tắc.",

@@ -5874,6 +5874,7 @@
           "SOURCE_GROUP": "Group {group} draws only questions on {topics}. Other groups may still draw these topics.",
           "SOURCE_SUBJECT": "The whole subject draws only questions on {topics}.",
           "label": "Rule summary",
+          "pendingCondition": "Enter a valid value to preview the rule summary.",
           "pendingNodes": "Pick at least one MAPID to preview the rule summary.",
           "pendingScope": "Choose a valid scope to preview the rule summary.",
           "pendingType": "Select a rule type to preview the rule summary.",
