@@ -2,7 +2,7 @@
 
 import { Button, Input, Label, Select } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ExamName, richNodes } from "../components/exam-review-shared";
 import { isSetBlock } from "../matrix";
 import type { QuestionBlock } from "../types";
@@ -22,6 +22,17 @@ export interface RowSplitPanelProps {
 
 const parse = (text: string): number => (/^\d+$/.test(text.trim()) ? Number(text.trim()) : Number.NaN);
 
+function parseStoredTexts(raw: string, units: number): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length >= 2 && parsed.every((item): item is string => typeof item === "string")) return parsed;
+  } catch {
+    // Fallback for legacy " + "-delimited entries.
+  }
+  const legacy = raw.split(" + ");
+  return legacy.length >= 2 ? legacy : evenSplit(units, 2).map(String);
+}
+
 /**
  * Khối "Tách dòng" của màn sửa dòng (FTM R-7, AC 51): chọn số dòng (2 tới số đơn vị của dòng cha, nên 4 chùm không thành 5 dòng), chia đều
  * sẵn, sửa được số của từng dòng con. Cách chia sai (dòng con không phải số nguyên dương, tổng khác dòng cha) hiện lỗi tại dòng và ghi
@@ -31,17 +42,32 @@ export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onC
   const t = useTranslations("exams.subjectForm.rows.split");
   const titleId = useId();
   const countId = useId();
+  const totalErrId = `${titleId}-total-err`;
   const stored = rawInputs.get(sectionId, block.id, SPLIT_FIELD);
-  const [texts, setTexts] = useState(() => stored ? stored.text.split(" + ") : evenSplit(units, 2).map(String));
+  const [texts, setTexts] = useState(() => (stored ? parseStoredTexts(stored.text, units) : evenSplit(units, 2).map(String)));
+  const [lastUnits, setLastUnits] = useState(units);
+  if (units !== lastUnits) {
+    setLastUnits(units);
+    setTexts(evenSplit(units, Math.min(Math.max(texts.length, 2), units)).map(String));
+  }
+  const prevUnitsRef = useRef(units);
   const parts = texts.length;
   const set = isSetBlock(block);
   const issues = splitIssues(units, texts.map(parse));
   const unit = set ? "set" : "single";
 
+  useEffect(() => {
+    if (prevUnitsRef.current === units) return;
+    prevUnitsRef.current = units;
+    const found = splitIssues(units, texts.map(parse));
+    if (found.length === 0) rawInputs.clear(sectionId, block.id, SPLIT_FIELD);
+    else rawInputs.set({ sectionId, blockId: block.id, field: SPLIT_FIELD, text: JSON.stringify(texts), code: found.some((issue) => issue.code === "NOT_POSITIVE") ? "splitNotPositive" : "splitTotal" });
+  }, [units, texts, rawInputs, sectionId, block.id]);
+
   const publish = (next: readonly string[]) => {
     const found = splitIssues(units, next.map(parse));
     if (found.length === 0) rawInputs.clear(sectionId, block.id, SPLIT_FIELD);
-    else rawInputs.set({ sectionId, blockId: block.id, field: SPLIT_FIELD, text: next.join(" + "), code: found.some((issue) => issue.code === "NOT_POSITIVE") ? "splitNotPositive" : "splitTotal" });
+    else rawInputs.set({ sectionId, blockId: block.id, field: SPLIT_FIELD, text: JSON.stringify(next), code: found.some((issue) => issue.code === "NOT_POSITIVE") ? "splitNotPositive" : "splitTotal" });
   };
   const choose = (value: string) => {
     const next = Number(value);
@@ -81,6 +107,8 @@ export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onC
       <ul className="flex flex-col gap-2">
         {texts.map((text, index) => {
           const issue = issues.find((item) => item.code === "NOT_POSITIVE" && item.index === index);
+          const errId = `${titleId}-err-${index}`;
+          const describedBy = [issue && errId, totalIssue && totalErrId].filter(Boolean).join(" ") || undefined;
           const value = parse(text);
           return (
             <li key={index} className="flex flex-col gap-1" data-split-child={index + 1}>
@@ -88,6 +116,7 @@ export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onC
                 <Input
                   aria-label={t("childAria", { index: index + 1, unit })}
                   aria-invalid={issue ? true : undefined}
+                  aria-describedby={describedBy}
                   inputMode="numeric"
                   autoComplete="off"
                   value={text}
@@ -99,7 +128,7 @@ export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onC
                 </span>
               </span>
               {issue && (
-                <p role="alert" className="text-caption text-danger">
+                <p id={errId} role="alert" className="text-caption text-danger">
                   {t("errors.notPositive", { index: index + 1, unit })}
                 </p>
               )}
@@ -108,7 +137,7 @@ export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onC
         })}
       </ul>
       {totalIssue && (
-        <p role="alert" className="text-caption text-danger">
+        <p id={totalErrId} role="alert" className="text-caption text-danger">
           {t("errors.total", { total: totalIssue.total, units: totalIssue.units, unit })}
         </p>
       )}

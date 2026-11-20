@@ -6621,6 +6621,7 @@
             "confirm": "Confirm conversion",
             "gradeHeader": "Grade",
             "percentError": "Total percentage is {total, number}%, needs 100%",
+            "previewBackEmpty": "The combined table has no numbers yet, so both separate dimensions will start empty. Nothing is saved until you confirm.",
             "previewBackHint": "Totals by grade and by difficulty of the current combined table. Nothing is saved until you confirm.",
             "previewBackTitle": "Preview: back to separate dimensions",
             "previewCaption": "Data that will move to the combined table",

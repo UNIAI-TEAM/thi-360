@@ -221,16 +221,28 @@ export function setDimensionEnforcement(matrix: BlockMatrix, dimension: MatrixDi
  * trống giữ trống (khác `convertMatrixUnit` của màn nhóm, vốn điền mọi mã). % → số câu theo phần dư lớn nhất trên `count`; số câu → %
  * nguyên tổng 100. Ma trận kết hợp đi qua `convertMatrixUnit`. `count` không dương: chỉ đổi nhãn đơn vị, không quy đổi.
  */
-export function convertReferenceUnit(matrix: BlockMatrix, unit: BlockMatrix["unit"], count: number, axes: MatrixAxes): BlockMatrix {
+export function convertReferenceUnit(
+  matrix: BlockMatrix,
+  unit: BlockMatrix["unit"],
+  count: number,
+  axes: MatrixAxes,
+  hiddenDimensions: readonly MatrixDimensionKey[] = [],
+): BlockMatrix {
   if (matrix.unit === unit) return matrix;
   if (!(count > 0)) return { ...matrix, unit };
   if (matrix.mode === "COMBINED") return convertMatrixUnit(matrix, unit, count, axes);
-  const convert = (items: BlockMatrix["byGrade"]) => {
+  const convert = (items: BlockMatrix["byGrade"], hidden: boolean) => {
     const values = items.map((item) => item.value);
-    const next = unit === "COUNT" ? apportionByPercent(values, count).results : countsToPercents(values, count);
+    const denominator = hidden && unit === "PERCENT" && sum(values) > 0 ? sum(values) : count;
+    const next = unit === "COUNT" ? apportionByPercent(values, count).results : countsToPercents(values, denominator);
     return items.map((item, index) => ({ code: item.code, value: next[index] ?? 0 }));
   };
-  return { ...matrix, unit, byGrade: convert(matrix.byGrade), byDifficulty: convert(matrix.byDifficulty) };
+  return {
+    ...matrix,
+    unit,
+    byGrade: convert(matrix.byGrade, hiddenDimensions.includes("GRADE")),
+    byDifficulty: convert(matrix.byDifficulty, hiddenDimensions.includes("DIFFICULTY")),
+  };
 }
 
 /** Số câu quy ra của chiều nhập theo tỷ lệ (`null`: chưa đủ 100%, không quy ra số). */
@@ -245,7 +257,8 @@ export function resolvedDimension(matrix: BlockMatrix | null, dimension: MatrixD
  * trận `PERCENT` tự quy ra số theo tổng mới ở máy chủ; dòng DS nhập theo số câu giữ số, đầu môn hiện thiếu hoặc vượt.
  */
 export function applyNewTotal(section: ExamSection, total: number): ExamSection {
-  return { ...section, topicQuotas: applyTopicTotal(section.topicQuotas ?? [], total) };
+  if (section.topicQuotas === undefined) return section;
+  return { ...section, topicQuotas: applyTopicTotal(section.topicQuotas, total) };
 }
 
 /** "Giữ số cũ": các bảng nhập theo % đổi sang nhập theo số câu của tổng cũ `oldTotal`, rồi báo thiếu hoặc vượt. */
@@ -257,7 +270,7 @@ export function keepOldTotal(section: ExamSection, oldTotal: number, axes: Matri
     ...section,
     matrix: section.matrix?.unit === "PERCENT" ? convertReferenceUnit(section.matrix, "COUNT", oldTotal, axes) : section.matrix,
     answerQuotas,
-    topicQuotas: convertTopicEntry(applyTopicTotal(section.topicQuotas ?? [], oldTotal), "COUNT", oldTotal),
+    ...(section.topicQuotas !== undefined ? { topicQuotas: convertTopicEntry(applyTopicTotal(section.topicQuotas, oldTotal), "COUNT", oldTotal) } : {}),
   };
 }
 

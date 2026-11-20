@@ -5,7 +5,7 @@ import { renderWithProviders } from "@/test/render";
 import { BlockMatrixEditor } from "../components/block-matrix-editor";
 import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { boot, checkCalls, openStructure, putCalls, sectionsOf, wireBlock, wireSection, type Wire } from "./subject-form-harness";
-import { oneSection, qdaLiteratureSection } from "./subject-row-builders";
+import { oneSection, qdaLiteratureSection, thptqgPhysicsParts } from "./subject-row-builders";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -573,5 +573,36 @@ describe("Danh sách dòng: dọn nhập thô cũ khi sửa số chùm, đổi c
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
     expect(blockOf(putCalls(server2)[0]!.body, "sec-anh", "s1")).toMatchObject({ questionType: "QUESTION_SET", setCount: 1, setSize: 10 });
+  });
+});
+
+describe("Danh sách dòng: focus COUNT_FIELD và role=alert ở kỳ không nhập % (R1-5, R1-10, R1-14)", () => {
+  it("nonPercentCountFocus: đặt câu về 0 ở QDA / THPTQG chặn PUT và đưa focus về ô nhập số câu / Số chùm", async () => {
+    const user = userEvent.setup();
+    const { server } = boot({ kind: "THPTQG", parts: thptqgPhysicsParts() });
+    const first = openStructure("?section=sec-p2");
+    await first.findByRole("heading", { name: "Các dòng lấy câu" });
+    await edit(user, "p2-tf", "Dung sai");
+    const countInput = screen.getByRole("textbox", { name: "Số câu cần lấy" });
+    await typeInto(user, countInput, "0");
+    await user.click(screen.getByRole("button", { name: "Về danh sách" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(server)).toHaveLength(0);
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu cần lấy" })).toHaveFocus());
+    first.unmount();
+
+    const { server: qdaServer } = boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
+    openStructure("?section=sec-van");
+    await screen.findAllByRole("heading", { name: "Các dòng lấy câu" });
+    await user.click(within(rowOf("van-5")).getByRole("button", { name: /Sửa dòng Doc hieu/ }));
+    const setCountInput = screen.getByRole("textbox", { name: "Số chùm" });
+    await typeInto(user, setCountInput, "0");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Số câu cần lấy phải lớn hơn 0.");
+    expect(setCountInput).toHaveAccessibleDescription(alert.textContent ?? "");
+    await user.click(screen.getByRole("button", { name: "Về danh sách" }));
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(putCalls(qdaServer)).toHaveLength(0);
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Số chùm" })).toHaveFocus());
   });
 });

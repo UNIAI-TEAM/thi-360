@@ -31,6 +31,7 @@ import {
   enforcementModeOf,
   gradeVisible,
   type MatrixDimensionKey,
+  pruneMatrix,
   resolvedDimension,
   setDimensionCell,
   setDimensionEnforcement,
@@ -82,13 +83,17 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
   const applicable = entry.enforcement === "REFERENCE_WITH_APPLY";
   const combinedDeclared = matrix?.cells.some((cell) => cell.value > 0) ?? false;
   const percentIssues = validateMatrix(matrix, count, axes).filter((issue): issue is PercentIssue => issue.code === "PERCENT_TOTAL");
+  const visiblePercentIssues = percentIssues.filter((issue) => (combined ? issue.dimension === "COMBINED" : (issue.dimension === "GRADE" || issue.dimension === "DIFFICULTY") && dimensions.includes(issue.dimension)));
   const quotaEntries = entry.enforcement === "REFERENCE_WITH_APPLY" ? referenceQuotaEntries(section.subjectCode, examQuotas, showGrade) : [];
   const topicQuotas = section.topicQuotas ?? [];
 
   const setMatrix = (next: BlockMatrix | null) => onChange((current) => ({ ...current, matrix: next }));
   const setUnit = (next: MatrixUnit) => {
     if (!matrix) setPendingUnit(next);
-    else onChange((current) => ({ ...current, matrix: current.matrix ? convertReferenceUnit(current.matrix, next, count ?? 0, axes) : current.matrix }));
+    else {
+      const hidden: MatrixDimensionKey[] = showGrade ? [] : ["GRADE"];
+      onChange((current) => ({ ...current, matrix: current.matrix ? convertReferenceUnit(current.matrix, next, count ?? 0, axes, hidden) : current.matrix }));
+    }
   };
   const applyQuota = (quotaId: string, value: ExamQuota["enforcement"]) => onExamQuotas?.(examQuotas.map((quota) => (quota.id === quotaId ? { ...quota, enforcement: value } : quota)));
 
@@ -97,7 +102,7 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
       className="group rounded-md border border-border"
       data-reference-block
       aria-labelledby={headingId}
-      open={userOpen || percentIssues.length > 0}
+      open={userOpen || visiblePercentIssues.length > 0}
       onToggle={(event) => setUserOpen(event.currentTarget.open)}
     >
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-3 text-label font-semibold text-text">
@@ -170,7 +175,7 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
               axes={axes}
               labels={labels}
               count={count}
-              percentError={percentIssues[0]?.actual ?? null}
+              percentError={visiblePercentIssues.find((issue) => issue.dimension === "COMBINED")?.actual ?? null}
               onChange={setMatrix}
               onBack={() => setPreview("TO_SEPARATE")}
             />
@@ -187,7 +192,8 @@ export function ReferenceBlock({ section, entry, axes, labels, subjectName, coun
               subjectName={subjectName}
               count={count}
               unit={unit}
-              percentTotal={percentIssues.find((issue) => issue.dimension === dimension)}
+              percentTotal={visiblePercentIssues.find((issue) => issue.dimension === dimension)}
+              onPruneUnit={setPendingUnit}
               onChange={onChange}
             />
           ))
@@ -223,10 +229,11 @@ interface DimensionBlockProps {
   unit: MatrixUnit;
   /** Lỗi tổng tỷ lệ của chiều này (chưa đủ 100%): chặn lưu ở `saveBlockers`, hiện tại bảng. */
   percentTotal?: PercentIssue;
+  onPruneUnit: (unit: MatrixUnit) => void;
   onChange: (update: (section: ExamSection) => ExamSection) => void;
 }
 
-function DimensionBlock({ dimension, section, entry, axes, labels, subjectName, count, unit, percentTotal, onChange }: DimensionBlockProps) {
+function DimensionBlock({ dimension, section, entry, axes, labels, subjectName, count, unit, percentTotal, onPruneUnit, onChange }: DimensionBlockProps) {
   const t = useTranslations("exams.subjectForm.rows.reference");
   const captionId = useId();
   const grade = dimension === "GRADE";
@@ -245,8 +252,14 @@ function DimensionBlock({ dimension, section, entry, axes, labels, subjectName, 
   // Phân bố chưa khai ở kỳ mặc định Chỉ đối chiếu hiện Chỉ đối chiếu (không có gì để áp dụng), không phải mức Bắt buộc của trường thiếu.
   const shownEnforcement = applicable && declared.cells === 0 ? "REFERENCE" : dimensionEnforcement(matrix, dimension);
 
-  const setCell = (code: string, value: number | null) =>
-    onChange((current) => ({ ...current, matrix: setDimensionCell(current.matrix ?? { ...blankMatrix(), unit, basis: "QUESTION" }, dimension, code, value, axes, entry.enforcement) }));
+  const setCell = (code: string, value: number | null) => {
+    const preview = setDimensionCell(matrix ?? { ...blankMatrix(), unit, basis: "QUESTION" }, dimension, code, value, axes, entry.enforcement);
+    if (pruneMatrix(preview) === null) onPruneUnit(preview.unit);
+    onChange((current) => ({
+      ...current,
+      matrix: pruneMatrix(setDimensionCell(current.matrix ?? { ...blankMatrix(), unit, basis: "QUESTION" }, dimension, code, value, axes, entry.enforcement)),
+    }));
+  };
 
   return (
     <section className="flex min-w-0 flex-col gap-2" aria-labelledby={captionId} data-reference-dimension={dimension}>

@@ -31,6 +31,38 @@ describe("V-SAT part-level conversion preview", () => {
     expect(combined).toMatchObject({ mode: "COMBINED", gradeEnforcement: "REFERENCE", difficultyEnforcement: "REFERENCE" });
     expect(combined.cells.every((cell) => cell.value === 0)).toBe(true);
   });
+
+  it("preserves difficultyEnforcement REQUIRED on TO_COMBINED and clears empty dimensions on TO_SEPARATE", () => {
+    const withDiffRequired: BlockMatrix = {
+      mode: "SEPARATE",
+      unit: "COUNT",
+      basis: "QUESTION",
+      gradeEnforcement: "REFERENCE",
+      difficultyEnforcement: "REQUIRED",
+      cells: [],
+      byGrade: [],
+      byDifficulty: [{ code: "NB", value: 10 }],
+    };
+    const combined = convertForPreview(withDiffRequired, "TO_COMBINED", axes);
+    expect(combined).toMatchObject({ mode: "COMBINED", gradeEnforcement: "REQUIRED", difficultyEnforcement: "REQUIRED" });
+
+    const emptyCombined: BlockMatrix = {
+      mode: "COMBINED",
+      unit: "COUNT",
+      basis: "QUESTION",
+      gradeEnforcement: "REFERENCE",
+      difficultyEnforcement: "REFERENCE",
+      cells: [
+        { gradeCode: "G10", difficultyCode: "NB", value: 0 },
+        { gradeCode: "G11", difficultyCode: "TH", value: 0 },
+      ],
+      byGrade: [],
+      byDifficulty: [],
+    };
+    const separate = convertForPreview(emptyCombined, "TO_SEPARATE", axes);
+    expect(separate.byGrade).toEqual([]);
+    expect(separate.byDifficulty).toEqual([]);
+  });
 });
 
 describe("exam quota references", () => {

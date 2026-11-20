@@ -422,6 +422,67 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "COMBINED" });
   });
 
+  it("combinedEditAndRevert: sửa ô kết hợp rồi bấm Bỏ kết hợp về SEPARATE với tổng biên; bảng trống báo đúng câu rỗng", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 40 })]));
+    const { server } = boot({ kind: "VSAT", parts: rows, examOverrides: { scope: "PART" } });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    await user.click(within(reference).getByRole("button", { name: "Thêm điều kiện của Phân bổ đối chiếu" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Kết hợp Lớp × Độ khó/ }));
+    await user.click(within(reference).getByRole("button", { name: "Xác nhận chuyển" }));
+
+    // Bảng trống → Bỏ kết hợp hiện previewBackEmpty.
+    await user.click(within(reference).getByRole("button", { name: "Bỏ kết hợp" }));
+    expect(within(reference).getByText(/Bảng kết hợp chưa có số nào/)).toBeInTheDocument();
+    await user.click(within(reference).getByRole("button", { name: /^Hủy$/ }));
+
+    // Nhập số vào bảng kết hợp, rồi Bỏ kết hợp và Xác nhận chuyển.
+    const combinedSection = reference.querySelector<HTMLElement>('[data-reference-combined]')!;
+    const cells = within(combinedSection).getAllByRole("textbox");
+    await user.clear(cells[0]!);
+    await user.type(cells[0]!, "15");
+    await user.click(within(combinedSection).getByRole("button", { name: "Bỏ kết hợp" }));
+    expect(within(reference).getByRole("heading", { name: "Xem trước: về riêng từng chiều" })).toBeInTheDocument();
+    await user.click(within(reference).getByRole("button", { name: "Xác nhận chuyển" }));
+    expect(reference.querySelector("[data-reference-combined]")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "SEPARATE", byGrade: expect.arrayContaining([expect.objectContaining({ value: 15 })]) });
+  });
+
+  it("hiddenGradePercentSwitch: môn ẩn lớp có dữ liệu lớp tham khảo một phần đổi sang Tỷ lệ vẫn lưu được (R1-6)", async () => {
+    const user = userEvent.setup();
+    const section = wireSection("sec-su", "SU", [wireBlock("r1", { questionCount: 20 })], {
+      matrix: matrixWith({ gradeEnforcement: "REFERENCE", difficultyEnforcement: "REFERENCE", byGrade: [{ code: "GRADE_10", value: 5 }], byDifficulty: [{ code: "RECOGNITION", value: 20 }] }),
+    });
+    const { server } = boot({ kind: "SP2E", parts: oneSection(section) });
+    openStructure("?section=sec-su");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    await user.click(within(within(reference).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" }));
+    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix).toMatchObject({ unit: "PERCENT", byGrade: [{ code: "GRADE_10", value: 100 }] });
+  });
+
+  it("clearAllReferenceCellsReturnsNull: xóa hết ô trả section.matrix về null và giữ đơn vị Tỷ lệ đã chọn (R1-9)", async () => {
+    const user = userEvent.setup();
+    const rows = oneSection(wireSection("sec-toan", "TOAN", [wireBlock("r1", { questionCount: 40 })]));
+    boot({ kind: "SP2E", parts: rows });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
+    const reference = await openReference(user);
+    await user.click(within(within(reference).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" }));
+    const firstCell = within(reference).getAllByRole("textbox", { name: /Độ khó: .*tỷ lệ/ })[0]!;
+    await user.type(firstCell, "100");
+    expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    await user.clear(firstCell);
+    await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
+    expect(within(within(reference).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" })).toBeChecked();
+  });
+
   it.each([["HSA", "VAN"], ["SP2E", "TOAN"], ["THPTQG", "TOAN"]])(
     "combinedOnlyVsatPartLevel: %s %s không có bảng kết hợp",
     async (kind, subject) => {

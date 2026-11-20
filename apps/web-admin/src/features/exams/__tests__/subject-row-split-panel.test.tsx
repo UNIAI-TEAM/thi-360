@@ -51,4 +51,38 @@ describe("row split draft", () => {
     expect(screen.getByText("Child row 1 needs at least 1 question")).toBeInTheDocument();
     expect(screen.getByText("The child rows add up to 5, the parent row has 10 questions")).toBeInTheDocument();
   });
+
+  it("serializes raw split texts with JSON so '1 + 2' survives unmount without adding a third input", async () => {
+    const user = userEvent.setup();
+    const rawInputs = createRawInputStore();
+    const props = { block: setBlock("read", 4, 10), units: 4, sectionId: "s-json", rawInputs, onApply: vi.fn(), onCancel: vi.fn() };
+    const view = renderWithProviders(<RowSplitPanel {...props} />);
+    const first = screen.getByRole("textbox", { name: "Số chùm của dòng con 1" });
+    await user.clear(first);
+    await user.type(first, "1 + 2");
+    view.unmount();
+
+    renderWithProviders(<RowSplitPanel {...props} />);
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]).toHaveValue("1 + 2");
+  });
+
+  it("resyncs child inputs when units changes while open and links error descriptions via aria-describedby", async () => {
+    const user = userEvent.setup();
+    const rawInputs = createRawInputStore();
+    const view = renderWithProviders(
+      <RowSplitPanel block={setBlock("read", 4, 10)} units={4} sectionId="s-sync" rawInputs={rawInputs} onApply={vi.fn()} onCancel={vi.fn()} />,
+    );
+    const first = screen.getByRole("textbox", { name: "Số chùm của dòng con 1" });
+    await user.clear(first);
+    await user.type(first, "0");
+    expect(first).toHaveAccessibleDescription("Dòng con 1 phải có ít nhất 1 chùm Tổng các dòng con là 2, dòng cha có 4 chùm");
+    expect(rawInputs.hasRawInputs()).toBe(true);
+
+    view.rerender(<RowSplitPanel block={setBlock("read", 3, 10)} units={3} sectionId="s-sync" rawInputs={rawInputs} onApply={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByRole("textbox", { name: "Số chùm của dòng con 1" })).toHaveValue("2");
+    expect(screen.getByRole("textbox", { name: "Số chùm của dòng con 2" })).toHaveValue("1");
+    expect(rawInputs.hasRawInputs()).toBe(false);
+  });
 });

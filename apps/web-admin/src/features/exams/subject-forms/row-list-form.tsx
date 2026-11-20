@@ -169,8 +169,13 @@ export function RowListForm({
   if (totalChanged && sectionCount !== null) {
     if (section.matrix?.unit === "PERCENT") {
       const next = computeAllocation({ questionCount: sectionCount, matrix: section.matrix }, axes);
-      if (gradeVisible(entry)) noticeLines.push(tSubject("totalChange.grades", { values: axes.grades.map((code, index) => `${labels.grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
-      noticeLines.push(tSubject("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${labels.difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
+      const combinedHas = section.matrix.mode === "COMBINED" && section.matrix.cells.some((cell) => cell.value > 0);
+      if (gradeVisible(entry) && (section.matrix.byGrade.length > 0 || combinedHas)) {
+        noticeLines.push(tSubject("totalChange.grades", { values: axes.grades.map((code, index) => `${labels.grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
+      }
+      if (section.matrix.byDifficulty.length > 0 || combinedHas) {
+        noticeLines.push(tSubject("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${labels.difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
+      }
     }
     if (section.answerQuotas?.unit === "PERCENT") {
       const resolved = apportionByPercent(section.answerQuotas.items.map((item) => item.value), sectionCount).results;

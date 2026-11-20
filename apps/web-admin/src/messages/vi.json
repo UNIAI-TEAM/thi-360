@@ -6621,6 +6621,7 @@
             "confirm": "Xác nhận chuyển",
             "gradeHeader": "Khối lớp",
             "percentError": "Tổng tỷ lệ {total, number}%, cần 100%",
+            "previewBackEmpty": "Bảng kết hợp chưa có số nào, nên hai chiều riêng sẽ bắt đầu trống. Chỉ ghi khi bạn xác nhận.",
             "previewBackHint": "Tổng theo từng khối lớp và từng độ khó của bảng kết hợp hiện tại. Chỉ ghi khi bạn xác nhận.",
             "previewBackTitle": "Xem trước: về riêng từng chiều",
             "previewCaption": "Dữ liệu sẽ chuyển sang bảng kết hợp",

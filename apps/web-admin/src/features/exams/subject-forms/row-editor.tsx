@@ -91,6 +91,8 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
   const lockId = useId();
+  const countErrId = useId();
+  const setErrId = useId();
   const [droppedSlots, setDroppedSlots] = useState<number[]>([]);
   const [splitOpen, setSplitOpen] = useState(() => rawInputs.get(section.id, block.id, SPLIT_FIELD) !== null);
   const [lastSplitStatus, setLastSplitStatus] = useState(split.status);
@@ -280,6 +282,9 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   if (block.expectedScoring?.multipleChoiceRule) factParts.push(t(`facts.rule.${block.expectedScoring.multipleChoiceRule}`));
   const facts = factParts.length > 0 ? t("facts.line", { facts: factParts.join(" · ") }) : null;
 
+  const setDescribedBy = (base?: string) =>
+    [base, locks.counts ? lockId : null, isSet && countError ? countErrId : null, setIssue?.code === "SET_SIZE_MISMATCH" ? setErrId : null].filter(Boolean).join(" ") || undefined;
+
   return (
     <Card padding="md" className="flex flex-col gap-5 sm:p-6" data-form-row-editor={block.id} aria-labelledby={titleId}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -361,12 +366,29 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
           <>
             <FormField label={tBlock("setCount")} required>
               {(controlProps) => (
-                <BlockNumberInput {...controlProps} {...lockProps} data-field={anchor("setCount")} value={block.setCount ?? 0} onValueChange={(value) => setSets(value, block.setSize ?? 0)} />
+                <BlockNumberInput
+                  {...controlProps}
+                  {...lockProps}
+                  data-field={anchor("setCount")}
+                  data-form-field={percentRows ? undefined : COUNT_FIELD}
+                  aria-invalid={countError || setIssue?.code === "SET_SIZE_MISMATCH" ? true : undefined}
+                  aria-describedby={setDescribedBy(controlProps["aria-describedby"])}
+                  value={block.setCount ?? 0}
+                  onValueChange={(value) => setSets(value, block.setSize ?? 0)}
+                />
               )}
             </FormField>
             <FormField label={tBlock("setSize")} required hint={tBlock("setHint", { count: questionCount })}>
               {(controlProps) => (
-                <BlockNumberInput {...controlProps} {...lockProps} data-field={anchor("setSize")} value={block.setSize ?? 0} onValueChange={(value) => setSets(block.setCount ?? 0, value)} />
+                <BlockNumberInput
+                  {...controlProps}
+                  {...lockProps}
+                  data-field={anchor("setSize")}
+                  aria-invalid={countError || setIssue?.code === "SET_SIZE_MISMATCH" ? true : undefined}
+                  aria-describedby={setDescribedBy(controlProps["aria-describedby"])}
+                  value={block.setSize ?? 0}
+                  onValueChange={(value) => setSets(block.setCount ?? 0, value)}
+                />
               )}
             </FormField>
             {percentRows && (
@@ -407,14 +429,30 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
           ) : (
             <FormField label={flexible ? tForm("setMode.totalField") : tBlock("questionCount")} required error={countError}>
               {(controlProps) => (
-                <BlockNumberInput {...controlProps} {...lockProps} data-field={anchor("questionCount")} value={questionCount} onValueChange={(value) => onChange({ questionCount: value })} />
+                <BlockNumberInput
+                  {...controlProps}
+                  {...lockProps}
+                  data-field={anchor("questionCount")}
+                  data-form-field={COUNT_FIELD}
+                  aria-describedby={[controlProps["aria-describedby"], locks.counts ? lockId : null].filter(Boolean).join(" ") || undefined}
+                  value={questionCount}
+                  onValueChange={(value) => onChange({ questionCount: value })}
+                />
               )}
             </FormField>
           )
         )}
       </div>
-      {isSet && countError && <p className="text-caption text-danger">{countError}</p>}
-      {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && <p className="text-caption text-danger">{tBlock("errors.setMismatch", { expected: setIssue.expected })}</p>}
+      {isSet && countError && (
+        <p id={countErrId} role="alert" className="text-caption text-danger">
+          {countError}
+        </p>
+      )}
+      {setIssue && setIssue.code === "SET_SIZE_MISMATCH" && (
+        <p id={setErrId} role="alert" className="text-caption text-danger">
+          {tBlock("errors.setMismatch", { expected: setIssue.expected })}
+        </p>
+      )}
       {droppedSlots.length > 0 && (
         <p role="status" className="rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
           {tForm("slots.dropped", { sets: block.setCount ?? 0, list: droppedSlots.join(", ") })}

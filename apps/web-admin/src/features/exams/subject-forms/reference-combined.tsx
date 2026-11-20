@@ -18,8 +18,9 @@ export type CombinedDirection = "TO_COMBINED" | "TO_SEPARATE";
 export function convertForPreview(matrix: BlockMatrix | null, direction: CombinedDirection, axes: MatrixAxes): BlockMatrix {
   const base = matrix ?? { ...blankMatrix(), gradeEnforcement: "REFERENCE" as const, difficultyEnforcement: "REFERENCE" as const };
   const converted = convertMatrixMode(base, direction === "TO_COMBINED" ? "COMBINED" : "SEPARATE", axes);
-  const enforcement = base.gradeEnforcement ?? "REFERENCE";
-  return direction === "TO_COMBINED" ? { ...converted, gradeEnforcement: enforcement, difficultyEnforcement: enforcement } : converted;
+  const enforcement = base.gradeEnforcement === "REQUIRED" || base.difficultyEnforcement === "REQUIRED" ? "REQUIRED" : "REFERENCE";
+  if (direction === "TO_COMBINED") return { ...converted, gradeEnforcement: enforcement, difficultyEnforcement: enforcement };
+  return base.cells.every((cell) => cell.value === 0) ? { ...converted, byGrade: [], byDifficulty: [] } : converted;
 }
 
 export interface CombinedPreviewProps {
@@ -41,7 +42,7 @@ export function CombinedPreview({ direction, matrix, axes, labels, onConfirm, on
   const next = convertForPreview(matrix, direction, axes);
   const toCombined = direction === "TO_COMBINED";
   const grid = combinedGrid(next, axes);
-  const hasData = toCombined ? matrix !== null && (matrix.byGrade.length > 0 || matrix.byDifficulty.length > 0) : matrix !== null && matrix.cells.length > 0;
+  const hasData = toCombined ? matrix !== null && (matrix.byGrade.length > 0 || matrix.byDifficulty.length > 0) : matrix !== null && matrix.cells.some((cell) => cell.value > 0);
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-3 rounded-md border border-border bg-subtle/40 p-4" data-combined-preview={direction}>
@@ -49,7 +50,7 @@ export function CombinedPreview({ direction, matrix, axes, labels, onConfirm, on
         <h5 id={titleId} className="text-label font-semibold text-text">
           {t(toCombined ? "previewTitle" : "previewBackTitle")}
         </h5>
-        <p className="text-caption text-text-muted">{hasData ? t(toCombined ? "previewHint" : "previewBackHint") : t("previewEmpty")}</p>
+        <p className="text-caption text-text-muted">{hasData ? t(toCombined ? "previewHint" : "previewBackHint") : t(toCombined ? "previewEmpty" : "previewBackEmpty")}</p>
       </div>
       {toCombined ? (
         <ScrollableTable labelledBy={titleId} className="rounded-md border border-border">
@@ -76,10 +77,12 @@ export function CombinedPreview({ direction, matrix, axes, labels, onConfirm, on
           </table>
         </ScrollableTable>
       ) : (
-        <ul className="flex flex-col gap-1 text-body text-text-secondary">
-          <li>{t("backGrades", { values: next.byGrade.map((item) => `${labels.grade(item.code)} ${item.value}`).join(" · ") })}</li>
-          <li>{t("backDifficulties", { values: next.byDifficulty.map((item) => `${labels.difficulty(item.code)} ${item.value}`).join(" · ") })}</li>
-        </ul>
+        hasData && (
+          <ul className="flex flex-col gap-1 text-body text-text-secondary">
+            <li>{t("backGrades", { values: next.byGrade.map((item) => `${labels.grade(item.code)} ${item.value}`).join(" · ") })}</li>
+            <li>{t("backDifficulties", { values: next.byDifficulty.map((item) => `${labels.difficulty(item.code)} ${item.value}`).join(" · ") })}</li>
+          </ul>
+        )
       )}
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={() => onConfirm(next)}>
