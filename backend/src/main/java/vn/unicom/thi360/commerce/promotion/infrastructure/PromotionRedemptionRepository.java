@@ -1,5 +1,6 @@
 package vn.unicom.thi360.commerce.promotion.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,8 @@ public interface PromotionRedemptionRepository extends JpaRepository<PromotionRe
     Optional<PromotionRedemption> findByPromotionIdAndOrderId(UUID promotionId, UUID orderId);
 
     boolean existsByPromotionIdAndOrderIdAndState(UUID promotionId, UUID orderId, RedemptionState state);
+
+    long countByPromotionIdAndState(UUID promotionId, RedemptionState state);
 
     @Query("""
             SELECT COUNT(r) FROM PromotionRedemption r
@@ -39,4 +42,12 @@ public interface PromotionRedemptionRepository extends JpaRepository<PromotionRe
     long sumConfirmedDiscountByPromotionId(@Param("promotionId") UUID promotionId);
 
     Page<PromotionRedemption> findByPromotionIdOrderByCreatedAtDescIdDesc(UUID promotionId, Pageable pageable);
+
+    Page<PromotionRedemption> findByPromotionIdAndStateOrderByCreatedAtDescIdDesc(
+            UUID promotionId, RedemptionState state, Pageable pageable);
+
+    List<PromotionRedemption> findByPromotionIdOrderByCreatedAtDescIdDesc(UUID promotionId);
+
+    List<PromotionRedemption> findByPromotionIdAndStateOrderByCreatedAtDescIdDesc(
+            UUID promotionId, RedemptionState state);
 }

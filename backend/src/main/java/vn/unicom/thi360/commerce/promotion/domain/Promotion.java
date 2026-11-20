@@ -32,10 +32,10 @@ public class Promotion {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "code", updatable = false)
+    @Column(name = "code")
     private String code;
 
-    @Column(name = "code_normalized", updatable = false)
+    @Column(name = "code_normalized")
     private String codeNormalized;
 
     @Enumerated(EnumType.STRING)
@@ -290,12 +290,19 @@ public class Promotion {
         touch(now, actorId, actorUsername);
     }
 
-    public void updateAllFields(String name, String description, DiscountType discountType, long discountValue,
-            Long maxDiscountVnd, Instant startsAt, Instant endsAt, Integer totalLimit, Integer perUserLimit,
-            Boolean combinable, PromotionScope scope, PromotionAudienceType audience, PromotionStatus status,
-            Instant now, UUID actorId, String actorUsername) {
+    public void updateAllFields(String name, String description, String code, DiscountType discountType,
+            long discountValue, Long maxDiscountVnd, Instant startsAt, Instant endsAt, Integer totalLimit,
+            Integer perUserLimit, Boolean combinable, PromotionScope scope, PromotionAudienceType audience,
+            PromotionStatus status, Instant now, UUID actorId, String actorUsername) {
         this.name = name;
         this.description = description;
+        if (this.kind == PromotionKind.VOUCHER) {
+            this.code = code == null ? null : code.trim();
+            this.codeNormalized = PromotionCodeNormalizer.normalize(this.code);
+        } else {
+            this.code = null;
+            this.codeNormalized = null;
+        }
         this.discountType = discountType;
         this.discountValue = discountValue;
         this.maxDiscountVnd = maxDiscountVnd;

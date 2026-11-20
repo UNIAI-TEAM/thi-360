@@ -121,7 +121,7 @@ public class RealPriceCalculator implements PriceCalculator {
         Objects.requireNonNull(product, "product must not be null");
         Objects.requireNonNull(promotionId, "promotionId must not be null");
         Promotion target = promotionRepository.findByIdAndDeletedAtIsNull(promotionId)
-                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+                .orElseThrow(() -> new NotFoundException("PROMOTION_NOT_FOUND", null));
         ScopeTargets targetScope = loadScopes(List.of(target)).getOrDefault(target.getId(), ScopeTargets.EMPTY);
         boolean appliesToProduct = matchesScope(target, targetScope, product);
 

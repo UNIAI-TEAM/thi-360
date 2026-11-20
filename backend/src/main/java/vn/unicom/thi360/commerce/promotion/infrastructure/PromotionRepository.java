@@ -25,6 +25,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID>, Jpa
 
     boolean existsByCodeNormalized(String codeNormalized);
 
+    boolean existsByCodeNormalizedAndIdNot(String codeNormalized, UUID id);
+
     /**
      * All currently eligible automatic promotions at {@code now}, excluding exhausted ones (TM 7.2).
      */

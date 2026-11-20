@@ -453,6 +453,9 @@ class AdminApiForbiddenMatrixIT extends AbstractIntegrationTest {
         if (raw == Boolean.class || raw == boolean.class) {
             return objectMapper.getNodeFactory().booleanNode(true);
         }
+        if (raw == java.time.Instant.class) {
+            return objectMapper.getNodeFactory().textNode(java.time.Instant.now().plusSeconds(3600).toString());
+        }
         if (raw.isEnum()) {
             return objectMapper.getNodeFactory().textNode(((Enum<?>) raw.getEnumConstants()[0]).name());
         }

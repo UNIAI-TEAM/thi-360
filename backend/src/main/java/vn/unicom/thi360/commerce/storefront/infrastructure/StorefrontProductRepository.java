@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,6 +142,44 @@ public class StorefrontProductRepository {
         return jdbc.query(STORED_SELECT + " WHERE code_normalized = ?", this::stored, codeNormalized).stream().findFirst();
     }
 
+    /** The stored exam product for {@code examId}, any sale state. */
+    public Optional<StoredProduct> findByExamId(UUID examId) {
+        return jdbc.query(STORED_SELECT + " WHERE exam_id = ?", this::stored, examId).stream().findFirst();
+    }
+
+    /** True when {@code examId} currently has an on-sale storefront row. */
+    public boolean existsOnSaleByExamId(UUID examId) {
+        return Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM commerce.storefront_product WHERE exam_id = ? AND sale_state = 'ON_SALE')",
+                Boolean.class, examId));
+    }
+
+    /** All on-sale exam rows used for batch promotion cap-warning evaluation (CM-2, AC-41). */
+    public List<CapWarningExam> listOnSaleForCapWarnings() {
+        return jdbc.query(
+                "SELECT exam_id, name, exam_item_id, list_price_vnd FROM commerce.storefront_product "
+                        + "WHERE sale_state = 'ON_SALE' AND product_type = 'EXAM' AND exam_id IS NOT NULL "
+                        + "ORDER BY name ASC, exam_id ASC",
+                (rs, n) -> new CapWarningExam(rs.getObject(1, UUID.class), rs.getString(2),
+                        rs.getObject(3, UUID.class), rs.getLong(4)));
+    }
+
+    /** Batch lookup of code and name for exam IDs present in {@code storefront_product}. */
+    public Map<UUID, ExamRef> findExamRefsByExamIds(Collection<UUID> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, ExamRef> refs = new LinkedHashMap<>(examIds.size());
+        jdbc.query(
+                "SELECT exam_id, code, name FROM commerce.storefront_product WHERE exam_id = ANY(?)",
+                ps -> ps.setArray(1, array(ps, "uuid", examIds.toArray())),
+                rs -> {
+                    UUID id = rs.getObject(1, UUID.class);
+                    refs.put(id, new ExamRef(id, rs.getString(2), rs.getString(3)));
+                });
+        return refs;
+    }
+
     /** True when the asset is the current cover of a storefront row (any sale state): the only images served publicly. */
     public boolean isCurrentCover(UUID assetId) {
         return Boolean.TRUE.equals(jdbc.queryForObject(
@@ -148,13 +187,14 @@ public class StorefrontProductRepository {
     }
 
     private static final String STORED_SELECT = """
-            SELECT id, exam_id, exam_item_id, code, name, sale_state, version_no, list_price_vnd, card::text, detail::text
+            SELECT id, exam_id, exam_item_id, code, name, sale_state, version_no, list_price_vnd, attempts_granted,
+                card::text, detail::text
             FROM commerce.storefront_product""";
 
     private StoredProduct stored(java.sql.ResultSet rs, int rowNum) throws SQLException {
         return new StoredProduct(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getObject(3, UUID.class),
                 rs.getString(4), rs.getString(5), SaleState.valueOf(rs.getString(6)), rs.getInt(7), rs.getLong(8),
-                rs.getString(9), rs.getString(10));
+                rs.getInt(9), rs.getString(10), rs.getString(11));
     }
 
     /** The on-sale rows matching the filters, in the requested order. */
@@ -283,7 +323,12 @@ public class StorefrontProductRepository {
     public record Page(List<ListedProduct> items, long total) { }
 
     public record StoredProduct(UUID id, UUID examId, UUID examKindItemId, String code, String name,
-                                SaleState saleState, int versionNo, long listPriceVnd, String card, String detail) { }
+                                SaleState saleState, int versionNo, long listPriceVnd, int attemptsGranted,
+                                String card, String detail) { }
+
+    public record CapWarningExam(UUID examId, String name, UUID examKindItemId, long listPriceVnd) { }
+
+    public record ExamRef(UUID examId, String code, String name) { }
 
     public record Count(String key, long count) { }
 
