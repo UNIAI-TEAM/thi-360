@@ -14,8 +14,8 @@ import {
  * AC-20 (UNI-2730, FS-1): `/`, `/exams/<code>`, trang ngừng bán và trang 404 đúng khi sáng và tối, vi và en, 390px và
  * 1280px: không tràn ngang, tương phản >= 4,5, không lẫn ngôn ngữ. Gọi `helpers/visual-matrix.ts` của FS-4, không sửa.
  * Tên bài, tên phần, ngữ liệu mô tả là nội dung đề (`data-exam-content`) nên phép kiểm lẫn ngôn ngữ bỏ qua.
- * Chỉ ô có sản phẩm (chi tiết, ngừng bán) dùng dữ liệu DS: chúng chờ bộ DS và lấy bài đầu danh mục khi chạy, không
- * qua `beforeAll` chung, nên ô trang giới thiệu và 404 chạy được dù danh mục trống hay DS chưa xong.
+ * Các ô có sản phẩm (giới thiệu, chi tiết, ngừng bán) chờ bộ DS khi chạy, không qua `beforeAll` chung, nên ô 404 vẫn
+ * chạy được dù DS chưa xong.
  */
 const API_URL = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 const WEB_URL = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -169,14 +169,16 @@ const HEADING = {
   buy: { vi: "Mua bài thi", en: "Buy exam" },
 } as const;
 
-// Chờ DS có thể lâu (tối đa 240 giây) nên ô có sản phẩm có hạn riêng; ô giới thiệu và 404 không chờ gì.
+// Chờ DS có thể lâu (tối đa 240 giây) nên ô có sản phẩm có hạn riêng; chỉ ô 404 không chờ gì.
 const DS_CELL_TIMEOUT_MS = 360_000;
-
 for (const cell of matrixCells()) {
   test(`trang giới thiệu: ${cellLabel(cell)}`, async () => {
-    test.setTimeout(120_000);
+    test.setTimeout(DS_CELL_TIMEOUT_MS);
+    await waitForDsData();
     await check("storefront-landing", "/", cell, async (page) => {
       await expect(page.getByRole("heading", { level: 2, name: HEADING.catalog[cell.lang] })).toBeVisible();
+      await expect(page.getByRole("article").first()).toBeVisible();
+      await expect(page.getByRole("link", { name: HEADING.buy[cell.lang] }).first()).toBeVisible();
     });
   });
 
