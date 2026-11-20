@@ -62,6 +62,8 @@ public final class ExamCheckRules {
     private final Map<String, SectionContext> sections = new LinkedHashMap<>();
     private final Map<String, ExamPartOption> options = new LinkedHashMap<>();
     private final Map<String, ExamPart> parts = new LinkedHashMap<>();
+    /** Options whose direct blocks would share the id of a stored section; see the constructor. */
+    private final Set<String> collidingOptions = new LinkedHashSet<>();
 
     ExamCheckRules(ObjectMapper mapper, Exam exam, ExamStructureDocument document) {
         this(mapper, exam, document, Map.of());
@@ -100,6 +102,15 @@ public final class ExamCheckRules {
         this.exam = exam;
         this.document = document;
         this.issues = new ExamCheckIssues(mapper);
+        // A stored section may carry the id "{option}:blocks" of the holder this class builds for the direct blocks of
+        // an option (PUT refuses it now; a draft saved earlier may hold it). Find those before any map keyed by section
+        // id exists: the stored section stays the one registered under that id, and the option is a structure error.
+        Set<String> storedSectionIds = new LinkedHashSet<>();
+        for (ExamPart part : document.parts()) {
+            part.sections().forEach(section -> storedSectionIds.add(section.id()));
+            part.subjectPool().forEach(section -> storedSectionIds.add(section.id()));
+            part.options().forEach(option -> option.sections().forEach(section -> storedSectionIds.add(section.id())));
+        }
         for (ExamPart part : document.parts()) {
             parts.put(part.id(), part);
             for (ExamSection section : part.sections()) sections.put(section.id(), new SectionContext(part, null, section, false));
@@ -108,6 +119,10 @@ public final class ExamCheckRules {
                 options.put(option.id(), option);
                 for (ExamSection section : option.sections()) sections.put(section.id(), new SectionContext(part, option.id(), section, false));
                 if (!option.blocks().isEmpty()) {
+                    if (storedSectionIds.contains(option.id() + ":blocks")) {
+                        collidingOptions.add(option.id());
+                        continue;
+                    }
                     int count = option.blocks().stream().mapToInt(ExamCheckRules::fixedCount).sum();
                     ExamSection synthetic = new ExamSection(option.id() + ":blocks", option.code(), count,
                             null, null, null, null, option.blocks());
@@ -746,6 +761,10 @@ public final class ExamCheckRules {
                 found.add(issue("OPTION_EMPTY", "STRUCTURE", part, null, null));
             }
             for (ExamPartOption option : part.options()) {
+                if (collidingOptions.contains(option.id())) {
+                    // Saved by code that let a stored section take the id of the holder of the option's direct blocks.
+                    found.add(issue("OPTION_EMPTY", "STRUCTURE", part, option.id(), null));
+                }
                 if (!option.blocks().isEmpty() && option.kind() != OptionKind.SUBJECT) {
                     found.add(issue("OPTION_EMPTY", "STRUCTURE", part, option.id(), null));
                 }

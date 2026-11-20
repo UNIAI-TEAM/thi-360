@@ -8,10 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import vn.unicom.thi360.identity.spi.Permissions;
 
@@ -20,6 +22,7 @@ import vn.unicom.thi360.identity.spi.Permissions;
  * QDA at the check step. The limits never block a draft; they block publishing, and only standard exams.
  */
 class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
+    @Autowired private EntityManager entityManager;
 
     // ---- AC-1 ---------------------------------------------------------------------------------------------
 
@@ -378,6 +381,126 @@ class ExamCheckSubjectLimitsIT extends AbstractSubjectLimitsIT {
                 .contentType(MediaType.APPLICATION_JSON).content(body.toString()), 422);
         assertThat(refused.path("code").asText()).isEqualTo("EXAM_STRUCTURE_INVALID");
         assertThat(structure(base).path("revision").asLong()).isEqualTo(before.path("revision").asLong());
+    }
+
+    /**
+     * R3-2: PUT refuses the collision, but a draft saved by older code may hold it: an option with direct blocks AND a
+     * real section named "{option}:blocks" (distinct block ids, matching totals). The checker must not let the holder
+     * of the direct blocks stand in for that section, or its R-12 errors vanish and the path publishes. The check
+     * reports a structure error located on that option, so its path cannot publish; the independent path of the
+     * other option is not restricted.
+     */
+    @Test
+    void aSavedCollisionWithTheDirectBlocksHolderMakesThatOptionInvalid() throws Exception {
+        for (String kind : new String[] {"HSA", "QDA"}) {
+            // Saved with the ids apart, the R-12 errors of the section are found: only the Lý option with it is invalid.
+            String apartBase = optionsWithDirectBlocks(kind);
+            JsonNode apart = check(apartBase);
+            assertThat(pathResults(apart)).as(kind + " saved apart: %s", apart.path("paths"))
+                    .containsEntry("ly-opt", "INVALID").containsEntry("ly2-opt", "VALID");
+            assertThat(codes(apart)).as(kind + " saved apart").contains(SET_CODE, SHORT_CODE);
+
+            // What an older PUT accepted, written straight to the draft: the section takes the id of the holder of the
+            // direct blocks. The first check of that draft is the one under test.
+            String base = optionsWithDirectBlocks(kind);
+            String examId = base.substring(base.lastIndexOf('/') + 1);
+            // The write of the PUT is still pending in the persistence context: let it reach the table first, or it
+            // would overwrite the raw update below when the check flushes.
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(jdbc.update("UPDATE exam.exam_structure SET parts = replace(parts::text, '\"ly-opt-sec\"', '\"ly-opt:blocks\"')::jsonb "
+                    + "WHERE exam_id = ?::uuid", examId)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?::uuid", String.class, examId))
+                    .as("the stored draft holds the collision").contains("\"ly-opt:blocks\"").doesNotContain("\"ly-opt-sec\"");
+            String as = kind + " collision";
+            JsonNode result = check(base);
+            assertThat(pathResults(result)).as(as + ": %s", result.path("paths"))
+                    .containsEntry("ly-opt", "INVALID").containsEntry("ly2-opt", "VALID");
+            JsonNode located = null;
+            for (JsonNode item : issues(result)) {
+                if ("OPTION_EMPTY".equals(item.path("code").asText()) && "ly-opt".equals(item.path("optionId").asText())) located = item;
+            }
+            assertThat(located).as(as + ": structure error on the option in %s", issues(result)).isNotNull();
+            assertThat(located.path("severity").asText()).isEqualTo("ERROR");
+            assertThat(located.path("partId").asText()).isNotBlank();
+            assertThat(result.path("status").asText()).as(as).isEqualTo("INVALID");
+            ObjectNode refusal = mapper.createObjectNode().put("expectedRevision",
+                    json(get(base).with(asUser(Permissions.EXAM_VIEW)), 200).path("revision").asLong());
+            refusal.putArray("pathIds").add("ly-opt");
+            JsonNode refused = json(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
+                    .header("Idempotency-Key", UUID.randomUUID().toString())
+                    .contentType(MediaType.APPLICATION_JSON).content(refusal.toString()), 422);
+            assertThat(refused.path("code").asText()).as(as).isEqualTo("PATH_NOT_VALID");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam.exam_version WHERE exam_id = ?::uuid",
+                    Long.class, examId)).as(as).isZero();
+        }
+    }
+
+    /**
+     * Two Lý options, each with direct blocks of 9 single-choice questions and one stored section of 9. The section of
+     * "ly-opt" is stored as "ly-opt-sec" with both R-12 rules broken (three sets, no short answer); the section of
+     * "ly2-opt" has one set and one short answer. All ids are distinct; the questions of a path are 18 for the part,
+     * the exam and the path, so that a section and the direct blocks of one option agree in size (9 = 9) and nothing
+     * but the shared id can tell them apart.
+     */
+    private String optionsWithDirectBlocks(String kind) throws Exception {
+        String base = create(kind, "SUBJECT", null, "LY", null);
+        JsonNode before = structure(base);
+        ObjectNode edited = before.deepCopy();
+        ObjectNode template = section(edited, "LY");
+        ObjectNode single = blockOfType(template, "SINGLE_CHOICE");
+        ObjectNode set = blockOfType(template, "QUESTION_SET");
+        ObjectNode fill = blockOfType(template, "SHORT_ANSWER");
+        ObjectNode broken = ownSection(template, "ly-opt-sec", 9, blockLike(set, "ly-opt-sec-set", 9, 3));
+        ObjectNode clean = ownSection(template, "ly2-sec", 9, blockLike(single, "ly2-sec-single", 5, null),
+                blockLike(set, "ly2-sec-set", 3, 1), blockLike(fill, "ly2-sec-fill", 1, null));
+        ObjectNode part = (ObjectNode) edited.at("/parts/0");
+        part.put("questionCount", 18);
+        if (part.has("questionCountOnPaper")) part.put("questionCountOnPaper", 18);
+        if (part.has("questionCountRequired")) part.put("questionCountRequired", 18);
+        part.remove("maxPoints");
+        part.putArray("sections");
+        part.putObject("participation").put("mode", "CHOICE").put("choose", 1);
+        ArrayNode options = part.putArray("options");
+        ObjectNode colliding = options.addObject().put("id", "ly-opt").put("kind", "SUBJECT").put("code", "LY");
+        colliding.putArray("blocks").add(blockLike(single, "ly-opt-direct", 9, null));
+        colliding.putArray("sections").add(broken);
+        ObjectNode control = options.addObject().put("id", "ly2-opt").put("kind", "SUBJECT").put("code", "LY");
+        control.putArray("blocks").add(blockLike(single, "ly2-opt-direct", 9, null));
+        control.putArray("sections").add(clean);
+        save(base, before, edited);
+        // The exam holds the 18 questions and no fixed score; the pending PUT is written first, then the exam row.
+        entityManager.flush();
+        entityManager.clear();
+        jdbc.update("UPDATE exam.exam SET question_count = 18, max_score = NULL WHERE id = ?::uuid", base.substring(base.lastIndexOf('/') + 1));
+        entityManager.clear();
+        return base;
+    }
+
+    /** A copy of the template section under a new id with the given blocks only (no matrix or answer quota of the template). */
+    private static ObjectNode ownSection(ObjectNode template, String id, int questionCount, ObjectNode... blocks) {
+        ObjectNode copy = template.deepCopy();
+        copy.put("id", id).put("questionCount", questionCount);
+        copy.remove("matrix");
+        copy.remove("answerQuotas");
+        ArrayNode array = copy.putArray("blocks");
+        for (ObjectNode block : blocks) array.add(block);
+        return copy;
+    }
+
+    /** A copy of a template block under a new id and count; {@code setCount} makes it that many sets of 3. */
+    private static ObjectNode blockLike(ObjectNode like, String id, int questionCount, Integer setCount) {
+        ObjectNode block = like.deepCopy();
+        block.put("id", id).put("questionCount", questionCount);
+        block.remove("matrix");
+        if (setCount != null) block.put("setCount", setCount).put("setSize", 3);
+        return block;
+    }
+
+    private static java.util.Map<String, String> pathResults(JsonNode result) {
+        java.util.Map<String, String> outcome = new java.util.TreeMap<>();
+        for (JsonNode path : result.path("paths")) outcome.put(path.path("pathId").asText(), path.path("result").asText());
+        return outcome;
     }
 
     // ---- fixtures -----------------------------------------------------------------------------------------
