@@ -166,26 +166,27 @@ public class ExamTemplateService {
     }
 
     /**
-     * One summary per template part: the question count per question type of its blocks that are not omitted. A part
-     * with options takes the blocks of the first option only, because a paper is built from one option.
+     * One summary per template part: the question count per question type of its non-omitted blocks, matching FE
+     * {@code partTypeCounts} and {@link vn.unicom.thi360.exam.domain.BlockCounts}. Choice parts inspect the first
+     * option unless it is {@code SUBJECT_CHOICE} (whose sections cover more subjects than one paper takes);
+     * {@code subjectPool}-only parts and {@code SUBJECT_CHOICE} parts return empty counts, and non-positive counts
+     * (such as unconfigured review placeholders) are omitted.
      */
     static List<ExamTemplateResponse.PartSummary> partSummaries(JsonNode structure) {
         List<ExamTemplateResponse.PartSummary> summaries = new ArrayList<>();
         for (JsonNode part : structure.path("parts")) {
-            List<JsonNode> blocks = new ArrayList<>();
-            collectBlocks(part.path("sections"), blocks);
-            collectBlocks(part.path("subjectPool"), blocks);
-            JsonNode firstOption = part.path("options").path(0);
-            if (blocks.isEmpty() && !firstOption.isMissingNode()) {
-                collectBlocks(firstOption.path("sections"), blocks);
-                firstOption.path("blocks").forEach(blocks::add);
-            }
             java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
-            for (JsonNode block : blocks) {
-                if (block.path("omitted").asBoolean(false)) continue;
-                int count = block.hasNonNull("questionCount") ? block.path("questionCount").asInt()
-                        : block.path("setCount").asInt(0) * block.path("setSize").asInt(0);
-                counts.merge(block.path("questionType").asText("ANY"), count, Integer::sum);
+            boolean choice = "CHOICE".equals(part.path("participation").path("mode").asText())
+                    || "CHOICE".equals(part.path("mode").asText())
+                    || (part.path("sections").isEmpty() && !part.path("options").path(0).isMissingNode());
+            if (choice) {
+                JsonNode firstOption = part.path("options").path(0);
+                if (!firstOption.isMissingNode() && !"SUBJECT_CHOICE".equals(firstOption.path("kind").asText())) {
+                    addSectionBlockCounts(firstOption.path("sections"), counts);
+                    addDirectBlockCounts(firstOption.path("blocks"), counts);
+                }
+            } else {
+                addSectionBlockCounts(part.path("sections"), counts);
             }
             summaries.add(new ExamTemplateResponse.PartSummary(
                     part.hasNonNull("id") ? part.path("id").asText() : null,
@@ -199,7 +200,54 @@ public class ExamTemplateService {
         return summaries;
     }
 
-    private static void collectBlocks(JsonNode sections, List<JsonNode> into) {
-        for (JsonNode section : sections) section.path("blocks").forEach(into::add);
+    private static void addSectionBlockCounts(JsonNode sections, java.util.Map<String, Integer> counts) {
+        for (JsonNode section : sections) {
+            JsonNode blocks = section.path("blocks");
+            int fixedInSection = 0;
+            int remainderBlocks = 0;
+            for (JsonNode block : blocks) {
+                if (block.path("omitted").asBoolean(false)) continue;
+                String type = block.path("questionType").asText("ANY");
+                if (isRemainderBlock(block, type)) {
+                    remainderBlocks++;
+                } else {
+                    fixedInSection += fixedBlockCount(block, type);
+                }
+            }
+            int remainderCount = remainderBlocks == 1 && section.hasNonNull("questionCount")
+                    ? Math.max(0, section.path("questionCount").asInt() - fixedInSection)
+                    : 0;
+            for (JsonNode block : blocks) {
+                if (block.path("omitted").asBoolean(false)) continue;
+                String type = block.path("questionType").asText("ANY");
+                int count = isRemainderBlock(block, type) ? remainderCount : fixedBlockCount(block, type);
+                if (count > 0) counts.merge(type, count, Integer::sum);
+            }
+        }
+    }
+
+    private static void addDirectBlockCounts(JsonNode blocks, java.util.Map<String, Integer> counts) {
+        for (JsonNode block : blocks) {
+            if (block.path("omitted").asBoolean(false)) continue;
+            String type = block.path("questionType").asText("ANY");
+            int count = fixedBlockCount(block, type);
+            if (count > 0) counts.merge(type, count, Integer::sum);
+        }
+    }
+
+    private static boolean isRemainderBlock(JsonNode block, String type) {
+        return !"QUESTION_SET".equals(type) && !"CLOZE".equals(type) && !block.hasNonNull("questionCount");
+    }
+
+    private static int fixedBlockCount(JsonNode block, String type) {
+        if ("QUESTION_SET".equals(type) || "CLOZE".equals(type)) {
+            int setCount = block.path("setCount").asInt(0);
+            int setSize = block.path("setSize").asInt(0);
+            if (setCount > 0 && setSize > 0) {
+                long product = (long) setCount * setSize;
+                return product > Integer.MAX_VALUE ? 0 : (int) product;
+            }
+        }
+        return block.hasNonNull("questionCount") ? block.path("questionCount").asInt(0) : 0;
     }
 }

@@ -91,12 +91,28 @@ class ExamApiFollowUpIT extends AbstractIntegrationTest {
     @Test
     void templatePartQuestionTypesExposed() throws Exception {
         JsonNode templates = mapper.readTree(mockMvc.perform(get("/api/v1/admin/exam-templates")
-                        .param("kind", "SP2E").with(asUser(Permissions.EXAM_VIEW)))
+                        .with(asUser(Permissions.EXAM_VIEW)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        JsonNode math = null;
+        java.util.Map<String, JsonNode> byCode = new java.util.LinkedHashMap<>();
         for (JsonNode template : templates) {
-            if ("SP2E_MATH_2026".equals(template.path("code").asText())) math = template;
+            byCode.put(template.path("code").asText(), template);
+            for (JsonNode part : template.path("parts")) {
+                int sum = 0;
+                for (JsonNode entry : part.path("questionTypes")) {
+                    int count = entry.path("questionCount").asInt();
+                    assertThat(count).as("%s part %s type %s count > 0",
+                            template.path("code").asText(), part.path("name").asText(), entry.path("questionType").asText())
+                            .isPositive();
+                    sum += count;
+                }
+                if (part.hasNonNull("questionCount")) {
+                    assertThat(sum).as("%s part %s questionTypes sum <= part.questionCount",
+                            template.path("code").asText(), part.path("name").asText())
+                            .isLessThanOrEqualTo(part.path("questionCount").asInt());
+                }
+            }
         }
+        JsonNode math = byCode.get("SP2E_MATH_2026");
         assertThat(math).as("SP2E_MATH_2026 is listed").isNotNull();
         JsonNode parts = math.path("parts");
         assertThat(parts).hasSize(math.path("structure").path("parts").size());
@@ -104,9 +120,39 @@ class ExamApiFollowUpIT extends AbstractIntegrationTest {
             assertThat(parts.get(i).path("name").asText())
                     .isEqualTo(math.path("structure").path("parts").get(i).path("name").asText());
         }
-        // Part I: 20 single choice + 5 multiple choice; the last part: 10 short answers.
         assertThat(typeCounts(parts.get(0))).containsExactly("SINGLE_CHOICE=20", "MULTIPLE_CHOICE=5");
         assertThat(typeCounts(parts.get(parts.size() - 1))).containsExactly("SHORT_ANSWER=10");
+
+        JsonNode bcaFull = byCode.get("BCA_FULL");
+        assertThat(bcaFull).isNotNull();
+        assertThat(typeCounts(bcaFull.path("parts").get(0))).containsExactly("ESSAY=1");
+        assertThat(typeCounts(bcaFull.path("parts").get(1))).containsExactly(
+                "SINGLE_CHOICE=44", "QUESTION_SET=16", "SHORT_ANSWER=5");
+        assertThat(typeCounts(bcaFull.path("parts").get(2))).isEmpty();
+
+        JsonNode bcaPartChoice = byCode.get("BCA_PART_TN_TU_CHON");
+        assertThat(bcaPartChoice).isNotNull();
+        assertThat(typeCounts(bcaPartChoice.path("parts").get(0))).isEmpty();
+
+        JsonNode qdaFull = byCode.get("QDA_FULL");
+        assertThat(qdaFull).isNotNull();
+        assertThat(typeCounts(qdaFull.path("parts").get(0))).containsExactly(
+                "SINGLE_CHOICE=32", "QUESTION_SET=3", "SHORT_ANSWER=15");
+        assertThat(typeCounts(qdaFull.path("parts").get(1))).containsExactly(
+                "SINGLE_CHOICE=25", "QUESTION_SET=25");
+        assertThat(typeCounts(qdaFull.path("parts").get(2))).isEmpty();
+
+        JsonNode hsaFull = byCode.get("HSA_FULL");
+        assertThat(hsaFull).isNotNull();
+        assertThat(typeCounts(hsaFull.path("parts").get(0))).containsExactly(
+                "SINGLE_CHOICE=32", "SHORT_ANSWER=15", "QUESTION_SET=3");
+        assertThat(typeCounts(hsaFull.path("parts").get(1))).containsExactly(
+                "SINGLE_CHOICE=25", "QUESTION_SET=25");
+        assertThat(typeCounts(hsaFull.path("parts").get(2))).isEmpty();
+
+        JsonNode vactReview = byCode.get("VACT_REVIEW");
+        assertThat(vactReview).isNotNull();
+        assertThat(typeCounts(vactReview.path("parts").get(0))).isEmpty();
     }
 
     private static List<String> typeCounts(JsonNode part) {
