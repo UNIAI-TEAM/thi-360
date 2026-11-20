@@ -6001,6 +6001,8 @@
       "meterExact": "{allocated, number} of {count, number} questions, matches",
       "over": "{count, plural, one {Over by # question} other {Over by # questions}}",
       "under": "{count, plural, one {Short by # question} other {Short by # questions}}",
+      "totalOver": "over",
+      "totalUnder": "short",
       "matches": "Matches the block's question count",
       "issues": {
         "invalidValue": "The matrix has negative values or non-whole question counts.",

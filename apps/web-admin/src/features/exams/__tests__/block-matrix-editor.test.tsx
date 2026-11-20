@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { BlockMatrixEditor } from "../components/block-matrix-editor";
@@ -127,5 +127,82 @@ describe("BlockMatrixEditor: thanh phân bổ (UNI-1702 C1)", () => {
     );
     expect(screen.getByRole("meter")).toHaveAttribute("data-state", "neutral");
     expect(screen.queryByText(/Vượt|Thiếu/)).not.toBeInTheDocument();
+  });
+});
+
+/** Ô Tổng của chân bảng chứa số `value` (ô `output` trong `td`). */
+const totalCell = (value: string) => screen.getByText(value, { selector: "output" }).closest("td")!;
+
+describe("BlockMatrixEditor: ô Tổng theo trạng thái phân bổ (UNI-2756)", () => {
+  it("vượt: ô Tổng dùng token lỗi, mang data-state=over và chữ cho trình đọc màn hình (không chỉ màu)", () => {
+    renderEditor(combined(76), 50);
+    const cell = totalCell("76");
+    expect(cell).toHaveAttribute("data-state", "over");
+    expect(cell).toHaveClass("bg-danger-bg", "text-danger");
+    expect(within(cell).getByText("vượt")).toHaveClass("sr-only");
+  });
+
+  it("thiếu: ô Tổng dùng token cảnh báo, data-state=under", () => {
+    renderEditor(combined(30), 50);
+    const cell = totalCell("30");
+    expect(cell).toHaveAttribute("data-state", "under");
+    expect(cell).toHaveClass("bg-warning-bg", "text-warning");
+    expect(within(cell).getByText("thiếu")).toHaveClass("sr-only");
+  });
+
+  it("khớp: ô Tổng giữ nguyên, không data-state, không màu trạng thái", () => {
+    renderEditor(combined(50), 50);
+    const cell = totalCell("50");
+    expect(cell).not.toHaveAttribute("data-state");
+    expect(cell.className).not.toMatch(/danger|warning/);
+  });
+
+  it("chỉ tiêu riêng chưa khai báo: ô Tổng không tô trạng thái", () => {
+    renderWithProviders(
+      <BlockMatrixEditor
+        block={block({ ...combined(76) }, 50)}
+        axes={axes}
+        labels={labels}
+        competencies={[]}
+        onChange={() => undefined}
+        available={available}
+        availableState="ready"
+        declared={false}
+      />,
+    );
+    expect(totalCell("76")).not.toHaveAttribute("data-state");
+  });
+
+  it("riêng từng chiều (ảnh BA): Theo khối lớp tổng 60 vượt thì chỉ ô đó đỏ, Theo độ khó tổng 50 giữ nguyên", () => {
+    renderEditor(
+      {
+        ...emptyMatrix(),
+        mode: "SEPARATE",
+        byGrade: [
+          { code: "GRADE_10", value: 30 },
+          { code: "GRADE_11", value: 30 },
+        ],
+        byDifficulty: [
+          { code: "RECOGNITION", value: 25 },
+          { code: "COMPREHENSION", value: 25 },
+        ],
+      },
+      50,
+    );
+    expect(totalCell("60")).toHaveAttribute("data-state", "over");
+    expect(totalCell("50")).not.toHaveAttribute("data-state");
+  });
+
+  it("nhập theo %: tổng 110% là vượt, 90% là thiếu", () => {
+    const percent = (total: number): BlockMatrix => ({
+      ...emptyMatrix(),
+      unit: "PERCENT",
+      cells: [cell("GRADE_10", "RECOGNITION", total - 30), cell("GRADE_10", "COMPREHENSION", 10), cell("GRADE_11", "RECOGNITION", 10), cell("GRADE_11", "COMPREHENSION", 10)],
+    });
+    const first = renderEditor(percent(110), 50);
+    expect(totalCell("110%")).toHaveAttribute("data-state", "over");
+    first.unmount();
+    renderEditor(percent(90), 50);
+    expect(totalCell("90%")).toHaveAttribute("data-state", "under");
   });
 });

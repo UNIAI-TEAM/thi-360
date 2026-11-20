@@ -14,6 +14,7 @@ import {
   gridToCells,
   hasCompetencyDimension,
   type MatrixAxes,
+  type MatrixDimension,
   toDimension,
   validateBlock,
 } from "../matrix";
@@ -82,6 +83,13 @@ export function BlockMatrixEditor({
         (issue) => issue.code === "PERCENT_TOTAL" || issue.code === "ALLOCATION_TOTAL" || issue.code === "INVALID_VALUE",
       )
     : [];
+  // Ô Tổng của chân bảng theo cùng kết luận với thanh phân bổ và dòng thông báo (cùng `issues`): vượt hoặc thiếu, còn lại giữ nguyên.
+  const totalState = (dimension: MatrixDimension): TotalState | undefined => {
+    const issue = issues.find((item) => (item.code === "PERCENT_TOTAL" || item.code === "ALLOCATION_TOTAL") && item.dimension === dimension);
+    if (issue?.code === "PERCENT_TOTAL") return issue.actual > 100 ? "over" : "under";
+    if (issue?.code === "ALLOCATION_TOTAL") return issue.actual > issue.expected ? "over" : "under";
+    return undefined;
+  };
   const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
   const questionBasis = (matrix.basis ?? "QUESTION") === "QUESTION";
   const gradeEnforcement: QuotaEnforcement = matrix.gradeEnforcement ?? "REQUIRED";
@@ -275,7 +283,7 @@ export function BlockMatrixEditor({
                 {axes.difficulties.map((difficulty, column) => (
                   <TotalCell key={difficulty}>{totalText(allocation.inputColumnTotals[column] ?? 0)}</TotalCell>
                 ))}
-                <TotalCell strong last>{totalText(allocation.inputTotal)}</TotalCell>
+                <TotalCell strong last state={totalState("COMBINED")}>{totalText(allocation.inputTotal)}</TotalCell>
               </tr>
             </tfoot>
           </MatrixTable>
@@ -399,7 +407,7 @@ export function BlockMatrixEditor({
                   <tfoot>
                     <tr>
                       <RowHead footer>{t("total")}</RowHead>
-                      <TotalCell strong>{totalText(inputTotal)}</TotalCell>
+                      <TotalCell strong state={totalState(dimension.key === "byGrade" ? "GRADE" : "DIFFICULTY")}>{totalText(inputTotal)}</TotalCell>
                       {percent && <TotalCell strong>{t("questionsValue", { count: countTotal })}</TotalCell>}
                     </tr>
                   </tfoot>
@@ -489,7 +497,7 @@ export function BlockMatrixEditor({
               <tfoot>
                 <tr>
                   <RowHead footer>{t("total")}</RowHead>
-                  <TotalCell strong>{totalText(allocation.competency.inputTotal)}</TotalCell>
+                  <TotalCell strong state={totalState("COMPETENCY")}>{totalText(allocation.competency.inputTotal)}</TotalCell>
                   {percent && <TotalCell strong>{t("questionsValue", { count: allocation.competency.total })}</TotalCell>}
                 </tr>
               </tfoot>
@@ -610,16 +618,37 @@ function RowHead({ children, footer = false }: { children: ReactNode; footer?: b
   );
 }
 
-function TotalCell({ children, strong = false, last = false }: { children: ReactNode; strong?: boolean; last?: boolean }) {
+type TotalState = "over" | "under";
+
+function TotalCell({
+  children,
+  strong = false,
+  last = false,
+  state,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  last?: boolean;
+  /** Ô Tổng của chân bảng khi tổng lệch số câu của khối: cùng màu với thanh phân bổ, kèm biểu tượng và chữ (không chỉ màu). */
+  state?: TotalState;
+}) {
+  const t = useTranslations("exams.matrix");
   return (
     <td
+      data-state={state}
       className={cn(
         "border-b border-border px-2 py-1.5 text-right whitespace-nowrap",
         strong && "font-semibold",
         last && "sticky right-0 z-1 border-l bg-surface pr-4",
+        state === "over" && "border-danger bg-danger-bg text-danger",
+        state === "under" && "border-warning bg-warning-bg text-warning",
       )}
     >
-      <output>{children}</output>
+      <output className="inline-flex items-center justify-end gap-1">
+        {state && <TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
+        {state && <span className="sr-only">{t(state === "over" ? "totalOver" : "totalUnder")}</span>}
+        {children}
+      </output>
     </td>
   );
 }

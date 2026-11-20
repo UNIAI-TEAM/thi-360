@@ -6001,6 +6001,8 @@
       "meterExact": "{allocated, number} trên {count, number} câu, khớp",
       "over": "Vượt {count, number} câu",
       "under": "Thiếu {count, number} câu",
+      "totalOver": "vượt",
+      "totalUnder": "thiếu",
       "matches": "Khớp số câu của khối",
       "issues": {
         "invalidValue": "Ma trận có giá trị âm hoặc số câu không phải số nguyên.",
