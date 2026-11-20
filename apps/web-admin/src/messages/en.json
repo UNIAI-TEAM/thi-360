@@ -6179,7 +6179,7 @@
       "editAria": "Edit rule: {sentence}",
       "empty": "No rules yet. Positions you do not declare are drawn at random from the exam structure.",
       "group": {
-        "allMode": "The subject is set to Whole exam: this group has no MAPID limit.",
+        "allMode": "The subject is set to No MAPID limit: this group has no MAPID limit.",
         "managed": "The group's knowledge scope and topic quotas are set by the subject's MAPID rules.",
         "none": "No MAPID rule applies to this group yet.",
         "open": "Open the MAPID rules table",
@@ -6196,7 +6196,7 @@
       },
       "limit": "The limit of {max, number} rules is reached.",
       "mode": {
-        "all": "Whole exam (no MAPID limit)",
+        "all": "No MAPID limit",
         "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",
         "legend": "Knowledge scope",
         "matrix": "By MAPID matrix",

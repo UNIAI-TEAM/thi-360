@@ -6179,7 +6179,7 @@
       "editAria": "Sửa quy tắc: {sentence}",
       "empty": "Chưa có quy tắc nào. Các vị trí không khai báo được lấy ngẫu nhiên theo cấu trúc đề.",
       "group": {
-        "allMode": "Môn đang ở chế độ Toàn bài: không giới hạn MAPID cho nhóm này.",
+        "allMode": "Môn đang ở chế độ Không giới hạn MAPID: không giới hạn MAPID cho nhóm này.",
         "managed": "Phạm vi kiến thức và chỉ tiêu chủ đề của nhóm do các quy tắc MAPID của môn quyết định.",
         "none": "Chưa có quy tắc MAPID nào áp dụng cho nhóm này.",
         "open": "Mở bảng Quy tắc MAPID",
@@ -6196,7 +6196,7 @@
       },
       "limit": "Đã đủ {max, number} quy tắc.",
       "mode": {
-        "all": "Toàn bài (không giới hạn MAPID)",
+        "all": "Không giới hạn MAPID",
         "allHint": "Lấy ngẫu nhiên từ toàn bộ nguồn hợp lệ của môn. Câu chưa gắn MAPID vẫn có thể được chọn.",
         "legend": "Phạm vi kiến thức",
         "matrix": "Theo ma trận MAPID",
