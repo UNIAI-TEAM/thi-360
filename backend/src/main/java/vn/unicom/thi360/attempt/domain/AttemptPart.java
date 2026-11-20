@@ -133,18 +133,27 @@ public class AttemptPart {
     }
 
     public void open(Instant startedAt, Instant deadlineAt) {
+        if (this.state != PartState.PENDING && this.state != PartState.GENERATING) {
+            throw new IllegalStateException("Cannot open part from state " + this.state);
+        }
         this.state = PartState.OPEN;
         this.startedAt = Objects.requireNonNull(startedAt, "startedAt must not be null");
         this.deadlineAt = deadlineAt;
     }
 
     public void close(PartCloseReason reason, Instant closedAt) {
+        if (this.state != PartState.OPEN) {
+            throw new IllegalStateException("Cannot close part from state " + this.state);
+        }
         this.state = PartState.CLOSED;
         this.closeReason = Objects.requireNonNull(reason, "reason must not be null");
         this.closedAt = Objects.requireNonNull(closedAt, "closedAt must not be null");
     }
 
     public void skip(PartCloseReason reason, Instant closedAt) {
+        if (this.state == PartState.OPEN || this.state == PartState.CLOSED) {
+            throw new IllegalStateException("Cannot skip part from state " + this.state);
+        }
         this.state = PartState.SKIPPED;
         this.closeReason = reason;
         this.closedAt = closedAt;

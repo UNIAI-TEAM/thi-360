@@ -36,10 +36,24 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 final class PaperGenerationAssembler {
     private PaperGenerationAssembler() {}
 
+    private record BlockKey(String sectionId, String blockId) {}
+
+    private record ShuffleLookup(
+            Map<BlockKey, Boolean> bySectionBlock,
+            Map<String, Boolean> byBlockFallback) {
+        boolean shuffleUnits(String sectionId, String blockId) {
+            Boolean exact = bySectionBlock.get(new BlockKey(sectionId, blockId));
+            if (exact != null) {
+                return exact;
+            }
+            return byBlockFallback.getOrDefault(blockId, true);
+        }
+    }
+
     static GeneratedPaper assemble(List<String> partIds, ExamStructureDocument document, List<SolvePart> solveParts,
             SolvePath actual, List<SubjectWitness> witnesses, List<QuestionPick> dropped,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates) {
-        Map<String, Boolean> shuffleByBlockId = collectShuffleUnits(document);
+        ShuffleLookup shuffleLookup = collectShuffleUnits(document);
         Map<String, String> partOfSection = partOfSection(solveParts);
         Map<String, List<SectionOnPath>> sectionsByPart = new LinkedHashMap<>();
         for (String partId : partIds) sectionsByPart.put(partId, new ArrayList<>());
@@ -58,7 +72,7 @@ final class PaperGenerationAssembler {
         for (var entry : sectionsByPart.entrySet()) {
             List<GeneratedSection> sections = new ArrayList<>();
             for (SectionOnPath section : entry.getValue()) {
-                sections.add(section(section, groups, candidates, shuffleByBlockId));
+                sections.add(section(section, groups, candidates, shuffleLookup));
             }
             parts.add(new GeneratedPart(entry.getKey(), sections));
         }
@@ -85,7 +99,7 @@ final class PaperGenerationAssembler {
 
     private static GeneratedSection section(SectionOnPath section, Map<String, GroupWitness> witnesses,
             Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> candidates,
-            Map<String, Boolean> shuffleByBlockId) {
+            ShuffleLookup shuffleLookup) {
         // A block with passage slots is solved as one synthetic group per slot; the port speaks authored blocks, so the
         // slot picks join, in slot order, under the id of the block they came from (as the preview consolidates them).
         Map<String, List<GeneratedQuestion>> byBlock = new LinkedHashMap<>();
@@ -108,7 +122,8 @@ final class PaperGenerationAssembler {
         }
         List<GeneratedGroup> groups = new ArrayList<>();
         byBlock.forEach((blockId, questions) ->
-                groups.add(new GeneratedGroup(blockId, questions, shuffleByBlockId.getOrDefault(blockId, true))));
+                groups.add(new GeneratedGroup(
+                        blockId, questions, shuffleLookup.shuffleUnits(section.sectionId(), blockId))));
         if (section.questionCount() != null && units != section.questionCount()) {
             throw PaperGenerationPlan.failed("section " + section.sectionId() + " holds " + units
                     + " of " + section.questionCount() + " questions");
@@ -117,31 +132,35 @@ final class PaperGenerationAssembler {
                 section.questionCount() == null ? (int) units : section.questionCount(), groups);
     }
 
-    private static Map<String, Boolean> collectShuffleUnits(ExamStructureDocument document) {
-        Map<String, Boolean> shuffle = new HashMap<>();
+    private static ShuffleLookup collectShuffleUnits(ExamStructureDocument document) {
+        Map<BlockKey, Boolean> bySectionBlock = new HashMap<>();
+        Map<String, Boolean> byBlockFallback = new HashMap<>();
         if (document == null) {
-            return shuffle;
+            return new ShuffleLookup(bySectionBlock, byBlockFallback);
         }
         for (ExamPart part : document.parts()) {
-            collectSections(shuffle, part.sections());
-            collectSections(shuffle, part.subjectPool());
+            collectSections(bySectionBlock, part.sections());
+            collectSections(bySectionBlock, part.subjectPool());
             for (ExamPartOption option : part.options()) {
-                collectSections(shuffle, option.sections());
-                collectBlocks(shuffle, option.blocks());
+                collectSections(bySectionBlock, option.sections());
+                String syntheticSectionId = option.id() == null ? null : option.id() + ":blocks";
+                for (QuestionBlock block : option.blocks()) {
+                    boolean shuffle = Boolean.TRUE.equals(block.shuffleUnits());
+                    if (syntheticSectionId != null) {
+                        bySectionBlock.put(new BlockKey(syntheticSectionId, block.id()), shuffle);
+                    }
+                    byBlockFallback.putIfAbsent(block.id(), shuffle);
+                }
             }
         }
-        return shuffle;
+        return new ShuffleLookup(bySectionBlock, byBlockFallback);
     }
 
-    private static void collectSections(Map<String, Boolean> target, List<ExamSection> sections) {
+    private static void collectSections(Map<BlockKey, Boolean> target, List<ExamSection> sections) {
         for (ExamSection section : sections) {
-            collectBlocks(target, section.blocks());
-        }
-    }
-
-    private static void collectBlocks(Map<String, Boolean> target, List<QuestionBlock> blocks) {
-        for (QuestionBlock block : blocks) {
-            target.put(block.id(), Boolean.TRUE.equals(block.shuffleUnits()));
+            for (QuestionBlock block : section.blocks()) {
+                target.put(new BlockKey(section.id(), block.id()), Boolean.TRUE.equals(block.shuffleUnits()));
+            }
         }
     }
 

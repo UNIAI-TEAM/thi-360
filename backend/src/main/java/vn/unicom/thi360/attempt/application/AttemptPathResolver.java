@@ -83,19 +83,29 @@ public class AttemptPathResolver {
 
     public PrepareStructure buildPrepareStructure(
             ServingExam serving, List<String> grantedOptionCodes) {
+        return buildPrepareStructure(serving, grantedOptionCodes, true);
+    }
+
+    public PrepareStructure buildPrepareStructure(
+            ServingExam serving, List<String> grantedOptionCodes, boolean hasAvailableGrant) {
         PublishedVersion baseVersion = serving.version();
-        List<ServingPath> allowedPaths = intersectServingPaths(serving.servingPaths(), grantedOptionCodes);
+        List<ServingPath> allowedPaths = hasAvailableGrant
+                ? intersectServingPaths(serving.servingPaths(), grantedOptionCodes)
+                : List.of();
         Map<Integer, PublishedVersion> versionsByNo = loadAllowedVersions(serving, allowedPaths);
+        PublishedVersion representative = allowedPaths.isEmpty()
+                ? baseVersion
+                : versionsByNo.getOrDefault(allowedPaths.getFirst().versionNo(), baseVersion);
         Map<String, CatalogItemView> subjectsByCode = subjectsByCode();
 
-        List<Part> orderedParts = sortedParts(baseVersion.parts());
+        List<Part> orderedParts = sortedParts(representative.parts());
         List<PreparePartView> partViews = new ArrayList<>(orderedParts.size());
         PreChoiceView preChoice = null;
         List<AfterStartChoiceView> afterStartChoices = new ArrayList<>();
 
         for (int ord = 0; ord < orderedParts.size(); ord++) {
             Part part = orderedParts.get(ord);
-            ChoiceTiming timing = classifyPart(baseVersion, part, allowedPaths, versionsByNo);
+            ChoiceTiming timing = classifyPart(representative, part, allowedPaths, versionsByNo);
             boolean required = timing == ChoiceTiming.NONE;
 
             PartMetrics metrics = resolvePrepareMetrics(part, allowedPaths);
@@ -112,20 +122,20 @@ public class AttemptPathResolver {
 
             if (timing == ChoiceTiming.PRE_START && preChoice == null) {
                 List<ChoiceOptionView> options =
-                        buildAllowedOptionsForPart(baseVersion, part, allowedPaths, versionsByNo, subjectsByCode);
-                String kind = resolveChoiceKind(options, part, baseVersion);
+                        buildAllowedOptionsForPart(representative, part, allowedPaths, versionsByNo, subjectsByCode);
+                String kind = resolveChoiceKind(options, part, representative);
                 String preselectedCode = options.size() == 1 ? options.getFirst().code() : null;
                 preChoice = new PreChoiceView(part.id(), kind, preselectedCode, options);
             } else if (timing == ChoiceTiming.AFTER_START) {
                 List<ChoiceOptionView> options =
-                        buildAllowedOptionsForPart(baseVersion, part, allowedPaths, versionsByNo, subjectsByCode);
-                String kind = resolveChoiceKind(options, part, baseVersion);
+                        buildAllowedOptionsForPart(representative, part, allowedPaths, versionsByNo, subjectsByCode);
+                String kind = resolveChoiceKind(options, part, representative);
                 afterStartChoices.add(new AfterStartChoiceView(part.id(), ord, part.name(), kind, options));
             }
         }
 
-        Integer durationMinutes = resolvePrepareDuration(baseVersion, allowedPaths, partViews);
-        return new PrepareStructure(baseVersion, durationMinutes, partViews, preChoice, afterStartChoices);
+        Integer durationMinutes = resolvePrepareDuration(representative, allowedPaths, partViews);
+        return new PrepareStructure(representative, durationMinutes, partViews, preChoice, afterStartChoices);
     }
 
     public ResolvedStartPlan resolveStartPlan(
@@ -138,7 +148,9 @@ public class AttemptPathResolver {
         }
 
         Map<Integer, PublishedVersion> versionsByNo = loadAllowedVersions(serving, allowedPaths);
-        Part preChoicePart = findPreChoicePart(baseVersion, allowedPaths, versionsByNo);
+        PublishedVersion representative =
+                versionsByNo.getOrDefault(allowedPaths.getFirst().versionNo(), baseVersion);
+        Part preChoicePart = findPreChoicePart(representative, allowedPaths, versionsByNo);
 
         ServingPath chosenPath;
         PublishedVersion chosenVersion;
@@ -196,7 +208,8 @@ public class AttemptPathResolver {
         List<String> partCodesToGenerate = new ArrayList<>();
         List<PlannedPart> plannedParts = new ArrayList<>(orderedParts.size());
         BigDecimal totalMax = BigDecimal.ZERO;
-        boolean hasAnyMax = false;
+        int partDurationSum = 0;
+        boolean hasAnyPartDuration = false;
 
         for (int ord = 0; ord < orderedParts.size(); ord++) {
             Part part = orderedParts.get(ord);
@@ -207,7 +220,10 @@ public class AttemptPathResolver {
             }
             if (metrics.maxPoints() != null) {
                 totalMax = totalMax.add(metrics.maxPoints());
-                hasAnyMax = true;
+            }
+            if (metrics.durationMinutes() != null) {
+                partDurationSum += metrics.durationMinutes();
+                hasAnyPartDuration = true;
             }
             plannedParts.add(
                     new PlannedPart(
@@ -220,14 +236,18 @@ public class AttemptPathResolver {
                             metrics.maxPoints()));
         }
 
+        boolean allPartsHaveMax = !plannedParts.isEmpty()
+                && plannedParts.stream().allMatch(p -> p.maxPoints() != null);
         BigDecimal resolvedMaxScore =
-                hasAnyMax
+                allPartsHaveMax
                         ? totalMax
                         : (chosenPath.maxPoints() != null ? chosenPath.maxPoints() : chosenVersion.maxScore());
         Integer examDurationMinutes =
                 chosenVersion.durationMinutes() != null
                         ? chosenVersion.durationMinutes()
-                        : chosenPath.durationMinutes();
+                        : (chosenPath.durationMinutes() != null
+                                ? chosenPath.durationMinutes()
+                                : (hasAnyPartDuration ? partDurationSum : null));
 
         return new ResolvedStartPlan(
                 chosenVersion,
@@ -272,7 +292,7 @@ public class AttemptPathResolver {
             }
         }
         if (granted.isEmpty()) {
-            return List.copyOf(servingPaths);
+            return List.of();
         }
         List<ServingPath> matched = new ArrayList<>();
         for (ServingPath path : servingPaths) {
@@ -395,7 +415,7 @@ public class AttemptPathResolver {
         collectOptionsFromVersionPart(basePart, allowedByCode, subjectsByCode, views, seen);
         for (ServingPath path : allowedPaths) {
             PublishedVersion pv = versionsByNo.get(path.versionNo());
-            if (pv != null && pv != baseVersion) {
+            if (pv != null && pv.versionNo() != baseVersion.versionNo()) {
                 findPartById(pv, basePart.id())
                         .ifPresent(p -> collectOptionsFromVersionPart(p, allowedByCode, subjectsByCode, views, seen));
             }
@@ -408,7 +428,7 @@ public class AttemptPathResolver {
         collectCombinationsFromVersion(baseVersion, basePart.id(), allowedByCode, subjectsByCode, views, seen);
         for (ServingPath path : allowedPaths) {
             PublishedVersion pv = versionsByNo.get(path.versionNo());
-            if (pv != null && pv != baseVersion) {
+            if (pv != null && pv.versionNo() != baseVersion.versionNo()) {
                 collectCombinationsFromVersion(pv, basePart.id(), allowedByCode, subjectsByCode, views, seen);
             }
         }
@@ -683,8 +703,11 @@ public class AttemptPathResolver {
     }
 
     private static List<Part> sortedParts(List<Part> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return List.of();
+        }
         return parts.stream()
-                .sorted(Comparator.comparingInt(p -> p.order() == null ? 0 : p.order()))
+                .sorted(Comparator.comparing(Part::order, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
     }
 

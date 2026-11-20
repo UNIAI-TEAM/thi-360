@@ -347,10 +347,9 @@ public class AttemptStartService {
                     }
                     continue;
                 }
-                Map<String, Boolean> shuffleMap = buildShuffleMap(gp);
                 long partSeed = mixSeed(job.seed(), pp.ord());
                 AssembledPart assembled =
-                        paperAssembler.assemble(gp, versionMap, shuffleMap, partSeed, nextDisplayNo);
+                        paperAssembler.assemble(gp, versionMap, Map.of(), partSeed, nextDisplayNo);
                 nextDisplayNo = assembled.nextDisplayNo();
                 assembledByPartCode.put(pp.partCode(), assembled);
             }
@@ -562,16 +561,6 @@ public class AttemptStartService {
             }
         }
         return List.copyOf(keys);
-    }
-
-    private static Map<String, Boolean> buildShuffleMap(GeneratedPart part) {
-        Map<String, Boolean> map = new LinkedHashMap<>();
-        for (GeneratedSection section : part.sections()) {
-            for (GeneratedGroup group : section.groups()) {
-                map.putIfAbsent(group.groupId(), group.shuffleUnits());
-            }
-        }
-        return map;
     }
 
     private static void collectPartItems(

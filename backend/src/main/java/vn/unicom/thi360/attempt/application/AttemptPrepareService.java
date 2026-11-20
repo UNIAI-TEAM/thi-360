@@ -87,7 +87,7 @@ public class AttemptPrepareService {
                 .orElseThrow(() -> new NotFoundException("EXAM_NOT_FOUND", null));
 
         AttemptPathResolver.PrepareStructure structure =
-                pathResolver.buildPrepareStructure(serving, desc.optionCodes());
+                pathResolver.buildPrepareStructure(serving, desc.optionCodes(), desc.grantId() != null);
         PublishedVersion version = structure.representativeVersion();
 
         OpenAttemptView openView =
@@ -95,8 +95,9 @@ public class AttemptPrepareService {
 
         ExamKindView examKind = resolveExamKind(version);
         SubjectView subject = resolveSubject(version.subjectItemId());
-        GrantSourceView grantSource =
-                new GrantSourceView(desc.source(), desc.orderCode(), desc.grantedAt());
+        GrantSourceView grantSource = desc.grantId() == null
+                ? null
+                : new GrantSourceView(desc.source(), desc.orderCode(), desc.grantedAt());
         List<OmittedGroupView> omittedGroups =
                 version.omittedGroups().stream()
                         .map(g -> new OmittedGroupView(g.name(), g.points()))

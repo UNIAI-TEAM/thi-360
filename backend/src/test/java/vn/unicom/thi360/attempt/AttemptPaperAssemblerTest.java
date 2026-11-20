@@ -1,36 +1,59 @@
 package vn.unicom.thi360.attempt;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import vn.unicom.thi360.attempt.api.AttemptQuestionBody;
+import vn.unicom.thi360.attempt.api.AttemptStateResponse;
+import vn.unicom.thi360.attempt.application.AttemptAccessGate;
+import vn.unicom.thi360.attempt.application.AttemptGuard;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler.AssembledItem;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler.AssembledPart;
 import vn.unicom.thi360.attempt.application.AttemptQuestionSanitizer;
+import vn.unicom.thi360.attempt.application.AttemptStateService;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
+import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptItem;
+import vn.unicom.thi360.attempt.domain.AttemptPart;
+import vn.unicom.thi360.attempt.domain.AttemptTiming;
+import vn.unicom.thi360.attempt.domain.NavigationMode;
+import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
+import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedGroup;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedPart;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedQuestion;
 import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedSection;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Version;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
-/** Unit tests for {@link AttemptPaperAssembler} and {@link AttemptQuestionSanitizer} (AC-16, AC-17, AC-18, AC-24, AC-25, AC-27). */
+/**
+ * Unit tests for {@link AttemptPaperAssembler} and live {@link AttemptStateService} allowlist
+ * projection / asset URL rewriting (AC-16, AC-17, AC-18, AC-24, AC-25, AC-27).
+ */
 class AttemptPaperAssemblerTest {
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
     private final AttemptPaperAssembler assembler = new AttemptPaperAssembler();
-    private final AttemptQuestionSanitizer sanitizer = new AttemptQuestionSanitizer(mapper);
+    private final AttemptQuestionSanitizer sanitizer = new AttemptQuestionSanitizer();
 
     @Test
     void sameSeedSameOrder() {
@@ -178,20 +201,25 @@ class AttemptPaperAssemblerTest {
             }
             assertThat(tfItem.optionOrder()).isNull();
 
-            // Verify sanitizer preserves Matching left order, applies shuffled right order, and preserves TF order
-            ObjectNode sanitizedMatch = sanitizer.sanitizeSnapshot(
-                    UUID.randomUUID(), versions.get(key(matchingId)).snapshot(), matchItem.optionOrder(), Map.of());
-            assertThat(sanitizedMatch.path("body").path("left"))
-                    .extracting(n -> n.path("id").asText())
+            // Verify live AttemptStateService preserves Matching left order, applies shuffled right order, and preserves TF order
+            AttemptStateResponse state = projectAssembledViaStateService(
+                    UUID.randomUUID(),
+                    List.of(matchItem, tfItem),
+                    List.of(versions.get(key(matchingId)), versions.get(key(tfId))));
+            var stateItems = state.parts().getFirst().items();
+            AttemptQuestionBody.Matching projectedMatch =
+                    (AttemptQuestionBody.Matching) stateItems.get(0).questionBody();
+            assertThat(projectedMatch.left())
+                    .extracting(AttemptQuestionBody.SideView::id)
                     .containsExactly("l1", "l2");
-            assertThat(sanitizedMatch.path("body").path("right"))
-                    .extracting(n -> n.path("id").asText())
+            assertThat(projectedMatch.right())
+                    .extracting(AttemptQuestionBody.SideView::id)
                     .containsExactlyElementsOf(matchItem.optionOrder());
 
-            ObjectNode sanitizedTf = sanitizer.sanitizeSnapshot(
-                    UUID.randomUUID(), versions.get(key(tfId)).snapshot(), tfItem.optionOrder(), Map.of());
-            assertThat(sanitizedTf.path("body").path("statements"))
-                    .extracting(n -> n.path("id").asText())
+            AttemptQuestionBody.TrueFalse projectedTf =
+                    (AttemptQuestionBody.TrueFalse) stateItems.get(1).questionBody();
+            assertThat(projectedTf.statements())
+                    .extracting(AttemptQuestionBody.StatementView::id)
                     .containsExactly("s1", "s2", "s3", "s4");
         }
         assertThat(sawShuffledRight).isTrue();
@@ -296,11 +324,18 @@ class AttemptPaperAssemblerTest {
         scOpts.addObject().put("id", "o1").put("content", "<p>O1 <img src=\"/api/v1/admin/question-assets/" + optAsset + "\"></p>").put("correct", true);
         scOpts.addObject().put("id", "o2").put("content", "<p>O2</p>").put("correct", false);
 
-        ObjectNode tfSnap = (ObjectNode) trueFalseVersion(UUID.randomUUID(), BigDecimal.ONE).snapshot().deepCopy();
+        UUID setId = UUID.randomUUID();
+        UUID tfId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID essayId = UUID.randomUUID();
+        UUID shortId = UUID.randomUUID();
+        UUID clozeId = UUID.randomUUID();
+
+        ObjectNode tfSnap = (ObjectNode) trueFalseVersion(tfId, BigDecimal.ONE).snapshot().deepCopy();
         ((ObjectNode) tfSnap.path("body").path("statements").get(0))
                 .put("content", "<p>S1 <img src=\"/api/v1/admin/question-assets/" + stmtAsset + "\"></p>");
 
-        ObjectNode matchSnap = (ObjectNode) matchingVersion(UUID.randomUUID(), BigDecimal.ONE).snapshot().deepCopy();
+        ObjectNode matchSnap = (ObjectNode) matchingVersion(matchId, BigDecimal.ONE).snapshot().deepCopy();
         ((ObjectNode) matchSnap.path("body").path("left").get(0))
                 .put("content", "<p>L1 <img src=\"/api/v1/admin/question-assets/" + leftAsset + "\"></p>");
         ((ObjectNode) matchSnap.path("body").path("right").get(0))
@@ -325,62 +360,75 @@ class AttemptPaperAssemblerTest {
         shortBody.put("inputHint", "Enter integer");
         shortBody.put("answerFormat", "NUMERIC");
 
-        ObjectNode clozeSnap = (ObjectNode) clozeVersion(UUID.randomUUID(), 2, BigDecimal.ONE).snapshot().deepCopy();
+        ObjectNode clozeSnap = (ObjectNode) clozeVersion(clozeId, 2, BigDecimal.ONE).snapshot().deepCopy();
 
-        ObjectNode sanitizedSet = sanitizer.sanitizeSnapshot(
-                attemptId, setSnap, null, Map.of(scId.toString(), List.of("o2", "o1")));
-        ObjectNode sanitizedTf = sanitizer.sanitizeSnapshot(attemptId, tfSnap, null, Map.of());
-        ObjectNode sanitizedMatch = sanitizer.sanitizeSnapshot(
-                attemptId, matchSnap, List.of("r4", "r3", "r2", "r1"), Map.of());
-        ObjectNode sanitizedEssay = sanitizer.sanitizeSnapshot(attemptId, essaySnap, null, Map.of());
-        ObjectNode sanitizedShort = sanitizer.sanitizeSnapshot(attemptId, shortSnap, null, Map.of());
-        ObjectNode sanitizedCloze = sanitizer.sanitizeSnapshot(attemptId, clozeSnap, null, Map.of());
+        UUID partId = UUID.randomUUID();
+        UUID setItemId = UUID.randomUUID();
+        List<AttemptItem> items = List.of(
+                AttemptItem.create(setItemId, attemptId, partId, null, "SEC", "TOAN", "B", null, 0, null, 1, setId, 1, QuestionType.QUESTION_SET, new BigDecimal("5.0"), null),
+                AttemptItem.create(UUID.randomUUID(), attemptId, partId, null, "SEC", "TOAN", "B", setItemId, 1, 1, 1, scId, 1, QuestionType.SINGLE_CHOICE, new BigDecimal("0.125"), List.of("o2", "o1")),
+                AttemptItem.create(UUID.randomUUID(), attemptId, partId, null, "SEC", "TOAN", "B", null, 2, 2, 1, tfId, 1, QuestionType.TRUE_FALSE, BigDecimal.ONE, null),
+                AttemptItem.create(UUID.randomUUID(), attemptId, partId, null, "SEC", "TOAN", "B", null, 3, 3, 1, matchId, 1, QuestionType.MATCHING, BigDecimal.ONE, List.of("r4", "r3", "r2", "r1")),
+                AttemptItem.create(UUID.randomUUID(), attemptId, partId, null, "SEC", "TOAN", "B", null, 4, 4, 1, essayId, 1, QuestionType.ESSAY, new BigDecimal("25"), null),
+                AttemptItem.create(UUID.randomUUID(), attemptId, partId, null, "SEC", "TOAN", "B", null, 5, 5, 1, shortId, 1, QuestionType.SHORT_ANSWER, BigDecimal.ONE, null),
+                AttemptItem.create(UUID.randomUUID(), attemptId, partId, null, "SEC", "TOAN", "B", null, 6, 6, 2, clozeId, 1, QuestionType.CLOZE, BigDecimal.ONE, null));
+        List<Version> versions = List.of(
+                new Version(key(setId), setSnap),
+                new Version(key(tfId), tfSnap),
+                new Version(key(matchId), matchSnap),
+                new Version(key(essayId), essaySnap),
+                new Version(key(shortId), shortSnap),
+                new Version(key(clozeId), clozeSnap));
 
-        ArrayNode bundle = mapper.createArrayNode()
-                .add(sanitizedSet)
-                .add(sanitizedTf)
-                .add(sanitizedMatch)
-                .add(sanitizedEssay)
-                .add(sanitizedShort)
-                .add(sanitizedCloze);
-
-        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(bundle);
-        String json = mapper.writeValueAsString(bundle);
+        AttemptStateResponse state = projectViaStateService(attemptId, items, versions);
+        JsonNode stateJson = mapper.valueToTree(state);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(stateJson);
+        String json = mapper.writeValueAsString(stateJson);
         assertThat(json).doesNotContain("/api/v1/admin/");
 
-        // Verify statements[].answer also absent (beyond ForbiddenKeysAssert scoped check)
-        for (JsonNode stmt : sanitizedTf.path("body").path("statements")) {
+        var projectedItems = state.parts().getFirst().items();
+        var setView = projectedItems.get(0);
+        var scChildView = projectedItems.get(1);
+        var tfView = projectedItems.get(2);
+        var matchView = projectedItems.get(3);
+        var essayView = projectedItems.get(4);
+        var shortView = projectedItems.get(5);
+        var clozeView = projectedItems.get(6);
+
+        // Verify statements[].answer and points absent on JSON
+        JsonNode tfJson = stateJson.path("parts").get(0).path("items").get(2);
+        for (JsonNode stmt : tfJson.path("questionBody").path("statements")) {
             assertThat(stmt.has("answer")).isFalse();
             assertThat(stmt.has("points")).isFalse();
         }
-        // Verify blanks keep id only
-        for (JsonNode blank : sanitizedCloze.path("body").path("blanks")) {
+        // Verify blanks keep id only on JSON
+        JsonNode clozeJson = stateJson.path("parts").get(0).path("items").get(6);
+        for (JsonNode blank : clozeJson.path("questionBody").path("blanks")) {
             assertThat(blank.fieldNames()).toIterable().containsExactly("id");
         }
         // Verify preserved fields
-        assertThat(sanitizedSet.path("body").path("blankNumberStart").asInt()).isEqualTo(4);
-        assertThat(sanitizedSet.path("body").path("children").get(0).path("points").decimalValue())
-                .isEqualByComparingTo("0.125");
-        assertThat(sanitizedSet.path("body").path("children").get(0).path("body").path("options"))
-                .extracting(n -> n.path("id").asText())
+        assertThat(((AttemptQuestionBody.QuestionSet) setView.questionBody()).blankNumberStart()).isEqualTo(4);
+        assertThat(scChildView.points()).isEqualByComparingTo("0.125");
+        assertThat(((AttemptQuestionBody.SingleChoice) scChildView.questionBody()).options())
+                .extracting(AttemptQuestionBody.OptionView::id)
                 .containsExactly("o2", "o1");
-        assertThat(sanitizedEssay.path("body").path("wordLimit").asInt()).isEqualTo(200);
-        assertThat(sanitizedShort.path("body").path("inputHint").asText()).isEqualTo("Enter integer");
-        assertThat(sanitizedShort.path("body").path("answerFormat").asText()).isEqualTo("NUMERIC");
-        assertThat(sanitizedMatch.path("body").path("reuseRight").asBoolean()).isFalse();
+        assertThat(((AttemptQuestionBody.Essay) essayView.questionBody()).wordLimit()).isEqualTo(200);
+        assertThat(((AttemptQuestionBody.ShortAnswer) shortView.questionBody()).inputHint()).isEqualTo("Enter integer");
+        assertThat(((AttemptQuestionBody.ShortAnswer) shortView.questionBody()).answerFormat()).isEqualTo("NUMERIC");
+        assertThat(((AttemptQuestionBody.Matching) matchView.questionBody()).reuseRight()).isFalse();
 
         // Verify rewritten URLs
-        assertThat(sanitizedSet.path("content").asText())
+        assertThat(setView.content())
                 .contains("/api/v1/me/attempts/" + attemptId + "/assets/" + promptAsset);
-        assertThat(sanitizedSet.path("body").path("passage").asText())
+        assertThat(((AttemptQuestionBody.QuestionSet) setView.questionBody()).passage())
                 .contains("/api/v1/me/attempts/" + attemptId + "/assets/" + passageAsset);
-        assertThat(sanitizedSet.path("body").path("children").get(0).path("body").path("options").get(1).path("content").asText())
+        assertThat(((AttemptQuestionBody.SingleChoice) scChildView.questionBody()).options().get(1).content())
                 .contains("/api/v1/me/attempts/" + attemptId + "/assets/" + optAsset);
-        assertThat(sanitizedTf.path("body").path("statements").get(0).path("content").asText())
+        assertThat(((AttemptQuestionBody.TrueFalse) tfView.questionBody()).statements().get(0).content())
                 .contains("/api/v1/me/attempts/" + attemptId + "/assets/" + stmtAsset);
-        assertThat(sanitizedMatch.path("body").path("left").get(0).path("content").asText())
+        assertThat(((AttemptQuestionBody.Matching) matchView.questionBody()).left().get(0).content())
                 .contains("/api/v1/me/attempts/" + attemptId + "/assets/" + leftAsset);
-        assertThat(sanitizedMatch.path("body").path("right").get(3).path("content").asText())
+        assertThat(((AttemptQuestionBody.Matching) matchView.questionBody()).right().get(3).content())
                 .contains("/api/v1/me/attempts/" + attemptId + "/assets/" + rightAsset);
     }
 
@@ -568,5 +616,95 @@ class AttemptPaperAssemblerTest {
         assertThat(assembled.items())
                 .extracting(AttemptPaperAssembler.AssembledItem::questionId)
                 .containsExactly(q1, q2, q3);
+    }
+
+    private AttemptStateResponse projectAssembledViaStateService(
+            UUID attemptId, List<AssembledItem> assembledItems, List<Version> versions) {
+        UUID partId = UUID.randomUUID();
+        List<AttemptItem> items = new ArrayList<>(assembledItems.size());
+        for (AssembledItem src : assembledItems) {
+            items.add(AttemptItem.create(
+                    UUID.randomUUID(),
+                    attemptId,
+                    partId,
+                    src.subjectItemId(),
+                    src.sectionId(),
+                    src.componentCode(),
+                    src.blockId(),
+                    null,
+                    src.ord(),
+                    src.displayNo(),
+                    src.unitCount(),
+                    src.questionId(),
+                    src.questionVersionNo(),
+                    src.questionType(),
+                    src.pointsMax(),
+                    src.optionOrder()));
+        }
+        return projectViaStateService(attemptId, partId, items, versions);
+    }
+
+    private AttemptStateResponse projectViaStateService(
+            UUID attemptId, List<AttemptItem> items, List<Version> versions) {
+        UUID partId = items.isEmpty() ? UUID.randomUUID() : items.getFirst().getPartId();
+        return projectViaStateService(attemptId, partId, items, versions);
+    }
+
+    private AttemptStateResponse projectViaStateService(
+            UUID attemptId, UUID partId, List<AttemptItem> items, List<Version> versions) {
+        Instant now = Instant.parse("2026-11-20T10:00:00Z");
+        UUID userId = UUID.randomUUID();
+        Attempt attempt = Attempt.start(
+                attemptId,
+                userId,
+                UUID.randomUUID(),
+                1,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "State Projection Test",
+                UUID.randomUUID(),
+                "HSA",
+                "FULL",
+                null,
+                null,
+                AttemptTiming.PER_PART,
+                NavigationMode.SEQUENTIAL,
+                Map.of(),
+                1L,
+                UUID.randomUUID(),
+                "SCORE_AND_ANSWERS",
+                "RAW",
+                BigDecimal.TEN,
+                BigDecimal.TEN,
+                "k-proj",
+                now);
+        attempt.open(1, now, null);
+
+        AttemptPart part = AttemptPart.createPending(
+                partId, attemptId, "P1", "Part 1", 0, 60, items.size(), BigDecimal.TEN, 1L);
+        part.open(now, now.plusSeconds(3600));
+
+        AttemptAccessGate accessGate = mock(AttemptAccessGate.class);
+        AttemptGuard guard = mock(AttemptGuard.class);
+        AttemptPartRepository partRepo = mock(AttemptPartRepository.class);
+        AttemptItemRepository itemRepo = mock(AttemptItemRepository.class);
+        QuestionSourcePort sourcePort = mock(QuestionSourcePort.class);
+
+        when(accessGate.requireLearner()).thenReturn(userId);
+        when(guard.requireOwnedAttempt(attemptId, userId)).thenReturn(attempt);
+        when(partRepo.findByAttemptIdOrderByOrdAsc(attemptId)).thenReturn(List.of(part));
+        when(itemRepo.findByAttemptIdAndPartIdInOrderByPartIdAscOrdAsc(attemptId, List.of(partId)))
+                .thenReturn(items);
+        when(sourcePort.loadVersions(any())).thenReturn(versions);
+
+        AttemptStateService service = new AttemptStateService(
+                accessGate,
+                guard,
+                partRepo,
+                itemRepo,
+                sourcePort,
+                sanitizer,
+                Clock.fixed(now, ZoneOffset.UTC));
+        return service.getState(attemptId);
     }
 }

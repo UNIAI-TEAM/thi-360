@@ -95,7 +95,7 @@ public class AttemptStateService {
         List<AttemptItem> visibleItems =
                 visiblePartIds.isEmpty()
                         ? List.of()
-                        : attemptItemRepository.findByAttemptIdAndPartIdInOrderByOrdAsc(
+                        : attemptItemRepository.findByAttemptIdAndPartIdInOrderByPartIdAscOrdAsc(
                                 attemptId, visiblePartIds);
 
         Map<VersionKey, JsonNode> snapshots = loadSnapshots(visibleItems);

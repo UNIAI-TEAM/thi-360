@@ -30,7 +30,7 @@ public record AttemptPrepareResponse(
         SubjectView subject,
         @Schema(description = "STANDARD hoặc REVIEW", requiredMode = Schema.RequiredMode.REQUIRED)
         String buildMode,
-        @Schema(description = "Nguồn cấp quyền dùng", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Nguồn cấp quyền dùng; null khi hết lượt", nullable = true)
         GrantSourceView grantSource,
         @Schema(description = "Hướng dẫn làm bài đã đóng băng theo phiên bản", nullable = true)
         String instructions,

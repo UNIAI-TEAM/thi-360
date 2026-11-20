@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -60,25 +62,35 @@ public class AttemptStaleWorker {
 
     /** Aborts any {@code STARTING} attempts created strictly before {@code now - staleStartingAfter}. */
     public int sweepStaleStarting() {
+        Instant cutoff = clock.instant().minus(properties.staleStartingAfter());
+        List<UUID> candidateIds =
+                attemptRepository.findStaleStartingIds(cutoff, MAX_ATTEMPTS_PER_SWEEP);
         int aborted = 0;
-        for (int i = 0; i < MAX_ATTEMPTS_PER_SWEEP; i++) {
-            Boolean processed = requiresNewTx.execute(status -> abortNextStale());
-            if (!Boolean.TRUE.equals(processed)) {
-                break;
+        for (UUID attemptId : candidateIds) {
+            try {
+                Boolean processed = requiresNewTx.execute(status -> abortStaleById(attemptId));
+                if (Boolean.TRUE.equals(processed)) {
+                    aborted++;
+                }
+            } catch (RuntimeException ex) {
+                jobLog.atError()
+                        .addKeyValue("job", "attempt-stale-starting")
+                        .addKeyValue("attemptId", attemptId)
+                        .setCause(ex)
+                        .log("Failed to abort stale STARTING attempt; continuing sweep");
             }
-            aborted++;
         }
         return aborted;
     }
 
-    private boolean abortNextStale() {
+    private boolean abortStaleById(UUID attemptId) {
         Instant now = clock.instant();
         Instant cutoff = now.minus(properties.staleStartingAfter());
-        List<Attempt> stale = attemptRepository.findStaleStartingForUpdate(cutoff, 1);
-        if (stale.isEmpty()) {
+        Optional<Attempt> locked = attemptRepository.lockStaleStartingById(attemptId, cutoff);
+        if (locked.isEmpty()) {
             return false;
         }
-        Attempt attempt = stale.getFirst();
+        Attempt attempt = locked.get();
         if (attempt.getState() != AttemptState.STARTING) {
             return false;
         }

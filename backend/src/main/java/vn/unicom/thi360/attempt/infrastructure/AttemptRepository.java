@@ -45,15 +45,25 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
 
     @Query(
             value = """
-                    SELECT * FROM attempt.attempt
+                    SELECT id FROM attempt.attempt
                     WHERE state = 'STARTING'
                       AND created_at < :cutoff
                     ORDER BY created_at ASC
                     LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<UUID> findStaleStartingIds(@Param("cutoff") Instant cutoff, @Param("limit") int limit);
+
+    @Query(
+            value = """
+                    SELECT * FROM attempt.attempt
+                    WHERE id = :id
+                      AND state = 'STARTING'
+                      AND created_at < :cutoff
                     FOR UPDATE SKIP LOCKED
                     """,
             nativeQuery = true)
-    List<Attempt> findStaleStartingForUpdate(@Param("cutoff") Instant cutoff, @Param("limit") int limit);
+    Optional<Attempt> lockStaleStartingById(@Param("id") UUID id, @Param("cutoff") Instant cutoff);
 
     Optional<Attempt> findFirstByUserIdAndEntitlementIdAndStateInOrderByCreatedAtDesc(
             UUID userId, UUID entitlementId, Collection<AttemptState> states);

@@ -114,18 +114,19 @@ CREATE TABLE attempt.attempt_item (
     question_id uuid NOT NULL,
     question_version_no integer NOT NULL,
     question_type text NOT NULL,
-    points_max numeric(10,4) NOT NULL,
+    points_max numeric(10,4) NOT NULL CHECK (points_max >= 0),
     option_order jsonb,
     in_scope boolean NOT NULL DEFAULT true,
     answer jsonb,
-    answer_seq bigint NOT NULL DEFAULT 0,
+    answer_seq bigint NOT NULL DEFAULT 0 CHECK (answer_seq >= 0),
     answer_received_at timestamptz,
     flagged boolean NOT NULL DEFAULT false,
     earned_points numeric(10,4),
     outcome text CHECK (outcome IS NULL OR outcome IN (
         'CORRECT', 'PARTIAL', 'WRONG', 'BLANK', 'PENDING_REVIEW')),
     grading_detail jsonb,
-    version bigint NOT NULL DEFAULT 0
+    version bigint NOT NULL DEFAULT 0,
+    CONSTRAINT uq_attempt_item_part_ord UNIQUE (part_id, ord)
 );
 
 CREATE INDEX idx_attempt_item_attempt_part_ord

@@ -155,7 +155,8 @@ class AttemptGuardTest {
                 .isInstanceOf(ConflictException.class)
                 .hasFieldOrPropertyWithValue("code", "PART_CLOSED");
 
-        AttemptPart skipped = openPart(NOW.plusSeconds(300));
+        AttemptPart skipped = AttemptPart.createPending(
+                partId, attemptId, "P3", "Part 3", 3, 60, 20, BigDecimal.TEN, 1L);
         skipped.skip(PartCloseReason.ATTEMPT_SUBMITTED, NOW.minusSeconds(10));
         when(attemptPartRepository.findByIdAndAttemptId(partId, attemptId)).thenReturn(Optional.of(skipped));
         assertThatThrownBy(() -> guard.requireEditablePart(attemptId, partId, ownerId, sessionId))

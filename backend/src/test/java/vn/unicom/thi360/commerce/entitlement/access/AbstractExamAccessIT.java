@@ -18,7 +18,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import vn.unicom.thi360.commerce.spi.AttemptStatusProvider;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
@@ -110,7 +109,6 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
     @Autowired protected EntitlementPort entitlementPort;
     @Autowired protected CountingExamPort examPort;
     @Autowired protected FakePendingOrderLookup pendingOrders;
-    @Autowired private ConfigurableApplicationContext context;
 
     private final List<UUID> accountIds = new ArrayList<>();
     private final List<UUID> examIds = new ArrayList<>();
