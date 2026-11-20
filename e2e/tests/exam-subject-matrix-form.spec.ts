@@ -307,7 +307,8 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
       questionType: "SHORT_ANSWER",
       questionCount: 1,
       requiredPointsPerQuestion: 1,
-      tagCodes: ["SU_TU_LIEU_LICH_SU"],
+      // fit.ts chỉ cho phép tagCodes ở nhóm chùm (SET); nhóm điền đáp án phải để [] để khớp MT.
+      tagCodes: [],
     });
     const put = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${exam.id}/structure`, {
       headers: admin.headers,
@@ -333,7 +334,7 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
       name: "Trả lời ngắn",
       questionCount: 0,
       requiredPointsPerQuestion: 1,
-      tagCodes: ["SU_TU_LIEU_LICH_SU"],
+      tagCodes: [],
     });
     expect(afterZero?.templateGroupCode ?? null).toBe(beforeUi.templateGroupCode ?? null);
     expect(roleBlock(afterZeroSu, null)?.templateGroupCode).toBe(beforeSingleCode);
@@ -347,7 +348,7 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
       name: "Trả lời ngắn",
       questionCount: 1,
       requiredPointsPerQuestion: 1,
-      tagCodes: ["SU_TU_LIEU_LICH_SU"],
+      tagCodes: [],
     });
     expect(afterRestore?.templateGroupCode ?? null).toBe(beforeUi.templateGroupCode ?? null);
     expect(roleBlock(afterRestoreSu, null)?.templateGroupCode).toBe(beforeSingleCode);
