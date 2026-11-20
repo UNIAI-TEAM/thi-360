@@ -3,7 +3,7 @@
 import { Card, cn, focusRing } from "@thi360/ui";
 import { CircleCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 import type { ExamTiming } from "../types";
 
 export interface CreateExamIssue {
@@ -72,7 +72,11 @@ export function CreateExamSummaryPanel({
             detail={timing === "SHARED" ? t("sharedTiming") : undefined}
           />
           <SummaryItem label={t("maxScore")} value={number(data.totalPoints)} />
-          <SummaryItem label={t("template")} value={data.templateName ?? t("noTemplate")} small />
+          <SummaryItem
+            label={t("template")}
+            value={data.templateName ? <span data-exam-content>{data.templateName}</span> : t("noTemplate")}
+            small
+          />
         </dl>
 
         <section aria-labelledby={issuesHeadingId} className="flex flex-col gap-2 border-t border-border pt-3">
@@ -119,7 +123,7 @@ export function CreateExamSummaryPanel({
   );
 }
 
-function SummaryItem({ label, value, detail, small }: { label: string; value: string; detail?: string; small?: boolean }) {
+function SummaryItem({ label, value, detail, small }: { label: string; value: ReactNode; detail?: string; small?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <dt className="text-caption text-text-muted">{label}</dt>

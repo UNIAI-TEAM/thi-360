@@ -597,4 +597,49 @@ class QuestionSourcePortIT extends AbstractIntegrationTest {
             jdbc.update("delete from questionbank.question where id=?", id);
         }
     }
+
+    /** FU-BE9-2 (AD-103): with `statementPoints` set, a TRUE_FALSE root whose statements are not all at that points value is dropped; null keeps the old behaviour. */
+    @Test
+    void statementPointsDropsUnevenTrueFalseRootsOnlyWhenSet() {
+        UUID subject = UUID.randomUUID();
+        UUID even = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,working_version_no)"
+                + " values (?,?,'TRUE_FALSE','READY',?,1,1)", even, "EVEN-" + even, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                even, "{\"body\":{\"statements\":[{\"id\":\"s1\",\"points\":0.2},{\"id\":\"s2\",\"points\":0.2}]}}");
+        UUID uneven = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,working_version_no)"
+                + " values (?,?,'TRUE_FALSE','READY',?,1,1)", uneven, "UNEVEN-" + uneven, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                uneven, "{\"body\":{\"statements\":[{\"id\":\"s1\",\"points\":0.2},{\"id\":\"s2\",\"points\":0.5}]}}");
+
+        UUID emptyStatements = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,working_version_no)"
+                + " values (?,?,'TRUE_FALSE','READY',?,1,1)", emptyStatements, "EMPTY-" + emptyStatements, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                emptyStatements, "{\"body\":{\"statements\":[]}}");
+        UUID nullStatements = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,working_version_no)"
+                + " values (?,?,'TRUE_FALSE','READY',?,1,1)", nullStatements, "NULL-" + nullStatements, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                nullStatements, "{\"body\":{\"statements\":null}}");
+        UUID missingPoints = UUID.randomUUID();
+        jdbc.update("insert into questionbank.question(id,code,type,status,subject_item_id,current_version_no,working_version_no)"
+                + " values (?,?,'TRUE_FALSE','READY',?,1,1)", missingPoints, "NOPTS-" + missingPoints, subject);
+        jdbc.update("insert into questionbank.question_version(question_id,version_no,snapshot) values (?,1,cast(? as jsonb))",
+                missingPoints, "{\"body\":{\"statements\":[{\"id\":\"s1\"},{\"id\":\"s2\",\"points\":0.2}]}}");
+
+        var filter = new QuestionSourcePort.Filter(subject, null, List.of(), QuestionType.TRUE_FALSE, null, null,
+                List.of(), List.of(), null, null, List.of(), List.of(), List.of(), List.of(), List.of(), null, null,
+                null, new BigDecimal("0.2"));
+        assertThat(source.findCandidates(filter, 10)).singleElement()
+                .extracting(QuestionSourcePort.Candidate::code).isEqualTo("EVEN-" + even);
+
+        var without = new QuestionSourcePort.Filter(subject, null, List.of(), QuestionType.TRUE_FALSE, null, null,
+                List.of(), List.of(), null, null, List.of(), List.of(), List.of(), List.of(), List.of(), null, null, null);
+        assertThat(source.findCandidates(without, 10))
+                .extracting(QuestionSourcePort.Candidate::code)
+                .containsExactlyInAnyOrder("EVEN-" + even, "UNEVEN-" + uneven, "EMPTY-" + emptyStatements,
+                        "NULL-" + nullStatements, "NOPTS-" + missingPoints);
+    }
 }

@@ -32,6 +32,7 @@ const reviewTemplate = {
   publishable: true,
   fixedCounts: false,
   structure: { parts: [] },
+  parts: [],
 };
 
 interface SentBlock {

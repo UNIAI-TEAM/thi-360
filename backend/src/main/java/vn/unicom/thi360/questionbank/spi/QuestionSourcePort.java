@@ -51,12 +51,29 @@ public interface QuestionSourcePort {
             AudioRequirement audioRequirement,
             List<UUID> excludedKnowledge,
             Boolean everyChildSameNode,
-            List<Boolean> additionalEveryChildSameNode) {
+            List<Boolean> additionalEveryChildSameNode,
+            BigDecimal statementPoints) {
         public Filter {
             audioRequirement = audioRequirement == null ? AudioRequirement.ANY : audioRequirement;
             excludedKnowledge = excludedKnowledge == null ? List.of() : List.copyOf(excludedKnowledge);
             additionalEveryChildSameNode = additionalEveryChildSameNode == null
                     ? List.of() : List.copyOf(additionalEveryChildSameNode);
+        }
+        /** Without a statement-points requirement: {@code statementPoints} is the points every statement of a TRUE_FALSE question must carry (FU-BE9-2), null = no condition. */
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope, AudioRequirement audioRequirement,
+                List<UUID> excludedKnowledge, Boolean everyChildSameNode,
+                List<Boolean> additionalEveryChildSameNode) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, audioRequirement, excludedKnowledge,
+                    everyChildSameNode, additionalEveryChildSameNode, null);
         }
         /** Without the same-node mode of the additional groups. */
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
@@ -86,6 +103,21 @@ public interface QuestionSourcePort {
                     tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
                     childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
                     everyChildInScope, additionalEveryChildInScope, audioRequirement, excludedKnowledge, null);
+        }
+        /** With {@code statementPoints} only (no mapid exclusions or same-node requirements). */
+        public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
+                QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,
+                List<String> tagCodes, List<String> competencyCodes, BigDecimal requiredPointsPerQuestion,
+                ItemShape itemShape, List<AnswerFormat> answerFormats, List<ChildCondition> childConditions,
+                List<List<String>> additionalTagGroups, List<List<List<UUID>>> additionalKnowledgeGroups,
+                List<List<String>> additionalCompetencyGroups, Boolean everyChildInScope,
+                List<Boolean> additionalEveryChildInScope, AudioRequirement audioRequirement,
+                BigDecimal statementPoints) {
+            this(subjectId, knowledgeGroups, answerTypes, questionType, taskTypeCode, childAnswerType,
+                    tagCodes, competencyCodes, requiredPointsPerQuestion, itemShape, answerFormats,
+                    childConditions, additionalTagGroups, additionalKnowledgeGroups, additionalCompetencyGroups,
+                    everyChildInScope, additionalEveryChildInScope, audioRequirement, List.of(), null,
+                    List.of(), statementPoints);
         }
         public Filter(UUID subjectId, List<List<UUID>> knowledgeGroups, List<QuestionType> answerTypes,
                 QuestionType questionType, String taskTypeCode, QuestionType childAnswerType,

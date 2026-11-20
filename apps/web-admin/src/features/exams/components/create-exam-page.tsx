@@ -69,6 +69,7 @@ import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./crea
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { ExamOverviewTable } from "./exam-overview-table";
 import { blockCountsLocked } from "./block-form";
+import { ExamName, richNodes } from "./exam-review-shared";
 import { ReloadStructureDialog } from "./reload-structure-dialog";
 
 const EXAMS_HREF = "/exams";
@@ -517,18 +518,18 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
             return name === code ? undefined : name;
           },
           partSections: (partRow) => {
-            const index = Number(partRow.key.slice(2));
+            if (partRow.partIndex === undefined) return [];
             if (editingSaved && existing) {
-              const part = existing.structure.parts[index];
+              const part = existing.structure.parts[partRow.partIndex];
               return part?.mode === "FIXED" ? part.sections : [];
             }
-            return template?.parts[index]?.sections ?? [];
+            return template?.parts[partRow.partIndex]?.sections ?? [];
           },
           // H-SCA Tiếng Anh: tên Nghe, Đọc theo điều kiện audio của phần, không lấy tên tiếng Việt lưu trong mẫu.
           audioLabel:
             audioSplit && !editingSaved
               ? (partRow) => {
-                  const audio = templatePartAudio(template?.parts[Number(partRow.key.slice(2))]);
+                  const audio = templatePartAudio(partRow.partIndex === undefined ? undefined : template?.parts[partRow.partIndex]);
                   return audio ? tStep(audio === "REQUIRED" ? "skillListening" : "skillReading") : undefined;
                 }
               : undefined,
@@ -955,7 +956,9 @@ function CreateExamForm({ templates, templatesStatus, onRetryTemplates, referenc
               templatesStatus === "loading"
                 ? undefined
                 : templateName(template)
-                  ? tOverview(template?.buildMode === "REVIEW" ? "descriptionReview" : "description", { template: templateName(template) ?? "" })
+                  ? template?.buildMode === "REVIEW"
+                    ? tOverview("descriptionReview", { template: templateName(template) ?? "" })
+                    : richNodes(tOverview, "description", { template: <ExamName>{templateName(template) ?? ""}</ExamName> })
                   : tOverview("descriptionNoTemplate")
             }
           >
@@ -1091,7 +1094,7 @@ function FormSection({
 }: {
   step: number;
   title: string;
-  description?: string;
+  description?: ReactNode;
   children: ReactNode;
 }) {
   const headingId = useId();

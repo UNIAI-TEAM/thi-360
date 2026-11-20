@@ -187,6 +187,7 @@ describe("tạo bài từ mẫu có sửa bảng tổng quan giữ trường m�
     timing: "SHARED",
     durationMinutes: 60,
     structure: { parts: [NEW_PART] },
+    parts: [],
   } as unknown as ApiTemplate;
 
   it("mẫu mang cờ khóa dòng, điều kiện audio, phân đoạn và điều kiện câu con", () => {

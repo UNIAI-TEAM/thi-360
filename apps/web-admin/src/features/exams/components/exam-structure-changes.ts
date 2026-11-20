@@ -17,7 +17,14 @@ export type StructureChange =
   | { kind: "blockRemoved"; subject: string; name: string }
   | { kind: "blockRenamed"; from: string; to: string }
   | { kind: "blockCount"; name: string; from: number | null; to: number | null }
-  | { kind: "blockSettings"; name: string };
+  | { kind: "blockSettings"; name: string }
+  | { kind: "blocksReordered"; subject: string }
+  | { kind: "partAdded"; name: string }
+  | { kind: "partRemoved"; name: string }
+  | { kind: "sectionAdded"; subject: string }
+  | { kind: "sectionRemoved"; subject: string }
+  /** Bản nháp khác bản đã lưu ở chỗ không có dòng riêng (ví dụ thứ tự phần, mục): danh sách không bao giờ rỗng khi có thay đổi. */
+  | { kind: "structureChanged" };
 
 const PART_NUMBER_FIELDS: readonly PartNumberField[] = [
   "questionCount",
@@ -46,9 +53,13 @@ function partRest(part: ExamPart): string {
 const sectionRest = (section: ExamSection): string => JSON.stringify(omit(section, ["blocks", "questionCount"]));
 const blockRest = (block: QuestionBlock): string => JSON.stringify(omit(block, ["name", "questionCount"]));
 
+const sameOrder = (before: readonly { id: string }[], after: readonly { id: string }[]): boolean =>
+  before.length === after.length && before.every((item, index) => item.id === after[index]?.id);
+
 /**
- * Các thay đổi của bản nháp so với bản đã lưu, theo thứ tự phần → môn → nhóm. Chỉ so các phần và môn có ở cả hai bản
- * (cùng `id`); nhóm thêm hoặc xóa được báo riêng. `subjectName` đổi mã môn thành tên theo ngôn ngữ đang chọn.
+ * Các thay đổi của bản nháp so với bản đã lưu, theo thứ tự phần → môn → nhóm. Phần và môn có ở cả hai bản (cùng `id`)
+ * được so từng trường; phần, môn, nhóm thêm hoặc xóa và nhóm đổi thứ tự được báo riêng. `subjectName` đổi mã môn thành
+ * tên theo ngôn ngữ đang chọn.
  */
 export function describeStructureChanges(
   baseline: readonly ExamPart[],
@@ -58,7 +69,10 @@ export function describeStructureChanges(
   const changes: StructureChange[] = [];
   for (const part of draft) {
     const before = baseline.find((item) => item.id === part.id);
-    if (!before) continue;
+    if (!before) {
+      changes.push({ kind: "partAdded", name: part.name });
+      continue;
+    }
     if (before.name !== part.name) changes.push({ kind: "partRenamed", from: before.name, to: part.name });
     for (const field of PART_NUMBER_FIELDS) {
       const from = before[field] ?? null;
@@ -68,10 +82,14 @@ export function describeStructureChanges(
     if (partRest(before) !== partRest(part)) changes.push({ kind: "partSettings", part: part.name });
 
     const beforeSections = sectionsOf(before);
-    for (const section of sectionsOf(part)) {
+    const sections = sectionsOf(part);
+    for (const section of sections) {
       const old = beforeSections.find((item) => item.id === section.id);
-      if (!old) continue;
       const subject = subjectName(section.subjectCode);
+      if (!old) {
+        changes.push({ kind: "sectionAdded", subject });
+        continue;
+      }
       if (old.questionCount !== section.questionCount) {
         changes.push({ kind: "sectionCount", subject, from: old.questionCount, to: section.questionCount });
       }
@@ -93,7 +111,18 @@ export function describeStructureChanges(
           changes.push({ kind: "blockRemoved", subject, name: oldBlock.name });
         }
       }
+      // Cùng tập nhóm mà khác thứ tự: chỉ đổi thứ tự, không có trường nào khác để báo.
+      const kept = section.blocks.filter((block) => old.blocks.some((item) => item.id === block.id));
+      const keptBefore = old.blocks.filter((block) => section.blocks.some((item) => item.id === block.id));
+      if (!sameOrder(keptBefore, kept)) changes.push({ kind: "blocksReordered", subject });
+    }
+    for (const old of beforeSections) {
+      if (!sections.some((item) => item.id === old.id)) changes.push({ kind: "sectionRemoved", subject: subjectName(old.subjectCode) });
     }
   }
+  for (const before of baseline) {
+    if (!draft.some((part) => part.id === before.id)) changes.push({ kind: "partRemoved", name: before.name });
+  }
+  if (changes.length === 0 && JSON.stringify(baseline) !== JSON.stringify(draft)) changes.push({ kind: "structureChanged" });
   return changes;
 }

@@ -118,7 +118,6 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
     }
 
     private static final String EXAM_BODY = "{\"target\":{\"kind\":\"EXAM\"},\"seed\":7}";
-    private static final String LEGACY_BODY = "{\"pathId\":\"default\",\"seed\":7}";
 
     private static String sectionBody(String sectionId, int count) {
         return "{\"target\":{\"kind\":\"SECTION\",\"sectionId\":\"" + sectionId + "\",\"sectionQuestionCount\":" + count
@@ -134,8 +133,8 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
                 [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":2,"commandCount":3,"maxPoints":2},
                  {"code":"P2","name":"Phần II","fromPosition":3,"toPosition":3,"commandCount":1,"maxPoints":4}]""";
         UUID exam = exam(part(segments));
-        // The same one-section paper, asked as an explicit EXAM, a legacy pathId/seed and a section that is the whole part.
-        for (String body : List.of(EXAM_BODY, LEGACY_BODY, sectionBody("section", 3))) {
+        // The same one-section paper, asked as an explicit EXAM and as a section that is the whole part.
+        for (String body : List.of(EXAM_BODY, sectionBody("section", 3))) {
             JsonNode result = previewResult(exam, body);
             assertThat(result.path("status").asText()).as(body).isEqualTo("FAILED");
             assertThat(result.path("issues")).as(body).hasSize(2);
@@ -163,7 +162,7 @@ class ExamPreviewAttachmentsIT extends AbstractIntegrationTest {
                 [{"code":"P1","name":"Phần I","fromPosition":1,"toPosition":2,"commandCount":2,"maxPoints":2},
                  {"code":"P2","name":"Phần II","fromPosition":3,"toPosition":3,"commandCount":1,"maxPoints":1}]""";
         UUID exam = exam(part(segments));
-        for (String body : List.of(EXAM_BODY, LEGACY_BODY, sectionBody("section", 3))) {
+        for (String body : List.of(EXAM_BODY, sectionBody("section", 3))) {
             JsonNode result = previewResult(exam, body);
             assertThat(result.path("status").asText()).as(result.toString()).isEqualTo("GENERATED");
             JsonNode returned = result.path("paper").path("parts").get(0).path("displaySegments");

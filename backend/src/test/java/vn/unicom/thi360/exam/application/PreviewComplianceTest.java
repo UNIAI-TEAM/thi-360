@@ -65,7 +65,7 @@ class PreviewComplianceTest {
                 new Compliance("GRADE:G11", "SECTION:english", BigDecimal.ONE, BigDecimal.ONE,
                         "REFERENCE", "QUESTION", "dropped 1"),
                 new Compliance("GRADE:G12", "SECTION:english", BigDecimal.ZERO, BigDecimal.ZERO,
-                        "REFERENCE", "QUESTION", "dropped 1"));
+                        "REFERENCE", "QUESTION", "dropped 1", BigDecimal.ONE, null));
     }
 
     @Test
@@ -93,7 +93,7 @@ class PreviewComplianceTest {
                 List.of(new PreviewSnapshotStore.Dropped(new QuestionPick(removed.toString(), 1), "EN", "second")),
                 List.of());
         assertThat(rows).contains(new Compliance("GRADE:G12", "SECTION:second", BigDecimal.ZERO, BigDecimal.ZERO,
-                "REFERENCE", "QUESTION", "dropped 1"));
+                "REFERENCE", "QUESTION", "dropped 1", BigDecimal.ONE, null));
     }
 
     @Test
@@ -148,7 +148,39 @@ class PreviewComplianceTest {
                         new QuestionSourcePort.VersionKey(removed, 1), candidate(removed, "G12", List.of(node))),
                 List.of(new PreviewSnapshotStore.Dropped(droppedPick, "PHY", "science")), List.of());
         assertThat(rows).contains(new Compliance("TOPIC:topic", "SECTION:science", BigDecimal.ZERO,
-                BigDecimal.ONE, "REQUIRED", "QUESTION", "dropped 1"));
+                BigDecimal.ONE, "REQUIRED", "QUESTION", "dropped 1", BigDecimal.ONE, null));
+    }
+
+    /** FU-FE4-PREVIEW: a topic row names its topic: the quota's own name, else the Vietnamese node names. */
+    @Test
+    void topicRowsCarryTheTopicName() {
+        UUID named = UUID.randomUUID();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        UUID question = UUID.randomUUID();
+        var document = codec.read("""
+                {"parts":[{"id":"part","sections":[{"id":"math","subjectCode":"MATH","questionCount":1,
+                  "topicQuotas":[{"id":"own","name":"Hàm số","nodeIds":["%s"],"count":1},
+                                 {"id":"nodes","nodeIds":["%s","%s"],"count":1},
+                                 {"id":"unknown","nodeIds":["%s"],"count":1}],
+                  "blocks":[{"id":"group","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}
+                """.formatted(named, first, second, UUID.randomUUID()));
+        var section = new SectionOnPath("MATH", "math", 1, null, List.of(GroupQuota.single("group", 1)));
+        var knowledge = List.of(item(named, "Tên nút bị bỏ qua"), item(first, "Giới hạn"), item(second, "Đạo hàm"));
+        List<Compliance> rows = PreviewCompliance.evaluate(document, SolvePath.of(0, List.of(section)),
+                Map.of("group", new GroupWitness("group", List.of(new QuestionPick(question.toString(), 1)))),
+                Map.of(new QuestionSourcePort.VersionKey(question, 1), candidate(question, "G12", List.of())),
+                List.of(), knowledge);
+        assertThat(rows).filteredOn(row -> row.criterion().startsWith("TOPIC:"))
+                .extracting(Compliance::criterion, Compliance::topicName)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("TOPIC:own", "Hàm số"),
+                        org.assertj.core.groups.Tuple.tuple("TOPIC:nodes", "Giới hạn, Đạo hàm"),
+                        org.assertj.core.groups.Tuple.tuple("TOPIC:unknown", null));
+    }
+
+    private static vn.unicom.thi360.catalog.spi.CatalogItemView item(UUID id, String nameVi) {
+        return new vn.unicom.thi360.catalog.spi.CatalogItemView(id, UUID.randomUUID(), "KNOWLEDGE", "K", "k", 1,
+                nameVi, nameVi, null, null, false, null, (short) 1, "/" + id + "/");
     }
 
     @Test

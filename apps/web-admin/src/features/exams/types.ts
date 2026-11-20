@@ -545,6 +545,14 @@ export interface ExamTemplatePart {
   blocks?: ExamTemplateBlock[];
   /** Phân đoạn hiển thị của phần (H40); bỏ trống: không có. */
   displaySegments?: DisplaySegment[];
+  /** Số câu theo dạng câu của các nhóm không lược trong phần, do máy chủ tính (đổi phiên bản hiện dòng thay đổi theo dạng câu). */
+  questionTypes?: TypeCount[];
+}
+
+/** Số câu của một dạng câu trong phần; `ANY`: nhóm không ghi dạng câu. */
+export interface TypeCount {
+  questionType: QuestionType | "ANY";
+  questionCount: number;
 }
 
 /**

@@ -28,14 +28,16 @@ final class ExamCheckUnitEvidence {
             QuestionAttachmentPort attachments, ExamStructureDocument document, List<PathResult> paths,
             Map<String, Map<String, List<String>>> combinationsByPart) {
         Map<Long, List<ExamCheckRules.WitnessFact>> result = new LinkedHashMap<>();
-        ownedWitnessFacts(source, attachments, document, paths, combinationsByPart).forEach((path, owned) ->
+        ownedWitnessFacts(source, attachments, document, paths, combinationsByPart, null).forEach((path, owned) ->
                 result.put(path, owned.stream().map(OwnedFact::fact).toList()));
         return result;
     }
 
+    /** {@code kindCode} is the exam kind: with the block's scoring it decides which blocks take statements of equal points. */
     static Map<Long, List<OwnedFact>> ownedWitnessFacts(QuestionSourcePort source,
             QuestionAttachmentPort attachments, ExamStructureDocument document, List<PathResult> paths,
-            Map<String, Map<String, List<String>>> combinationsByPart) {
+            Map<String, Map<String, List<String>>> combinationsByPart, String kindCode) {
+        Set<String> evenStatementBlocks = SolverInputBuilder.evenStatementBlockIds(kindCode, document);
         Map<String, BlockLocation> locations = new LinkedHashMap<>();
         for (ExamPart part : document.parts()) {
             addLocations(locations, part, part.sections());
@@ -87,7 +89,8 @@ final class ExamCheckUnitEvidence {
                     var version = versions.get(key);
                     if (version == null || version.snapshot() == null || version.code() == null) continue;
                     List<ExamCheckRules.WitnessFact> made = new ArrayList<>();
-                    addFacts(made, where, version.code(), version.snapshot().path("body"), readable.get(key), version.childCodes());
+                    addFacts(made, where, version.code(), version.snapshot().path("body"), readable.get(key), version.childCodes(),
+                            evenStatementBlocks.contains(where.blockId()));
                     for (var fact : made) facts.add(new OwnedFact(fact, witness));
                 }
             }
@@ -130,7 +133,7 @@ final class ExamCheckUnitEvidence {
 
 
     private static void addFacts(List<ExamCheckRules.WitnessFact> out, ExamCheckRules.EvidenceLocation where,
-            String code, JsonNode body, Boolean attachments, Map<UUID, String> childCodes) {
+            String code, JsonNode body, Boolean attachments, Map<UUID, String> childCodes, boolean evenStatements) {
         String type = body.path("type").asText("");
         if ("QUESTION_SET".equals(type)) {
             JsonNode children = body.path("children");
@@ -148,12 +151,13 @@ final class ExamCheckUnitEvidence {
                 catch (IllegalArgumentException ignored) { /* older snapshots can lack child IDs */ }
                 var childWhere = new ExamCheckRules.EvidenceLocation(where.partId(), where.sectionId(),
                         where.subjectCode(), where.blockId(), where.slotIndex(), position, where.pathId(), where.affectedCodes());
-                addFacts(out, childWhere, childCode, child.path("body"), null, Map.of());
+                addFacts(out, childWhere, childCode, child.path("body"), null, Map.of(), false);
             }
             return;
         }
         Boolean answer = null;
         Boolean scoring = null;
+        Boolean evenPoints = null;
         switch (type) {
             case "SINGLE_CHOICE", "MULTIPLE_CHOICE" -> {
                 JsonNode options = body.path("options");
@@ -177,6 +181,7 @@ final class ExamCheckUnitEvidence {
                 if (answer) for (JsonNode statement : statements) answer &= statement.path("answer").isBoolean();
                 String method = body.path("scoringMethod").asText("");
                 scoring = "PER_STATEMENT".equals(method) || "COUNT_TABLE".equals(method) && !body.path("scoreTable").isEmpty();
+                if (evenStatements) evenPoints = statementsCarry(statements, SolverInputBuilder.SP2E_STATEMENT_POINTS);
             }
             case "MATCHING" -> {
                 JsonNode left = body.path("left"), pairs = body.path("pairs");
@@ -186,7 +191,17 @@ final class ExamCheckUnitEvidence {
             case "ESSAY" -> scoring = nonblank(body.path("gradingGuide"));
             default -> answer = false;
         }
-        out.add(new ExamCheckRules.WitnessFact(where, code, answer, scoring, attachments));
+        out.add(new ExamCheckRules.WitnessFact(where, code, answer, scoring, attachments, evenPoints));
+    }
+
+    /** True when the question has statements and each one carries exactly {@code points}. */
+    private static boolean statementsCarry(JsonNode statements, java.math.BigDecimal points) {
+        if (!statements.isArray() || statements.isEmpty()) return false;
+        for (JsonNode statement : statements) {
+            JsonNode value = statement.path("points");
+            if (!value.isNumber() || value.decimalValue().compareTo(points) != 0) return false;
+        }
+        return true;
     }
 
     private static boolean nonblank(JsonNode value) { return value.isTextual() && !value.asText().isBlank(); }

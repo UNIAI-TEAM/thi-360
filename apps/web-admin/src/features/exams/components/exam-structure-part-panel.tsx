@@ -16,6 +16,7 @@ import { PartOptions, type PartOptionsProps } from "./part-options";
 import { SubjectChoiceOptions } from "./subject-choice-options";
 import { LOCKED_FIELD } from "./locked-field";
 import type { StructureNames } from "./exam-structure-issues";
+import { ExamName, richNodes } from "./exam-review-shared";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
 
@@ -103,7 +104,7 @@ export function ExamStructurePartPanel({
     <Card padding="md" className="flex flex-col gap-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="text-h3 font-bold wrap-break-word text-text">{part.name}</h2>
+          <h2 data-exam-content className="text-h3 font-bold wrap-break-word text-text">{part.name}</h2>
           <p className="text-caption text-text-muted">
             {part.mode === "CHOICE"
               ? t("choiceHint", {
@@ -315,7 +316,7 @@ function SectionsTable({
       <div role="region" tabIndex={0} aria-label={title} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
         <table className="w-full border-separate border-spacing-0 text-body tabular-nums">
           <caption className="sr-only">
-            {common ? t("commonCaption", { name: part.name }) : t("sectionsCaption", { name: part.name })}
+            {richNodes(t, common ? "commonCaption" : "sectionsCaption", { name: <ExamName>{part.name}</ExamName> })}
           </caption>
           <thead>
             <tr className="text-left text-caption text-text-muted">

@@ -17,7 +17,7 @@ public record RegisterRequest(
         String username,
 
         @Schema(description = "Họ và tên", example = "Nguyễn Văn An", requiredMode = Schema.RequiredMode.REQUIRED)
-        @Size(max = 256, message = "{validation.user.fullName.size}")
+        @Size(max = 200, message = "{validation.user.fullName.size}")
         String fullName,
 
         @Schema(description = "Email, dùng để xác minh và khôi phục tài khoản", example = "an@thi360.vn",

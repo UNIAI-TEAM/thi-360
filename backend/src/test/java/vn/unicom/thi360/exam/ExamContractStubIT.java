@@ -59,7 +59,7 @@ class ExamContractStubIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pathId\":\"default\",\"seed\":1,\"regeneratePartIds\":[\"part\"]}"))
+                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":1,\"regeneratePartIds\":[\"part\"]}"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(post(url).with(asUser(Permissions.EXAM_VIEW))
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -88,7 +88,7 @@ class ExamContractStubIT extends AbstractIntegrationTest {
                 examId, parts);
         var response = mockMvc.perform(post("/api/v1/admin/exams/" + examId + "/preview")
                         .with(asUser(Permissions.EXAM_VIEW)).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pathId\":\"default\",\"seed\":123}"))
+                        .content("{\"target\":{\"kind\":\"EXAM\"},\"seed\":123}"))
                 .andExpect(status().isOk()).andReturn().getResponse();
         var body = mapper.readTree(response.getContentAsString());
         assertThat(body.path("status").asText()).isEqualTo("GENERATED");

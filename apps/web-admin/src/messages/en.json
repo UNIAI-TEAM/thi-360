@@ -3862,7 +3862,10 @@
       "close": "Close",
       "partChange": "{before} → {after}",
       "partNone": "none yet",
-      "partWithMeta": "{name} · {meta}"
+      "partWithMeta": "{name} · {meta}",
+      "typeAny": "Question type not set",
+      "typeChange": "{type}: {from, number} → {to, plural, one {# question} other {# questions}}",
+      "typeNew": "{type}: {count, plural, one {# question} other {# questions}}"
     },
     "structure": {
       "title": "Structure and matrix",
@@ -3985,7 +3988,9 @@
           "blockRemoved": "Removed group {name} from {subject}.",
           "blockRenamed": "Renamed group {from} to {to}.",
           "blockSettings": "{name}: group settings changed.",
+          "blocksReordered": "{subject}: group order changed.",
           "empty": "not set",
+          "partAdded": "Added part {name}.",
           "partNumber": {
             "durationMinutes": "{part}: duration {from} → {to}.",
             "maxPoints": "{part}: maximum points {from} → {to}.",
@@ -3993,10 +3998,14 @@
             "questionCountOnPaper": "{part}: questions on paper {from} → {to}.",
             "questionCountRequired": "{part}: questions to answer {from} → {to}."
           },
+          "partRemoved": "Removed part {name}.",
           "partRenamed": "Renamed part {from} to {to}.",
           "partSettings": "{part}: part settings changed.",
+          "sectionAdded": "Added subject {subject}.",
           "sectionCount": "{subject}: questions {from} → {to}.",
-          "sectionSettings": "{subject}: subject targets changed."
+          "sectionRemoved": "Removed subject {subject}.",
+          "sectionSettings": "{subject}: subject targets changed.",
+          "structureChanged": "Order or other settings of the structure changed."
         },
         "changesIntro": "Unsaved changes:",
         "changesMore": "and {count, plural, one {# more change} other {# more changes}}.",
@@ -5066,7 +5075,8 @@
         "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required.",
         "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the item with this id, then check again.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} other {Rules {rules} conflict and cannot all hold.}}",
-        "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule."
+        "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule.",
+        "STATEMENT_POINTS_UNEVEN": "Block {block}: question {codes} awards unequal points to its True/False statements, while a block scored per statement needs every statement to carry the same points. Replace this question."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -5489,6 +5499,7 @@
         "requiredNone": "—",
         "requiredAtLeast": "at least {value}",
         "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
+        "requiredOriginal": "{value} ({original}, dropped {count, plural, one {# question} other {# questions}})",
         "result": {
           "MISSING_LABEL": "Missing label",
           "OK": "Met",
@@ -5499,6 +5510,7 @@
         "scope": {
           "EXAM": "Whole exam"
         },
+        "structureUnavailable": "The exam structure could not be loaded, so reference topic rows cannot be compared yet.",
         "tableLabel": "Required and actual values of the trial paper",
         "title": "Required / Actual / Difference",
         "unit": {
@@ -5520,8 +5532,9 @@
         "showShuffled": "Show shuffled order"
       },
       "originalOrderNote": "Showing the original order: questions as the solver picked them, options as authored. The real paper uses the order shuffled by the seed.",
-      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · kept for {minutes, number} minutes · questions are logged as preview, no attempt is used",
+      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · {retention} · questions are logged as preview, no attempt is used",
       "resultTitle": "Trial paper · {label}",
+      "retention": "kept for {minutes, number} minutes{state, select, left { ({left, number} min left)} expired { (expired)} other {}}",
       "scope": {
         "count": "Questions in the subject",
         "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",

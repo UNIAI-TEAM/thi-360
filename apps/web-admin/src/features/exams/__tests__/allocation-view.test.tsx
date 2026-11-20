@@ -269,6 +269,7 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     publishable: true,
     fixedCounts,
     structure: { parts: [] },
+    parts: [],
   });
 
   it("mẫu khóa số câu: dòng số câu ở đầu màn ghi lý do khóa; không có ô Số câu của mục", async () => {

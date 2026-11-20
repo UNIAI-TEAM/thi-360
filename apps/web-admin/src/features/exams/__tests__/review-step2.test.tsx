@@ -36,6 +36,7 @@ const reviewTemplate = {
   publishable: true,
   fixedCounts: false,
   structure: { parts: [] },
+  parts: [],
 };
 
 /** Lỗi kiểm tra gắn với nhóm duy nhất của bài ôn (dạng máy chủ trả trước khi được nới: nhóm chưa có dạng trả lời). */

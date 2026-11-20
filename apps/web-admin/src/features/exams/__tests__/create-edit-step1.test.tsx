@@ -9,6 +9,7 @@ import type { ExamDetail, ExamPart, QuestionBlock } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
 import { examDetailWire } from "./fake-exams-server";
+import { byTextContent } from "./text-content";
 
 /**
  * UNI-2751 (BA 1697): quay lại bước 1 từ bước Cấu trúc mở đúng màn Tạo bài thi (`/exams/new?exam=<id>`): thanh bước ở
@@ -248,7 +249,7 @@ describe("Bước 1 ở chế độ sửa (/exams/new?exam=<id>, UNI-2751)", () 
     expect(
       within(dialog).getByText("Đổi cách dựng bài sẽ tạo lại cấu trúc như đề mới. Cấu trúc, ma trận và nhóm lấy câu hiện tại sẽ bị thay."),
     ).toBeInTheDocument();
-    expect(within(dialog).getByText("1. Toán")).toBeInTheDocument();
+    expect(within(dialog).getByText(byTextContent("1. Toán"))).toBeInTheDocument();
     expect(within(dialog).queryByText(/Review/)).not.toBeInTheDocument();
     expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Tạo lại cấu trúc" }));
