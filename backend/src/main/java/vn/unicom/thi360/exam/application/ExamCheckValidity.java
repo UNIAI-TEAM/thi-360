@@ -90,6 +90,29 @@ public class ExamCheckValidity {
     }
 
     /**
+     * SQL boolean (FTM R-12, AC-58): the saved whole-exam result of run {@code r} was not evaluated under the current
+     * rules ({@link ExamCheckRulesStamp}) and the rules apply to exam {@code e}: a standard exam of a kind that has
+     * subject limits whose structure {@code s} holds a section of a limited subject in {@code sections},
+     * {@code subjectPool} or {@code options[].sections} (the arrays {@link ExamCheckRules} reads; the blocks of a
+     * SUBJECT option have no stored subject code and are in neither).
+     */
+    String rulesChanged(String r, String e, String s) {
+        Map<String, UUID> kinds = idsByCode("EXAM");
+        String kindIds = SubjectFormLimits.kinds().stream().sorted().filter(kinds::containsKey)
+                .map(code -> "'" + kinds.get(code) + "'::uuid").collect(java.util.stream.Collectors.joining(", "));
+        if (kindIds.isEmpty()) return "false";
+        // Constant codes only: no user input reaches this SQL.
+        String subjects = SubjectFormLimits.subjects().stream().sorted()
+                .map(code -> "@.subjectCode == \"" + code + "\"").collect(java.util.stream.Collectors.joining(" || "));
+        String arrays = "exists(@.sections[*] ? (" + subjects + ")) || exists(@.subjectPool[*] ? (" + subjects + "))"
+                + " || exists(@.options[*].sections[*] ? (" + subjects + "))";
+        return "(" + r + ".result->>'" + ExamCheckRulesStamp.KEY + "' IS DISTINCT FROM '" + ExamCheckRulesStamp.CURRENT + "'"
+                + " AND COALESCE(" + e + ".build_mode, 'STANDARD') <> 'REVIEW'"
+                + " AND " + e + ".kind_item_id IN (" + kindIds + ")"
+                + " AND jsonb_path_exists(" + s + ".parts, '$.parts[*] ? (" + arrays + ")'))";
+    }
+
+    /**
      * SQL jsonb to store for the exam whose id is bound to {@code examIdParameter}: the config parameter plus
      * {@code templatePolicy} when the policy is not the default.
      */
@@ -115,7 +138,7 @@ public class ExamCheckValidity {
                 + "s.structure_hash AS current_hash, r.structure_hash AS saved_hash, "
                 + "r.profile_revision, p.revision AS current_profile_revision, "
                 + "r.catalog_revision, r.source_revisions::text AS source_revisions, "
-                + configMatches("r", "e") + " AS config_matches "
+                + configMatches("r", "e") + " AS config_matches, " + rulesChanged("r", "e", "s") + " AS rules_changed "
                 + "FROM exam.exam e LEFT JOIN exam.exam_structure s ON s.exam_id = e.id "
                 + "LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
                 + "LEFT JOIN exam.exam_check_run r ON r.exam_id = e.id WHERE e.id IN (" + placeholders + ")";
@@ -124,7 +147,8 @@ public class ExamCheckValidity {
                 rs.getString("current_hash"),
                 rs.getString("saved_hash"), (Long) rs.getObject("profile_revision"),
                 (Long) rs.getObject("current_profile_revision"), (Long) rs.getObject("catalog_revision"),
-                revisions(rs.getString("source_revisions")), rs.getBoolean("config_matches")), examIds.toArray());
+                revisions(rs.getString("source_revisions")), rs.getBoolean("config_matches"),
+                rs.getBoolean("rules_changed")), examIds.toArray());
         Set<UUID> subjects = new HashSet<>();
         for (Row row : rows) subjects.addAll(row.revisions().keySet());
         Map<UUID, Long> currentSources = subjects.isEmpty() ? Map.of() : source.sourceRevisions(subjects);
@@ -142,6 +166,8 @@ public class ExamCheckValidity {
                 } else if (row.revisions().entrySet().stream().anyMatch(entry ->
                         !Objects.equals(entry.getValue(), currentSources.getOrDefault(entry.getKey(), 0L)))) {
                     reason = "SOURCE_CHANGED";
+                } else if (row.rulesChanged()) {
+                    reason = "RULES_CHANGED";
                 }
             }
             String status;
@@ -181,5 +207,5 @@ public class ExamCheckValidity {
 
     private record Row(UUID examId, String status, UUID runId, String checkedStatus, String currentHash, String savedHash,
                        Long profileRevision, Long currentProfileRevision, Long catalogRevision,
-                       Map<UUID, Long> revisions, boolean configMatches) { }
+                       Map<UUID, Long> revisions, boolean configMatches, boolean rulesChanged) { }
 }

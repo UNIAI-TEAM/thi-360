@@ -21,6 +21,7 @@ import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamErrorCodes;
 import vn.unicom.thi360.exam.api.ExamPublishRequest;
 import vn.unicom.thi360.exam.api.ExamPublishResponse;
+import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageKind;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
@@ -99,6 +100,11 @@ public class ExamPublishService {
             if ("VALID".equals(path.path("result").asText())) valid.add(id);
         }
         if (!valid.containsAll(selected)) throw new BusinessRuleException(ExamErrorCodes.PATH_NOT_VALID, null);
+        // ADV:CR-4:21 / R6-1: evidence saved before the exam-level rule (or kept by a scoped check, which never replaces
+        // the whole-exam result) must not authorize a draft that the rule now refuses. The locked live draft decides;
+        // frozen versions are never read here.
+        JsonNode document = json(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId));
+        if (ExamStoredIdCollision.find(new ExamStructureCodec(mapper).read(document)).isPresent()) throw checkRequired("RULES_CHANGED");
         List<QuestionSourcePort.VersionKey> picks = new ArrayList<>();
         Set<String> witnessed = new LinkedHashSet<>();
         for (JsonNode path : check.witness()) {
@@ -117,9 +123,7 @@ public class ExamPublishService {
             if (stale != null && "SOURCE_CHANGED".equals(stale.invalidReason())) throw checkRequired("SOURCE_CHANGED");
             throw e;
         }
-        String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
         var snapshot = new ExamVersionSnapshot(mapper);
-        JsonNode document = json(structure);
         long materializationRevision = catalog.revision();
         var allCombinations = snapshot.combinations(document, allPaths, exam.kindId(), catalog);
         if (catalog.revision() != materializationRevision) throw checkRequired("CONFIG_CHANGED");

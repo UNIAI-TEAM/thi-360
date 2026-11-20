@@ -11,7 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.shared.ids.Ids;
 
-/** Atomically saves a completed check only while its input exam revision still matches. */
+/**
+ * Atomically saves a whole-exam check only while its input exam revision still matches. Only a result whose
+ * checker evaluated the rules is stamped ({@link ExamCheckRulesStamp}); incomplete runs never receive a stamp.
+ * One-subject and one-part checks never reach this store.
+ */
 @Service
 public class ExamCheckResultStore {
     private final JdbcTemplate jdbc;
@@ -28,9 +32,16 @@ public class ExamCheckResultStore {
                         Long profileRevision, long catalogRevision, String fingerprint,
                         JsonNode sourceRevisions) { }
 
+    /** Saves a result that was evaluated under the current rules (stamped). */
     @Transactional
     public boolean save(Input input, String status, int issueCount, Instant checkedAt,
                         long durationMs, JsonNode result, JsonNode witness) {
+        return save(input, status, issueCount, checkedAt, durationMs, result, witness, true);
+    }
+
+    @Transactional
+    public boolean save(Input input, String status, int issueCount, Instant checkedAt,
+                        long durationMs, JsonNode result, JsonNode witness, boolean rulesEvaluated) {
         int updated = jdbc.update("UPDATE exam.exam SET check_status = ?, check_issue_count = ?, checked_at = ? "
                         + "WHERE id = ? AND revision = ?", status, issueCount, Timestamp.from(checkedAt),
                 input.examId(), input.examRevision());
@@ -50,7 +61,7 @@ public class ExamCheckResultStore {
                 Ids.newId(), input.examId(), input.examRevision(), input.structureHash(), json(input.configSnapshot()),
                 input.examId(),
                 input.profileRevision(), input.catalogRevision(), input.fingerprint(), json(input.sourceRevisions()),
-                json(result), json(witness), Timestamp.from(checkedAt), durationMs);
+                json(rulesEvaluated ? ExamCheckRulesStamp.stamped(result) : result), json(witness), Timestamp.from(checkedAt), durationMs);
         return true;
     }
 

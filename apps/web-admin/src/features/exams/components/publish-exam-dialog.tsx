@@ -231,7 +231,7 @@ function PublishForm({
             const code = errorCodeOf(error);
             const fieldErrors = error instanceof ExamsApiError ? error.fieldErrors : [];
             if (reason !== null) {
-              const known = ["NO_CHECK", "STRUCTURE_CHANGED", "CONFIG_CHANGED", "SOURCE_CHANGED", "PATH_NOT_VALID"];
+              const known = ["NO_CHECK", "STRUCTURE_CHANGED", "CONFIG_CHANGED", "SOURCE_CHANGED", "RULES_CHANGED", "PATH_NOT_VALID"];
               setServerError({
                 message: t(`errors.checkRequired.${known.includes(reason) ? reason : "UNKNOWN"}`),
                 recheck: true,
