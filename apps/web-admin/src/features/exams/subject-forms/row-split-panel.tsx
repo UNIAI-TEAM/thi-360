@@ -3,6 +3,7 @@
 import { Button, Input, Label, Select } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
+import { ExamName, richNodes } from "../components/exam-review-shared";
 import { isSetBlock } from "../matrix";
 import type { QuestionBlock } from "../types";
 import type { RawInputStore } from "./raw-input-store";
@@ -28,6 +29,7 @@ const parse = (text: string): number => (/^\d+$/.test(text.trim()) ? Number(text
  */
 export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onCancel }: RowSplitPanelProps) {
   const t = useTranslations("exams.subjectForm.rows.split");
+  const titleId = useId();
   const countId = useId();
   const stored = rawInputs.get(sectionId, block.id, SPLIT_FIELD);
   const [texts, setTexts] = useState(() => stored ? stored.text.split(" + ") : evenSplit(units, 2).map(String));
@@ -59,9 +61,11 @@ export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onC
   const totalIssue = issues.find((issue): issue is Extract<SplitIssue, { code: "TOTAL" }> => issue.code === "TOTAL");
 
   return (
-    <section aria-label={t("title", { name: block.name })} data-form-field={SPLIT_FIELD} data-row-split className="flex flex-col gap-3 rounded-md border border-border bg-subtle/40 p-4">
+    <section aria-labelledby={titleId} data-form-field={SPLIT_FIELD} data-row-split className="flex flex-col gap-3 rounded-md border border-border bg-subtle/40 p-4">
       <div className="flex flex-col gap-0.5">
-        <h4 className="text-label font-semibold text-text">{t("title", { name: block.name })}</h4>
+        <h4 id={titleId} className="text-label font-semibold text-text">
+          {richNodes(t, "title", { name: <ExamName key="name">{block.name}</ExamName> })}
+        </h4>
         <p className="text-caption text-text-muted">{t("hint", { units, unit })}</p>
       </div>
       <div className="flex max-w-xs flex-col gap-1.5">

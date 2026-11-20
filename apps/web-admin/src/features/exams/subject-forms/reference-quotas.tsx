@@ -4,6 +4,7 @@ import { Chip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import type { MatrixLabels } from "../components/block-matrix-editor";
+import { ExamName } from "../components/exam-review-shared";
 import type { ExamQuota, QuotaEnforcement } from "../types";
 import { EnforcementControl } from "./enforcement-control";
 import type { LockReasonCode } from "./lock-reason";
@@ -72,24 +73,27 @@ export function ReferenceQuotas({ entries, labels, subjectName, onApply }: Refer
         {denominator !== null && <p className="text-caption text-text-muted" data-command-denominator>{t("denominator", { subject: subjectName, count: denominator })}</p>}
       </div>
       <ul className="flex flex-col gap-3">
-        {entries.map(({ quota, lock, unclassified }) => {
+        {entries.map(({ quota, lock, unclassified }, index) => {
           const label = quota.dimension === "GRADE" ? labels.grade : labels.difficulty;
           const percent = quota.buckets.some((bucket) => bucket.percent !== undefined && bucket.percent !== null);
-          const title = quota.name || t("entryTitle", { dimension: t(quota.dimension === "GRADE" ? "grade" : "difficulty") });
+          const dimensionLabel = t("entryTitle", { dimension: t(quota.dimension === "GRADE" ? "grade" : "difficulty") });
+          const quotaNameId = `${headingId}-quota-${index}`;
           const values = quota.buckets.map((bucket) => ({ key: bucket.codes.join("+"), text: t(percent ? "percentValue" : "value", { label: bucket.codes.map((code) => (code === UNCLASSIFIED_BUCKET ? t("unclassified") : label(code))).join(" + "), value: bucketValue(bucket) }) }));
           return (
             <li key={quota.id} className="flex flex-col gap-2 rounded-md bg-subtle px-3 py-3" data-reference-quota={quota.id}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-body font-semibold text-text">{title}</span>
+                <span id={quotaNameId} className="text-body font-semibold text-text">
+                  {quota.name ? <ExamName>{quota.name}</ExamName> : dimensionLabel}
+                </span>
                 <Chip variant="tag">{t(`basis.${quota.basis}`)}</Chip>
               </div>
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-body text-text-secondary" aria-label={title}>
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-body text-text-secondary" aria-labelledby={quotaNameId}>
                 {values.map((value) => (
                   <li key={value.key}>{value.text}</li>
                 ))}
                 {unclassified > 0 && <li data-unclassified>{t("unclassifiedValue", { count: unclassified })}</li>}
               </ul>
-              <EnforcementControl mode="REFERENCE_WITH_APPLY" name={title} value={quota.enforcement} lockReason={lock ?? undefined} onChange={(value) => onApply(quota.id, value)} />
+              <EnforcementControl mode="REFERENCE_WITH_APPLY" name={dimensionLabel} value={quota.enforcement} lockReason={lock ?? undefined} onChange={(value) => onApply(quota.id, value)} />
             </li>
           );
         })}

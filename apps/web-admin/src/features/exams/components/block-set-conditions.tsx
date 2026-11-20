@@ -159,7 +159,7 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
                   </th>
                   <td className="border-b border-border px-3 py-2 align-top">
                     {tags.length > 0 ? (
-                      <span className="font-medium text-primary-text">{tags.map(tagName).join(", ")}</span>
+                      <span className="font-medium text-primary-text" data-exam-content>{tags.map(tagName).join(", ")}</span>
                     ) : (
                       <span className="text-text-muted">{t("inheritsGroup")}</span>
                     )}

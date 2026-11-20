@@ -6513,18 +6513,18 @@
               "label": "Allocation by knowledge node"
             }
           },
-          "countNotWhole": "{count, number} questions cannot be divided into sets of {size, number}",
+          "countNotWhole": "{count, plural, one {# question} other {# questions}} cannot be divided into sets of {size, number}",
           "facts": {
             "formats": "answer format {formats}",
             "line": "From the template: {facts}",
             "matching": "matching {left, number} left, {right, number} right choices",
-            "options": "{count, number} options",
-            "points": "{points} points per question",
+            "options": "{count, plural, one {# option} other {# options}}",
+            "points": "{count, plural, one {{points} point per question} other {{points} points per question}}",
             "rule": {
               "ALL_OR_NOTHING": "all correct or nothing",
               "PARTIAL": "partial credit"
             },
-            "statements": "{count, number} statements",
+            "statements": "{count, plural, one {# statement} other {# statements}}",
             "trueFalseTable": "points by number of correct statements {table}"
           },
           "lockedList": "Row locks",
@@ -6640,16 +6640,16 @@
             "scope": "Knowledge nodes: {count, number}",
             "slots": "Per set: {count, number}",
             "tags": "Tags: {count, number}",
-            "topicQuotas": "Node allocation: {count, number} rows"
+            "topicQuotas": "Node allocation: {count, plural, one {# row} other {# rows}}"
           },
           "countsLocked": "Quantity locked by the template",
           "edit": "Edit",
           "editAria": "Edit row {name}",
           "empty": "This subject has no question rows.",
           "figures": {
-            "plain": "{count, number} questions",
-            "plainPoints": "{count, number} questions · {points, number} points",
-            "trueFalse": "{count, number} true/false questions{hasStatements, select, yes { · {statements, number} statements} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
+            "plain": "{count, plural, one {# question} other {# questions}}",
+            "plainPoints": "{count, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}}",
+            "trueFalse": "{count, plural, one {# true/false question} other {# true/false questions}}{hasStatements, select, yes { · {statements, plural, one {# statement} other {# statements}}} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
           },
           "kind": {
             "set": "Set",
@@ -6658,9 +6658,9 @@
             "singleOf": "Single · {type}"
           },
           "quantity": {
-            "flexible": "{count, number} questions (flexible-size set)",
-            "sets": "{sets, number} sets × {size, number} ({count, number} questions)",
-            "single": "{count, number} questions"
+            "flexible": "{count, plural, one {# question} other {# questions}} (flexible-size set)",
+            "sets": "{sets, plural, one {# set} other {# sets}} × {size, number} ({count, plural, one {# question} other {# questions}})",
+            "single": "{count, plural, one {# question} other {# questions}}"
           },
           "range": "Q{from, number}{same, select, yes {} other {–{to, number}}}",
           "slot": "Set {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · nodes {nodes, number}}}",

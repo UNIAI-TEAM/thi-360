@@ -14,6 +14,7 @@ import { BlockRadioGroup } from "../components/block-radio-group";
 import { BlockSetConditions } from "../components/block-set-conditions";
 import { BlockSwitches } from "../components/block-switches";
 import { AudioChip, sectionAudio } from "../components/block-row-metrics";
+import { ExamName, richNodes } from "../components/exam-review-shared";
 import { KnowledgeScopeField } from "../components/knowledge-scope-field";
 import { LOCKED_FIELD } from "../components/locked-field";
 import { TopicQuotaTable, type TopicQuotaServerError } from "../components/topic-quota-table";
@@ -254,7 +255,7 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
   if (shape?.statements) factParts.push(t("facts.statements", { count: shape.statements }));
   if (shape?.leftItems) factParts.push(t("facts.matching", { left: shape.leftItems, right: shape.rightItems ?? 0 }));
   if (shape?.options) factParts.push(t("facts.options", { count: shape.options }));
-  if (block.requiredPointsPerQuestion !== null && block.requiredPointsPerQuestion !== undefined) factParts.push(t("facts.points", { points: number(block.requiredPointsPerQuestion) }));
+  if (block.requiredPointsPerQuestion !== null && block.requiredPointsPerQuestion !== undefined) factParts.push(t("facts.points", { points: number(block.requiredPointsPerQuestion), count: block.requiredPointsPerQuestion }));
   if (block.answerFormats && block.answerFormats.length > 0) factParts.push(t("facts.formats", { formats: block.answerFormats.join(", ") }));
   const table = block.expectedScoring?.trueFalseTable;
   if (table && table.length > 0) factParts.push(t("facts.trueFalseTable", { table: table.map(number).join(" · ") }));
@@ -266,7 +267,7 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 id={titleId} ref={headingRef} tabIndex={-1} className="flex flex-wrap items-center gap-2 text-title font-semibold wrap-break-word text-text">
-            {t("title", { name: block.name || t("untitled") })}
+            {richNodes(t, "title", { name: <ExamName key="name">{block.name || t("untitled")}</ExamName> })}
           </h3>
           <p className="flex flex-wrap items-center gap-2 text-caption text-text-muted">
             <span>{t("position", { position, total })}</span>

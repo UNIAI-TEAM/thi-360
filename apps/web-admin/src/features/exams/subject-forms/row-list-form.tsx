@@ -4,10 +4,11 @@ import { Badge, Button, Card } from "@thi360/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useEffect, useEffectEvent, useRef, useState } from "react";
+import { Fragment, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import type { QuestionType } from "@/features/content/types";
 import { topicCountFor, totalChangePending } from "../allocation";
 import { AudioChip, sectionAudio } from "../components/block-row-metrics";
+import { ExamName, labelBeforeName, richNodes } from "../components/exam-review-shared";
 import { ScrollableTable } from "../components/scrollable-table";
 import { TotalChangeNotice } from "../components/subject-allocation-extras";
 import { EXAMS_QUERY_KEYS } from "../keys";
@@ -56,6 +57,7 @@ export function RowListForm({
   const tBlock = useTranslations("exams.structure.block");
   const queryClient = useQueryClient();
   const rootRef = useRef<HTMLDivElement>(null);
+  const tableId = useId();
   const closeFocusRafRef = useRef<number | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
@@ -252,12 +254,15 @@ export function RowListForm({
                   const slots = (block.slots ?? []).filter((slot) => (slot.tagCodes?.length ?? 0) > 0 || (slot.knowledgeScope?.nodeIds.length ?? 0) > 0);
                   const name = block.name || t("table.untitled");
                   const figures = figuresText(block);
+                  const rowNameId = `${tableId}-row-${index}`;
+                  const editBtnId = `${tableId}-edit-${index}`;
+                  const slotsListId = `${tableId}-slots-${index}`;
                   return (
                     <Fragment key={block.id}>
                       {showSegment && (
                         <tr data-form-segment={segment.code}>
                           <th scope="colgroup" colSpan={columns} className="border-b border-border bg-subtle/60 px-2 py-1.5 text-left text-label font-semibold text-text">
-                            {segment.name}
+                            <ExamName>{segment.name}</ExamName>
                           </th>
                         </tr>
                       )}
@@ -267,7 +272,7 @@ export function RowListForm({
                         </td>
                         <th scope="row" className="min-w-44 border-b border-border px-2 py-2 align-top text-left font-medium text-text">
                           <span className="flex flex-wrap items-center gap-1.5">
-                            <span data-exam-content>{name}</span>
+                            <span id={rowNameId} data-exam-content>{name}</span>
                             {block.questionType === "ESSAY" && <Badge className="font-medium">{tBlock("manualGrading")}</Badge>}
                             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
                             {audio && <AudioChip audio={audio} />}
@@ -296,7 +301,16 @@ export function RowListForm({
                         <td className="border-b border-border px-2 py-2 align-top text-caption text-text-secondary">{conditionsText(block)}</td>
                         {!readOnlyNotice && (
                           <td className="border-b border-border px-2 py-1.5 align-top text-right whitespace-nowrap">
-                            <Button type="button" variant="secondary" size="sm" aria-label={t("table.editAria", { name })} aria-expanded={openId === block.id} onClick={() => openFromRow(block.id)}>
+                            <Button
+                              id={editBtnId}
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              aria-label={labelBeforeName(t, "table.editAria", "name")}
+                              aria-labelledby={`${editBtnId} ${rowNameId}`}
+                              aria-expanded={openId === block.id}
+                              onClick={() => openFromRow(block.id)}
+                            >
                               {t("table.edit")}
                             </Button>
                           </td>
@@ -306,12 +320,17 @@ export function RowListForm({
                         <tr data-form-slots={block.id}>
                           <td className="border-b border-border" />
                           <td colSpan={columns - 1} className="border-b border-border px-2 py-2">
-                            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-text-secondary" aria-label={t("table.slotsLabel", { name })}>
+                            <ul
+                              id={slotsListId}
+                              className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-text-secondary"
+                              aria-label={labelBeforeName(t, "table.slotsLabel", "name")}
+                              aria-labelledby={`${slotsListId} ${rowNameId}`}
+                            >
                               {slots.map((slot) => (
                                 <li key={slot.index} data-form-slot={slot.index} className="min-w-0 wrap-break-word">
-                                  {t("table.slot", {
+                                  {richNodes(t, "table.slot", {
                                     index: slot.index,
-                                    tags: (slot.tagCodes ?? []).map(tagName).join(", "),
+                                    tags: <ExamName key="tags">{(slot.tagCodes ?? []).map(tagName).join(", ")}</ExamName>,
                                     hasTags: (slot.tagCodes?.length ?? 0) > 0 ? "yes" : "no",
                                     nodes: slot.knowledgeScope?.nodeIds.length ?? 0,
                                   })}
