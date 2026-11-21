@@ -89,7 +89,7 @@ public class BundleAdminController {
     @PostMapping("/{id}/publish")
     public BundleDetailResponse publish(
             @PathVariable UUID id,
-            @Valid @RequestBody(required = false) BundleRevisionRequest request) {
+            @Valid @RequestBody BundleRevisionRequest request) {
         return service.publish(id, request);
     }
 
@@ -98,7 +98,7 @@ public class BundleAdminController {
     @PostMapping("/{id}/discontinue")
     public BundleDetailResponse discontinue(
             @PathVariable UUID id,
-            @Valid @RequestBody(required = false) BundleRevisionRequest request) {
+            @Valid @RequestBody BundleRevisionRequest request) {
         return service.discontinue(id, request);
     }
 }

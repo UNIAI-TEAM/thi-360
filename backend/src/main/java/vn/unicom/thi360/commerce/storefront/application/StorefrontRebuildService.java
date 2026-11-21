@@ -9,7 +9,10 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.commerce.bundle.application.BundleExamSnapshotSupport;
@@ -23,9 +26,11 @@ import vn.unicom.thi360.commerce.bundle.infrastructure.BundleVersionRepository;
 import vn.unicom.thi360.commerce.storefront.api.StorefrontRebuildResponse;
 import vn.unicom.thi360.commerce.storefront.domain.ProjectionOutcome;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
+import vn.unicom.thi360.commerce.storefront.domain.StorefrontRow;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
+import vn.unicom.thi360.shared.ids.Ids;
 
 /**
  * {@code POST /api/v1/admin/storefront/rebuild} (TM 10.1, 16.2): builds the row of every exam and bundle that is
@@ -46,6 +51,7 @@ public class StorefrontRebuildService {
     private final BundleExamSnapshotSupport snapshotSupport;
     private final BundleStorefrontProjector bundleProjector;
     private final StorefrontProductRepository storefrontRepository;
+    private final TransactionTemplate requiresNew;
     private final AuditRecorder audit;
     private final Clock clock;
 
@@ -57,6 +63,7 @@ public class StorefrontRebuildService {
             BundleExamSnapshotSupport snapshotSupport,
             BundleStorefrontProjector bundleProjector,
             StorefrontProductRepository storefrontRepository,
+            PlatformTransactionManager transactionManager,
             AuditRecorder audit,
             Clock clock) {
         this.port = port;
@@ -66,6 +73,8 @@ public class StorefrontRebuildService {
         this.snapshotSupport = snapshotSupport;
         this.bundleProjector = bundleProjector;
         this.storefrontRepository = storefrontRepository;
+        this.requiresNew = new TransactionTemplate(transactionManager);
+        this.requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.audit = audit;
         this.clock = clock;
     }
@@ -121,14 +130,25 @@ public class StorefrontRebuildService {
     }
 
     private ProjectionOutcome projectBundleInSavepoint(Bundle bundle, Instant now) {
+        BundleReadResult read = requiresNew.execute(status -> readBundle(bundle));
+        return storefrontRepository.inSavepoint(() -> {
+            if (read == null || read.row() == null) {
+                return read == null ? ProjectionOutcome.NOT_SELLABLE : read.emptyOutcome();
+            }
+            return storefrontRepository.upsertBundle(Ids.newId(), read.row(), now)
+                    ? ProjectionOutcome.WRITTEN : ProjectionOutcome.UNCHANGED;
+        });
+    }
+
+    private BundleReadResult readBundle(Bundle bundle) {
         if (bundle.getServingVersion() == null) {
-            return ProjectionOutcome.NOT_SELLABLE;
+            return new BundleReadResult(null, ProjectionOutcome.NOT_SELLABLE);
         }
         BundleVersion version = bundleVersionRepository
                 .findByBundleIdAndVersionNo(bundle.getId(), bundle.getServingVersion())
                 .orElse(null);
         if (version == null) {
-            return ProjectionOutcome.NOT_SELLABLE;
+            return new BundleReadResult(null, ProjectionOutcome.NOT_SELLABLE);
         }
         Map<UUID, ServingExam> liveServings = new LinkedHashMap<>();
         for (SnapshotItem item : version.getSnapshot().items()) {
@@ -142,8 +162,8 @@ public class StorefrontRebuildService {
                     .allMatch(item -> snapshotSupport.isOnSale(liveServings.get(item.examId())));
             saleState = allOnSale ? SaleState.ON_SALE : SaleState.UNAVAILABLE;
         }
-        return storefrontRepository.inSavepoint(() ->
-                bundleProjector.project(bundle, version, saleState, liveServings, now)
-                        ? ProjectionOutcome.WRITTEN : ProjectionOutcome.UNCHANGED);
+        return new BundleReadResult(bundleProjector.buildRow(bundle, version, saleState, liveServings), null);
     }
+
+    private record BundleReadResult(StorefrontRow row, ProjectionOutcome emptyOutcome) { }
 }

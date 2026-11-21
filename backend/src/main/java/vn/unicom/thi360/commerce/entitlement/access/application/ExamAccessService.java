@@ -8,8 +8,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -31,6 +34,8 @@ import vn.unicom.thi360.commerce.spi.AttemptStatusProvider.OpenAttempt;
  */
 @Service
 public class ExamAccessService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExamAccessService.class);
 
     private final ExamAccessReadRepository repository;
     private final PendingOrderLookup pendingOrders;
@@ -69,6 +74,7 @@ public class ExamAccessService {
         Map<UUID, String> pendingByExam = new HashMap<>();
         pendingOrders.findPaidUnfulfilled(userId).forEach(p -> pendingByExam.putIfAbsent(p.examId(), p.orderCode()));
         AttemptStatusProvider provider = attempts.get();
+        Map<UUID, Optional<OpenAttempt>> openAttemptCache = new HashMap<>();
 
         List<ExamAccessItem> items = new ArrayList<>(requested.size());
         requested.forEach((normalized, code) -> {
@@ -79,14 +85,14 @@ public class ExamAccessService {
             }
             if (product.productType() == ProductType.BUNDLE) {
                 List<BundleAccessExamItem> bundleItems = buildBundleAccessItems(
-                        userId, product.detail(), entitlements, pendingByExam, provider);
+                        userId, product.code(), product.detail(), entitlements, pendingByExam, provider,
+                        openAttemptCache);
                 items.add(new ExamAccessItem(code, ExamAccessState.NONE, 0, null, null, false, null, bundleItems));
                 return;
             }
             EntitlementRow entitlement = entitlements.get(product.examId());
             String pendingOrderCode = pendingByExam.get(product.examId());
-            OpenAttempt open = entitlement == null ? null
-                    : provider.findOpenAttempt(userId, entitlement.id()).orElse(null);
+            OpenAttempt open = findOpenAttempt(userId, entitlement, provider, openAttemptCache);
             int attemptsLeft = entitlement == null ? 0 : entitlement.attemptsLeft();
             ExamAccessState state = ExamAccessState.of(
                     entitlement != null, attemptsLeft, open != null, pendingOrderCode != null);
@@ -99,17 +105,20 @@ public class ExamAccessService {
 
     private List<BundleAccessExamItem> buildBundleAccessItems(
             UUID userId,
+            String productCode,
             String detailJson,
             Map<UUID, EntitlementRow> entitlements,
             Map<UUID, String> pendingByExam,
-            AttemptStatusProvider provider) {
+            AttemptStatusProvider provider,
+            Map<UUID, Optional<OpenAttempt>> openAttemptCache) {
         if (detailJson == null || detailJson.isBlank()) {
             return List.of();
         }
         JsonNode root;
         try {
             root = mapper.readTree(detailJson);
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
+            log.warn("Failed to parse bundle detail JSON for code={}", productCode, ex);
             return List.of();
         }
         JsonNode itemsNode = root.path("items");
@@ -132,8 +141,7 @@ public class ExamAccessService {
             String itemName = itemNode.path("name").asText("");
             EntitlementRow entitlement = entitlements.get(itemExamId);
             String pendingOrderCode = pendingByExam.get(itemExamId);
-            OpenAttempt open = entitlement == null ? null
-                    : provider.findOpenAttempt(userId, entitlement.id()).orElse(null);
+            OpenAttempt open = findOpenAttempt(userId, entitlement, provider, openAttemptCache);
             int attemptsLeft = entitlement == null ? 0 : entitlement.attemptsLeft();
             ExamAccessState itemState = ExamAccessState.of(
                     entitlement != null, attemptsLeft, open != null, pendingOrderCode != null);
@@ -149,6 +157,19 @@ public class ExamAccessService {
                     pendingOrderCode));
         }
         return List.copyOf(result);
+    }
+
+    private static OpenAttempt findOpenAttempt(
+            UUID userId,
+            EntitlementRow entitlement,
+            AttemptStatusProvider provider,
+            Map<UUID, Optional<OpenAttempt>> openAttemptCache) {
+        if (entitlement == null) {
+            return null;
+        }
+        return openAttemptCache
+                .computeIfAbsent(entitlement.id(), id -> provider.findOpenAttempt(userId, id))
+                .orElse(null);
     }
 
     /** The way {@code storefront_product.code_normalized} is written: trimmed and lower case. */

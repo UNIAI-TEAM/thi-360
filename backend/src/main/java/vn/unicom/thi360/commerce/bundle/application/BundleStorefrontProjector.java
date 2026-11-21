@@ -82,7 +82,11 @@ public class BundleStorefrontProjector {
             Map<UUID, ServingExam> liveServings) {
         BundleSnapshot snap = version.getSnapshot();
         SubjectCatalog subjects = snapshotSupport.subjectCatalog();
-        ExamKindRef kindRef = resolveExamKindRef(bundle.getExamKindItemId());
+        String effectiveCode = (snap.code() != null && !snap.code().isBlank()) ? snap.code() : bundle.getCode();
+        UUID effectiveExamKindItemId = snap.examKindItemId() != null
+                ? snap.examKindItemId()
+                : bundle.getExamKindItemId();
+        ExamKindRef kindRef = resolveExamKindRef(effectiveExamKindItemId);
 
         DetailBenefits benefits = new DetailBenefits(
                 snap.benefits().aiExplanation(),
@@ -188,7 +192,7 @@ public class BundleStorefrontProjector {
         String bundleBuildMode = hasReviewItem ? "REVIEW" : "STANDARD";
 
         ProductCard card = new ProductCard(
-                bundle.getCode(),
+                effectiveCode,
                 snap.name(),
                 snap.summary(),
                 null,
@@ -206,7 +210,7 @@ public class BundleStorefrontProjector {
                 "BUNDLE");
 
         ProductDetail detail = new ProductDetail(
-                bundle.getCode(),
+                effectiveCode,
                 snap.name(),
                 snap.summary(),
                 null,
@@ -238,13 +242,13 @@ public class BundleStorefrontProjector {
                 null,
                 bundle.getId(),
                 ProductType.BUNDLE,
-                bundle.getCode(),
-                BundleCodeNormalizer.normalize(bundle.getCode()),
+                effectiveCode,
+                BundleCodeNormalizer.normalize(effectiveCode),
                 version.getVersionNo(),
                 saleState,
                 snap.name(),
-                StorefrontSearchText.of(snap.name(), bundle.getCode()),
-                bundle.getExamKindItemId(),
+                StorefrontSearchText.of(snap.name(), effectiveCode),
+                effectiveExamKindItemId,
                 kindRef.code(),
                 "BUNDLE",
                 null,

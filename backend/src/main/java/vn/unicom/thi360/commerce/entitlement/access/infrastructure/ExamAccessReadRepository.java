@@ -44,14 +44,22 @@ public class ExamAccessReadRepository {
     public Map<UUID, List<MyExamBundleRef>> findPurchasedBundlesByUser(UUID userId) {
         Map<UUID, List<MyExamBundleRef>> result = new HashMap<>();
         jdbc.query("""
-                SELECT DISTINCT i.exam_id, o.bundle_id, o.product_code, o.product_name
-                FROM commerce.purchase_order o
-                JOIN commerce.purchase_order_item i ON i.order_id = o.id
-                WHERE o.user_id = ?
-                  AND o.product_type = 'BUNDLE'
-                  AND o.bundle_id IS NOT NULL
-                  AND o.state IN ('PAID', 'FULFILLED')
-                ORDER BY o.product_code ASC, o.bundle_id ASC
+                SELECT exam_id, bundle_id, product_code, product_name
+                FROM (
+                    SELECT DISTINCT ON (i.exam_id, o.bundle_id)
+                           i.exam_id,
+                           o.bundle_id,
+                           o.product_code,
+                           o.product_name
+                    FROM commerce.purchase_order o
+                    JOIN commerce.purchase_order_item i ON i.order_id = o.id
+                    WHERE o.user_id = ?
+                      AND o.product_type = 'BUNDLE'
+                      AND o.bundle_id IS NOT NULL
+                      AND o.state IN ('PAID', 'FULFILLED')
+                    ORDER BY i.exam_id, o.bundle_id, o.paid_at DESC NULLS LAST, o.created_at DESC, o.id DESC
+                ) latest_bundles
+                ORDER BY product_code ASC, bundle_id ASC
                 """,
                 rs -> {
                     UUID examId = rs.getObject("exam_id", UUID.class);

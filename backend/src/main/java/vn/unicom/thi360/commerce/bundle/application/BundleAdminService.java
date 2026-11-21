@@ -315,7 +315,7 @@ public class BundleAdminService {
     public BundleDetailResponse publish(UUID id, BundleRevisionRequest request) {
         Bundle bundle = bundleRepository.lockById(id)
                 .orElseThrow(() -> new NotFoundException(BundleErrorCodes.BUNDLE_NOT_FOUND, null));
-        if (request != null && !Objects.equals(request.expectedRevision(), bundle.getRevision())) {
+        if (request == null || !Objects.equals(request.expectedRevision(), bundle.getRevision())) {
             throw new VersionConflictException();
         }
         if (bundle.getStatus() == BundleStatus.DISCONTINUED) {
@@ -363,6 +363,8 @@ public class BundleAdminService {
                     servingExams.get(item.getExamId()), item.getPosition(), subjects));
         }
         BundleSnapshot snapshot = new BundleSnapshot(
+                bundle.getCode(),
+                bundle.getExamKindItemId(),
                 bundle.getName(),
                 bundle.getSummary(),
                 bundle.getDescription(),
@@ -415,7 +417,7 @@ public class BundleAdminService {
     public BundleDetailResponse discontinue(UUID id, BundleRevisionRequest request) {
         Bundle bundle = bundleRepository.lockById(id)
                 .orElseThrow(() -> new NotFoundException(BundleErrorCodes.BUNDLE_NOT_FOUND, null));
-        if (request != null && !Objects.equals(request.expectedRevision(), bundle.getRevision())) {
+        if (request == null || !Objects.equals(request.expectedRevision(), bundle.getRevision())) {
             throw new VersionConflictException();
         }
         if (bundle.getStatus() == BundleStatus.DRAFT) {
@@ -429,7 +431,21 @@ public class BundleAdminService {
         CurrentUser actor = currentUserProvider.requireCurrentUser();
         bundle.markDiscontinued(now, actor.id(), actor.username());
         bundle = bundleRepository.saveAndFlush(bundle);
-        storefrontRepository.markBundleDiscontinued(bundle.getId(), now);
+
+        BundleVersion servingVersion = bundle.getServingVersion() == null
+                ? null
+                : bundleVersionRepository.findByBundleIdAndVersionNo(bundle.getId(), bundle.getServingVersion())
+                        .orElse(null);
+        if (servingVersion != null) {
+            Map<UUID, ServingExam> liveServings = new LinkedHashMap<>();
+            for (SnapshotItem snapItem : servingVersion.getSnapshot().items()) {
+                publishedExamPort.findServing(snapItem.examId())
+                        .ifPresent(s -> liveServings.put(snapItem.examId(), s));
+            }
+            storefrontProjector.project(bundle, servingVersion, SaleState.DISCONTINUED, liveServings, now);
+        } else {
+            storefrontRepository.markBundleDiscontinued(bundle.getId(), now);
+        }
 
         auditRecorder.record(AuditEvent.builder(AUDIT_MODULE, "BUNDLE_DISCONTINUED")
                 .target(TARGET_TYPE, bundle.getId().toString(), bundle.getCode())

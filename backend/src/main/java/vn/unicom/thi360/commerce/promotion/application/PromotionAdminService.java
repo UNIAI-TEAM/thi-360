@@ -424,11 +424,17 @@ public class PromotionAdminService {
 
     @Transactional(readOnly = true)
     public PriceQuote pricePreview(PromotionPricePreviewRequest request) {
-        if ((request.examId() == null) == (request.bundleId() == null)) {
+        if (request.examId() == null && request.bundleId() == null) {
             throw fieldValidation(
-                    request.examId() != null ? "bundleId" : "examId",
+                    "examId",
                     "REQUIRED",
                     "validation.promotion.preview.target.required");
+        }
+        if (request.examId() != null && request.bundleId() != null) {
+            throw fieldValidation(
+                    "bundleId",
+                    "INVALID",
+                    "validation.promotion.preview.target.conflict");
         }
         StoredProduct stored = request.bundleId() != null
                 ? storefrontProductRepository.findByBundleId(request.bundleId()).orElse(null)

@@ -8,9 +8,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.commerce.bundle.domain.Bundle;
 import vn.unicom.thi360.commerce.bundle.domain.BundleSnapshot.SnapshotItem;
 import vn.unicom.thi360.commerce.bundle.domain.BundleStatus;
@@ -28,10 +31,13 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 
 /**
  * Updates published bundle storefront rows when a component exam publishes a new version or is discontinued
- * (TM 16.2, AC-12, AC-13, AC-30). Runs in {@code REQUIRES_NEW} so failures do not poison {@code OutboxRelay}.
+ * (TM 16.2, AC-12, AC-13, AC-30). Isolates each affected bundle in its own {@code REQUIRES_NEW} transaction so a
+ * failure on one bundle neither blocks healthy sibling bundles nor poisons {@code OutboxRelay}.
  */
 @Service
 public class BundleEventService {
+
+    private static final Logger log = LoggerFactory.getLogger(BundleEventService.class);
 
     private final BundleRepository bundleRepository;
     private final BundleVersionRepository bundleVersionRepository;
@@ -39,6 +45,8 @@ public class BundleEventService {
     private final PublishedExamPort publishedExamPort;
     private final BundleExamSnapshotSupport snapshotSupport;
     private final BundleStorefrontProjector storefrontProjector;
+    private final TransactionTemplate requiresNewTx;
+    private final TransactionTemplate readOnlyRequiresNewTx;
     private final ObjectMapper mapper;
     private final Clock clock;
 
@@ -49,6 +57,7 @@ public class BundleEventService {
             PublishedExamPort publishedExamPort,
             BundleExamSnapshotSupport snapshotSupport,
             BundleStorefrontProjector storefrontProjector,
+            PlatformTransactionManager transactionManager,
             ObjectMapper mapper,
             Clock clock) {
         this.bundleRepository = bundleRepository;
@@ -57,22 +66,45 @@ public class BundleEventService {
         this.publishedExamPort = publishedExamPort;
         this.snapshotSupport = snapshotSupport;
         this.storefrontProjector = storefrontProjector;
+        this.requiresNewTx = new TransactionTemplate(transactionManager);
+        this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.readOnlyRequiresNewTx = new TransactionTemplate(transactionManager);
+        this.readOnlyRequiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.readOnlyRequiresNewTx.setReadOnly(true);
         this.mapper = mapper;
         this.clock = clock;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onExamEvent(String topic, UUID examId, Integer versionNo) {
         if (examId == null) {
             return;
         }
-        List<UUID> bundleIds = bundleVersionRepository.findActivePublishedBundleIdsContainingExam(examId);
-        if (bundleIds.isEmpty()) {
+        List<UUID> bundleIds = readOnlyRequiresNewTx.execute(
+                status -> bundleVersionRepository.findActivePublishedBundleIdsContainingExam(examId));
+        if (bundleIds == null || bundleIds.isEmpty()) {
             return;
         }
         Instant now = clock.instant();
+        RuntimeException firstFailure = null;
         for (UUID bundleId : bundleIds) {
-            reprojectBundle(bundleId, topic, examId, versionNo, now);
+            try {
+                requiresNewTx.executeWithoutResult(
+                        status -> reprojectBundle(bundleId, topic, examId, versionNo, now));
+            } catch (RuntimeException ex) {
+                log.atError().setCause(ex)
+                        .addKeyValue("bundleId", bundleId)
+                        .addKeyValue("examId", examId)
+                        .addKeyValue("topic", topic)
+                        .log("Failed to reproject bundle on exam event");
+                if (firstFailure == null) {
+                    firstFailure = ex;
+                } else {
+                    firstFailure.addSuppressed(ex);
+                }
+            }
+        }
+        if (firstFailure != null) {
+            throw firstFailure;
         }
     }
 
@@ -105,7 +137,7 @@ public class BundleEventService {
                 ServingExam triggerLive = liveServings.get(triggerExamId);
                 int liveVer = (triggerLive != null && triggerLive.version() != null)
                         ? triggerLive.version().versionNo() : 0;
-                if (liveVer <= eventVersionNo) {
+                if (liveVer <= existingItemVersion) {
                     return;
                 }
             }

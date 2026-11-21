@@ -430,14 +430,24 @@ public class OrderService {
                     .toList();
             orderItems = new ArrayList<>(sortedItems.size());
             for (BundleSnapshot.SnapshotItem item : sortedItems) {
-                List<String> itemOptionCodes = collectServingOptionCodes(item.examId());
+                PublishedExamPort.ServingExam serving = (publishedExamPort == null || item.examId() == null)
+                        ? null
+                        : publishedExamPort.findServing(item.examId()).orElse(null);
+                if (serving == null
+                        || !"PUBLISHED".equals(serving.status())
+                        || serving.version() == null
+                        || serving.version().listing() == null) {
+                    throw new ConflictException("PRODUCT_UNAVAILABLE", messages.get("PRODUCT_UNAVAILABLE"));
+                }
+                PublishedExamPort.PublishedVersion liveVersion = serving.version();
+                List<String> itemOptionCodes = extractServingOptionCodes(serving);
                 orderItems.add(new PurchaseOrderItem(
                         Ids.newId(),
                         newOrderId,
                         item.examId(),
-                        item.versionNo(),
-                        item.code(),
-                        item.name(),
+                        liveVersion.versionNo(),
+                        liveVersion.code(),
+                        liveVersion.name(),
                         itemOptionCodes,
                         attemptsPerExam,
                         bundleBenefits,
@@ -767,11 +777,7 @@ public class OrderService {
         return PurchaseOrder.copyNonNullEntries(raw);
     }
 
-    private List<String> collectServingOptionCodes(UUID examId) {
-        if (publishedExamPort == null || examId == null) {
-            return List.of();
-        }
-        PublishedExamPort.ServingExam serving = publishedExamPort.findServing(examId).orElse(null);
+    private List<String> extractServingOptionCodes(PublishedExamPort.ServingExam serving) {
         if (serving == null || serving.servingPaths() == null) {
             return List.of();
         }

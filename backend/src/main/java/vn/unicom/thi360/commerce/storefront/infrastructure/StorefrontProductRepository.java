@@ -81,7 +81,7 @@ public class StorefrontProductRepository {
             WHERE (commerce.storefront_product.version_no < EXCLUDED.version_no
                    OR (commerce.storefront_product.version_no = EXCLUDED.version_no
                        AND NOT (commerce.storefront_product.sale_state = 'DISCONTINUED'
-                                AND EXCLUDED.sale_state = 'ON_SALE')))
+                                AND EXCLUDED.sale_state <> 'DISCONTINUED')))
               AND commerce.storefront_product.projection_hash <> EXCLUDED.projection_hash
             """;
 
@@ -192,14 +192,6 @@ public class StorefrontProductRepository {
         }) > 0;
     }
 
-    /** Marks an on-sale bundle storefront row as {@code UNAVAILABLE} when a member exam is discontinued (TM 16.2). */
-    public boolean markBundleUnavailable(UUID bundleId, Instant now) {
-        return jdbc.update(
-                "UPDATE commerce.storefront_product SET sale_state = 'UNAVAILABLE', updated_at = ? "
-                        + "WHERE bundle_id = ? AND sale_state = 'ON_SALE'",
-                Timestamp.from(now), bundleId) > 0;
-    }
-
     /** Marks a bundle storefront row as {@code DISCONTINUED}, preserving code and name for 410 responses (TM 16.2). */
     public boolean markBundleDiscontinued(UUID bundleId, Instant now) {
         return jdbc.update(
@@ -264,16 +256,6 @@ public class StorefrontProductRepository {
         return Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT EXISTS (SELECT 1 FROM commerce.storefront_product WHERE exam_id = ? AND sale_state = 'ON_SALE')",
                 Boolean.class, examId));
-    }
-
-    /** All on-sale exam rows used for batch promotion cap-warning evaluation (CM-2, AC-41). */
-    public List<CapWarningExam> listOnSaleForCapWarnings() {
-        return jdbc.query(
-                "SELECT exam_id, name, exam_item_id, list_price_vnd FROM commerce.storefront_product "
-                        + "WHERE sale_state = 'ON_SALE' AND product_type = 'EXAM' AND exam_id IS NOT NULL "
-                        + "ORDER BY name ASC, exam_id ASC",
-                (rs, n) -> new CapWarningExam(rs.getObject(1, UUID.class), rs.getString(2),
-                        rs.getObject(3, UUID.class), rs.getLong(4)));
     }
 
     /** All on-sale products (exams and bundles) used for batch promotion cap-warning evaluation (CM-2, CM-6). */
@@ -492,8 +474,6 @@ public class StorefrontProductRepository {
                     card, detail, ProductType.EXAM, null);
         }
     }
-
-    public record CapWarningExam(UUID examId, String name, UUID examKindItemId, long listPriceVnd) { }
 
     public record CapWarningProduct(UUID examId, UUID bundleId, ProductType productType, String name,
                                     UUID examKindItemId, long listPriceVnd) {
