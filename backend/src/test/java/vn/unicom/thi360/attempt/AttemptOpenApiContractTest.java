@@ -135,6 +135,35 @@ class AttemptOpenApiContractTest {
                                 .asInt())
                 .isEqualTo(500);
 
+        JsonNode confirmReq = schemas.path("ConfirmPartChoiceRequest");
+        assertThat(confirmReq.path("required")).extracting(JsonNode::asText).contains("optionCode");
+        assertThat(confirmReq.path("properties").path("optionCode").path("maxLength").asInt())
+                .isEqualTo(64);
+        assertThat(confirmReq.path("properties").path("subjectCodes").path("maxItems").asInt())
+                .isEqualTo(10);
+        assertThat(
+                        confirmReq
+                                .path("properties")
+                                .path("subjectCodes")
+                                .path("items")
+                                .path("maxLength")
+                                .asInt())
+                .isEqualTo(64);
+
+        JsonNode partChoiceRespProps = schemas.path("PartChoiceResponse").path("properties");
+        assertThat(partChoiceRespProps.path("choice").path("$ref").asText())
+                .isEqualTo("#/components/schemas/PartChoiceSummary");
+
+        JsonNode partChoiceSummary = schemas.path("PartChoiceSummary");
+        assertThat(partChoiceSummary.path("required"))
+                .extracting(JsonNode::asText)
+                .contains("optionCode");
+        JsonNode summaryProps = partChoiceSummary.path("properties");
+        assertThat(summaryProps.has("optionCode")).isTrue();
+        assertThat(summaryProps.has("subjectCodes")).isTrue();
+        assertThat(summaryProps.has("subjectCounts")).isTrue();
+        assertThat(summaryProps.has("seed")).isFalse();
+
         for (String endpointPath :
                 List.of(
                         "/api/v1/me/attempts/{attemptId}/submit",
@@ -194,6 +223,28 @@ class AttemptOpenApiContractTest {
                     .contains("\"Idempotency-Key\": string;")
                     .doesNotContain("\"Idempotency-Key\"?:");
         }
+
+        String partChoiceResponseBlock = extractComponentSchemaBlock(schemaDts, "PartChoiceResponse");
+        assertThat(partChoiceResponseBlock)
+                .contains("choice?: components[\"schemas\"][\"PartChoiceSummary\"];")
+                .doesNotContain("Record<string, never>")
+                .doesNotContain(": never")
+                .doesNotContain("seed");
+
+        String partChoiceSummaryBlock = extractComponentSchemaBlock(schemaDts, "PartChoiceSummary");
+        assertThat(partChoiceSummaryBlock)
+                .contains("optionCode: string;")
+                .contains("subjectCodes?: string[];")
+                .contains("subjectCounts?:")
+                .doesNotContain("Record<string, never>")
+                .doesNotContain(": never")
+                .doesNotContain("seed");
+
+        String confirmChoiceBlock = extractComponentSchemaBlock(schemaDts, "ConfirmPartChoiceRequest");
+        assertThat(confirmChoiceBlock)
+                .contains("optionCode: string;")
+                .doesNotContain("optionCode?:")
+                .contains("subjectCodes?: string[];");
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {

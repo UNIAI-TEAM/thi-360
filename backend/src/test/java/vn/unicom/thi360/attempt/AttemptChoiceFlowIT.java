@@ -70,9 +70,28 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         JsonNode choiceJson = json(choiceRes);
         assertThat(choiceJson.path("state").asText()).isEqualTo("GENERATING");
         assertThat(choiceJson.path("choice").path("optionCode").asText()).isEqualTo("ANH");
+        assertThat(choiceJson.path("choice").has("seed")).isFalse();
+        assertThat(choiceJson.path("choice").has("subjectCodes")).isFalse();
+        assertThat(choiceJson.path("choice").has("subjectCounts")).isFalse();
 
         AttemptPart opened = awaitPartState(p2.getId(), PartState.OPEN);
         assertThat(opened.getChoice()).containsEntry("optionCode", "ANH");
+
+        AttemptEvent confirmedEvent =
+                attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId()).stream()
+                        .filter(
+                                e ->
+                                        e.getType() == AttemptEventType.CHOICE_CONFIRMED
+                                                && p2.getId().equals(e.getPartId()))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(confirmedEvent.getData())
+                .containsEntry("partCode", p2.getPartCode())
+                .containsEntry("ord", p2.getOrd())
+                .containsEntry("optionCode", "ANH")
+                .containsEntry("choiceConfirmedAt", opened.getChoiceConfirmedAt().toString());
+        assertThat(((Number) confirmedEvent.getData().get("seed")).longValue())
+                .isEqualTo(opened.getSeed());
 
         MvcResult stateRes = performGetState(userId, attempt.getId());
         assertThat(stateRes.getResponse().getStatus()).isEqualTo(200);
@@ -120,6 +139,12 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                             null,
                             new ConfirmPartChoiceRequest("SCIENCE", triple));
             assertThat(choiceRes.getResponse().getStatus()).isEqualTo(202);
+            JsonNode choiceResJson = json(choiceRes);
+            assertThat(choiceResJson.path("choice").has("seed")).isFalse();
+            assertThat(choiceResJson.path("choice").path("optionCode").asText())
+                    .isEqualTo("SCIENCE");
+            assertThat(choiceResJson.path("choice").path("subjectCodes")).hasSize(3);
+            assertThat(choiceResJson.path("choice").path("subjectCounts")).hasSize(3);
 
             AttemptPart opened = awaitPartState(p2.getId(), PartState.OPEN);
             @SuppressWarnings("unchecked")
@@ -143,7 +168,31 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
             }
             for (String s : triple) {
                 assertThat(savedCounts.get(s).intValue()).isEqualTo(expectedCounts.get(s));
+                assertThat(choiceResJson.path("choice").path("subjectCounts").path(s).asInt())
+                        .isEqualTo(expectedCounts.get(s));
             }
+
+            AttemptEvent confirmedEvent =
+                    attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId()).stream()
+                            .filter(
+                                    e ->
+                                            e.getType() == AttemptEventType.CHOICE_CONFIRMED
+                                                    && p2.getId().equals(e.getPartId()))
+                            .findFirst()
+                            .orElseThrow();
+            assertThat(confirmedEvent.getData())
+                    .containsEntry("partCode", p2.getPartCode())
+                    .containsEntry("ord", p2.getOrd())
+                    .containsEntry("optionCode", "SCIENCE")
+                    .containsEntry("choiceConfirmedAt", opened.getChoiceConfirmedAt().toString())
+                    .containsEntry("subjectCodes", triple);
+            assertThat(((Number) confirmedEvent.getData().get("seed")).longValue())
+                    .isEqualTo(opened.getSeed());
+            @SuppressWarnings("unchecked")
+            Map<String, Number> eventCounts =
+                    (Map<String, Number>) confirmedEvent.getData().get("subjectCounts");
+            expectedCounts.forEach(
+                    (subj, cnt) -> assertThat(eventCounts.get(subj).intValue()).isEqualTo(cnt));
 
             List<AttemptItem> p2Items = attemptItemRepository.findByPartIdOrderByOrdAsc(p2.getId());
             Map<String, Integer> actualUnitsBySubject = new LinkedHashMap<>();
@@ -199,6 +248,8 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                             null,
                             new ConfirmPartChoiceRequest("SCIENCE", List.of("SINH", "LY", "HOA")));
             assertThat(res.getResponse().getStatus()).isEqualTo(202);
+            JsonNode resJson = json(res);
+            assertThat(resJson.path("choice").has("seed")).isFalse();
             AttemptPart opened = awaitPartState(p2.getId(), PartState.OPEN);
             List<String> canonicalOrder = List.of("LY", "HOA", "SINH");
             assertThat(opened.getChoice().get("subjectCodes")).isEqualTo(canonicalOrder);
@@ -284,13 +335,25 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         List<AttemptItem> p2Items = attemptItemRepository.findByPartIdOrderByOrdAsc(p2.getId());
         List<AttemptItem> numbered =
                 p2Items.stream().filter(i -> i.getDisplayNo() != null).toList();
-        int totalUnits = numbered.stream().mapToInt(AttemptItem::getUnitCount).sum();
-        assertThat(totalUnits).isEqualTo(50);
-
-        List<String> firstHalf =
-                numbered.subList(0, 25).stream().map(AttemptItem::getComponentCode).distinct().toList();
-        List<String> secondHalf =
-                numbered.subList(25, 50).stream().map(AttemptItem::getComponentCode).distinct().toList();
+        int cumulativeUnits = 0;
+        Set<String> firstHalf = new LinkedHashSet<>();
+        Set<String> secondHalf = new LinkedHashSet<>();
+        for (AttemptItem item : numbered) {
+            int itemUnits = item.getUnitCount();
+            assertThat(itemUnits).isPositive();
+            int startUnit = cumulativeUnits + 1;
+            int endUnit = cumulativeUnits + itemUnits;
+            assertThat(startUnit <= 25 && endUnit > 25)
+                    .as("No item should straddle the 25/26 unit boundary")
+                    .isFalse();
+            if (endUnit <= 25) {
+                firstHalf.add(item.getComponentCode());
+            } else {
+                secondHalf.add(item.getComponentCode());
+            }
+            cumulativeUnits = endUnit;
+        }
+        assertThat(cumulativeUnits).isEqualTo(50);
         assertThat(firstHalf).containsExactly("HOA");
         assertThat(secondHalf).containsExactly("SINH");
     }
@@ -362,18 +425,16 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                                 .asText())
                 .isEqualTo("AWAITING_CHOICE");
 
-        assertThat(
-                        performChoice(
-                                        u1,
-                                        a1.getId(),
-                                        hsaP2.getId(),
-                                        "so-hsa-bad",
-                                        null,
-                                        new ConfirmPartChoiceRequest(
-                                                "SCIENCE", List.of("LY", "HOA", "SINH")))
-                                .getResponse()
-                                .getStatus())
-                .isEqualTo(422);
+        MvcResult badHsaChoice =
+                performChoice(
+                        u1,
+                        a1.getId(),
+                        hsaP2.getId(),
+                        "so-hsa-bad",
+                        null,
+                        new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SINH")));
+        assertThat(badHsaChoice.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(badHsaChoice).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
 
         assertThat(
                         performChoice(
@@ -396,6 +457,17 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         AttemptPart qdaP2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         assertThat(qdaP2.getState()).isEqualTo(PartState.AWAITING_CHOICE);
         assertThat(attemptItemRepository.findByPartIdOrderByOrdAsc(qdaP2.getId())).isEmpty();
+
+        MvcResult badQdaChoice =
+                performChoice(
+                        u2,
+                        a2.getId(),
+                        qdaP2.getId(),
+                        "so-qda-bad",
+                        null,
+                        new ConfirmPartChoiceRequest("QD01", null));
+        assertThat(badQdaChoice.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(badQdaChoice).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
 
         assertThat(
                         performChoice(

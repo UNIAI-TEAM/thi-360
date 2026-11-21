@@ -2702,11 +2702,15 @@
         "properties" : {
           "optionCode" : {
             "description" : "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+            "maxLength" : 64,
+            "minLength" : 0,
             "type" : "string"
           },
           "subjectCodes" : {
             "description" : "Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học)",
             "items" : {
+              "maxLength" : 64,
+              "minLength" : 0,
               "type" : "string"
             },
             "maxItems" : 10,
@@ -2714,6 +2718,7 @@
             "type" : "array"
           }
         },
+        "required" : [ "optionCode" ],
         "type" : "object"
       },
       "ContentReferenceResponse" : {
@@ -8382,11 +8387,8 @@
             "type" : "string"
           },
           "choice" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
-            "description" : "Lựa chọn đã khóa của phần",
-            "type" : "object"
+            "$ref" : "#/components/schemas/PartChoiceSummary",
+            "description" : "Lựa chọn đã khóa của phần"
           },
           "choiceConfirmedAt" : {
             "description" : "Thời điểm khóa lựa chọn",
@@ -8438,6 +8440,32 @@
           }
         },
         "required" : [ "attemptId", "attemptState", "generationTries", "partCode", "partId", "serverNow", "state" ],
+        "type" : "object"
+      },
+      "PartChoiceSummary" : {
+        "description" : "Thông tin lựa chọn đã khóa của phần thi",
+        "properties" : {
+          "optionCode" : {
+            "description" : "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "description" : "Danh sách mã môn đã chọn (nếu có)",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "subjectCounts" : {
+            "additionalProperties" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "description" : "Số câu theo từng môn đã chọn (nếu có)",
+            "type" : "object"
+          }
+        },
+        "required" : [ "optionCode" ],
         "type" : "object"
       },
       "PartFilter" : {

@@ -4027,7 +4027,7 @@ export interface components {
         /** @description Yêu cầu xác nhận lựa chọn phần tự chọn sau khi bắt đầu (LT §6.1) */
         ConfirmPartChoiceRequest: {
             /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
-            optionCode?: string;
+            optionCode: string;
             /** @description Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học) */
             subjectCodes?: string[];
         };
@@ -6725,9 +6725,7 @@ export interface components {
              */
             attemptState: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
             /** @description Lựa chọn đã khóa của phần */
-            choice?: {
-                [key: string]: Record<string, never>;
-            };
+            choice?: components["schemas"]["PartChoiceSummary"];
             /**
              * Format: date-time
              * @description Thời điểm khóa lựa chọn
@@ -6772,6 +6770,17 @@ export interface components {
              * @enum {string}
              */
             state: "PENDING" | "AWAITING_CHOICE" | "GENERATING" | "GENERATION_FAILED" | "OPEN" | "CLOSED" | "SKIPPED";
+        };
+        /** @description Thông tin lựa chọn đã khóa của phần thi */
+        PartChoiceSummary: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn đã chọn (nếu có) */
+            subjectCodes?: string[];
+            /** @description Số câu theo từng môn đã chọn (nếu có) */
+            subjectCounts?: {
+                [key: string]: number;
+            };
         };
         /** @description Phần của bài thi theo phần (PART); mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. Chỉ bài thi theo phần mới có mã phần: bài thi FULL tìm theo hình thức FULL, không theo phần. Tham số part của danh sách là code, đi kèm kind, và chỉ khớp bài thi theo phần */
         PartFilter: {

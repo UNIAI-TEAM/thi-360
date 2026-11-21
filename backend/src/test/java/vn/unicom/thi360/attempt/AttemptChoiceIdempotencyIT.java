@@ -117,6 +117,12 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
         assertThat(diffPartReused.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffPartReused).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
 
+        // R1-16: foreign or non-existent partId with reused key -> 404 NOT_FOUND
+        MvcResult foreignPartReused =
+                performChoice(userId, attempt.getId(), UUID.randomUUID(), "ch-k1", null, req1);
+        assertThat(foreignPartReused.getResponse().getStatus()).isEqualTo(404);
+        assertThat(json(foreignPartReused).path("code").asText()).isEqualTo("NOT_FOUND");
+
         // Different key + different choice -> 409 CHOICE_LOCKED
         MvcResult locked =
                 performChoice(
@@ -208,6 +214,12 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                 performRetry(userId, attempt.getId(), parts.get(0).getId(), "ret-k1", null, retReq1);
         assertThat(diffPart.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffPart).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
+
+        // R1-16: foreign or non-existent partId with reused key -> 404 NOT_FOUND
+        MvcResult foreignPartRetry =
+                performRetry(userId, attempt.getId(), UUID.randomUUID(), "ret-k1", null, retReq1);
+        assertThat(foreignPartRetry.getResponse().getStatus()).isEqualTo(404);
+        assertThat(json(foreignPartRetry).path("code").asText()).isEqualTo("NOT_FOUND");
     }
 
     @Test

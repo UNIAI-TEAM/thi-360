@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.PartChoiceResponse;
+import vn.unicom.thi360.attempt.api.AttemptChoiceController.PartChoiceSummary;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.RetryPartRequest;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler.AssembledItem;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler.AssembledPart;
@@ -99,6 +101,7 @@ public class AttemptChoiceService {
     private final IdempotentCommand idempotentCommand;
     private final OverdueAttemptCloser overdueAttemptCloser;
     private final AttemptSessionChecker attemptSessionChecker;
+    private final AttemptLifecycleService attemptLifecycleService;
     private final TransactionTemplate readTx;
     private final TransactionTemplate requiresNewTx;
     private final Clock clock;
@@ -134,6 +137,7 @@ public class AttemptChoiceService {
             IdempotentCommand idempotentCommand,
             OverdueAttemptCloser overdueAttemptCloser,
             AttemptSessionChecker attemptSessionChecker,
+            AttemptLifecycleService attemptLifecycleService,
             PlatformTransactionManager transactionManager,
             Clock clock) {
         this.accessGate = Objects.requireNonNull(accessGate);
@@ -150,6 +154,7 @@ public class AttemptChoiceService {
         this.idempotentCommand = Objects.requireNonNull(idempotentCommand);
         this.overdueAttemptCloser = Objects.requireNonNull(overdueAttemptCloser);
         this.attemptSessionChecker = Objects.requireNonNull(attemptSessionChecker);
+        this.attemptLifecycleService = Objects.requireNonNull(attemptLifecycleService);
         PlatformTransactionManager txMgr = Objects.requireNonNull(transactionManager);
         this.readTx = new TransactionTemplate(txMgr);
         this.readTx.setReadOnly(true);
@@ -168,7 +173,8 @@ public class AttemptChoiceService {
         UUID userId = accessGate.requireLearner();
         if (attemptId == null
                 || partId == null
-                || !attemptRepository.existsByIdAndUserId(attemptId, userId)) {
+                || !attemptRepository.existsByIdAndUserId(attemptId, userId)
+                || attemptPartRepository.findByIdAndAttemptId(partId, attemptId).isEmpty()) {
             throw new NotFoundException("NOT_FOUND", null);
         }
         idempotentCommand.requireKey(idempotencyKey);
@@ -196,10 +202,12 @@ public class AttemptChoiceService {
             throw ex;
         }
 
-        if (newlyExecuted[0] && commandResult.queuedNewGeneration()) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(commandResult.snapshot());
+        if (newlyExecuted[0]) {
+            return commandResult.queuedNewGeneration()
+                    ? ResponseEntity.status(HttpStatus.ACCEPTED).body(commandResult.snapshot())
+                    : ResponseEntity.ok(commandResult.snapshot());
         }
-        return ResponseEntity.ok(reloadCurrentState(attemptId, partId));
+        return ResponseEntity.ok(reloadCurrentState(attemptId, partId, sessionId));
     }
 
     /** Retries generation for a {@link PartState#GENERATION_FAILED} part idempotently. */
@@ -212,7 +220,8 @@ public class AttemptChoiceService {
         UUID userId = accessGate.requireLearner();
         if (attemptId == null
                 || partId == null
-                || !attemptRepository.existsByIdAndUserId(attemptId, userId)) {
+                || !attemptRepository.existsByIdAndUserId(attemptId, userId)
+                || attemptPartRepository.findByIdAndAttemptId(partId, attemptId).isEmpty()) {
             throw new NotFoundException("NOT_FOUND", null);
         }
         idempotentCommand.requireKey(idempotencyKey);
@@ -239,10 +248,12 @@ public class AttemptChoiceService {
             throw ex;
         }
 
-        if (newlyExecuted[0] && commandResult.queuedNewGeneration()) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(commandResult.snapshot());
+        if (newlyExecuted[0]) {
+            return commandResult.queuedNewGeneration()
+                    ? ResponseEntity.status(HttpStatus.ACCEPTED).body(commandResult.snapshot())
+                    : ResponseEntity.ok(commandResult.snapshot());
         }
-        return ResponseEntity.ok(reloadCurrentState(attemptId, partId));
+        return ResponseEntity.ok(reloadCurrentState(attemptId, partId, sessionId));
     }
 
     /**
@@ -252,6 +263,16 @@ public class AttemptChoiceService {
      */
     PartGenerationJob startRetryInLock(
             Attempt attempt, AttemptPart part, UUID sessionId, Instant lockNow) {
+        return startRetryInLock(attempt, part, sessionId, lockNow, null);
+    }
+
+    /** Overload recording synchronous executor saturation on {@code saturatedOut} after commit. */
+    PartGenerationJob startRetryInLock(
+            Attempt attempt,
+            AttemptPart part,
+            UUID sessionId,
+            Instant lockNow,
+            AtomicBoolean saturatedOut) {
         PublishedVersion version =
                 publishedExamPort
                         .loadVersion(attempt.getExamId(), attempt.getExamVersionNo())
@@ -272,7 +293,7 @@ public class AttemptChoiceService {
                         part.getSeed(),
                         part.getChoice(),
                         sessionId);
-        schedulePartGenerationAfterCommit(job);
+        schedulePartGenerationAfterCommit(job, saturatedOut);
         return job;
     }
 
@@ -313,6 +334,7 @@ public class AttemptChoiceService {
                         now,
                         data));
 
+        String safeDetail = truncate(detail);
         if (tries == OPS_ALERT_FAILURE_THRESHOLD) {
             jobLog.atError()
                     .addKeyValue("job", "attempt-part-generation")
@@ -324,8 +346,9 @@ public class AttemptChoiceService {
                     .addKeyValue("versionNo", attempt.getExamVersionNo())
                     .addKeyValue("generationTries", tries)
                     .addKeyValue("reason", reason)
+                    .addKeyValue("detail", safeDetail)
                     .log(
-                            "attempt.part_generation_alert attemptId={} partId={} partCode={} examId={} examCode={} versionNo={} generationTries={} reason={}",
+                            "attempt.part_generation_alert attemptId={} partId={} partCode={} examId={} examCode={} versionNo={} generationTries={} reason={} detail={}",
                             attempt.getId(),
                             part.getId(),
                             part.getPartCode(),
@@ -333,7 +356,8 @@ public class AttemptChoiceService {
                             safe(examCode),
                             attempt.getExamVersionNo(),
                             tries,
-                            reason);
+                            reason,
+                            safeDetail);
         } else {
             jobLog.atWarn()
                     .addKeyValue("job", "attempt-part-generation")
@@ -345,8 +369,9 @@ public class AttemptChoiceService {
                     .addKeyValue("versionNo", attempt.getExamVersionNo())
                     .addKeyValue("generationTries", tries)
                     .addKeyValue("reason", reason)
+                    .addKeyValue("detail", safeDetail)
                     .log(
-                            "attempt.part_generation_failed attemptId={} partId={} partCode={} examId={} examCode={} versionNo={} generationTries={} reason={}",
+                            "attempt.part_generation_failed attemptId={} partId={} partCode={} examId={} examCode={} versionNo={} generationTries={} reason={} detail={}",
                             attempt.getId(),
                             part.getId(),
                             part.getPartCode(),
@@ -354,7 +379,8 @@ public class AttemptChoiceService {
                             safe(examCode),
                             attempt.getExamVersionNo(),
                             tries,
-                            reason);
+                            reason,
+                            safeDetail);
         }
     }
 
@@ -387,6 +413,13 @@ public class AttemptChoiceService {
         if (part.getState() == PartState.AWAITING_CHOICE
                 && part.getChoiceDeadlineAt() != null
                 && !lockNow.isBefore(part.getChoiceDeadlineAt())) {
+            throw new ConflictException("CHOICE_WINDOW_CLOSED");
+        }
+
+        attemptLifecycleService.advanceOverdueInLock(attempt, parts, lockNow);
+
+        if (part.getState() == PartState.SKIPPED
+                && part.getCloseReason() == PartCloseReason.CHOICE_TIMEOUT) {
             throw new ConflictException("CHOICE_WINDOW_CLOSED");
         }
 
@@ -460,7 +493,7 @@ public class AttemptChoiceService {
                         part.getSeed(),
                         choiceMap,
                         sessionId);
-        schedulePartGenerationAfterCommit(job);
+        schedulePartGenerationAfterCommit(job, null);
         return new ChoiceCommandResult(true, toResponse(lockNow, attempt, part));
     }
 
@@ -482,6 +515,11 @@ public class AttemptChoiceService {
             throw new NotFoundException("NOT_FOUND", null);
         }
         if (attempt.getState() != AttemptState.IN_PROGRESS) {
+            throw new ConflictException("PART_NOT_AWAITING");
+        }
+        if (attempt.getTiming() == AttemptTiming.SHARED
+                && attempt.getDeadlineAt() != null
+                && !lockNow.isBefore(attempt.getDeadlineAt())) {
             throw new ConflictException("PART_NOT_AWAITING");
         }
         if (part.getState() == PartState.GENERATING) {
@@ -593,9 +631,10 @@ public class AttemptChoiceService {
     }
 
     /**
-     * Exact D25 / B10 split matching {@code ChoiceGroupAllocator}: mixed NATURAL+SOCIAL gives the
-     * minority group {@code low} and majority {@code high}; all-same-group picks the single
-     * {@code low} subject via {@code new Random(partSeed).nextInt(selected.size())}.
+     * Implements the HSA Science D25 / B10 split ({@code LY/HOA/SINH} vs {@code SU/DIA}, 3
+     * subjects) matching {@code ChoiceGroupAllocator}: mixed natural+social gives the minority
+     * group {@code low} and majority {@code high}; all-same-group picks the single {@code low}
+     * subject via {@code new Random(partSeed).nextInt(selected.size())}.
      */
     private static Map<String, Integer> computeSubjectCounts(
             Option option, List<String> canonicalSubjects, long partSeed) {
@@ -626,7 +665,10 @@ public class AttemptChoiceService {
         }
 
         Map<String, Integer> result = new LinkedHashMap<>(canonicalSubjects.size());
-        if (natural > 0 && social > 0) {
+        if (natural > 0
+                && social > 0
+                && canonicalSubjects.size() == 3
+                && natural + social == canonicalSubjects.size()) {
             boolean minorityIsNatural = natural == 1;
             for (String subject : canonicalSubjects) {
                 boolean isNatural = NATURAL_SUBJECTS.contains(normalizeCode(subject));
@@ -641,28 +683,33 @@ public class AttemptChoiceService {
         return Map.copyOf(result);
     }
 
-    private void schedulePartGenerationAfterCommit(PartGenerationJob job) {
+    private void schedulePartGenerationAfterCommit(
+            PartGenerationJob job, AtomicBoolean saturatedOut) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(
                     new TransactionSynchronization() {
                         @Override
                         public void afterCommit() {
-                            submitPartGeneration(job);
+                            submitPartGeneration(job, saturatedOut);
                         }
                     });
         } else {
-            submitPartGeneration(job);
+            submitPartGeneration(job, saturatedOut);
         }
     }
 
-    private void submitPartGeneration(PartGenerationJob job) {
+    private void submitPartGeneration(PartGenerationJob job, AtomicBoolean saturatedOut) {
         generationExecutor.submit(
                 () -> runPartGenerationJob(job),
-                () ->
-                        failPartGeneration(
-                                job,
-                                "GENERATION_BUSY",
-                                "Generation queue saturated or exceeded maxQueueWait"));
+                () -> {
+                    if (saturatedOut != null) {
+                        saturatedOut.set(true);
+                    }
+                    failPartGeneration(
+                            job,
+                            "GENERATION_BUSY",
+                            "Generation queue saturated or exceeded maxQueueWait");
+                });
     }
 
     private void runPartGenerationJob(PartGenerationJob job) {
@@ -724,7 +771,15 @@ public class AttemptChoiceService {
                             : "GENERATION_FAILED";
             failPartGeneration(job, reason, ex.getMessage());
         } catch (RuntimeException ex) {
-            failPartGeneration(job, "GENERATION_FAILED", ex.getMessage());
+            log.warn(
+                    "attempt.part_generation_unexpected_error attemptId={} partId={}",
+                    job.attemptId(),
+                    job.partId(),
+                    ex);
+            failPartGeneration(
+                    job,
+                    "GENERATION_FAILED",
+                    ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
         }
     }
 
@@ -751,6 +806,13 @@ public class AttemptChoiceService {
                         return;
                     }
 
+                    Instant now = clock.instant();
+                    if (attempt.getTiming() == AttemptTiming.SHARED
+                            && attempt.getDeadlineAt() != null
+                            && !now.isBefore(attempt.getDeadlineAt())) {
+                        return;
+                    }
+
                     if (!rootKeys.isEmpty()) {
                         questionSourcePort.recordUsage(
                                 job.examId(), QuestionUsageKind.ATTEMPT, rootKeys);
@@ -772,7 +834,6 @@ public class AttemptChoiceService {
                         attemptItemRepository.saveAll(childItems);
                     }
 
-                    Instant now = clock.instant();
                     Instant partDeadline =
                             attempt.getTiming() == AttemptTiming.SHARED
                                     ? attempt.getDeadlineAt()
@@ -842,7 +903,7 @@ public class AttemptChoiceService {
         }
     }
 
-    private PartChoiceResponse reloadCurrentState(UUID attemptId, UUID partId) {
+    private PartChoiceResponse reloadCurrentState(UUID attemptId, UUID partId, UUID sessionId) {
         overdueAttemptCloser.closeIfOverdue(attemptId, clock.instant());
         return readTx.execute(
                 status -> {
@@ -850,6 +911,9 @@ public class AttemptChoiceService {
                             attemptRepository
                                     .findById(attemptId)
                                     .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+                    if (attempt.getState() == AttemptState.IN_PROGRESS) {
+                        attemptSessionChecker.requireEditSession(attempt, sessionId);
+                    }
                     AttemptPart part =
                             attemptPartRepository
                                     .findByIdAndAttemptId(partId, attemptId)
@@ -1051,13 +1115,36 @@ public class AttemptChoiceService {
                 part.getId(),
                 part.getPartCode(),
                 part.getState(),
-                part.getChoice(),
+                toChoiceSummary(part.getChoice()),
                 part.getChoiceConfirmedAt(),
                 part.getChoiceDeadlineAt(),
                 part.getStartedAt(),
                 part.getDeadlineAt(),
                 part.getGenerationTries(),
                 part.getGenerationError());
+    }
+
+    private static PartChoiceSummary toChoiceSummary(Map<String, Object> rawChoice) {
+        if (rawChoice == null || rawChoice.isEmpty()) {
+            return null;
+        }
+        String optionCode = asString(rawChoice.get("optionCode"));
+        List<String> subjectCodes = asStringList(rawChoice.get("subjectCodes"));
+        List<String> mappedSubjects = subjectCodes.isEmpty() ? null : subjectCodes;
+        Map<String, Integer> mappedCounts = null;
+        if (rawChoice.get("subjectCounts") instanceof Map<?, ?> rawCounts && !rawCounts.isEmpty()) {
+            Map<String, Integer> counts = new LinkedHashMap<>();
+            rawCounts.forEach(
+                    (k, v) -> {
+                        if (k != null && v instanceof Number num) {
+                            counts.put(k.toString(), num.intValue());
+                        }
+                    });
+            if (!counts.isEmpty()) {
+                mappedCounts = counts;
+            }
+        }
+        return new PartChoiceSummary(optionCode, mappedSubjects, mappedCounts);
     }
 
     private static AttemptPart findPart(List<AttemptPart> parts, UUID partId) {

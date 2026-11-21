@@ -100,17 +100,40 @@ public class AttemptChoiceController {
 
     @Schema(description = "Yêu cầu xác nhận lựa chọn phần tự chọn sau khi bắt đầu (LT §6.1)")
     public record ConfirmPartChoiceRequest(
-            @Schema(description = "Mã nhánh, phương án hoặc tổ hợp môn đã chọn", nullable = true)
+            @Schema(
+                            description = "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+                            requiredMode = Schema.RequiredMode.REQUIRED)
+                    @Size(max = 64)
                     String optionCode,
-            @Schema(description = "Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học)", nullable = true)
+            @Schema(
+                            description = "Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học)",
+                            nullable = true)
                     @Size(max = 10, message = "{validation.attempt.choice.subjectCodes.max}")
-                    List<String> subjectCodes) {}
+                    List<@Size(max = 64) String> subjectCodes) {}
 
     @Schema(description = "Yêu cầu thử lại sinh đề cho phần bị lỗi (LT §6.1)")
     public record RetryPartRequest(
             @Schema(description = "Lý do thử lại tùy chọn", nullable = true)
                     @Size(max = 200, message = "{validation.attempt.retry.reason.size}")
                     String reason) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "Thông tin lựa chọn đã khóa của phần thi")
+    public record PartChoiceSummary(
+            @Schema(
+                            description = "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+                            requiredMode = Schema.RequiredMode.REQUIRED)
+                    String optionCode,
+            @Schema(description = "Danh sách mã môn đã chọn (nếu có)", nullable = true)
+                    List<String> subjectCodes,
+            @Schema(description = "Số câu theo từng môn đã chọn (nếu có)", nullable = true)
+                    Map<String, Integer> subjectCounts) {
+
+        public PartChoiceSummary {
+            subjectCodes = subjectCodes == null ? null : List.copyOf(subjectCodes);
+            subjectCounts = subjectCounts == null ? null : Map.copyOf(subjectCounts);
+        }
+    }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(description = "Trạng thái phần tự chọn sau khi xác nhận lựa chọn hoặc thử lại sinh đề")
@@ -128,7 +151,7 @@ public class AttemptChoiceController {
             @Schema(description = "Trạng thái phần thi", requiredMode = Schema.RequiredMode.REQUIRED)
                     PartState state,
             @Schema(description = "Lựa chọn đã khóa của phần", nullable = true)
-                    Map<String, Object> choice,
+                    PartChoiceSummary choice,
             @Schema(description = "Thời điểm khóa lựa chọn", nullable = true)
                     Instant choiceConfirmedAt,
             @Schema(description = "Hạn chờ chọn phần", nullable = true)
@@ -140,10 +163,5 @@ public class AttemptChoiceController {
             @Schema(description = "Số lần sinh lỗi liên tiếp", requiredMode = Schema.RequiredMode.REQUIRED)
                     int generationTries,
             @Schema(description = "Mã lỗi sinh đề gần nhất nếu có", nullable = true)
-                    String generationError) {
-
-        public PartChoiceResponse {
-            choice = choice == null ? null : Map.copyOf(choice);
-        }
-    }
+                    String generationError) {}
 }

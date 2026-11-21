@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptRepository;
@@ -47,6 +49,7 @@ public class PartGenerationRetryWorker {
     private final AttemptRepository attemptRepository;
     private final AttemptPartRepository attemptPartRepository;
     private final AttemptChoiceService attemptChoiceService;
+    private final AttemptGenerationProperties generationProperties;
     private final PublishedExamPort publishedExamPort;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate requiresNewTx;
@@ -58,6 +61,7 @@ public class PartGenerationRetryWorker {
             AttemptRepository attemptRepository,
             AttemptPartRepository attemptPartRepository,
             AttemptChoiceService attemptChoiceService,
+            AttemptGenerationProperties generationProperties,
             PublishedExamPort publishedExamPort,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
@@ -65,6 +69,7 @@ public class PartGenerationRetryWorker {
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.attemptChoiceService = Objects.requireNonNull(attemptChoiceService);
+        this.generationProperties = Objects.requireNonNull(generationProperties);
         this.publishedExamPort = Objects.requireNonNull(publishedExamPort);
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
         this.requiresNewTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
@@ -126,17 +131,38 @@ public class PartGenerationRetryWorker {
 
     /** Auto-retries {@link PartState#GENERATION_FAILED} parts whose backoff delay has elapsed. */
     public int retryFailedParts() {
+        Instant now = clock.instant();
+        int batchLimit =
+                Math.min(
+                        MAX_PARTS_PER_SWEEP,
+                        Math.max(
+                                1,
+                                generationProperties.threads()
+                                        + generationProperties.queueCapacity()));
         List<CandidatePart> candidates =
                 jdbcTemplate.query(
                         """
                         SELECT p.attempt_id, p.id
                         FROM attempt.attempt_part p
                         JOIN attempt.attempt a ON a.id = p.attempt_id
+                        LEFT JOIN LATERAL (
+                            SELECT MAX(e.at) AS last_failed_at
+                            FROM attempt.attempt_event e
+                            WHERE e.attempt_id = p.attempt_id
+                              AND e.part_id = p.id
+                              AND e.type = 'GENERATION_FAILED'
+                        ) lf ON true
                         WHERE a.state = 'IN_PROGRESS'
                           AND p.state = 'GENERATION_FAILED'
                           AND p.choice_confirmed_at IS NOT NULL
                           AND p.generation_tries BETWEEN 1 AND ?
-                        ORDER BY p.choice_confirmed_at ASC, p.id ASC
+                          AND COALESCE(lf.last_failed_at, p.choice_confirmed_at)
+                              + CASE p.generation_tries
+                                    WHEN 1 THEN interval '30 seconds'
+                                    WHEN 2 THEN interval '2 minutes'
+                                    ELSE interval '5 minutes'
+                                END <= ?
+                        ORDER BY COALESCE(lf.last_failed_at, p.choice_confirmed_at) ASC, p.id ASC
                         LIMIT ?
                         """,
                         (rs, n) ->
@@ -144,18 +170,25 @@ public class PartGenerationRetryWorker {
                                         rs.getObject(1, UUID.class),
                                         rs.getObject(2, UUID.class)),
                         RETRY_DELAYS.size(),
-                        MAX_PARTS_PER_SWEEP);
+                        Timestamp.from(now),
+                        batchLimit);
 
         int retried = 0;
+        AtomicBoolean saturated = new AtomicBoolean(false);
         for (CandidatePart candidate : candidates) {
             try {
                 Boolean processed =
                         requiresNewTx.execute(
                                 status ->
                                         retryFailedById(
-                                                candidate.attemptId(), candidate.partId()));
+                                                candidate.attemptId(),
+                                                candidate.partId(),
+                                                saturated));
                 if (Boolean.TRUE.equals(processed)) {
                     retried++;
+                }
+                if (saturated.get()) {
+                    break;
                 }
             } catch (RuntimeException ex) {
                 jobLog.atError()
@@ -206,13 +239,20 @@ public class PartGenerationRetryWorker {
         return true;
     }
 
-    private boolean retryFailedById(UUID attemptId, UUID partId) {
+    private boolean retryFailedById(
+            UUID attemptId, UUID partId, AtomicBoolean saturatedOut) {
         Optional<Attempt> locked = attemptRepository.lockInProgressByIdSkipLocked(attemptId);
         if (locked.isEmpty()) {
             return false;
         }
         Attempt attempt = locked.get();
         if (attempt.getState() != AttemptState.IN_PROGRESS) {
+            return false;
+        }
+        Instant now = clock.instant();
+        if (attempt.getTiming() == AttemptTiming.SHARED
+                && attempt.getDeadlineAt() != null
+                && !now.isBefore(attempt.getDeadlineAt())) {
             return false;
         }
         List<AttemptPart> parts =
@@ -240,13 +280,12 @@ public class PartGenerationRetryWorker {
                         partId);
         Instant lastFailedAt =
                 lastFailedTs != null ? lastFailedTs.toInstant() : part.getChoiceConfirmedAt();
-        Instant now = clock.instant();
         Duration delay = RETRY_DELAYS.get(tries - 1);
         if (now.isBefore(lastFailedAt.plus(delay))) {
             return false;
         }
 
-        attemptChoiceService.startRetryInLock(attempt, part, null, now);
+        attemptChoiceService.startRetryInLock(attempt, part, null, now, saturatedOut);
         return true;
     }
 

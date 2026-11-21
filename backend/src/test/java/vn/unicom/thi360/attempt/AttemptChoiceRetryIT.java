@@ -8,9 +8,11 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -19,6 +21,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +32,16 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.RetryPartRequest;
 import vn.unicom.thi360.attempt.application.AttemptDeadlineWorker;
+import vn.unicom.thi360.attempt.application.AttemptLifecycleService;
 import vn.unicom.thi360.attempt.application.GenerationExecutor;
 import vn.unicom.thi360.attempt.application.PartGenerationRetryWorker;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.EndReason;
+import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.exam.spi.PaperGenerationException;
@@ -54,6 +62,7 @@ import vn.unicom.thi360.questionbank.spi.QuestionType;
 class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
 
     @Autowired private AttemptDeadlineWorker deadlineWorker;
+    @Autowired private AttemptLifecycleService lifecycleService;
     @Autowired private PartGenerationRetryWorker retryWorker;
     @Autowired private GenerationExecutor generationExecutor;
 
@@ -121,19 +130,38 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
         Attempt attempt = advanceToAwaitingChoice(userId, "rk", line.entitlementId());
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
+        AtomicInteger p2Calls = new AtomicInteger();
+        AtomicLong initialSeed = new AtomicLong();
+        AtomicLong retrySeed = new AtomicLong();
+        AtomicReference<List<PaperSolverPort.Selection>> initialSelections = new AtomicReference<>();
+        AtomicReference<List<PaperSolverPort.Selection>> retrySelections = new AtomicReference<>();
         doAnswer(
                         inv -> {
                             List<String> partCodes = inv.getArgument(2);
                             if (partCodes.contains(p2.getPartCode())) {
-                                throw new PaperGenerationException(
-                                        PaperGenerationException.Reason.GENERATION_TIMEOUT,
-                                        "simulated timeout");
+                                int call = p2Calls.incrementAndGet();
+                                @SuppressWarnings("unchecked")
+                                List<PaperSolverPort.Selection> selections =
+                                        List.copyOf(
+                                                (List<PaperSolverPort.Selection>)
+                                                        inv.getArgument(3));
+                                long seedArg = inv.getArgument(4);
+                                if (call == 1) {
+                                    initialSeed.set(seedArg);
+                                    initialSelections.set(selections);
+                                    throw new PaperGenerationException(
+                                            PaperGenerationException.Reason.GENERATION_TIMEOUT,
+                                            "simulated timeout");
+                                }
+                                retrySeed.set(seedArg);
+                                retrySelections.set(selections);
                             }
                             return inv.callRealMethod();
                         })
                 .when(paperSolverPort)
                 .generate(any(), anyInt(), any(), any(), anyLong(), any());
 
+        List<String> allNaturalTriple = List.of("LY", "HOA", "SINH");
         assertThat(
                         performChoice(
                                         userId,
@@ -141,8 +169,7 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
                                         p2.getId(),
                                         "rk-ch",
                                         null,
-                                        new ConfirmPartChoiceRequest(
-                                                "SCIENCE", List.of("LY", "HOA", "SU")))
+                                        new ConfirmPartChoiceRequest("SCIENCE", allNaturalTriple))
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(202);
@@ -151,7 +178,18 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
         Map<String, Object> savedChoice = failed.getChoice();
         long savedSeed = failed.getSeed();
 
-        reset(paperSolverPort);
+        int expectedLowIdx = new Random(savedSeed).nextInt(allNaturalTriple.size());
+        Map<String, Integer> expectedSeedCounts = new LinkedHashMap<>();
+        for (int i = 0; i < allNaturalTriple.size(); i++) {
+            expectedSeedCounts.put(allNaturalTriple.get(i), i == expectedLowIdx ? 16 : 17);
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Number> rawSavedCounts =
+                (Map<String, Number>) savedChoice.get("subjectCounts");
+        Map<String, Integer> savedCounts = new LinkedHashMap<>();
+        rawSavedCounts.forEach((k, v) -> savedCounts.put(k, v.intValue()));
+        assertThat(savedCounts).isEqualTo(expectedSeedCounts);
+
         MvcResult retryRes =
                 performRetry(
                         userId,
@@ -164,6 +202,9 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
         assertThat(json(retryRes).path("state").asText()).isEqualTo("GENERATING");
 
         AttemptPart opened = awaitPartState(p2.getId(), PartState.OPEN);
+        assertThat(p2Calls.get()).isEqualTo(2);
+        assertThat(retrySeed.get()).isEqualTo(initialSeed.get()).isEqualTo(savedSeed);
+        assertThat(retrySelections.get()).isEqualTo(initialSelections.get());
         assertThat(opened.getSeed()).isEqualTo(savedSeed);
         assertThat(opened.getChoice()).isEqualTo(savedChoice);
         assertThat(opened.getGenerationTries()).isZero();
@@ -175,7 +216,8 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
                 unitsBySubject.merge(item.getComponentCode(), item.getUnitCount(), Integer::sum);
             }
         }
-        assertThat(unitsBySubject).containsEntry("LY", 17).containsEntry("HOA", 17).containsEntry("SU", 16);
+        assertThat(unitsBySubject).isEqualTo(savedCounts);
+        assertThat(unitsBySubject.values().stream().mapToInt(Integer::intValue).sum()).isEqualTo(50);
     }
 
     @Test
@@ -315,13 +357,21 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
 
         CountDownLatch try1Entered = new CountDownLatch(1);
         CountDownLatch releaseTry1 = new CountDownLatch(1);
+        CountDownLatch try2Entered = new CountDownLatch(1);
+        CountDownLatch releaseTry2 = new CountDownLatch(1);
         AtomicInteger p1Calls = new AtomicInteger();
         doAnswer(
                         inv -> {
                             List<String> partCodes = inv.getArgument(2);
-                            if (partCodes.contains(p1.getPartCode()) && p1Calls.incrementAndGet() == 1) {
-                                try1Entered.countDown();
-                                assertThat(releaseTry1.await(15, TimeUnit.SECONDS)).isTrue();
+                            if (partCodes.contains(p1.getPartCode())) {
+                                int call = p1Calls.incrementAndGet();
+                                if (call == 1) {
+                                    try1Entered.countDown();
+                                    assertThat(releaseTry1.await(15, TimeUnit.SECONDS)).isTrue();
+                                } else if (call == 2) {
+                                    try2Entered.countDown();
+                                    assertThat(releaseTry2.await(15, TimeUnit.SECONDS)).isTrue();
+                                }
                             }
                             return inv.callRealMethod();
                         })
@@ -362,9 +412,30 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
                     attemptPartRepository.findById(p1.getId()).orElseThrow().getGenerationToken();
             assertThat(try2Token).isNotEqualTo(try1Token);
 
-            // Release try 1 -> its result is discarded by token check -> try 2 runs next and opens Part 3 once
+            // Release try 1 and wait for try 2 to enter solver (threads=1 proves try 1 exited persistGeneratedPart)
             releaseTry1.countDown();
+            assertThat(try2Entered.await(10, TimeUnit.SECONDS)).isTrue();
+
+            AttemptPart betweenTries = attemptPartRepository.findById(p1.getId()).orElseThrow();
+            assertThat(betweenTries.getState()).isEqualTo(PartState.GENERATING);
+            assertThat(betweenTries.getGenerationToken()).isEqualTo(try2Token);
+            assertThat(attemptItemRepository.findByPartIdOrderByOrdAsc(p1.getId())).isEmpty();
+            assertThat(
+                            attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(a1.getId())
+                                    .stream()
+                                    .filter(
+                                            e ->
+                                                    e.getType() == AttemptEventType.PART_OPENED
+                                                            && p1.getId().equals(e.getPartId())))
+                    .isEmpty();
+
+            // Advance clock before releasing try 2 so opened.startedAt strictly equals try2OpenedAt
+            mutableClock.advance(Duration.ofSeconds(10));
+            Instant try2OpenedAt = mutableClock.instant();
+            releaseTry2.countDown();
+
             AttemptPart opened = awaitPartState(p1.getId(), PartState.OPEN);
+            assertThat(opened.getStartedAt()).isEqualTo(try2OpenedAt);
             assertThat(opened.getGenerationTries()).isZero();
             List<AttemptItem> p1Items = attemptItemRepository.findByPartIdOrderByOrdAsc(p1.getId());
             int units =
@@ -374,8 +445,17 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
                             .sum();
             assertThat(units).isEqualTo(p1.getQuestionCountRequired());
             assertThat(p1Calls.get()).isEqualTo(2);
+            assertThat(
+                            attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(a1.getId())
+                                    .stream()
+                                    .filter(
+                                            e ->
+                                                    e.getType() == AttemptEventType.PART_OPENED
+                                                            && p1.getId().equals(e.getPartId())))
+                    .hasSize(1);
         } finally {
             releaseTry1.countDown();
+            releaseTry2.countDown();
         }
 
         // 2. Late error from stale try 1 does NOT clobber try 2
@@ -388,16 +468,24 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
 
         CountDownLatch errTry1Entered = new CountDownLatch(1);
         CountDownLatch releaseErrTry1 = new CountDownLatch(1);
+        CountDownLatch errTry2Entered = new CountDownLatch(1);
+        CountDownLatch releaseErrTry2 = new CountDownLatch(1);
         AtomicInteger p2Calls = new AtomicInteger();
         doAnswer(
                         inv -> {
                             List<String> partCodes = inv.getArgument(2);
-                            if (partCodes.contains(p2.getPartCode()) && p2Calls.incrementAndGet() == 1) {
-                                errTry1Entered.countDown();
-                                assertThat(releaseErrTry1.await(15, TimeUnit.SECONDS)).isTrue();
-                                throw new PaperGenerationException(
-                                        PaperGenerationException.Reason.GENERATION_FAILED,
-                                        "stale try 1 failure");
+                            if (partCodes.contains(p2.getPartCode())) {
+                                int call = p2Calls.incrementAndGet();
+                                if (call == 1) {
+                                    errTry1Entered.countDown();
+                                    assertThat(releaseErrTry1.await(15, TimeUnit.SECONDS)).isTrue();
+                                    throw new PaperGenerationException(
+                                            PaperGenerationException.Reason.GENERATION_FAILED,
+                                            "stale try 1 failure");
+                                } else if (call == 2) {
+                                    errTry2Entered.countDown();
+                                    assertThat(releaseErrTry2.await(15, TimeUnit.SECONDS)).isTrue();
+                                }
                             }
                             return inv.callRealMethod();
                         })
@@ -431,14 +519,108 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
                                     .getResponse()
                                     .getStatus())
                     .isEqualTo(202);
+            UUID errTry2Token =
+                    attemptPartRepository.findById(p2.getId()).orElseThrow().getGenerationToken();
 
             releaseErrTry1.countDown();
+            assertThat(errTry2Entered.await(10, TimeUnit.SECONDS)).isTrue();
+            AttemptPart p2WhileTry2 = attemptPartRepository.findById(p2.getId()).orElseThrow();
+            assertThat(p2WhileTry2.getState()).isEqualTo(PartState.GENERATING);
+            assertThat(p2WhileTry2.getGenerationToken()).isEqualTo(errTry2Token);
+            assertThat(p2WhileTry2.getGenerationTries()).isEqualTo(1);
+            assertThat(p2WhileTry2.getGenerationError()).isNull();
+
+            releaseErrTry2.countDown();
             AttemptPart opened2 = awaitPartState(p2.getId(), PartState.OPEN);
             assertThat(opened2.getGenerationTries()).isZero();
             assertThat(opened2.getGenerationError()).isNull();
             assertThat(p2Calls.get()).isEqualTo(2);
         } finally {
             releaseErrTry1.countDown();
+            releaseErrTry2.countDown();
+        }
+    }
+
+    @Test
+    void midGenerationCloseDiscardsItemsAndUsage() throws Exception {
+        UUID userId = createStudent("mid-gen-close");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = advanceToAwaitingChoice(userId, "mgc", line.entitlementId());
+        AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
+
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        doAnswer(
+                        inv -> {
+                            List<String> partCodes = inv.getArgument(2);
+                            if (partCodes.contains(p2.getPartCode())) {
+                                entered.countDown();
+                                assertThat(release.await(15, TimeUnit.SECONDS)).isTrue();
+                            }
+                            return inv.callRealMethod();
+                        })
+                .when(paperSolverPort)
+                .generate(any(), anyInt(), any(), any(), anyLong(), any());
+
+        try {
+            assertThat(
+                            performChoice(
+                                            userId,
+                                            attempt.getId(),
+                                            p2.getId(),
+                                            "mgc-ch",
+                                            null,
+                                            new ConfirmPartChoiceRequest("ANH", null))
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(202);
+            assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Integer ledgerBefore =
+                    jdbc.queryForObject(
+                            """
+                            SELECT COUNT(*) FROM questionbank.question_usage_ledger
+                            WHERE exam_id = ? AND kind = 'ATTEMPT'
+                            """,
+                            Integer.class,
+                            attempt.getExamId());
+            assertThat(ledgerBefore).isNotNull();
+
+            lifecycleService.closeAttempt(
+                    attempt.getId(), EndReason.FAULT_CLOSED, mutableClock.instant());
+            assertThat(attemptRepository.findById(attempt.getId()).orElseThrow().getState())
+                    .isEqualTo(AttemptState.GRADING);
+            AttemptPart skipped = attemptPartRepository.findById(p2.getId()).orElseThrow();
+            assertThat(skipped.getState()).isEqualTo(PartState.SKIPPED);
+            assertThat(skipped.getCloseReason()).isEqualTo(PartCloseReason.FAULT_CLOSED);
+
+            release.countDown();
+            CountDownLatch sentinel = new CountDownLatch(1);
+            generationExecutor.submit(sentinel::countDown, sentinel::countDown);
+            assertThat(sentinel.await(10, TimeUnit.SECONDS)).isTrue();
+
+            assertThat(attemptItemRepository.findByPartIdOrderByOrdAsc(p2.getId())).isEmpty();
+            Integer ledgerAfter =
+                    jdbc.queryForObject(
+                            """
+                            SELECT COUNT(*) FROM questionbank.question_usage_ledger
+                            WHERE exam_id = ? AND kind = 'ATTEMPT'
+                            """,
+                            Integer.class,
+                            attempt.getExamId());
+            assertThat(ledgerAfter).isEqualTo(ledgerBefore);
+            assertThat(attemptPartRepository.findById(p2.getId()).orElseThrow().getState())
+                    .isEqualTo(PartState.SKIPPED);
+            assertThat(
+                            attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId())
+                                    .stream()
+                                    .filter(
+                                            e ->
+                                                    e.getType() == AttemptEventType.PART_OPENED
+                                                            && p2.getId().equals(e.getPartId())))
+                    .isEmpty();
+        } finally {
+            release.countDown();
         }
     }
 

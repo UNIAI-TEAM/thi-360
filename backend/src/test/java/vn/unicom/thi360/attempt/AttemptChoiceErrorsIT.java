@@ -4,15 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -20,25 +27,36 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.RetryPartRequest;
+import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptEvent;
+import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.exam.spi.PaperGenerationException;
 import vn.unicom.thi360.exam.spi.PaperSolverPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
 /**
- * Integration tests for all 6 LT §6.1 choice/retry error codes, {@link ForbiddenKeysAssert}
- * verification, and ownership/role access checks (AC-15, AC-20, AC-21).
+ * Integration tests for all 6 LT §6.1 choice/retry error codes, {@code X-Attempt-Session} forwarding
+ * and revocation (including idempotent replays), unpublished path guards, {@link
+ * ForbiddenKeysAssert} verification, and ownership/role access checks (AC-15, AC-20, AC-21).
  */
 class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
 
     @MockitoSpyBean private PaperSolverPort paperSolverPort;
+    @MockitoSpyBean private AttemptSessionChecker attemptSessionChecker;
+    @MockitoSpyBean private PublishedExamPort publishedExamPortSpy;
 
     @AfterEach
     void resetSpy() {
-        reset(paperSolverPort);
+        reset(paperSolverPort, attemptSessionChecker, publishedExamPortSpy);
     }
 
     @Test
@@ -203,11 +221,38 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         assertThat(diffSubjAfterOpen.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffSubjAfterOpen).path("code").asText()).isEqualTo("CHOICE_LOCKED");
 
-        // Close a1 so we can start a2
+        // Close a1 so we can start a2, then verify post-submit choice (same & different) and retry -> 409 PART_NOT_AWAITING
         assertThat(performSubmit(userId, a1.getId(), "ec-sub-a1", null, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
+
+        MvcResult postSubmitSame =
+                performChoice(
+                        userId,
+                        a1.getId(),
+                        a1P2.getId(),
+                        "ec-post-sub-same",
+                        null,
+                        new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SU")));
+        assertThat(postSubmitSame.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(postSubmitSame).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
+
+        MvcResult postSubmitDiff =
+                performChoice(
+                        userId,
+                        a1.getId(),
+                        a1P2.getId(),
+                        "ec-post-sub-diff",
+                        null,
+                        new ConfirmPartChoiceRequest("ANH", null));
+        assertThat(postSubmitDiff.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(postSubmitDiff).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
+
+        MvcResult postSubmitRetry =
+                performRetry(userId, a1.getId(), a1P2.getId(), "ec-post-sub-ret", null, null);
+        assertThat(postSubmitRetry.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(postSubmitRetry).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
 
         // 5. CHOICE_WINDOW_CLOSED when past 15-minute window
         Attempt a2 = startAndAwaitOpen(userId, "ec-2", hsaLine.entitlementId(), null);
@@ -282,6 +327,375 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         new RetryPartRequest("x".repeat(201)));
         assertThat(longReason.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(longReason).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        MvcResult longOptionCode =
+                performChoice(
+                        userId,
+                        a3.getId(),
+                        a3Parts.get(2).getId(),
+                        "ec-val-3",
+                        null,
+                        new ConfirmPartChoiceRequest("A".repeat(65), null));
+        assertThat(longOptionCode.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(longOptionCode).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        MvcResult longSubjectCode =
+                performChoice(
+                        userId,
+                        a3.getId(),
+                        a3Parts.get(2).getId(),
+                        "ec-val-4",
+                        null,
+                        new ConfirmPartChoiceRequest("SCIENCE", List.of("S".repeat(65))));
+        assertThat(longSubjectCode.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(longSubjectCode).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        // 7. Unpublished option on HSA -> 422 CHOICE_NOT_ALLOWED (isTokenOnPublishedPath == false)
+        AttemptPart a3P2 = a3Parts.get(2);
+        PublishedVersion realHsaVer =
+                publishedExamPort.loadVersion(a3.getExamId(), a3.getExamVersionNo()).orElseThrow();
+        Part realHsaPart3 =
+                realHsaVer.parts().stream()
+                        .filter(p -> p.id().equals(a3P2.getPartCode()))
+                        .findFirst()
+                        .orElseThrow();
+        String anhOptId =
+                realHsaPart3.options().stream()
+                        .filter(o -> "ANH".equals(o.code()))
+                        .map(Option::id)
+                        .findFirst()
+                        .orElseThrow();
+        List<String> hsaPathsWithoutAnh =
+                realHsaVer.publishedPathIds().stream()
+                        .filter(pid -> !pid.contains(anhOptId))
+                        .toList();
+        PublishedVersion unpubHsaVer =
+                new PublishedVersion(
+                        realHsaVer.examId(),
+                        realHsaVer.versionNo(),
+                        realHsaVer.state(),
+                        realHsaVer.status(),
+                        realHsaVer.publishedAt(),
+                        realHsaVer.code(),
+                        realHsaVer.name(),
+                        realHsaVer.kindItemId(),
+                        realHsaVer.kindCode(),
+                        realHsaVer.scope(),
+                        realHsaVer.partCode(),
+                        realHsaVer.subjectItemId(),
+                        realHsaVer.buildMode(),
+                        realHsaVer.timing(),
+                        realHsaVer.durationMinutes(),
+                        realHsaVer.maxScore(),
+                        realHsaVer.referenceMax(),
+                        realHsaVer.practiceScoring(),
+                        realHsaVer.listing(),
+                        realHsaVer.parts(),
+                        realHsaVer.combinations(),
+                        realHsaVer.omittedGroups(),
+                        hsaPathsWithoutAnh,
+                        realHsaVer.servingPathIds(),
+                        realHsaVer.instructions());
+        doAnswer(inv -> Optional.of(unpubHsaVer))
+                .when(publishedExamPortSpy)
+                .loadVersion(a3.getExamId(), a3.getExamVersionNo());
+
+        MvcResult unpubHsaRes =
+                performChoice(
+                        userId,
+                        a3.getId(),
+                        a3P2.getId(),
+                        "ec-unpub-hsa",
+                        null,
+                        new ConfirmPartChoiceRequest("ANH", null));
+        assertThat(unpubHsaRes.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(unpubHsaRes).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
+
+        reset(publishedExamPortSpy);
+        assertThat(performSubmit(userId, a3.getId(), "ec-sub-a3", null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(409); // sequential Part 2 unfinished; close cleanly for QDA below
+        jdbc.update("UPDATE attempt.attempt SET state = 'SCORED' WHERE id = ?", a3.getId());
+
+        // 8. QDA QD02 with unexpected subjectCodes=["HOA"] -> 422 SUBJECTS_INVALID, and unpublished combination -> 422 CHOICE_NOT_ALLOWED
+        mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+        GrantOrderResult.Line qdaLine = grant(userId, "DS-QDA-FULL-MINI", 2, List.of());
+        Attempt qdaAttempt = startAndAwaitOpen(userId, "ec-qda", qdaLine.entitlementId(), null);
+        List<AttemptPart> qdaParts =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(qdaAttempt.getId());
+        assertThat(performFinishPart(userId, qdaAttempt.getId(), qdaParts.get(0).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        assertThat(performFinishPart(userId, qdaAttempt.getId(), qdaParts.get(1).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        AttemptPart qdaP2 = qdaParts.get(2);
+
+        MvcResult qdaWithSubj =
+                performChoice(
+                        userId,
+                        qdaAttempt.getId(),
+                        qdaP2.getId(),
+                        "ec-qda-subj",
+                        null,
+                        new ConfirmPartChoiceRequest("QD02", List.of("HOA")));
+        assertThat(qdaWithSubj.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(qdaWithSubj).path("code").asText()).isEqualTo("SUBJECTS_INVALID");
+
+        PublishedVersion realQdaVer =
+                publishedExamPort
+                        .loadVersion(qdaAttempt.getExamId(), qdaAttempt.getExamVersionNo())
+                        .orElseThrow();
+        String qd02Token = qdaP2.getPartCode() + ":QD02";
+        List<String> qdaPathsWithoutQd02 =
+                realQdaVer.publishedPathIds().stream()
+                        .filter(pid -> !pid.contains(qd02Token))
+                        .toList();
+        PublishedVersion unpubQdaVer =
+                new PublishedVersion(
+                        realQdaVer.examId(),
+                        realQdaVer.versionNo(),
+                        realQdaVer.state(),
+                        realQdaVer.status(),
+                        realQdaVer.publishedAt(),
+                        realQdaVer.code(),
+                        realQdaVer.name(),
+                        realQdaVer.kindItemId(),
+                        realQdaVer.kindCode(),
+                        realQdaVer.scope(),
+                        realQdaVer.partCode(),
+                        realQdaVer.subjectItemId(),
+                        realQdaVer.buildMode(),
+                        realQdaVer.timing(),
+                        realQdaVer.durationMinutes(),
+                        realQdaVer.maxScore(),
+                        realQdaVer.referenceMax(),
+                        realQdaVer.practiceScoring(),
+                        realQdaVer.listing(),
+                        realQdaVer.parts(),
+                        realQdaVer.combinations(),
+                        realQdaVer.omittedGroups(),
+                        qdaPathsWithoutQd02,
+                        realQdaVer.servingPathIds(),
+                        realQdaVer.instructions());
+        doAnswer(inv -> Optional.of(unpubQdaVer))
+                .when(publishedExamPortSpy)
+                .loadVersion(qdaAttempt.getExamId(), qdaAttempt.getExamVersionNo());
+
+        MvcResult unpubQdaRes =
+                performChoice(
+                        userId,
+                        qdaAttempt.getId(),
+                        qdaP2.getId(),
+                        "ec-unpub-qda",
+                        null,
+                        new ConfirmPartChoiceRequest("QD02", null));
+        assertThat(unpubQdaRes.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(unpubQdaRes).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
+    }
+
+    @Test
+    void forwardsAttemptSessionIdAndRejectsRevokedSession() throws Exception {
+        UUID userId = createStudent("choice-session");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 3, List.of());
+        Attempt a1 = startAndAwaitOpen(userId, "sess-a1", line.entitlementId(), null);
+        List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
+        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(0).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(1).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        AttemptPart a1P2 = a1Parts.get(2);
+
+        UUID activeSessionId = UUID.randomUUID();
+        AtomicInteger calls = new AtomicInteger();
+        doAnswer(
+                        inv -> {
+                            List<String> partCodes = inv.getArgument(2);
+                            if (partCodes.contains(a1P2.getPartCode())
+                                    && calls.incrementAndGet() == 1) {
+                                throw new PaperGenerationException(
+                                        PaperGenerationException.Reason.GENERATION_FAILED,
+                                        "fail-once");
+                            }
+                            return inv.callRealMethod();
+                        })
+                .when(paperSolverPort)
+                .generate(any(), anyInt(), any(), any(), anyLong(), any());
+
+        clearInvocations(attemptSessionChecker);
+
+        ConfirmPartChoiceRequest choiceReq = new ConfirmPartChoiceRequest("ANH", null);
+        assertThat(
+                        performChoice(
+                                        userId,
+                                        a1.getId(),
+                                        a1P2.getId(),
+                                        "sess-ch-1",
+                                        activeSessionId,
+                                        choiceReq)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+        awaitPartState(a1P2.getId(), PartState.GENERATION_FAILED);
+
+        // Idempotent replay with active session -> 200 OK
+        assertThat(
+                        performChoice(
+                                        userId,
+                                        a1.getId(),
+                                        a1P2.getId(),
+                                        "sess-ch-1",
+                                        activeSessionId,
+                                        choiceReq)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        RetryPartRequest retryReq = new RetryPartRequest("active sess");
+        assertThat(
+                        performRetry(
+                                        userId,
+                                        a1.getId(),
+                                        a1P2.getId(),
+                                        "sess-ret-1",
+                                        activeSessionId,
+                                        retryReq)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+        awaitPartState(a1P2.getId(), PartState.OPEN);
+
+        // Idempotent replay of retry with active session -> 200 OK
+        assertThat(
+                        performRetry(
+                                        userId,
+                                        a1.getId(),
+                                        a1P2.getId(),
+                                        "sess-ret-1",
+                                        activeSessionId,
+                                        retryReq)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        verify(attemptSessionChecker, times(4))
+                .requireEditSession(argThat(a -> a.getId().equals(a1.getId())), eq(activeSessionId));
+
+        List<AttemptEvent> p2Events =
+                attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(a1.getId()).stream()
+                        .filter(e -> a1P2.getId().equals(e.getPartId()))
+                        .toList();
+        assertThat(p2Events)
+                .filteredOn(e -> e.getType() == AttemptEventType.CHOICE_CONFIRMED)
+                .hasSize(1)
+                .allSatisfy(e -> assertThat(e.getSessionId()).isEqualTo(activeSessionId));
+        assertThat(p2Events)
+                .filteredOn(e -> e.getType() == AttemptEventType.GENERATION_FAILED)
+                .hasSize(1)
+                .allSatisfy(e -> assertThat(e.getSessionId()).isEqualTo(activeSessionId));
+        assertThat(p2Events)
+                .filteredOn(e -> e.getType() == AttemptEventType.PART_OPENED)
+                .hasSize(1)
+                .allSatisfy(e -> assertThat(e.getSessionId()).isEqualTo(activeSessionId));
+
+        // Revoked session on idempotent replays while IN_PROGRESS -> 409 ATTEMPT_SESSION_REVOKED
+        UUID revokedSessionId = UUID.randomUUID();
+        doThrow(new ConflictException("ATTEMPT_SESSION_REVOKED"))
+                .when(attemptSessionChecker)
+                .requireEditSession(argThat(a -> a.getId().equals(a1.getId())), eq(revokedSessionId));
+
+        MvcResult replayChoiceRev =
+                performChoice(
+                        userId, a1.getId(), a1P2.getId(), "sess-ch-1", revokedSessionId, choiceReq);
+        assertThat(replayChoiceRev.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(replayChoiceRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+
+        MvcResult replayRetryRev =
+                performRetry(
+                        userId, a1.getId(), a1P2.getId(), "sess-ret-1", revokedSessionId, retryReq);
+        assertThat(replayRetryRev.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(replayRetryRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+
+        // Close a1, then test revoked session on initial choice and initial retry on a2 without state mutation
+        assertThat(performSubmit(userId, a1.getId(), "sess-sub-a1", activeSessionId, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+
+        Attempt a2 = startAndAwaitOpen(userId, "sess-a2", line.entitlementId(), null);
+        List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
+        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(0).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(1).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        AttemptPart a2P2 = a2Parts.get(2);
+
+        doThrow(new ConflictException("ATTEMPT_SESSION_REVOKED"))
+                .when(attemptSessionChecker)
+                .requireEditSession(argThat(a -> a.getId().equals(a2.getId())), eq(revokedSessionId));
+
+        MvcResult initChoiceRev =
+                performChoice(
+                        userId,
+                        a2.getId(),
+                        a2P2.getId(),
+                        "sess-a2-ch-rev",
+                        revokedSessionId,
+                        choiceReq);
+        assertThat(initChoiceRev.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(initChoiceRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+        assertThat(attemptPartRepository.findById(a2P2.getId()).orElseThrow().getState())
+                .isEqualTo(PartState.AWAITING_CHOICE);
+
+        // Fail a2P2 with valid session, then verify initial retry with revoked session -> 409 ATTEMPT_SESSION_REVOKED
+        doAnswer(
+                        inv -> {
+                            List<String> partCodes = inv.getArgument(2);
+                            if (partCodes.contains(a2P2.getPartCode())) {
+                                throw new PaperGenerationException(
+                                        PaperGenerationException.Reason.GENERATION_FAILED,
+                                        "fail-a2");
+                            }
+                            return inv.callRealMethod();
+                        })
+                .when(paperSolverPort)
+                .generate(any(), anyInt(), any(), any(), anyLong(), any());
+        assertThat(
+                        performChoice(
+                                        userId,
+                                        a2.getId(),
+                                        a2P2.getId(),
+                                        "sess-a2-ch-ok",
+                                        activeSessionId,
+                                        choiceReq)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+        awaitPartState(a2P2.getId(), PartState.GENERATION_FAILED);
+
+        MvcResult initRetryRev =
+                performRetry(
+                        userId,
+                        a2.getId(),
+                        a2P2.getId(),
+                        "sess-a2-ret-rev",
+                        revokedSessionId,
+                        retryReq);
+        assertThat(initRetryRev.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(initRetryRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+        assertThat(attemptPartRepository.findById(a2P2.getId()).orElseThrow().getState())
+                .isEqualTo(PartState.GENERATION_FAILED);
     }
 
     @Test
