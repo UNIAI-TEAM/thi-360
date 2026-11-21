@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.FinalAnswerChange;
 import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
@@ -37,6 +40,7 @@ import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
 
 class AttemptGradingIT extends AbstractAttemptDsIT {
@@ -45,6 +49,7 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
     @Autowired private AttemptGradingService attemptGradingService;
     @Autowired private AttemptLifecycleService attemptLifecycleService;
     @Autowired private QuestionSourcePort questionSourcePort;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void drainPendingOutbox() {
@@ -294,16 +299,36 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
 
     @Test
     void redeliveryIsIdempotent() throws Exception {
+        // R1-27/29: launch 4-thread race WHILE attempt is still in GRADING state (before draining outbox!)
         UUID student = createStudent("grading-idempotent");
         GrantOrderResult.Line grant = grant(student, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt attempt = startOpen(student, grant.entitlementId(), null);
         UUID sessionId = claimSession(student, attempt.getId());
 
-        submitOk(student, attempt.getId(), sessionId, List.of());
-        drainAllOutbox();
+        List<AttemptItem> items = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attempt.getId());
+        AttemptItem scItem = items.stream()
+                .filter(i -> i.getQuestionType() == QuestionType.SINGLE_CHOICE)
+                .findFirst()
+                .orElseThrow();
+        var snap = questionSourcePort
+                .loadVersions(List.of(new VersionKey(scItem.getQuestionId(), scItem.getQuestionVersionNo())))
+                .getFirst()
+                .snapshot();
+        String correctOpt = null;
+        for (JsonNode opt : snap.path("body").path("options")) {
+            if (opt.path("correct").asBoolean(false)) {
+                correctOpt = opt.path("id").asText();
+                break;
+            }
+        }
+        submitOk(
+                student,
+                attempt.getId(),
+                sessionId,
+                List.of(new FinalAnswerChange(scItem.getId(), 1L, new AnswerValue.SingleChoice(correctOpt))));
 
-        Attempt afterFirst = attemptRepository.findById(attempt.getId()).orElseThrow();
-        assertThat(afterFirst.getState()).isEqualTo(AttemptState.SCORED);
+        assertThat(attemptRepository.findById(attempt.getId()).orElseThrow().getState())
+                .isEqualTo(AttemptState.GRADING);
 
         ExecutorService pool = Executors.newFixedThreadPool(4);
         try {
@@ -330,13 +355,115 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
             pool.shutdownNow();
         }
 
-        Attempt afterRedelivery = attemptRepository.findById(attempt.getId()).orElseThrow();
-        assertThat(afterRedelivery.getRawScore()).isEqualByComparingTo(afterFirst.getRawScore());
+        // Now drain the outbox redelivery as well; must remain idempotent with 1 GRADED event
+        drainAllOutbox();
+
+        Attempt afterRace = attemptRepository.findById(attempt.getId()).orElseThrow();
+        assertThat(afterRace.getState()).isEqualTo(AttemptState.SCORED);
+        assertThat(afterRace.getRawScore()).isEqualByComparingTo(scItem.getPointsMax());
         long gradedEvents = attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId())
                 .stream()
                 .filter(e -> e.getType() == AttemptEventType.GRADED)
                 .count();
         assertThat(gradedEvents).isEqualTo(1);
+    }
+
+    @Test
+    void reaggregateLockedAttemptRollsUpQuestionSetAndSerializesUnderLock() throws Exception {
+        // R1-27 / R1-34: finalizing an ESSAY child inside a QUESTION_SET updates parent row via
+        // reaggregateLockedAttempt, and concurrent grading + reaggregateLockedAttempt stay serialized under FOR UPDATE
+        UUID student = createStudent("grading-reaggregate-set");
+        GrantOrderResult.Line grant = grant(student, "DS-BCA-FULL-MINI", 2, List.of());
+        Attempt attempt = startOpen(student, grant.entitlementId(), new PreChoiceInput("CA2", null));
+        UUID sessionId = claimSession(student, attempt.getId());
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+
+        AttemptItem essayItem = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attempt.getId())
+                .stream()
+                .filter(i -> i.getQuestionType() == QuestionType.ESSAY)
+                .findFirst()
+                .orElseThrow();
+
+        finishAllSequentialPartsThroughLastAndSubmit(
+                student,
+                attempt.getId(),
+                sessionId,
+                parts,
+                List.of(new FinalAnswerChange(
+                        essayItem.getId(), 1L, new AnswerValue.Essay("<p>Bài viết trong bộ</p>", 5))));
+        drainAllOutbox();
+
+        // Attach a parent QUESTION_SET row around essayItem (simulating essay child inside a QUESTION_SET)
+        UUID setParentId = Ids.newId();
+        jdbc.update(
+                """
+                        INSERT INTO attempt.attempt_item (
+                            id, attempt_id, part_id, section_id, block_id, ord, unit_count,
+                            question_id, question_version_no, question_type, points_max,
+                            in_scope, answer_seq, flagged, earned_points, outcome, version
+                        )
+                        VALUES (?, ?, ?, ?, ?, -1, 0, ?, 1, 'QUESTION_SET', ?, true, 0, false, NULL, 'PENDING_REVIEW', 0)
+                        """,
+                setParentId,
+                attempt.getId(),
+                essayItem.getPartId(),
+                essayItem.getSectionId(),
+                essayItem.getBlockId(),
+                Ids.newId(),
+                essayItem.getPointsMax());
+        jdbc.update("UPDATE attempt.attempt_item SET parent_item_id = ? WHERE id = ?", setParentId, essayItem.getId());
+
+        // Finalize the essay child and invoke reaggregateLockedAttempt concurrently with gradeFinishedAttempt
+        jdbc.update(
+                """
+                        UPDATE attempt.attempt_item
+                        SET earned_points = ?, outcome = 'PARTIAL', grading_detail = '{"exactFraction":"15"}'::jsonb
+                        WHERE id = ?
+                        """,
+                new BigDecimal("15.00"),
+                essayItem.getId());
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            CountDownLatch ready = new CountDownLatch(2);
+            CountDownLatch go = new CountDownLatch(1);
+            Future<?> reaggregateFuture = pool.submit(() -> {
+                ready.countDown();
+                try {
+                    go.await();
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                tx.executeWithoutResult(status -> {
+                    Attempt locked = attemptRepository.findByIdForUpdate(attempt.getId()).orElseThrow();
+                    attemptGradingService.reaggregateLockedAttempt(locked, Instant.now());
+                });
+            });
+            Future<?> gradeFuture = pool.submit(() -> {
+                ready.countDown();
+                try {
+                    go.await();
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                attemptGradingService.gradeFinishedAttempt(attempt.getId());
+            });
+            ready.await();
+            go.countDown();
+            reaggregateFuture.get();
+            gradeFuture.get();
+        } finally {
+            pool.shutdownNow();
+        }
+
+        AttemptItem updatedParent = attemptItemRepository.findById(setParentId).orElseThrow();
+        assertThat(updatedParent.getOutcome()).isEqualTo(ItemOutcome.PARTIAL);
+        assertThat(updatedParent.getEarnedPoints()).isEqualByComparingTo("15.00");
+
+        Attempt finalAttempt = attemptRepository.findById(attempt.getId()).orElseThrow();
+        assertThat(finalAttempt.getState()).isEqualTo(AttemptState.SCORED);
+        assertThat(finalAttempt.getRawScore()).isEqualByComparingTo("15.00");
     }
 
     @Test
@@ -346,7 +473,6 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
         Attempt attempt = startOpen(student, grant.entitlementId(), null);
         UUID sessionId = claimSession(student, attempt.getId());
 
-        // Timeout closes open Part 1 and marks ungenerated CHOICE Part 3 as SKIPPED without items (AC-21)
         attemptLifecycleService.closeAttempt(
                 attempt.getId(), EndReason.TIME_UP, mutableClock.instant().plusSeconds(1), sessionId, List.of());
         drainAllOutbox();
@@ -400,7 +526,6 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
         Attempt attempt = startOpen(student, grant.entitlementId(), new PreChoiceInput("CA2", null));
         UUID sessionId = claimSession(student, attempt.getId());
 
-        // Timeout in Part 1 of SHARED exam -> Part 2 & Part 3 (already generated with items) become SKIPPED (AC-22)
         attemptLifecycleService.closeAttempt(
                 attempt.getId(), EndReason.TIME_UP, mutableClock.instant().plusSeconds(1), sessionId, List.of());
         drainAllOutbox();

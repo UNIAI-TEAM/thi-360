@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -23,17 +24,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.attempt.api.AttemptChoiceSummary;
 import vn.unicom.thi360.attempt.api.AttemptHistoryItem;
 import vn.unicom.thi360.attempt.api.AttemptHistoryItem.HistoryAction;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
+import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
+import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptRepository;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.PageResponse;
-import vn.unicom.thi360.shared.api.ValidationException;
 
 /**
  * Queries the learner's practice history with filters, deterministic sorting, and N+1-free enrichment (LT §11).
@@ -47,18 +51,23 @@ public class AttemptHistoryService {
 
     private final AttemptAccessGate accessGate;
     private final AttemptRepository attemptRepository;
+    private final AttemptPartRepository attemptPartRepository;
     private final AttemptEventRepository attemptEventRepository;
     private final CatalogLookup catalogLookup;
     private final MessageSource messageSource;
 
+    private record DateBound(Instant instant, boolean exclusive) {}
+
     public AttemptHistoryService(
             AttemptAccessGate accessGate,
             AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
             AttemptEventRepository attemptEventRepository,
             CatalogLookup catalogLookup,
             MessageSource messageSource) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
+        this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.attemptEventRepository = Objects.requireNonNull(attemptEventRepository);
         this.catalogLookup = Objects.requireNonNull(catalogLookup);
         this.messageSource = Objects.requireNonNull(messageSource);
@@ -75,25 +84,30 @@ public class AttemptHistoryService {
             Integer page,
             Integer size) {
         UUID userId = accessGate.requireLearner();
-        Instant fromInstant = parseBound(from, true);
-        Instant toInstant = parseBound(to, false);
+        DateBound fromBound = parseBound(from, true);
+        DateBound toBound = parseBound(to, false);
 
         int safePage = page == null || page < 0 ? 0 : page;
         int safeSize = size == null ? DEFAULT_PAGE_SIZE : Math.min(Math.max(1, size), MAX_PAGE_SIZE);
 
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        Specification<Attempt> spec = buildSpecification(userId, q, kind, scope, examId, fromInstant, toInstant);
+        Specification<Attempt> spec = buildSpecification(userId, q, kind, scope, examId, fromBound, toBound);
         Page<Attempt> attemptPage = attemptRepository.findAll(spec, pageable);
 
         List<Attempt> rows = attemptPage.getContent();
         if (rows.isEmpty()) {
-            return PageResponse.from(attemptPage.map(a -> toHistoryItem(a, Map.of(), Set.of(), null)));
+            return PageResponse.from(attemptPage.map(a -> toHistoryItem(a, List.of(), Map.of(), Set.of(), null)));
         }
 
         List<UUID> attemptIds = rows.stream().map(Attempt::getId).toList();
         Set<UUID> compensatedIds = new HashSet<>(
                 attemptEventRepository.findAttemptIdsWithType(attemptIds, AttemptEventType.COMPENSATED));
+
+        Map<UUID, List<AttemptPart>> partsByAttemptId = new HashMap<>(rows.size() * 2);
+        for (AttemptPart part : attemptPartRepository.findByAttemptIdInOrderByOrdAsc(attemptIds)) {
+            partsByAttemptId.computeIfAbsent(part.getAttemptId(), ignored -> new ArrayList<>()).add(part);
+        }
 
         Map<UUID, String> subjectCodesById = new HashMap<>();
         boolean needsSubjectLookup = rows.stream().anyMatch(a -> a.getSubjectItemId() != null);
@@ -109,7 +123,8 @@ public class AttemptHistoryService {
                 "Đang chấm lại",
                 LocaleContextHolder.getLocale());
 
-        return PageResponse.from(attemptPage, a -> toHistoryItem(a, subjectCodesById, compensatedIds, regradingLabel));
+        return PageResponse.from(attemptPage, a -> toHistoryItem(
+                a, partsByAttemptId.getOrDefault(a.getId(), List.of()), subjectCodesById, compensatedIds, regradingLabel));
     }
 
     private static Specification<Attempt> buildSpecification(
@@ -118,8 +133,8 @@ public class AttemptHistoryService {
             String kind,
             String scope,
             UUID examId,
-            Instant from,
-            Instant to) {
+            DateBound from,
+            DateBound to) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("userId"), userId));
@@ -139,10 +154,14 @@ public class AttemptHistoryService {
                 predicates.add(cb.equal(root.get("examId"), examId));
             }
             if (from != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("startedAt"), from));
+                predicates.add(cb.greaterThanOrEqualTo(root.get("startedAt"), from.instant()));
             }
             if (to != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("startedAt"), to));
+                if (to.exclusive()) {
+                    predicates.add(cb.lessThan(root.get("startedAt"), to.instant()));
+                } else {
+                    predicates.add(cb.lessThanOrEqualTo(root.get("startedAt"), to.instant()));
+                }
             }
             if (query != null
                     && query.getResultType() != Long.class
@@ -158,6 +177,7 @@ public class AttemptHistoryService {
 
     private AttemptHistoryItem toHistoryItem(
             Attempt attempt,
+            List<AttemptPart> parts,
             Map<UUID, String> subjectCodesById,
             Set<UUID> compensatedIds,
             String regradingLabel) {
@@ -177,6 +197,8 @@ public class AttemptHistoryService {
                 ? subjectCodesById.get(attempt.getSubjectItemId())
                 : null;
 
+        Map<String, AttemptChoiceSummary> choices = AttemptChoiceViews.merge(attempt, parts);
+
         return new AttemptHistoryItem(
                 attempt.getId(),
                 attempt.getExamId(),
@@ -186,7 +208,7 @@ public class AttemptHistoryService {
                 attempt.getScope(),
                 attempt.getPartCode(),
                 subjectCode,
-                attempt.getChoices(),
+                choices,
                 attempt.getAttemptNo(),
                 attempt.getStartedAt(),
                 attempt.getFinishedAt(),
@@ -229,22 +251,22 @@ public class AttemptHistoryService {
         return attempt.getMaxScore();
     }
 
-    private static Instant parseBound(String raw, boolean startOfDay) {
+    private static DateBound parseBound(String raw, boolean startOfDay) {
         if (raw == null || raw.isBlank()) {
             return null;
         }
         String trimmed = raw.trim();
         try {
-            return Instant.parse(trimmed);
+            return new DateBound(OffsetDateTime.parse(trimmed).toInstant(), false);
         } catch (DateTimeParseException ignored) {
             try {
                 LocalDate date = LocalDate.parse(trimmed);
                 if (startOfDay) {
-                    return date.atStartOfDay(DISPLAY_ZONE).toInstant();
+                    return new DateBound(date.atStartOfDay(DISPLAY_ZONE).toInstant(), false);
                 }
-                return date.plusDays(1).atStartOfDay(DISPLAY_ZONE).toInstant().minusNanos(1);
+                return new DateBound(date.plusDays(1).atStartOfDay(DISPLAY_ZONE).toInstant(), true);
             } catch (DateTimeParseException ex) {
-                throw new ValidationException("INVALID_DATE_FILTER", "Invalid date parameter: " + trimmed, List.of());
+                throw new BusinessRuleException("INVALID_DATE_FILTER", "Invalid date parameter: " + trimmed);
             }
         }
     }

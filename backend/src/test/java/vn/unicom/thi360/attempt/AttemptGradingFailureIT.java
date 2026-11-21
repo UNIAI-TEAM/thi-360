@@ -2,7 +2,9 @@ package vn.unicom.thi360.attempt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
+import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
 class AttemptGradingFailureIT extends AbstractAttemptDsIT {
 
@@ -70,7 +73,7 @@ class AttemptGradingFailureIT extends AbstractAttemptDsIT {
 
         submitOk(failingUser, failingAttempt.getId(), failSession);
         submitOk(healthyUser, healthyAttempt.getId(), healthySession);
-        // Drain non-attempt events (e.g. audit) queued before our attempt.finished events, OR handle all in one sweep
+
         Mockito.doAnswer(inv -> {
             @SuppressWarnings("unchecked")
             List<VersionKey> keys = (List<VersionKey>) inv.getArgument(0);
@@ -140,7 +143,76 @@ class AttemptGradingFailureIT extends AbstractAttemptDsIT {
 
     @Test
     void gradingErrorShowsNoScore() throws Exception {
+        // R1-28/29/33: verify HTTP GET /result BOTH while GRADING (after transient failure) AND
+        // after exhausting retries into GRADING_ERROR: no zero score, exact AC-19 message, no raw error leak
         UUID student = createStudent("grading-error-no-zero");
+        GrantOrderResult.Line grant = grant(student, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        Attempt attempt = startOpen(student, grant.entitlementId());
+        UUID sessionId = claimSession(student, attempt.getId());
+
+        Set<UUID> failingQuestionIds = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attempt.getId())
+                .stream()
+                .map(i -> i.getQuestionId())
+                .collect(Collectors.toSet());
+
+        submitOk(student, attempt.getId(), sessionId);
+
+        Mockito.doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            List<VersionKey> keys = (List<VersionKey>) inv.getArgument(0);
+            if (keys.stream().anyMatch(k -> failingQuestionIds.contains(k.questionId()))) {
+                throw new IllegalStateException("Secret SQL exception detail");
+            }
+            return inv.callRealMethod();
+        }).when(questionSourcePort).loadVersions(anyList());
+
+        // Attempt 1 fails -> remains GRADING
+        outboxRelay.relayBatch(500);
+
+        MvcResult gradingHttpRes = mockMvc.perform(
+                        get("/api/v1/me/attempts/{id}/result", attempt.getId())
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                .andReturn();
+        assertThat(gradingHttpRes.getResponse().getStatus()).isEqualTo(200);
+        String gradingBody = gradingHttpRes.getResponse().getContentAsString();
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(gradingBody);
+        JsonNode gradingJson = objectMapper.readTree(gradingBody);
+        assertThat(gradingJson.path("state").asText()).isEqualTo("GRADING");
+        assertThat(gradingJson.path("rawScore").isMissingNode() || gradingJson.path("rawScore").isNull()).isTrue();
+        assertThat(gradingJson.path("displayScore").isMissingNode() || gradingJson.path("displayScore").isNull()).isTrue();
+        assertThat(gradingJson.path("reviewAvailable").asBoolean()).isFalse();
+
+        // Exhaust remaining retries -> transitions to GRADING_ERROR
+        for (int attemptNo = 2; attemptNo <= OutboxRelay.DEFAULT_MAX_ATTEMPTS; attemptNo++) {
+            mutableClock.advance(Duration.ofMinutes(10));
+            outboxRelay.relayBatch(500);
+        }
+
+        Attempt exhausted = attemptRepository.findById(attempt.getId()).orElseThrow();
+        assertThat(exhausted.getState()).isEqualTo(AttemptState.GRADING_ERROR);
+
+        MvcResult errorHttpRes = mockMvc.perform(
+                        get("/api/v1/me/attempts/{id}/result", attempt.getId())
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                .andReturn();
+        assertThat(errorHttpRes.getResponse().getStatus()).isEqualTo(200);
+        String errorBody = errorHttpRes.getResponse().getContentAsString();
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(errorBody);
+        assertThat(errorBody).doesNotContain("Secret SQL exception detail");
+
+        JsonNode errorJson = objectMapper.readTree(errorBody);
+        assertThat(errorJson.path("state").asText()).isEqualTo("GRADING_ERROR");
+        assertThat(errorJson.has("gradingError")).isFalse();
+        assertThat(errorJson.path("statusMessage").asText())
+                .isEqualTo("Bài làm đã được ghi nhận, kết quả đang được xử lý");
+        assertThat(errorJson.path("rawScore").isMissingNode() || errorJson.path("rawScore").isNull()).isTrue();
+        assertThat(errorJson.path("displayScore").isMissingNode() || errorJson.path("displayScore").isNull()).isTrue();
+        assertThat(errorJson.path("reviewAvailable").asBoolean()).isFalse();
+    }
+
+    @Test
+    void transientFailureRecoversToScored() throws Exception {
+        UUID student = createStudent("grading-transient-recover");
         GrantOrderResult.Line grant = grant(student, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt attempt = startOpen(student, grant.entitlementId());
         UUID sessionId = claimSession(student, attempt.getId());
@@ -172,7 +244,6 @@ class AttemptGradingFailureIT extends AbstractAttemptDsIT {
         assertThat(mid.getRawScore()).isNull();
         assertThat(mid.getDisplayScore()).isNull();
 
-        // Third attempt recovers cleanly
         mutableClock.advance(Duration.ofMinutes(10));
         outboxRelay.relayBatch(500);
 

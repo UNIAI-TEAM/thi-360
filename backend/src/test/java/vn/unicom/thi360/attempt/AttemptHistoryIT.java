@@ -13,17 +13,28 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MvcResult;
+import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
+import vn.unicom.thi360.attempt.api.FinalAnswerChange;
+import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
+import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
+import vn.unicom.thi360.attempt.domain.AttemptItem;
+import vn.unicom.thi360.attempt.domain.AttemptPart;
+import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
 
 class AttemptHistoryIT extends AbstractAttemptDsIT {
 
     @Autowired private OutboxRelay outboxRelay;
+    @Autowired private QuestionSourcePort questionSourcePort;
 
     @BeforeEach
     void drainOutbox() {
@@ -42,11 +53,8 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
         UUID s1 = claimSession(student, scored.getId());
         performSubmit(student, scored.getId(), UUID.randomUUID().toString(), s1, new SubmitAttemptRequest(List.of()));
         outboxRelay.relayBatch(500);
-        jdbc.update(
-                "UPDATE attempt.attempt SET started_at = '2026-11-20T08:00:00Z' WHERE id = ?",
-                scored.getId());
+        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-20T08:00:00Z' WHERE id = ?", scored.getId());
 
-        // Record COMPENSATED event on scored attempt
         attemptEventRepository.saveAndFlush(new AttemptEvent(
                 Ids.newId(), scored.getId(), AttemptEventType.COMPENSATED, null, null, Instant.now(), Map.of("r", "x")));
 
@@ -89,9 +97,7 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
         // 5. Open IN_PROGRESS attempt (must appear with CONTINUE & null scores)
         mutableClock.setAt(Instant.parse("2026-11-20T10:00:00Z"));
         Attempt openAttempt = startAndAwaitOpen(student, UUID.randomUUID().toString(), grant.entitlementId(), null);
-        jdbc.update(
-                "UPDATE attempt.attempt SET started_at = '2026-11-20T10:00:00Z' WHERE id = ?",
-                openAttempt.getId());
+        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-20T10:00:00Z' WHERE id = ?", openAttempt.getId());
 
         MvcResult res = mockMvc.perform(
                         get("/api/v1/me/attempts")
@@ -104,7 +110,6 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
         List<String> returnedIds = new ArrayList<>();
         items.forEach(i -> returnedIds.add(i.path("attemptId").asText()));
         assertThat(returnedIds).doesNotContain(startingId.toString(), abortedId.toString());
-        // Ordered started_at DESC: openAttempt -> regrading -> gradingError -> scored
         assertThat(returnedIds).containsExactly(
                 openAttempt.getId().toString(),
                 regrading.getId().toString(),
@@ -131,19 +136,34 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void filtersBySearchKindScopeExamIdDateRangeAndPaginates() throws Exception {
+    void fullAttemptIsOneRowAndFiltersByScopeSearchOffsetAndMidnightBoundary() throws Exception {
         UUID student = createStudent("hist-filter");
         UUID other = createStudent("hist-other");
-        UUID hsaExamId = AttemptTestFixtures.dsExamId(jdbc, "DS-HSA-PART-MATH-MINI");
-        UUID vactExamId = AttemptTestFixtures.dsExamId(jdbc, "DS-VACT-PART-LANGUAGE-MINI");
+        UUID hsaPartExamId = AttemptTestFixtures.dsExamId(jdbc, "DS-HSA-PART-MATH-MINI");
 
-        GrantOrderResult.Line hsaGrant = grant(student, "DS-HSA-PART-MATH-MINI", 3, List.of());
+        GrantOrderResult.Line hsaFullGrant = grant(student, "DS-HSA-FULL-MINI", 2, List.of());
+        GrantOrderResult.Line hsaPartGrant = grant(student, "DS-HSA-PART-MATH-MINI", 3, List.of());
         GrantOrderResult.Line vactGrant = grant(student, "DS-VACT-PART-LANGUAGE-MINI", 3, List.of());
         GrantOrderResult.Line otherGrant = grant(other, "DS-HSA-PART-MATH-MINI", 2, List.of());
 
-        Attempt aHsa = startAndAwaitOpen(student, UUID.randomUUID().toString(), hsaGrant.entitlementId(), null);
-        UUID sHsa = claimSession(student, aHsa.getId());
-        performSubmit(student, aHsa.getId(), UUID.randomUUID().toString(), sHsa, new SubmitAttemptRequest(List.of()));
+        // AC-30 (#fullAttemptIsOneRow): multi-part FULL exam with Part 3 choice appears as exactly 1 row
+        Attempt aFull = startAndAwaitOpen(student, UUID.randomUUID().toString(), hsaFullGrant.entitlementId(), null);
+        UUID sFull = claimSession(student, aFull.getId());
+        List<AttemptPart> fullParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(aFull.getId());
+        assertThat(fullParts).hasSize(3);
+        assertThat(performFinishPart(student, aFull.getId(), fullParts.get(0).getId(), sFull, new FinishPartRequest(List.of()))
+                        .getResponse().getStatus()).isEqualTo(200);
+        assertThat(performFinishPart(student, aFull.getId(), fullParts.get(1).getId(), sFull, new FinishPartRequest(List.of()))
+                        .getResponse().getStatus()).isEqualTo(200);
+        assertThat(performChoice(student, aFull.getId(), fullParts.get(2).getId(), UUID.randomUUID().toString(), sFull,
+                        new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SINH")))
+                        .getResponse().getStatus()).isEqualTo(202);
+        awaitPartState(fullParts.get(2).getId(), PartState.OPEN);
+        performSubmit(student, aFull.getId(), UUID.randomUUID().toString(), sFull, new SubmitAttemptRequest(List.of()));
+
+        Attempt aHsaPart = startAndAwaitOpen(student, UUID.randomUUID().toString(), hsaPartGrant.entitlementId(), null);
+        UUID sHsa = claimSession(student, aHsaPart.getId());
+        performSubmit(student, aHsaPart.getId(), UUID.randomUUID().toString(), sHsa, new SubmitAttemptRequest(List.of()));
 
         Attempt aVact = startAndAwaitOpen(student, UUID.randomUUID().toString(), vactGrant.entitlementId(), null);
         UUID sVact = claimSession(student, aVact.getId());
@@ -153,8 +173,29 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
         startAndAwaitOpen(other, UUID.randomUUID().toString(), otherGrant.entitlementId(), null);
         outboxRelay.relayBatch(500);
 
-        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-10T03:00:00Z' WHERE id = ?", aHsa.getId());
-        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-20T03:00:00Z' WHERE id = ?", aVact.getId());
+        // Set explicit timestamps for boundary tests (Asia/Ho_Chi_Minh = UTC+7):
+        // 2026-11-20T16:59:59.999Z = 2026-11-20T23:59:59.999+07:00 -> INCLUDED by ?to=2026-11-20
+        // 2026-11-20T17:00:00Z     = 2026-11-21T00:00:00+07:00     -> EXCLUDED by ?to=2026-11-20 (R1-44/45)
+        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-10T03:00:00Z' WHERE id = ?", aFull.getId());
+        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-20T16:59:59.999Z' WHERE id = ?", aHsaPart.getId());
+        jdbc.update("UPDATE attempt.attempt SET started_at = '2026-11-20T17:00:00Z' WHERE id = ?", aVact.getId());
+
+        // Filter by scope=FULL -> exactly 1 row for the 3-part FULL attempt + typed choices populated
+        JsonNode byScopeFull = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/me/attempts").param("scope", "FULL")
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                        .andReturn().getResponse().getContentAsString());
+        assertThat(byScopeFull.path("items")).hasSize(1);
+        assertThat(byScopeFull.path("items").get(0).path("attemptId").asText()).isEqualTo(aFull.getId().toString());
+        assertThat(byScopeFull.path("items").get(0).path("choices").path(fullParts.get(2).getPartCode()).path("optionCode").asText())
+                .isEqualTo("SCIENCE");
+
+        // Filter by scope=PART -> 2 rows (aHsaPart + aVact)
+        JsonNode byScopePart = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/me/attempts").param("scope", "PART")
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                        .andReturn().getResponse().getContentAsString());
+        assertThat(byScopePart.path("items")).hasSize(2);
 
         // Filter by kind=VACT
         JsonNode byKind = objectMapper.readTree(
@@ -166,53 +207,66 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
 
         // Filter by examId
         JsonNode byExam = objectMapper.readTree(
-                mockMvc.perform(get("/api/v1/me/attempts").param("examId", hsaExamId.toString())
+                mockMvc.perform(get("/api/v1/me/attempts").param("examId", hsaPartExamId.toString())
                                 .with(AttemptTestFixtures.asExamUser(student, "learner")))
                         .andReturn().getResponse().getContentAsString());
         assertThat(byExam.path("items")).hasSize(1);
-        assertThat(byExam.path("items").get(0).path("attemptId").asText()).isEqualTo(aHsa.getId().toString());
+        assertThat(byExam.path("items").get(0).path("attemptId").asText()).isEqualTo(aHsaPart.getId().toString());
 
-        // Filter by date window covering only aVact
+        // R1-44/45: LocalDate ?to=2026-11-20 excludes exact next-day midnight 2026-11-21T00:00:00+07:00
         JsonNode byDate = objectMapper.readTree(
                 mockMvc.perform(get("/api/v1/me/attempts")
-                                .param("from", "2026-11-18")
-                                .param("to", "2026-11-21")
+                                .param("from", "2026-11-20")
+                                .param("to", "2026-11-20")
                                 .with(AttemptTestFixtures.asExamUser(student, "learner")))
                         .andReturn().getResponse().getContentAsString());
         assertThat(byDate.path("items")).hasSize(1);
-        assertThat(byDate.path("items").get(0).path("attemptId").asText()).isEqualTo(aVact.getId().toString());
+        assertThat(byDate.path("items").get(0).path("attemptId").asText()).isEqualTo(aHsaPart.getId().toString());
 
-        // Filter by ?q= alone (substring match on examName)
-        String vactNameToken = aVact.getExamName().split(" ")[0];
+        // R1-44/45: +07:00 ISO-8601 offset timestamps accepted
+        JsonNode byOffset = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/me/attempts")
+                                .param("from", "2026-11-21T00:00:00+07:00")
+                                .param("to", "2026-11-21T01:00:00+07:00")
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                        .andReturn().getResponse().getContentAsString());
+        assertThat(byOffset.path("items")).hasSize(1);
+        assertThat(byOffset.path("items").get(0).path("attemptId").asText()).isEqualTo(aVact.getId().toString());
+
+        // R1-26: Strict ?q= exclusion (matches ONLY VACT exam name)
         JsonNode byQ = objectMapper.readTree(
                 mockMvc.perform(get("/api/v1/me/attempts")
-                                .param("q", vactNameToken)
+                                .param("q", aVact.getExamName())
                                 .with(AttemptTestFixtures.asExamUser(student, "learner")))
                         .andReturn().getResponse().getContentAsString());
-        assertThat(byQ.path("items")).isNotEmpty();
-        boolean containsVact = false;
-        for (JsonNode n : byQ.path("items")) {
-            if (n.path("attemptId").asText().equals(aVact.getId().toString())) {
-                containsVact = true;
-            }
-        }
-        assertThat(containsVact).isTrue();
+        assertThat(byQ.path("items")).hasSize(1);
+        assertThat(byQ.path("items").get(0).path("attemptId").asText()).isEqualTo(aVact.getId().toString());
 
-        // Pagination size=1, page=0 and page=1
+        // R1-26: Invalid date filter -> 422 INVALID_DATE_FILTER
+        MvcResult badDate = mockMvc.perform(
+                        get("/api/v1/me/attempts")
+                                .param("from", "not-a-date")
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                .andReturn();
+        assertThat(badDate.getResponse().getStatus()).isEqualTo(422);
+        assertThat(objectMapper.readTree(badDate.getResponse().getContentAsString()).path("code").asText())
+                .isEqualTo("INVALID_DATE_FILTER");
+
+        // Pagination size=2, page=0 and page=1
         JsonNode p0 = objectMapper.readTree(
-                mockMvc.perform(get("/api/v1/me/attempts").param("page", "0").param("size", "1")
+                mockMvc.perform(get("/api/v1/me/attempts").param("page", "0").param("size", "2")
                                 .with(AttemptTestFixtures.asExamUser(student, "learner")))
                         .andReturn().getResponse().getContentAsString());
-        assertThat(p0.path("items")).hasSize(1);
-        assertThat(p0.path("totalItems").asLong()).isEqualTo(2);
+        assertThat(p0.path("items")).hasSize(2);
+        assertThat(p0.path("totalItems").asLong()).isEqualTo(3);
         assertThat(p0.path("totalPages").asInt()).isEqualTo(2);
 
         JsonNode p1 = objectMapper.readTree(
-                mockMvc.perform(get("/api/v1/me/attempts").param("page", "1").param("size", "1")
+                mockMvc.perform(get("/api/v1/me/attempts").param("page", "1").param("size", "2")
                                 .with(AttemptTestFixtures.asExamUser(student, "learner")))
                         .andReturn().getResponse().getContentAsString());
         assertThat(p1.path("items")).hasSize(1);
-        assertThat(p1.path("items").get(0).path("attemptId").asText()).isEqualTo(aHsa.getId().toString());
+        assertThat(p1.path("items").get(0).path("attemptId").asText()).isEqualTo(aFull.getId().toString());
 
         // Role / auth gates
         assertThat(mockMvc.perform(get("/api/v1/me/attempts")).andReturn().getResponse().getStatus())
@@ -222,5 +276,60 @@ class AttemptHistoryIT extends AbstractAttemptDsIT {
                                 .with(AttemptTestFixtures.asManageUser(manager, "mgr")))
                         .andReturn().getResponse().getStatus())
                 .isEqualTo(403);
+    }
+
+    @Test
+    void twoAttemptsOpenOwnResults() throws Exception {
+        // AC-33 (#twoAttemptsOpenOwnResults): two scored attempts of the same exam open distinct results
+        UUID student = createStudent("hist-two-attempts");
+        GrantOrderResult.Line grant = grant(student, "DS-HSA-PART-MATH-MINI", 3, List.of());
+
+        Attempt first = startAndAwaitOpen(student, UUID.randomUUID().toString(), grant.entitlementId(), null);
+        UUID s1 = claimSession(student, first.getId());
+        performSubmit(student, first.getId(), UUID.randomUUID().toString(), s1, new SubmitAttemptRequest(List.of()));
+
+        Attempt second = startAndAwaitOpen(student, UUID.randomUUID().toString(), grant.entitlementId(), null);
+        UUID s2 = claimSession(student, second.getId());
+        List<AttemptItem> secondSc = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(second.getId())
+                .stream()
+                .filter(i -> i.isInScope() && i.getQuestionType() == QuestionType.SINGLE_CHOICE)
+                .limit(2)
+                .toList();
+        List<FinalAnswerChange> correctFinals = new ArrayList<>();
+        for (AttemptItem item : secondSc) {
+            var snap = questionSourcePort
+                    .loadVersions(List.of(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo())))
+                    .getFirst()
+                    .snapshot();
+            for (JsonNode opt : snap.path("body").path("options")) {
+                if (opt.path("correct").asBoolean(false)) {
+                    correctFinals.add(new FinalAnswerChange(
+                            item.getId(), 1L, new AnswerValue.SingleChoice(opt.path("id").asText())));
+                    break;
+                }
+            }
+        }
+        performSubmit(student, second.getId(), UUID.randomUUID().toString(), s2, new SubmitAttemptRequest(correctFinals));
+        outboxRelay.relayBatch(500);
+
+        JsonNode hist = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/me/attempts")
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                        .andReturn().getResponse().getContentAsString());
+        assertThat(hist.path("items")).hasSize(2);
+
+        JsonNode r1 = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/me/attempts/{id}/result", first.getId())
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                        .andReturn().getResponse().getContentAsString());
+        JsonNode r2 = objectMapper.readTree(
+                mockMvc.perform(get("/api/v1/me/attempts/{id}/result", second.getId())
+                                .with(AttemptTestFixtures.asExamUser(student, "learner")))
+                        .andReturn().getResponse().getContentAsString());
+
+        assertThat(r1.path("attemptId").asText()).isEqualTo(first.getId().toString());
+        assertThat(r1.path("displayScore").decimalValue()).isEqualByComparingTo("0.00");
+        assertThat(r2.path("attemptId").asText()).isEqualTo(second.getId().toString());
+        assertThat(r2.path("displayScore").decimalValue()).isGreaterThan(java.math.BigDecimal.ZERO);
     }
 }

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.EndReason;
@@ -22,6 +23,7 @@ public record AttemptResultResponse(
         String scope,
         String partCode,
         String subjectCode,
+        Map<String, AttemptChoiceSummary> choices,
         Integer attemptNo,
         AttemptState state,
         boolean regrading,
@@ -32,13 +34,14 @@ public record AttemptResultResponse(
         Instant startedAt,
         Instant finishedAt,
         Instant gradedAt,
-        String gradingError,
         String practiceScoring,
         BigDecimal rawScore,
         BigDecimal displayScore,
         BigDecimal rawMaxScore,
         BigDecimal scaleMax,
         String scoreLabel,
+        @Schema(description = "Ghi chú cố định dưới điểm luyện tập V-ACT (BS §3)", nullable = true)
+                String practiceScoreNote,
         String resultView,
         boolean reviewAvailable,
         String faultFlag,
@@ -50,6 +53,7 @@ public record AttemptResultResponse(
         List<SubjectResultView> subjects,
         List<VactComponentView> vactComponents) {
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "AttemptResultUnitStats")
     public record UnitStatsView(
             int correctCount,
@@ -59,6 +63,7 @@ public record AttemptResultResponse(
             int pendingReviewCount,
             int totalCount) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "AttemptResultPart")
     public record PartResultView(
             UUID partId,
@@ -71,6 +76,7 @@ public record AttemptResultResponse(
             BigDecimal maxScore,
             UnitStatsView stats) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "AttemptResultSubject")
     public record SubjectResultView(
             String code,
@@ -80,6 +86,7 @@ public record AttemptResultResponse(
             BigDecimal maxScore,
             UnitStatsView stats) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "AttemptResultVactSubsection")
     public record VactSubsectionView(
             String sectionId,
@@ -89,8 +96,11 @@ public record AttemptResultResponse(
             int partialCount,
             int wrongCount,
             int blankCount,
-            int totalCount) {}
+            int totalCount,
+            @Schema(description = "Tỷ lệ đúng (0–100%)")
+                    BigDecimal correctRate) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "AttemptResultVactComponent")
     public record VactComponentView(
             String componentCode,
@@ -100,5 +110,7 @@ public record AttemptResultResponse(
             int wrongCount,
             int blankCount,
             int totalCount,
+            @Schema(description = "Tỷ lệ đúng (0–100%)")
+                    BigDecimal correctRate,
             List<VactSubsectionView> subsections) {}
 }

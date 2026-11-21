@@ -335,10 +335,8 @@ public class Attempt {
         String clean = (errorMessage == null || errorMessage.isBlank()) ? "GRADING_FAILED" : errorMessage.trim();
         this.state = AttemptState.GRADING_ERROR;
         this.gradingError = clean.length() > 1000 ? clean.substring(0, 1000) : clean;
-        if (!this.regrading) {
-            this.rawScore = null;
-            this.displayScore = null;
-        }
+        this.rawScore = null;
+        this.displayScore = null;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 

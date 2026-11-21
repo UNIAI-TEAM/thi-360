@@ -19,7 +19,7 @@ public record AttemptHistoryItem(
         String scope,
         String partCode,
         String subjectCode,
-        Map<String, Object> choices,
+        Map<String, AttemptChoiceSummary> choices,
         Integer attemptNo,
         Instant startedAt,
         Instant finishedAt,

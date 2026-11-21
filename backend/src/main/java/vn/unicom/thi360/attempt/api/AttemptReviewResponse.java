@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.AttemptState;
@@ -13,7 +12,7 @@ import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 @Schema(
         name = "AttemptReviewResponse",
-        description = "Xem lại bài làm theo mức result_view (RIGHT_WRONG hoặc FULL_SOLUTION, LT §10.2)")
+        description = "Xem lại bài làm theo mức result_view (SCORE_AND_ANSWERS hoặc FULL_SOLUTION, LT §10.2)")
 public record AttemptReviewResponse(
         UUID attemptId,
         AttemptState state,
@@ -55,10 +54,48 @@ public record AttemptReviewResponse(
             BigDecimal earnedPoints,
             ItemOutcome outcome,
             boolean flagged,
-            Map<String, Object> gradingDetail,
+            ReviewGradingDetail gradingDetail,
             ReviewExpectedAnswer expectedAnswer,
             String solution,
             ReviewEssayFeedback essayFeedback) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(
+            name = "ReviewGradingDetail",
+            description = "Chi tiết chấm điểm theo từng ý/ô/cặp của câu hỏi (không chứa nhận xét hay tiêu chí tự luận)")
+    public record ReviewGradingDetail(
+            String itemType,
+            Integer childCount,
+            String selectedOptionId,
+            String scoringRule,
+            Integer selectedCount,
+            Integer correctSelectedCount,
+            Integer wrongSelectedCount,
+            Integer totalExpectedCount,
+            Boolean normalizedMatch,
+            Integer correctUnitCount,
+            Integer wrongUnitCount,
+            Integer blankUnitCount,
+            List<ReviewClozeBlankResult> blankResults,
+            String scoringMethod,
+            Integer matchedCount,
+            Integer statementCount,
+            List<ReviewStatementResult> statementResults,
+            Boolean reuseRight,
+            Integer pairCount,
+            List<ReviewMatchingPairResult> pairResults,
+            Boolean blankEssay,
+            Integer wordCount) {}
+
+    @Schema(name = "ReviewClozeBlankResult")
+    public record ReviewClozeBlankResult(
+            String id, ItemOutcome outcome, BigDecimal pointsEarned, BigDecimal pointsMax) {}
+
+    @Schema(name = "ReviewStatementResult")
+    public record ReviewStatementResult(String id, boolean answered, boolean matched) {}
+
+    @Schema(name = "ReviewMatchingPairResult")
+    public record ReviewMatchingPairResult(String leftId, boolean matched, BigDecimal pointsEarned) {}
 
     @Schema(name = "AttemptReviewAttachment")
     public record ReviewAttachmentView(UUID id, String name, String mime, String downloadUrl) {}

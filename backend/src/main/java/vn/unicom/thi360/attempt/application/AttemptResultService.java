@@ -18,12 +18,15 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.attempt.api.AttemptChoiceSummary;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.PartResultView;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.SubjectResultView;
@@ -32,17 +35,21 @@ import vn.unicom.thi360.attempt.api.AttemptResultResponse.VactComponentView;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.VactSubsectionView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewAttachmentView;
+import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewClozeBlankResult;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewClozeBlankView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewClozeKey;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewEssayCriterionScore;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewEssayFeedback;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewExpectedAnswer;
+import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewGradingDetail;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewItemView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewMatchingKey;
+import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewMatchingPairResult;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewMatchingSideView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewOptionView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewPartView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewQuestionBody;
+import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewStatementResult;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewStatementView;
 import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewTrueFalseKey;
 import vn.unicom.thi360.attempt.domain.Attempt;
@@ -58,7 +65,6 @@ import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.ItemInput;
 import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.PartBreakdown;
 import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.PartInput;
 import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.SectionInput;
-import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.SubjectBreakdown;
 import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.UnitStats;
 import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.VactComponentBreakdown;
 import vn.unicom.thi360.attempt.domain.grading.ScoreAggregator.VactSubsectionBreakdown;
@@ -67,10 +73,12 @@ import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.spi.EntitlementPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.Attachment;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
-import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Version;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.api.ConflictException;
@@ -83,8 +91,9 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 @Service
 public class AttemptResultService {
 
-    private static final Pattern ADMIN_ASSET_PATH =
-            Pattern.compile("/api/v1/admin/question-assets/([0-9a-fA-F-]{36})(?:/content)?(?:[/?#].*)?");
+    private static final Pattern ADMIN_ASSET_PATH = Pattern.compile(
+            "(?:https?://[^/\"'\\s<>]+)?/api/v1/admin/question-assets/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})(?:/content)?",
+            Pattern.CASE_INSENSITIVE);
     private static final String ADMIN_ASSET_PREFIX = "/api/v1/admin/question-assets/";
 
     private final AttemptAccessGate accessGate;
@@ -92,11 +101,17 @@ public class AttemptResultService {
     private final AttemptPartRepository attemptPartRepository;
     private final AttemptItemRepository attemptItemRepository;
     private final AttemptEventRepository attemptEventRepository;
+    private final EntitlementPort entitlementPort;
     private final QuestionSourcePort questionSourcePort;
+    private final QuestionAttachmentPort questionAttachmentPort;
     private final PublishedExamPort publishedExamPort;
     private final CatalogLookup catalogLookup;
     private final AttemptQuestionSanitizer sanitizer;
     private final MessageSource messageSource;
+    private final TransactionTemplate readOnlyTx;
+
+    private record SubjectCatalog(
+            Map<String, String> namesByCode, Map<UUID, CatalogItemView> itemsById) {}
 
     public AttemptResultService(
             AttemptAccessGate accessGate,
@@ -104,24 +119,30 @@ public class AttemptResultService {
             AttemptPartRepository attemptPartRepository,
             AttemptItemRepository attemptItemRepository,
             AttemptEventRepository attemptEventRepository,
+            EntitlementPort entitlementPort,
             QuestionSourcePort questionSourcePort,
+            QuestionAttachmentPort questionAttachmentPort,
             PublishedExamPort publishedExamPort,
             CatalogLookup catalogLookup,
             AttemptQuestionSanitizer sanitizer,
-            MessageSource messageSource) {
+            MessageSource messageSource,
+            PlatformTransactionManager transactionManager) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptGuard = Objects.requireNonNull(attemptGuard);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.attemptItemRepository = Objects.requireNonNull(attemptItemRepository);
         this.attemptEventRepository = Objects.requireNonNull(attemptEventRepository);
+        this.entitlementPort = Objects.requireNonNull(entitlementPort);
         this.questionSourcePort = Objects.requireNonNull(questionSourcePort);
+        this.questionAttachmentPort = Objects.requireNonNull(questionAttachmentPort);
         this.publishedExamPort = Objects.requireNonNull(publishedExamPort);
         this.catalogLookup = Objects.requireNonNull(catalogLookup);
         this.sanitizer = Objects.requireNonNull(sanitizer);
         this.messageSource = Objects.requireNonNull(messageSource);
+        this.readOnlyTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
+        this.readOnlyTx.setReadOnly(true);
     }
 
-    @Transactional
     public AttemptResultResponse getResult(UUID attemptId) {
         UUID userId = accessGate.requireLearner();
         Attempt attempt = attemptGuard.requireOwnedAttempt(attemptId, userId);
@@ -134,20 +155,33 @@ public class AttemptResultService {
                     msg("ATTEMPT_NOT_FINISHED", "Lượt thi chưa kết thúc nên chưa có kết quả"));
         }
 
+        String effectiveResultView = AttemptReviewSupport.resolveEffectiveResultView(entitlementPort, attempt);
         Locale locale = LocaleContextHolder.getLocale();
-        Map<String, String> subjectNamesByCode = loadSubjectNames(locale);
-        String subjectCode = resolveSubjectCode(attempt.getSubjectItemId(), subjectNamesByCode);
+
+        return readOnlyTx.execute(status -> buildResultResponse(attempt, effectiveResultView, locale));
+    }
+
+    private AttemptResultResponse buildResultResponse(
+            Attempt attempt, String effectiveResultView, Locale locale) {
+        UUID attemptId = attempt.getId();
+        SubjectCatalog subjects = loadSubjectCatalog(locale);
+        String subjectCode = resolveSubjectCode(attempt.getSubjectItemId(), subjects);
 
         boolean compensated =
                 attemptEventRepository.existsByAttemptIdAndType(attemptId, AttemptEventType.COMPENSATED);
         String faultMessage = resolveFaultMessage(attempt, compensated, locale);
-        String effectiveResultView = attempt.getResultView();
-        boolean reviewAvailable = !"SCORE".equals(effectiveResultView)
+        boolean reviewAvailable = allowsReview(effectiveResultView)
                 && (attempt.getState() == AttemptState.SCORED || attempt.getState() == AttemptState.PENDING_REVIEW);
+
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId);
+        Map<String, AttemptChoiceSummary> choices = AttemptChoiceViews.merge(attempt, parts);
 
         if (attempt.getState() == AttemptState.GRADING || attempt.getState() == AttemptState.GRADING_ERROR) {
             String statusMessage = attempt.getState() == AttemptState.GRADING_ERROR
-                    ? msg("attempt.result.grading_error.status", "Hệ thống đang xử lý kết quả bài làm của bạn")
+                    ? msg(
+                            "attempt.result.grading_error.status",
+                            "Bài làm đã được ghi nhận, kết quả đang được xử lý",
+                            locale)
                     : null;
             return new AttemptResultResponse(
                     attempt.getId(),
@@ -158,6 +192,7 @@ public class AttemptResultService {
                     attempt.getScope(),
                     attempt.getPartCode(),
                     subjectCode,
+                    choices,
                     attempt.getAttemptNo(),
                     attempt.getState(),
                     attempt.isRegrading(),
@@ -168,8 +203,8 @@ public class AttemptResultService {
                     attempt.getStartedAt(),
                     attempt.getFinishedAt(),
                     null,
-                    attempt.getState() == AttemptState.GRADING_ERROR ? attempt.getGradingError() : null,
                     attempt.getPracticeScoring(),
+                    null,
                     null,
                     null,
                     null,
@@ -187,7 +222,6 @@ public class AttemptResultService {
                     null);
         }
 
-        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId);
         List<AttemptItem> items = loadItemsInPaperOrder(attemptId, parts);
         List<SectionInput> sections = loadSectionMetadata(attempt);
 
@@ -206,13 +240,17 @@ public class AttemptResultService {
         }
 
         String regradingLabel = regrading
-                ? msg("attempt.result.regrading.label", "Đang chấm lại")
+                ? msg("attempt.result.regrading.label", "Đang chấm lại", locale)
                 : null;
         String pendingReviewLabel = (pendingReview && !regrading)
-                ? msg("attempt.result.pending_review.label", "Chờ chấm")
+                ? msg("attempt.result.pending_review.label", "Chờ chấm", locale)
                 : null;
-        String scoreLabel = "VACT".equals(attempt.getExamKindCode())
-                ? msg("attempt.result.vact.practice_score.label", "Điểm luyện tập")
+        boolean isVact = "VACT".equals(attempt.getExamKindCode());
+        String scoreLabel = isVact
+                ? msg("attempt.result.vact.practice_score.label", "Điểm luyện tập", locale)
+                : null;
+        String practiceScoreNote = isVact
+                ? msg("attempt.result.vact.practice_score.note", "Không phải điểm V-ACT chính thức", locale)
                 : null;
 
         List<PartResultView> partViews = aggregated.partBreakdowns().stream()
@@ -228,20 +266,17 @@ public class AttemptResultService {
                         toStatsView(p.stats())))
                 .toList();
 
-        List<SubjectResultView> subjectViews = aggregated.subjectBreakdowns().stream()
-                .map(s -> new SubjectResultView(
-                        s.code(),
-                        resolveComponentOrSubjectLabel(s.code(), subjectNamesByCode, locale),
-                        s.pendingReview(),
-                        s.score(),
-                        s.maxScore(),
-                        toStatsView(s.stats())))
-                .toList();
+        // D1 (BS §3 / LT F15 / AC-16): V-ACT must NEVER expose per-component numeric scores in subjects[]
+        List<SubjectResultView> subjectViews = isVact
+                ? List.of()
+                : aggregated.subjectBreakdowns().stream()
+                        .map(s -> toSubjectResultView(s, subjects, locale))
+                        .toList();
 
         List<VactComponentView> vactViews = null;
         if (aggregated.vactComponents() != null) {
             vactViews = aggregated.vactComponents().stream()
-                    .map(c -> toVactComponentView(c, subjectNamesByCode, locale))
+                    .map(c -> toVactComponentView(c, subjects.namesByCode(), locale))
                     .toList();
         }
 
@@ -254,6 +289,7 @@ public class AttemptResultService {
                 attempt.getScope(),
                 attempt.getPartCode(),
                 subjectCode,
+                choices,
                 attempt.getAttemptNo(),
                 attempt.getState(),
                 regrading,
@@ -264,13 +300,13 @@ public class AttemptResultService {
                 attempt.getStartedAt(),
                 attempt.getFinishedAt(),
                 attempt.getGradedAt(),
-                null,
                 aggregated.practiceScoring(),
                 rawScore,
                 displayScore,
                 aggregated.rawMaxScore(),
                 aggregated.scaleMax(),
                 scoreLabel,
+                practiceScoreNote,
                 effectiveResultView,
                 reviewAvailable,
                 attempt.getFaultFlag(),
@@ -283,13 +319,12 @@ public class AttemptResultService {
                 vactViews);
     }
 
-    @Transactional
     public AttemptReviewResponse getReview(UUID attemptId, String partFilter) {
         UUID userId = accessGate.requireLearner();
         Attempt attempt = attemptGuard.requireOwnedAttempt(attemptId, userId);
 
-        String effectiveResultView = attempt.getResultView();
-        if ("SCORE".equals(effectiveResultView)) {
+        String effectiveResultView = AttemptReviewSupport.resolveEffectiveResultView(entitlementPort, attempt);
+        if (!allowsReview(effectiveResultView)) {
             throw new ForbiddenException(
                     "REVIEW_NOT_INCLUDED",
                     msg("REVIEW_NOT_INCLUDED", "Gói lượt thi này không bao gồm quyền xem lại bài làm"));
@@ -300,18 +335,27 @@ public class AttemptResultService {
                     msg("REVIEW_NOT_AVAILABLE", "Chưa thể xem lại bài làm ở trạng thái hiện tại"));
         }
 
+        return readOnlyTx.execute(status -> buildReviewResponse(attempt, effectiveResultView, partFilter));
+    }
+
+    private AttemptReviewResponse buildReviewResponse(
+            Attempt attempt, String effectiveResultView, String partFilter) {
+        UUID attemptId = attempt.getId();
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId);
         AttemptPart selectedPart = resolvePartFilter(parts, partFilter);
         String selectedPartCode = selectedPart != null ? selectedPart.getPartCode() : null;
 
         List<AttemptItem> allItems = loadItemsInPaperOrder(attemptId, parts);
+        Map<UUID, AttemptItem> allItemsById = new HashMap<>(allItems.size() * 2);
+        for (AttemptItem item : allItems) {
+            allItemsById.put(item.getId(), item);
+        }
         Map<UUID, AttemptPart> partById = new HashMap<>(parts.size());
         for (AttemptPart p : parts) {
             partById.put(p.getId(), p);
         }
 
-        List<AttemptItem> inScopeItems = allItems.stream()
-                .filter(AttemptItem::isInScope)
+        List<AttemptItem> inScopeItems = AttemptReviewSupport.filterStudentVisibleItems(allItems).stream()
                 .filter(i -> selectedPart == null || Objects.equals(i.getPartId(), selectedPart.getId()))
                 .toList();
 
@@ -321,17 +365,35 @@ public class AttemptResultService {
                 ? filterAutoGradedForPendingReview(inScopeItems)
                 : inScopeItems;
 
-        Map<VersionKey, JsonNode> snapshots = loadSnapshots(visibleCandidates);
+        Map<VersionKey, JsonNode> snapshots = AttemptReviewSupport.loadSnapshots(
+                visibleCandidates, allItemsById, attemptItemRepository, questionSourcePort);
+
+        Set<VersionKey> attachmentKeys = new LinkedHashSet<>();
+        for (AttemptItem item : visibleCandidates) {
+            attachmentKeys.add(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
+        }
+        Map<VersionKey, List<Attachment>> attachmentsByVersion = attachmentKeys.isEmpty()
+                ? Map.of()
+                : questionAttachmentPort.attachments(attachmentKeys, false);
+
         boolean fullSolution = "FULL_SOLUTION".equals(effectiveResultView);
 
         List<ReviewItemView> itemViews = new ArrayList<>(visibleCandidates.size());
         for (AttemptItem item : visibleCandidates) {
-            JsonNode snapshot = snapshots.get(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
+            VersionKey key = new VersionKey(item.getQuestionId(), item.getQuestionVersionNo());
+            JsonNode snapshot = snapshots.get(key);
             if (snapshot == null) {
-                continue;
+                throw new IllegalStateException(
+                        "Missing issued question snapshot for attempt item "
+                                + item.getId()
+                                + " question="
+                                + item.getQuestionId()
+                                + " v"
+                                + item.getQuestionVersionNo());
             }
             AttemptPart part = partById.get(item.getPartId());
-            itemViews.add(toReviewItemView(attempt, part, item, snapshot, fullSolution));
+            itemViews.add(toReviewItemView(
+                    attempt, part, item, snapshot, attachmentsByVersion.get(key), fullSolution, partialPending));
         }
 
         AggregatedScore agg = ScoreAggregator.aggregate(
@@ -365,10 +427,16 @@ public class AttemptResultService {
                 itemViews);
     }
 
+    static boolean allowsReview(String resultView) {
+        return "SCORE_AND_ANSWERS".equals(resultView) || "FULL_SOLUTION".equals(resultView);
+    }
+
     private List<AttemptItem> filterAutoGradedForPendingReview(List<AttemptItem> items) {
         Set<UUID> nonPendingParents = new HashSet<>();
         for (AttemptItem item : items) {
-            if (item.getParentItemId() != null && item.getOutcome() != ItemOutcome.PENDING_REVIEW) {
+            if (item.getParentItemId() != null
+                    && item.getOutcome() != null
+                    && item.getOutcome() != ItemOutcome.PENDING_REVIEW) {
                 nonPendingParents.add(item.getParentItemId());
             }
         }
@@ -380,7 +448,7 @@ public class AttemptResultService {
                 }
                 continue;
             }
-            if (item.getOutcome() != ItemOutcome.PENDING_REVIEW) {
+            if (item.getOutcome() != null && item.getOutcome() != ItemOutcome.PENDING_REVIEW) {
                 filtered.add(item);
             }
         }
@@ -405,19 +473,29 @@ public class AttemptResultService {
             AttemptPart part,
             AttemptItem item,
             JsonNode snapshot,
-            boolean fullSolution) {
+            List<Attachment> resolvedAttachments,
+            boolean fullSolution,
+            boolean partialPending) {
         UUID attemptId = attempt.getId();
         String content = sanitizer.rewriteAssetUrls(attemptId, textOrNull(snapshot, "content"));
-        List<ReviewAttachmentView> attachments = projectAttachments(attemptId, snapshot);
+        List<ReviewAttachmentView> attachments = projectAttachments(attemptId, snapshot, resolvedAttachments);
         JsonNode body = snapshot.path("body");
         QuestionType type = item.getQuestionType();
 
         ReviewQuestionBody reviewBody = projectReviewBody(attemptId, item, body);
         ReviewExpectedAnswer expectedAnswer = projectExpectedAnswer(type, body);
 
+        boolean partialSetContainer = partialPending
+                && type == QuestionType.QUESTION_SET
+                && (item.getOutcome() == null || item.getOutcome() == ItemOutcome.PENDING_REVIEW);
+
+        BigDecimal earnedPoints = partialSetContainer ? null : item.getEarnedPoints();
+        ItemOutcome outcome = partialSetContainer ? null : item.getOutcome();
+        ReviewGradingDetail gradingDetail = partialSetContainer ? null : projectGradingDetail(item);
+
         String solution = null;
         ReviewEssayFeedback essayFeedback = null;
-        if (fullSolution && item.getOutcome() != ItemOutcome.PENDING_REVIEW) {
+        if (fullSolution && !partialSetContainer && item.getOutcome() != ItemOutcome.PENDING_REVIEW) {
             String rawSolution = textOrNull(snapshot, "solution");
             if (rawSolution != null && !rawSolution.isBlank()) {
                 solution = rewriteSolutionAssetUrls(attemptId, rawSolution);
@@ -444,13 +522,100 @@ public class AttemptResultService {
                 item.getAnswer(),
                 item.getOptionOrder(),
                 item.getPointsMax(),
-                item.getEarnedPoints(),
-                item.getOutcome(),
+                earnedPoints,
+                outcome,
                 item.isFlagged(),
-                item.getGradingDetail(),
+                gradingDetail,
                 expectedAnswer,
                 solution,
                 essayFeedback);
+    }
+
+    private static ReviewGradingDetail projectGradingDetail(AttemptItem item) {
+        Map<String, Object> raw = item.getGradingDetail();
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        QuestionType type = item.getQuestionType();
+        if (type == QuestionType.ESSAY) {
+            Boolean blankEssay = boolVal(raw.get("blankEssay"));
+            Integer wordCount = intVal(raw.get("wordCount"));
+            if (blankEssay == null && wordCount == null) {
+                return null;
+            }
+            return new ReviewGradingDetail(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null,
+                    null, null, null, blankEssay, wordCount);
+        }
+
+        List<ReviewClozeBlankResult> blankResults = null;
+        if (raw.get("blankResults") instanceof List<?> rawBlanks) {
+            List<ReviewClozeBlankResult> parsed = new ArrayList<>(rawBlanks.size());
+            for (Object entry : rawBlanks) {
+                if (entry instanceof Map<?, ?> m) {
+                    ItemOutcome blankOutcome = parseOutcome(m.get("outcome"));
+                    parsed.add(new ReviewClozeBlankResult(
+                            strVal(m.get("id")),
+                            blankOutcome,
+                            toBigDecimalOrNull(m.get("pointsEarned")),
+                            toBigDecimalOrNull(m.get("pointsMax"))));
+                }
+            }
+            blankResults = parsed;
+        }
+
+        List<ReviewStatementResult> statementResults = null;
+        if (raw.get("statementResults") instanceof List<?> rawStmts) {
+            List<ReviewStatementResult> parsed = new ArrayList<>(rawStmts.size());
+            for (Object entry : rawStmts) {
+                if (entry instanceof Map<?, ?> m) {
+                    parsed.add(new ReviewStatementResult(
+                            strVal(m.get("id")),
+                            Boolean.TRUE.equals(boolVal(m.get("answered"))),
+                            Boolean.TRUE.equals(boolVal(m.get("matched")))));
+                }
+            }
+            statementResults = parsed;
+        }
+
+        List<ReviewMatchingPairResult> pairResults = null;
+        if (raw.get("pairResults") instanceof List<?> rawPairs) {
+            List<ReviewMatchingPairResult> parsed = new ArrayList<>(rawPairs.size());
+            for (Object entry : rawPairs) {
+                if (entry instanceof Map<?, ?> m) {
+                    parsed.add(new ReviewMatchingPairResult(
+                            strVal(m.get("leftId")),
+                            Boolean.TRUE.equals(boolVal(m.get("matched"))),
+                            toBigDecimalOrNull(m.get("pointsEarned"))));
+                }
+            }
+            pairResults = parsed;
+        }
+
+        return new ReviewGradingDetail(
+                strVal(raw.get("itemType")),
+                intVal(raw.get("childCount")),
+                strVal(raw.get("selectedOptionId")),
+                strVal(raw.get("scoringRule")),
+                intVal(raw.get("selectedCount")),
+                intVal(raw.get("correctSelectedCount")),
+                intVal(raw.get("wrongSelectedCount")),
+                intVal(raw.get("totalExpectedCount")),
+                boolVal(raw.get("normalizedMatch")),
+                intVal(raw.get("correctUnitCount")),
+                intVal(raw.get("wrongUnitCount")),
+                intVal(raw.get("blankUnitCount")),
+                blankResults,
+                strVal(raw.get("scoringMethod")),
+                intVal(raw.get("matchedCount")),
+                intVal(raw.get("statementCount")),
+                statementResults,
+                boolVal(raw.get("reuseRight")),
+                intVal(raw.get("pairCount")),
+                pairResults,
+                null,
+                null);
     }
 
     private ReviewQuestionBody projectReviewBody(UUID attemptId, AttemptItem item, JsonNode body) {
@@ -578,7 +743,7 @@ public class AttemptResultService {
         return new ReviewEssayFeedback(item.getEarnedPoints(), comment, criteria);
     }
 
-    /** Rewrites admin/placeholder image sources inside solution HTML to solution-assets endpoint (BS §15). */
+    /** Rewrites admin/placeholder asset URLs inside solution HTML to solution-assets endpoint (BS §15). */
     static String rewriteSolutionAssetUrls(UUID attemptId, String html) {
         if (html == null || html.isEmpty()) {
             return html;
@@ -590,31 +755,65 @@ public class AttemptResultService {
         String targetPrefix = "/api/v1/me/attempts/" + attemptId + "/solution-assets/";
         Document doc = Jsoup.parseBodyFragment(html);
         doc.outputSettings(new Document.OutputSettings().prettyPrint(false));
-        for (Element img : doc.select("img")) {
+
+        for (Element img : doc.select("img[data-asset-id]")) {
+            UUID assetId = parseUuidOrNull(img.attr("data-asset-id").trim());
+            if (assetId == null) {
+                continue;
+            }
             String rawSrc = img.attr("src").trim();
-            if (!rawSrc.isEmpty()) {
-                Matcher matcher = ADMIN_ASSET_PATH.matcher(rawSrc);
-                if (matcher.matches()) {
-                    img.attr("src", targetPrefix + matcher.group(1));
-                }
-            } else if (img.hasAttr("data-asset-id")) {
-                UUID assetId = parseUuidOrNull(img.attr("data-asset-id").trim());
-                if (assetId != null) {
+            if (rawSrc.isEmpty() || !rawSrc.startsWith(targetPrefix)) {
+                if (!rawSrc.isEmpty() && rawSrc.toLowerCase(Locale.ROOT).contains(ADMIN_ASSET_PREFIX)) {
+                    String rewritten = ADMIN_ASSET_PATH.matcher(rawSrc)
+                            .replaceAll(mr -> Matcher.quoteReplacement(targetPrefix + mr.group(1)));
+                    img.attr("src", rewritten);
+                } else {
                     img.attr("src", targetPrefix + assetId);
+                }
+            }
+        }
+
+        for (Element element : doc.body().getAllElements()) {
+            for (Attribute attr : element.attributes()) {
+                String trimmed = attr.getValue().trim();
+                if (trimmed.toLowerCase(Locale.ROOT).contains(ADMIN_ASSET_PREFIX)) {
+                    String rewritten = ADMIN_ASSET_PATH.matcher(trimmed)
+                            .replaceAll(mr -> Matcher.quoteReplacement(targetPrefix + mr.group(1)));
+                    if (!rewritten.equals(trimmed)) {
+                        element.attr(attr.getKey(), rewritten);
+                    }
                 }
             }
         }
         return doc.body().html();
     }
 
-    private List<ReviewAttachmentView> projectAttachments(UUID attemptId, JsonNode snapshot) {
-        JsonNode atts = snapshot.path("attachments");
-        if (!atts.isArray() || atts.isEmpty()) {
+    private List<ReviewAttachmentView> projectAttachments(
+            UUID attemptId, JsonNode snapshot, List<Attachment> resolvedAttachments) {
+        if (resolvedAttachments != null && !resolvedAttachments.isEmpty()) {
+            List<ReviewAttachmentView> list = new ArrayList<>(resolvedAttachments.size());
+            for (Attachment att : resolvedAttachments) {
+                if (att == null || att.id() == null) {
+                    continue;
+                }
+                list.add(new ReviewAttachmentView(
+                        att.id(),
+                        att.name(),
+                        att.mime(),
+                        "/api/v1/me/attempts/" + attemptId + "/assets/" + att.id()));
+            }
+            if (!list.isEmpty()) {
+                return list;
+            }
+        }
+
+        JsonNode attachmentIds = snapshot.path("attachmentIds");
+        if (!attachmentIds.isArray() || attachmentIds.isEmpty()) {
             return List.of();
         }
-        List<ReviewAttachmentView> list = new ArrayList<>(atts.size());
-        for (JsonNode node : atts) {
-            UUID assetId = parseUuidOrNull(textOrNull(node, "id"));
+        List<ReviewAttachmentView> list = new ArrayList<>(attachmentIds.size());
+        for (JsonNode node : attachmentIds) {
+            UUID assetId = parseUuidOrNull(node.isTextual() ? node.asText() : textOrNull(node, "id"));
             if (assetId == null) {
                 continue;
             }
@@ -720,34 +919,6 @@ public class AttemptResultService {
         return ordered;
     }
 
-    private Map<VersionKey, JsonNode> loadSnapshots(List<AttemptItem> items) {
-        if (items.isEmpty()) {
-            return Map.of();
-        }
-        Set<VersionKey> keys = new LinkedHashSet<>();
-        for (AttemptItem item : items) {
-            keys.add(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
-        }
-        List<Version> versions = questionSourcePort.loadVersions(List.copyOf(keys));
-        Map<VersionKey, JsonNode> map = new HashMap<>(versions.size() * 2);
-        for (Version version : versions) {
-            if (version == null || version.snapshot() == null) {
-                continue;
-            }
-            map.put(version.key(), version.snapshot());
-            JsonNode children = version.snapshot().path("body").path("children");
-            if (children.isArray()) {
-                for (JsonNode child : children) {
-                    UUID childId = parseUuidOrNull(textOrNull(child, "id"));
-                    if (childId != null) {
-                        map.putIfAbsent(new VersionKey(childId, version.key().versionNo()), child);
-                    }
-                }
-            }
-        }
-        return map;
-    }
-
     private List<AttemptItem> loadItemsInPaperOrder(UUID attemptId, List<AttemptPart> parts) {
         List<AttemptItem> items = new ArrayList<>(attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId));
         Map<UUID, Integer> partOrdById = new HashMap<>(parts.size());
@@ -781,20 +952,48 @@ public class AttemptResultService {
         return sections;
     }
 
-    private Map<String, String> loadSubjectNames(Locale locale) {
-        Map<String, String> map = new HashMap<>();
+    private SubjectCatalog loadSubjectCatalog(Locale locale) {
+        Map<String, String> namesByCode = new HashMap<>();
+        Map<UUID, CatalogItemView> itemsById = new HashMap<>();
         boolean en = "en".equalsIgnoreCase(locale.getLanguage());
         for (CatalogItemView item : catalogLookup.listGroupItems("SUBJECT")) {
-            map.put(item.code(), en && item.nameEn() != null ? item.nameEn() : item.nameVi());
+            itemsById.put(item.id(), item);
+            if (item.code() != null) {
+                namesByCode.put(item.code(), en && item.nameEn() != null ? item.nameEn() : item.nameVi());
+            }
         }
-        return map;
+        return new SubjectCatalog(namesByCode, itemsById);
     }
 
-    private String resolveSubjectCode(UUID subjectItemId, Map<String, String> ignored) {
+    private String resolveSubjectCode(UUID subjectItemId, SubjectCatalog subjects) {
         if (subjectItemId == null) {
             return null;
         }
+        CatalogItemView cached = subjects.itemsById().get(subjectItemId);
+        if (cached != null) {
+            return cached.code();
+        }
         return catalogLookup.findItem(subjectItemId).map(CatalogItemView::code).orElse(null);
+    }
+
+    private SubjectResultView toSubjectResultView(
+            ScoreAggregator.SubjectBreakdown breakdown, SubjectCatalog subjects, Locale locale) {
+        CatalogItemView byId = breakdown.subjectItemId() != null
+                ? subjects.itemsById().get(breakdown.subjectItemId())
+                : null;
+        String resolvedCode = (byId != null && byId.code() != null) ? byId.code() : breakdown.code();
+        String label = resolveComponentOrSubjectLabel(resolvedCode, subjects.namesByCode(), locale);
+        if ((label == null || label.equals(resolvedCode)) && byId != null) {
+            boolean en = "en".equalsIgnoreCase(locale.getLanguage());
+            label = en && byId.nameEn() != null ? byId.nameEn() : byId.nameVi();
+        }
+        return new SubjectResultView(
+                resolvedCode,
+                label,
+                breakdown.pendingReview(),
+                breakdown.score(),
+                breakdown.maxScore(),
+                toStatsView(breakdown.stats()));
     }
 
     private String resolveComponentOrSubjectLabel(
@@ -810,7 +1009,7 @@ public class AttemptResultService {
         return subjectNames.getOrDefault(code, code);
     }
 
-    private VactComponentView toVactComponentView(
+    VactComponentView toVactComponentView(
             VactComponentBreakdown component,
             Map<String, String> subjectNames,
             Locale locale) {
@@ -820,12 +1019,11 @@ public class AttemptResultService {
             subViews = new ArrayList<>(component.subsections().size());
             int index = 0;
             for (VactSubsectionBreakdown sub : component.subsections()) {
-                String label;
-                if (sub.questionCount() == 12 || (component.subsections().size() == 2 && index == 0)) {
-                    label = msg("attempt.result.vact.subsection.logic_data", "Logic và phân tích số liệu");
-                } else {
-                    label = msg("attempt.result.vact.subsection.scientific_reasoning", "Suy luận khoa học");
-                }
+                boolean isLogicData = sub.questionCount() == 12
+                        || (sub.questionCount() != 18 && component.subsections().size() == 2 && index == 0);
+                String label = isLogicData
+                        ? msg("attempt.result.vact.subsection.logic_data", "Logic và phân tích số liệu", locale)
+                        : msg("attempt.result.vact.subsection.scientific_reasoning", "Suy luận khoa học", locale);
                 subViews.add(new VactSubsectionView(
                         sub.sectionId(),
                         label,
@@ -834,7 +1032,8 @@ public class AttemptResultService {
                         sub.partialCount(),
                         sub.wrongCount(),
                         sub.blankCount(),
-                        sub.totalCount()));
+                        sub.totalCount(),
+                        sub.correctRate()));
                 index++;
             }
         }
@@ -846,6 +1045,7 @@ public class AttemptResultService {
                 component.wrongCount(),
                 component.blankCount(),
                 component.totalCount(),
+                component.correctRate(),
                 subViews);
     }
 
@@ -869,7 +1069,11 @@ public class AttemptResultService {
     }
 
     private String msg(String code, String defaultMessage) {
-        return messageSource.getMessage(code, null, defaultMessage, LocaleContextHolder.getLocale());
+        return msg(code, defaultMessage, LocaleContextHolder.getLocale());
+    }
+
+    private String msg(String code, String defaultMessage, Locale locale) {
+        return messageSource.getMessage(code, null, defaultMessage, locale);
     }
 
     private static UnitStatsView toStatsView(UnitStats stats) {
@@ -968,6 +1172,48 @@ public class AttemptResultService {
         } catch (IllegalArgumentException ignored) {
             return null;
         }
+    }
+
+    private static String strVal(Object obj) {
+        return obj != null ? obj.toString() : null;
+    }
+
+    private static Integer intVal(Object obj) {
+        if (obj instanceof Number n) {
+            return n.intValue();
+        }
+        if (obj != null) {
+            try {
+                return Integer.parseInt(obj.toString());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static Boolean boolVal(Object obj) {
+        if (obj instanceof Boolean b) {
+            return b;
+        }
+        if (obj != null) {
+            return Boolean.parseBoolean(obj.toString());
+        }
+        return null;
+    }
+
+    private static ItemOutcome parseOutcome(Object obj) {
+        if (obj instanceof ItemOutcome io) {
+            return io;
+        }
+        if (obj instanceof String s) {
+            try {
+                return ItemOutcome.valueOf(s);
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private static BigDecimal toBigDecimalOrNull(Object obj) {

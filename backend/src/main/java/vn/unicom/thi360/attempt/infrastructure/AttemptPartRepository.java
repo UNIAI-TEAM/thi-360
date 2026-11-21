@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.infrastructure;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,8 @@ public interface AttemptPartRepository extends JpaRepository<AttemptPart, UUID> 
     Optional<AttemptPart> findByIdAndAttemptId(UUID id, UUID attemptId);
 
     List<AttemptPart> findByAttemptIdOrderByOrdAsc(UUID attemptId);
+
+    List<AttemptPart> findByAttemptIdInOrderByOrdAsc(Collection<UUID> attemptIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM AttemptPart p WHERE p.attemptId = :attemptId ORDER BY p.ord ASC")
