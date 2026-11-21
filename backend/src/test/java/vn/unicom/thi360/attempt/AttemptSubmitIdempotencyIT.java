@@ -32,15 +32,19 @@ class AttemptSubmitIdempotencyIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("submit-idem");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "sub-idem", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         AttemptPart p0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).getFirst();
-        UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(p0.getId()).getFirst().getId();
+        var item = singleChoiceItems(p0.getId()).getFirst();
+        UUID itemId = item.getId();
+        String opt0 = item.getOptionOrder().get(0);
+        String opt1 = item.getOptionOrder().get(1);
 
         // 1. Missing and blank Idempotency-Key -> 400 IDEMPOTENCY_KEY_REQUIRED
-        MvcResult missing = performSubmit(userId, attempt.getId(), null, null, null);
+        MvcResult missing = performSubmit(userId, attempt.getId(), null, sid, null);
         assertThat(missing.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(missing).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
 
-        MvcResult blank = performSubmit(userId, attempt.getId(), "   ", null, null);
+        MvcResult blank = performSubmit(userId, attempt.getId(), "   ", sid, null);
         assertThat(blank.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(blank).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
 
@@ -49,8 +53,8 @@ class AttemptSubmitIdempotencyIT extends AbstractAttemptDsIT {
                 new SubmitAttemptRequest(
                         List.of(
                                 new FinalAnswerChange(
-                                        itemId, 1L, new AnswerValue.SingleChoice("opt-1"))));
-        MvcResult first = performSubmit(userId, attempt.getId(), "sub-k1", null, req1);
+                                        itemId, 1L, new AnswerValue.SingleChoice(opt0))));
+        MvcResult first = performSubmit(userId, attempt.getId(), "sub-k1", sid, req1);
         assertThat(first.getResponse().getStatus()).isEqualTo(200);
         String firstBody = first.getResponse().getContentAsString();
         JsonNode firstJson = json(first);
@@ -60,7 +64,7 @@ class AttemptSubmitIdempotencyIT extends AbstractAttemptDsIT {
         assertThat(countOutboxEvents(attempt.getId(), "attempt.finished")).isEqualTo(1);
 
         // 3. Replay same Idempotency-Key + same body -> exact same SubmitAttemptResponse without re-closing
-        MvcResult replay = performSubmit(userId, attempt.getId(), "sub-k1", null, req1);
+        MvcResult replay = performSubmit(userId, attempt.getId(), "sub-k1", sid, req1);
         assertThat(replay.getResponse().getStatus()).isEqualTo(200);
         assertThat(replay.getResponse().getContentAsString()).isEqualTo(firstBody);
         assertThat(countEntitlementUsage(attempt.getId(), "USED")).isEqualTo(1);
@@ -71,13 +75,13 @@ class AttemptSubmitIdempotencyIT extends AbstractAttemptDsIT {
                 new SubmitAttemptRequest(
                         List.of(
                                 new FinalAnswerChange(
-                                        itemId, 2L, new AnswerValue.SingleChoice("opt-2"))));
-        MvcResult conflict = performSubmit(userId, attempt.getId(), "sub-k1", null, req2);
+                                        itemId, 2L, new AnswerValue.SingleChoice(opt1))));
+        MvcResult conflict = performSubmit(userId, attempt.getId(), "sub-k1", sid, req2);
         assertThat(conflict.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(conflict).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
 
         // 5. Different Idempotency-Key after attempt already closed -> 200 recorded state, no second close
-        MvcResult postClose = performSubmit(userId, attempt.getId(), "sub-k2", null, req2);
+        MvcResult postClose = performSubmit(userId, attempt.getId(), "sub-k2", sid, req2);
         assertThat(postClose.getResponse().getStatus()).isEqualTo(200);
         JsonNode postCloseJson = json(postClose);
         assertThat(postCloseJson.path("state").asText()).isEqualTo("GRADING");
@@ -94,45 +98,49 @@ class AttemptSubmitIdempotencyIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("idem-forbid");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "forbid-life", line.entitlementId(), null);
+        UUID hsaSid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        UUID itemId =
-                attemptItemRepository.findByPartIdOrderByOrdAsc(parts.get(0).getId()).getFirst().getId();
+        var item = singleChoiceItems(parts.get(0).getId()).getFirst();
+        UUID itemId = item.getId();
+        String hsaOpt = item.getOptionOrder().getFirst();
 
         MvcResult finRes =
                 performFinishPart(
                         userId,
                         attempt.getId(),
                         parts.get(0).getId(),
-                        null,
+                        hsaSid,
                         new FinishPartRequest(
                                 List.of(
                                         new FinalAnswerChange(
                                                 itemId,
                                                 1L,
-                                                new AnswerValue.SingleChoice("opt-1")))));
+                                                new AnswerValue.SingleChoice(hsaOpt)))));
         assertThat(finRes.getResponse().getStatus()).isEqualTo(200);
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(finRes.getResponse().getContentAsString());
 
         // Also scan submit on a single-part attempt
         GrantOrderResult.Line singleLine = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt single = startAndAwaitOpen(userId, "forbid-sub", singleLine.entitlementId(), null);
+        UUID singleSid = claimSession(userId, single.getId());
         AttemptPart singlePart =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(single.getId()).getFirst();
-        UUID singleItemId =
-                attemptItemRepository.findByPartIdOrderByOrdAsc(singlePart.getId()).getFirst().getId();
+        var singleItem = singleChoiceItems(singlePart.getId()).getFirst();
+        UUID singleItemId = singleItem.getId();
+        String singleOpt = singleItem.getOptionOrder().getFirst();
 
         MvcResult subRes =
                 performSubmit(
                         userId,
                         single.getId(),
                         "forbid-sub-k",
-                        null,
+                        singleSid,
                         new SubmitAttemptRequest(
                                 List.of(
                                         new FinalAnswerChange(
                                                 singleItemId,
                                                 1L,
-                                                new AnswerValue.SingleChoice("opt-1")))));
+                                                new AnswerValue.SingleChoice(singleOpt)))));
         assertThat(subRes.getResponse().getStatus()).isEqualTo(200);
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(subRes.getResponse().getContentAsString());
     }

@@ -176,6 +176,10 @@ public class AttemptItem {
         this.answerReceivedAt = Objects.requireNonNull(receivedAt, "receivedAt must not be null");
     }
 
+    public void setFlagged(boolean flagged) {
+        this.flagged = flagged;
+    }
+
     public UUID getId() {
         return id;
     }

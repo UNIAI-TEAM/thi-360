@@ -78,6 +78,41 @@
         },
         "type" : "object"
       },
+      "AnswerChange" : {
+        "description" : "Thay đổi câu trả lời của một câu hỏi trong lượt thi (LT §7.1)",
+        "properties" : {
+          "answer" : {
+            "description" : "Nội dung câu trả lời; null để xóa đáp án",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ClozeAnswer"
+            }, {
+              "$ref" : "#/components/schemas/EssayAnswer"
+            }, {
+              "$ref" : "#/components/schemas/MatchingAnswer"
+            }, {
+              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
+            }, {
+              "$ref" : "#/components/schemas/ShortAnswerValue"
+            }, {
+              "$ref" : "#/components/schemas/SingleChoiceAnswer"
+            }, {
+              "$ref" : "#/components/schemas/TrueFalseAnswer"
+            } ]
+          },
+          "itemId" : {
+            "description" : "Id câu hỏi trong lượt",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "seq" : {
+            "description" : "Số thứ tự tăng dần của câu",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "itemId", "seq" ],
+        "type" : "object"
+      },
       "AnswerQuota" : {
         "properties" : {
           "answerType" : {
@@ -369,6 +404,22 @@
         },
         "type" : "object"
       },
+      "AttemptPosition" : {
+        "description" : "Vị trí phần hoặc câu đang xem của học viên trong lượt thi (LT §7.1)",
+        "properties" : {
+          "itemId" : {
+            "description" : "Id câu hỏi trong lượt đang xem",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partId" : {
+            "description" : "Id phần thi đang xem",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AttemptPrepareResponse" : {
         "description" : "Thông tin chuẩn bị trước khi bắt đầu lượt thi (LT §5.1)",
         "properties" : {
@@ -494,6 +545,34 @@
         }, {
           "$ref" : "#/components/schemas/Essay"
         } ],
+        "type" : "object"
+      },
+      "AttemptSessionConflictResponse" : {
+        "description" : "Lỗi xung đột phiên sửa bài khi lượt đang mở ở phiên khác (LT §7.1, F10)",
+        "properties" : {
+          "code" : {
+            "example" : "ATTEMPT_OPEN_ELSEWHERE",
+            "type" : "string"
+          },
+          "fieldErrors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            },
+            "type" : "array"
+          },
+          "lastSeenAt" : {
+            "description" : "Thời điểm hoạt động gần nhất của phiên đang giữ quyền sửa",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "fieldErrors", "message", "traceId" ],
         "type" : "object"
       },
       "AttemptStateResponse" : {
@@ -2244,6 +2323,38 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "ClaimSessionRequest" : {
+        "description" : "Yêu cầu nhận hoặc tiếp quản phiên sửa bài của lượt thi (LT §7.1, F10)",
+        "properties" : {
+          "sessionId" : {
+            "description" : "Id phiên sửa đã lưu trên thiết bị (nếu có)",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "takeover" : {
+            "description" : "Đặt true để xác nhận tiếp quản phiên từ thiết bị khác",
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "ClaimSessionResponse" : {
+        "description" : "Phản hồi nhận phiên sửa bài thành công (LT §7.1)",
+        "properties" : {
+          "serverNow" : {
+            "description" : "Giờ máy chủ hiện tại",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "sessionId" : {
+            "description" : "Id phiên sửa đang giữ quyền ghi",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "serverNow", "sessionId" ],
         "type" : "object"
       },
       "ClassDetailResponse" : {
@@ -6876,6 +6987,22 @@
         "required" : [ "attemptId", "attemptState", "closedPart", "results", "serverNow" ],
         "type" : "object"
       },
+      "FlagChange" : {
+        "description" : "Thay đổi cờ đánh dấu xem lại của một câu hỏi trong lượt thi (LT §7.1)",
+        "properties" : {
+          "flagged" : {
+            "description" : "Trạng thái cờ đánh dấu xem lại",
+            "type" : "boolean"
+          },
+          "itemId" : {
+            "description" : "Id câu hỏi trong lượt",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "flagged", "itemId" ],
+        "type" : "object"
+      },
       "FormatFilter" : {
         "description" : "Hình thức; tham số format của danh sách là code (FULL, PART, SUBJECT)",
         "properties" : {
@@ -6904,6 +7031,23 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "HeartbeatResponse" : {
+        "description" : "Phản hồi gia hạn phiên sửa bài (LT §7.1)",
+        "properties" : {
+          "serverNow" : {
+            "description" : "Giờ máy chủ hiện tại",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "description" : "Trạng thái hiện tại của lượt thi",
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "serverNow", "state" ],
         "type" : "object"
       },
       "ImportBatchResponse" : {
@@ -11232,6 +11376,53 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "SaveAnswersRequest" : {
+        "description" : "Yêu cầu lưu nháp câu trả lời, cờ đánh dấu và vị trí đang xem (LT §7.1)",
+        "properties" : {
+          "changes" : {
+            "description" : "Danh sách thay đổi câu trả lời (tối đa 50)",
+            "items" : {
+              "$ref" : "#/components/schemas/AnswerChange"
+            },
+            "maxItems" : 50,
+            "minItems" : 0,
+            "type" : "array"
+          },
+          "flags" : {
+            "description" : "Danh sách thay đổi cờ đánh dấu xem lại (tối đa 50)",
+            "items" : {
+              "$ref" : "#/components/schemas/FlagChange"
+            },
+            "maxItems" : 50,
+            "minItems" : 0,
+            "type" : "array"
+          },
+          "position" : {
+            "$ref" : "#/components/schemas/AttemptPosition",
+            "description" : "Vị trí phần và câu đang xem"
+          }
+        },
+        "type" : "object"
+      },
+      "SaveAnswersResponse" : {
+        "description" : "Kết quả lưu nháp câu trả lời (LT §7.1)",
+        "properties" : {
+          "results" : {
+            "description" : "Kết quả xử lý từng thay đổi theo thứ tự gửi",
+            "items" : {
+              "$ref" : "#/components/schemas/FinalAnswerResult"
+            },
+            "type" : "array"
+          },
+          "serverNow" : {
+            "description" : "Giờ máy chủ hiện tại",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "results", "serverNow" ],
         "type" : "object"
       },
       "SaveQuestionRequest" : {
@@ -38356,6 +38547,494 @@
         "tags" : [ "Attempts" ]
       }
     },
+    "/api/v1/me/attempts/{attemptId}/answers" : {
+      "put" : {
+        "operationId" : "saveAnswers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveAnswersRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SaveAnswersResponse"
+                }
+              }
+            },
+            "description" : "Xử lý từng thay đổi câu trả lời theo seq"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Vượt quá 20 yêu cầu trong 10 giây trên mỗi lượt thi (kèm Retry-After)",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the rate-limit window refills",
+                "schema" : {
+                  "format" : "int32",
+                  "type" : "integer"
+                },
+                "style" : "simple"
+              }
+            }
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lưu nháp câu trả lời theo seq, cờ đánh dấu xem lại và vị trí đang xem",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/assets/{assetId}" : {
+      "get" : {
+        "operationId" : "downloadAttemptAsset",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Nội dung tệp tài nguyên"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải tài nguyên câu hỏi (ảnh, tệp đính kèm) thuộc lượt thi của thí sinh",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/heartbeat" : {
+      "post" : {
+        "operationId" : "heartbeat",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HeartbeatResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật thời điểm hoạt động của phiên sửa bài",
+        "tags" : [ "Attempts" ]
+      }
+    },
     "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice" : {
       "post" : {
         "operationId" : "confirmPartChoice",
@@ -38908,6 +39587,163 @@
           }
         },
         "summary" : "Thử lại sinh đề cho phần thi đang ở trạng thái GENERATION_FAILED",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/session" : {
+      "post" : {
+        "operationId" : "claimSession",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ClaimSessionRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClaimSessionResponse"
+                }
+              }
+            },
+            "description" : "Nhận phiên sửa thành công"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptSessionConflictResponse"
+                }
+              }
+            },
+            "description" : "ATTEMPT_OPEN_ELSEWHERE (kèm lastSeenAt), TIME_UP hoặc ATTEMPT_NOT_OPEN"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Nhận, khôi phục hoặc tiếp quản phiên sửa bài của lượt thi",
         "tags" : [ "Attempts" ]
       }
     },

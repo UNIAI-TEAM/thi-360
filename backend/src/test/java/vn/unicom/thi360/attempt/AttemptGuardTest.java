@@ -20,10 +20,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import vn.unicom.thi360.attempt.application.AttemptAccessGate;
 import vn.unicom.thi360.attempt.application.AttemptGuard;
+import vn.unicom.thi360.attempt.application.AttemptLifecycleService;
 import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
-import vn.unicom.thi360.attempt.application.NoOpAttemptSessionChecker;
+import vn.unicom.thi360.attempt.application.EditSessionService;
 import vn.unicom.thi360.attempt.application.OverdueAttemptCloser;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
@@ -33,12 +37,13 @@ import vn.unicom.thi360.attempt.domain.EndReason;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
+import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptRepository;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.NotFoundException;
 
-/** Unit tests for {@link AttemptGuard} and temporary no-op module ports (AC-33, plan B1). */
+/** Unit tests for {@link AttemptGuard} and {@link EditSessionService} as {@link AttemptSessionChecker} (AC-33, plan B1). */
 class AttemptGuardTest {
 
     private static final Instant NOW = Instant.parse("2026-11-20T10:00:00Z");
@@ -211,27 +216,72 @@ class AttemptGuardTest {
     }
 
     @Test
-    void temporaryNoOpPortsPerformNoSideEffects() {
-        NoOpAttemptSessionChecker noOpSession = new NoOpAttemptSessionChecker();
+    void realEditSessionCheckerEnforcesMatchingSessionInAttemptGuard() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<AttemptLifecycleService> lifecycleProvider = mock(ObjectProvider.class);
+        EditSessionService realSessionChecker = new EditSessionService(
+                mock(AttemptAccessGate.class),
+                attemptRepository,
+                attemptPartRepository,
+                mock(AttemptEventRepository.class),
+                overdueCloser,
+                lifecycleProvider,
+                mock(PlatformTransactionManager.class),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        Attempt starting = startingAttempt(AttemptTiming.PER_PART);
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(starting, null))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_NOT_OPEN");
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(starting, sessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_NOT_OPEN");
+        Attempt aborted = startingAttempt(AttemptTiming.PER_PART);
+        aborted.abort(vn.unicom.thi360.attempt.domain.AbortReason.GENERATION_FAILED, NOW);
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(aborted, null))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_NOT_OPEN");
+
         Attempt attempt = openAttempt(AttemptTiming.PER_PART, null);
         AttemptPart part = openPart(NOW.plusSeconds(60));
 
-        assertThatCode(() -> noOpSession.requireEditSession(attempt, null)).doesNotThrowAnyException();
-        assertThatCode(() -> noOpSession.requireEditSession(attempt, sessionId)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(attempt, null))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_SESSION_REVOKED");
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(attempt, sessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_SESSION_REVOKED");
 
-        AttemptGuard guardWithNoOps = new AttemptGuard(
+        attempt.claimSession(sessionId, NOW.minusSeconds(5));
+        assertThatCode(() -> realSessionChecker.requireEditSession(attempt, sessionId))
+                .doesNotThrowAnyException();
+
+        UUID wrongSessionId = UUID.randomUUID();
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(attempt, wrongSessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_SESSION_REVOKED");
+
+        AttemptGuard guardWithRealSession = new AttemptGuard(
                 attemptRepository,
                 attemptPartRepository,
                 overdueCloser,
-                noOpSession,
+                realSessionChecker,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         when(attemptRepository.existsByIdAndUserId(attemptId, ownerId)).thenReturn(true);
         when(attemptRepository.findByIdAndUserId(attemptId, ownerId)).thenReturn(Optional.of(attempt));
         when(attemptPartRepository.findByIdAndAttemptId(partId, attemptId)).thenReturn(Optional.of(part));
 
-        assertThat(guardWithNoOps.requireEditablePart(attemptId, partId, ownerId, null).part().getState())
+        assertThatThrownBy(() -> guardWithRealSession.requireEditablePart(attemptId, partId, ownerId, wrongSessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_SESSION_REVOKED");
+        assertThat(guardWithRealSession.requireEditablePart(attemptId, partId, ownerId, sessionId).part().getState())
                 .isEqualTo(PartState.OPEN);
-        verify(overdueCloser).closeIfOverdue(attemptId, NOW);
+        verify(overdueCloser, org.mockito.Mockito.times(2)).closeIfOverdue(attemptId, NOW);
+
+        attempt.close(EndReason.SUBMITTED, NOW, NOW);
+        assertThatThrownBy(() -> attempt.touchSession(NOW.plusSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> attempt.updateLastPosition(Map.of("partId", partId.toString()), NOW.plusSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
