@@ -3184,6 +3184,17 @@ export interface components {
              */
             version: number;
         };
+        /** @description Thông tin lựa chọn đã khóa của lượt thi hoặc phần thi */
+        AttemptChoiceSummary: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn đã chọn (nếu có) */
+            subjectCodes?: string[];
+            /** @description Số câu theo từng môn đã chọn (nếu có) */
+            subjectCounts?: {
+                [key: string]: number;
+            };
+        };
         /** @description Một dòng trong lịch sử luyện thi của học viên (LT §11) */
         AttemptHistoryItem: {
             /** @enum {string} */
@@ -3193,7 +3204,7 @@ export interface components {
             /** Format: int32 */
             attemptNo?: number;
             choices?: {
-                [key: string]: Record<string, never>;
+                [key: string]: components["schemas"]["AttemptChoiceSummary"];
             };
             compensated?: boolean;
             displayScore?: number;
@@ -3371,6 +3382,9 @@ export interface components {
             attemptId?: string;
             /** Format: int32 */
             attemptNo?: number;
+            choices?: {
+                [key: string]: components["schemas"]["AttemptChoiceSummary"];
+            };
             compensated?: boolean;
             displayScore?: number;
             /** @enum {string} */
@@ -3388,10 +3402,11 @@ export interface components {
             finishedAt?: string;
             /** Format: date-time */
             gradedAt?: string;
-            gradingError?: string;
             partCode?: string;
             parts?: components["schemas"]["AttemptResultPart"][];
             pendingReviewLabel?: string;
+            /** @description Ghi chú cố định dưới điểm luyện tập V-ACT (BS §3) */
+            practiceScoreNote?: string;
             practiceScoring?: string;
             rawMaxScore?: number;
             rawScore?: number;
@@ -3440,6 +3455,8 @@ export interface components {
             componentCode?: string;
             /** Format: int32 */
             correctCount?: number;
+            /** @description Tỷ lệ đúng (0–100%) */
+            correctRate?: number;
             name?: string;
             /** Format: int32 */
             partialCount?: number;
@@ -3454,6 +3471,8 @@ export interface components {
             blankCount?: number;
             /** Format: int32 */
             correctCount?: number;
+            /** @description Tỷ lệ đúng (0–100%) */
+            correctRate?: number;
             label?: string;
             /** Format: int32 */
             partialCount?: number;
@@ -3507,9 +3526,7 @@ export interface components {
             essayFeedback?: components["schemas"]["AttemptReviewEssayFeedback"];
             expectedAnswer?: components["schemas"]["AttemptReviewExpectedAnswer"];
             flagged?: boolean;
-            gradingDetail?: {
-                [key: string]: Record<string, never>;
-            };
+            gradingDetail?: components["schemas"]["ReviewGradingDetail"];
             /** Format: uuid */
             itemId?: string;
             optionOrder?: string[];
@@ -3571,7 +3588,7 @@ export interface components {
             /** Format: int32 */
             wordLimit?: number;
         };
-        /** @description Xem lại bài làm theo mức result_view (RIGHT_WRONG hoặc FULL_SOLUTION, LT §10.2) */
+        /** @description Xem lại bài làm theo mức result_view (SCORE_AND_ANSWERS hoặc FULL_SOLUTION, LT §10.2) */
         AttemptReviewResponse: {
             /** Format: uuid */
             attemptId?: string;
@@ -9139,6 +9156,60 @@ export interface components {
         RetryPartRequest: {
             /** @description Lý do thử lại tùy chọn */
             reason?: string;
+        };
+        ReviewClozeBlankResult: {
+            id?: string;
+            /** @enum {string} */
+            outcome?: "CORRECT" | "PARTIAL" | "WRONG" | "BLANK" | "PENDING_REVIEW";
+            pointsEarned?: number;
+            pointsMax?: number;
+        };
+        /** @description Chi tiết chấm điểm theo từng ý/ô/cặp của câu hỏi (không chứa nhận xét hay tiêu chí tự luận) */
+        ReviewGradingDetail: {
+            blankEssay?: boolean;
+            blankResults?: components["schemas"]["ReviewClozeBlankResult"][];
+            /** Format: int32 */
+            blankUnitCount?: number;
+            /** Format: int32 */
+            childCount?: number;
+            /** Format: int32 */
+            correctSelectedCount?: number;
+            /** Format: int32 */
+            correctUnitCount?: number;
+            itemType?: string;
+            /** Format: int32 */
+            matchedCount?: number;
+            normalizedMatch?: boolean;
+            /** Format: int32 */
+            pairCount?: number;
+            pairResults?: components["schemas"]["ReviewMatchingPairResult"][];
+            reuseRight?: boolean;
+            scoringMethod?: string;
+            scoringRule?: string;
+            /** Format: int32 */
+            selectedCount?: number;
+            selectedOptionId?: string;
+            /** Format: int32 */
+            statementCount?: number;
+            statementResults?: components["schemas"]["ReviewStatementResult"][];
+            /** Format: int32 */
+            totalExpectedCount?: number;
+            /** Format: int32 */
+            wordCount?: number;
+            /** Format: int32 */
+            wrongSelectedCount?: number;
+            /** Format: int32 */
+            wrongUnitCount?: number;
+        };
+        ReviewMatchingPairResult: {
+            leftId?: string;
+            matched?: boolean;
+            pointsEarned?: number;
+        };
+        ReviewStatementResult: {
+            answered?: boolean;
+            id?: string;
+            matched?: boolean;
         };
         /** @description Chi tiết vai trò kèm danh sách quyền */
         RoleDetailResponse: {
