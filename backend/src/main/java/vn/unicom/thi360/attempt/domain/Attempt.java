@@ -308,12 +308,18 @@ public class Attempt {
 
     /** Refreshes the last-seen timestamp of the current edit session (LT §7.1). */
     public void touchSession(Instant seenAt) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot touch session from state " + this.state);
+        }
         this.editSessionSeenAt = Objects.requireNonNull(seenAt, "seenAt must not be null");
         this.updatedAt = seenAt;
     }
 
     /** Updates the student's last viewed part/item position on an in-progress attempt (LT §7.1). */
     public void updateLastPosition(Map<String, Object> lastPosition, Instant now) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot update position from state " + this.state);
+        }
         this.lastPosition =
                 lastPosition == null ? null : Collections.unmodifiableMap(new LinkedHashMap<>(lastPosition));
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");

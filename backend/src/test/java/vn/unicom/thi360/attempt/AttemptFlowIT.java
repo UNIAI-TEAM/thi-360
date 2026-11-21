@@ -609,30 +609,34 @@ class AttemptFlowIT extends AbstractAttemptDsIT {
         assertThat(skippedFin.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(skippedFin).path("code").asText()).isEqualTo("TIME_UP");
 
-        // 4. Finish and submit on STARTING and ABORTED attempts -> 409 ATTEMPT_NOT_OPEN
+        // 4. Finish and submit on real STARTING and ABORTED attempts (edit_session_id = NULL) -> 409 ATTEMPT_NOT_OPEN
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         GrantOrderResult.Line singleLine = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt single = startAndAwaitOpen(userId, "grd-start-abort", singleLine.entitlementId(), null);
-        UUID singleSid = claimSession(userId, single.getId());
         AttemptPart singleP0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(single.getId()).getFirst();
+        assertThat(single.getEditSessionId()).isNull();
 
         jdbc.update("UPDATE attempt.attempt SET state = 'STARTING' WHERE id = ?", single.getId());
-        MvcResult startingFin = performFinishPart(userId, single.getId(), singleP0.getId(), singleSid, null);
-        assertThat(startingFin.getResponse().getStatus()).isEqualTo(409);
-        assertThat(json(startingFin).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
-        MvcResult startingSub = performSubmit(userId, single.getId(), "grd-st-sub", singleSid, null);
-        assertThat(startingSub.getResponse().getStatus()).isEqualTo(409);
-        assertThat(json(startingSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        for (UUID sidArg : new UUID[] {null, UUID.randomUUID()}) {
+            MvcResult startingFin = performFinishPart(userId, single.getId(), singleP0.getId(), sidArg, null);
+            assertThat(startingFin.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(startingFin).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+            MvcResult startingSub = performSubmit(userId, single.getId(), "grd-st-sub-" + sidArg, sidArg, null);
+            assertThat(startingSub.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(startingSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        }
 
         jdbc.update(
                 "UPDATE attempt.attempt SET state = 'ABORTED', abort_reason = 'GENERATION_FAILED' WHERE id = ?",
                 single.getId());
-        MvcResult abortedFin = performFinishPart(userId, single.getId(), singleP0.getId(), singleSid, null);
-        assertThat(abortedFin.getResponse().getStatus()).isEqualTo(409);
-        assertThat(json(abortedFin).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
-        MvcResult abortedSub = performSubmit(userId, single.getId(), "grd-ab-sub", singleSid, null);
-        assertThat(abortedSub.getResponse().getStatus()).isEqualTo(409);
-        assertThat(json(abortedSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        for (UUID sidArg : new UUID[] {null, UUID.randomUUID()}) {
+            MvcResult abortedFin = performFinishPart(userId, single.getId(), singleP0.getId(), sidArg, null);
+            assertThat(abortedFin.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(abortedFin).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+            MvcResult abortedSub = performSubmit(userId, single.getId(), "grd-ab-sub-" + sidArg, sidArg, null);
+            assertThat(abortedSub.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(abortedSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        }
     }
 
     private UUID publishThptqgMath2025Exam() {

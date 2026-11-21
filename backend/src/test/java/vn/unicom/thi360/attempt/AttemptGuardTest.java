@@ -20,10 +20,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import vn.unicom.thi360.attempt.application.AttemptAccessGate;
 import vn.unicom.thi360.attempt.application.AttemptGuard;
+import vn.unicom.thi360.attempt.application.AttemptLifecycleService;
 import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
 import vn.unicom.thi360.attempt.application.EditSessionService;
 import vn.unicom.thi360.attempt.application.OverdueAttemptCloser;
@@ -215,13 +217,30 @@ class AttemptGuardTest {
 
     @Test
     void realEditSessionCheckerEnforcesMatchingSessionInAttemptGuard() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<AttemptLifecycleService> lifecycleProvider = mock(ObjectProvider.class);
         EditSessionService realSessionChecker = new EditSessionService(
                 mock(AttemptAccessGate.class),
                 attemptRepository,
+                attemptPartRepository,
                 mock(AttemptEventRepository.class),
                 overdueCloser,
+                lifecycleProvider,
                 mock(PlatformTransactionManager.class),
                 Clock.fixed(NOW, ZoneOffset.UTC));
+        Attempt starting = startingAttempt(AttemptTiming.PER_PART);
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(starting, null))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_NOT_OPEN");
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(starting, sessionId))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_NOT_OPEN");
+        Attempt aborted = startingAttempt(AttemptTiming.PER_PART);
+        aborted.abort(vn.unicom.thi360.attempt.domain.AbortReason.GENERATION_FAILED, NOW);
+        assertThatThrownBy(() -> realSessionChecker.requireEditSession(aborted, null))
+                .isInstanceOf(ConflictException.class)
+                .hasFieldOrPropertyWithValue("code", "ATTEMPT_NOT_OPEN");
+
         Attempt attempt = openAttempt(AttemptTiming.PER_PART, null);
         AttemptPart part = openPart(NOW.plusSeconds(60));
 
@@ -257,6 +276,12 @@ class AttemptGuardTest {
         assertThat(guardWithRealSession.requireEditablePart(attemptId, partId, ownerId, sessionId).part().getState())
                 .isEqualTo(PartState.OPEN);
         verify(overdueCloser, org.mockito.Mockito.times(2)).closeIfOverdue(attemptId, NOW);
+
+        attempt.close(EndReason.SUBMITTED, NOW, NOW);
+        assertThatThrownBy(() -> attempt.touchSession(NOW.plusSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> attempt.updateLastPosition(Map.of("partId", partId.toString()), NOW.plusSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
