@@ -467,6 +467,10 @@
     "loading": "Loading",
     "logoMark": "360",
     "notificationsLabel": "Notifications",
+    "offline": {
+      "description": "Check your network connection and try again.",
+      "title": "No connection"
+    },
     "retry": "Retry"
   },
   "errorPage": {
@@ -503,6 +507,103 @@
       "profile": "Profile"
     },
     "register": "Register"
+  },
+  "history": {
+    "actions": {
+      "continue": "Continue",
+      "viewResult": "View result"
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts do not have attempt history on the student portal.",
+      "title": "Administrator account"
+    },
+    "attemptNo": "Attempt {count}",
+    "choiceOptions": {
+      "ANH": "English",
+      "CS": "Computer science",
+      "ENGLISH": "English",
+      "ICT": "Applied informatics",
+      "KH": "Science",
+      "SCIENCE": "Science",
+      "TA": "English"
+    },
+    "columns": {
+      "actions": "Actions",
+      "attemptStarted": "Attempt · Started",
+      "choice": "Selection",
+      "exam": "Exam",
+      "scope": "Scope",
+      "score": "Score",
+      "status": "Status"
+    },
+    "count": "{count, plural, one {# attempt} other {# attempts}}",
+    "empty": {
+      "clearFilters": "Clear filters",
+      "description": "Try another keyword, date range, or remove some filters.",
+      "noAttemptsDescription": "Open an exam in My exams to start practicing. Your completed and active attempts will appear here.",
+      "noAttemptsTitle": "You have no practice attempts yet",
+      "outOfRangeBack": "Back to page 1",
+      "outOfRangeDescription": "There are no attempts on this page. Return to page 1 to see your latest attempts.",
+      "outOfRangeTitle": "No attempts on this page",
+      "title": "No matching attempts found",
+      "toMyExams": "My exams"
+    },
+    "error": {
+      "description": "Your attempts are still safe. Please try again in a few minutes.",
+      "title": "Unable to load practice history"
+    },
+    "examFilterChip": "Exam: <examContent>{name}</examContent>",
+    "examFilterClear": "Clear exam filter",
+    "examFilterUnknown": "Filtered by selected exam",
+    "fault": {
+      "compensated": "This attempt was affected by a system fault; 1 replacement attempt has been granted",
+      "systemFault": "Attempt ended due to a system fault"
+    },
+    "filters": {
+      "clear": "Clear filters",
+      "from": "From date",
+      "kind": "Exam",
+      "kindAll": "All exams",
+      "label": "Filter practice history",
+      "q": "Search by exam name",
+      "qPlaceholder": "For example: HSA full",
+      "scope": "Scope",
+      "scopeAll": "All scopes",
+      "to": "To date"
+    },
+    "listTitle": "Attempts",
+    "loading": "Loading practice history",
+    "noChoice": "—",
+    "noScore": "No score yet",
+    "pageTitle": "Practice history",
+    "paginationLabel": "Practice history pagination",
+    "regradingNote": "Score before regrading",
+    "scopeDetails": {
+      "PART": "Section {code}",
+      "SUBJECT": "Subject {name}"
+    },
+    "scopes": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "stale": {
+      "description": "Could not refresh data; showing the version loaded at {time}.",
+      "descriptionNoTime": "Could not refresh data; showing the previously loaded version.",
+      "title": "Data may be out of date."
+    },
+    "states": {
+      "GRADING": "Grading",
+      "GRADING_ERROR": "Processing result",
+      "IN_PROGRESS": "In progress",
+      "PENDING_REVIEW": "Pending review",
+      "REGRADING": "Regrading",
+      "SCORED": "Scored"
+    },
+    "subtitle": "Your exam attempts, newest first. Select View result to open the exact result for each attempt.",
+    "tableLabel": "Practice history table",
+    "vactPracticeNote": "Practice score"
   },
   "home": {
     "actions": {
@@ -888,6 +989,240 @@
       "99": "Final result from the payment gateway is not available yet.",
       "generic": "The bank or VNPAY declined the transaction."
     }
+  },
+  "result": {
+    "actions": {
+      "myExams": "My exams",
+      "pendingReviewNote": "Essay questions can be reviewed once grading completes.",
+      "reviewAutoGraded": "Review auto-graded questions",
+      "reviewFull": "Review attempt",
+      "scoreOnlyNote": "This exam includes score only and does not include attempt review.",
+      "unavailableNote": "Attempt review is not available in the current state."
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot view student attempt results on this portal.",
+      "title": "Administrator account"
+    },
+    "attemptNo": "Attempt {count}",
+    "backToHistory": "Practice history",
+    "choiceOptions": {
+      "ANH": "English",
+      "CS": "Computer science",
+      "ENGLISH": "English",
+      "ICT": "Applied informatics",
+      "KH": "Science",
+      "SCIENCE": "Science",
+      "TA": "English"
+    },
+    "endReasons": {
+      "CHOICE_TIMEOUT": "Section 3 selection timed out",
+      "FAULT_CLOSED": "Closed due to system fault",
+      "SUBMITTED": "Submitted",
+      "TIME_UP": "Time up"
+    },
+    "errorDescription": "Check your network connection and try again.",
+    "errorTitle": "Unable to load attempt result",
+    "eyebrow": "Attempt result",
+    "fault": {
+      "compensatedBanner": "This attempt was affected by a system fault; 1 replacement attempt has been granted",
+      "faultNoticeBanner": "Attempt ended due to a system fault",
+      "reasonLabel": "Note:"
+    },
+    "grading": {
+      "description": "Your submission has been recorded. The system is calculating your score and this page will update automatically.",
+      "heading": "Grading",
+      "reload": "Reload",
+      "timeoutDescription": "Scoring is taking longer than expected. Your result will appear in Practice history once complete.",
+      "timeoutHeading": "Scoring is still in progress; you can check back later"
+    },
+    "gradingError": {
+      "heading": "Processing result",
+      "message": "Your attempt has been recorded; the result is being processed"
+    },
+    "info": {
+      "attemptNo": "Attempt",
+      "choices": "Selected options",
+      "duration": "Actual duration",
+      "durationHoursMinutes": "{hours} hr {minutes} min",
+      "durationMinutes": "{minutes} min",
+      "durationSeconds": "{seconds} sec",
+      "durationZero": "0 sec",
+      "endReason": "End reason",
+      "examKind": "Exam",
+      "finishedAt": "Finished",
+      "noChoices": "None",
+      "part": "Section",
+      "scope": "Scope",
+      "startedAt": "Started",
+      "subject": "Subject",
+      "title": "Attempt details"
+    },
+    "loading": "Loading attempt result",
+    "notFinished": {
+      "continueAttempt": "Continue attempt",
+      "description": "This attempt is still open or being prepared, so results are not available yet.",
+      "title": "Attempt not finished yet",
+      "toHistory": "Practice history"
+    },
+    "notFound": {
+      "description": "This attempt does not exist or does not belong to the signed-in account.",
+      "eyebrow": "ERROR 404",
+      "title": "Attempt result not found",
+      "toHistory": "Practice history",
+      "toHome": "My exams"
+    },
+    "pageTitle": "Attempt result",
+    "parts": {
+      "description": "Section score is the sum of question points in that section.",
+      "manualChip": "Manual grading",
+      "maxScoreNote": "Section maximum score: {max}.",
+      "partScoreLabel": "Section score",
+      "pendingDescription": "Scores shown for graded sections are section scores only, not the total exam score.",
+      "skippedBadge": "Skipped",
+      "skippedChoiceTimeout": "Section 3 not taken: selection time expired",
+      "skippedFallback": "This section was skipped and scored 0 points.",
+      "skippedFaultClosed": "Section skipped because the attempt closed due to a system fault.",
+      "title": "Section breakdown"
+    },
+    "scopes": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "states": {
+      "GRADING": "Grading",
+      "GRADING_ERROR": "Processing result",
+      "PENDING_REVIEW": "Pending review",
+      "REGRADING": "Regrading",
+      "SCORED": "Scored"
+    },
+    "stats": {
+      "blank": "Blank",
+      "correct": "Correct",
+      "denominator": "Out of {total} required questions.",
+      "partial": "Partial",
+      "pending": "Pending review",
+      "title": "Question statistics",
+      "unitQuestions": "{count, plural, one {# question} other {# questions}}",
+      "wrong": "Wrong"
+    },
+    "subjects": {
+      "columns": {
+        "blank": "Blank",
+        "correct": "Correct",
+        "partial": "Partial",
+        "pending": "Pending review",
+        "score": "Subject score",
+        "subject": "Subject",
+        "wrong": "Wrong"
+      },
+      "description": "Scores by subject taken in this attempt.",
+      "manualChip": "Manual grading",
+      "maxScoreNote": "Max {max}",
+      "pendingDescription": "Scores shown for graded subjects are subject scores only, not the total exam score.",
+      "subjectScoreLabel": "Subject score",
+      "title": "Subject breakdown"
+    },
+    "total": {
+      "pendingDescription": "This exam includes manually graded essay questions. The total score appears once all essays are graded.",
+      "pendingReturnNote": "You may leave this page. Open this attempt from Practice history once grading finishes to view your total score.",
+      "pendingTitle": "Pending review",
+      "regradingNote": "A grader is regrading an essay response. The score shown above is the previous score and may change once regrading finishes.",
+      "scaleDescription": "Total points earned across required questions. Blank questions score 0.",
+      "title": "Total score",
+      "vactScaleDescription": "Practice score scaled from question points to a {scaleMax} scale."
+    },
+    "vact": {
+      "collapseSubsections": "Hide 2 subsections",
+      "components": {
+        "ANH": "English",
+        "SCIENTIFIC_THINKING": "Scientific thinking",
+        "TOAN": "Mathematics",
+        "VIETNAMESE": "Vietnamese"
+      },
+      "componentsCaption": "Correct counts and accuracy rates by component (per-component scores are not displayed).",
+      "componentsTitle": "Performance by component",
+      "correctRatio": "{correct}/{total} correct · {rate}%",
+      "expandSubsections": "Show 2 subsections (12 and 18 questions)",
+      "practiceNote": "Not an official V-ACT score",
+      "scoreLabel": "Practice score",
+      "subsectionQuestions": "{count, plural, one {# question} other {# questions}}",
+      "subsections": {
+        "logicData": "Logic and data analysis",
+        "scientificReasoning": "Scientific reasoning"
+      }
+    }
+  },
+  "review": {
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot review student attempts on this portal.",
+      "title": "Administrator account"
+    },
+    "backToResult": "Back to result",
+    "emptyPart": {
+      "description": "This section does not have any questions available to review.",
+      "title": "No questions in this section"
+    },
+    "errorDescription": "Check your network connection and try again.",
+    "errorTitle": "Unable to load attempt review",
+    "essayCriteria": {
+      "commentCol": "Criterion comment",
+      "criterionCol": "Criterion",
+      "criterionFallback": "Criterion {index}",
+      "pointsCol": "Score",
+      "pointsValue": "{points} pts",
+      "title": "Criterion breakdown"
+    },
+    "loading": "Loading attempt review",
+    "nav": {
+      "currentItem": "current",
+      "next": "Next",
+      "paletteItemAria": "{label}, {outcome}",
+      "paletteLegend": "Question status legend",
+      "paletteSummary": "Correct {correct} · Partial {partial} · Wrong {wrong} · Blank {blank}",
+      "paletteTitle": "Question list",
+      "partsLabel": "Exam sections",
+      "prev": "Previous",
+      "skippedPartBadge": "Skipped"
+    },
+    "notAvailable": {
+      "backToResult": "Back to result",
+      "description": "The result for this attempt is not ready yet. You can review your attempt once grading completes.",
+      "title": "Attempt review is not available yet"
+    },
+    "notFound": {
+      "description": "This attempt does not exist or does not belong to the signed-in account.",
+      "eyebrow": "ERROR 404",
+      "title": "Attempt review not found",
+      "toHistory": "Practice history",
+      "toHome": "My exams"
+    },
+    "notIncluded": {
+      "backToResult": "Back to result",
+      "description": "The exam package you purchased includes score only. You can still view your score on the result page.",
+      "title": "This exam does not include attempt review"
+    },
+    "outcomes": {
+      "BLANK": "blank",
+      "CORRECT": "correct",
+      "PARTIAL": "partial",
+      "PENDING_REVIEW": "pending review",
+      "WRONG": "wrong"
+    },
+    "pageTitle": "Review attempt",
+    "pendingBanner": "This attempt still has essay questions pending manual grading. Only auto-graded questions are shown until grading completes.",
+    "questionLabel": "Question {no}",
+    "questionRangeLabel": "Questions {from}–{to}",
+    "scoreOnlyNotice": "Solutions are not included in your purchased tier.",
+    "skippedPart": {
+      "description": "This section was skipped, so there are no questions to review. Section score: {score}/{max}.",
+      "descriptionNoScore": "This section was skipped, so there are no questions to review.",
+      "title": "This section was skipped"
+    },
+    "subtitle": "{examName} · {scope} · Attempt {attemptNo}",
+    "subtitleWithScore": "{examName} · {scope} · Attempt {attemptNo} · Total score {score}/{max}"
   },
   "storefront": {
     "access": {
