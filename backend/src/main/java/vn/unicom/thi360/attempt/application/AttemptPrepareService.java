@@ -2,18 +2,22 @@ package vn.unicom.thi360.attempt.application;
 
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.ExamKindView;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.GrantSourceView;
+import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.ListeningPolicyView;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.OmittedGroupView;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.OpenAttemptView;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.SubjectView;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
@@ -23,7 +27,11 @@ import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.commerce.spi.EntitlementDescription;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.BlockSummary;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Section;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.shared.api.NotFoundException;
 
@@ -104,6 +112,8 @@ public class AttemptPrepareService {
                         .toList();
 
         AttemptTiming timing = AttemptTiming.valueOf(version.timing());
+        List<String> answerFormats = deriveAnswerFormats(version);
+        ListeningPolicyView listeningPolicy = deriveListeningPolicy(version);
         return new AttemptPrepareResponse(
                 entitlementId,
                 serving.examId(),
@@ -125,7 +135,65 @@ public class AttemptPrepareService {
                 omittedGroups,
                 structure.parts(),
                 structure.preChoice(),
-                structure.afterStartChoices());
+                structure.afterStartChoices(),
+                answerFormats,
+                listeningPolicy);
+    }
+
+    private static List<String> deriveAnswerFormats(PublishedVersion version) {
+        if (version.parts() == null) {
+            return List.of();
+        }
+        Set<String> formats = new LinkedHashSet<>();
+        for (Part part : version.parts()) {
+            if (part.blocks() == null) {
+                continue;
+            }
+            for (BlockSummary block : part.blocks()) {
+                if (block.omitted()) {
+                    continue;
+                }
+                String format =
+                        block.childAnswerType() != null && !block.childAnswerType().isBlank()
+                                ? block.childAnswerType()
+                                : block.questionType();
+                if (format != null && !format.isBlank()) {
+                    formats.add(format);
+                }
+            }
+        }
+        return List.copyOf(formats);
+    }
+
+    private static ListeningPolicyView deriveListeningPolicy(PublishedVersion version) {
+        if (version.parts() == null) {
+            return null;
+        }
+        for (Part part : version.parts()) {
+            if (hasRequiredAudio(part.sections()) || hasRequiredAudio(part.subjectPool())) {
+                return new ListeningPolicyView(AttemptAudioPlay.MAX_PLAYS, false);
+            }
+            if (part.options() != null) {
+                for (Option option : part.options()) {
+                    if (hasRequiredAudio(option.sections())) {
+                        return new ListeningPolicyView(AttemptAudioPlay.MAX_PLAYS, false);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasRequiredAudio(List<Section> sections) {
+        if (sections == null) {
+            return false;
+        }
+        for (Section section : sections) {
+            if ("REQUIRED".equalsIgnoreCase(section.audioRequirement())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ExamKindView resolveExamKind(PublishedVersion version) {

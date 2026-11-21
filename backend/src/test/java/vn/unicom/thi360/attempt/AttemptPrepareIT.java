@@ -255,4 +255,40 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         assertThat(manageRes.getResponse().getStatus()).isEqualTo(403);
         assertThat(json(manageRes).path("code").asText()).isEqualTo("ATTEMPT_ACCESS_FORBIDDEN");
     }
+
+    @Test
+    void listeningPolicyOnlyWithAudio() throws Exception {
+        UUID userId = createStudent("prep-audio-policy");
+
+        for (String audioExamCode : List.of("DS-HSCA-ANH", "DS-HSCA-ANH-MINI")) {
+            GrantOrderResult.Line line = grant(userId, audioExamCode, 2, List.of());
+            MvcResult res = performPrepare(userId, line.entitlementId());
+            assertThat(res.getResponse().getStatus()).isEqualTo(200);
+            JsonNode body = json(res);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(body);
+            assertThat(body.path("listeningPolicy").path("maxPlays").asInt()).isEqualTo(2);
+            assertThat(body.path("listeningPolicy").path("seekable").asBoolean()).isFalse();
+            List<String> formats = new java.util.ArrayList<>();
+            body.path("answerFormats").forEach(n -> formats.add(n.asText()));
+            assertThat(formats).containsExactly("SINGLE_CHOICE");
+        }
+
+        for (String nonAudioExamCode :
+                List.of("DS-HSCA-TOAN", "DS-VSAT-TOAN", "DS-HSA-PART-MATH-MINI", "DS-VSAT-VAN")) {
+            GrantOrderResult.Line line = grant(userId, nonAudioExamCode, 2, List.of());
+            MvcResult res = performPrepare(userId, line.entitlementId());
+            assertThat(res.getResponse().getStatus()).isEqualTo(200);
+            JsonNode body = json(res);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(body);
+            assertThat(body.path("listeningPolicy").isNull())
+                    .as("listeningPolicy for %s", nonAudioExamCode)
+                    .isTrue();
+            List<String> formats = new java.util.ArrayList<>();
+            body.path("answerFormats").forEach(n -> formats.add(n.asText()));
+            assertThat(formats).as("answerFormats for %s", nonAudioExamCode).isNotEmpty();
+            if ("DS-VSAT-VAN".equals(nonAudioExamCode)) {
+                assertThat(formats).doesNotContain("ESSAY");
+            }
+        }
+    }
 }
