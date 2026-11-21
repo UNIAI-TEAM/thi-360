@@ -370,8 +370,8 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
 
     @Test
     void reaggregateLockedAttemptRollsUpQuestionSetAndSerializesUnderLock() throws Exception {
-        // R1-27 / R1-34: finalizing an ESSAY child inside a QUESTION_SET updates parent row via
-        // reaggregateLockedAttempt, and concurrent grading + reaggregateLockedAttempt stay serialized under FOR UPDATE
+        // R1-27 / R1-34 / R2-5: finalizing an ESSAY child inside a QUESTION_SET updates parent row via
+        // reaggregateLockedAttempt, and concurrent regradeAttempt + reaggregateLockedAttempt stay serialized under FOR UPDATE
         UUID student = createStudent("grading-reaggregate-set");
         GrantOrderResult.Line grant = grant(student, "DS-BCA-FULL-MINI", 2, List.of());
         Attempt attempt = startOpen(student, grant.entitlementId(), new PreChoiceInput("CA2", null));
@@ -413,7 +413,7 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
                 essayItem.getPointsMax());
         jdbc.update("UPDATE attempt.attempt_item SET parent_item_id = ? WHERE id = ?", setParentId, essayItem.getId());
 
-        // Finalize the essay child and invoke reaggregateLockedAttempt concurrently with gradeFinishedAttempt
+        // Finalize the essay child and invoke reaggregateLockedAttempt concurrently with mutating regradeAttempt
         jdbc.update(
                 """
                         UPDATE attempt.attempt_item
@@ -440,19 +440,19 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
                     attemptGradingService.reaggregateLockedAttempt(locked, Instant.now());
                 });
             });
-            Future<?> gradeFuture = pool.submit(() -> {
+            Future<?> regradeFuture = pool.submit(() -> {
                 ready.countDown();
                 try {
                     go.await();
                 } catch (InterruptedException ignored) {
                     Thread.currentThread().interrupt();
                 }
-                attemptGradingService.gradeFinishedAttempt(attempt.getId());
+                attemptGradingService.regradeAttempt(attempt.getId());
             });
             ready.await();
             go.countDown();
             reaggregateFuture.get();
-            gradeFuture.get();
+            regradeFuture.get();
         } finally {
             pool.shutdownNow();
         }
@@ -461,9 +461,15 @@ class AttemptGradingIT extends AbstractAttemptDsIT {
         assertThat(updatedParent.getOutcome()).isEqualTo(ItemOutcome.PARTIAL);
         assertThat(updatedParent.getEarnedPoints()).isEqualByComparingTo("15.00");
 
+        AttemptItem updatedEssay = attemptItemRepository.findById(essayItem.getId()).orElseThrow();
+        assertThat(updatedEssay.getOutcome()).isEqualTo(ItemOutcome.PARTIAL);
+        assertThat(updatedEssay.getEarnedPoints()).isEqualByComparingTo("15.00");
+
         Attempt finalAttempt = attemptRepository.findById(attempt.getId()).orElseThrow();
         assertThat(finalAttempt.getState()).isEqualTo(AttemptState.SCORED);
         assertThat(finalAttempt.getRawScore()).isEqualByComparingTo("15.00");
+        assertThat(attemptEventRepository.existsByAttemptIdAndType(attempt.getId(), AttemptEventType.REGRADED))
+                .isTrue();
     }
 
     @Test

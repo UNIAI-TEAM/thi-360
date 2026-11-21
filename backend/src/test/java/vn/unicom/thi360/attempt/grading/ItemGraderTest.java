@@ -490,6 +490,21 @@ class ItemGraderTest {
         assertThat(clampedCountTable.earnedPoints()).isEqualByComparingTo("4.0");
         assertThat(clampedCountTable.outcome()).isEqualTo(ItemOutcome.CORRECT);
 
+        // R2-2: matchedCount < count with earned >= effectiveMax stays PARTIAL, never CORRECT
+        ItemGradeResult clampedPartialGreater = ItemGrader.grade(
+                QuestionType.TRUE_FALSE, customTableSnapshot,
+                new AnswerValue.TrueFalse(Map.of("a", true, "b", false, "c", true)),
+                new BigDecimal("2.0"), GradingPolicy.standard());
+        assertThat(clampedPartialGreater.earnedPoints()).isEqualByComparingTo("2.0");
+        assertThat(clampedPartialGreater.outcome()).isEqualTo(ItemOutcome.PARTIAL);
+
+        ItemGradeResult clampedPartialEqual = ItemGrader.grade(
+                QuestionType.TRUE_FALSE, customTableSnapshot,
+                new AnswerValue.TrueFalse(Map.of("a", true, "b", false, "c", true)),
+                new BigDecimal("3.0"), GradingPolicy.standard());
+        assertThat(clampedPartialEqual.earnedPoints()).isEqualByComparingTo("3.0");
+        assertThat(clampedPartialEqual.outcome()).isEqualTo(ItemOutcome.PARTIAL);
+
         // R1-38: missing scoreTable with statementCount != 4 fails fast
         JsonNode invalidCountTableSnapshot = MAPPER.readTree("""
                 {
@@ -598,6 +613,25 @@ class ItemGraderTest {
                 GradingPolicy.standard());
         assertThat(clampedMatching.outcome()).isEqualTo(ItemOutcome.CORRECT);
         assertThat(clampedMatching.earnedPoints()).isEqualByComparingTo("1.50");
+
+        // R2-3: matchedCount < pairCount with earned >= effectiveMax stays PARTIAL, never CORRECT
+        ItemGradeResult clampedPartialGreater = ItemGrader.grade(
+                QuestionType.MATCHING,
+                noReuseSnapshot,
+                new AnswerValue.Matching(Map.of("l1", "r1")),
+                new BigDecimal("0.8"),
+                GradingPolicy.standard());
+        assertThat(clampedPartialGreater.earnedPoints()).isEqualByComparingTo("0.80");
+        assertThat(clampedPartialGreater.outcome()).isEqualTo(ItemOutcome.PARTIAL);
+
+        ItemGradeResult clampedPartialEqual = ItemGrader.grade(
+                QuestionType.MATCHING,
+                noReuseSnapshot,
+                new AnswerValue.Matching(Map.of("l1", "r1")),
+                new BigDecimal("1.0"),
+                GradingPolicy.standard());
+        assertThat(clampedPartialEqual.earnedPoints()).isEqualByComparingTo("1.00");
+        assertThat(clampedPartialEqual.outcome()).isEqualTo(ItemOutcome.PARTIAL);
     }
 
     @Test

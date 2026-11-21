@@ -420,8 +420,6 @@ public final class ItemGrader {
         ItemOutcome outcome;
         if (matchedCount == count && (maxRational.isZero() || clampedEarned.compareTo(maxRational) >= 0)) {
             outcome = ItemOutcome.CORRECT;
-        } else if (maxRational.isPositive() && clampedEarned.compareTo(maxRational) >= 0) {
-            outcome = ItemOutcome.CORRECT;
         } else if (clampedEarned.isZero()) {
             outcome = ItemOutcome.WRONG;
         } else {
@@ -527,8 +525,6 @@ public final class ItemGrader {
         ExactRational clampedEarned = clampEarned(totalEarned, maxRational);
         ItemOutcome outcome;
         if (matchedCount == pairCount && (maxRational.isZero() || clampedEarned.compareTo(maxRational) >= 0)) {
-            outcome = ItemOutcome.CORRECT;
-        } else if (maxRational.isPositive() && clampedEarned.compareTo(maxRational) >= 0) {
             outcome = ItemOutcome.CORRECT;
         } else if (clampedEarned.isZero()) {
             outcome = ItemOutcome.WRONG;

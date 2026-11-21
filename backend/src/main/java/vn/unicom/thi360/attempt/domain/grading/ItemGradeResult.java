@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.domain.grading;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import vn.unicom.thi360.attempt.domain.ItemOutcome;
@@ -26,7 +27,20 @@ public record ItemGradeResult(
     public ItemGradeResult {
         Objects.requireNonNull(pointsMax, "pointsMax must not be null");
         Objects.requireNonNull(outcome, "outcome must not be null");
-        gradingDetail = gradingDetail == null ? Map.of() : Map.copyOf(gradingDetail);
+        gradingDetail = sanitizeDetail(gradingDetail);
+    }
+
+    private static Map<String, Object> sanitizeDetail(Map<String, Object> detail) {
+        if (detail == null || detail.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> filtered = new LinkedHashMap<>(detail.size());
+        for (Map.Entry<String, Object> entry : detail.entrySet()) {
+            if (entry.getKey() != null && entry.getValue() != null) {
+                filtered.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return filtered.isEmpty() ? Map.of() : Map.copyOf(filtered);
     }
 
     public static ItemGradeResult pendingReview(BigDecimal pointsMax, Map<String, Object> detail) {
