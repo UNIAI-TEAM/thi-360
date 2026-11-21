@@ -18,7 +18,7 @@ import {
   type MatrixLang,
 } from "./helpers/visual-matrix";
 
-test.setTimeout(420_000);
+test.setTimeout(120_000);
 
 let browser: Browser;
 let playerCookies: SessionCookies;
@@ -47,9 +47,13 @@ async function openCell(
 }
 
 async function waitForDialogSettled(page: Page): Promise<void> {
-  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 20_000 });
+  const dialogs = page.getByRole("dialog");
+  await expect(dialogs).toHaveCount(1, { timeout: 20_000 });
+  await expect(dialogs.last()).toBeVisible({ timeout: 20_000 });
   await page.waitForFunction(() => {
-    const el = document.querySelector('[role="dialog"]');
+    const els = document.querySelectorAll('[role="dialog"]');
+    if (els.length !== 1) return false;
+    const el = els[0];
     if (!el) return false;
     const opacity = Number.parseFloat(getComputedStyle(el).opacity);
     return (
@@ -71,14 +75,58 @@ async function ensureActivePlayerSession(page: Page, lang: MatrixLang): Promise<
     name: lang === "en" ? "Continue here" : "Tiếp tục tại đây",
   });
 
-  await expect(readyAction.or(partChoiceHeading).or(takeoverBtn)).toBeVisible({ timeout: 25_000 });
+  await expect
+    .poll(
+      async () => {
+        if (await takeoverBtn.isVisible()) return "takeover";
+        if (await partChoiceHeading.isVisible()) return "part-choice";
+        if ((await readyAction.isVisible()) && (await readyAction.isEnabled())) return "ready";
+        return "pending";
+      },
+      { timeout: 25_000 },
+    )
+    .not.toBe("pending");
+
   if (await takeoverBtn.isVisible()) {
+    const takeoverSessionPromise = page
+      .waitForResponse(
+        (res) => res.url().includes("/session") && res.request().method() === "POST",
+        { timeout: 20_000 },
+      )
+      .catch(() => null);
     await takeoverBtn.click();
-    await expect(readyAction.or(partChoiceHeading)).toBeVisible({ timeout: 20_000 });
+    await takeoverSessionPromise;
+    await expect(takeoverBtn).toBeHidden({ timeout: 20_000 });
+    await expect
+      .poll(
+        async () =>
+          (await partChoiceHeading.isVisible()) ||
+          ((await readyAction.isVisible()) && (await readyAction.isEnabled())),
+        { timeout: 20_000 },
+      )
+      .toBe(true);
   }
 }
 
+async function gotoAttemptAndEnsureActive(
+  page: Page,
+  attemptId: string,
+  lang: MatrixLang,
+): Promise<void> {
+  const sessionPathFragment = `/api/v1/me/attempts/${encodeURIComponent(attemptId)}/session`;
+  const initialSessionPromise = page.waitForResponse(
+    (res) => res.url().includes(sessionPathFragment) && res.request().method() === "POST",
+    { timeout: 25_000 },
+  );
+  await Promise.all([
+    initialSessionPromise,
+    page.goto(`${WEB_URL}/attempts/${encodeURIComponent(attemptId)}`),
+  ]);
+  await ensureActivePlayerSession(page, lang);
+}
+
 test.beforeAll(async () => {
+  test.setTimeout(300_000);
   browser = await launchMatrixBrowser();
 
   const adminCtx = await browser.newContext();
@@ -193,8 +241,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
           await expectMatrixClean(page, "waiting", cell);
           await page.unroute(`**/api/v1/me/attempts/${playerAttemptId}`);
 
-          await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(playerAttemptId)}`);
-          await ensureActivePlayerSession(page, cell.lang);
+          await gotoAttemptAndEnsureActive(page, playerAttemptId, cell.lang);
           await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
           await expectMatrixClean(page, "player", cell);
 
@@ -206,8 +253,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
             .getByRole("button", { name: cell.lang === "en" ? "Keep working" : "Quay lại làm tiếp" })
             .click();
 
-          await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(submitAttemptId)}`);
-          await ensureActivePlayerSession(page, cell.lang);
+          await gotoAttemptAndEnsureActive(page, submitAttemptId, cell.lang);
           await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
           await page.getByRole("button", { name: cell.lang === "en" ? "Submit exam" : "Nộp bài" }).click();
           await waitForDialogSettled(page);
@@ -237,14 +283,15 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
       {
         const { context, page } = await openCell(cell, partChoiceCookies);
         try {
-          await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(partChoiceAttemptId)}`);
-          await ensureActivePlayerSession(page, cell.lang);
+          await gotoAttemptAndEnsureActive(page, partChoiceAttemptId, cell.lang);
           await expect(
             page.getByRole("heading", {
               name: cell.lang === "en" ? "Choose the third section" : "Chọn phần thi thứ ba",
             }),
           ).toBeVisible({ timeout: 20_000 });
-          await page.locator('input[type="radio"][name="attempt-part-choice"][value="SCIENCE"]').check();
+          const scienceRadio = page.locator('input[type="radio"][name="attempt-part-choice"][value="SCIENCE"]');
+          await expect(scienceRadio).toBeEnabled({ timeout: 20_000 });
+          await scienceRadio.check();
           await expectMatrixClean(page, "part-choice", cell);
         } finally {
           await context.close();

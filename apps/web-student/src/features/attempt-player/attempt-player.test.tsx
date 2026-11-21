@@ -1747,4 +1747,151 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
     tab2.unmount();
     tab1.unmount();
   });
+
+  it("khóa Nộp bài và Hoàn thành phần khi claimEditSession đang pending (claiming), mở khóa khi active và không chồng hộp thoại khi conflict (VIS-R4-1)", async () => {
+    let resolveActiveClaim!: (value: { conflict: false; sessionId: string; serverNow: string }) => void;
+    const pendingActiveClaim = new Promise<{ conflict: false; sessionId: string; serverNow: string }>(
+      (resolve) => {
+        resolveActiveClaim = resolve;
+      },
+    );
+
+    const singlePartState: AttemptStateResponse = {
+      attemptId: "att-vis-r4-active",
+      state: "IN_PROGRESS",
+      navigationMode: "FREE",
+      timing: "SHARED",
+      deadlineAt: "2026-11-21T11:00:00Z",
+      examName: "Đề kiểm tra claiming",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "OPEN",
+          items: [makeOpenMcqItem("q-r4-1", 1, "Câu chờ phiên sửa")],
+        },
+      ],
+    };
+
+    const activeView = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vis-r4-active"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => singlePartState),
+          claimEditSessionFn: vi.fn(() => pendingActiveClaim),
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu chờ phiên sửa")).toBeInTheDocument();
+    const submitBtn = screen.getByRole("button", { name: "Nộp bài" });
+    expect(submitBtn).toBeDisabled();
+
+    // Clicking disabled Submit during claiming must not open SubmitConfirmDialog
+    fireEvent.click(submitBtn);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveActiveClaim({
+        conflict: false,
+        sessionId: "sess-active",
+        serverNow: "2026-11-21T10:00:01Z",
+      });
+    });
+
+    await waitFor(() => expect(submitBtn).toBeEnabled());
+    activeView.unmount();
+
+    // Conflict flow: Finish section stays disabled during claiming, and TakeoverDialog opens alone on conflict: true
+    let resolveConflictClaim!: (value: {
+      conflict: true;
+      code: string;
+      message: string;
+      lastSeenAt?: string;
+    }) => void;
+    const pendingConflictClaim = new Promise<{
+      conflict: true;
+      code: string;
+      message: string;
+      lastSeenAt?: string;
+    }>((resolve) => {
+      resolveConflictClaim = resolve;
+    });
+
+    const seqMultiPartState: AttemptStateResponse = {
+      attemptId: "att-vis-r4-conflict",
+      state: "IN_PROGRESS",
+      navigationMode: "SEQUENTIAL",
+      timing: "PER_PART",
+      examName: "Đề kiểm tra xung đột phiên",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "OPEN",
+          items: [makeOpenMcqItem("q-r4-2", 1, "Câu chờ kiểm tra conflict")],
+        },
+        {
+          ord: 2,
+          partId: "p2",
+          partName: "Phần 2",
+          state: "PENDING",
+          items: [],
+        },
+      ],
+    };
+
+    const conflictView = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vis-r4-conflict"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => seqMultiPartState),
+          claimEditSessionFn: vi.fn(() => pendingConflictClaim),
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu chờ kiểm tra conflict")).toBeInTheDocument();
+    const finishBtn = screen.getByRole("button", { name: "Hoàn thành phần" });
+    expect(finishBtn).toBeDisabled();
+
+    await act(async () => {
+      resolveConflictClaim({
+        conflict: true,
+        code: "ATTEMPT_OPEN_ELSEWHERE",
+        message: "Open elsewhere",
+        lastSeenAt: "2026-11-21T09:59:00Z",
+      });
+    });
+
+    expect(await screen.findByRole("heading", { name: "Bài thi đang mở ở một phiên khác" })).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Nộp bài?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Hoàn thành phần?" })).not.toBeInTheDocument();
+    expect(finishBtn).toBeDisabled();
+    conflictView.unmount();
+
+    // Error status keeps Submit clickable for offline reconciliation (AC-19)
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vis-r4-err"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => singlePartState),
+          claimEditSessionFn: vi.fn(async () => {
+            throw new Error("Offline during claim");
+          }),
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu chờ phiên sửa")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nộp bài" })).toBeEnabled());
+  });
 });

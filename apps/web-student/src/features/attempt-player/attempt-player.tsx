@@ -510,6 +510,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         if (cancelled) return;
         sessionSnapRef.current = snap;
         setSessionSnap(snap);
+        if (snap.status === "takeover_required") {
+          setFinishDialogOpen(false);
+          setSubmitDialogOpen(false);
+        }
         if (snap.status === "active" && saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
           void saveQueueRef.current.flushNow();
         }
@@ -896,6 +900,8 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
 
   const isSecondaryTab = tabRole === "secondary_readonly";
   const isEvicted = sessionSnap.status === "evicted";
+  const isSessionClaimPending =
+    tabRole === "acquiring" || sessionSnap.status === "idle" || sessionSnap.status === "claiming";
   const isSessionLocked =
     isSecondaryTab ||
     isEvicted ||
@@ -1640,7 +1646,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                 variant="secondary"
                 size="sm"
                 className="pointer-coarse:min-h-11"
-                disabled={isReadOnly}
+                disabled={isReadOnly || isSessionClaimPending}
                 onClick={() => {
                   setFinishDialogStatus("idle");
                   setFinishDialogOpen(true);
@@ -1656,7 +1662,12 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                 variant="primary"
                 size="sm"
                 className="pointer-coarse:min-h-11"
-                disabled={isSecondaryTab || isEvicted || sessionSnap.status === "takeover_required"}
+                disabled={
+                  isSecondaryTab ||
+                  isEvicted ||
+                  isSessionClaimPending ||
+                  sessionSnap.status === "takeover_required"
+                }
                 onClick={() => {
                   setSubmitDialogStatus("idle");
                   setSubmitDialogOpen(true);
@@ -1852,7 +1863,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       />
 
       <FinishPartDialog
-        open={finishDialogOpen}
+        open={finishDialogOpen && sessionSnap.status !== "takeover_required"}
         onOpenChange={setFinishDialogOpen}
         partName={
           activePart
@@ -1869,7 +1880,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       />
 
       <SubmitConfirmDialog
-        open={submitDialogOpen}
+        open={submitDialogOpen && sessionSnap.status !== "takeover_required"}
         onOpenChange={setSubmitDialogOpen}
         answeredCount={totalAnswered}
         partialCount={totalPartial}

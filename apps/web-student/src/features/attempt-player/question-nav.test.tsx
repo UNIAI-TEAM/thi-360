@@ -100,7 +100,7 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(screen.getAllByRole("button", { name: /^16,/ })).toHaveLength(1);
 
     // Opening mobile drawer unmounts desktop grid and mounts modal dialog grid (still single DOM)
-    await user.click(screen.getByRole("button", { name: /Danh sách câu \(16\/4\)/ }));
+    await user.click(screen.getByRole("button", { name: /Danh sách câu 16\/4/ }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^16,/ })).toHaveLength(1);
 
@@ -145,8 +145,8 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(leftColumn).toContainElement(screen.getByText("Gợi ý phím tắt"));
 
     // Compact mobile trigger keeps full accessible name while showing compact label
-    const gridBtn = screen.getByRole("button", { name: "Danh sách câu (17/4)" });
-    expect(gridBtn).toHaveTextContent("Câu 17/4");
+    const gridBtn = screen.getByRole("button", { name: "Danh sách câu 17/4" });
+    expect(gridBtn).toHaveTextContent("17/4");
     expect(controls).toHaveClass("rounded-xl", "border", "flex", "items-center", "justify-between");
   });
 });
