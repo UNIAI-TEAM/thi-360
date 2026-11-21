@@ -17,6 +17,9 @@ public interface RefundRepository extends JpaRepository<Refund, UUID> {
     @Query("SELECT r FROM Refund r WHERE r.id = :id")
     Optional<Refund> lockById(@Param("id") UUID id);
 
+    @Query("SELECT r.orderId FROM Refund r WHERE r.id = :id")
+    Optional<UUID> findOrderIdById(@Param("id") UUID id);
+
     List<Refund> findByOrderIdOrderByRequestedAtDesc(UUID orderId);
 
     List<Refund> findByOrderIdInOrderByRequestedAtDesc(Collection<UUID> orderIds);

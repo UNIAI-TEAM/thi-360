@@ -23,6 +23,11 @@ public class RefundCodeMapper {
     }
 
     public RefundMappingDecision mapRefundResult(RefundResult result) {
+        return mapRefundResult(result, null, null);
+    }
+
+    public RefundMappingDecision mapRefundResult(
+            RefundResult result, String expectedTxnRef, Long expectedAmountVnd) {
         if (result == null) {
             return new RefundMappingDecision(
                     RefundState.UNKNOWN, false, null, null, null, "Null refund gateway response");
@@ -40,6 +45,29 @@ public class RefundCodeMapper {
                     txnStatus,
                     txnNo,
                     message != null ? message : "Invalid refund response signature");
+        }
+        String cleanExpectedTxnRef = trimToNull(expectedTxnRef);
+        String resTxnRef = trimToNull(result.txnRef());
+        if (cleanExpectedTxnRef != null && resTxnRef != null && !cleanExpectedTxnRef.equals(resTxnRef)) {
+            return new RefundMappingDecision(
+                    RefundState.UNKNOWN,
+                    true,
+                    code,
+                    txnStatus,
+                    txnNo,
+                    "Mismatched refund txnRef in gateway response");
+        }
+        if (("00".equals(code) || "94".equals(code))
+                && expectedAmountVnd != null
+                && result.amountVnd() != null
+                && !expectedAmountVnd.equals(result.amountVnd())) {
+            return new RefundMappingDecision(
+                    RefundState.UNKNOWN,
+                    true,
+                    code,
+                    txnStatus,
+                    txnNo,
+                    "Mismatched refund amountVnd in gateway response");
         }
         if (code == null) {
             return new RefundMappingDecision(
@@ -85,6 +113,10 @@ public class RefundCodeMapper {
     }
 
     public QueryDecision mapQueryDrResult(QueryDrResult result) {
+        return mapQueryDrResult(result, null);
+    }
+
+    public QueryDecision mapQueryDrResult(QueryDrResult result, String expectedTxnRef) {
         if (result == null) {
             return new QueryDecision(QueryOutcome.KEEP, false, null, null, null, "Null querydr response");
         }
@@ -101,6 +133,17 @@ public class RefundCodeMapper {
                     txnStatus,
                     txnNo,
                     message != null ? message : "Invalid querydr response signature");
+        }
+        String cleanExpectedTxnRef = trimToNull(expectedTxnRef);
+        String resTxnRef = trimToNull(result.txnRef());
+        if (cleanExpectedTxnRef != null && resTxnRef != null && !cleanExpectedTxnRef.equals(resTxnRef)) {
+            return new QueryDecision(
+                    QueryOutcome.KEEP,
+                    true,
+                    code,
+                    txnStatus,
+                    txnNo,
+                    "Mismatched querydr txnRef in gateway response");
         }
         if ("00".equals(code)) {
             if ("05".equals(txnStatus) || "06".equals(txnStatus)) {

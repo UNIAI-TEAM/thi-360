@@ -1,6 +1,7 @@
 package vn.unicom.thi360.commerce.refund.application;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import vn.unicom.thi360.commerce.refund.domain.VnpayCode02Policy;
 
@@ -13,6 +14,7 @@ public record RefundProperties(
         @DefaultValue("127.0.0.1") String serverIp
 ) {
 
+    @ConstructorBinding
     public RefundProperties {
         vnpayCode02Policy = vnpayCode02Policy == null ? VnpayCode02Policy.UNKNOWN : vnpayCode02Policy;
         serverIp = (serverIp == null || serverIp.isBlank()) ? "127.0.0.1" : serverIp.trim();

@@ -34,8 +34,11 @@ CREATE TABLE commerce.refund (
     CONSTRAINT ck_refund_vnp_request_id_api CHECK (
         kind <> 'API' OR (vnp_request_id IS NOT NULL AND char_length(vnp_request_id) = 32)),
     CONSTRAINT ck_refund_verified_system_error CHECK (verified_system_error = true),
+    CONSTRAINT ck_refund_reason_not_blank CHECK (btrim(reason) <> ''),
     CONSTRAINT ck_refund_external_ref_manual CHECK (
-        kind <> 'MANUAL' OR (external_ref IS NOT NULL AND btrim(external_ref) <> ''))
+        kind <> 'MANUAL' OR (external_ref IS NOT NULL AND btrim(external_ref) <> '')),
+    CONSTRAINT ck_refund_manual_invariants CHECK (
+        kind <> 'MANUAL' OR (state = 'SUCCEEDED' AND vnp_request_id IS NULL))
 );
 
 -- Mỗi giao dịch thanh toán chỉ có tối đa 1 yêu cầu hoàn đang xử lý hoặc chưa rõ kết quả (TM 9.4).
@@ -50,7 +53,7 @@ CREATE INDEX idx_refund_order_requested
     ON commerce.refund (order_id, requested_at DESC);
 
 CREATE INDEX idx_refund_state_active
-    ON commerce.refund (state)
+    ON commerce.refund (state, order_id)
     WHERE state IN ('PROCESSING', 'UNKNOWN');
 
 CREATE TABLE commerce.reconciliation_report (
@@ -66,12 +69,17 @@ CREATE TABLE commerce.reconciliation_report (
     CONSTRAINT uq_reconciliation_report_date UNIQUE (report_date)
 );
 
-CREATE INDEX idx_reconciliation_report_date_desc
-    ON commerce.reconciliation_report (report_date DESC);
-
 -- Chỉ mục đọc bổ trợ không thay đổi dữ liệu hiện có.
 CREATE INDEX idx_purchase_order_created_desc
     ON commerce.purchase_order (created_at DESC, id DESC);
+
+CREATE INDEX idx_purchase_order_paid
+    ON commerce.purchase_order (id)
+    WHERE state = 'PAID';
+
+CREATE INDEX idx_purchase_order_needs_review
+    ON commerce.purchase_order (id)
+    WHERE needs_review = true;
 
 CREATE INDEX idx_purchase_order_item_exam_order
     ON commerce.purchase_order_item (exam_id, order_id);
@@ -79,3 +87,11 @@ CREATE INDEX idx_purchase_order_item_exam_order
 CREATE INDEX idx_payment_late_success_pending
     ON commerce.payment (order_id)
     WHERE late_success_review = 'PENDING';
+
+CREATE INDEX idx_payment_unknown_created
+    ON commerce.payment (created_at, order_id)
+    WHERE state = 'UNKNOWN';
+
+CREATE INDEX idx_payment_succeeded_duplicate
+    ON commerce.payment (order_id, id)
+    WHERE state = 'SUCCEEDED' AND is_duplicate = true;

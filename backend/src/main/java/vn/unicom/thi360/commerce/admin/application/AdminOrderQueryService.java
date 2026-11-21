@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -109,15 +110,18 @@ public class AdminOrderQueryService {
     public AdminOrderListResponse listOrders(OrderFilter filter, PageQuery pageQuery) {
         if (filter != null && filter.from() != null && filter.to() != null && filter.to().isBefore(filter.from())) {
             throw new ValidationException(List.of(
-                    new FieldError("to", "INVALID_TIME_RANGE", messages.get("validation.audit.timeRange.invalid"))));
+                    new FieldError("to", "INVALID_TIME_RANGE", messages.get("validation.order.timeRange.invalid"))));
         }
         Instant unknownThreshold24h = clock.instant().minus(UNKNOWN_ATTENTION_AGE);
         return readOnlyTx.execute(status -> {
             OrderAttentionSummary attention = queryRepository.getAttentionSummary(unknownThreshold24h);
             PagedOrderRows paged = queryRepository.findOrders(filter, unknownThreshold24h, pageQuery);
+            int totalPages = paged.totalItems() == 0L
+                    ? 0
+                    : (int) Math.ceil((double) paged.totalItems() / pageQuery.size());
             if (paged.rows().isEmpty()) {
                 return new AdminOrderListResponse(
-                        List.of(), pageQuery.page(), pageQuery.size(), 0L, 0, attention);
+                        List.of(), pageQuery.page(), pageQuery.size(), paged.totalItems(), totalPages, attention);
             }
 
             List<UUID> orderIds = paged.rows().stream().map(OrderRow::orderId).toList();
@@ -158,7 +162,6 @@ public class AdminOrderQueryService {
                         row.paidAt(),
                         row.fulfilledAt()));
             }
-            int totalPages = (int) Math.ceil((double) paged.totalItems() / pageQuery.size());
             return new AdminOrderListResponse(
                     summaries, pageQuery.page(), pageQuery.size(), paged.totalItems(), totalPages, attention);
         });
@@ -279,12 +282,28 @@ public class AdminOrderQueryService {
                             h.getId(), h.getFromState(), h.getToState(), h.getActor(), h.getReason(), h.getAt()))
                     .toList();
 
-            List<AuditEventView> auditViews = auditQuery.findByTarget(
-                            "PURCHASE_ORDER",
-                            order.getId().toString(),
-                            PageQuery.of(0, DETAIL_AUDIT_LIMIT, null, Set.of(), Sort.by(Sort.Direction.ASC, "occurredAt")))
-                    .items();
-            List<AuditEventItem> auditEvents = auditViews.stream().map(AuditEventItem::from).toList();
+            PageQuery newestAuditPage = PageQuery.of(
+                    0, DETAIL_AUDIT_LIMIT, null, Set.of(), Sort.by(Sort.Order.desc("occurredAt")));
+            Map<UUID, AuditEventView> mergedAudit = new LinkedHashMap<>();
+            for (AuditEventView ev : auditQuery.findByTarget(
+                    "PURCHASE_ORDER", order.getId().toString(), newestAuditPage).items()) {
+                mergedAudit.put(ev.id(), ev);
+            }
+            for (Refund r : refunds) {
+                for (AuditEventView ev : auditQuery.findByTarget(
+                        "REFUND", r.getId().toString(), newestAuditPage).items()) {
+                    mergedAudit.put(ev.id(), ev);
+                }
+            }
+            Comparator<AuditEventView> chronologicalOrder = Comparator.comparing(
+                            AuditEventView::occurredAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(AuditEventView::id);
+            List<AuditEventItem> auditEvents = mergedAudit.values().stream()
+                    .sorted(chronologicalOrder.reversed())
+                    .limit(DETAIL_AUDIT_LIMIT)
+                    .sorted(chronologicalOrder)
+                    .map(AuditEventItem::from)
+                    .toList();
 
             return new AdminOrderDetailResponse(
                     order.getId(),
@@ -336,8 +355,12 @@ public class AdminOrderQueryService {
     public ExamBuyersResponse listExamBuyers(UUID examId, PageQuery pageQuery) {
         return readOnlyTx.execute(status -> {
             PagedBuyerRows paged = queryRepository.findExamBuyers(examId, pageQuery);
+            int totalPages = paged.totalItems() == 0L
+                    ? 0
+                    : (int) Math.ceil((double) paged.totalItems() / pageQuery.size());
             if (paged.rows().isEmpty()) {
-                return new ExamBuyersResponse(List.of(), pageQuery.page(), pageQuery.size(), 0L, 0, 0L);
+                return new ExamBuyersResponse(
+                        List.of(), pageQuery.page(), pageQuery.size(), paged.totalItems(), totalPages, paged.totalItems());
             }
             List<UUID> userIds = paged.rows().stream().map(BuyerSummaryRow::userId).toList();
             Map<UUID, List<ExamBuyerOrderRef>> ordersByUser =
@@ -362,7 +385,6 @@ public class AdminOrderQueryService {
                         counters.attemptsRevoked(),
                         counters.attemptsRemaining()));
             }
-            int totalPages = (int) Math.ceil((double) paged.totalItems() / pageQuery.size());
             return new ExamBuyersResponse(
                     items, pageQuery.page(), pageQuery.size(), paged.totalItems(), totalPages, paged.totalItems());
         });

@@ -198,6 +198,9 @@ public class Refund {
             String vnpTransactionNo,
             String gatewayMessage,
             Instant now) {
+        if (this.state != RefundState.PROCESSING && this.state != RefundState.UNKNOWN) {
+            throw new IllegalStateException("Cannot mark refund SUCCEEDED from state " + this.state);
+        }
         this.state = RefundState.SUCCEEDED;
         applyGatewayMetadata(vnpResponseCode, vnpTransactionStatus, vnpTransactionNo, gatewayMessage);
         if (this.finishedAt == null) {
@@ -212,6 +215,9 @@ public class Refund {
             String vnpTransactionNo,
             String gatewayMessage,
             Instant now) {
+        if (this.state != RefundState.PROCESSING) {
+            throw new IllegalStateException("Cannot mark refund PROCESSING from state " + this.state);
+        }
         this.state = RefundState.PROCESSING;
         applyGatewayMetadata(vnpResponseCode, vnpTransactionStatus, vnpTransactionNo, gatewayMessage);
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
@@ -223,6 +229,9 @@ public class Refund {
             String vnpTransactionNo,
             String gatewayMessage,
             Instant now) {
+        if (this.state != RefundState.PROCESSING && this.state != RefundState.UNKNOWN) {
+            throw new IllegalStateException("Cannot mark refund UNKNOWN from state " + this.state);
+        }
         this.state = RefundState.UNKNOWN;
         applyGatewayMetadata(vnpResponseCode, vnpTransactionStatus, vnpTransactionNo, gatewayMessage);
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
@@ -234,6 +243,27 @@ public class Refund {
             String vnpTransactionNo,
             String gatewayMessage,
             Instant now) {
+        if (this.state != RefundState.PROCESSING && this.state != RefundState.UNKNOWN) {
+            throw new IllegalStateException("Cannot mark refund FAILED from state " + this.state);
+        }
+        this.state = RefundState.FAILED;
+        applyGatewayMetadata(vnpResponseCode, vnpTransactionStatus, vnpTransactionNo, gatewayMessage);
+        this.finishedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedAt = now;
+    }
+
+    /** Đường duy nhất cho phép chuyển hoàn tiền đã {@code SUCCEEDED} về {@code FAILED} khi {@code querydr} trả {@code 00/09} (TM 9.4). */
+    public void markRejected09(
+            String vnpResponseCode,
+            String vnpTransactionStatus,
+            String vnpTransactionNo,
+            String gatewayMessage,
+            Instant now) {
+        if (this.state != RefundState.PROCESSING
+                && this.state != RefundState.UNKNOWN
+                && this.state != RefundState.SUCCEEDED) {
+            throw new IllegalStateException("Cannot mark refund rejected (09) from state " + this.state);
+        }
         this.state = RefundState.FAILED;
         applyGatewayMetadata(vnpResponseCode, vnpTransactionStatus, vnpTransactionNo, gatewayMessage);
         this.finishedAt = Objects.requireNonNull(now, "now must not be null");
@@ -241,6 +271,9 @@ public class Refund {
     }
 
     public void markFailedManually(String markFailedReason, String markFailedEvidence, Instant now) {
+        if (this.state != RefundState.UNKNOWN) {
+            throw new IllegalStateException("Cannot mark refund FAILED manually from state " + this.state);
+        }
         this.state = RefundState.FAILED;
         this.markFailedReason = trimToNull(markFailedReason);
         this.markFailedEvidence = trimToNull(markFailedEvidence);

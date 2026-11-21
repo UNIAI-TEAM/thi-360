@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -175,33 +176,34 @@ public class RefundService {
         }
 
         // Gọi cổng VNPAY hoàn toàn ngoài mọi transaction DB (plan B2, AC-14).
-        String transactionType = (tx1.amountVnd() == tx1.paymentAmountVnd() && tx1.succeededSumBefore() == 0L)
-                ? "02"
-                : "03";
-        String createDate = VNP_TIME_FMT.format(clock.instant().atZone(GMT_PLUS_7));
-        RefundRequest gatewayReq = new RefundRequest(
-                tx1.vnpRequestId(),
-                transactionType,
-                tx1.txnRef(),
-                tx1.amountVnd(),
-                tx1.vnpTransactionNo(),
-                tx1.vnpCreateDate(),
-                tx1.actorUsername(),
-                createDate,
-                properties.serverIp(),
-                "Hoan tien don " + tx1.orderCode());
-
         RefundMappingDecision decision;
         Map<String, Object> rawPayload;
         boolean signatureValid;
+        boolean gatewayException = false;
         try {
+            String transactionType = (tx1.amountVnd() == tx1.paymentAmountVnd() && tx1.succeededSumBefore() == 0L)
+                    ? "02"
+                    : "03";
+            String createDate = VNP_TIME_FMT.format(clock.instant().atZone(GMT_PLUS_7));
+            RefundRequest gatewayReq = new RefundRequest(
+                    tx1.vnpRequestId(),
+                    transactionType,
+                    tx1.txnRef(),
+                    tx1.amountVnd(),
+                    tx1.vnpTransactionNo(),
+                    tx1.vnpCreateDate(),
+                    tx1.actorUsername(),
+                    createDate,
+                    properties.serverIp(),
+                    "Hoan tien don " + tx1.orderCode());
             RefundResult result = vnpayGateway.refund(gatewayReq);
-            decision = codeMapper.mapRefundResult(result);
+            decision = codeMapper.mapRefundResult(result, tx1.txnRef(), tx1.amountVnd());
             signatureValid = result != null && result.signatureValid();
             rawPayload = buildRefundRawPayload(tx1.vnpRequestId(), result, decision);
         } catch (RuntimeException ex) {
             decision = codeMapper.mapRefundException(ex);
             signatureValid = false;
+            gatewayException = true;
             rawPayload = buildExceptionRawPayload(tx1.vnpRequestId(), decision.message());
             log.warn("VNPAY refund gateway call threw exception for order {} refund {}",
                     tx1.orderCode(), tx1.refundId(), ex);
@@ -210,6 +212,7 @@ public class RefundService {
         final RefundMappingDecision finalDecision = decision;
         final Map<String, Object> finalRaw = rawPayload;
         final boolean finalSigValid = signatureValid;
+        final boolean finalGatewayException = gatewayException;
         return requiresNewTx.execute(status -> applyApiRefundResultInTx(
                 tx1.refundId(),
                 tx1.orderId(),
@@ -217,7 +220,8 @@ public class RefundService {
                 tx1.actorUsername(),
                 finalDecision,
                 finalRaw,
-                finalSigValid));
+                finalSigValid,
+                finalGatewayException));
     }
 
     public RefundResponse getRefund(UUID refundId) {
@@ -250,28 +254,29 @@ public class RefundService {
         });
 
         String requestId = Ids.newId().toString().replace("-", "");
-        String createDate = VNP_TIME_FMT.format(clock.instant().atZone(GMT_PLUS_7));
-        QueryDrRequest queryReq = new QueryDrRequest(
-                requestId,
-                snapshot.txnRef(),
-                snapshot.vnpCreateDate(),
-                createDate,
-                properties.serverIp(),
-                "Tra cuu hoan tien don " + snapshot.orderCode(),
-                snapshot.vnpTransactionNo());
-
         QueryDecision decision;
         Map<String, Object> rawPayload;
         boolean signatureValid;
+        boolean gatewayException = false;
         try {
+            String createDate = VNP_TIME_FMT.format(clock.instant().atZone(GMT_PLUS_7));
+            QueryDrRequest queryReq = new QueryDrRequest(
+                    requestId,
+                    snapshot.txnRef(),
+                    snapshot.vnpCreateDate(),
+                    createDate,
+                    properties.serverIp(),
+                    "Tra cuu hoan tien don " + snapshot.orderCode(),
+                    snapshot.vnpTransactionNo());
             QueryDrResult result = vnpayGateway.queryDr(queryReq);
-            decision = codeMapper.mapQueryDrResult(result);
+            decision = codeMapper.mapQueryDrResult(result, snapshot.txnRef());
             signatureValid = result != null && result.signatureValid();
             rawPayload = buildQueryRawPayload(requestId, result, decision);
         } catch (RuntimeException ex) {
             String msg = extractExceptionMessage(ex);
             decision = new QueryDecision(QueryOutcome.KEEP, false, null, null, null, msg);
             signatureValid = false;
+            gatewayException = true;
             rawPayload = buildExceptionRawPayload(requestId, msg);
             log.warn("VNPAY queryDr gateway call threw exception for order {} refund {}",
                     snapshot.orderCode(), snapshot.refundId(), ex);
@@ -280,21 +285,29 @@ public class RefundService {
         final QueryDecision finalDecision = decision;
         final Map<String, Object> finalRaw = rawPayload;
         final boolean finalSigValid = signatureValid;
-        return requiresNewTx.execute(status -> applyQueryResultInTx(
+        final boolean finalGatewayException = gatewayException;
+        QueryApplyResult applyResult = requiresNewTx.execute(status -> applyQueryResultInTx(
                 snapshot.refundId(),
                 snapshot.orderId(),
                 snapshot.paymentId(),
                 actor.username(),
                 finalDecision,
                 finalRaw,
-                finalSigValid));
+                finalSigValid,
+                finalGatewayException));
+        if (applyResult == null) {
+            throw new IllegalStateException("Unexpected null applyQueryResultInTx result");
+        }
+        if (applyResult.conflictNotAllowed()) {
+            throw new ConflictException("REFUND_QUERY_NOT_ALLOWED");
+        }
+        return applyResult.response();
     }
 
     public RefundResponse markFailed(UUID refundId, MarkRefundFailedRequest request) {
         currentUserProvider.requireCurrentUser();
         return txTemplate.execute(status -> {
-            UUID orderId = refundRepository.findById(refundId)
-                    .map(Refund::getOrderId)
+            UUID orderId = refundRepository.findOrderIdById(refundId)
                     .orElseThrow(() -> new NotFoundException("REFUND_NOT_FOUND", null));
             PurchaseOrder order = purchaseOrderRepository.lockById(orderId)
                     .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", null));
@@ -366,6 +379,9 @@ public class RefundService {
             throw new ConflictException("REFUND_AMOUNT_EXCEEDED");
         }
 
+        if (effectiveKind == RefundKind.API && !StringUtils.hasText(payment.getVnpCreateDate())) {
+            throw new IllegalStateException("Payment " + payment.getId() + " is missing vnpCreateDate");
+        }
         String scopedColumnKey = actor.id() + ":" + payment.getId() + ":" + idempotencyKey;
         Instant now = clock.instant();
 
@@ -466,7 +482,8 @@ public class RefundService {
             String actorUsername,
             RefundMappingDecision decision,
             Map<String, Object> rawPayload,
-            boolean signatureValid) {
+            boolean signatureValid,
+            boolean gatewayException) {
         Instant now = clock.instant();
         PurchaseOrder order = purchaseOrderRepository.lockById(orderId)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", null));
@@ -475,7 +492,8 @@ public class RefundService {
         Refund refund = refundRepository.lockById(refundId)
                 .orElseThrow(() -> new NotFoundException("REFUND_NOT_FOUND", null));
 
-        String outcome = buildEventOutcome("REFUND", decision.state().name(), decision.responseCode(), signatureValid);
+        String outcome = buildEventOutcome(
+                "REFUND", decision.state().name(), decision.responseCode(), signatureValid, gatewayException);
         paymentEventRepository.save(new PaymentEvent(
                 Ids.newId(), payment.getId(), PaymentEventSource.REFUND_API, rawPayload, signatureValid, now, outcome));
 
@@ -485,6 +503,22 @@ public class RefundService {
         }
 
         if (refund.getState() != RefundState.PROCESSING) {
+            if (decision.state() == RefundState.SUCCEEDED && refund.getState() != RefundState.SUCCEEDED) {
+                OrderState prevState = order.getState();
+                String reviewReason = "REFUND_LATE_SUCCESS_AFTER_FAILED:" + refund.getId();
+                log.error("VNPAY refund API returned SUCCEEDED for refund {} on order {} while refund is already in state {}",
+                        refund.getId(), order.getCode(), refund.getState());
+                order.flagNeedsReview(reviewReason, now);
+                purchaseOrderRepository.save(order);
+                orderHistoryRepository.save(new OrderHistory(
+                        Ids.newId(),
+                        order.getId(),
+                        prevState,
+                        prevState,
+                        actorUsername,
+                        reviewReason,
+                        now));
+            }
             return RefundResponse.from(refund, order, payment);
         }
 
@@ -540,14 +574,15 @@ public class RefundService {
         return RefundResponse.from(refund, order, payment);
     }
 
-    private RefundResponse applyQueryResultInTx(
+    private QueryApplyResult applyQueryResultInTx(
             UUID refundId,
             UUID orderId,
             UUID paymentId,
             String actorUsername,
             QueryDecision decision,
             Map<String, Object> rawPayload,
-            boolean signatureValid) {
+            boolean signatureValid,
+            boolean gatewayException) {
         Instant now = clock.instant();
         PurchaseOrder order = purchaseOrderRepository.lockById(orderId)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", null));
@@ -556,17 +591,38 @@ public class RefundService {
         Refund refund = refundRepository.lockById(refundId)
                 .orElseThrow(() -> new NotFoundException("REFUND_NOT_FOUND", null));
 
-        if (refund.getKind() == RefundKind.MANUAL || refund.getState() == RefundState.FAILED) {
-            throw new ConflictException("REFUND_QUERY_NOT_ALLOWED");
-        }
-
-        String outcome = buildEventOutcome("REFUND_QUERY", decision.outcome().name(), decision.responseCode(), signatureValid);
+        String outcome = buildEventOutcome(
+                "REFUND_QUERY", decision.outcome().name(), decision.responseCode(), signatureValid, gatewayException);
         paymentEventRepository.save(new PaymentEvent(
                 Ids.newId(), payment.getId(), PaymentEventSource.QUERYDR, rawPayload, signatureValid, now, outcome));
 
         if (decision.opsAlert()) {
             log.error("VNPAY querydr configuration or merchant error for order {} refund {} code={} message={}",
                     order.getCode(), refund.getId(), decision.responseCode(), decision.message());
+        }
+
+        if (refund.getKind() == RefundKind.MANUAL) {
+            return new QueryApplyResult(null, true);
+        }
+        if (refund.getState() == RefundState.FAILED) {
+            if (decision.outcome() == QueryOutcome.SUCCEEDED) {
+                OrderState prevState = order.getState();
+                String reviewReason = "REFUND_QUERY_SUCCEEDED_AFTER_FAILED:" + refund.getId();
+                log.error("VNPAY querydr returned SUCCEEDED (00/{}) for already-FAILED refund {} on order {}",
+                        decision.transactionStatus(), refund.getId(), order.getCode());
+                order.flagNeedsReview(reviewReason, now);
+                purchaseOrderRepository.save(order);
+                orderHistoryRepository.save(new OrderHistory(
+                        Ids.newId(),
+                        order.getId(),
+                        prevState,
+                        prevState,
+                        actorUsername,
+                        reviewReason,
+                        now));
+                return new QueryApplyResult(RefundResponse.from(refund, order, payment), false);
+            }
+            return new QueryApplyResult(null, true);
         }
 
         switch (decision.outcome()) {
@@ -598,7 +654,7 @@ public class RefundService {
             case FAILED_REJECTED_09 -> {
                 if (refund.getState() != RefundState.FAILED) {
                     OrderState prevState = order.getState();
-                    refund.markFailedFromGateway(
+                    refund.markRejected09(
                             decision.responseCode(),
                             decision.transactionStatus(),
                             decision.transactionNo(),
@@ -624,7 +680,23 @@ public class RefundService {
                 }
             }
             case FAILED -> {
-                if (refund.getState() != RefundState.FAILED) {
+                if (refund.getState() == RefundState.SUCCEEDED) {
+                    OrderState prevState = order.getState();
+                    String reviewReason = "REFUND_SUCCEEDED_QUERY_MISMATCH:"
+                            + refund.getId() + ":" + decision.responseCode();
+                    log.error("VNPAY querydr returned failure ({}/{}) for already-SUCCEEDED refund {} on order {}",
+                            decision.responseCode(), decision.transactionStatus(), refund.getId(), order.getCode());
+                    order.flagNeedsReview(reviewReason, now);
+                    purchaseOrderRepository.save(order);
+                    orderHistoryRepository.save(new OrderHistory(
+                            Ids.newId(),
+                            order.getId(),
+                            prevState,
+                            prevState,
+                            actorUsername,
+                            reviewReason,
+                            now));
+                } else if (refund.getState() != RefundState.FAILED) {
                     refund.markFailedFromGateway(
                             decision.responseCode(),
                             decision.transactionStatus(),
@@ -643,7 +715,7 @@ public class RefundService {
                 // Giữ nguyên trạng thái hiện tại của refund.
             }
         }
-        return RefundResponse.from(refund, order, payment);
+        return new QueryApplyResult(RefundResponse.from(refund, order, payment), false);
     }
 
     /**
@@ -659,7 +731,9 @@ public class RefundService {
         if (!payment.isDuplicate()) {
             long totalSucceeded = refundRepository.sumSucceededAmountByPaymentId(payment.getId());
             if (totalSucceeded >= payment.getAmountVnd()) {
-                List<GrantRef> grants = grantLookupRepository.findGrantRefsByOrderId(order.getId());
+                List<GrantRef> grants = grantLookupRepository.findGrantRefsByOrderId(order.getId()).stream()
+                        .sorted(Comparator.comparing(GrantRef::examId).thenComparing(GrantRef::id))
+                        .toList();
                 if (!grants.isEmpty()) {
                     int totalRevokedAttempts = 0;
                     List<String> grantIds = new ArrayList<>(grants.size());
@@ -817,7 +891,14 @@ public class RefundService {
     }
 
     private static String buildEventOutcome(
-            String prefix, String outcomeName, String responseCode, boolean signatureValid) {
+            String prefix,
+            String outcomeName,
+            String responseCode,
+            boolean signatureValid,
+            boolean gatewayException) {
+        if (gatewayException) {
+            return prefix + "_GATEWAY_ERROR";
+        }
         if (!signatureValid) {
             return prefix + "_INVALID_SIGNATURE";
         }
@@ -859,5 +940,8 @@ public class RefundService {
             String vnpCreateDate,
             String vnpTransactionNo
     ) {
+    }
+
+    private record QueryApplyResult(RefundResponse response, boolean conflictNotAllowed) {
     }
 }

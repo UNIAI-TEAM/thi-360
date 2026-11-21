@@ -85,7 +85,7 @@ public class OrderRecoverService {
             throw new ConflictException("ORDER_RECOVERY_NOT_ALLOWED");
         }
 
-        if (order.getPaymentMethod() == PaymentMethod.VNPAY) {
+        if (order.getPaymentMethod() != PaymentMethod.FREE) {
             List<Payment> payments = paymentRepository.lockAllByOrderIdOrderByAttemptSeqAsc(order.getId());
             boolean hasCountedPayment = payments.stream()
                     .anyMatch(p -> p.getState() == PaymentState.SUCCEEDED && !p.isDuplicate());

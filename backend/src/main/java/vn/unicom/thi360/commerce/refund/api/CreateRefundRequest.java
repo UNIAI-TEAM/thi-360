@@ -19,7 +19,7 @@ public record CreateRefundRequest(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String reason,
         Boolean verifiedSystemError,
-        @Size(max = 200)
+        @Size(max = 200, message = "{validation.refund.externalRef.size}")
         String externalRef
 ) {
 }

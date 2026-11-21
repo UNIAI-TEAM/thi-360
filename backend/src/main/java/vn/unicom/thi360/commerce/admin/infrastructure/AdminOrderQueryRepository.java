@@ -53,7 +53,7 @@ public class AdminOrderQueryRepository {
             "lastPaidAt", "MAX(o.paid_at)",
             "userId", "o.user_id",
             "purchaseCount", "COUNT(DISTINCT o.id)",
-            "username", "MIN(o.buyer_username)");
+            "username", "(ARRAY_AGG(o.buyer_username ORDER BY o.paid_at DESC NULLS LAST, o.created_at DESC, o.id DESC))[1]");
 
     private static final String PAYMENT_STATUS_SQL = """
             CASE
@@ -129,30 +129,47 @@ public class AdminOrderQueryRepository {
 
     public OrderAttentionSummary getAttentionSummary(Instant unknownThreshold24h) {
         String sql = """
+                WITH attn AS (
+                    SELECT DISTINCT p.order_id, 1 AS bucket
+                    FROM commerce.payment p
+                    WHERE p.late_success_review = 'PENDING'
+                    UNION ALL
+                    SELECT o.id AS order_id, 2 AS bucket
+                    FROM commerce.purchase_order o
+                    WHERE o.state = 'PAID'
+                    UNION ALL
+                    SELECT DISTINCT p.order_id, 3 AS bucket
+                    FROM commerce.payment p
+                    WHERE p.state = 'UNKNOWN' AND p.created_at < :unknownThreshold24h
+                    UNION ALL
+                    SELECT DISTINCT p.order_id, 4 AS bucket
+                    FROM commerce.payment p
+                    WHERE p.state = 'SUCCEEDED'
+                      AND p.is_duplicate = true
+                      AND p.amount_vnd > COALESCE((
+                          SELECT SUM(r.amount_vnd)
+                          FROM commerce.refund r
+                          WHERE r.payment_id = p.id AND r.state = 'SUCCEEDED'
+                      ), 0)
+                    UNION ALL
+                    SELECT o.id AS order_id, 5 AS bucket
+                    FROM commerce.purchase_order o
+                    WHERE o.needs_review = true
+                    UNION ALL
+                    SELECT DISTINCT r.order_id, 6 AS bucket
+                    FROM commerce.refund r
+                    WHERE r.state = 'UNKNOWN'
+                )
                 SELECT
-                    COUNT(DISTINCT o.id) FILTER (WHERE %s) AS late_success_pending,
-                    COUNT(DISTINCT o.id) FILTER (WHERE %s) AS paid_unfulfilled,
-                    COUNT(DISTINCT o.id) FILTER (WHERE %s) AS payment_unknown_over_24h,
-                    COUNT(DISTINCT o.id) FILTER (WHERE %s) AS duplicate_unrefunded,
-                    COUNT(DISTINCT o.id) FILTER (WHERE %s) AS needs_review,
-                    COUNT(DISTINCT o.id) FILTER (WHERE %s) AS refund_unknown,
-                    COUNT(DISTINCT o.id) FILTER (WHERE
-                        %s OR %s OR %s OR %s OR %s OR %s
-                    ) AS total_attention_orders
-                FROM commerce.purchase_order o
-                """.formatted(
-                ATTN_LATE_SUCCESS_PENDING_SQL,
-                ATTN_PAID_UNFULFILLED_SQL,
-                ATTN_UNKNOWN_OVER_24H_SQL,
-                ATTN_DUPLICATE_UNREFUNDED_SQL,
-                ATTN_NEEDS_REVIEW_SQL,
-                ATTN_REFUND_UNKNOWN_SQL,
-                ATTN_LATE_SUCCESS_PENDING_SQL,
-                ATTN_PAID_UNFULFILLED_SQL,
-                ATTN_UNKNOWN_OVER_24H_SQL,
-                ATTN_DUPLICATE_UNREFUNDED_SQL,
-                ATTN_NEEDS_REVIEW_SQL,
-                ATTN_REFUND_UNKNOWN_SQL);
+                    COUNT(DISTINCT order_id) FILTER (WHERE bucket = 1) AS late_success_pending,
+                    COUNT(DISTINCT order_id) FILTER (WHERE bucket = 2) AS paid_unfulfilled,
+                    COUNT(DISTINCT order_id) FILTER (WHERE bucket = 3) AS payment_unknown_over_24h,
+                    COUNT(DISTINCT order_id) FILTER (WHERE bucket = 4) AS duplicate_unrefunded,
+                    COUNT(DISTINCT order_id) FILTER (WHERE bucket = 5) AS needs_review,
+                    COUNT(DISTINCT order_id) FILTER (WHERE bucket = 6) AS refund_unknown,
+                    COUNT(DISTINCT order_id) AS total_attention_orders
+                FROM attn
+                """;
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("unknownThreshold24h", Timestamp.from(unknownThreshold24h));
         return jdbc.queryForObject(sql, params, (rs, rowNum) -> new OrderAttentionSummary(
@@ -479,7 +496,11 @@ public class AdminOrderQueryRepository {
             return "MAX(o.paid_at) DESC NULLS LAST, o.user_id ASC";
         }
         List<String> clauses = new ArrayList<>();
+        boolean hasUserId = false;
         for (Sort.Order order : sort) {
+            if ("userId".equals(order.getProperty())) {
+                hasUserId = true;
+            }
             String expr = BUYER_SORT_COLUMNS.get(order.getProperty());
             if (expr == null) {
                 throw new IllegalArgumentException("Unsupported buyer sort property: " + order.getProperty());
@@ -487,7 +508,9 @@ public class AdminOrderQueryRepository {
             String nullsClause = "lastPaidAt".equals(order.getProperty()) ? " NULLS LAST" : "";
             clauses.add(expr + (order.isAscending() ? " ASC" : " DESC") + nullsClause);
         }
-        clauses.add("o.user_id ASC");
+        if (!hasUserId) {
+            clauses.add("o.user_id ASC");
+        }
         return String.join(", ", clauses);
     }
 

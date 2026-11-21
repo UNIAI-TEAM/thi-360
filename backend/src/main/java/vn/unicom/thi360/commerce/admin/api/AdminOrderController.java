@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
@@ -74,7 +75,7 @@ public class AdminOrderController {
     @GetMapping("/orders")
     public AdminOrderListResponse listOrders(
             @Parameter(description = "Tìm theo mã đơn, tên đăng nhập, txnRef hoặc mã giao dịch VNPAY")
-            @RequestParam(required = false) String q,
+            @RequestParam(required = false) @Size(max = 200, message = "{validation.order.q.size}") String q,
             @Parameter(description = "Lọc theo bài thi")
             @RequestParam(required = false) UUID examId,
             @Parameter(description = "Từ thời điểm tạo (ISO-8601 UTC)")

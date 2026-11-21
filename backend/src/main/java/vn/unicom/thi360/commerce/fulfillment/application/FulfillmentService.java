@@ -134,6 +134,15 @@ public class FulfillmentService {
                     "SYSTEM",
                     "REFUNDED_BEFORE_FULFILLMENT",
                     now));
+            auditRecorder.record(AuditEvent.builder("commerce", "ORDER_REFUNDED_BEFORE_FULFILLMENT")
+                    .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
+                    .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
+                    .reason("REFUNDED_BEFORE_FULFILLMENT")
+                    .after(Map.of(
+                            "orderCode", order.getCode(),
+                            "fromState", OrderState.PAID.name(),
+                            "toState", OrderState.REFUNDED.name()))
+                    .build());
             return false;
         }
         return fulfillLockedPaidOrder(order, "SYSTEM", "FULFILLED");
