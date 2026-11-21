@@ -16,6 +16,7 @@ import {
   StatusChip,
   cn,
   focusRing,
+  focusRingInset,
   useCardMode,
   type StatusTone,
 } from "@thi360/ui";
@@ -24,12 +25,13 @@ import {
   SearchX,
   ShieldCheck,
   TriangleAlert,
+  WifiOff,
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import {
   CATALOG_OPTIONS_QUERY_KEY,
@@ -46,8 +48,10 @@ import {
   resolveCatalogLabel,
   shouldShowAttemptScore,
 } from "@/features/attempt-result/format";
+import { useInlineOverflow } from "@/features/attempt-result/use-inline-overflow";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { adminUrl } from "@/lib/env";
+import { touchFieldText } from "@/lib/styles";
 import {
   ATTEMPT_HISTORY_QUERY_KEY,
   HISTORY_PAGE_SIZE,
@@ -145,37 +149,53 @@ export function AttemptHistoryView({
   const searchParams = useSearchParams();
 
   const filterState = useMemo(() => parseHistorySearchParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = useState<{ syncedUrlQ: string; value: string } | null>(null);
-  const inputQ = searchDraft && searchDraft.syncedUrlQ === filterState.q ? searchDraft.value : filterState.q;
+  const [inputQ, setInputQ] = useState(filterState.q);
+  const pushedQRef = useRef(filterState.q);
+  const latestFilterStateRef = useRef(filterState);
+  useEffect(() => {
+    latestFilterStateRef.current = filterState;
+  });
 
   const updateQuery = useCallback(
-    (patch: Partial<HistoryFilterState>) => {
+    (patch: Partial<HistoryFilterState>, options?: { scroll?: boolean }) => {
       const next: HistoryFilterState = {
         ...filterState,
         ...patch,
       };
       const qs = toHistorySearchString(next);
-      router.replace(qs ? `/history?${qs}` : "/history", { scroll: false });
+      router.replace(qs ? `/history?${qs}` : "/history", { scroll: options?.scroll ?? false });
     },
     [filterState, router],
   );
 
   useEffect(() => {
-    if (!searchDraft || searchDraft.syncedUrlQ !== filterState.q) {
-      return;
-    }
-    const trimmed = searchDraft.value.trim();
-    if (trimmed === filterState.q) {
+    const trimmed = inputQ.trim();
+    if (trimmed === pushedQRef.current && trimmed === latestFilterStateRef.current.q) {
       return;
     }
     const timer = window.setTimeout(() => {
-      updateQuery({ q: trimmed, page: 1 });
+      pushedQRef.current = trimmed;
+      const next: HistoryFilterState = {
+        ...latestFilterStateRef.current,
+        q: trimmed,
+        page: 1,
+      };
+      const qs = toHistorySearchString(next);
+      router.replace(qs ? `/history?${qs}` : "/history", { scroll: false });
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [searchDraft, filterState.q, updateQuery]);
+  }, [inputQ, router]);
+
+  useEffect(() => {
+    if (filterState.q !== pushedQRef.current) {
+      pushedQRef.current = filterState.q;
+      setInputQ(filterState.q);
+    }
+  }, [filterState.q]);
 
   const clearAllFilters = useCallback(() => {
-    setSearchDraft(null);
+    pushedQRef.current = "";
+    setInputQ("");
     router.replace("/history", { scroll: false });
   }, [router]);
 
@@ -220,8 +240,17 @@ export function AttemptHistoryView({
         value: item.code,
         label: resolveCatalogLabel(item.code, buildCatalogMap([item]), locale),
       }));
-    return [{ value: ALL_SENTINEL, label: t("filters.kindAll") }, ...dynamicOptions];
-  }, [examKindsQuery.data, locale, t]);
+    const hasSelected =
+      Boolean(filterState.kind) &&
+      dynamicOptions.some((opt) => opt.value === filterState.kind);
+    return [
+      { value: ALL_SENTINEL, label: t("filters.kindAll") },
+      ...dynamicOptions,
+      ...(!hasSelected && filterState.kind
+        ? [{ value: filterState.kind, label: filterState.kind }]
+        : []),
+    ];
+  }, [examKindsQuery.data, filterState.kind, locale, t]);
 
   const scopeOptions = useMemo(
     () => [
@@ -232,11 +261,17 @@ export function AttemptHistoryView({
   );
 
   const items = useMemo(() => historyQuery.data?.items ?? [], [historyQuery.data]);
-  const [containerRef, cardMode] = useCardMode<HTMLDivElement>(items.length > 0, HISTORY_CARD_BREAKPOINT);
+  const isHistoryOffline = isStudent && historyQuery.isPaused;
+  const showItems = isStudent && !isHistoryOffline && Boolean(historyQuery.data) && items.length > 0;
+  const [containerRef, cardMode] = useCardMode<HTMLDivElement>(
+    isStudent && !isHistoryOffline && items.length > 0,
+    HISTORY_CARD_BREAKPOINT,
+  );
+  const [tableScrollerRef, tableOverflows] = useInlineOverflow(showItems && !cardMode);
 
   const account: HeaderAccount = sessionQuery.data
     ? { kind: "user", session: sessionQuery.data }
-    : sessionQuery.isLoading
+    : sessionQuery.isLoading && !sessionQuery.isPaused
       ? { kind: "loading" }
       : { kind: "none" };
 
@@ -259,8 +294,8 @@ export function AttemptHistoryView({
         <header className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h1 className="text-h1 font-bold text-text">{t("pageTitle")}</h1>
-            {isStudent && historyQuery.data && (
-              <span className="text-label font-medium text-text-muted tabular-nums">
+            {isStudent && !isHistoryOffline && historyQuery.data && (
+              <span role="status" className="text-label font-medium text-text-muted tabular-nums">
                 {t("count", { count: historyQuery.data.totalItems })}
               </span>
             )}
@@ -268,10 +303,31 @@ export function AttemptHistoryView({
           <p className="text-body text-text-secondary">{t("subtitle")}</p>
         </header>
 
-        {sessionQuery.isLoading && (
+        {sessionQuery.isLoading && !sessionQuery.isPaused && (
           <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-24 w-full rounded-2xl" />
             <Skeleton className="h-64 w-full rounded-2xl" />
+          </div>
+        )}
+
+        {sessionQuery.isPaused && (
+          <div className="rounded-xl border border-border bg-surface">
+            <EmptyState
+              headingLevel={2}
+              icon={<WifiOff />}
+              title={common("offline.title")}
+              description={common("offline.description")}
+              action={
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11"
+                  onClick={() => void sessionQuery.refetch()}
+                >
+                  {common("retry")}
+                </Button>
+              }
+            />
           </div>
         )}
 
@@ -283,7 +339,7 @@ export function AttemptHistoryView({
               title={t("error.title")}
               description={t("error.description")}
               action={
-                <Button type="button" onClick={() => void sessionQuery.refetch()}>
+                <Button type="button" className="h-11" onClick={() => void sessionQuery.refetch()}>
                   {common("retry")}
                 </Button>
               }
@@ -316,7 +372,9 @@ export function AttemptHistoryView({
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  updateQuery({ q: inputQ.trim(), page: 1 });
+                  const trimmed = inputQ.trim();
+                  pushedQRef.current = trimmed;
+                  updateQuery({ q: trimmed, page: 1 });
                 }}
                 className="flex flex-wrap items-end gap-3"
               >
@@ -331,7 +389,8 @@ export function AttemptHistoryView({
                     leadingIcon={<Search />}
                     placeholder={t("filters.qPlaceholder")}
                     value={inputQ}
-                    onChange={(e) => setSearchDraft({ syncedUrlQ: filterState.q, value: e.target.value })}
+                    onChange={(e) => setInputQ(e.target.value)}
+                    className={touchFieldText}
                   />
                 </div>
 
@@ -373,7 +432,7 @@ export function AttemptHistoryView({
                   />
                 </div>
 
-                <div className="flex min-w-0 flex-[0_1_10rem] flex-col gap-1">
+                <div className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
                   <label htmlFor="history-from" className="text-caption font-medium text-text-secondary">
                     {t("filters.from")}
                   </label>
@@ -381,12 +440,14 @@ export function AttemptHistoryView({
                     id="history-from"
                     type="date"
                     size="lg"
+                    max={filterState.to || undefined}
                     value={filterState.from}
                     onChange={(e) => updateQuery({ from: e.target.value, page: 1 })}
+                    className={touchFieldText}
                   />
                 </div>
 
-                <div className="flex min-w-0 flex-[0_1_10rem] flex-col gap-1">
+                <div className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
                   <label htmlFor="history-to" className="text-caption font-medium text-text-secondary">
                     {t("filters.to")}
                   </label>
@@ -394,8 +455,10 @@ export function AttemptHistoryView({
                     id="history-to"
                     type="date"
                     size="lg"
+                    min={filterState.from || undefined}
                     value={filterState.to}
                     onChange={(e) => updateQuery({ to: e.target.value, page: 1 })}
+                    className={touchFieldText}
                   />
                 </div>
 
@@ -413,14 +476,18 @@ export function AttemptHistoryView({
 
               {filterState.examId && (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="inline-flex h-8 items-center gap-2 rounded-full border border-border bg-subtle px-3 text-caption font-medium text-text">
+                  <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-subtle py-1.5 pr-2 pl-3 text-caption font-medium text-text">
                     {filteredExamName ? (
-                      <>
-                        {t("examFilterChip", { name: "" }).trim()}
-                        <span data-exam-content className="font-semibold">
-                          {filteredExamName}
-                        </span>
-                      </>
+                      <span className="min-w-0 wrap-break-word">
+                        {t.rich("examFilterChip", {
+                          name: filteredExamName,
+                          examContent: (chunks) => (
+                            <span data-exam-content className="font-semibold">
+                              {chunks}
+                            </span>
+                          ),
+                        })}
+                      </span>
                     ) : (
                       <span>{t("examFilterUnknown")}</span>
                     )}
@@ -429,7 +496,7 @@ export function AttemptHistoryView({
                       aria-label={t("examFilterClear")}
                       onClick={() => updateQuery({ examId: "", page: 1 })}
                       className={cn(
-                        "inline-flex size-5 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text",
+                        "relative inline-flex size-6 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text after:absolute after:-inset-2.5",
                         focusRing,
                       )}
                     >
@@ -440,7 +507,28 @@ export function AttemptHistoryView({
               )}
             </section>
 
-            {historyQuery.isError && historyQuery.data && (
+            {isHistoryOffline && (
+              <div className="rounded-2xl border border-border bg-surface p-6">
+                <EmptyState
+                  headingLevel={2}
+                  icon={<WifiOff />}
+                  title={common("offline.title")}
+                  description={common("offline.description")}
+                  action={
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-11"
+                      onClick={() => void historyQuery.refetch()}
+                    >
+                      {common("retry")}
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+
+            {!isHistoryOffline && historyQuery.isError && historyQuery.data && (
               <div
                 role="alert"
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning bg-warning-bg px-4 py-3 text-body"
@@ -453,13 +541,18 @@ export function AttemptHistoryView({
                       : t("stale.descriptionNoTime")}
                   </span>
                 </div>
-                <Button type="button" variant="secondary" onClick={() => void historyQuery.refetch()}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11"
+                  onClick={() => void historyQuery.refetch()}
+                >
                   {common("retry")}
                 </Button>
               </div>
             )}
 
-            {historyQuery.isLoading && !historyQuery.data && (
+            {!isHistoryOffline && historyQuery.isLoading && !historyQuery.data && (
               <div
                 role="status"
                 aria-busy="true"
@@ -473,7 +566,7 @@ export function AttemptHistoryView({
               </div>
             )}
 
-            {historyQuery.isError && !historyQuery.data && (
+            {!isHistoryOffline && historyQuery.isError && !historyQuery.data && (
               <div
                 role="alert"
                 className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-12 text-center"
@@ -486,35 +579,69 @@ export function AttemptHistoryView({
                 </span>
                 <h2 className="text-title font-semibold text-text">{t("error.title")}</h2>
                 <p className="max-w-sm text-body text-text-muted">{t("error.description")}</p>
-                <Button type="button" variant="secondary" onClick={() => void historyQuery.refetch()}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11"
+                  onClick={() => void historyQuery.refetch()}
+                >
                   {common("retry")}
                 </Button>
               </div>
             )}
 
-            {historyQuery.data && items.length === 0 && (
+            {!isHistoryOffline && historyQuery.data && items.length === 0 && (
               <div className="rounded-2xl border border-border bg-surface p-6">
-                <EmptyState
-                  headingLevel={2}
-                  icon={<SearchX />}
-                  title={t("empty.title")}
-                  description={t("empty.description")}
-                  action={
-                    activeFilters ? (
-                      <Button type="button" onClick={clearAllFilters}>
+                {filterState.page > 1 && historyQuery.data.totalItems > 0 ? (
+                  <EmptyState
+                    headingLevel={2}
+                    icon={<SearchX />}
+                    title={t("empty.outOfRangeTitle")}
+                    description={t("empty.outOfRangeDescription")}
+                    action={
+                      <Button
+                        type="button"
+                        className="h-11"
+                        onClick={() => updateQuery({ page: 1 }, { scroll: true })}
+                      >
+                        {t("empty.outOfRangeBack")}
+                      </Button>
+                    }
+                  />
+                ) : activeFilters ? (
+                  <EmptyState
+                    headingLevel={2}
+                    icon={<SearchX />}
+                    title={t("empty.title")}
+                    description={t("empty.description")}
+                    action={
+                      <Button type="button" className="h-11" onClick={clearAllFilters}>
                         {t("empty.clearFilters")}
                       </Button>
-                    ) : undefined
-                  }
-                />
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    headingLevel={2}
+                    icon={<SearchX />}
+                    title={t("empty.noAttemptsTitle")}
+                    description={t("empty.noAttemptsDescription")}
+                    action={
+                      <Button asChild className="h-11">
+                        <Link href="/home">{t("empty.toMyExams")}</Link>
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             )}
 
-            {historyQuery.data && items.length > 0 && (
+            {showItems && historyQuery.data && (
               <div
                 ref={containerRef}
+                aria-busy={historyQuery.isPlaceholderData || undefined}
                 className={cn(
-                  "flex min-w-0 flex-col gap-4 transition-opacity duration-150",
+                  "flex min-w-0 flex-col gap-4 transition-opacity duration-150 motion-reduce:transition-none",
                   historyQuery.isPlaceholderData && "opacity-60",
                 )}
               >
@@ -536,6 +663,7 @@ export function AttemptHistoryView({
                       const maxVal = item.scaleMax ?? item.maxScore;
                       const started = formatAttemptDateTime(item.startedAt);
                       const href = resolveAttemptHref(item);
+                      const isContinue = item.action === "CONTINUE";
                       const scoreText =
                         showScore && maxVal != null
                           ? `${formatScoreValue(scoreVal, locale)}/${formatScoreValue(maxVal, locale)}`
@@ -548,9 +676,13 @@ export function AttemptHistoryView({
                           <div className="min-w-0 flex-1">
                             <ListCard
                               title={
-                                <ListCardTitleLink href={href} linkComponent={Link}>
+                                isContinue ? (
                                   <span data-exam-content>{item.examName}</span>
-                                </ListCardTitleLink>
+                                ) : (
+                                  <ListCardTitleLink href={href} linkComponent={Link}>
+                                    <span data-exam-content>{item.examName}</span>
+                                  </ListCardTitleLink>
+                                )
                               }
                               caption={
                                 item.compensated ? (
@@ -592,19 +724,13 @@ export function AttemptHistoryView({
                                 },
                               ]}
                             >
-                              <div className="relative z-10 pt-1">
-                                <Button
-                                  asChild
-                                  variant={item.action === "CONTINUE" ? "primary" : "secondary"}
-                                  className="h-11"
-                                >
-                                  <Link href={href}>
-                                    {item.action === "CONTINUE"
-                                      ? t("actions.continue")
-                                      : t("actions.viewResult")}
-                                  </Link>
-                                </Button>
-                              </div>
+                              {isContinue && (
+                                <div className="pt-1">
+                                  <Button asChild variant="exam" className="h-11">
+                                    <Link href={href}>{t("actions.continue")}</Link>
+                                  </Button>
+                                </div>
+                              )}
                             </ListCard>
                           </div>
                         </CardListItem>
@@ -612,11 +738,17 @@ export function AttemptHistoryView({
                     })}
                   </CardList>
                 ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
+                  <div
+                    ref={tableScrollerRef}
+                    role={tableOverflows ? "region" : undefined}
+                    aria-label={tableOverflows ? t("tableLabel") : undefined}
+                    tabIndex={tableOverflows ? 0 : undefined}
+                    className={cn("overflow-x-auto rounded-2xl border border-border bg-surface", focusRingInset)}
+                  >
                     <table aria-label={t("tableLabel")} className="w-full border-collapse text-left">
                       <thead>
                         <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
-                          <th scope="col" className="px-4 py-3.5">
+                          <th scope="col" className="min-w-44 px-4 py-3.5">
                             {t("columns.exam")}
                           </th>
                           <th scope="col" className="px-3 py-3.5">
@@ -659,7 +791,7 @@ export function AttemptHistoryView({
 
                           return (
                             <tr key={item.attemptId} className="align-middle hover:bg-subtle">
-                              <td className="px-4 py-3.5">
+                              <td className="min-w-44 px-4 py-3.5">
                                 <div className="flex flex-col gap-0.5">
                                   <span data-exam-content className="font-semibold text-text">
                                     {item.examName}
@@ -729,7 +861,7 @@ export function AttemptHistoryView({
                               <td className="px-4 py-3.5 text-right whitespace-nowrap">
                                 <Button
                                   asChild
-                                  variant={item.action === "CONTINUE" ? "primary" : "secondary"}
+                                  variant={item.action === "CONTINUE" ? "exam" : "secondary"}
                                   className="h-11"
                                 >
                                   <Link href={href}>
@@ -753,7 +885,7 @@ export function AttemptHistoryView({
                     page={filterState.page}
                     pageSize={historyQuery.data.size || HISTORY_PAGE_SIZE}
                     total={historyQuery.data.totalItems}
-                    onPageChange={(nextPage) => updateQuery({ page: nextPage })}
+                    onPageChange={(nextPage) => updateQuery({ page: nextPage }, { scroll: true })}
                     labels={{ nav: t("paginationLabel"), range: () => "" }}
                   />
                 )}

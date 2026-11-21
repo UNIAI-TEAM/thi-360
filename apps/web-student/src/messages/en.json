@@ -410,6 +410,10 @@
     "loading": "Loading",
     "logoMark": "360",
     "notificationsLabel": "Notifications",
+    "offline": {
+      "description": "Check your network connection and try again.",
+      "title": "No connection"
+    },
     "retry": "Retry"
   },
   "errorPage": {
@@ -459,6 +463,7 @@
     },
     "attemptNo": "Attempt {count}",
     "choiceOptions": {
+      "ANH": "English",
       "CS": "Computer science",
       "ENGLISH": "English",
       "ICT": "Applied informatics",
@@ -479,13 +484,19 @@
     "empty": {
       "clearFilters": "Clear filters",
       "description": "Try another keyword, date range, or remove some filters.",
-      "title": "No matching attempts found"
+      "noAttemptsDescription": "Open an exam in My exams to start practicing. Your completed and active attempts will appear here.",
+      "noAttemptsTitle": "You have no practice attempts yet",
+      "outOfRangeBack": "Back to page 1",
+      "outOfRangeDescription": "There are no attempts on this page. Return to page 1 to see your latest attempts.",
+      "outOfRangeTitle": "No attempts on this page",
+      "title": "No matching attempts found",
+      "toMyExams": "My exams"
     },
     "error": {
       "description": "Your attempts are still safe. Please try again in a few minutes.",
       "title": "Unable to load practice history"
     },
-    "examFilterChip": "Exam: {name}",
+    "examFilterChip": "Exam: <examContent>{name}</examContent>",
     "examFilterClear": "Clear exam filter",
     "examFilterUnknown": "Filtered by selected exam",
     "fault": {
@@ -939,6 +950,7 @@
     "attemptNo": "Attempt {count}",
     "backToHistory": "Practice history",
     "choiceOptions": {
+      "ANH": "English",
       "CS": "Computer science",
       "ENGLISH": "English",
       "ICT": "Applied informatics",

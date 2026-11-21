@@ -9,7 +9,6 @@ export type AttemptReviewExpectedAnswer = components["schemas"]["AttemptReviewEx
 export type ReviewGradingDetail = components["schemas"]["ReviewGradingDetail"];
 export type AttemptReviewEssayFeedback = components["schemas"]["AttemptReviewEssayFeedback"];
 export type AttemptReviewEssayCriterionScore = components["schemas"]["AttemptReviewEssayCriterionScore"];
-export type AttemptReviewAttachment = components["schemas"]["AttemptReviewAttachment"];
 
 export const ATTEMPT_REVIEW_QUERY_KEY = (attemptId: string, userId: string | null = null) =>
   ["me", "attempts", "review", userId, attemptId] as const;

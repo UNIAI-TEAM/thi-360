@@ -36,18 +36,14 @@ export async function loadAttemptResult(attemptId: string): Promise<AttemptResul
 }
 
 export async function loadCatalogOptions(group: CatalogGroupCode): Promise<CatalogOptionResponse[]> {
-  try {
-    const client = createBrowserApiClient();
-    const { data, response } = await client.GET("/api/v1/catalog/options", {
-      params: { query: { group } },
-    });
-    if (!response.ok || !data) {
-      return [];
-    }
-    return data;
-  } catch {
-    return [];
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/catalog/options", {
+    params: { query: { group } },
+  });
+  if (!response.ok || !data) {
+    throw toApiStatusError(response.status, error as never);
   }
+  return data;
 }
 
 export const loadExamKindOptions: CatalogOptionsLoader = () => loadCatalogOptions("EXAM");

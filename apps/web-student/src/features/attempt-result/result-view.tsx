@@ -13,6 +13,7 @@ import {
   StatusPage,
   cn,
   focusRing,
+  focusRingInset,
   useCardMode,
 } from "@thi360/ui";
 import {
@@ -28,6 +29,7 @@ import {
   SearchX,
   ShieldCheck,
   TriangleAlert,
+  WifiOff,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -62,11 +64,13 @@ import {
   isKnownResultState,
   isKnownScope,
   isKnownVactComponentCode,
+  isUuid,
   resolveAttemptDisplayScore,
   resolveCatalogLabel,
   resolveResultStatusTone,
 } from "./format";
 import { ThinkingSubsections } from "./thinking-subsections";
+import { useInlineOverflow } from "./use-inline-overflow";
 
 const SUBJECTS_CARD_BREAKPOINT = 680;
 
@@ -112,7 +116,7 @@ function StatBuckets({
             )}
           >
             <span className="flex items-center gap-2 text-caption font-medium text-text-secondary">
-              <span aria-hidden className={cn("size-2.5 shrink-0 rounded-[3px]", bucket.dot)} />
+              <span aria-hidden className={cn("size-2.5 shrink-0 rounded-sm", bucket.dot)} />
               {bucket.label}
             </span>
             <span className="text-h2 leading-8 font-bold text-text tabular-nums">
@@ -287,15 +291,16 @@ function SubjectBreakdownSection({
   const t = useTranslations("result.subjects");
   const statsT = useTranslations("result.stats");
   const [containerRef, cardMode] = useCardMode<HTMLDivElement>(subjects.length > 0, SUBJECTS_CARD_BREAKPOINT);
+  const [tableScrollerRef, tableOverflows] = useInlineOverflow(subjects.length > 0 && !cardMode);
 
   function renderSubjectName(subject: AttemptResultSubject) {
     if (subject.code && subjectMap.has(subject.code)) {
       return <span>{resolveCatalogLabel(subject.code, subjectMap, locale)}</span>;
     }
-    if (subject.code) {
-      return <span>{subject.code}</span>;
+    if (subject.name) {
+      return <span data-exam-content>{subject.name}</span>;
     }
-    return <span data-exam-content>{subject.name ?? "—"}</span>;
+    return <span>{subject.code ?? "—"}</span>;
   }
 
   return (
@@ -363,8 +368,14 @@ function SubjectBreakdownSection({
             })}
           </CardList>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full border-collapse text-left tabular-nums">
+          <div
+            ref={tableScrollerRef}
+            role={tableOverflows ? "region" : undefined}
+            aria-label={tableOverflows ? t("title") : undefined}
+            tabIndex={tableOverflows ? 0 : undefined}
+            className={cn("overflow-x-auto rounded-xl border border-border", focusRingInset)}
+          >
+            <table aria-labelledby="result-subjects-title" className="w-full border-collapse text-left tabular-nums">
               <thead>
                 <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
                   <th scope="col" className="px-4 py-3">
@@ -467,6 +478,8 @@ export function AttemptResultView({
 
   const userId = sessionQuery.data?.id ?? null;
   const isStudent = sessionQuery.data?.access === "EXAM";
+  const validAttemptId = isUuid(attemptId);
+  const normalizedAttemptId = validAttemptId ? attemptId.trim() : attemptId;
 
   const examKindsQuery = useQuery({
     queryKey: CATALOG_OPTIONS_QUERY_KEY("EXAM"),
@@ -483,13 +496,13 @@ export function AttemptResultView({
   });
 
   const resultQuery = useQuery({
-    queryKey: ATTEMPT_RESULT_QUERY_KEY(attemptId, userId),
-    queryFn: () => loadResult(attemptId),
-    enabled: isStudent,
+    queryKey: ATTEMPT_RESULT_QUERY_KEY(normalizedAttemptId, userId),
+    queryFn: () => loadResult(normalizedAttemptId),
+    enabled: isStudent && validAttemptId,
     retry: false,
     refetchInterval: (query) => {
       if (query.state.data?.state === "GRADING") {
-        const token = `${attemptId}:${reloadCount}`;
+        const token = `${normalizedAttemptId}:${reloadCount}`;
         if (timedOutToken !== token) {
           return GRADING_POLL_INTERVAL_MS;
         }
@@ -499,7 +512,7 @@ export function AttemptResultView({
   });
 
   const isGrading = resultQuery.data?.state === "GRADING";
-  const currentGradingToken = isGrading ? `${attemptId}:${reloadCount}` : null;
+  const currentGradingToken = isGrading ? `${normalizedAttemptId}:${reloadCount}` : null;
   const gradingTimedOut = currentGradingToken !== null && timedOutToken === currentGradingToken;
 
   useEffect(() => {
@@ -517,16 +530,17 @@ export function AttemptResultView({
 
   const account: HeaderAccount = sessionQuery.data
     ? { kind: "user", session: sessionQuery.data }
-    : sessionQuery.isLoading
+    : sessionQuery.isLoading && !sessionQuery.isPaused
       ? { kind: "loading" }
       : { kind: "none" };
 
   const error = resultQuery.error;
-  const isNotFound = error instanceof ApiStatusError && error.status === 404;
+  const isNotFound = !validAttemptId || (error instanceof ApiStatusError && error.status === 404);
   const isNotFinished =
     error instanceof ApiStatusError && error.status === 409 && error.code === "ATTEMPT_NOT_FINISHED";
 
   const result = resultQuery.data;
+  const isOffline = sessionQuery.isPaused || (isStudent && validAttemptId && resultQuery.isPaused && !result);
 
   function handleReloadGrading() {
     setReloadCount((count) => count + 1);
@@ -549,7 +563,7 @@ export function AttemptResultView({
           {t("backToHistory")}
         </Link>
 
-        {sessionQuery.isLoading && (
+        {sessionQuery.isLoading && !sessionQuery.isPaused && (
           <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-9.5 w-72 max-w-full" />
             <Skeleton className="h-60 w-full rounded-2xl" />
@@ -565,7 +579,7 @@ export function AttemptResultView({
               title={t("errorTitle")}
               description={t("errorDescription")}
               action={
-                <Button type="button" onClick={() => void sessionQuery.refetch()}>
+                <Button type="button" className="h-11" onClick={() => void sessionQuery.refetch()}>
                   {common("retry")}
                 </Button>
               }
@@ -589,7 +603,28 @@ export function AttemptResultView({
           </div>
         )}
 
-        {isStudent && resultQuery.isLoading && !result && (
+        {isOffline && !isNotFound && !isNotFinished && (
+          <div className="rounded-2xl border border-border bg-surface p-6">
+            <EmptyState
+              headingLevel={1}
+              icon={<WifiOff />}
+              title={common("offline.title")}
+              description={common("offline.description")}
+              action={
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11"
+                  onClick={() => void (sessionQuery.isPaused ? sessionQuery.refetch() : resultQuery.refetch())}
+                >
+                  {common("retry")}
+                </Button>
+              }
+            />
+          </div>
+        )}
+
+        {isStudent && validAttemptId && resultQuery.isLoading && !resultQuery.isPaused && !result && (
           <div role="status" aria-busy="true" aria-label={t("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-9.5 w-80 max-w-full" />
             <Skeleton className="h-64 w-full rounded-2xl" />
@@ -626,8 +661,8 @@ export function AttemptResultView({
               description={t("notFinished.description")}
               action={
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button asChild size="lg">
-                    <Link href={`/attempts/${encodeURIComponent(attemptId)}`}>{t("notFinished.continueAttempt")}</Link>
+                  <Button asChild variant="exam" size="lg">
+                    <Link href={`/attempts/${encodeURIComponent(normalizedAttemptId)}`}>{t("notFinished.continueAttempt")}</Link>
                   </Button>
                   <Button asChild variant="secondary" size="lg">
                     <Link href="/history">{t("notFinished.toHistory")}</Link>
@@ -638,7 +673,7 @@ export function AttemptResultView({
           </div>
         )}
 
-        {isStudent && resultQuery.isError && !isNotFound && !isNotFinished && !result && (
+        {isStudent && resultQuery.isError && !isNotFound && !isNotFinished && !result && !resultQuery.isPaused && (
           <div
             role="alert"
             className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-12 text-center"
@@ -651,15 +686,35 @@ export function AttemptResultView({
             </span>
             <h1 className="text-title font-semibold text-text">{t("errorTitle")}</h1>
             <p className="max-w-sm text-body text-text-muted">{t("errorDescription")}</p>
-            <Button type="button" variant="secondary" onClick={() => void resultQuery.refetch()}>
+            <Button type="button" variant="secondary" className="h-11" onClick={() => void resultQuery.refetch()}>
               {common("retry")}
             </Button>
           </div>
         )}
 
-        {isStudent && result && (
+        {isStudent && resultQuery.isError && !isNotFound && !isNotFinished && Boolean(result) && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning bg-warning-bg px-4 py-3 text-body"
+          >
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-warning">{t("errorTitle")}</span>
+              <span className="text-text-secondary">{t("errorDescription")}</span>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11"
+              onClick={() => void resultQuery.refetch()}
+            >
+              {common("retry")}
+            </Button>
+          </div>
+        )}
+
+        {isStudent && result && !isNotFound && !isNotFinished && (
           <LoadedResultContent
-            attemptId={attemptId}
+            attemptId={normalizedAttemptId}
             result={result}
             examKindMap={examKindMap}
             subjectMap={subjectMap}
@@ -739,8 +794,8 @@ function LoadedResultContent({
   return (
     <>
       <div className="flex flex-col gap-2.5">
-        <p className="text-overline font-semibold tracking-[0.08em] text-warning uppercase">{t("eyebrow")}</p>
-        <h1 data-exam-content className="text-h1 font-bold text-text">
+        <p className="text-overline font-semibold tracking-overline text-warning uppercase">{t("eyebrow")}</p>
+        <h1 data-exam-content className="text-h1 font-bold wrap-break-word text-text">
           {result.examName}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -874,7 +929,7 @@ function LoadedResultContent({
         >
           <div className="flex flex-wrap items-start gap-6 sm:gap-10">
             <div className="flex min-w-0 flex-1 basis-64 flex-col gap-2">
-              <h2 id="result-total-title" className="text-overline font-semibold tracking-[0.08em] text-text-muted uppercase">
+              <h2 id="result-total-title" className="text-overline font-semibold tracking-overline text-text-muted uppercase">
                 {t("total.title")}
               </h2>
 
@@ -889,9 +944,11 @@ function LoadedResultContent({
                     <span className="text-display font-bold text-primary-900">
                       {formatScoreValue(resolvedScore.score, locale)}
                     </span>
-                    <span className="text-h2 font-semibold text-text-muted">
-                      /{formatScoreValue(resolvedScore.max, locale)}
-                    </span>
+                    {resolvedScore.max != null && (
+                      <span className="text-h2 font-semibold text-text-muted">
+                        /{formatScoreValue(resolvedScore.max, locale)}
+                      </span>
+                    )}
                   </div>
                   {isVact && (
                     <p className="text-body font-semibold text-warning">{t("vact.practiceNote")}</p>
@@ -905,7 +962,7 @@ function LoadedResultContent({
                     </div>
                   ) : (
                     <p className="text-body text-text-secondary">
-                      {isVact
+                      {isVact && resolvedScore.max != null
                         ? t("total.vactScaleDescription", { scaleMax: formatScoreValue(resolvedScore.max, locale) })
                         : t("total.scaleDescription")}
                     </p>
@@ -939,7 +996,7 @@ function LoadedResultContent({
 
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
             {canOpenReview && (
-              <Button asChild size="lg" className="h-12">
+              <Button asChild size="lg" className="h-auto min-h-12 px-4 py-2.5 whitespace-normal text-center">
                 <Link href={reviewHref}>
                   <Eye aria-hidden />
                   {result.state === "PENDING_REVIEW" ? t("actions.reviewAutoGraded") : t("actions.reviewFull")}
@@ -1017,22 +1074,22 @@ function LoadedResultContent({
         <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(13.5rem,100%),1fr))] gap-x-6 gap-y-4">
           <div className="flex flex-col gap-0.5">
             <dt className="text-caption text-text-muted">{t("info.examKind")}</dt>
-            <dd className="font-semibold text-text">{examKindLabel}</dd>
+            <dd className="font-semibold wrap-break-word text-text">{examKindLabel}</dd>
           </div>
           <div className="flex flex-col gap-0.5">
             <dt className="text-caption text-text-muted">{t("info.scope")}</dt>
-            <dd className="font-semibold text-text">{scopeLabel}</dd>
+            <dd className="font-semibold wrap-break-word text-text">{scopeLabel}</dd>
           </div>
           {result.partCode && (
             <div className="flex flex-col gap-0.5">
               <dt className="text-caption text-text-muted">{t("info.part")}</dt>
-              <dd className="font-semibold text-text">{result.partCode}</dd>
+              <dd className="font-semibold wrap-break-word text-text">{result.partCode}</dd>
             </div>
           )}
           {result.subjectCode && (
             <div className="flex flex-col gap-0.5">
               <dt className="text-caption text-text-muted">{t("info.subject")}</dt>
-              <dd className="font-semibold text-text">
+              <dd className="font-semibold wrap-break-word text-text">
                 {resolveCatalogLabel(result.subjectCode, subjectMap, locale)}
               </dd>
             </div>
@@ -1040,37 +1097,37 @@ function LoadedResultContent({
           {result.attemptNo != null && (
             <div className="flex flex-col gap-0.5">
               <dt className="text-caption text-text-muted">{t("info.attemptNo")}</dt>
-              <dd className="font-semibold text-text tabular-nums">
+              <dd className="font-semibold wrap-break-word text-text tabular-nums">
                 {t("attemptNo", { count: result.attemptNo })}
               </dd>
             </div>
           )}
           <div className="flex flex-col gap-0.5">
             <dt className="text-caption text-text-muted">{t("info.choices")}</dt>
-            <dd className="font-semibold text-text">
+            <dd className="font-semibold wrap-break-word text-text">
               {formattedChoices.length > 0 ? formattedChoices.join(" · ") : t("info.noChoices")}
             </dd>
           </div>
           {startedText && (
             <div className="flex flex-col gap-0.5">
               <dt className="text-caption text-text-muted">{t("info.startedAt")}</dt>
-              <dd className="font-semibold text-text tabular-nums">{startedText}</dd>
+              <dd className="font-semibold wrap-break-word text-text tabular-nums">{startedText}</dd>
             </div>
           )}
           {finishedText && (
             <div className="flex flex-col gap-0.5">
               <dt className="text-caption text-text-muted">{t("info.finishedAt")}</dt>
-              <dd className="font-semibold text-text tabular-nums">{finishedText}</dd>
+              <dd className="font-semibold wrap-break-word text-text tabular-nums">{finishedText}</dd>
             </div>
           )}
           <div className="flex flex-col gap-0.5">
             <dt className="text-caption text-text-muted">{t("info.duration")}</dt>
-            <dd className="font-semibold text-text tabular-nums">{durationText}</dd>
+            <dd className="font-semibold wrap-break-word text-text tabular-nums">{durationText}</dd>
           </div>
           {result.endReason && (
             <div className="flex flex-col gap-0.5">
               <dt className="text-caption text-text-muted">{t("info.endReason")}</dt>
-              <dd className="font-semibold text-text">{endReasonText}</dd>
+              <dd className="font-semibold wrap-break-word text-text">{endReasonText}</dd>
             </div>
           )}
         </dl>

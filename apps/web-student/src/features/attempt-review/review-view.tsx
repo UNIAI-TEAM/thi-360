@@ -10,6 +10,7 @@ import {
   StatusPage,
   cn,
   focusRing,
+  focusRingInset,
 } from "@thi360/ui";
 import { Question, type QuestionOutcome } from "@thi360/ui/question";
 import {
@@ -22,22 +23,26 @@ import {
   SearchX,
   ShieldCheck,
   TriangleAlert,
+  WifiOff,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import {
   ATTEMPT_RESULT_QUERY_KEY,
   loadAttemptResult,
   type AttemptResultLoader,
+  type AttemptResultResponse,
 } from "@/features/attempt-result/api";
 import {
   formatScoreValue,
   isKnownScope,
+  isUuid,
   resolveAttemptDisplayScore,
 } from "@/features/attempt-result/format";
+import { useInlineOverflow } from "@/features/attempt-result/use-inline-overflow";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl } from "@/lib/env";
@@ -59,16 +64,16 @@ import {
 function outcomePaletteClasses(outcome: QuestionOutcome): string {
   switch (outcome) {
     case "CORRECT":
-      return "border-success bg-success-bg text-success";
+      return "border border-success bg-success-bg text-success";
     case "PARTIAL":
-      return "border-warning bg-warning-bg text-warning";
+      return "border-2 border-warning bg-warning-bg text-warning";
     case "WRONG":
-      return "border-danger bg-danger-bg text-danger";
+      return "border-2 border-dashed border-danger bg-danger-bg text-danger";
     case "PENDING_REVIEW":
-      return "border-info bg-info-bg text-info";
+      return "border-2 border-dotted border-info bg-info-bg text-info";
     case "BLANK":
     default:
-      return "border-border bg-subtle text-text-secondary";
+      return "border border-dashed border-border-strong bg-subtle text-text-secondary";
   }
 }
 
@@ -82,16 +87,24 @@ function EssayCriteriaSection({
   locale: string;
 }) {
   const t = useTranslations("review.essayCriteria");
+  const headingId = useId();
   const criteria = feedback.criteria ?? [];
+  const [scrollerRef, overflows] = useInlineOverflow(criteria.length > 0);
   if (criteria.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-border bg-subtle p-4">
-      <h3 className="mb-3 text-label font-semibold text-text">
+      <h3 id={headingId} className="mb-3 text-label font-semibold text-text">
         {headingLabel ? `${t("title")} · ${headingLabel}` : t("title")}
       </h3>
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-        <table className="w-full border-collapse text-left text-body">
+      <div
+        ref={scrollerRef}
+        role={overflows ? "region" : undefined}
+        aria-labelledby={overflows ? headingId : undefined}
+        tabIndex={overflows ? 0 : undefined}
+        className={cn("overflow-x-auto rounded-lg border border-border bg-surface", focusRingInset)}
+      >
+        <table aria-labelledby={headingId} className="w-full border-collapse text-left text-body">
           <thead>
             <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
               <th scope="col" className="px-3.5 py-2.5">
@@ -108,13 +121,13 @@ function EssayCriteriaSection({
           <tbody className="divide-y divide-border">
             {criteria.map((criterion, index) => (
               <tr key={criterion.id ?? index}>
-                <td className="px-3.5 py-2.5 font-medium text-text">
+                <th scope="row" className="px-3.5 py-2.5 font-medium text-text">
                   {criterion.id ? (
                     <span data-exam-content>{criterion.id}</span>
                   ) : (
                     <span>{t("criterionFallback", { index: index + 1 })}</span>
                   )}
-                </td>
+                </th>
                 <td className="px-3.5 py-2.5 text-right font-semibold whitespace-nowrap text-text tabular-nums">
                   {criterion.points != null
                     ? t("pointsValue", { points: formatScoreValue(criterion.points, locale) })
@@ -152,10 +165,10 @@ export function AttemptReviewView({
   const common = useTranslations("common");
   const locale = useLocale();
   const searchParams = useSearchParams();
-  const urlPartParam = searchParams.get("part");
+  const urlPartParam = searchParams.get("part")?.trim() || null;
 
-  const [manualPart, setManualPart] = useState<{ urlKey: string | null; partKey: string } | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const validAttemptId = isUuid(attemptId);
+  const normalizedAttemptId = validAttemptId ? attemptId.trim() : attemptId;
 
   const sessionQuery = useQuery({
     queryKey: SESSION_QUERY_KEY,
@@ -167,18 +180,18 @@ export function AttemptReviewView({
   const isStudent = sessionQuery.data?.access === "EXAM";
 
   const reviewQuery = useQuery({
-    queryKey: ATTEMPT_REVIEW_QUERY_KEY(attemptId, userId),
+    queryKey: ATTEMPT_REVIEW_QUERY_KEY(normalizedAttemptId, userId),
     queryFn: async (): Promise<ReviewQueryOutcome> => {
       try {
-        return { kind: "ok", data: await loadReview(attemptId) };
+        return { kind: "ok", data: await loadReview(normalizedAttemptId) };
       } catch (err) {
-        if (err instanceof ApiStatusError && err.status === 403) {
+        if (err instanceof ApiStatusError && err.status === 403 && err.code === "REVIEW_NOT_INCLUDED") {
           return { kind: "not_included" };
         }
         throw err;
       }
     },
-    enabled: isStudent,
+    enabled: isStudent && validAttemptId,
     retry: false,
   });
 
@@ -186,23 +199,27 @@ export function AttemptReviewView({
   const reviewData = reviewQuery.data?.kind === "ok" ? reviewQuery.data.data : undefined;
 
   const resultQuery = useQuery({
-    queryKey: ATTEMPT_RESULT_QUERY_KEY(attemptId, userId),
-    queryFn: () => loadResult(attemptId),
-    enabled: isStudent && Boolean(reviewData),
+    queryKey: ATTEMPT_RESULT_QUERY_KEY(normalizedAttemptId, userId),
+    queryFn: () => loadResult(normalizedAttemptId),
+    enabled: isStudent && validAttemptId && Boolean(reviewData),
     retry: false,
     staleTime: 60_000,
   });
 
   const account: HeaderAccount = sessionQuery.data
     ? { kind: "user", session: sessionQuery.data }
-    : sessionQuery.isLoading
+    : sessionQuery.isLoading && !sessionQuery.isPaused
       ? { kind: "loading" }
       : { kind: "none" };
 
   const error = reviewQuery.error;
-  const isNotFound = error instanceof ApiStatusError && error.status === 404;
-  const isNotAvailable = error instanceof ApiStatusError && error.status === 409;
-  const resultHref = `/attempts/${encodeURIComponent(attemptId)}/result`;
+  const isNotFound = !validAttemptId || (error instanceof ApiStatusError && error.status === 404);
+  const isNotAvailable =
+    error instanceof ApiStatusError && error.status === 409 && error.code === "REVIEW_NOT_AVAILABLE";
+  const isOffline =
+    sessionQuery.isPaused ||
+    (isStudent && validAttemptId && reviewQuery.isPaused && !reviewData && !isNotIncluded);
+  const resultHref = `/attempts/${encodeURIComponent(normalizedAttemptId)}/result`;
 
   return (
     <div className="min-h-screen bg-page text-text">
@@ -220,7 +237,7 @@ export function AttemptReviewView({
           {t("backToResult")}
         </Link>
 
-        {sessionQuery.isLoading && (
+        {sessionQuery.isLoading && !sessionQuery.isPaused && (
           <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-9.5 w-72 max-w-full" />
             <Skeleton className="h-48 w-full rounded-2xl" />
@@ -236,7 +253,7 @@ export function AttemptReviewView({
               title={t("errorTitle")}
               description={t("errorDescription")}
               action={
-                <Button type="button" onClick={() => void sessionQuery.refetch()}>
+                <Button type="button" className="h-11" onClick={() => void sessionQuery.refetch()}>
                   {common("retry")}
                 </Button>
               }
@@ -260,7 +277,28 @@ export function AttemptReviewView({
           </div>
         )}
 
-        {isStudent && reviewQuery.isLoading && !reviewQuery.data && (
+        {isOffline && !isNotFound && !isNotAvailable && !isNotIncluded && (
+          <div className="rounded-2xl border border-border bg-surface p-6">
+            <EmptyState
+              headingLevel={1}
+              icon={<WifiOff />}
+              title={common("offline.title")}
+              description={common("offline.description")}
+              action={
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11"
+                  onClick={() => void (sessionQuery.isPaused ? sessionQuery.refetch() : reviewQuery.refetch())}
+                >
+                  {common("retry")}
+                </Button>
+              }
+            />
+          </div>
+        )}
+
+        {isStudent && validAttemptId && reviewQuery.isLoading && !reviewQuery.isPaused && !reviewQuery.data && (
           <div role="status" aria-busy="true" aria-label={t("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-9.5 w-80 max-w-full" />
             <Skeleton className="h-12 w-full rounded-xl" />
@@ -320,7 +358,13 @@ export function AttemptReviewView({
           />
         )}
 
-        {isStudent && reviewQuery.isError && !isNotIncluded && !isNotAvailable && !isNotFound && !reviewQuery.data && (
+        {isStudent &&
+          reviewQuery.isError &&
+          !isNotIncluded &&
+          !isNotAvailable &&
+          !isNotFound &&
+          !reviewQuery.data &&
+          !reviewQuery.isPaused && (
           <div
             role="alert"
             className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-12 text-center"
@@ -333,22 +377,18 @@ export function AttemptReviewView({
             </span>
             <h1 className="text-title font-semibold text-text">{t("errorTitle")}</h1>
             <p className="max-w-sm text-body text-text-muted">{t("errorDescription")}</p>
-            <Button type="button" variant="secondary" onClick={() => void reviewQuery.refetch()}>
+            <Button type="button" variant="secondary" className="h-11" onClick={() => void reviewQuery.refetch()}>
               {common("retry")}
             </Button>
           </div>
         )}
 
-        {isStudent && reviewData && (
+        {isStudent && reviewData && !isNotFound && !isNotAvailable && !isNotIncluded && (
           <LoadedReviewContent
-            attemptId={attemptId}
+            attemptId={normalizedAttemptId}
             reviewData={reviewData}
             resultData={resultQuery.data}
             urlPartParam={urlPartParam}
-            manualPart={manualPart}
-            onSelectPart={(partKey) => setManualPart({ urlKey: urlPartParam, partKey })}
-            selectedItemId={selectedItemId}
-            onSelectItem={setSelectedItemId}
             locale={locale}
             resultT={resultT}
           />
@@ -367,50 +407,38 @@ function LoadedReviewContent({
   reviewData,
   resultData,
   urlPartParam,
-  manualPart,
-  onSelectPart,
-  selectedItemId,
-  onSelectItem,
   locale,
   resultT,
 }: {
   attemptId: string;
   reviewData: AttemptReviewResponse;
-  resultData?: ReturnType<typeof Object> & {
-    examName?: string;
-    scope?: string;
-    attemptNo?: number;
-    state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
-    regrading?: boolean;
-    displayScore?: number;
-    rawScore?: number;
-    scaleMax?: number;
-    rawMaxScore?: number;
-  };
+  resultData?: AttemptResultResponse;
   urlPartParam: string | null;
-  manualPart: { urlKey: string | null; partKey: string } | null;
-  onSelectPart: (partKey: string) => void;
-  selectedItemId: string | null;
-  onSelectItem: (itemId: string) => void;
   locale: string;
   resultT: ReturnType<typeof useTranslations>;
 }) {
   const t = useTranslations("review");
+  const [selectedItem, setSelectedItem] = useState<{ partContext: string; itemId: string } | null>(null);
 
   const mapped = useMemo(() => mapAttemptReview(reviewData), [reviewData]);
-  const activeUrlKey = manualPart && manualPart.urlKey === urlPartParam ? manualPart.partKey : urlPartParam;
 
   const selectedPart = useMemo(() => {
     if (mapped.parts.length === 0) return undefined;
-    const candidateKey = activeUrlKey ?? reviewData.selectedPartCode;
+    const candidateKey = urlPartParam ?? reviewData.selectedPartCode;
     if (candidateKey) {
-      const matched = mapped.parts.find(
-        (part) => part.partCode === candidateKey || part.partId === candidateKey,
-      );
+      const normalized = candidateKey.toLowerCase();
+      const matched =
+        mapped.parts.find(
+          (part) => part.partCode === candidateKey || part.partId === candidateKey,
+        ) ??
+        mapped.parts.find((part) => part.partCode?.toLowerCase() === normalized);
       if (matched) return matched;
     }
     return mapped.parts[0];
-  }, [mapped.parts, activeUrlKey, reviewData.selectedPartCode]);
+  }, [mapped.parts, urlPartParam, reviewData.selectedPartCode]);
+
+  const partContext = `${attemptId}:${selectedPart ? resolvePartKey(selectedPart) : ""}`;
+  const selectedItemId = selectedItem?.partContext === partContext ? selectedItem.itemId : null;
 
   const partItems = useMemo(() => getItemsForPart(mapped, selectedPart), [mapped, selectedPart]);
   const paletteSummary = useMemo(() => computePaletteSummary(partItems), [partItems]);
@@ -440,14 +468,17 @@ function LoadedReviewContent({
     return t("questionLabel", { no: group.displayNo });
   }
 
-  function jumpToItem(group: ReviewItemGroup) {
-    onSelectItem(group.id);
-    if (typeof document !== "undefined") {
-      const target = document.getElementById(`review-item-${group.id}`);
-      if (target) {
-        target.scrollIntoView?.({ behavior: "smooth", block: "start" });
-        target.focus?.({ preventScroll: true });
-      }
+  function jumpToItem(group: ReviewItemGroup, options?: { focusTarget?: boolean }) {
+    setSelectedItem({ partContext, itemId: group.id });
+    if (typeof document === "undefined") return;
+    const target = document.getElementById(`review-item-${group.id}`);
+    if (!target) return;
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+    target.scrollIntoView?.({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+    if (options?.focusTarget !== false) {
+      target.focus?.({ preventScroll: true });
     }
   }
 
@@ -463,15 +494,15 @@ function LoadedReviewContent({
         <h1 className="text-h1 font-bold text-text">{t("pageTitle")}</h1>
         {resultData?.examName && (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-text-secondary">
-            <span data-exam-content className="font-semibold text-text">
+            <span data-exam-content className="font-semibold wrap-break-word text-text">
               {resultData.examName}
             </span>
             {scopeLabel && <span>· {scopeLabel}</span>}
             {resultData.attemptNo != null && <span>· {resultT("attemptNo", { count: resultData.attemptNo })}</span>}
             {scoreInfo && (
               <span className="font-semibold text-primary-text tabular-nums">
-                · {resultT("total.title")}: {formatScoreValue(scoreInfo.score, locale)}/
-                {formatScoreValue(scoreInfo.max, locale)}
+                · {resultT("total.title")}: {formatScoreValue(scoreInfo.score, locale)}
+                {scoreInfo.max != null && `/${formatScoreValue(scoreInfo.max, locale)}`}
               </span>
             )}
           </p>
@@ -511,13 +542,11 @@ function LoadedReviewContent({
                 key={part.partId ?? part.partCode ?? index}
                 asChild
                 current={isSelected}
+                className="min-h-11"
               >
                 <Link
                   href={partHref(part)}
-                  onClick={() => {
-                    onSelectPart(key);
-                    setManualSelectionSafe(onSelectItem);
-                  }}
+                  onClick={() => setSelectedItem(null)}
                 >
                   <span data-exam-content>{part.partName || part.partCode}</span>
                   {skipped && (
@@ -568,7 +597,8 @@ function LoadedReviewContent({
                   id={`review-item-${group.id}`}
                   tabIndex={-1}
                   className={cn(
-                    "flex flex-col gap-4 rounded-2xl border bg-surface p-5 transition-colors outline-hidden sm:p-6",
+                    "flex flex-col gap-4 rounded-2xl border bg-surface p-5 transition-colors motion-reduce:transition-none sm:p-6",
+                    focusRing,
                     isActive ? "border-primary-600 ring-1 ring-primary-600" : "border-border",
                   )}
                 >
@@ -601,101 +631,99 @@ function LoadedReviewContent({
 
           <aside
             aria-label={t("nav.paletteTitle")}
-            className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 lg:sticky lg:top-6"
+            className="order-first rounded-2xl border border-border bg-surface p-5 lg:order-none lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto scroll-shadows-y"
           >
-            <div className="flex flex-col gap-1">
-              <h2 className="text-title font-bold text-text">{t("nav.paletteTitle")}</h2>
-              <p className="text-caption text-text-muted tabular-nums">
-                {t("nav.paletteSummary", paletteSummary)}
-              </p>
-            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-title font-bold text-text">{t("nav.paletteTitle")}</h2>
+                <p className="text-caption text-text-muted tabular-nums">
+                  {t("nav.paletteSummary", paletteSummary)}
+                </p>
+              </div>
 
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-3">
-              {partItems.map((group) => {
-                const isActive = activeItem?.id === group.id;
-                const label = formatGroupLabel(group);
-                const outcomeText = t(`outcomes.${group.outcome}`);
-                return (
-                  <button
-                    key={group.id}
-                    type="button"
-                    aria-current={isActive ? "true" : undefined}
-                    aria-label={t("nav.paletteItemAria", { label, outcome: outcomeText })}
-                    onClick={() => jumpToItem(group)}
-                    className={cn(
-                      "flex min-h-11 items-center justify-center rounded-lg border px-2 py-1.5 text-center text-caption font-semibold tabular-nums transition-colors duration-150 motion-reduce:transition-none",
-                      outcomePaletteClasses(group.outcome),
-                      isActive && "ring-2 ring-primary-text font-bold",
-                      focusRing,
-                    )}
-                  >
-                    <span>
-                      {group.rangeFrom != null && group.rangeTo != null
-                        ? `${group.rangeFrom}–${group.rangeTo}`
-                        : group.displayNo}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-3">
+                {partItems.map((group) => {
+                  const isActive = activeItem?.id === group.id;
+                  const label = formatGroupLabel(group);
+                  const outcomeText = t(`outcomes.${group.outcome}`);
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      aria-current={isActive ? "true" : undefined}
+                      aria-label={t("nav.paletteItemAria", { label, outcome: outcomeText })}
+                      onClick={() => jumpToItem(group)}
+                      className={cn(
+                        "flex min-h-11 items-center justify-center rounded-lg px-2 py-1.5 text-center text-caption font-semibold tabular-nums transition-colors duration-150 motion-reduce:transition-none",
+                        outcomePaletteClasses(group.outcome),
+                        isActive && "ring-2 ring-text ring-offset-2 ring-offset-surface",
+                        focusRing,
+                      )}
+                    >
+                      <span>
+                        {group.rangeFrom != null && group.rangeTo != null
+                          ? `${group.rangeFrom}–${group.rangeTo}`
+                          : group.displayNo}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <div
-              aria-label={t("nav.paletteLegend")}
-              className="flex flex-wrap gap-2 border-t border-border pt-3 text-caption text-text-secondary"
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-[3px] border border-success bg-success-bg" />
-                {t("outcomes.CORRECT")}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-[3px] border border-warning bg-warning-bg" />
-                {t("outcomes.PARTIAL")}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-[3px] border border-danger bg-danger-bg" />
-                {t("outcomes.WRONG")}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-[3px] border border-border bg-subtle" />
-                {t("outcomes.BLANK")}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-11 w-full min-w-0 px-2.5"
-                disabled={activeIndex <= 0}
-                onClick={() => {
-                  const prev = partItems[activeIndex - 1];
-                  if (prev) jumpToItem(prev);
-                }}
+              <div
+                aria-label={t("nav.paletteLegend")}
+                className="flex flex-wrap gap-2 border-t border-border pt-3 text-caption text-text-secondary"
               >
-                <ChevronLeft aria-hidden />
-                {t("nav.prev")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-11 w-full min-w-0 px-2.5"
-                disabled={activeIndex < 0 || activeIndex >= partItems.length - 1}
-                onClick={() => {
-                  const next = partItems[activeIndex + 1];
-                  if (next) jumpToItem(next);
-                }}
-              >
-                {t("nav.next")}
-                <ChevronRight aria-hidden />
-              </Button>
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="size-3.5 rounded-sm border border-success bg-success-bg" />
+                  {t("outcomes.CORRECT")}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="size-3.5 rounded-sm border-2 border-warning bg-warning-bg" />
+                  {t("outcomes.PARTIAL")}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="size-3.5 rounded-sm border-2 border-dashed border-danger bg-danger-bg" />
+                  {t("outcomes.WRONG")}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="size-3.5 rounded-sm border border-dashed border-border-strong bg-subtle" />
+                  {t("outcomes.BLANK")}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-auto min-h-11 w-full min-w-0 px-2.5 py-2 whitespace-normal text-center"
+                  disabled={activeIndex <= 0}
+                  onClick={() => {
+                    const prev = partItems[activeIndex - 1];
+                    if (prev) jumpToItem(prev, { focusTarget: false });
+                  }}
+                >
+                  <ChevronLeft aria-hidden />
+                  {t("nav.prev")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-auto min-h-11 w-full min-w-0 px-2.5 py-2 whitespace-normal text-center"
+                  disabled={activeIndex < 0 || activeIndex >= partItems.length - 1}
+                  onClick={() => {
+                    const next = partItems[activeIndex + 1];
+                    if (next) jumpToItem(next, { focusTarget: false });
+                  }}
+                >
+                  {t("nav.next")}
+                  <ChevronRight aria-hidden />
+                </Button>
+              </div>
             </div>
           </aside>
         </div>
       )}
     </>
   );
-}
-
-function setManualSelectionSafe(onSelectItem: (id: string) => void) {
-  onSelectItem("");
 }

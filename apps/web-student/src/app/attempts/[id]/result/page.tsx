@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AttemptResultPage({ params }: Props) {
   const { id } = await params;
   return (
-    <Suspense>
+    <Suspense fallback={<div aria-busy="true" className="min-h-screen bg-page" />}>
       <AttemptResultView attemptId={decodeParam(id)} />
     </Suspense>
   );

@@ -410,6 +410,10 @@
     "loading": "Đang tải",
     "logoMark": "360",
     "notificationsLabel": "Thông báo",
+    "offline": {
+      "description": "Kiểm tra kết nối mạng rồi thử lại.",
+      "title": "Không có kết nối"
+    },
     "retry": "Thử lại"
   },
   "errorPage": {
@@ -459,6 +463,7 @@
     },
     "attemptNo": "Lần {count}",
     "choiceOptions": {
+      "ANH": "Tiếng Anh",
       "CS": "Khoa học máy tính",
       "ENGLISH": "Tiếng Anh",
       "ICT": "Tin học ứng dụng",
@@ -479,13 +484,19 @@
     "empty": {
       "clearFilters": "Xóa bộ lọc",
       "description": "Thử đổi từ khóa, khoảng ngày hoặc bỏ bớt điều kiện lọc.",
-      "title": "Chưa có lượt thi phù hợp"
+      "noAttemptsDescription": "Chọn bài thi ở Bài thi của tôi để bắt đầu làm bài. Kết quả các lượt đã làm sẽ hiện tại đây.",
+      "noAttemptsTitle": "Bạn chưa có lượt luyện thi nào",
+      "outOfRangeBack": "Về trang 1",
+      "outOfRangeDescription": "Trang này không có lượt thi nào. Quay lại trang đầu để xem các lượt gần nhất.",
+      "outOfRangeTitle": "Trang này chưa có dữ liệu",
+      "title": "Chưa có lượt thi phù hợp",
+      "toMyExams": "Bài thi của tôi"
     },
     "error": {
       "description": "Các lượt thi của bạn vẫn được giữ. Hãy thử lại sau ít phút.",
       "title": "Không tải được lịch sử luyện thi"
     },
-    "examFilterChip": "Bài: {name}",
+    "examFilterChip": "Bài: <examContent>{name}</examContent>",
     "examFilterClear": "Bỏ lọc theo bài",
     "examFilterUnknown": "Đang lọc theo bài thi đã chọn",
     "fault": {
@@ -939,6 +950,7 @@
     "attemptNo": "Lần {count}",
     "backToHistory": "Lịch sử luyện thi",
     "choiceOptions": {
+      "ANH": "Tiếng Anh",
       "CS": "Khoa học máy tính",
       "ENGLISH": "Tiếng Anh",
       "ICT": "Tin học ứng dụng",

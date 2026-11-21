@@ -1,8 +1,11 @@
+import { isUuid } from "@/features/attempt-result/format";
 import type { AttemptHistoryQueryParams } from "./api";
 import { HISTORY_PAGE_SIZE } from "./api";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export { isUuid };
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_HISTORY_PAGE = 10_000;
 
 export const HISTORY_SCOPES = ["FULL", "PART", "SUBJECT"] as const;
 export type HistoryScope = (typeof HISTORY_SCOPES)[number];
@@ -17,16 +20,20 @@ export interface HistoryFilterState {
   page: number;
 }
 
-export function isUuid(value: string | null | undefined): value is string {
-  return Boolean(value && UUID_RE.test(value.trim()));
-}
-
 export function isValidHistoryScope(value: string | null | undefined): value is HistoryScope {
   return value === "FULL" || value === "PART" || value === "SUBJECT";
 }
 
 export function isValidIsoDate(value: string | null | undefined): value is string {
-  return Boolean(value && DATE_RE.test(value.trim()));
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!DATE_RE.test(trimmed)) return false;
+  const [yStr, mStr, dStr] = trimmed.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const d = Number(dStr);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
 }
 
 export function parseHistorySearchParams(
@@ -44,8 +51,14 @@ export function parseHistorySearchParams(
   const rawTo = params.get("to")?.trim() ?? "";
   const from = isValidIsoDate(rawFrom) ? rawFrom : "";
   const to = isValidIsoDate(rawTo) ? rawTo : "";
-  const rawPage = Number.parseInt(params.get("page") ?? "1", 10);
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const rawPageStr = params.get("page")?.trim() ?? "";
+  let page = 1;
+  if (/^\d+$/.test(rawPageStr)) {
+    const parsed = Number(rawPageStr);
+    if (Number.isSafeInteger(parsed) && parsed >= 1) {
+      page = Math.min(parsed, MAX_HISTORY_PAGE);
+    }
+  }
 
   return {
     q,
@@ -60,13 +73,18 @@ export function parseHistorySearchParams(
 
 export function toHistorySearchString(state: HistoryFilterState): string {
   const params = new URLSearchParams();
-  if (state.q.trim()) params.set("q", state.q.trim());
-  if (state.kind) params.set("kind", state.kind);
+  const q = state.q.trim();
+  const kind = state.kind.trim();
+  const examId = state.examId.trim();
+  const from = state.from.trim();
+  const to = state.to.trim();
+  if (q) params.set("q", q);
+  if (kind) params.set("kind", kind);
   if (state.scope) params.set("scope", state.scope);
-  if (isUuid(state.examId)) params.set("examId", state.examId);
-  if (isValidIsoDate(state.from)) params.set("from", state.from);
-  if (isValidIsoDate(state.to)) params.set("to", state.to);
-  if (state.page > 1) params.set("page", String(state.page));
+  if (isUuid(examId)) params.set("examId", examId);
+  if (isValidIsoDate(from)) params.set("from", from);
+  if (isValidIsoDate(to)) params.set("to", to);
+  if (state.page > 1) params.set("page", String(Math.min(state.page, MAX_HISTORY_PAGE)));
   return params.toString();
 }
 
@@ -75,14 +93,19 @@ export function hasActiveHistoryFilters(state: HistoryFilterState): boolean {
 }
 
 export function toHistoryApiParams(state: HistoryFilterState): AttemptHistoryQueryParams {
+  const q = state.q.trim();
+  const kind = state.kind.trim();
+  const examId = state.examId.trim();
+  const from = state.from.trim();
+  const to = state.to.trim();
   return {
-    ...(state.q.trim() ? { q: state.q.trim() } : {}),
-    ...(state.kind ? { kind: state.kind } : {}),
+    ...(q ? { q } : {}),
+    ...(kind ? { kind } : {}),
     ...(state.scope ? { scope: state.scope } : {}),
-    ...(isUuid(state.examId) ? { examId: state.examId } : {}),
-    ...(isValidIsoDate(state.from) ? { from: state.from } : {}),
-    ...(isValidIsoDate(state.to) ? { to: state.to } : {}),
-    page: Math.max(0, state.page - 1),
+    ...(isUuid(examId) ? { examId } : {}),
+    ...(isValidIsoDate(from) ? { from } : {}),
+    ...(isValidIsoDate(to) ? { to } : {}),
+    page: Math.max(0, Math.min(state.page, MAX_HISTORY_PAGE) - 1),
     size: HISTORY_PAGE_SIZE,
   };
 }

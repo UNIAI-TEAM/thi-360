@@ -1,18 +1,18 @@
-import type {
-  AnswerFormat,
-  AnswerValue,
-  ClozeBlank,
-  EssayAnswer,
-  KitQuestion,
-  MatchingAnswer,
-  MatchingPair,
-  MultipleChoiceRule,
-  PartResult,
-  QuestionBody,
-  QuestionOutcome,
-  QuestionReview,
-  QuestionSetAnswer,
-  TrueFalseMethod,
+import {
+  countWords,
+  type AnswerFormat,
+  type AnswerValue,
+  type ClozeBlank,
+  type KitQuestion,
+  type MatchingAnswer,
+  type MatchingPair,
+  type MultipleChoiceRule,
+  type PartResult,
+  type QuestionBody,
+  type QuestionOutcome,
+  type QuestionReview,
+  type QuestionSetAnswer,
+  type TrueFalseMethod,
 } from "@thi360/ui/question";
 import type {
   AttemptReviewEssayFeedback,
@@ -249,9 +249,10 @@ function mapStudentAnswer(item: AttemptReviewItem): AnswerValue | null {
     }
     case "ESSAY": {
       const val = sa as { html?: string; wordCount?: number };
+      const html = val.html ?? "";
       return {
-        html: val.html ?? "",
-        wordCount: val.wordCount ?? item.gradingDetail?.wordCount ?? 0,
+        html,
+        wordCount: val.wordCount ?? item.gradingDetail?.wordCount ?? (html ? countWords(html) : 0),
       };
     }
     default:
@@ -293,6 +294,10 @@ function buildPartResults(item: AttemptReviewItem, studentValue: AnswerValue | n
 
   if (detail.pairResults && detail.pairResults.length > 0) {
     const studentPairs = (studentValue as MatchingAnswer | null)?.pairs ?? {};
+    const pairMax =
+      item.pointsMax != null && detail.pairResults.length > 0
+        ? item.pointsMax / detail.pairResults.length
+        : null;
     for (const pair of detail.pairResults) {
       if (!pair.leftId) continue;
       const outcome: QuestionOutcome = pair.matched
@@ -304,6 +309,7 @@ function buildPartResults(item: AttemptReviewItem, studentValue: AnswerValue | n
         key: pair.leftId,
         outcome,
         earned: pair.pointsEarned ?? null,
+        max: pairMax,
       };
     }
     return map;
@@ -330,11 +336,12 @@ function buildLeafReview(
   };
 
   if (item.questionType === "ESSAY") {
-    const essayVal = studentValue as EssayAnswer | null;
+    const rawStudentWordCount = (item.studentAnswer as { wordCount?: number } | undefined)?.wordCount;
+    const explicitWordCount = rawStudentWordCount ?? item.gradingDetail?.wordCount;
     review.essay = {
       state: item.outcome === "PENDING_REVIEW" ? "PENDING" : "GRADED",
-      wordCount: essayVal?.wordCount ?? item.gradingDetail?.wordCount,
-      comment: item.essayFeedback?.comment ?? null,
+      ...(explicitWordCount != null ? { wordCount: explicitWordCount } : {}),
+      comment: includeSolution ? (item.essayFeedback?.comment ?? null) : null,
     };
   }
 
@@ -356,6 +363,15 @@ function sortByOrdAndDisplay(a: AttemptReviewItem, b: AttemptReviewItem): number
   const ordDiff = (a.ord ?? Number.MAX_SAFE_INTEGER) - (b.ord ?? Number.MAX_SAFE_INTEGER);
   if (ordDiff !== 0) return ordDiff;
   return (a.displayNo ?? Number.MAX_SAFE_INTEGER) - (b.displayNo ?? Number.MAX_SAFE_INTEGER);
+}
+
+function deriveGroupOutcome(children: readonly AttemptReviewItem[]): QuestionOutcome {
+  if (children.length === 0) return "BLANK";
+  const outcomes = children.map((child) => child.outcome ?? "BLANK");
+  if (outcomes.every((outcome) => outcome === "CORRECT")) return "CORRECT";
+  if (outcomes.every((outcome) => outcome === "BLANK")) return "BLANK";
+  if (outcomes.every((outcome) => outcome === "WRONG")) return "WRONG";
+  return "PARTIAL";
 }
 
 export function mapAttemptReview(response: AttemptReviewResponse): MappedAttemptReview {
@@ -384,16 +400,16 @@ export function mapAttemptReview(response: AttemptReviewResponse): MappedAttempt
 
   for (let idx = 0; idx < topLevelItems.length; idx++) {
     const item = topLevelItems[idx]!;
-    if (item.outcome === "PENDING_REVIEW") {
-      continue;
-    }
 
     if (item.questionType === "QUESTION_SET") {
       const rawChildren = (item.itemId ? rawChildrenByParent.get(item.itemId) : undefined) ?? [];
       const sortedRawChildren = [...rawChildren].sort(sortByOrdAndDisplay);
       const visibleChildren = sortedRawChildren.filter((child) => child.outcome !== "PENDING_REVIEW");
 
-      if (sortedRawChildren.length > 0 && visibleChildren.length === 0) {
+      if (
+        (sortedRawChildren.length > 0 && visibleChildren.length === 0) ||
+        (sortedRawChildren.length === 0 && item.outcome === "PENDING_REVIEW")
+      ) {
         continue;
       }
 
@@ -411,7 +427,7 @@ export function mapAttemptReview(response: AttemptReviewResponse): MappedAttempt
           childAnswers[kitChild.id] = childVal;
         }
         childReviews[kitChild.id] = childRev;
-        if (child.essayFeedback?.criteria && child.essayFeedback.criteria.length > 0) {
+        if (includeSolution && child.essayFeedback?.criteria && child.essayFeedback.criteria.length > 0) {
           childEssayFeedbacks.push({
             id: kitChild.id,
             displayNo: kitChild.displayNo,
@@ -428,8 +444,13 @@ export function mapAttemptReview(response: AttemptReviewResponse): MappedAttempt
       const setValue: QuestionSetAnswer | null =
         Object.keys(childAnswers).length > 0 ? { children: childAnswers } : null;
 
+      const groupOutcome: QuestionOutcome =
+        item.outcome != null && item.outcome !== "PENDING_REVIEW"
+          ? item.outcome
+          : deriveGroupOutcome(visibleChildren);
+
       const parentReview: QuestionReview = {
-        outcome: item.outcome ?? null,
+        outcome: groupOutcome,
         earned: item.earnedPoints ?? null,
         max: item.pointsMax ?? 1,
         showAnswers: true,
@@ -445,9 +466,9 @@ export function mapAttemptReview(response: AttemptReviewResponse): MappedAttempt
         id: parentKit.id,
         partId: item.partId,
         partCode: item.partCode,
-        displayNo: parentKit.displayNo,
+        displayNo: rangeFrom,
         ...(rangeFrom !== rangeTo ? { rangeFrom, rangeTo } : {}),
-        outcome: item.outcome ?? "BLANK",
+        outcome: groupOutcome,
         question: parentKit,
         children: childQuestions,
         value: setValue,
@@ -458,21 +479,30 @@ export function mapAttemptReview(response: AttemptReviewResponse): MappedAttempt
       continue;
     }
 
+    if (item.outcome === "PENDING_REVIEW") {
+      continue;
+    }
+
     const kitQuestion = toKitQuestion(item, idx);
     const studentValue = mapStudentAnswer(item);
     const questionReview = buildLeafReview(item, studentValue, includeSolution);
+    const clozeBlankCount =
+      item.questionType === "CLOZE" ? (item.body?.blanks?.length ?? 0) : 0;
+    const rangeFrom = clozeBlankCount > 1 ? kitQuestion.displayNo : undefined;
+    const rangeTo = clozeBlankCount > 1 ? kitQuestion.displayNo + clozeBlankCount - 1 : undefined;
 
     mappedItems.push({
       id: kitQuestion.id,
       partId: item.partId,
       partCode: item.partCode,
       displayNo: kitQuestion.displayNo,
+      ...(rangeFrom != null && rangeTo != null ? { rangeFrom, rangeTo } : {}),
       outcome: item.outcome ?? "BLANK",
       question: kitQuestion,
       children: [],
       value: studentValue,
       review: questionReview,
-      essayFeedback: item.essayFeedback ?? null,
+      essayFeedback: includeSolution ? (item.essayFeedback ?? null) : null,
       childEssayFeedbacks: [],
     });
   }
@@ -507,8 +537,9 @@ export function computePaletteSummary(items: readonly ReviewItemGroup[]) {
   let partial = 0;
   let wrong = 0;
   let blank = 0;
-  for (const item of items) {
-    switch (item.outcome) {
+
+  const tally = (outcome: QuestionOutcome | null | undefined) => {
+    switch (outcome) {
       case "CORRECT":
         correct += 1;
         break;
@@ -522,6 +553,16 @@ export function computePaletteSummary(items: readonly ReviewItemGroup[]) {
       default:
         blank += 1;
         break;
+    }
+  };
+
+  for (const item of items) {
+    if (item.children.length > 0) {
+      for (const child of item.children) {
+        tally(item.review.children?.[child.id]?.outcome);
+      }
+    } else {
+      tally(item.outcome);
     }
   }
   return { correct, partial, wrong, blank };

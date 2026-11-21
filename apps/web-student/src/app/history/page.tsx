@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function HistoryPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div aria-busy="true" className="min-h-screen bg-page" />}>
       <AttemptHistoryView />
     </Suspense>
   );

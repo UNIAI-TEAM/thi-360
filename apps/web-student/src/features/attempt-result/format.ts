@@ -8,6 +8,13 @@ import type {
   CatalogOptionResponse,
 } from "./api";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Returns true when `value` is a non-empty UUID string (after trimming). */
+export function isUuid(value: string | null | undefined): value is string {
+  return Boolean(value && UUID_RE.test(value.trim()));
+}
+
 const DATE_TIME_PARTS = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "2-digit",
@@ -52,13 +59,13 @@ export function shouldShowAttemptScore(
 
 export function resolveAttemptDisplayScore(
   result: Pick<AttemptResultResponse, "state" | "regrading" | "displayScore" | "rawScore" | "scaleMax" | "rawMaxScore">,
-): { score: number; max: number } | null {
+): { score: number; max: number | null } | null {
   if (!shouldShowAttemptScore(result.state, result.regrading, result.displayScore, result.rawScore)) {
     return null;
   }
   const score = result.displayScore ?? result.rawScore;
   if (score == null) return null;
-  const max = result.scaleMax ?? result.rawMaxScore ?? 0;
+  const max = result.scaleMax ?? result.rawMaxScore ?? null;
   return { score, max };
 }
 
@@ -105,8 +112,8 @@ export function resolveCatalogLabel(
   return pickName(option, locale) || code;
 }
 
-const KNOWN_CHOICE_OPTION_CODES = new Set(["SCIENCE", "ENGLISH", "KH", "TA", "CS", "ICT"]);
-export type KnownChoiceOptionCode = "SCIENCE" | "ENGLISH" | "KH" | "TA" | "CS" | "ICT";
+const KNOWN_CHOICE_OPTION_CODES = new Set(["ANH", "SCIENCE", "ENGLISH", "KH", "TA", "CS", "ICT"]);
+export type KnownChoiceOptionCode = "ANH" | "SCIENCE" | "ENGLISH" | "KH" | "TA" | "CS" | "ICT";
 
 export function isKnownChoiceOptionCode(code: string): code is KnownChoiceOptionCode {
   return KNOWN_CHOICE_OPTION_CODES.has(code);
@@ -125,7 +132,7 @@ export function formatAttemptChoices(
     const optionCode = summary.optionCode.trim();
     const optionLabel = isKnownChoiceOptionCode(optionCode)
       ? translateOptionCode(optionCode)
-      : optionCode;
+      : resolveCatalogLabel(optionCode, subjectMap, locale);
     const subjectLabels = (summary.subjectCodes ?? [])
       .map((code) => resolveCatalogLabel(code, subjectMap, locale))
       .filter(Boolean);
