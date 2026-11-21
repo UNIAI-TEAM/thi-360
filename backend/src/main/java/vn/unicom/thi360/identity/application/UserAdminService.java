@@ -397,8 +397,8 @@ public class UserAdminService {
         // plan B1: các module thương mại và lượt thi đều cài StudentLearningProvider,
         // nên gộp kết quả của mọi bean; dataAvailable đúng khi một bean có dữ liệu.
         boolean dataAvailable = false;
-        List<Object> entitlements = new ArrayList<>();
-        List<Object> attempts = new ArrayList<>();
+        List<StudentLearningResponse.StudentLearningEntitlement> entitlements = new ArrayList<>();
+        List<StudentLearningResponse.StudentLearningAttempt> attempts = new ArrayList<>();
         List<Object> assessments = new ArrayList<>();
         List<Object> practice = new ArrayList<>();
         List<Object> supportRequests = new ArrayList<>();
@@ -408,8 +408,16 @@ public class UserAdminService {
                 continue;
             }
             dataAvailable |= data.dataAvailable();
-            entitlements.addAll(data.entitlements());
-            attempts.addAll(data.attempts());
+            for (StudentLearningProvider.EntitlementItem item : data.entitlements()) {
+                if (item != null) {
+                    entitlements.add(toLearningEntitlement(item));
+                }
+            }
+            for (StudentLearningProvider.AttemptItem item : data.attempts()) {
+                if (item != null) {
+                    attempts.add(toLearningAttempt(item));
+                }
+            }
             assessments.addAll(data.assessments());
             practice.addAll(data.practice());
             supportRequests.addAll(data.supportRequests());
@@ -422,6 +430,40 @@ public class UserAdminService {
                 assessments,
                 practice,
                 supportRequests);
+    }
+
+    private static StudentLearningResponse.StudentLearningEntitlement toLearningEntitlement(
+            StudentLearningProvider.EntitlementItem item) {
+        return new StudentLearningResponse.StudentLearningEntitlement(
+                item.entitlementId(),
+                item.examId(),
+                item.examCode(),
+                item.examName(),
+                item.source(),
+                item.attemptsTotal(),
+                item.attemptsUsed(),
+                item.attemptsReserved(),
+                item.attemptsRevoked(),
+                item.attemptsLeft(),
+                item.status());
+    }
+
+    private static StudentLearningResponse.StudentLearningAttempt toLearningAttempt(
+            StudentLearningProvider.AttemptItem item) {
+        // Defense-in-depth: never expose score/maxScore unless the attempt is SCORED.
+        boolean scored = item.status() == StudentLearningProvider.AttemptLearningStatus.SCORED;
+        return new StudentLearningResponse.StudentLearningAttempt(
+                item.attemptId(),
+                item.examId(),
+                item.examName(),
+                item.examKindCode(),
+                item.scope(),
+                item.attemptNo(),
+                item.status(),
+                item.startedAt(),
+                item.finishedAt(),
+                scored ? item.score() : null,
+                scored ? item.maxScore() : null);
     }
 
     @Transactional(readOnly = true)

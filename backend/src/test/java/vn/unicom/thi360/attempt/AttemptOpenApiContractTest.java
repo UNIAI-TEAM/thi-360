@@ -105,7 +105,8 @@ class AttemptOpenApiContractTest {
         for (String schemaName : ANSWER_SUBTYPE_SCHEMAS) {
             expectedAnswerRefs.add("#/components/schemas/" + schemaName);
         }
-        for (String ownerSchema : List.of("FinalAnswerChange", "AnswerChange", "AttemptItemView")) {
+        for (String ownerSchema :
+                List.of("FinalAnswerChange", "AnswerChange", "AttemptItemView", "AdminAttemptItemView")) {
             JsonNode answerProp = schemas.path(ownerSchema).path("properties").path("answer");
             assertThat(answerProp.isMissingNode()).isFalse();
             assertThat(answerProp.toString()).doesNotContain("AttemptQuestionBody");
@@ -455,6 +456,134 @@ class AttemptOpenApiContractTest {
         assertThat(extractComponentSchemaBlock(schemaDts, "AttemptReviewItem"))
                 .contains("gradingDetail?:")
                 .contains("ReviewGradingDetail");
+    }
+
+    @Test
+    void at5AdminGradingOpsAndPreviewTrialContractsPresent() throws Exception {
+        Path openApiPath = resolveWorkspaceFile(Path.of("packages", "api-client", "openapi.json"));
+        JsonNode root = objectMapper.readTree(Files.readString(openApiPath, StandardCharsets.UTF_8));
+        JsonNode paths = root.path("paths");
+        JsonNode schemas = root.path("components").path("schemas");
+
+        for (String path : List.of(
+                "/api/v1/admin/grading/items",
+                "/api/v1/admin/grading/items/counts",
+                "/api/v1/admin/grading/items/{itemId}",
+                "/api/v1/admin/grading/items/{itemId}/claim",
+                "/api/v1/admin/grading/items/{itemId}/finalize",
+                "/api/v1/admin/grading/items/{itemId}/reopen",
+                "/api/v1/admin/attempts",
+                "/api/v1/admin/attempts/{id}",
+                "/api/v1/admin/attempts/{id}/regrade",
+                "/api/v1/admin/attempts/{id}/fault",
+                "/api/v1/admin/attempts/{id}/compensate",
+                "/api/v1/admin/exams/{id}/preview/{previewId}/trial",
+                "/api/v1/admin/exams/{id}/preview/{previewId}/paper",
+                "/api/v1/admin/exams/{id}/preview/{previewId}/grade")) {
+            assertThat(paths.has(path)).as("OpenAPI path %s present", path).isTrue();
+        }
+
+        // /api/v1/admin/attempts/{id}/compensate MUST require Idempotency-Key header
+        JsonNode compensateParams =
+                paths.path("/api/v1/admin/attempts/{id}/compensate").path("post").path("parameters");
+        boolean foundRequiredIdempotency = false;
+        for (JsonNode param : compensateParams) {
+            if ("Idempotency-Key".equals(param.path("name").asText())
+                    && "header".equals(param.path("in").asText())
+                    && param.path("required").asBoolean()) {
+                foundRequiredIdempotency = true;
+            }
+        }
+        assertThat(foundRequiredIdempotency)
+                .as("/compensate declares required Idempotency-Key header parameter")
+                .isTrue();
+
+        // Key AT-5 schemas exist and define expected required/properties in openapi.json
+        assertThat(schemas.path("GradingQueueCountsResponse").path("required"))
+                .extracting(JsonNode::asText)
+                .contains("waiting", "inProgress", "done", "total");
+        assertThat(schemas.path("GradingClaimedResponse").path("properties").fieldNames())
+                .toIterable()
+                .contains("claimedById", "claimedByName", "claimedAt", "lastActivityAt", "code", "message");
+        JsonNode previewAnswersSchema =
+                schemas.path("PreviewGradeRequest").path("properties").path("answers");
+        assertThat(previewAnswersSchema.path("type").asText()).isEqualTo("object");
+        assertThat(previewAnswersSchema.path("additionalProperties").path("oneOf").isArray())
+                .as("PreviewGradeRequest.answers maps to polymorphic AnswerValue oneOf")
+                .isTrue();
+
+        String schemaDts = Files.readString(
+                resolveWorkspaceFile(Path.of("packages", "api-client", "src", "schema.d.ts")),
+                StandardCharsets.UTF_8);
+
+        for (String opId : List.of(
+                "listGradingItems",
+                "getGradingItemCounts",
+                "getGradingItemDetail",
+                "claimGradingItem",
+                "saveEssayDraft",
+                "finalizeEssayGrade",
+                "reopenEssayGrade",
+                "listAdminAttempts",
+                "getAdminAttemptDetail",
+                "regradeAdminAttempt",
+                "faultAdminAttempt",
+                "compensateAdminAttempt",
+                "extendAdminPreviewForTrial",
+                "getAdminPreviewPaper",
+                "gradeAdminPreview")) {
+            extractOperationBlock(schemaDts, opId);
+        }
+
+        assertThat(extractOperationBlock(schemaDts, "compensateAdminAttempt"))
+                .contains("\"Idempotency-Key\": string;");
+
+        for (String schemaName : List.of(
+                "GradingQueueCountsResponse",
+                "GradingQueueItemView",
+                "GradingItemDetailResponse",
+                "EssayGradeView",
+                "SaveEssayDraftRequest",
+                "FinalizeEssayRequest",
+                "FinalizeEssayResponse",
+                "ReopenEssayRequest",
+                "GradingClaimedResponse",
+                "AdminAttemptSummary",
+                "AdminAttemptDetailResponse",
+                "AdminAttemptPartView",
+                "AdminAttemptEventView",
+                "AdminAttemptItemView",
+                "AttemptPosition",
+                "AdminAttemptActionResponse",
+                "FaultAttemptRequest",
+                "CompensateAttemptRequest",
+                "CompensateAttemptResponse",
+                "PreviewTrialResponse",
+                "PreviewTrialPaperResponse",
+                "PreviewTrialPart",
+                "PreviewTrialSegment",
+                "PreviewTrialBlock",
+                "PreviewTrialItem",
+                "PreviewTrialQuestionSet",
+                "PreviewTrialQuestion",
+                "PreviewTrialAttachment",
+                "PreviewGradeRequest",
+                "PreviewGradeResponse",
+                "PreviewGradedItem")) {
+            String block = extractComponentSchemaBlock(schemaDts, schemaName);
+            assertThat(block)
+                    .as("Schema %s in schema.d.ts has no : never or Record<string, never>", schemaName)
+                    .doesNotContain(": never")
+                    .doesNotContain("Record<string, never>");
+        }
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptDetailResponse"))
+                .contains("lastPosition?: components[\"schemas\"][\"AttemptPosition\"];");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptPartView"))
+                .contains("choice?: components[\"schemas\"][\"AttemptChoiceSummary\"];");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptItemView"))
+                .contains("gradingDetail?: components[\"schemas\"][\"ReviewGradingDetail\"];");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptEventView"))
+                .contains("data?: {");
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {

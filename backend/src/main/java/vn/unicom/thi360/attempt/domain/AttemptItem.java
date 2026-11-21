@@ -195,6 +195,16 @@ public class AttemptItem {
                 && this.earnedPoints != null;
     }
 
+    /** Resets a finalized manual essay item back to {@code PENDING_REVIEW} when reopened (AT-5, AC-8). */
+    public void reopenManualEssay(Map<String, Object> gradingDetail) {
+        if (this.questionType != QuestionType.ESSAY) {
+            throw new IllegalStateException("Cannot reopen non-essay item: " + this.questionType);
+        }
+        this.earnedPoints = null;
+        this.outcome = ItemOutcome.PENDING_REVIEW;
+        this.gradingDetail = gradingDetail;
+    }
+
     public UUID getId() {
         return id;
     }
