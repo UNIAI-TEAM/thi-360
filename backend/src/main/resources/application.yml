@@ -197,6 +197,9 @@ thi360:
       queue-capacity: ${THI360_ATTEMPT_GEN_QUEUE_CAPACITY:32}
       max-queue-wait: ${THI360_ATTEMPT_GEN_MAX_QUEUE_WAIT:PT60S}
       stale-starting-after: ${THI360_ATTEMPT_STALE_STARTING_AFTER:PT2M}
+    audio:
+      lease-duration: ${THI360_ATTEMPT_AUDIO_LEASE_DURATION:PT45S}
+      seek-tolerance: ${THI360_ATTEMPT_AUDIO_SEEK_TOLERANCE:PT3S}
     scheduling:
       enabled: true
       stale-starting-interval-ms: 30000

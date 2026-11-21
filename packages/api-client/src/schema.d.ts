@@ -2485,10 +2485,78 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Tải tài nguyên câu hỏi (ảnh, tệp đính kèm) thuộc lượt thi của thí sinh */
+        /** Tải tài nguyên câu hỏi (ảnh, tệp đính kèm, audio) thuộc lượt thi của thí sinh */
         get: operations["downloadAttemptAsset"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở lần nghe mới cho tệp audio hoặc trả lại kết quả khi gửi lặp requestId */
+        post: operations["openAudioPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Kết thúc lần nghe audio đang phát */
+        post: operations["endAudioPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Cập nhật tiến độ phát audio và kiểm tra giới hạn chống tua */
+        put: operations["updateAudioProgress"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Phát tiếp lần nghe đang dở từ vị trí đã lưu và gia hạn lease */
+        post: operations["resumeAudioPlay"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3230,10 +3298,76 @@ export interface components {
              */
             version: number;
         };
+        AttemptAttachmentView: {
+            /** Format: uuid */
+            assetId?: string;
+            fileName?: string;
+            mime?: string;
+            url?: string;
+        };
+        /** @description Trạng thái lần nghe của một tệp audio trong lượt thi (BS §17.2) */
+        AttemptAudioPlayResponse: {
+            /**
+             * Format: int64
+             * @description Thời lượng tệp audio do máy chủ đo tính bằng mili giây
+             */
+            durationMs: number;
+            /**
+             * @description Lý do kết thúc khi state là ENDED
+             * @enum {string}
+             */
+            endReason?: "FINISHED" | "CLOSED";
+            /**
+             * Format: uuid
+             * @description Id của lần nghe
+             */
+            playId?: string;
+            /**
+             * Format: int32
+             * @description Số lần nghe còn lại
+             */
+            playsLeft: number;
+            /**
+             * Format: int32
+             * @description Số lần nghe đã dùng
+             */
+            playsUsed: number;
+            /**
+             * Format: int64
+             * @description Vị trí phát đã lưu tính bằng mili giây
+             */
+            positionMs: number;
+            /**
+             * @description Trạng thái phát audio
+             * @enum {string}
+             */
+            state: "IDLE" | "PLAYING" | "ENDED";
+        };
+        AttemptAudioPlayView: {
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: int64 */
+            durationMs?: number;
+            /** @enum {string} */
+            endReason?: "FINISHED" | "CLOSED";
+            /** Format: uuid */
+            partId?: string;
+            /** Format: uuid */
+            playId?: string;
+            /** Format: int32 */
+            playsLeft?: number;
+            /** Format: int32 */
+            playsUsed?: number;
+            /** Format: int64 */
+            positionMs?: number;
+            /** @enum {string} */
+            state?: "IDLE" | "PLAYING" | "ENDED";
+        };
         AttemptItemView: {
             answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
             /** Format: int64 */
             answerSeq?: number;
+            attachments?: components["schemas"]["AttemptAttachmentView"][];
             blockId?: string;
             componentCode?: string;
             content?: string;
@@ -3297,6 +3431,8 @@ export interface components {
         AttemptPrepareResponse: {
             /** @description Lựa chọn sẽ gặp sau khi vào làm (phần mở muộn) */
             afterStartChoices: components["schemas"]["AfterStartChoiceView"][];
+            /** @description Các định dạng đáp án có trong đề */
+            answerFormats: string[];
             /**
              * Format: int32
              * @description Số lượt còn lại trên quyền dùng
@@ -3329,6 +3465,8 @@ export interface components {
             grantSource?: components["schemas"]["GrantSourceView"];
             /** @description Hướng dẫn làm bài đã đóng băng theo phiên bản */
             instructions?: string;
+            /** @description Chính sách nghe khi đề có phần audio; null nếu đề không có audio */
+            listeningPolicy?: components["schemas"]["ListeningPolicyView"];
             /**
              * @description Chế độ di chuyển trong bài
              * @enum {string}
@@ -3385,6 +3523,10 @@ export interface components {
             attemptId: string;
             /** Format: int32 */
             attemptNo?: number;
+            /** @description Trạng thái phát từng tệp audio của lượt thi; không có khi STARTING hoặc ABORTED */
+            audioPlays?: components["schemas"]["AttemptAudioPlayView"][];
+            /** @description Chính sách nghe khi đề có audio; không có khi STARTING hoặc ABORTED */
+            audioPolicy?: components["schemas"]["AudioPolicyView"];
             choices?: {
                 [key: string]: Record<string, never>;
             };
@@ -3422,6 +3564,45 @@ export interface components {
             state: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
             /** @enum {string} */
             timing?: "PER_PART" | "SHARED";
+        };
+        /** @description Lỗi xung đột khi audio đang có lần nghe dở hoặc đã đóng/hết lượt (BS §17.2) */
+        AudioPlayInProgressResponse: {
+            /** @example AUDIO_PLAY_IN_PROGRESS */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            message: string;
+            /**
+             * Format: uuid
+             * @description Id của lần nghe đang phát nếu có
+             */
+            playId?: string;
+            traceId: string;
+        };
+        AudioPolicyView: {
+            /** Format: int32 */
+            maxPlays?: number;
+            seekable?: boolean;
+        };
+        /** @description Yêu cầu cập nhật vị trí phát hiện tại của audio (BS §17.2) */
+        AudioProgressRequest: {
+            /**
+             * Format: int64
+             * @description Vị trí phát hiện tại tính bằng mili giây
+             */
+            positionMs: number;
+        };
+        /** @description Lỗi xung đột khi vị trí tua vượt ngưỡng chống tua hoặc không hợp lệ (BS §17.2) */
+        AudioSeekRejectedResponse: {
+            /** @example AUDIO_SEEK_REJECTED */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            message: string;
+            /**
+             * Format: int64
+             * @description Vị trí hợp lệ đã lưu trên máy chủ (ms)
+             */
+            positionMs?: number;
+            traceId: string;
         };
         AuditEventItem: {
             action: string;
@@ -7054,6 +7235,11 @@ export interface components {
             /** Format: int32 */
             versionNo: number;
         };
+        ListeningPolicyView: {
+            /** Format: int32 */
+            maxPlays?: number;
+            seekable?: boolean;
+        };
         /** @description Nạp lại cấu trúc từ nguyên mẫu (POST /exams/{id}/template, spec 5.2) */
         LoadExamTemplateRequest: {
             /** @description Bắt buộc true khi cấu trúc hiện tại đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM */
@@ -9368,6 +9554,11 @@ export interface components {
              * @enum {string}
              */
             state: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
+        /** @description Yêu cầu mở lần nghe mới cho tệp audio (BS §17.2) */
+        StartAudioPlayRequest: {
+            /** @description Khóa chống gửi lặp do trình duyệt tạo cho mỗi lần bấm Nghe */
+            requestId: string;
         };
         Statement: {
             answer?: boolean;
@@ -33915,7 +34106,10 @@ export interface operations {
     };
     downloadAttemptAsset: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Id lần nghe (bắt buộc với tệp audio) */
+                playId?: string;
+            };
             header?: never;
             path: {
                 attemptId: string;
@@ -33932,6 +34126,549 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    openAudioPlay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAudioPlayRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái lần nghe sau khi mở hoặc gửi lại */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description AUDIO_PLAY_IN_PROGRESS (kèm playId), AUDIO_PLAYS_EXHAUSTED, PART_CLOSED, TIME_UP hoặc ATTEMPT_SESSION_REVOKED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioPlayInProgressResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    endAudioPlay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+                playId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trạng thái kết thúc của lần nghe audio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateAudioProgress: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+                playId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AudioProgressRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái lần nghe sau khi cập nhật tiến độ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description AUDIO_SEEK_REJECTED (kèm positionMs đã lưu), AUDIO_PLAY_STALE, PART_CLOSED, TIME_UP hoặc ATTEMPT_SESSION_REVOKED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioSeekRejectedResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resumeAudioPlay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+                playId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trạng thái lần nghe sau khi phát tiếp */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
                 };
             };
             /** @description Bad Request */
