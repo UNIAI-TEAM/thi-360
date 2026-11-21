@@ -259,7 +259,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | AT-8 | UNI-2729 | THPTQG chuyển tự do giữa các phần | AT-2a | AT-3, AT-6 | 2 | chưa mở |
 | FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | merge PR #149 (`1e49a9e5`) |
 | FS-2 | UNI-2731 | Web học viên: đăng ký, xác minh, quên mật khẩu, hồ sơ | ID-1, ID-2 | FS-1 | 3 | merge PR #142 (`db46d807`) |
-| FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | đang làm (local) |
+| FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | merge PR #167 (`0afe8021`) |
 | FS-4 | UNI-2733 | `packages/ui`: thành phần 8 dạng câu (làm bài và chỉ đọc); đưa bộ hiển thị nội dung (`RichTextView`, mọi loại nút, KaTeX, mhchem) vào `packages/ui` |  |  | 3 | merge PR #122 (`4f3820ab`) |
 | FS-5 | UNI-2734 | Web học viên: chuẩn bị (có chọn định hướng Tin học), chờ sinh đề, màn làm bài, lưu, ngoại tuyến, tiếp quản | FS-4, AT-2b, AT-3, CM-3a, AT-8 |  | 4 | chưa mở |
 | FS-6 | UNI-2735 | Web học viên: kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | FS-4, AT-4, FS-1, CM-3a |  | 3 | chưa mở |
