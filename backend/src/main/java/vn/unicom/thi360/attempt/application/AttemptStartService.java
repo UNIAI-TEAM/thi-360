@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,12 +30,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptResponse;
+import vn.unicom.thi360.attempt.application.AttemptAudioFileCheck.AudioFileCheckException;
+import vn.unicom.thi360.attempt.application.AttemptAudioFileCheck.CheckResult;
+import vn.unicom.thi360.attempt.application.AttemptAudioFileCheck.CheckedAudioAsset;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler.AssembledItem;
 import vn.unicom.thi360.attempt.application.AttemptPaperAssembler.AssembledPart;
 import vn.unicom.thi360.attempt.application.AttemptPathResolver.PlannedPart;
 import vn.unicom.thi360.attempt.application.AttemptPathResolver.ResolvedStartPlan;
 import vn.unicom.thi360.attempt.domain.AbortReason;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
@@ -42,6 +47,7 @@ import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
+import vn.unicom.thi360.attempt.infrastructure.AttemptAudioPlayRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
@@ -90,7 +96,9 @@ public class AttemptStartService {
     private final AttemptRepository attemptRepository;
     private final AttemptPartRepository attemptPartRepository;
     private final AttemptItemRepository attemptItemRepository;
+    private final AttemptAudioPlayRepository attemptAudioPlayRepository;
     private final AttemptEventRepository attemptEventRepository;
+    private final AttemptAudioFileCheck attemptAudioFileCheck;
     private final GenerationExecutor generationExecutor;
     private final IdempotentCommand idempotentCommand;
     private final OverdueAttemptCloser overdueAttemptCloser;
@@ -137,25 +145,128 @@ public class AttemptStartService {
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
             Clock clock) {
-        this.accessGate = accessGate;
-        this.entitlementPort = entitlementPort;
-        this.publishedExamPort = publishedExamPort;
-        this.paperSolverPort = paperSolverPort;
-        this.questionSourcePort = questionSourcePort;
-        this.pathResolver = pathResolver;
-        this.paperAssembler = paperAssembler;
-        this.attemptRepository = attemptRepository;
-        this.attemptPartRepository = attemptPartRepository;
-        this.attemptItemRepository = attemptItemRepository;
-        this.attemptEventRepository = attemptEventRepository;
-        this.generationExecutor = generationExecutor;
-        this.idempotentCommand = idempotentCommand;
-        this.overdueAttemptCloser = overdueAttemptCloser;
-        this.entityManager = entityManager;
-        this.jdbcTemplate = jdbcTemplate;
-        this.requiresNewTx = new TransactionTemplate(transactionManager);
+        this(
+                accessGate,
+                entitlementPort,
+                publishedExamPort,
+                paperSolverPort,
+                questionSourcePort,
+                pathResolver,
+                paperAssembler,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                null,
+                attemptEventRepository,
+                null,
+                generationExecutor,
+                idempotentCommand,
+                overdueAttemptCloser,
+                entityManager,
+                jdbcTemplate,
+                transactionManager,
+                clock,
+                false);
+    }
+
+    @Autowired
+    public AttemptStartService(
+            AttemptAccessGate accessGate,
+            EntitlementPort entitlementPort,
+            PublishedExamPort publishedExamPort,
+            PaperSolverPort paperSolverPort,
+            QuestionSourcePort questionSourcePort,
+            AttemptPathResolver pathResolver,
+            AttemptPaperAssembler paperAssembler,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptEventRepository attemptEventRepository,
+            AttemptAudioFileCheck attemptAudioFileCheck,
+            GenerationExecutor generationExecutor,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            EntityManager entityManager,
+            JdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
+        this(
+                accessGate,
+                entitlementPort,
+                publishedExamPort,
+                paperSolverPort,
+                questionSourcePort,
+                pathResolver,
+                paperAssembler,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptAudioPlayRepository,
+                attemptEventRepository,
+                attemptAudioFileCheck,
+                generationExecutor,
+                idempotentCommand,
+                overdueAttemptCloser,
+                entityManager,
+                jdbcTemplate,
+                transactionManager,
+                clock,
+                true);
+    }
+
+    private AttemptStartService(
+            AttemptAccessGate accessGate,
+            EntitlementPort entitlementPort,
+            PublishedExamPort publishedExamPort,
+            PaperSolverPort paperSolverPort,
+            QuestionSourcePort questionSourcePort,
+            AttemptPathResolver pathResolver,
+            AttemptPaperAssembler paperAssembler,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptEventRepository attemptEventRepository,
+            AttemptAudioFileCheck attemptAudioFileCheck,
+            GenerationExecutor generationExecutor,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            EntityManager entityManager,
+            JdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            Clock clock,
+            boolean requireAudioDeps) {
+        this.accessGate = Objects.requireNonNull(accessGate);
+        this.entitlementPort = Objects.requireNonNull(entitlementPort);
+        this.publishedExamPort = Objects.requireNonNull(publishedExamPort);
+        this.paperSolverPort = Objects.requireNonNull(paperSolverPort);
+        this.questionSourcePort = Objects.requireNonNull(questionSourcePort);
+        this.pathResolver = Objects.requireNonNull(pathResolver);
+        this.paperAssembler = Objects.requireNonNull(paperAssembler);
+        this.attemptRepository = Objects.requireNonNull(attemptRepository);
+        this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
+        this.attemptItemRepository = Objects.requireNonNull(attemptItemRepository);
+        this.attemptAudioPlayRepository =
+                requireAudioDeps
+                        ? Objects.requireNonNull(
+                                attemptAudioPlayRepository,
+                                "attemptAudioPlayRepository must not be null")
+                        : attemptAudioPlayRepository;
+        this.attemptEventRepository = Objects.requireNonNull(attemptEventRepository);
+        this.attemptAudioFileCheck =
+                requireAudioDeps
+                        ? Objects.requireNonNull(
+                                attemptAudioFileCheck, "attemptAudioFileCheck must not be null")
+                        : attemptAudioFileCheck;
+        this.generationExecutor = Objects.requireNonNull(generationExecutor);
+        this.idempotentCommand = Objects.requireNonNull(idempotentCommand);
+        this.overdueAttemptCloser = Objects.requireNonNull(overdueAttemptCloser);
+        this.entityManager = Objects.requireNonNull(entityManager);
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
+        this.requiresNewTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.clock = clock;
+        this.clock = Objects.requireNonNull(clock);
     }
 
     public ResponseEntity<StartAttemptResponse> startAttempt(
@@ -374,7 +485,15 @@ public class AttemptStartService {
                 assembledByPartCode.put(pp.partCode(), assembled);
             }
 
-            persistGeneratedPaper(job, rootKeys, assembledByPartCode);
+            CheckResult audioCheck =
+                    attemptAudioFileCheck != null
+                            ? attemptAudioFileCheck.checkAndMeasure(
+                                    job.examId(), job.examCode(), assembledByPartCode, versionMap)
+                            : CheckResult.EMPTY;
+
+            persistGeneratedPaper(job, rootKeys, assembledByPartCode, audioCheck);
+        } catch (AudioFileCheckException ex) {
+            abortAudioGeneration(job, ex);
         } catch (PaperGenerationException ex) {
             AbortReason reason =
                     ex.reason() == PaperGenerationException.Reason.GENERATION_TIMEOUT
@@ -389,7 +508,8 @@ public class AttemptStartService {
     private void persistGeneratedPaper(
             GenerationJob job,
             List<VersionKey> rootKeys,
-            Map<String, AssembledPart> assembledByPartCode) {
+            Map<String, AssembledPart> assembledByPartCode,
+            CheckResult audioCheck) {
         requiresNewTx.executeWithoutResult(
                 status -> {
                     Attempt attempt = attemptRepository.findByIdForUpdate(job.attemptId()).orElse(null);
@@ -415,12 +535,14 @@ public class AttemptStartService {
                     attemptRepository.save(attempt);
 
                     List<AttemptPart> partEntities = new ArrayList<>(job.plannedParts().size());
+                    Map<String, UUID> partIdByCode = new LinkedHashMap<>();
                     List<AttemptItem> rootItems = new ArrayList<>();
                     List<AttemptItem> childItems = new ArrayList<>();
                     UUID openedPartId = null;
 
                     for (PlannedPart pp : job.plannedParts()) {
                         UUID partId = Ids.newId();
+                        partIdByCode.put(pp.partCode(), partId);
                         long partSeed = mixSeed(job.seed(), pp.ord());
                         AttemptPart part =
                                 AttemptPart.createPending(
@@ -461,6 +583,27 @@ public class AttemptStartService {
                     if (!childItems.isEmpty()) {
                         attemptItemRepository.saveAll(childItems);
                     }
+                    if (attemptAudioPlayRepository != null && !audioCheck.assets().isEmpty()) {
+                        List<AttemptAudioPlay> audioPlays =
+                                new ArrayList<>(audioCheck.assets().size());
+                        for (CheckedAudioAsset asset : audioCheck.assets()) {
+                            UUID partId = partIdByCode.get(asset.partCode());
+                            if (partId == null) {
+                                throw new IllegalStateException(
+                                        "Missing partId for audio asset partCode="
+                                                + asset.partCode());
+                            }
+                            audioPlays.add(
+                                    AttemptAudioPlay.createIdle(
+                                            Ids.newId(),
+                                            job.attemptId(),
+                                            partId,
+                                            asset.assetId(),
+                                            asset.durationMs(),
+                                            now));
+                        }
+                        attemptAudioPlayRepository.saveAll(audioPlays);
+                    }
 
                     List<AttemptEvent> events = new ArrayList<>(2);
                     events.add(
@@ -490,7 +633,16 @@ public class AttemptStartService {
                 });
     }
 
+    private void abortAudioGeneration(GenerationJob job, AudioFileCheckException ex) {
+        abortGeneration(job, ex.abortReason(), ex.getMessage(), ex.questionId(), ex.assetId());
+    }
+
     private void abortGeneration(GenerationJob job, AbortReason reason, String detail) {
+        abortGeneration(job, reason, detail, null, null);
+    }
+
+    private void abortGeneration(
+            GenerationJob job, AbortReason reason, String detail, UUID questionId, UUID assetId) {
         try {
             requiresNewTx.executeWithoutResult(
                     status -> {
@@ -504,6 +656,18 @@ public class AttemptStartService {
                         Instant now = clock.instant();
                         attempt.abort(reason, now);
                         attemptRepository.save(attempt);
+                        Map<String, Object> data = new LinkedHashMap<>();
+                        data.put("examCode", safe(job.examCode()));
+                        data.put("versionNo", job.examVersionNo());
+                        data.put("path", safe(job.pathDescription()));
+                        data.put("reason", reason.name());
+                        data.put("detail", truncate(detail));
+                        if (questionId != null) {
+                            data.put("questionId", questionId.toString());
+                        }
+                        if (assetId != null) {
+                            data.put("assetId", assetId.toString());
+                        }
                         attemptEventRepository.save(
                                 new AttemptEvent(
                                         Ids.newId(),
@@ -512,21 +676,29 @@ public class AttemptStartService {
                                         null,
                                         null,
                                         now,
-                                        Map.of(
-                                                "examCode", safe(job.examCode()),
-                                                "versionNo", job.examVersionNo(),
-                                                "path", safe(job.pathDescription()),
-                                                "reason", reason.name(),
-                                                "detail", truncate(detail))));
+                                        data));
                         entitlementPort.release(job.attemptId());
-                        log.warn(
-                                "attempt.generation_aborted examCode={} versionNo={} path={} attemptId={} reason={} detail={}",
-                                job.examCode(),
-                                job.examVersionNo(),
-                                job.pathDescription(),
-                                job.attemptId(),
-                                reason,
-                                truncate(detail));
+                        if (questionId != null || assetId != null) {
+                            log.warn(
+                                    "attempt.generation_aborted examCode={} versionNo={} path={} attemptId={} reason={} questionId={} assetId={} detail={}",
+                                    job.examCode(),
+                                    job.examVersionNo(),
+                                    job.pathDescription(),
+                                    job.attemptId(),
+                                    reason,
+                                    questionId,
+                                    assetId,
+                                    truncate(detail));
+                        } else {
+                            log.warn(
+                                    "attempt.generation_aborted examCode={} versionNo={} path={} attemptId={} reason={} detail={}",
+                                    job.examCode(),
+                                    job.examVersionNo(),
+                                    job.pathDescription(),
+                                    job.attemptId(),
+                                    reason,
+                                    truncate(detail));
+                        }
                     });
         } catch (RuntimeException ex) {
             log.error(

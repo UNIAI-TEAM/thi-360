@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -8,8 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.attempt.api.AttemptQuestionBody;
@@ -26,23 +29,32 @@ import vn.unicom.thi360.attempt.api.AttemptQuestionBody.SingleChoice;
 import vn.unicom.thi360.attempt.api.AttemptQuestionBody.StatementView;
 import vn.unicom.thi360.attempt.api.AttemptQuestionBody.TrueFalse;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse;
+import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptAttachmentView;
+import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptAudioPlayView;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptItemView;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptPartStateView;
+import vn.unicom.thi360.attempt.api.AttemptStateResponse.AudioPolicyView;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.AudioPlayState;
 import vn.unicom.thi360.attempt.domain.PartState;
+import vn.unicom.thi360.attempt.infrastructure.AttemptAudioPlayRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
+import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.Attachment;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Version;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
 /**
- * Builds the student-facing {@link AttemptStateResponse} strictly via allowlist DTOs and rewritten
- * attempt asset URLs (LT §7.1, §7.3, AD-121 #4, AC-25, AC-26, AC-27).
+ * Builds the student-facing {@link AttemptStateResponse} strictly via allowlist DTOs, rewritten
+ * attempt asset URLs, root question {@code attachments[]}, and reconciled audio play statuses (LT
+ * §7.1, §7.3, BS §17.2, AD-121 #4, AC-18, AC-19, AC-25..27).
  */
 @Service
 public class AttemptStateService {
@@ -51,8 +63,11 @@ public class AttemptStateService {
     private final AttemptGuard attemptGuard;
     private final AttemptPartRepository attemptPartRepository;
     private final AttemptItemRepository attemptItemRepository;
+    private final AttemptAudioPlayRepository attemptAudioPlayRepository;
     private final QuestionSourcePort questionSourcePort;
+    private final QuestionAttachmentPort questionAttachmentPort;
     private final AttemptQuestionSanitizer sanitizer;
+    private final EntityManager entityManager;
     private final Clock clock;
 
     public AttemptStateService(
@@ -63,13 +78,80 @@ public class AttemptStateService {
             QuestionSourcePort questionSourcePort,
             AttemptQuestionSanitizer sanitizer,
             Clock clock) {
-        this.accessGate = accessGate;
-        this.attemptGuard = attemptGuard;
-        this.attemptPartRepository = attemptPartRepository;
-        this.attemptItemRepository = attemptItemRepository;
-        this.questionSourcePort = questionSourcePort;
-        this.sanitizer = sanitizer;
-        this.clock = clock;
+        this(
+                accessGate,
+                attemptGuard,
+                attemptPartRepository,
+                attemptItemRepository,
+                null,
+                questionSourcePort,
+                null,
+                sanitizer,
+                null,
+                clock,
+                false);
+    }
+
+    @Autowired
+    public AttemptStateService(
+            AttemptAccessGate accessGate,
+            AttemptGuard attemptGuard,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            QuestionSourcePort questionSourcePort,
+            QuestionAttachmentPort questionAttachmentPort,
+            AttemptQuestionSanitizer sanitizer,
+            EntityManager entityManager,
+            Clock clock) {
+        this(
+                accessGate,
+                attemptGuard,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptAudioPlayRepository,
+                questionSourcePort,
+                questionAttachmentPort,
+                sanitizer,
+                entityManager,
+                clock,
+                true);
+    }
+
+    private AttemptStateService(
+            AttemptAccessGate accessGate,
+            AttemptGuard attemptGuard,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            QuestionSourcePort questionSourcePort,
+            QuestionAttachmentPort questionAttachmentPort,
+            AttemptQuestionSanitizer sanitizer,
+            EntityManager entityManager,
+            Clock clock,
+            boolean requireAudioDeps) {
+        this.accessGate = Objects.requireNonNull(accessGate);
+        this.attemptGuard = Objects.requireNonNull(attemptGuard);
+        this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
+        this.attemptItemRepository = Objects.requireNonNull(attemptItemRepository);
+        this.attemptAudioPlayRepository =
+                requireAudioDeps
+                        ? Objects.requireNonNull(
+                                attemptAudioPlayRepository,
+                                "attemptAudioPlayRepository must not be null")
+                        : attemptAudioPlayRepository;
+        this.questionSourcePort = Objects.requireNonNull(questionSourcePort);
+        this.questionAttachmentPort =
+                requireAudioDeps
+                        ? Objects.requireNonNull(
+                                questionAttachmentPort, "questionAttachmentPort must not be null")
+                        : questionAttachmentPort;
+        this.sanitizer = Objects.requireNonNull(sanitizer);
+        this.entityManager =
+                requireAudioDeps
+                        ? Objects.requireNonNull(entityManager, "entityManager must not be null")
+                        : entityManager;
+        this.clock = Objects.requireNonNull(clock);
     }
 
     @Transactional
@@ -91,6 +173,12 @@ public class AttemptStateService {
                         .filter(AttemptStateService::isPartVisible)
                         .map(AttemptPart::getId)
                         .toList();
+        List<AttemptAudioPlayView> audioPlayViews =
+                loadAndReconcileAudioPlays(attempt, parts, visiblePartIds, now);
+        AudioPolicyView audioPolicy =
+                audioPlayViews.isEmpty()
+                        ? null
+                        : new AudioPolicyView(AttemptAudioPlay.MAX_PLAYS, false);
 
         List<AttemptItem> visibleItems =
                 visiblePartIds.isEmpty()
@@ -99,10 +187,11 @@ public class AttemptStateService {
                                 attemptId, visiblePartIds);
 
         Map<VersionKey, JsonNode> snapshots = loadSnapshots(visibleItems);
+        Map<VersionKey, List<Attachment>> attachmentsByVersion = loadAttachments(visibleItems);
         Map<UUID, List<AttemptItemView>> itemsByPartId = new LinkedHashMap<>();
         for (AttemptItem item : visibleItems) {
             JsonNode snapshot = resolveSnapshot(item, snapshots);
-            AttemptItemView view = toItemView(attemptId, item, snapshot);
+            AttemptItemView view = toItemView(attemptId, item, snapshot, attachmentsByVersion);
             itemsByPartId.computeIfAbsent(item.getPartId(), k -> new ArrayList<>()).add(view);
         }
 
@@ -149,7 +238,88 @@ public class AttemptStateService {
                 attempt.getDeadlineAt(),
                 attempt.getLastPosition(),
                 attempt.getMaxScore(),
+                audioPolicy,
+                audioPlayViews,
                 partViews);
+    }
+
+    private List<AttemptAudioPlayView> loadAndReconcileAudioPlays(
+            Attempt attempt, List<AttemptPart> parts, List<UUID> visiblePartIds, Instant now) {
+        if (attemptAudioPlayRepository == null) {
+            return List.of();
+        }
+        List<AttemptAudioPlay> plays =
+                attemptAudioPlayRepository.findByAttemptIdOrderByAssetIdAsc(attempt.getId());
+        if (plays.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, PartState> partStates = new LinkedHashMap<>();
+        for (AttemptPart part : parts) {
+            partStates.put(part.getId(), part.getState());
+        }
+        Set<UUID> partIdsToClose = new LinkedHashSet<>();
+        for (AttemptAudioPlay play : plays) {
+            if (play.getState() == AudioPlayState.PLAYING
+                    && (attempt.getState() != AttemptState.IN_PROGRESS
+                            || partStates.get(play.getPartId()) != PartState.OPEN)) {
+                partIdsToClose.add(play.getPartId());
+            }
+        }
+        if (!partIdsToClose.isEmpty()) {
+            // Detach initially loaded entities so FOR UPDATE re-hydrates true committed DB rows & versions
+            // instead of returning stale L1 cache instances (prevents 412 ObjectOptimisticLockingFailureException).
+            if (entityManager != null) {
+                plays.forEach(entityManager::detach);
+            }
+            List<AttemptAudioPlay> locked =
+                    attemptAudioPlayRepository.findByAttemptIdAndPartIdInOrderByAssetIdAscForUpdate(
+                            attempt.getId(), partIdsToClose);
+            List<AttemptAudioPlay> changed = new ArrayList<>();
+            for (AttemptAudioPlay play : locked) {
+                if (play.getState() == AudioPlayState.PLAYING
+                        && (attempt.getState() != AttemptState.IN_PROGRESS
+                                || partStates.get(play.getPartId()) != PartState.OPEN)) {
+                    play.markClosed(now);
+                    changed.add(play);
+                }
+            }
+            if (!changed.isEmpty()) {
+                attemptAudioPlayRepository.saveAllAndFlush(changed);
+            }
+            plays = attemptAudioPlayRepository.findByAttemptIdOrderByAssetIdAsc(attempt.getId());
+        }
+        Set<UUID> visiblePartSet = Set.copyOf(visiblePartIds);
+        return plays.stream()
+                .filter(p -> visiblePartSet.contains(p.getPartId()))
+                .map(
+                        p ->
+                                new AttemptAudioPlayView(
+                                        p.getAssetId(),
+                                        p.getPartId(),
+                                        p.getDurationMs(),
+                                        p.getPlayCount(),
+                                        p.playsLeft(),
+                                        p.getState(),
+                                        p.getEndReason(),
+                                        p.getPlayId(),
+                                        p.getPositionMs()))
+                .toList();
+    }
+
+    private Map<VersionKey, List<Attachment>> loadAttachments(List<AttemptItem> items) {
+        if (questionAttachmentPort == null || items.isEmpty()) {
+            return Map.of();
+        }
+        Set<VersionKey> rootKeys = new LinkedHashSet<>();
+        for (AttemptItem item : items) {
+            if (item.getParentItemId() == null) {
+                rootKeys.add(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
+            }
+        }
+        if (rootKeys.isEmpty()) {
+            return Map.of();
+        }
+        return questionAttachmentPort.attachments(rootKeys, false);
     }
 
     private static boolean isPartVisible(AttemptPart part) {
@@ -197,9 +367,35 @@ public class AttemptStateService {
         return snapshot;
     }
 
-    private AttemptItemView toItemView(UUID attemptId, AttemptItem item, JsonNode snapshot) {
+    private AttemptItemView toItemView(
+            UUID attemptId,
+            AttemptItem item,
+            JsonNode snapshot,
+            Map<VersionKey, List<Attachment>> attachmentsByVersion) {
         String content = sanitizer.rewriteAssetUrls(attemptId, textOrNull(snapshot, "content"));
         AttemptQuestionBody body = projectBody(attemptId, item, snapshot.path("body"));
+        List<AttemptAttachmentView> itemAttachments = List.of();
+        if (item.getParentItemId() == null && !attachmentsByVersion.isEmpty()) {
+            List<Attachment> raw =
+                    attachmentsByVersion.getOrDefault(
+                            new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()),
+                            List.of());
+            if (!raw.isEmpty()) {
+                itemAttachments =
+                        raw.stream()
+                                .map(
+                                        att ->
+                                                new AttemptAttachmentView(
+                                                        att.id(),
+                                                        att.name(),
+                                                        att.mime(),
+                                                        "/api/v1/me/attempts/"
+                                                                + attemptId
+                                                                + "/assets/"
+                                                                + att.id()))
+                                .toList();
+            }
+        }
         return new AttemptItemView(
                 item.getId(),
                 item.getParentItemId(),
@@ -215,7 +411,8 @@ public class AttemptStateService {
                 item.getAnswerSeq(),
                 item.getAnswer(),
                 content,
-                body);
+                body,
+                itemAttachments);
     }
 
     private AttemptQuestionBody projectBody(UUID attemptId, AttemptItem item, JsonNode body) {

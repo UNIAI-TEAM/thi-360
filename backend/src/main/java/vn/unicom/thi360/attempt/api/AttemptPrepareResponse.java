@@ -54,13 +54,20 @@ public record AttemptPrepareResponse(
         @Schema(description = "Lựa chọn cần quyết định trước khi bắt đầu; null nếu không cần", nullable = true)
         PreChoiceView preChoice,
         @Schema(description = "Lựa chọn sẽ gặp sau khi vào làm (phần mở muộn)", requiredMode = Schema.RequiredMode.REQUIRED)
-        List<AfterStartChoiceView> afterStartChoices) {
+        List<AfterStartChoiceView> afterStartChoices,
+        @Schema(description = "Các định dạng đáp án có trong đề", requiredMode = Schema.RequiredMode.REQUIRED)
+        List<String> answerFormats,
+        @Schema(description = "Chính sách nghe khi đề có phần audio; null nếu đề không có audio", nullable = true)
+        ListeningPolicyView listeningPolicy) {
 
     public AttemptPrepareResponse {
         omittedGroups = omittedGroups == null ? List.of() : List.copyOf(omittedGroups);
         parts = parts == null ? List.of() : List.copyOf(parts);
         afterStartChoices = afterStartChoices == null ? List.of() : List.copyOf(afterStartChoices);
+        answerFormats = answerFormats == null ? List.of() : List.copyOf(answerFormats);
     }
+
+    public record ListeningPolicyView(int maxPlays, boolean seekable) {}
 
     public record ExamKindView(UUID id, String code, String nameVi, String nameEn) {}
 

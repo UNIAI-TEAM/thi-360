@@ -568,6 +568,107 @@
         "required" : [ "mode", "palette", "version" ],
         "type" : "object"
       },
+      "AttemptAttachmentView" : {
+        "properties" : {
+          "assetId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "mime" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptAudioPlayResponse" : {
+        "description" : "Trạng thái lần nghe của một tệp audio trong lượt thi (BS §17.2)",
+        "properties" : {
+          "durationMs" : {
+            "description" : "Thời lượng tệp audio do máy chủ đo tính bằng mili giây",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "endReason" : {
+            "description" : "Lý do kết thúc khi state là ENDED",
+            "enum" : [ "FINISHED", "CLOSED" ],
+            "type" : "string"
+          },
+          "playId" : {
+            "description" : "Id của lần nghe",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "playsLeft" : {
+            "description" : "Số lần nghe còn lại",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "playsUsed" : {
+            "description" : "Số lần nghe đã dùng",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "positionMs" : {
+            "description" : "Vị trí phát đã lưu tính bằng mili giây",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "state" : {
+            "description" : "Trạng thái phát audio",
+            "enum" : [ "IDLE", "PLAYING", "ENDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "durationMs", "playsLeft", "playsUsed", "positionMs", "state" ],
+        "type" : "object"
+      },
+      "AttemptAudioPlayView" : {
+        "properties" : {
+          "assetId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "durationMs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "endReason" : {
+            "enum" : [ "FINISHED", "CLOSED" ],
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "playId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "playsLeft" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "playsUsed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "positionMs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "state" : {
+            "enum" : [ "IDLE", "PLAYING", "ENDED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AttemptItemView" : {
         "properties" : {
           "answer" : {
@@ -590,6 +691,12 @@
           "answerSeq" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "attachments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptAttachmentView"
+            },
+            "type" : "array"
           },
           "blockId" : {
             "type" : "string"
@@ -729,6 +836,13 @@
             },
             "type" : "array"
           },
+          "answerFormats" : {
+            "description" : "Các định dạng đáp án có trong đề",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "attemptsLeft" : {
             "description" : "Số lượt còn lại trên quyền dùng",
             "format" : "int32",
@@ -772,6 +886,10 @@
           "instructions" : {
             "description" : "Hướng dẫn làm bài đã đóng băng theo phiên bản",
             "type" : "string"
+          },
+          "listeningPolicy" : {
+            "$ref" : "#/components/schemas/ListeningPolicyView",
+            "description" : "Chính sách nghe khi đề có phần audio; null nếu đề không có audio"
           },
           "navigationMode" : {
             "description" : "Chế độ di chuyển trong bài",
@@ -822,7 +940,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "afterStartChoices", "attemptsLeft", "buildMode", "entitlementId", "examCode", "examId", "examKind", "examName", "navigationMode", "omittedGroups", "parts", "scope", "servingStatus", "timing" ],
+        "required" : [ "afterStartChoices", "answerFormats", "attemptsLeft", "buildMode", "entitlementId", "examCode", "examId", "examKind", "examName", "navigationMode", "omittedGroups", "parts", "scope", "servingStatus", "timing" ],
         "type" : "object"
       },
       "AttemptQuestionBody" : {
@@ -890,6 +1008,17 @@
           "attemptNo" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "audioPlays" : {
+            "description" : "Trạng thái phát từng tệp audio của lượt thi; không có khi STARTING hoặc ABORTED",
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptAudioPlayView"
+            },
+            "type" : "array"
+          },
+          "audioPolicy" : {
+            "$ref" : "#/components/schemas/AudioPolicyView",
+            "description" : "Chính sách nghe khi đề có audio; không có khi STARTING hoặc ABORTED"
           },
           "choices" : {
             "additionalProperties" : {
@@ -965,6 +1094,86 @@
           }
         },
         "required" : [ "attemptId", "serverNow", "state" ],
+        "type" : "object"
+      },
+      "AudioPlayInProgressResponse" : {
+        "description" : "Lỗi xung đột khi audio đang có lần nghe dở hoặc đã đóng/hết lượt (BS §17.2)",
+        "properties" : {
+          "code" : {
+            "example" : "AUDIO_PLAY_IN_PROGRESS",
+            "type" : "string"
+          },
+          "fieldErrors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            },
+            "type" : "array"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "playId" : {
+            "description" : "Id của lần nghe đang phát nếu có",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "fieldErrors", "message", "traceId" ],
+        "type" : "object"
+      },
+      "AudioPolicyView" : {
+        "properties" : {
+          "maxPlays" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seekable" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "AudioProgressRequest" : {
+        "description" : "Yêu cầu cập nhật vị trí phát hiện tại của audio (BS §17.2)",
+        "properties" : {
+          "positionMs" : {
+            "description" : "Vị trí phát hiện tại tính bằng mili giây",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "positionMs" ],
+        "type" : "object"
+      },
+      "AudioSeekRejectedResponse" : {
+        "description" : "Lỗi xung đột khi vị trí tua vượt ngưỡng chống tua hoặc không hợp lệ (BS §17.2)",
+        "properties" : {
+          "code" : {
+            "example" : "AUDIO_SEEK_REJECTED",
+            "type" : "string"
+          },
+          "fieldErrors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            },
+            "type" : "array"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "positionMs" : {
+            "description" : "Vị trí hợp lệ đã lưu trên máy chủ (ms)",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "fieldErrors", "message", "traceId" ],
         "type" : "object"
       },
       "AuditEventItem" : {
@@ -8123,6 +8332,18 @@
         "required" : [ "examId", "firstAt", "kind", "versionNo" ],
         "type" : "object"
       },
+      "ListeningPolicyView" : {
+        "properties" : {
+          "maxPlays" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seekable" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
       "LoadExamTemplateRequest" : {
         "description" : "Nạp lại cấu trúc từ nguyên mẫu (POST /exams/{id}/template, spec 5.2)",
         "properties" : {
@@ -12599,6 +12820,19 @@
           }
         },
         "required" : [ "attemptId", "resumed", "retryable", "state" ],
+        "type" : "object"
+      },
+      "StartAudioPlayRequest" : {
+        "description" : "Yêu cầu mở lần nghe mới cho tệp audio (BS §17.2)",
+        "properties" : {
+          "requestId" : {
+            "description" : "Khóa chống gửi lặp do trình duyệt tạo cho mỗi lần bấm Nghe",
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "requestId" ],
         "type" : "object"
       },
       "Statement" : {
@@ -41444,6 +41678,15 @@
             "format" : "uuid",
             "type" : "string"
           }
+        }, {
+          "description" : "Id lần nghe (bắt buộc với tệp audio)",
+          "in" : "query",
+          "name" : "playId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -41578,7 +41821,707 @@
             "description" : "Bad Gateway"
           }
         },
-        "summary" : "Tải tài nguyên câu hỏi (ảnh, tệp đính kèm) thuộc lượt thi của thí sinh",
+        "summary" : "Tải tài nguyên câu hỏi (ảnh, tệp đính kèm, audio) thuộc lượt thi của thí sinh",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays" : {
+      "post" : {
+        "operationId" : "openAudioPlay",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StartAudioPlayRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptAudioPlayResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái lần nghe sau khi mở hoặc gửi lại"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AudioPlayInProgressResponse"
+                }
+              }
+            },
+            "description" : "AUDIO_PLAY_IN_PROGRESS (kèm playId), AUDIO_PLAYS_EXHAUSTED, PART_CLOSED, TIME_UP hoặc ATTEMPT_SESSION_REVOKED"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Mở lần nghe mới cho tệp audio hoặc trả lại kết quả khi gửi lặp requestId",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end" : {
+      "post" : {
+        "operationId" : "endAudioPlay",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "playId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptAudioPlayResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái kết thúc của lần nghe audio"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Kết thúc lần nghe audio đang phát",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress" : {
+      "put" : {
+        "operationId" : "updateAudioProgress",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "playId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AudioProgressRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptAudioPlayResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái lần nghe sau khi cập nhật tiến độ"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AudioSeekRejectedResponse"
+                }
+              }
+            },
+            "description" : "AUDIO_SEEK_REJECTED (kèm positionMs đã lưu), AUDIO_PLAY_STALE, PART_CLOSED, TIME_UP hoặc ATTEMPT_SESSION_REVOKED"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật tiến độ phát audio và kiểm tra giới hạn chống tua",
+        "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume" : {
+      "post" : {
+        "operationId" : "resumeAudioPlay",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "playId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "X-Attempt-Session",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptAudioPlayResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái lần nghe sau khi phát tiếp"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Phát tiếp lần nghe đang dở từ vị trí đã lưu và gia hạn lease",
         "tags" : [ "Attempts" ]
       }
     },
