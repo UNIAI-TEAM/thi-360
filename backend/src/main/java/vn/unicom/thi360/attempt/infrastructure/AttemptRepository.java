@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,7 +16,8 @@ import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 
 @Repository
-public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
+public interface AttemptRepository
+        extends JpaRepository<Attempt, UUID>, JpaSpecificationExecutor<Attempt> {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
