@@ -15,7 +15,7 @@ import {
  * result-scored, result-vact-subsections, result-pending-review, result-regrading-fault,
  * review-answers, review-full-solution, review-score-only-403, history-list, history-empty, history-error.
  */
-test.setTimeout(360_000);
+test.setTimeout(180_000);
 
 const ATTEMPT_SCORED = "11111111-1111-4111-8111-111111111101";
 const ATTEMPT_VACT = "11111111-1111-4111-8111-111111111102";
@@ -24,6 +24,7 @@ const ATTEMPT_REGRADE = "11111111-1111-4111-8111-111111111104";
 const ATTEMPT_ANSWERS = "22222222-2222-4222-8222-222222222201";
 const ATTEMPT_SOLUTION = "22222222-2222-4222-8222-222222222202";
 const ATTEMPT_FORBIDDEN = "22222222-2222-4222-8222-222222222203";
+const SOLUTION_ASSET_ID = "33333333-3333-4333-8333-333333333301";
 
 const CATALOG_EXAM_OPTIONS = [
   { id: "ek-hsa", code: "HSA", nameVi: "ĐGNL HSA", nameEn: "HSA Assessment", displayOrder: 1, value: 1 },
@@ -148,11 +149,46 @@ const RESULT_FIXTURES: Record<string, object> = {
       { partId: "pr2", partCode: "P2", partName: "Phần 2 · Tự chọn", ord: 2, score: 0, maxScore: 50, skipped: true },
     ],
   },
+  [ATTEMPT_ANSWERS]: {
+    attemptId: ATTEMPT_ANSWERS,
+    attemptNo: 1,
+    examId: "aaaa1111-1111-4111-8111-111111111111",
+    examName: "Đề HSA tổng hợp số 1",
+    examKindCode: "HSA",
+    scope: "FULL",
+    state: "SCORED",
+    resultView: "SCORE_AND_ANSWERS",
+    reviewAvailable: true,
+    rawScore: 5.5,
+    rawMaxScore: 8,
+    displayScore: 5.5,
+    startedAt: "2026-11-20T01:00:00Z",
+    finishedAt: "2026-11-20T01:45:00Z",
+    endReason: "SUBMITTED",
+  },
+  [ATTEMPT_SOLUTION]: {
+    attemptId: ATTEMPT_SOLUTION,
+    attemptNo: 2,
+    examId: "aaaa5555-5555-4555-8555-555555555555",
+    examName: "Đề HSA theo môn Toán",
+    examKindCode: "HSA",
+    scope: "SUBJECT",
+    subjectCode: "TOAN",
+    state: "SCORED",
+    resultView: "FULL_SOLUTION",
+    reviewAvailable: true,
+    rawScore: 6.5,
+    rawMaxScore: 8,
+    displayScore: 6.5,
+    startedAt: "2026-11-20T03:00:00Z",
+    finishedAt: "2026-11-20T03:40:00Z",
+    endReason: "SUBMITTED",
+  },
 };
 
 function makeReviewFixture(attemptId: string, resultView: "SCORE_AND_ANSWERS" | "FULL_SOLUTION") {
   const sol = resultView === "FULL_SOLUTION"
-    ? `<p>Lời giải chi tiết bằng phương pháp thế. <img src="${WEB_URL}/api/v1/me/attempts/${attemptId}/solution-assets/sol-img.png" alt="Minh họa lời giải" /></p>`
+    ? `<p>Lời giải chi tiết bằng phương pháp thế.</p><figure class="image" data-width="medium" data-zoom="true"><img data-asset-id="${SOLUTION_ASSET_ID}" src="/api/v1/me/attempts/${attemptId}/solution-assets/${SOLUTION_ASSET_ID}" alt="Minh họa lời giải" /></figure>`
     : undefined;
   return {
     attemptId,
@@ -238,7 +274,7 @@ function makeReviewFixture(attemptId: string, resultView: "SCORE_AND_ANSWERS" | 
 const HISTORY_LIST_FIXTURE = {
   page: 0,
   size: 20,
-  totalItems: 4,
+  totalItems: 3,
   totalPages: 1,
   items: [
     {
@@ -299,19 +335,54 @@ test.afterAll(async () => {
   await browser.close();
 });
 
-async function openStudentCell(cell: MatrixCell): Promise<{ context: BrowserContext; page: Page }> {
+type HistoryMode = "list" | "empty" | "error";
+
+async function openStudentCell(
+  cell: MatrixCell,
+): Promise<{ context: BrowserContext; page: Page; setHistoryMode: (mode: HistoryMode) => void }> {
   const context = await openMatrixContext(browser, cell, WEB_URL);
   await context.addCookies(sessionCookies);
   await applyMatrixCookies(context, cell, WEB_URL);
   const page = await context.newPage();
+  page.setDefaultTimeout(20_000);
 
-  await page.route("**/api/v1/catalog/options*", async (route) => {
+  let historyMode: HistoryMode = "list";
+
+  await page.route(/\/api\/v1\/catalog\/options(\?.*)?$/, async (route) => {
     const group = new URL(route.request().url()).searchParams.get("group");
     const body = group === "SUBJECT" ? CATALOG_SUBJECT_OPTIONS : CATALOG_EXAM_OPTIONS;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
 
-  await page.route("**/api/v1/me/attempts/*", async (route) => {
+  await page.route(/\/api\/v1\/me\/attempts(\?.*)?$/, async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    if (historyMode === "error") {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "INTERNAL_ERROR" }),
+      });
+      return;
+    }
+    if (historyMode === "empty") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ page: 0, size: 20, totalItems: 0, totalPages: 0, items: [] }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(HISTORY_LIST_FIXTURE),
+    });
+  });
+
+  await page.route(/\/api\/v1\/me\/attempts\/.+/, async (route) => {
     const url = route.request().url();
     if (url.includes("/solution-assets/")) {
       await route.fulfill({ status: 200, contentType: "image/png", body: solidPng(64) });
@@ -347,7 +418,13 @@ async function openStudentCell(cell: MatrixCell): Promise<{ context: BrowserCont
     await route.continue();
   });
 
-  return { context, page };
+  return {
+    context,
+    page,
+    setHistoryMode: (mode: HistoryMode) => {
+      historyMode = mode;
+    },
+  };
 }
 
 async function settle(page: Page): Promise<void> {
@@ -358,94 +435,90 @@ async function settle(page: Page): Promise<void> {
 for (const cell of matrixCells()) {
   test.describe(cellLabel(cell), () => {
     test("AC-21: result (4 trạng thái) + review (3 trạng thái) + history (3 trạng thái)", async () => {
-      const { context, page } = await openStudentCell(cell);
+      const { context, page, setHistoryMode } = await openStudentCell(cell);
       try {
         // 1. result-scored (with visible StudentHeader)
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_SCORED}/result`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Đề HSA tổng hợp số 1" })).toBeVisible();
         await settle(page);
         await expect(page.locator("header nav")).toBeVisible();
         await expectMatrixClean(page, "result-scored", cell);
 
         // 2. result-vact-subsections (expanded subsections)
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_VACT}/result`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Đề V-ACT chuẩn 120 câu" })).toBeVisible();
         await settle(page);
-        await page.locator("button[data-component-code='SCIENTIFIC_THINKING']").click();
-        await expect(page.locator("button[data-component-code='SCIENTIFIC_THINKING']")).toHaveAttribute("aria-expanded", "true");
+        const sciToggle = page.locator("button[data-component-code='SCIENTIFIC_THINKING']");
+        await sciToggle.click();
+        await expect(sciToggle).toHaveAttribute("aria-expanded", "true");
+        await expect(page.getByText(/10\/12/)).toBeVisible();
+        await expect(page.getByText(/12\/18/)).toBeVisible();
         await expectMatrixClean(page, "result-vact-subsections", cell);
 
         // 3. result-pending-review
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_PENDING}/result`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Đề thi có tự luận Ngữ văn" })).toBeVisible();
         await settle(page);
         await expectMatrixClean(page, "result-pending-review", cell);
 
         // 4. result-regrading-fault
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_REGRADE}/result`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Đề chấm lại sau sự cố" })).toBeVisible();
+        await expect(page.locator("main [role='status']").first()).toBeVisible();
         await settle(page);
         await expectMatrixClean(page, "result-regrading-fault", cell);
 
         // 5. review-answers (with visible StudentHeader)
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_ANSWERS}/review`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.locator("#review-item-ri-1")).toBeVisible();
         await settle(page);
         await expect(page.locator("header nav")).toBeVisible();
         await expectMatrixClean(page, "review-answers", cell);
 
         // 6. review-full-solution (solution PNG image loaded)
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_SOLUTION}/review`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.locator("#review-item-ri-1")).toBeVisible();
+        const solutionImg = page.locator('img[src*="/solution-assets/"]').first();
+        await expect(solutionImg).toBeVisible();
+        await expect
+          .poll(() =>
+            solutionImg.evaluate((node) => {
+              const img = node as HTMLImageElement;
+              return img.complete && img.naturalWidth > 0;
+            }),
+          )
+          .toBe(true);
         await settle(page);
-        await expect(page.locator('img[src*="/solution-assets/"]')).toBeVisible();
         await expectMatrixClean(page, "review-full-solution", cell);
 
         // 7. review-score-only-403
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_FORBIDDEN}/review`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(
+          page.getByRole("heading", {
+            level: 1,
+            name: /Bài thi này không có phần xem lại bài làm|This exam does not include attempt review/,
+          }),
+        ).toBeVisible();
+        await expect(page.getByText(/MÃ LỖI 404|ERROR 404/)).toHaveCount(0);
         await settle(page);
         await expectMatrixClean(page, "review-score-only-403", cell);
 
         // 8. history-list
-        await page.route("**/api/v1/me/attempts?*", async (route) => {
-          await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(HISTORY_LIST_FIXTURE) });
-        });
-        await page.route("**/api/v1/me/attempts", async (route) => {
-          if (route.request().method() === "GET") {
-            await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(HISTORY_LIST_FIXTURE) });
-            return;
-          }
-          await route.continue();
-        });
+        setHistoryMode("list");
         await page.goto(`${WEB_URL}/history`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByText("Đề HSA tổng hợp số 1").first()).toBeVisible();
         await settle(page);
         await expectMatrixClean(page, "history-list", cell);
 
         // 9. history-empty
-        await page.unroute("**/api/v1/me/attempts?*");
-        await page.route("**/api/v1/me/attempts?*", async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ page: 0, size: 20, totalItems: 0, totalPages: 0, items: [] }),
-          });
-        });
+        setHistoryMode("empty");
         await page.goto(`${WEB_URL}/history?q=KHONGCO`);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("button", { name: /Xóa bộ lọc|Clear filters/ }).last()).toBeVisible();
         await settle(page);
         await expectMatrixClean(page, "history-empty", cell);
 
         // 10. history-error
-        await page.unroute("**/api/v1/me/attempts?*");
-        await page.route("**/api/v1/me/attempts?*", async (route) => {
-          await route.fulfill({
-            status: 500,
-            contentType: "application/json",
-            body: JSON.stringify({ code: "INTERNAL_ERROR" }),
-          });
-        });
+        setHistoryMode("error");
         await page.goto(`${WEB_URL}/history?page=1`);
         await expect(page.locator("main [role=alert]").first()).toBeVisible();
         await settle(page);

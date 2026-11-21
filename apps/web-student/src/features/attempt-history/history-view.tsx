@@ -209,6 +209,7 @@ export function AttemptHistoryView({
     queryFn: () => loadHistory(apiParams),
     enabled: isStudent,
     placeholderData: keepPreviousData,
+    retry: false,
   });
 
   const subjectMap = useMemo(() => buildCatalogMap(subjectsQuery.data ?? []), [subjectsQuery.data]);
