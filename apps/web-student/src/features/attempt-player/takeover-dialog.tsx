@@ -12,8 +12,16 @@ import {
   focusRing,
 } from "@thi360/ui";
 import { AlertTriangle, MonitorSmartphone } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
+
+function formatLastSeenAt(value: string, format: ReturnType<typeof useFormatter>): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return format.dateTime(parsed, "dateTime");
+}
 
 export interface TakeoverDialogProps {
   open: boolean;
@@ -34,6 +42,7 @@ export function TakeoverDialog({
 }: TakeoverDialogProps) {
   const t = useTranslations("attempt.takeover");
   const dialogT = useTranslations("attempt.dialogs");
+  const format = useFormatter();
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next && !isSubmitting) onCancel(); }}>
@@ -51,7 +60,8 @@ export function TakeoverDialog({
           ) : null}
           {lastSeenAt ? (
             <p>
-              {t("lastSeenLabel")}: <time dateTime={lastSeenAt}>{lastSeenAt}</time>
+              {t("lastSeenLabel")}:{" "}
+              <time dateTime={lastSeenAt}>{formatLastSeenAt(lastSeenAt, format)}</time>
             </p>
           ) : null}
           <p>{t("noteClock")}</p>
@@ -99,7 +109,7 @@ export function SessionEvictedView({
       <p className="text-body text-text-muted">{t("description")}</p>
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
         <Link
-          href="/my-exams"
+          href="/home"
           className={cn(
             "inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-label font-medium text-text-secondary hover:bg-subtle",
             focusRing,

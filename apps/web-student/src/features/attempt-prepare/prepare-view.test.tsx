@@ -5,6 +5,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as attemptDraft from "@/features/attempt-draft";
 import enMessages from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
@@ -591,5 +592,76 @@ describe("PrepareView", () => {
     expect(await screen.findByText("Các mã bạn đã mua hiện không còn được phục vụ.")).toBeInTheDocument();
     expect(screen.getByText(/1900 1234/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bắt đầu bài thi" })).toBeDisabled();
+  });
+
+  it("thử lại sau khi reload từ openAttempt STARTING trên tab mới đọc preChoice từ IndexedDB fallback (FE-R1-17)", async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.clear();
+
+    const loadContextSpy = vi
+      .spyOn(attemptDraft, "loadAttemptStartContext")
+      .mockResolvedValue({
+        entitlementId: "ent-idb",
+        preChoice: { optionCode: "CA2" },
+      });
+
+    const onStartAttempt = vi.fn<AttemptStarter>(async () => ({
+      attemptId: "att-retried-idb",
+      state: "STARTING" as const,
+      resumed: false,
+      retryable: false,
+    }));
+
+    const pollAttemptState = vi
+      .fn<() => Promise<AttemptStateResponse>>()
+      .mockResolvedValueOnce({
+        attemptId: "att-starting-idb",
+        state: "ABORTED",
+        abortReason: "GENERATION_FAILED",
+        serverNow: "2026-11-21T13:00:01Z",
+      })
+      .mockResolvedValue({
+        attemptId: "att-retried-idb",
+        state: "STARTING",
+        serverNow: "2026-11-21T13:00:05Z",
+      });
+
+    const prepareWithPreChoice = makePrepare({
+      entitlementId: "ent-idb",
+      openAttempt: { attemptId: "att-starting-idb", state: "STARTING" },
+      preChoice: {
+        partCode: "P3",
+        kind: "COMBINATION",
+        options: [
+          { code: "CA1", name: "Tổ hợp CA1", kind: "COMBINATION", subjects: [] },
+          { code: "CA2", name: "Tổ hợp CA2", kind: "COMBINATION", subjects: [] },
+        ],
+      },
+    });
+
+    try {
+      renderWithProviders(
+        <PrepareView
+          entitlementId="ent-idb"
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadPrepare={async () => prepareWithPreChoice}
+          onStartAttempt={onStartAttempt}
+          pollAttemptState={pollAttemptState}
+        />,
+      );
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Chưa chuẩn bị được đề" }, { timeout: 5000 })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Thử lại" }));
+
+      await waitFor(() => expect(onStartAttempt).toHaveBeenCalledTimes(1));
+      expect(loadContextSpy).toHaveBeenCalledWith(STUDENT_SESSION.id, "att-starting-idb");
+      expect(onStartAttempt.mock.calls[0]?.[0]).toEqual({
+        entitlementId: "ent-idb",
+        preChoice: { optionCode: "CA2" },
+      });
+    } finally {
+      loadContextSpy.mockRestore();
+    }
   });
 });

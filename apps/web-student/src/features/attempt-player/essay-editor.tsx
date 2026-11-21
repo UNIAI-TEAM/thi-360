@@ -167,7 +167,7 @@ export function EssayEditor({
           disabled={readOnly || !editor?.can().toggleBold()}
           onClick={() => editor?.chain().focus().toggleBold().run()}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors",
+            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             "hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-45",
             toolbarState?.bold && "bg-primary-100 text-primary-800",
             focusRingInset,
@@ -183,7 +183,7 @@ export function EssayEditor({
           disabled={readOnly || !editor?.can().toggleItalic()}
           onClick={() => editor?.chain().focus().toggleItalic().run()}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors",
+            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             "hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-45",
             toolbarState?.italic && "bg-primary-100 text-primary-800",
             focusRingInset,
@@ -199,7 +199,7 @@ export function EssayEditor({
           disabled={readOnly || !editor?.can().toggleBulletList()}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors",
+            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             "hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-45",
             toolbarState?.bulletList && "bg-primary-100 text-primary-800",
             focusRingInset,
@@ -215,7 +215,7 @@ export function EssayEditor({
           disabled={readOnly || !editor?.can().toggleOrderedList()}
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors",
+            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             "hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-45",
             toolbarState?.orderedList && "bg-primary-100 text-primary-800",
             focusRingInset,
@@ -232,7 +232,7 @@ export function EssayEditor({
           disabled={readOnly || !(toolbarState?.canUndo ?? false)}
           onClick={() => editor?.chain().focus().undo().run()}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors",
+            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             "hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-45",
             focusRingInset,
           )}
@@ -246,7 +246,7 @@ export function EssayEditor({
           disabled={readOnly || !(toolbarState?.canRedo ?? false)}
           onClick={() => editor?.chain().focus().redo().run()}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors",
+            "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             "hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-45",
             focusRingInset,
           )}

@@ -59,6 +59,7 @@ export interface ItemSyncState {
   dirtyAnswer: boolean;
   dirtyFlag: boolean;
   rejectedReason?: string;
+  rejectedSeq?: number;
 }
 
 export interface SaveQueueDraftDeps {
@@ -85,6 +86,7 @@ export interface AttemptSaveQueueOptions {
   onStateReconciled?: (state: AttemptStateResponse) => void;
   onSessionRevoked?: (code: string) => void;
   onAttemptOrPartClosed?: (reason: string) => void;
+  onUnauthorized?: () => void;
 }
 
 function getDebounceMs(questionType: ApiQuestionType): number {
@@ -121,6 +123,7 @@ export class AttemptSaveQueue {
   private readonly onStateReconciled?: (state: AttemptStateResponse) => void;
   private readonly onSessionRevoked?: (code: string) => void;
   private readonly onAttemptOrPartClosed?: (reason: string) => void;
+  private readonly onUnauthorized?: () => void;
 
   private readonly items = new Map<string, ItemSyncState>();
   private readonly itemDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -159,6 +162,7 @@ export class AttemptSaveQueue {
     this.onStateReconciled = options.onStateReconciled;
     this.onSessionRevoked = options.onSessionRevoked;
     this.onAttemptOrPartClosed = options.onAttemptOrPartClosed;
+    this.onUnauthorized = options.onUnauthorized;
   }
 
   hydrateFromState(state: AttemptStateResponse, drafts: ItemDraftRecord[] = []): void {
@@ -250,7 +254,7 @@ export class AttemptSaveQueue {
   isItemSaved(itemId: string): boolean {
     const item = this.items.get(itemId);
     if (!item) return true;
-    return !item.dirtyAnswer && !item.dirtyFlag && item.localSeq === item.serverConfirmedSeq;
+    return !item.dirtyFlag && !this.hasUnresolvedAnswer(item);
   }
 
   getSnapshotMaps(): {
@@ -270,7 +274,7 @@ export class AttemptSaveQueue {
     const dirty: string[] = [];
     for (const item of this.items.values()) {
       if (item.partClosed) continue;
-      if (item.dirtyAnswer || item.dirtyFlag || item.localSeq !== item.serverConfirmedSeq) {
+      if (item.dirtyFlag || this.hasUnresolvedAnswer(item)) {
         dirty.push(item.itemId);
       }
     }
@@ -340,6 +344,7 @@ export class AttemptSaveQueue {
       dirtyAnswer: true,
       dirtyFlag: existing?.dirtyFlag ?? false,
       rejectedReason: undefined,
+      rejectedSeq: undefined,
     };
     this.items.set(itemId, nextItem);
     this.persistItemDraft(nextItem);
@@ -437,6 +442,11 @@ export class AttemptSaveQueue {
     }, SAVE_POSITION_DEBOUNCE_MS);
   }
 
+  cancelPendingTimers(): void {
+    this.clearAllPendingTimers();
+    this.clearRetryTimer();
+  }
+
   async flushNow(): Promise<void> {
     if (this.destroyed || this.isReadOnlyFn()) return;
     this.clearAllPendingTimers();
@@ -480,6 +490,10 @@ export class AttemptSaveQueue {
       }
       return freshState;
     } catch (error) {
+      if (error instanceof ApiStatusError && error.status === 401) {
+        this.onUnauthorized?.();
+        return null;
+      }
       if (isAbortOrNetworkError(error)) {
         this.lastErrorReason = "network_error";
       } else if (error instanceof ApiStatusError && error.status >= 500) {
@@ -509,7 +523,7 @@ export class AttemptSaveQueue {
     for (const item of this.items.values()) {
       if (item.partClosed) continue;
       if (allowedSet && !allowedSet.has(item.itemId)) continue;
-      if (item.dirtyAnswer || item.localSeq > item.serverConfirmedSeq) {
+      if (this.hasUnresolvedAnswer(item)) {
         changes.push({
           itemId: item.itemId,
           seq: item.localSeq,
@@ -528,10 +542,21 @@ export class AttemptSaveQueue {
       if (res.status === "SAVED") {
         item.serverConfirmedSeq = Math.max(item.serverConfirmedSeq, res.seq);
         item.dirtyAnswer = item.localSeq > item.serverConfirmedSeq;
+        if (!item.dirtyAnswer) {
+          item.rejectedReason = undefined;
+          item.rejectedSeq = undefined;
+        }
         this.syncDraftAfterAck(item);
       } else if (res.status === "REJECTED") {
         item.rejectedReason = res.reason ?? "INVALID_ANSWER";
-        item.dirtyAnswer = false;
+        item.rejectedSeq = res.seq;
+        item.dirtyAnswer = item.localSeq > res.seq;
+        if (res.reason === "TIME_UP" || res.reason === "PART_CLOSED") {
+          item.partClosed = true;
+        } else {
+          this.lastErrorReason = "rejected";
+        }
+        this.syncDraftAfterAck(item);
       }
     }
     this.emitStatus();
@@ -574,6 +599,8 @@ export class AttemptSaveQueue {
         local.localSeq = server.seq;
         local.answer = server.answer;
         local.dirtyAnswer = false;
+        local.rejectedReason = undefined;
+        local.rejectedSeq = undefined;
         local.flagged = server.flagged;
         local.dirtyFlag = false;
         this.clearItemDebounce(itemId);
@@ -586,11 +613,13 @@ export class AttemptSaveQueue {
         local.localSeq = server.seq;
         local.answer = server.answer;
         local.dirtyAnswer = false;
+        local.rejectedReason = undefined;
+        local.rejectedSeq = undefined;
         this.clearItemDebounce(itemId);
         this.clearEssayMaxWait(itemId);
         this.syncDraftAfterAck(local);
       } else {
-        local.dirtyAnswer = true;
+        local.dirtyAnswer = this.hasUnresolvedAnswer(local);
       }
 
       if (!local.dirtyFlag) {
@@ -608,14 +637,19 @@ export class AttemptSaveQueue {
       return;
     }
 
+    let finished = false;
     const run = async () => {
+      const unackedSeqs = new Map<string, number>();
       try {
         while (!this.destroyed && this.isOnline && !this.isReadOnlyFn()) {
           const sessionId = this.getSessionId();
           if (!sessionId) break;
 
           const snapshotItems = [...this.items.values()].filter(
-            (item) => !item.partClosed && this.hasReadyDirtyWork(item),
+            (item) =>
+              !item.partClosed &&
+              this.hasReadyDirtyAnswer(item) &&
+              unackedSeqs.get(item.itemId) !== item.localSeq,
           );
           const pendingFlags = [...this.items.values()].filter(
             (item) => !item.partClosed && item.dirtyFlag,
@@ -683,23 +717,33 @@ export class AttemptSaveQueue {
               this.dirtyPosition = false;
             }
 
+            const ackedItemIds = new Set<string>();
             for (const result of response.results) {
+              ackedItemIds.add(result.itemId);
+              unackedSeqs.delete(result.itemId);
               const item = this.items.get(result.itemId);
               if (!item) continue;
 
               if (result.status === "SAVED") {
                 item.serverConfirmedSeq = Math.max(item.serverConfirmedSeq, result.seq);
                 item.dirtyAnswer = item.localSeq > item.serverConfirmedSeq;
+                if (!item.dirtyAnswer) {
+                  item.rejectedReason = undefined;
+                  item.rejectedSeq = undefined;
+                }
                 this.syncDraftAfterAck(item);
               } else if (result.status === "STALE") {
                 item.serverConfirmedSeq = Math.max(item.serverConfirmedSeq, result.seq);
                 if (item.localSeq <= result.seq) {
                   item.dirtyAnswer = false;
+                  item.rejectedReason = undefined;
+                  item.rejectedSeq = undefined;
                 }
                 staleDetected = true;
               } else if (result.status === "REJECTED") {
                 item.rejectedReason = result.reason ?? "INVALID_ANSWER";
-                item.dirtyAnswer = false;
+                item.rejectedSeq = result.seq;
+                item.dirtyAnswer = item.localSeq > result.seq;
                 if (result.reason === "TIME_UP" || result.reason === "PART_CLOSED") {
                   item.partClosed = true;
                   closedReasonDetected = result.reason;
@@ -707,6 +751,12 @@ export class AttemptSaveQueue {
                   this.lastErrorReason = "rejected";
                 }
                 this.syncDraftAfterAck(item);
+              }
+            }
+
+            for (const [sentItemId, sentSeq] of sentSeqs.entries()) {
+              if (!ackedItemIds.has(sentItemId)) {
+                unackedSeqs.set(sentItemId, sentSeq);
               }
             }
 
@@ -733,9 +783,12 @@ export class AttemptSaveQueue {
             }
           }
 
-          // Break if nothing remaining is immediately ready (debounced items stay scheduled).
+          // Break if nothing remaining is immediately ready (debounced or unacked items wait).
           const moreReady = [...this.items.values()].some(
-            (item) => !item.partClosed && this.hasReadyDirtyWork(item),
+            (item) =>
+              !item.partClosed &&
+              (item.dirtyFlag ||
+                (this.hasReadyDirtyAnswer(item) && unackedSeqs.get(item.itemId) !== item.localSeq)),
           );
           if (!moreReady && !this.dirtyPosition) {
             break;
@@ -745,18 +798,33 @@ export class AttemptSaveQueue {
         if (this.destroyed) return;
         this.handleFlushError(error);
       } finally {
+        finished = true;
         this.inFlightPromise = null;
         this.emitStatus();
       }
     };
 
-    this.inFlightPromise = run();
-    await this.inFlightPromise;
+    const promise = run();
+    if (!finished) {
+      this.inFlightPromise = promise;
+    }
+    await promise;
   }
 
-  private hasReadyDirtyWork(item: ItemSyncState): boolean {
-    if (item.dirtyFlag) return true;
-    if (!item.dirtyAnswer && item.localSeq === item.serverConfirmedSeq) return false;
+  private hasUnresolvedAnswer(item: ItemSyncState): boolean {
+    if (item.partClosed || item.localSeq <= 0) return false;
+    if (
+      item.rejectedReason &&
+      !item.dirtyAnswer &&
+      (item.rejectedSeq === undefined || item.localSeq <= item.rejectedSeq)
+    ) {
+      return false;
+    }
+    return item.dirtyAnswer || item.localSeq > item.serverConfirmedSeq;
+  }
+
+  private hasReadyDirtyAnswer(item: ItemSyncState): boolean {
+    if (!this.hasUnresolvedAnswer(item)) return false;
     // If no active debounce timer is waiting on this item, it's ready to send now.
     return !this.itemDebounceTimers.has(item.itemId);
   }
@@ -769,6 +837,10 @@ export class AttemptSaveQueue {
     }
 
     if (error instanceof ApiStatusError) {
+      if (error.status === 401) {
+        this.onUnauthorized?.();
+        return;
+      }
       if (error.status === 409) {
         if (error.code === "ATTEMPT_SESSION_REVOKED" || error.code === "ATTEMPT_OPEN_ELSEWHERE") {
           this.lastErrorReason = "session_conflict";
@@ -871,7 +943,7 @@ export class AttemptSaveQueue {
   }
 
   private syncDraftAfterAck(item: ItemSyncState): void {
-    if (!item.dirtyAnswer && !item.dirtyFlag && item.localSeq === item.serverConfirmedSeq) {
+    if (!item.dirtyFlag && !this.hasUnresolvedAnswer(item)) {
       void this.draftDeps.deleteItemDraft(this.userId, this.attemptId, item.itemId);
       return;
     }

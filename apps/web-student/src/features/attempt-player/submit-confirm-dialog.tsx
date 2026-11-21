@@ -178,16 +178,16 @@ export function SubmitConfirmDialog({
             <Button
               type="button"
               variant="primary"
-              disabled={status === "reconciling"}
+              loading={status === "reconciling"}
               onClick={() => void onReconcile()}
             >
-              {t("checkingState")}
+              {t("reconcile")}
             </Button>
           ) : (
             <Button
               type="button"
               variant="primary"
-              disabled={status === "submitting"}
+              loading={status === "submitting"}
               onClick={() => void onConfirmSubmit()}
             >
               {t("confirm")}

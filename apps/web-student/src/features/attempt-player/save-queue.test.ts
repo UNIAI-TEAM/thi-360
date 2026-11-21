@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ItemDraftRecord } from "@/features/attempt-draft";
+import { ApiStatusError } from "@/lib/api/client";
 import { AttemptApiError, type SaveAnswersRequest, type SaveAnswersResponse } from "./api";
 import type { AttemptStateResponse } from "./mappers";
 import { AttemptSaveQueue, type SaveStatusSnapshot } from "./save-queue";
@@ -361,6 +362,182 @@ describe("AttemptSaveQueue (AC-15, AC-16, AC-17)", () => {
     expect(queue.getAnswer("item-sc")).toEqual({ type: "SINGLE_CHOICE", optionId: "opt-server" });
     expect(queue.getStatusSnapshot().state).toBe("saved");
 
+    queue.destroy();
+  });
+
+  it("gắn cờ câu chưa trả lời (seq = 0) chỉ gửi flags không gửi changes, và không làm lọt câu tự luận đang debounce (FE-R1-3)", async () => {
+    const saveCalls: SaveAnswersRequest[] = [];
+    const saveAnswersFn = vi.fn(
+      async (_a: string, _s: string, body: SaveAnswersRequest): Promise<SaveAnswersResponse> => {
+        saveCalls.push(body);
+        return {
+          serverNow: "2026-11-21T10:00:05Z",
+          results: (body.changes ?? []).map((c) => ({
+            itemId: c.itemId,
+            seq: c.seq,
+            status: "SAVED",
+          })),
+        };
+      },
+    );
+
+    const draftDeps = makeDraftDeps();
+    const queue = new AttemptSaveQueue({
+      attemptId: "att-1",
+      userId: "user-1",
+      saveAnswersFn,
+      draftDeps,
+      getSessionId: () => "sess-1",
+      initialOnline: true,
+    });
+    queue.hydrateFromState(makeBaseState());
+
+    // Flag unanswered item (localSeq === 0): MUST send ONLY flags, omit changes
+    queue.recordFlagChange("item-sc", true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(saveAnswersFn).toHaveBeenCalledTimes(1);
+    expect(saveCalls[0]).toEqual({
+      flags: [{ itemId: "item-sc", flagged: true }],
+    });
+    expect(saveCalls[0]?.changes).toBeUndefined();
+    expect(queue.getStatusSnapshot().state).toBe("saved");
+
+    // Flag a SHORT_ANSWER item whose answer is currently debouncing -> MUST NOT prematurely flush un-debounced answer
+    queue.recordAnswerChange("item-sa", "SHORT_ANSWER", { type: "SHORT_ANSWER", text: "draft" });
+    queue.recordFlagChange("item-sa", true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(saveAnswersFn).toHaveBeenCalledTimes(2);
+    expect(saveCalls[1]).toEqual({
+      flags: [{ itemId: "item-sa", flagged: true }],
+    });
+    expect(saveCalls[1]?.changes).toBeUndefined();
+
+    // After 800ms debounce, the answer itself flushes cleanly
+    await vi.advanceTimersByTimeAsync(800);
+    expect(saveAnswersFn).toHaveBeenCalledTimes(3);
+    expect(saveCalls[2]?.changes).toEqual([
+      { itemId: "item-sa", seq: 1, answer: { type: "SHORT_ANSWER", text: "draft" } },
+    ]);
+
+    queue.destroy();
+  });
+
+  it("dừng vòng lặp khi máy chủ trả REJECTED cho đến khi học viên sửa lại (FE-R1-4)", async () => {
+    const saveAnswersFn = vi
+      .fn<() => Promise<SaveAnswersResponse>>()
+      .mockResolvedValueOnce({
+        serverNow: "2026-11-21T10:00:01Z",
+        results: [{ itemId: "item-sc", seq: 1, status: "REJECTED", reason: "INVALID_ANSWER" }],
+      })
+      .mockResolvedValueOnce({
+        serverNow: "2026-11-21T10:00:02Z",
+        results: [{ itemId: "item-sc", seq: 2, status: "SAVED" }],
+      });
+
+    const queue = new AttemptSaveQueue({
+      attemptId: "att-1",
+      userId: "user-1",
+      saveAnswersFn,
+      draftDeps: makeDraftDeps(),
+      getSessionId: () => "sess-1",
+      initialOnline: true,
+    });
+    queue.hydrateFromState(makeBaseState());
+
+    queue.recordAnswerChange("item-sc", "SINGLE_CHOICE", { type: "SINGLE_CHOICE", optionId: "bad-opt" });
+    await vi.advanceTimersByTimeAsync(500);
+
+    // Must be called ONLY ONCE (no infinite retry loop!)
+    expect(saveAnswersFn).toHaveBeenCalledTimes(1);
+    expect(queue.getStatusSnapshot()).toMatchObject({
+      state: "unsaved",
+      reason: "rejected",
+      hasUnsavedChanges: false,
+      dirtyItemIds: [],
+    });
+    expect(queue.hasUnsavedChanges()).toBe(false);
+    expect(queue.getFinalAnswers()).toEqual([]);
+
+    // Next fresh edit clears rejection and saves cleanly
+    queue.recordAnswerChange("item-sc", "SINGLE_CHOICE", { type: "SINGLE_CHOICE", optionId: "good-opt" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(saveAnswersFn).toHaveBeenCalledTimes(2);
+    expect(queue.getStatusSnapshot().state).toBe("saved");
+
+    // Also test markFinalAnswersResult with REJECTED clears dirtyItemIds & hasUnsavedChanges
+    queue.handleOffline();
+    queue.recordAnswerChange("item-sc", "SINGLE_CHOICE", { type: "SINGLE_CHOICE", optionId: "final-bad" });
+    expect(queue.hasUnsavedChanges()).toBe(true);
+    queue.markFinalAnswersResult([
+      { itemId: "item-sc", seq: 3, status: "REJECTED", reason: "INVALID_ANSWER" },
+    ]);
+    expect(queue.getDirtyItemIds()).toEqual([]);
+    expect(queue.hasUnsavedChanges()).toBe(false);
+    expect(queue.getStatusSnapshot()).toMatchObject({ state: "unsaved", reason: "rejected" });
+
+    queue.destroy();
+  });
+
+  it("gặp 401 khi lưu bài thì gọi onUnauthorized và giữ nguyên nháp IndexedDB (FE-R1-9)", async () => {
+    const draftDeps = makeDraftDeps();
+    const onUnauthorized = vi.fn();
+    const saveAnswersFn = vi.fn(async () => {
+      throw new ApiStatusError(401, "Expired");
+    });
+
+    const queue = new AttemptSaveQueue({
+      attemptId: "att-1",
+      userId: "user-1",
+      saveAnswersFn,
+      draftDeps,
+      getSessionId: () => "sess-1",
+      initialOnline: true,
+      onUnauthorized,
+    });
+    queue.hydrateFromState(makeBaseState());
+
+    queue.recordAnswerChange("item-sc", "SINGLE_CHOICE", { type: "SINGLE_CHOICE", optionId: "opt-a" });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    expect(draftDeps.saveItemDraft).toHaveBeenCalled();
+    expect(draftDeps.deleteItemDraft).not.toHaveBeenCalled();
+
+    // Must not schedule backoff retries after 401
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(saveAnswersFn).toHaveBeenCalledTimes(1);
+
+    queue.destroy();
+  });
+
+  it("không treo inFlightPromise khi gọi lưu lúc sessionId còn null rồi flushNow sau khi có session", async () => {
+    let sessionId: string | null = null;
+    const saveAnswersFn = vi.fn(async () => ({
+      results: [{ itemId: "item-sc", seq: 1, status: "SAVED" as const }],
+      serverNow: "2026-11-21T10:00:01Z",
+    }));
+
+    const queue = new AttemptSaveQueue({
+      attemptId: "att-1",
+      userId: "user-1",
+      saveAnswersFn,
+      draftDeps: makeDraftDeps(),
+      getSessionId: () => sessionId,
+      initialOnline: true,
+    });
+    queue.hydrateFromState(makeBaseState());
+
+    queue.recordAnswerChange("item-sc", "SINGLE_CHOICE", { type: "SINGLE_CHOICE", optionId: "opt-a" });
+    await Promise.resolve();
+    expect(saveAnswersFn).not.toHaveBeenCalled();
+
+    sessionId = "sess-ready";
+    await queue.flushNow();
+
+    expect(saveAnswersFn).toHaveBeenCalledTimes(1);
+    expect(queue.getStatusSnapshot().state).toBe("saved");
     queue.destroy();
   });
 });

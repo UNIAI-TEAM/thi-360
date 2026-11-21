@@ -250,12 +250,12 @@
       "closeLabel": "Close",
       "finishPart": {
         "cancel": "Keep working",
-        "checkingState": "Checking attempt status before retrying…",
         "confirm": "Finish section",
         "missingSummary": "{missing}/{total} questions unanswered",
         "nextPartChoiceNote": "Next is the Section 3 selection step. You have up to 15 minutes to confirm; if time runs out, the attempt ends and Section 3 scores 0.",
         "nextPartOpensNote": "The next section will open right away and you cannot return to this section.",
         "partialSummary": "{partial} questions partially answered",
+        "reconcile": "Check attempt status",
         "title": "Finish section?",
         "unconfirmedDesc": "Connection was lost before the server responded, so it is unclear whether this section has closed. Once back online, the system checks attempt status before allowing a retry.",
         "unconfirmedTitle": "Section completion unconfirmed",
@@ -265,7 +265,6 @@
         "answeredCount": "{answered}/{total} answered",
         "blankCount": "Unanswered: {count}",
         "cancel": "Review answers",
-        "checkingState": "Checking attempt status…",
         "confirm": "Submit exam",
         "description": "Once submitted, the attempt ends and answers cannot be modified.",
         "essaySaved": "{words} words · saved",
@@ -277,6 +276,7 @@
         "partBreakdownTitle": "Missing questions by section",
         "partMissingRow": "{missing}/{total} missing",
         "partialCount": "Partially answered: {count}",
+        "reconcile": "Check attempt status",
         "title": "Submit exam?",
         "unconfirmedDesc": "Connection was lost before the server responded, so submission is not yet confirmed. Once back online, the system checks attempt status before retrying.",
         "unconfirmedTitle": "Submission unconfirmed"
@@ -385,18 +385,16 @@
       "noActiveQuestion": "No question available to display.",
       "offlineBanner": "Connection lost. Latest answers are not saved yet. The timer is still running.",
       "pageTitle": "Exam attempt",
-      "questionAriaRange": "Questions {from}–{to}",
-      "questionAriaSingle": "Question {no}",
       "shortcutHint": "Shortcuts: 1–4 choose option · ← → switch question · F flag for review"
     },
     "saveStatus": {
       "reasons": {
-        "network_error": "Network error. Changes are kept locally and will retry automatically.",
-        "offline": "Connection lost. Latest answers are not saved yet. The timer is still running.",
-        "rate_limited": "Saving too fast, waiting {seconds}s before retrying.",
-        "rejected": "Some answers could not be saved because the section closed or the input is invalid.",
-        "server_error": "Server temporarily unavailable. Retrying automatically.",
-        "session_conflict": "Edit session was resumed elsewhere."
+        "network_error": "Network error",
+        "offline": "Offline",
+        "rate_limited": "Wait {seconds}s",
+        "rejected": "Invalid answer",
+        "server_error": "Server busy",
+        "session_conflict": "Opened elsewhere"
       },
       "saved": "Saved",
       "saving": "Saving...",

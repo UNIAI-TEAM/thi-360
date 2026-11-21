@@ -24,14 +24,11 @@ export interface QuestionNavProps {
   totalUnits: number;
   currentDisplayNumber: number;
   totalDisplayItems: number;
-  currentFlagged?: boolean;
-  onToggleCurrentFlag?: () => void;
   onSelectUnit: (unitIndex: number) => void;
   onPrev: () => void;
   onNext: () => void;
   canPrev: boolean;
   canNext: boolean;
-  readOnly?: boolean;
 }
 
 interface QuestionNavGridProps {
@@ -108,7 +105,7 @@ function QuestionNavGrid({
               aria-pressed={isActive}
               onClick={() => onChangeFilter(filterKey)}
               className={cn(
-                "rounded-md border px-2.5 py-1 text-caption font-medium transition-colors",
+                "rounded-md border px-2.5 py-1 text-caption font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
                 isActive
                   ? "border-primary-600 bg-primary-50 text-primary-800"
                   : "border-border bg-surface text-text-secondary hover:bg-subtle",
@@ -141,7 +138,7 @@ function QuestionNavGrid({
               aria-label={buildItemAriaLabel(item)}
               onClick={() => onSelectUnit(item.unitIndex)}
               className={cn(
-                "relative inline-flex h-9 items-center justify-center rounded-lg border text-label font-semibold tabular-nums transition-colors",
+                "relative inline-flex h-9 items-center justify-center rounded-lg border text-label font-semibold tabular-nums transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
                 item.completion === "complete" &&
                   "border-primary-600 bg-primary-fill text-on-primary",
                 item.completion === "partial" &&
@@ -213,14 +210,11 @@ export function QuestionNav({
   totalUnits,
   currentDisplayNumber,
   totalDisplayItems,
-  currentFlagged = false,
-  onToggleCurrentFlag,
   onSelectUnit,
   onPrev,
   onNext,
   canPrev,
   canNext,
-  readOnly = false,
 }: QuestionNavProps) {
   const t = useTranslations("attempt.nav");
   const dialogT = useTranslations("attempt.dialogs");
@@ -238,6 +232,7 @@ export function QuestionNav({
           type="button"
           variant="secondary"
           size="sm"
+          className="pointer-coarse:min-h-11"
           disabled={!canPrev}
           onClick={onPrev}
         >
@@ -251,7 +246,7 @@ export function QuestionNav({
             variant="secondary"
             size="sm"
             aria-expanded={isDrawerOpen}
-            className="lg:hidden"
+            className="pointer-coarse:min-h-11 lg:hidden"
             onClick={() => setIsDrawerOpen(true)}
           >
             <LayoutGrid className="size-4" aria-hidden="true" />
@@ -269,26 +264,13 @@ export function QuestionNav({
               total: Math.max(1, totalUnits),
             })}
           </span>
-
-          {onToggleCurrentFlag ? (
-            <Button
-              type="button"
-              variant={currentFlagged ? "soft" : "secondary"}
-              size="sm"
-              aria-pressed={currentFlagged}
-              disabled={readOnly}
-              onClick={onToggleCurrentFlag}
-            >
-              <Flag className="size-3.5" aria-hidden="true" />
-              <span>{t("stateFlagged")}</span>
-            </Button>
-          ) : null}
         </div>
 
         <Button
           type="button"
           variant="secondary"
           size="sm"
+          className="pointer-coarse:min-h-11"
           disabled={!canNext}
           onClick={onNext}
         >
@@ -326,7 +308,13 @@ export function QuestionNav({
             }}
           />
           <div className="flex justify-end pt-2">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setIsDrawerOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="pointer-coarse:min-h-11"
+              onClick={() => setIsDrawerOpen(false)}
+            >
               {t("closeGrid")}
             </Button>
           </div>

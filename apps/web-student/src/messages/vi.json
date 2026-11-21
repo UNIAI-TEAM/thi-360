@@ -250,12 +250,12 @@
       "closeLabel": "Đóng",
       "finishPart": {
         "cancel": "Quay lại làm tiếp",
-        "checkingState": "Đang kiểm tra trạng thái lượt trước khi gửi lại…",
         "confirm": "Hoàn thành phần",
         "missingSummary": "Còn {missing}/{total} câu chưa trả lời",
         "nextPartChoiceNote": "Tiếp theo là bước chọn phần 3. Bạn có tối đa 15 phút để xác nhận lựa chọn; quá thời gian thì lượt kết thúc và phần 3 được 0 điểm.",
         "nextPartOpensNote": "Phần tiếp theo sẽ mở ngay và không thể quay lại phần này.",
         "partialSummary": "Có {partial} câu đang làm dở",
+        "reconcile": "Kiểm tra trạng thái lượt",
         "title": "Hoàn thành phần?",
         "unconfirmedDesc": "Mất kết nối trước khi máy chủ trả lời, nên chưa biết phần thi đã đóng hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.",
         "unconfirmedTitle": "Chưa xác nhận hoàn thành phần",
@@ -265,7 +265,6 @@
         "answeredCount": "{answered}/{total} câu đã làm",
         "blankCount": "Số câu bỏ trống: {count}",
         "cancel": "Quay lại kiểm tra",
-        "checkingState": "Đang kiểm tra trạng thái lượt…",
         "confirm": "Nộp bài",
         "description": "Nộp xong thì lượt thi kết thúc và không thể sửa câu trả lời.",
         "essaySaved": "{words} chữ · đã lưu",
@@ -277,6 +276,7 @@
         "partBreakdownTitle": "Số câu còn thiếu theo từng phần",
         "partMissingRow": "Còn thiếu {missing}/{total} câu",
         "partialCount": "Số câu làm dở: {count}",
+        "reconcile": "Kiểm tra trạng thái lượt",
         "title": "Nộp bài?",
         "unconfirmedDesc": "Mất kết nối trước khi máy chủ trả lời, nên chưa biết bài đã nộp hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.",
         "unconfirmedTitle": "Chưa xác nhận nộp bài"
@@ -385,18 +385,16 @@
       "noActiveQuestion": "Không có câu hỏi để hiển thị.",
       "offlineBanner": "Mất kết nối. Câu trả lời mới nhất chưa được lưu. Thời gian làm bài vẫn tiếp tục.",
       "pageTitle": "Làm bài thi",
-      "questionAriaRange": "Câu {from}–{to}",
-      "questionAriaSingle": "Câu {no}",
       "shortcutHint": "Phím tắt: 1–4 chọn phương án · ← → chuyển câu · F đánh dấu xem lại"
     },
     "saveStatus": {
       "reasons": {
-        "network_error": "Lỗi kết nối mạng. Thay đổi được giữ trên thiết bị và sẽ tự gửi lại.",
-        "offline": "Mất kết nối. Câu trả lời mới nhất chưa được lưu. Thời gian làm bài vẫn tiếp tục.",
-        "rate_limited": "Gửi quá nhanh, tạm chờ {seconds} giây trước khi gửi lại.",
-        "rejected": "Một số câu trả lời không thể lưu vì phần thi đã đóng hoặc dữ liệu không hợp lệ.",
-        "server_error": "Máy chủ tạm bận. Đang tự thử lại.",
-        "session_conflict": "Phiên sửa bài đã được tiếp quản ở nơi khác."
+        "network_error": "Lỗi kết nối",
+        "offline": "Mất kết nối",
+        "rate_limited": "Chờ {seconds} giây",
+        "rejected": "Dữ liệu không hợp lệ",
+        "server_error": "Máy chủ bận",
+        "session_conflict": "Mở ở nơi khác"
       },
       "saved": "Đã lưu",
       "saving": "Đang lưu...",

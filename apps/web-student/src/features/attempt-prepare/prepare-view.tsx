@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useRef, useState } from "react";
 import { type HeaderAccount, StudentHeader } from "@/components/student-header";
-import { readAttemptStartContext, saveAttemptStartContext } from "@/features/attempt-draft";
+import { loadAttemptStartContext, saveAttemptStartContext } from "@/features/attempt-draft";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { formatDayMonth, REVIEW_BUILD_MODE } from "@/features/storefront/format";
 import { readSupportContact } from "@/features/storefront/support";
@@ -304,14 +304,14 @@ export function PrepareView({
         ? metrics.durationMinutes
         : (firstPart?.durationMinutes ?? null);
 
-    const resolveRetryPreChoice = (): {
+    const resolveRetryPreChoice = async (): Promise<{
       canRetryDirectly: boolean;
       payload?: StartAttemptRequest["preChoice"];
-    } => {
+    }> => {
       if (activeWaiting.preChoice) {
         return { canRetryDirectly: true, payload: activeWaiting.preChoice };
       }
-      const saved = readAttemptStartContext(session.id, activeWaiting.attemptId);
+      const saved = await loadAttemptStartContext(session.id, activeWaiting.attemptId);
       if (saved?.preChoice) {
         return { canRetryDirectly: true, payload: saved.preChoice };
       }
@@ -327,7 +327,7 @@ export function PrepareView({
     };
 
     const handleWaitingRetry = async () => {
-      const resolved = resolveRetryPreChoice();
+      const resolved = await resolveRetryPreChoice();
       if (!resolved.canRetryDirectly) {
         setWaitingAttempt(null);
         await prepareQuery.refetch();

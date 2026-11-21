@@ -125,6 +125,25 @@ export async function sendHeartbeat(
   return data;
 }
 
+function toAttemptApiError(
+  response: Response,
+  error: {
+    message?: string;
+    code?: string;
+    fieldErrors?: ApiStatusError["fieldErrors"];
+    traceId?: string;
+  } | undefined,
+): AttemptApiError {
+  const retryAfterSeconds =
+    response.status === 429 ? parseRetryAfterSeconds(response.headers.get("Retry-After")) : undefined;
+  return new AttemptApiError(response.status, error?.message ?? "", {
+    code: error?.code,
+    fieldErrors: error?.fieldErrors,
+    traceId: error?.traceId,
+    retryAfterSeconds,
+  });
+}
+
 export async function saveAnswers(
   attemptId: string,
   sessionId: string,
@@ -139,14 +158,7 @@ export async function saveAnswers(
     body,
   });
   if (!response.ok || !data) {
-    const retryAfterSeconds =
-      response.status === 429 ? parseRetryAfterSeconds(response.headers.get("Retry-After")) : undefined;
-    throw new AttemptApiError(response.status, error?.message ?? "", {
-      code: error?.code,
-      fieldErrors: error?.fieldErrors,
-      traceId: error?.traceId,
-      retryAfterSeconds,
-    });
+    throw toAttemptApiError(response, error);
   }
   return data;
 }
@@ -219,7 +231,7 @@ export async function confirmPartChoice(
     },
   );
   if (!response.ok || !data) {
-    throw toApiStatusError(response.status, error);
+    throw toAttemptApiError(response, error);
   }
   return data;
 }
@@ -246,7 +258,7 @@ export async function retryPartGeneration(
     },
   );
   if (!response.ok || !data) {
-    throw toApiStatusError(response.status, error);
+    throw toAttemptApiError(response, error);
   }
   return data;
 }

@@ -2,18 +2,23 @@
 
 import {
   clearAttemptDraftsForAttempt,
+  deleteItemDraft,
   loadAttemptDrafts,
   loadAttemptMeta,
+  loadAttemptStartContext,
   saveAttemptMeta,
-  deleteItemDraft,
+  saveAttemptStartContext,
   saveItemDraft,
 } from "@/features/attempt-draft";
 import { PreparingScreen } from "@/features/attempt-prepare";
-import { SESSION_QUERY_KEY, loadSession, type SessionLoader } from "@/features/session/api";
+import { startAttempt } from "@/features/attempt-prepare/api";
+import { SESSION_QUERY_KEY, loadSession, refreshSession, type SessionLoader } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
+import { webUrl } from "@/lib/env";
 import { useQuery } from "@tanstack/react-query";
 import { Button, cn, focusRing } from "@thi360/ui";
-import { Question } from "@thi360/ui/question";
+import { Question, orderById } from "@thi360/ui/question";
+import { buildLoginUrl } from "@thi360/web-kit/redirect";
 import {
   AlertCircle,
   CheckCircle2,
@@ -25,7 +30,6 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AfterStartChoiceView,
@@ -98,6 +102,11 @@ export interface AttemptPlayerDeps {
   saveAttemptMetaFn?: typeof saveAttemptMeta;
   loadAttemptMetaFn?: typeof loadAttemptMeta;
   clearAttemptDraftsFn?: typeof clearAttemptDraftsForAttempt;
+  loadAttemptStartContextFn?: typeof loadAttemptStartContext;
+  saveAttemptStartContextFn?: typeof saveAttemptStartContext;
+  startAttemptFn?: typeof startAttempt;
+  refreshSessionFn?: typeof refreshSession;
+  navigateFn?: (url: string) => void;
   createTabLockChannelFn?: (name: string) => TabLockChannel | null;
 }
 
@@ -105,6 +114,60 @@ export interface AttemptPlayerProps {
   attemptId: string;
   userId: string;
   deps?: AttemptPlayerDeps;
+}
+
+const EMPTY_DEPS: AttemptPlayerDeps = {};
+
+function defaultNavigate(url: string): void {
+  if (typeof window !== "undefined") {
+    window.location.assign(url);
+  }
+}
+
+const KNOWN_RETRY_START_ERRORS = new Set<string>([
+  "NO_ATTEMPTS_LEFT",
+  "CHOICE_NOT_ALLOWED",
+  "NO_SERVING_OPTION",
+  "SUBJECTS_INVALID",
+  "RATE_LIMITED",
+]);
+
+type AttemptEndReason = "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOSED";
+
+function inferAttemptEndReason(state: AttemptStateResponse): AttemptEndReason | null {
+  if (!CLOSED_STATES.has(state.state)) return null;
+  const parts = state.parts ?? [];
+  for (const part of parts) {
+    if (
+      part.state === "SKIPPED" &&
+      part.choiceDeadlineAt &&
+      part.closedAt &&
+      Date.parse(part.closedAt) >= Date.parse(part.choiceDeadlineAt)
+    ) {
+      return "CHOICE_TIMEOUT";
+    }
+  }
+  if (parts.some((part) => part.state === "SKIPPED" && !part.choiceDeadlineAt)) {
+    return "TIME_UP";
+  }
+  if (
+    state.timing === "SHARED" &&
+    state.deadlineAt &&
+    parts.some((part) => part.closedAt && Date.parse(part.closedAt) >= Date.parse(state.deadlineAt!))
+  ) {
+    return "TIME_UP";
+  }
+  if (
+    parts.some(
+      (part) =>
+        part.closedAt &&
+        part.deadlineAt &&
+        Date.parse(part.closedAt) >= Date.parse(part.deadlineAt),
+    )
+  ) {
+    return "TIME_UP";
+  }
+  return null;
 }
 
 const DEFAULT_SAVE_STATUS: SaveStatusSnapshot = {
@@ -225,8 +288,9 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   return false;
 }
 
-export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerProps) {
+export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptPlayerProps) {
   const t = useTranslations("attempt");
+  const tPrepare = useTranslations("prepare");
   const locale = useLocale();
 
   const resolvedDeps = useMemo(
@@ -246,13 +310,23 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       saveAttemptMetaFn: deps.saveAttemptMetaFn ?? saveAttemptMeta,
       loadAttemptMetaFn: deps.loadAttemptMetaFn ?? loadAttemptMeta,
       clearAttemptDraftsFn: deps.clearAttemptDraftsFn ?? clearAttemptDraftsForAttempt,
+      loadAttemptStartContextFn: deps.loadAttemptStartContextFn ?? loadAttemptStartContext,
+      saveAttemptStartContextFn: deps.saveAttemptStartContextFn ?? saveAttemptStartContext,
+      startAttemptFn: deps.startAttemptFn ?? startAttempt,
+      refreshSessionFn: deps.refreshSessionFn ?? refreshSession,
+      navigateFn: deps.navigateFn ?? defaultNavigate,
       createTabLockChannelFn: deps.createTabLockChannelFn,
     }),
     [deps],
   );
+  const resolvedDepsRef = useRef(resolvedDeps);
+  useEffect(() => {
+    resolvedDepsRef.current = resolvedDeps;
+  }, [resolvedDeps]);
 
   const [loadPhase, setLoadPhase] = useState<"loading" | "ready" | "not_found" | "error">("loading");
   const [attemptState, setAttemptState] = useState<AttemptStateResponse | null>(null);
+  const [closedEndReason, setClosedEndReason] = useState<AttemptEndReason | null>(null);
   const [afterStartChoices, setAfterStartChoices] = useState<AfterStartChoiceView[]>([]);
   const [serverClock, setServerClock] = useState<ServerClockAnchor | null>(null);
   const [selectedPartOrd, setSelectedPartOrd] = useState<number | null>(null);
@@ -267,6 +341,8 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
   const [choiceBusySec, setChoiceBusySec] = useState<number | null>(null);
   const [choiceSubmitting, setChoiceSubmitting] = useState(false);
   const [choiceRetrying, setChoiceRetrying] = useState(false);
+  const [abortRetrying, setAbortRetrying] = useState(false);
+  const [abortRetryError, setAbortRetryError] = useState<string | null>(null);
 
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
   const [finishDialogStatus, setFinishDialogStatus] = useState<
@@ -289,8 +365,12 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
   const choiceIdempotencyRef = useRef<{ key: string; target: string } | null>(null);
   const submitIdempotencyRef = useRef<string | null>(null);
   const expiredHandledDeadlineRef = useRef<string | null>(null);
+  const expiredChoiceDeadlineRef = useRef<string | null>(null);
   const tabRoleRef = useRef<TabLockRole>("acquiring");
   const sessionSnapRef = useRef<EditSessionSnapshot>(INITIAL_EDIT_SESSION_SNAP);
+  const loadPhaseRef = useRef<"loading" | "ready" | "not_found" | "error">("loading");
+  const redirectingForAuthRef = useRef(false);
+  const unauthorizedPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     tabRoleRef.current = tabRole;
@@ -299,6 +379,10 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
   useEffect(() => {
     sessionSnapRef.current = sessionSnap;
   }, [sessionSnap]);
+
+  useEffect(() => {
+    loadPhaseRef.current = loadPhase;
+  }, [loadPhase]);
 
   const syncMapsFromQueue = useCallback((queue: AttemptSaveQueue | null) => {
     if (!queue) return;
@@ -314,8 +398,14 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         prev ? reanchorServerClock(prev, nextState.serverNow) : createServerClockAnchor(nextState.serverNow),
       );
 
-      if (nextState.state === "ABORTED" || CLOSED_STATES.has(nextState.state)) {
-        void resolvedDeps.clearAttemptDraftsFn(userId, attemptId);
+      if (nextState.state === "IN_PROGRESS") {
+        setClosedEndReason(null);
+      } else if (nextState.state === "ABORTED" || CLOSED_STATES.has(nextState.state)) {
+        const inferred = inferAttemptEndReason(nextState);
+        if (inferred) {
+          setClosedEndReason((prev) => prev ?? inferred);
+        }
+        void resolvedDepsRef.current.clearAttemptDraftsFn(userId, attemptId);
       }
 
       setSelectedPartOrd((currentOrd) => {
@@ -329,29 +419,75 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         return resolveInitialPartOrd(nextState, fallbackPos?.partId);
       });
     },
-    [attemptId, resolvedDeps, userId],
+    [attemptId, userId],
   );
 
   const reloadServerState = useCallback(async () => {
-    const fresh = await resolvedDeps.loadAttemptStateFn(attemptId);
+    const fresh = await resolvedDepsRef.current.loadAttemptStateFn(attemptId);
     saveQueueRef.current?.hydrateFromState(fresh);
     syncMapsFromQueue(saveQueueRef.current);
     applyFreshServerState(fresh);
     return fresh;
-  }, [attemptId, applyFreshServerState, resolvedDeps, syncMapsFromQueue]);
+  }, [attemptId, applyFreshServerState, syncMapsFromQueue]);
 
   const [reloadNonce, setReloadNonce] = useState(0);
+
+  const handleAttemptUnauthorized = useCallback(() => {
+    if (unauthorizedPromiseRef.current) {
+      return unauthorizedPromiseRef.current;
+    }
+
+    const run = (async () => {
+      try {
+        await resolvedDepsRef.current.refreshSessionFn();
+        if (loadPhaseRef.current !== "ready") {
+          setReloadNonce((n) => n + 1);
+        } else {
+          if (editSessionRef.current?.getSnapshot().status === "error") {
+            await editSessionRef.current.claim(false);
+          }
+          await saveQueueRef.current?.flushNow();
+        }
+      } catch {
+        redirectingForAuthRef.current = true;
+        const currentHref =
+          typeof window !== "undefined"
+            ? window.location.href
+            : `${webUrl()}/attempts/${encodeURIComponent(attemptId)}`;
+        resolvedDepsRef.current.navigateFn(buildLoginUrl(webUrl(), currentHref));
+      } finally {
+        unauthorizedPromiseRef.current = null;
+      }
+    })();
+
+    unauthorizedPromiseRef.current = run;
+    return run;
+  }, [attemptId]);
+
+  const applyFreshServerStateRef = useRef(applyFreshServerState);
+  const reloadServerStateRef = useRef(reloadServerState);
+  const syncMapsFromQueueRef = useRef(syncMapsFromQueue);
+  const handleAttemptUnauthorizedRef = useRef(handleAttemptUnauthorized);
+
+  useEffect(() => {
+    applyFreshServerStateRef.current = applyFreshServerState;
+    reloadServerStateRef.current = reloadServerState;
+    syncMapsFromQueueRef.current = syncMapsFromQueue;
+    handleAttemptUnauthorizedRef.current = handleAttemptUnauthorized;
+  }, [applyFreshServerState, handleAttemptUnauthorized, reloadServerState, syncMapsFromQueue]);
 
   // Initial mount: load state, drafts, meta, afterStartChoices, then start queue + edit session + tab lock
   useEffect(() => {
     let cancelled = false;
+    const activeDeps = resolvedDepsRef.current;
 
     const tabLock = new AttemptTabLock({
       userId,
       attemptId,
-      createChannel: resolvedDeps.createTabLockChannelFn,
+      createChannel: activeDeps.createTabLockChannelFn,
       onRoleChange: (nextRole) => {
         if (cancelled) return;
+        tabRoleRef.current = nextRole;
         setTabRole(nextRole);
         const controller = editSessionRef.current;
         if (!controller) return;
@@ -359,6 +495,9 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
           controller.setReadonlyTab(true);
         } else if (nextRole === "primary_owner") {
           controller.setReadonlyTab(false);
+          if (controller.getSnapshot().status === "idle") {
+            void controller.claim(false);
+          }
         }
       },
     });
@@ -367,19 +506,32 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     const editSession = new EditSessionController({
       attemptId,
       userId,
-      claimSessionFn: resolvedDeps.claimEditSessionFn,
-      heartbeatFn: resolvedDeps.sendHeartbeatFn,
+      claimSessionFn: activeDeps.claimEditSessionFn,
+      heartbeatFn: activeDeps.sendHeartbeatFn,
       onStatusChange: (snap) => {
-        if (!cancelled) setSessionSnap(snap);
+        if (cancelled) return;
+        sessionSnapRef.current = snap;
+        setSessionSnap(snap);
+        if (snap.status === "active" && saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
+          void saveQueueRef.current.flushNow();
+        }
       },
       onServerNow: (serverNowIso) => {
         if (!cancelled) {
           setServerClock((prev) => reanchorServerClock(prev, serverNowIso));
         }
       },
-      onAttemptClosed: () => {
+      onAttemptClosed: (reason) => {
         if (!cancelled) {
-          void reloadServerState().catch(() => undefined);
+          if (reason === "TIME_UP") {
+            setClosedEndReason("TIME_UP");
+          }
+          void reloadServerStateRef.current().catch(() => undefined);
+        }
+      },
+      onUnauthorized: () => {
+        if (!cancelled) {
+          void handleAttemptUnauthorizedRef.current();
         }
       },
     });
@@ -388,12 +540,12 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     const saveQueue = new AttemptSaveQueue({
       attemptId,
       userId,
-      saveAnswersFn: resolvedDeps.saveAnswersFn,
-      loadAttemptStateFn: resolvedDeps.loadAttemptStateFn,
+      saveAnswersFn: activeDeps.saveAnswersFn,
+      loadAttemptStateFn: activeDeps.loadAttemptStateFn,
       draftDeps: {
-        saveItemDraft: resolvedDeps.saveItemDraftFn,
-        deleteItemDraft: resolvedDeps.deleteItemDraftFn,
-        saveAttemptMeta: resolvedDeps.saveAttemptMetaFn,
+        saveItemDraft: activeDeps.saveItemDraftFn,
+        deleteItemDraft: activeDeps.deleteItemDraftFn,
+        saveAttemptMeta: activeDeps.saveAttemptMetaFn,
       },
       getSessionId: () => editSession.getSessionId(),
       isReadOnly: () =>
@@ -409,16 +561,24 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       },
       onStateReconciled: (fresh) => {
         if (!cancelled) {
-          syncMapsFromQueue(saveQueue);
-          applyFreshServerState(fresh);
+          syncMapsFromQueueRef.current(saveQueue);
+          applyFreshServerStateRef.current(fresh);
         }
       },
       onSessionRevoked: () => {
         editSession.markEvicted();
       },
-      onAttemptOrPartClosed: () => {
+      onAttemptOrPartClosed: (reason) => {
         if (!cancelled) {
-          void reloadServerState().catch(() => undefined);
+          if (reason === "TIME_UP") {
+            setClosedEndReason("TIME_UP");
+          }
+          void reloadServerStateRef.current().catch(() => undefined);
+        }
+      },
+      onUnauthorized: () => {
+        if (!cancelled) {
+          void handleAttemptUnauthorizedRef.current();
         }
       },
     });
@@ -431,7 +591,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       saveQueue.handleOffline();
     };
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (saveQueue.hasUnsavedChanges()) {
+      if (!redirectingForAuthRef.current && saveQueue.hasUnsavedChanges()) {
         event.preventDefault();
       }
     };
@@ -442,14 +602,15 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
 
     async function bootstrap() {
       try {
+        const depsNow = resolvedDepsRef.current;
         const [initialState, drafts, meta] = await Promise.all([
-          resolvedDeps.loadAttemptStateFn(attemptId),
-          resolvedDeps.loadDraftsFn(userId, attemptId).catch(() => []),
-          resolvedDeps.loadAttemptMetaFn(userId, attemptId).catch(() => null),
+          depsNow.loadAttemptStateFn(attemptId),
+          depsNow.loadDraftsFn(userId, attemptId).catch(() => []),
+          depsNow.loadAttemptMetaFn(userId, attemptId).catch(() => null),
         ]);
         if (cancelled) return;
 
-        applyFreshServerState(initialState, meta?.lastPosition);
+        applyFreshServerStateRef.current(initialState, meta?.lastPosition);
         setLoadPhase("ready");
 
         if (initialState.state !== "IN_PROGRESS") {
@@ -457,7 +618,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         }
 
         saveQueue.hydrateFromState(initialState, drafts);
-        syncMapsFromQueue(saveQueue);
+        syncMapsFromQueueRef.current(saveQueue);
 
         const targetPartOrd = resolveInitialPartOrd(initialState, meta?.lastPosition?.partId);
         const targetPart = (initialState.parts ?? []).find((p) => p.ord === targetPartOrd);
@@ -478,7 +639,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
           (p) => p.state === "AWAITING_CHOICE" || p.choice,
         );
         if (hasChoicePart) {
-          void resolvedDeps
+          void depsNow
             .loadAfterStartChoicesFn(attemptId, userId)
             .then((choices) => {
               if (!cancelled) setAfterStartChoices(choices);
@@ -487,12 +648,17 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         }
 
         const role = tabLock.start();
+        tabRoleRef.current = role;
         setTabRole(role);
-        if (role === "primary_owner") {
+        if (role === "primary_owner" && editSession.getSnapshot().status === "idle") {
           await editSession.claim(false);
         }
       } catch (error) {
         if (cancelled) return;
+        if (error instanceof ApiStatusError && error.status === 401) {
+          void handleAttemptUnauthorizedRef.current();
+          return;
+        }
         if (error instanceof ApiStatusError && (error.status === 404 || error.code === "ATTEMPT_NOT_FOUND")) {
           setLoadPhase("not_found");
         } else {
@@ -515,7 +681,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       editSessionRef.current = null;
       tabLockRef.current = null;
     };
-  }, [attemptId, userId, reloadNonce, applyFreshServerState, reloadServerState, resolvedDeps, syncMapsFromQueue]);
+  }, [attemptId, userId, reloadNonce]);
 
   const parts = useMemo(
     () => [...(attemptState?.parts ?? [])].sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0)),
@@ -526,6 +692,74 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     if (parts.length === 0) return null;
     return parts.find((p) => p.ord === selectedPartOrd) ?? parts[0] ?? null;
   }, [parts, selectedPartOrd]);
+
+  const activePartId = activePart?.partId;
+
+  const handleReconcileFinishPart = useCallback(async () => {
+    setFinishDialogStatus("reconciling");
+    try {
+      const fresh = await reloadServerState();
+      const targetPart = (fresh.parts ?? []).find((p) => p.partId === activePartId);
+      if (!targetPart || targetPart.state !== "OPEN" || fresh.state !== "IN_PROGRESS") {
+        setUnitIndex(0);
+        setFinishDialogOpen(false);
+        setFinishDialogStatus("idle");
+      } else {
+        setFinishDialogStatus("idle");
+      }
+    } catch (error) {
+      if (error instanceof ApiStatusError && error.status === 401) {
+        void handleAttemptUnauthorized();
+        return;
+      }
+      setFinishDialogStatus("unconfirmed");
+    }
+  }, [activePartId, handleAttemptUnauthorized, reloadServerState]);
+
+  const handleReconcileSubmit = useCallback(async () => {
+    setSubmitDialogStatus("reconciling");
+    try {
+      const fresh = await reloadServerState();
+      if (fresh.state !== "IN_PROGRESS") {
+        await resolvedDepsRef.current.clearAttemptDraftsFn(userId, attemptId).catch(() => undefined);
+        setSubmitDialogOpen(false);
+        setSubmitDialogStatus("idle");
+      } else {
+        setSubmitDialogStatus("idle");
+      }
+    } catch (error) {
+      if (error instanceof ApiStatusError && error.status === 401) {
+        void handleAttemptUnauthorized();
+        return;
+      }
+      setSubmitDialogStatus("unconfirmed");
+    }
+  }, [attemptId, handleAttemptUnauthorized, reloadServerState, userId]);
+
+  useEffect(() => {
+    const finishUnconfirmed = finishDialogOpen && finishDialogStatus === "unconfirmed";
+    const submitUnconfirmed = submitDialogOpen && submitDialogStatus === "unconfirmed";
+    if (!finishUnconfirmed && !submitUnconfirmed) return;
+
+    const onOnline = () => {
+      if (finishUnconfirmed) {
+        void handleReconcileFinishPart();
+      }
+      if (submitUnconfirmed) {
+        void handleReconcileSubmit();
+      }
+    };
+
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [
+    finishDialogOpen,
+    finishDialogStatus,
+    handleReconcileFinishPart,
+    handleReconcileSubmit,
+    submitDialogOpen,
+    submitDialogStatus,
+  ]);
 
   const choiceTitleMap = useMemo(
     () => buildChoiceTitleMap(attemptState, afterStartChoices),
@@ -539,7 +773,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       afterStartChoices.length === 0
     ) {
       let active = true;
-      void resolvedDeps
+      void resolvedDepsRef.current
         .loadAfterStartChoicesFn(attemptId, userId)
         .then((choices) => {
           if (active && choices.length > 0) setAfterStartChoices(choices);
@@ -549,15 +783,15 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         active = false;
       };
     }
-  }, [activePart?.state, afterStartChoices.length, attemptId, attemptState?.state, resolvedDeps, userId]);
+  }, [activePart?.state, afterStartChoices.length, attemptId, attemptState?.state, userId]);
 
   useEffect(() => {
     if (attemptState?.state !== "IN_PROGRESS" || activePart?.state !== "GENERATING") return;
     const interval = window.setInterval(() => {
-      void reloadServerState().catch(() => undefined);
+      void reloadServerStateRef.current().catch(() => undefined);
     }, 1500);
     return () => window.clearInterval(interval);
-  }, [activePart?.state, attemptState?.state, reloadServerState]);
+  }, [activePart?.state, attemptState?.state]);
 
   const activeDeadlineIso =
     attemptState?.timing === "SHARED" ? attemptState.deadlineAt : activePart?.deadlineAt;
@@ -573,8 +807,9 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       setTimerTick({ deadlineKey: timerKey, remainingMs: nextMs });
       if (nextMs !== null && nextMs <= 0 && expiredHandledDeadlineRef.current !== activeDeadlineIso) {
         expiredHandledDeadlineRef.current = activeDeadlineIso;
+        setClosedEndReason((prev) => prev ?? "TIME_UP");
         window.setTimeout(() => {
-          void reloadServerState().catch(() => undefined);
+          void reloadServerStateRef.current().catch(() => undefined);
         }, 500);
       }
     };
@@ -585,7 +820,59 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       window.clearTimeout(initTimer);
       window.clearInterval(interval);
     };
-  }, [activeDeadlineIso, activePart?.state, attemptState?.state, attemptState?.timing, reloadServerState, serverClock, timerKey]);
+  }, [activeDeadlineIso, activePart?.state, attemptState?.state, attemptState?.timing, serverClock, timerKey]);
+
+  const awaitingChoiceDeadlineIso =
+    attemptState?.state === "IN_PROGRESS" && activePart?.state === "AWAITING_CHOICE"
+      ? activePart.choiceDeadlineAt
+      : undefined;
+
+  const hasServerClock = serverClock !== null;
+  const serverClockRef = useRef(serverClock);
+  useEffect(() => {
+    serverClockRef.current = serverClock;
+  }, [serverClock]);
+
+  useEffect(() => {
+    if (!awaitingChoiceDeadlineIso || !hasServerClock) return;
+    let pollTimeout: number | undefined;
+    let cancelled = false;
+
+    const scheduleReload = (delayMs: number) => {
+      if (cancelled || pollTimeout !== undefined) return;
+      pollTimeout = window.setTimeout(() => {
+        pollTimeout = undefined;
+        if (cancelled) return;
+        void reloadServerStateRef.current().catch(() => undefined);
+      }, delayMs);
+    };
+
+    const checkChoiceDeadline = () => {
+      const clock = serverClockRef.current;
+      if (!clock) return;
+      const remaining = getRemainingMs(awaitingChoiceDeadlineIso, clock);
+      if (remaining !== null && remaining <= 0) {
+        if (expiredChoiceDeadlineRef.current !== awaitingChoiceDeadlineIso) {
+          expiredChoiceDeadlineRef.current = awaitingChoiceDeadlineIso;
+          setClosedEndReason((prev) => prev ?? "CHOICE_TIMEOUT");
+          scheduleReload(500);
+        } else {
+          scheduleReload(2000);
+        }
+      }
+    };
+
+    const initTimer = window.setTimeout(checkChoiceDeadline, 0);
+    const interval = window.setInterval(checkChoiceDeadline, 1000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initTimer);
+      window.clearInterval(interval);
+      if (pollTimeout !== undefined) {
+        window.clearTimeout(pollTimeout);
+      }
+    };
+  }, [awaitingChoiceDeadlineIso, hasServerClock]);
 
   const units = useMemo(
     () => (activePart ? buildQuestionUnits(activePart.items, attemptId) : []),
@@ -597,12 +884,12 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
 
   const isSecondaryTab = tabRole === "secondary_readonly";
   const isEvicted = sessionSnap.status === "evicted";
-  const isReadOnly =
+  const isSessionLocked =
     isSecondaryTab ||
     isEvicted ||
     sessionSnap.status === "takeover_required" ||
-    attemptState?.state !== "IN_PROGRESS" ||
-    activePart?.state !== "OPEN";
+    attemptState?.state !== "IN_PROGRESS";
+  const isReadOnly = isSessionLocked || activePart?.state !== "OPEN";
 
   const dirtySet = useMemo(() => new Set(saveStatus.dirtyItemIds), [saveStatus.dirtyItemIds]);
 
@@ -663,7 +950,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       const partId = activePart?.partId;
       const itemId = targetUnit?.leafItems[0]?.itemId ?? targetUnit?.id;
       if (partId && itemId) {
-        saveQueueRef.current?.setPosition({ partId, itemId }, false);
+        saveQueueRef.current?.setPosition({ partId, itemId }, true);
       }
     },
     [activePart?.partId, units],
@@ -719,7 +1006,11 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         activeUnit.kitQuestion.body.type === "SINGLE_CHOICE"
       ) {
         const optionIdx = Number(event.key) - 1;
-        const option = activeUnit.kitQuestion.body.options[optionIdx];
+        const orderedOptions = orderById(
+          activeUnit.kitQuestion.body.options,
+          activeUnit.kitQuestion.optionOrder,
+        );
+        const option = orderedOptions[optionIdx];
         if (option?.id && activeUnit.id) {
           event.preventDefault();
           recordAnswerUpdate(activeUnit.id, "SINGLE_CHOICE", {
@@ -785,7 +1076,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
               </Button>
             ) : null}
             <Link
-              href="/my-exams"
+              href="/home"
               className={cn(
                 "inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-label font-medium text-text-secondary hover:bg-subtle",
                 focusRing,
@@ -800,30 +1091,93 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
   }
 
   if (attemptState.state === "STARTING" || attemptState.state === "ABORTED") {
+    const handleAbortRetry = async () => {
+      if (abortRetrying) return;
+      setAbortRetrying(true);
+      setAbortRetryError(null);
+      try {
+        const startCtx = await resolvedDepsRef.current.loadAttemptStartContextFn(userId, attemptId);
+        if (!startCtx?.entitlementId) {
+          resolvedDepsRef.current.navigateFn("/home");
+          return;
+        }
+        const started = await resolvedDepsRef.current.startAttemptFn(
+          {
+            entitlementId: startCtx.entitlementId,
+            ...(startCtx.preChoice ? { preChoice: startCtx.preChoice } : {}),
+          },
+          makeUuid(),
+        );
+        await resolvedDepsRef.current
+          .saveAttemptStartContextFn(userId, started.attemptId, startCtx)
+          .catch(() => undefined);
+        if (started.attemptId === attemptId) {
+          setReloadNonce((n) => n + 1);
+        } else {
+          resolvedDepsRef.current.navigateFn(`/attempts/${encodeURIComponent(started.attemptId)}`);
+        }
+      } catch (error) {
+        if (error instanceof ApiStatusError && error.status === 401) {
+          void handleAttemptUnauthorized();
+          return;
+        }
+        if (
+          error instanceof ApiStatusError &&
+          (error.code === "CHOICE_NOT_ALLOWED" || error.code === "SUBJECTS_INVALID")
+        ) {
+          const ctx = await resolvedDepsRef.current
+            .loadAttemptStartContextFn(userId, attemptId)
+            .catch(() => null);
+          if (ctx?.entitlementId) {
+            resolvedDepsRef.current.navigateFn(`/prepare/${encodeURIComponent(ctx.entitlementId)}`);
+            return;
+          }
+        }
+        const code =
+          error instanceof ApiStatusError && error.status === 429
+            ? "RATE_LIMITED"
+            : error instanceof ApiStatusError && KNOWN_RETRY_START_ERRORS.has(error.code)
+              ? error.code
+              : "generic";
+        setAbortRetryError(tPrepare(`startErrors.${code as "generic"}`));
+      } finally {
+        setAbortRetrying(false);
+      }
+    };
+
     return (
-      <main className="min-h-dvh bg-page">
-        <PreparingScreen
-          attemptId={attemptId}
-          examName={attemptState.examName}
-          initialState={attemptState.state}
-          initialAbortReason={attemptState.abortReason ?? null}
-          pollState={resolvedDeps.loadAttemptStateFn}
-          onReady={() => {
-            setReloadNonce((n) => n + 1);
-          }}
-        />
-      </main>
+      <PreparingScreen
+        attemptId={attemptId}
+        examName={attemptState.examName}
+        initialState={attemptState.state}
+        initialAbortReason={attemptState.abortReason ?? null}
+        pollState={resolvedDeps.loadAttemptStateFn}
+        onReady={() => {
+          setReloadNonce((n) => n + 1);
+        }}
+        onRetry={handleAbortRetry}
+        retrying={abortRetrying}
+        retryErrorMessage={abortRetryError}
+      />
     );
   }
 
   if (CLOSED_STATES.has(attemptState.state)) {
+    const resolvedEndReason = closedEndReason ?? inferAttemptEndReason(attemptState);
+    const closedHeading =
+      resolvedEndReason === "TIME_UP"
+        ? t("closed.headingTimeUp")
+        : resolvedEndReason === "CHOICE_TIMEOUT"
+          ? t("closed.headingChoiceTimeout")
+          : t("closed.heading");
+
     return (
       <main className="flex min-h-dvh items-center justify-center bg-page p-6">
         <section className="flex max-w-lg flex-col items-center gap-4 rounded-2xl border border-border bg-surface p-8 text-center shadow-sm">
           <div className="flex size-12 items-center justify-center rounded-full bg-success-bg text-success">
             <CheckCircle2 className="size-6" aria-hidden="true" />
           </div>
-          <h1 className="text-h3 font-bold text-text">{t("closed.heading")}</h1>
+          <h1 className="text-h3 font-bold text-text">{closedHeading}</h1>
           <p className="text-body text-text-muted">{t("closed.description")}</p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Link
@@ -837,7 +1191,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
               {t("closed.viewResult")}
             </Link>
             <Link
-              href="/my-exams"
+              href="/home"
               className={cn(
                 "inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-label font-medium text-text-secondary hover:bg-subtle",
                 focusRing,
@@ -951,10 +1305,14 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
   const durationParts = remainingMs !== null ? getClockDurationParts(remainingMs) : null;
   const isTimerUrgent = remainingMs !== null && remainingMs <= 60_000;
 
+  const isFreeMode = attemptState.navigationMode === "FREE";
   const canFinishPart =
-    attemptState.navigationMode === "SEQUENTIAL" &&
+    !isFreeMode &&
     activePart?.state === "OPEN" &&
     parts.some((p) => (p.ord ?? 0) > (activePart.ord ?? 0) && p.state !== "CLOSED" && p.state !== "SKIPPED");
+  const canSubmitAttempt = isFreeMode
+    ? attemptState.state === "IN_PROGRESS"
+    : activePart?.state === "OPEN" && !canFinishPart;
 
   async function handleConfirmPartChoice(optionCode: string, selectedSubjects?: string[]) {
     const partId = activePart?.partId;
@@ -971,7 +1329,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     setChoiceBusySec(null);
 
     try {
-      await resolvedDeps.confirmPartChoiceFn(
+      await resolvedDepsRef.current.confirmPartChoiceFn(
         attemptId,
         partId,
         sessionId,
@@ -983,12 +1341,25 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
       );
       await reloadServerState();
     } catch (error) {
-      if (error instanceof AttemptApiError && error.status === 429) {
-        setChoiceBusySec(error.retryAfterSeconds ?? 5);
+      if (error instanceof ApiStatusError && error.status === 401) {
+        void handleAttemptUnauthorized();
+        return;
+      }
+      if (error instanceof ApiStatusError && error.status === 429) {
+        setChoiceBusySec(error instanceof AttemptApiError ? (error.retryAfterSeconds ?? 5) : 5);
         setChoiceErrorCode("RATE_LIMITED");
       } else if (error instanceof ApiStatusError) {
         if (error.code === "ATTEMPT_SESSION_REVOKED") {
           editSessionRef.current?.markEvicted();
+        } else if (
+          error.code === "CHOICE_WINDOW_CLOSED" ||
+          error.code === "PART_NOT_AWAITING" ||
+          error.code === "PART_GENERATING"
+        ) {
+          if (error.code === "CHOICE_WINDOW_CLOSED") {
+            setClosedEndReason("CHOICE_TIMEOUT");
+          }
+          void reloadServerState().catch(() => undefined);
         }
         setChoiceErrorCode(error.code ?? "generic");
       } else {
@@ -1006,14 +1377,35 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
 
     setChoiceRetrying(true);
     setChoiceErrorCode(null);
+    setChoiceBusySec(null);
     try {
-      await resolvedDeps.retryPartGenerationFn(attemptId, partId, sessionId, makeUuid(), {});
+      await resolvedDepsRef.current.retryPartGenerationFn(attemptId, partId, sessionId, makeUuid(), {});
       await reloadServerState();
     } catch (error) {
-      if (error instanceof ApiStatusError && error.code === "ATTEMPT_SESSION_REVOKED") {
-        editSessionRef.current?.markEvicted();
+      if (error instanceof ApiStatusError && error.status === 401) {
+        void handleAttemptUnauthorized();
+        return;
       }
-      setChoiceErrorCode(error instanceof ApiStatusError ? (error.code ?? "generic") : "generic");
+      if (error instanceof ApiStatusError && error.status === 429) {
+        setChoiceBusySec(error instanceof AttemptApiError ? (error.retryAfterSeconds ?? 5) : 5);
+        setChoiceErrorCode("RATE_LIMITED");
+      } else if (error instanceof ApiStatusError) {
+        if (error.code === "ATTEMPT_SESSION_REVOKED") {
+          editSessionRef.current?.markEvicted();
+        } else if (
+          error.code === "CHOICE_WINDOW_CLOSED" ||
+          error.code === "PART_NOT_AWAITING" ||
+          error.code === "PART_GENERATING"
+        ) {
+          if (error.code === "CHOICE_WINDOW_CLOSED") {
+            setClosedEndReason("CHOICE_TIMEOUT");
+          }
+          void reloadServerState().catch(() => undefined);
+        }
+        setChoiceErrorCode(error.code ?? "generic");
+      } else {
+        setChoiceErrorCode("generic");
+      }
     } finally {
       setChoiceRetrying(false);
     }
@@ -1026,17 +1418,28 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     if (!partId || !sessionId || !queue) return;
 
     setFinishDialogStatus("submitting");
+    queue.cancelPendingTimers();
     const partIds = activePartLeaves.map((l) => l.itemId ?? "").filter(Boolean);
     const finalAnswers = queue.getFinalAnswers(partIds);
 
     try {
-      await resolvedDeps.finishPartFn(attemptId, partId, sessionId, { finalAnswers });
+      const response = await resolvedDepsRef.current.finishPartFn(attemptId, partId, sessionId, {
+        finalAnswers,
+      });
+      queue.markFinalAnswersResult(response.results);
+      if (response.endReason) {
+        setClosedEndReason(response.endReason);
+      }
       await reloadServerState();
       setUnitIndex(0);
       setFinishDialogOpen(false);
       setFinishDialogStatus("idle");
     } catch (error) {
       if (error instanceof ApiStatusError) {
+        if (error.status === 401) {
+          void handleAttemptUnauthorized();
+          return;
+        }
         if (error.code === "ATTEMPT_SESSION_REVOKED") {
           setFinishDialogOpen(false);
           editSessionRef.current?.markEvicted();
@@ -1053,23 +1456,6 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     }
   }
 
-  async function handleReconcileFinishPart() {
-    setFinishDialogStatus("reconciling");
-    try {
-      const fresh = await reloadServerState();
-      const targetPart = (fresh.parts ?? []).find((p) => p.partId === activePart?.partId);
-      if (!targetPart || targetPart.state !== "OPEN" || fresh.state !== "IN_PROGRESS") {
-        setUnitIndex(0);
-        setFinishDialogOpen(false);
-        setFinishDialogStatus("idle");
-      } else {
-        setFinishDialogStatus("idle");
-      }
-    } catch {
-      setFinishDialogStatus("unconfirmed");
-    }
-  }
-
   async function handleConfirmSubmit() {
     const sessionId = editSessionRef.current?.getSessionId();
     const queue = saveQueueRef.current;
@@ -1080,19 +1466,31 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     }
 
     setSubmitDialogStatus("submitting");
+    queue.cancelPendingTimers();
     const finalAnswers = queue.getFinalAnswers();
 
     try {
-      await resolvedDeps.submitAttemptFn(attemptId, sessionId, submitIdempotencyRef.current, {
-        finalAnswers,
-      });
+      const response = await resolvedDepsRef.current.submitAttemptFn(
+        attemptId,
+        sessionId,
+        submitIdempotencyRef.current,
+        { finalAnswers },
+      );
       submitIdempotencyRef.current = null;
-      await resolvedDeps.clearAttemptDraftsFn(userId, attemptId).catch(() => undefined);
+      queue.markFinalAnswersResult(response.results);
+      if (response.endReason) {
+        setClosedEndReason(response.endReason);
+      }
+      await resolvedDepsRef.current.clearAttemptDraftsFn(userId, attemptId).catch(() => undefined);
       await reloadServerState();
       setSubmitDialogOpen(false);
       setSubmitDialogStatus("idle");
     } catch (error) {
       if (error instanceof ApiStatusError) {
+        if (error.status === 401) {
+          void handleAttemptUnauthorized();
+          return;
+        }
         if (error.code === "ATTEMPT_SESSION_REVOKED") {
           setSubmitDialogOpen(false);
           editSessionRef.current?.markEvicted();
@@ -1109,22 +1507,6 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
     }
   }
 
-  async function handleReconcileSubmit() {
-    setSubmitDialogStatus("reconciling");
-    try {
-      const fresh = await reloadServerState();
-      if (fresh.state !== "IN_PROGRESS") {
-        await resolvedDeps.clearAttemptDraftsFn(userId, attemptId).catch(() => undefined);
-        setSubmitDialogOpen(false);
-        setSubmitDialogStatus("idle");
-      } else {
-        setSubmitDialogStatus("idle");
-      }
-    } catch {
-      setSubmitDialogStatus("unconfirmed");
-    }
-  }
-
   const activeChoiceSpec =
     afterStartChoices.find(
       (c) => c.ord === activePart?.ord || (activePart?.partCode && c.partCode === activePart.partCode),
@@ -1136,16 +1518,21 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         activeUnit.childKitQuestions.some((child) => child.body.type === "ESSAY")),
   );
 
+  const saveStatusReasonText =
+    saveStatus.reason === "rate_limited"
+      ? t("saveStatus.reasons.rate_limited", { seconds: saveStatus.retryAfterSeconds ?? 5 })
+      : saveStatus.reason
+        ? t(`saveStatus.reasons.${saveStatus.reason}`)
+        : null;
+
   const saveStatusText =
     saveStatus.state === "saved"
       ? t("saveStatus.saved")
       : saveStatus.state === "saving"
         ? t("saveStatus.saving")
-        : saveStatus.reason === "rate_limited"
-          ? t("saveStatus.reasons.rate_limited", { seconds: saveStatus.retryAfterSeconds ?? 5 })
-          : saveStatus.reason
-            ? t(`saveStatus.reasons.${saveStatus.reason}`)
-            : t("saveStatus.unsaved");
+        : saveStatusReasonText
+          ? `${t("saveStatus.unsaved")} · ${saveStatusReasonText}`
+          : t("saveStatus.unsaved");
 
   return (
     <div className="flex min-h-dvh flex-col bg-page text-text">
@@ -1162,10 +1549,22 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
               currentPartOrd={activePart?.ord ?? null}
               navigationMode={attemptState.navigationMode ?? "SEQUENTIAL"}
               choiceMap={choiceTitleMap}
-              disabled={isReadOnly}
+              disabled={isSessionLocked}
               onSelectPart={(ord) => {
                 setSelectedPartOrd(ord);
                 setUnitIndex(0);
+                const targetPart = parts.find((p) => p.ord === ord);
+                const targetUnits = targetPart ? buildQuestionUnits(targetPart.items, attemptId) : [];
+                const targetItemId = targetUnits[0]?.leafItems[0]?.itemId ?? targetUnits[0]?.id;
+                if (targetPart?.partId && targetItemId) {
+                  const hadDirtyItems = (saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0;
+                  saveQueueRef.current?.setPosition({ partId: targetPart.partId, itemId: targetItemId }, true);
+                  if (!hadDirtyItems) {
+                    void saveQueueRef.current?.flushNow();
+                  }
+                } else if (saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
+                  void saveQueueRef.current.flushNow();
+                }
               }}
             />
           </div>
@@ -1220,6 +1619,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
                 type="button"
                 variant="secondary"
                 size="sm"
+                className="pointer-coarse:min-h-11"
                 disabled={isReadOnly}
                 onClick={() => {
                   setFinishDialogStatus("idle");
@@ -1230,18 +1630,21 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
               </Button>
             ) : null}
 
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={isSecondaryTab || isEvicted || sessionSnap.status === "takeover_required"}
-              onClick={() => {
-                setSubmitDialogStatus("idle");
-                setSubmitDialogOpen(true);
-              }}
-            >
-              {t("header.submit")}
-            </Button>
+            {canSubmitAttempt ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                className="pointer-coarse:min-h-11"
+                disabled={isSecondaryTab || isEvicted || sessionSnap.status === "takeover_required"}
+                onClick={() => {
+                  setSubmitDialogStatus("idle");
+                  setSubmitDialogOpen(true);
+                }}
+              >
+                {t("header.submit")}
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -1259,6 +1662,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
           <ReadonlyTabBanner
             onSwitchHere={() => {
               tabLockRef.current?.claimActiveTab();
+              tabRoleRef.current = "primary_owner";
               setTabRole("primary_owner");
               editSessionRef.current?.setReadonlyTab(false);
             }}
@@ -1277,7 +1681,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
             busyRetryAfterSec={choiceBusySec}
             isSubmitting={choiceSubmitting}
             isRetrying={choiceRetrying}
-            readOnly={isReadOnly}
+            readOnly={isSessionLocked}
             onConfirmChoice={handleConfirmPartChoice}
             onRetryGeneration={handleRetryGeneration}
           />
@@ -1285,15 +1689,6 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
           <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-start">
             <div className="min-w-0 flex-1 space-y-4">
               <div className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
-                <p className="mb-3 text-caption font-semibold text-primary-800">
-                  {activeUnit.displayStart === activeUnit.displayEnd
-                    ? t("player.questionAriaSingle", { no: activeUnit.displayStart })
-                    : t("player.questionAriaRange", {
-                        from: activeUnit.displayStart,
-                        to: activeUnit.displayEnd,
-                      })}
-                </p>
-
                 {activeUnit.attachments.length > 0 ? (
                   <div
                     aria-label={t("player.attachmentsLabel")}
@@ -1401,23 +1796,11 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
               totalUnits={units.length}
               currentDisplayNumber={activeUnit.displayStart}
               totalDisplayItems={navItems.length}
-              currentFlagged={
-                activeUnit.leafItems[0]?.itemId ? getFlagged(activeUnit.leafItems[0].itemId) : false
-              }
-              onToggleCurrentFlag={
-                activeUnit.leafItems[0]?.itemId
-                  ? () => {
-                      const leafId = activeUnit.leafItems[0]?.itemId;
-                      if (leafId) toggleItemFlag(leafId);
-                    }
-                  : undefined
-              }
               onSelectUnit={goToUnit}
               onPrev={() => goToUnit(safeUnitIndex - 1)}
               onNext={() => goToUnit(safeUnitIndex + 1)}
               canPrev={safeUnitIndex > 0}
               canNext={safeUnitIndex < units.length - 1}
-              readOnly={isReadOnly}
             />
           </div>
         ) : (
@@ -1433,7 +1816,7 @@ export function AttemptPlayer({ attemptId, userId, deps = {} }: AttemptPlayerPro
         lastSeenAt={sessionSnap.lastSeenAt}
         isSubmitting={takeoverPending}
         onCancel={() => {
-          window.location.assign("/my-exams");
+          resolvedDepsRef.current.navigateFn("/home");
         }}
         onConfirmTakeover={async () => {
           setTakeoverPending(true);
@@ -1491,7 +1874,6 @@ export function AttemptPlayerPageClient({
   attemptId: string;
   loadSessionFn?: SessionLoader;
 }) {
-  const router = useRouter();
   const t = useTranslations("attempt");
 
   const sessionQuery = useQuery({
@@ -1500,14 +1882,48 @@ export function AttemptPlayerPageClient({
     retry: false,
   });
 
-  useEffect(() => {
-    if (sessionQuery.isError || (sessionQuery.isSuccess && !sessionQuery.data)) {
-      const nextUrl = encodeURIComponent(`/attempts/${encodeURIComponent(attemptId)}`);
-      router.replace(`/login?next=${nextUrl}`);
-    }
-  }, [attemptId, router, sessionQuery.data, sessionQuery.isError, sessionQuery.isSuccess]);
+  const sessionErrorStatus =
+    sessionQuery.error instanceof ApiStatusError ? sessionQuery.error.status : null;
+  const isUnauthorized = sessionQuery.isError && sessionErrorStatus === 401;
 
-  if (sessionQuery.isLoading || !sessionQuery.data) {
+  useEffect(() => {
+    if (sessionQuery.isSuccess && !sessionQuery.data) {
+      const currentHref =
+        typeof window !== "undefined"
+          ? window.location.href
+          : `${webUrl()}/attempts/${encodeURIComponent(attemptId)}`;
+      defaultNavigate(buildLoginUrl(webUrl(), currentHref));
+    }
+  }, [attemptId, sessionQuery.data, sessionQuery.isSuccess]);
+
+  if (sessionQuery.isError && !isUnauthorized) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-page p-6">
+        <section className="flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-surface p-8 text-center shadow-sm">
+          <AlertCircle className="size-10 text-danger" aria-hidden="true" />
+          <h1 className="text-h3 font-bold text-text">{t("errors.loadTitle")}</h1>
+          <p className="text-body text-text-muted">{t("errors.loadDescription")}</p>
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <Button type="button" variant="primary" onClick={() => void sessionQuery.refetch()}>
+              <RotateCw className="size-4" aria-hidden="true" />
+              <span>{t("errors.retry")}</span>
+            </Button>
+            <Link
+              href="/home"
+              className={cn(
+                "inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-label font-medium text-text-secondary hover:bg-subtle",
+                focusRing,
+              )}
+            >
+              {t("errors.loadBackToMyExams")}
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (sessionQuery.isLoading || isUnauthorized || !sessionQuery.data) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-page p-6">
         <div role="status" className="flex items-center gap-3 text-body text-text-muted">

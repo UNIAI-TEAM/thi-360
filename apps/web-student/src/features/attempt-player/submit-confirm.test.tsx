@@ -68,7 +68,7 @@ describe("SubmitConfirmDialog (AC-35, AC-19)", () => {
     );
 
     expect(screen.getByText("Chưa xác nhận nộp bài")).toBeInTheDocument();
-    const reconcileBtn = screen.getByRole("button", { name: "Đang kiểm tra trạng thái lượt…" });
+    const reconcileBtn = screen.getByRole("button", { name: "Kiểm tra trạng thái lượt" });
     await user.click(reconcileBtn);
     expect(onReconcile).toHaveBeenCalledTimes(1);
   });

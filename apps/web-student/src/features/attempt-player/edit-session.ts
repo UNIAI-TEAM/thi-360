@@ -251,6 +251,7 @@ export interface EditSessionControllerOptions {
   onStatusChange?: (snapshot: EditSessionSnapshot) => void;
   onServerNow?: (serverNowIso: string) => void;
   onAttemptClosed?: (stateOrReason: string) => void;
+  onUnauthorized?: () => void;
 }
 
 export class EditSessionController {
@@ -274,6 +275,7 @@ export class EditSessionController {
   private readonly onStatusChange?: (snapshot: EditSessionSnapshot) => void;
   private readonly onServerNow?: (serverNowIso: string) => void;
   private readonly onAttemptClosed?: (stateOrReason: string) => void;
+  private readonly onUnauthorized?: () => void;
 
   private status: EditSessionStatus = "idle";
   private sessionId: string | null = null;
@@ -293,6 +295,7 @@ export class EditSessionController {
     this.onStatusChange = options.onStatusChange;
     this.onServerNow = options.onServerNow;
     this.onAttemptClosed = options.onAttemptClosed;
+    this.onUnauthorized = options.onUnauthorized;
   }
 
   getSnapshot(): EditSessionSnapshot {
@@ -345,6 +348,11 @@ export class EditSessionController {
       return this.getSnapshot();
     } catch (error) {
       if (this.destroyed) return this.getSnapshot();
+      if (error instanceof ApiStatusError && error.status === 401) {
+        this.stopHeartbeat();
+        this.onUnauthorized?.();
+        return this.getSnapshot();
+      }
       if (
         error instanceof ApiStatusError &&
         error.status === 409 &&
@@ -374,6 +382,11 @@ export class EditSessionController {
       }
     } catch (error) {
       if (this.destroyed) return;
+      if (error instanceof ApiStatusError && error.status === 401) {
+        this.stopHeartbeat();
+        this.onUnauthorized?.();
+        return;
+      }
       if (error instanceof ApiStatusError && error.status === 409) {
         if (error.code === "ATTEMPT_SESSION_REVOKED" || error.code === "ATTEMPT_OPEN_ELSEWHERE") {
           this.markEvicted();

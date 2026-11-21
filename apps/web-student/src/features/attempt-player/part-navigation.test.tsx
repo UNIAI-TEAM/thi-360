@@ -33,6 +33,7 @@ describe("PartNavigation (AC-34)", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(4);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(tabs[0]).toHaveClass("after:border-b-2", "pointer-coarse:min-h-11", "pointer-coarse:min-w-11");
     expect(tabs[1]).toBeEnabled();
     expect(tabs[2]).toBeDisabled();
     expect(tabs[3]).toBeDisabled();
@@ -44,10 +45,11 @@ describe("PartNavigation (AC-34)", () => {
     await user.click(tabs[1]!);
     expect(onSelectPart).toHaveBeenCalledWith(2);
 
-    // ArrowRight on focused tab moves to next OPEN part
+    // ArrowRight on focused tab moves selection and focus to next OPEN part
     tabs[0]!.focus();
     await user.keyboard("{ArrowRight}");
     expect(onSelectPart).toHaveBeenCalledWith(2);
+    expect(tabs[1]).toHaveFocus();
   });
 
   it("SEQUENTIAL: chỉ render stepper không bấm nhảy (no tablist / no tab)", async () => {

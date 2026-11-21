@@ -3,7 +3,7 @@
 import { cn, focusRing } from "@thi360/ui";
 import { Check, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { KeyboardEvent } from "react";
+import { type KeyboardEvent, useRef } from "react";
 import type { AttemptPartStateView } from "./mappers";
 
 export interface PartNavigationProps {
@@ -50,6 +50,7 @@ export function PartNavigation({
   disabled = false,
 }: PartNavigationProps) {
   const t = useTranslations("attempt.parts");
+  const tabRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const isFree = navigationMode === "FREE";
   const sortedParts = [...parts].sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
 
@@ -76,6 +77,7 @@ export function PartNavigation({
       if (normalizePartState(candidate.state) === "OPEN") {
         event.preventDefault();
         onSelectPart(candidate.ord);
+        tabRefs.current[candidate.ord]?.focus();
         return;
       }
     }
@@ -99,6 +101,9 @@ export function PartNavigation({
           return (
             <button
               key={part.partId ?? ord}
+              ref={(el) => {
+                tabRefs.current[ord] = el;
+              }}
               type="button"
               role="tab"
               aria-selected={isCurrent}
@@ -111,9 +116,9 @@ export function PartNavigation({
               }}
               onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-caption font-medium transition-colors",
+                "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-caption font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
                 isCurrent
-                  ? "border-primary-600 bg-primary-50 text-primary-800"
+                  ? "relative border-primary-600 bg-primary-50 text-primary-800 after:pointer-events-none after:absolute after:inset-x-2 after:bottom-0 after:border-b-2 after:border-primary-600"
                   : isOpen
                     ? "border-border bg-surface text-text-secondary hover:border-border-strong hover:bg-subtle"
                     : "cursor-not-allowed border-border bg-subtle text-text-muted opacity-65",
