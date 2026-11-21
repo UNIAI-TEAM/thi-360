@@ -409,16 +409,19 @@ public class AttemptPathResolver {
             List<ServingPath> allowedPaths,
             Map<Integer, PublishedVersion> versionsByNo,
             Map<String, CatalogItemView> subjectsByCode) {
-        Map<String, ServingPath> allowedByCode = new LinkedHashMap<>();
+        Map<String, List<ServingPath>> allowedPathsByCode = new LinkedHashMap<>();
         for (ServingPath path : allowedPaths) {
             if (path.choices() == null) {
                 continue;
             }
+            Set<String> seenCodesInPath = new LinkedHashSet<>();
             for (PathChoice choice : path.choices()) {
                 if (Objects.equals(basePart.id(), choice.partId())) {
                     String norm = normalizeCode(choice.code());
-                    if (norm != null) {
-                        allowedByCode.putIfAbsent(norm, path);
+                    if (norm != null && seenCodesInPath.add(norm)) {
+                        allowedPathsByCode
+                                .computeIfAbsent(norm, k -> new ArrayList<>())
+                                .add(path);
                     }
                 }
             }
@@ -428,12 +431,21 @@ public class AttemptPathResolver {
         Set<String> seen = new LinkedHashSet<>();
 
         // Option-based parts (HSA P3 SCIENCE/ANH, HSA PART SCIENCE, SPT/THPTQG CS/ICT)
-        collectOptionsFromVersionPart(basePart, allowedByCode, subjectsByCode, views, seen);
+        collectOptionsFromVersionPart(
+                basePart, allowedPathsByCode, versionsByNo, subjectsByCode, views, seen);
         for (ServingPath path : allowedPaths) {
             PublishedVersion pv = versionsByNo.get(path.versionNo());
             if (pv != null && pv.versionNo() != baseVersion.versionNo()) {
                 findPartById(pv, basePart.id())
-                        .ifPresent(p -> collectOptionsFromVersionPart(p, allowedByCode, subjectsByCode, views, seen));
+                        .ifPresent(
+                                p ->
+                                        collectOptionsFromVersionPart(
+                                                p,
+                                                allowedPathsByCode,
+                                                versionsByNo,
+                                                subjectsByCode,
+                                                views,
+                                                seen));
             }
         }
         if (!views.isEmpty()) {
@@ -441,11 +453,25 @@ public class AttemptPathResolver {
         }
 
         // Combination-based parts (QDA FULL/PART, BCA FULL/PART)
-        collectCombinationsFromVersion(baseVersion, basePart.id(), allowedByCode, subjectsByCode, views, seen);
+        collectCombinationsFromVersion(
+                baseVersion,
+                basePart.id(),
+                allowedPathsByCode,
+                versionsByNo,
+                subjectsByCode,
+                views,
+                seen);
         for (ServingPath path : allowedPaths) {
             PublishedVersion pv = versionsByNo.get(path.versionNo());
             if (pv != null && pv.versionNo() != baseVersion.versionNo()) {
-                collectCombinationsFromVersion(pv, basePart.id(), allowedByCode, subjectsByCode, views, seen);
+                collectCombinationsFromVersion(
+                        pv,
+                        basePart.id(),
+                        allowedPathsByCode,
+                        versionsByNo,
+                        subjectsByCode,
+                        views,
+                        seen);
             }
         }
         return List.copyOf(views);
@@ -453,7 +479,8 @@ public class AttemptPathResolver {
 
     private void collectOptionsFromVersionPart(
             Part part,
-            Map<String, ServingPath> allowedByCode,
+            Map<String, List<ServingPath>> allowedPathsByCode,
+            Map<Integer, PublishedVersion> versionsByNo,
             Map<String, CatalogItemView> subjectsByCode,
             List<ChoiceOptionView> views,
             Set<String> seen) {
@@ -462,7 +489,8 @@ public class AttemptPathResolver {
         }
         for (Option option : part.options()) {
             String norm = normalizeCode(option.code());
-            if (norm == null || !allowedByCode.containsKey(norm) || !seen.add(norm)) {
+            List<ServingPath> matchingPaths = norm == null ? null : allowedPathsByCode.get(norm);
+            if (matchingPaths == null || matchingPaths.isEmpty() || !seen.add(norm)) {
                 continue;
             }
             List<ChoiceSubjectView> subjects = new ArrayList<>();
@@ -475,6 +503,7 @@ public class AttemptPathResolver {
                     }
                 }
             }
+            OptionMetrics metrics = resolveOptionPathMetrics(matchingPaths, versionsByNo);
             views.add(
                     new ChoiceOptionView(
                             option.code(),
@@ -482,14 +511,18 @@ public class AttemptPathResolver {
                             option.kind(),
                             option.chooseSubjects(),
                             option.countsByPick(),
-                            subjects));
+                            subjects,
+                            metrics.questionCount(),
+                            metrics.durationMinutes(),
+                            metrics.maxPoints()));
         }
     }
 
     private void collectCombinationsFromVersion(
             PublishedVersion version,
             String partId,
-            Map<String, ServingPath> allowedByCode,
+            Map<String, List<ServingPath>> allowedPathsByCode,
+            Map<Integer, PublishedVersion> versionsByNo,
             Map<String, CatalogItemView> subjectsByCode,
             List<ChoiceOptionView> views,
             Set<String> seen) {
@@ -501,7 +534,8 @@ public class AttemptPathResolver {
                 continue;
             }
             String norm = normalizeCode(comb.code());
-            if (norm == null || !allowedByCode.containsKey(norm) || !seen.add(norm)) {
+            List<ServingPath> matchingPaths = norm == null ? null : allowedPathsByCode.get(norm);
+            if (matchingPaths == null || matchingPaths.isEmpty() || !seen.add(norm)) {
                 continue;
             }
             List<ChoiceSubjectView> subjects = new ArrayList<>();
@@ -510,10 +544,157 @@ public class AttemptPathResolver {
                         .sorted(Comparator.comparingInt(CombinationSubject::position))
                         .forEach(cs -> subjects.add(toSubjectView(cs.code(), cs.name(), subjectsByCode)));
             }
+            OptionMetrics metrics = resolveOptionPathMetrics(matchingPaths, versionsByNo);
             views.add(
                     new ChoiceOptionView(
-                            comb.code(), comb.name(), "COMBINATION", null, List.of(), subjects));
+                            comb.code(),
+                            comb.name(),
+                            "COMBINATION",
+                            null,
+                            List.of(),
+                            subjects,
+                            metrics.questionCount(),
+                            metrics.durationMinutes(),
+                            metrics.maxPoints()));
         }
+    }
+
+    private record OptionMetrics(
+            Integer questionCount, Integer durationMinutes, BigDecimal maxPoints) {}
+
+    private static OptionMetrics resolveOptionPathMetrics(
+            List<ServingPath> paths, Map<Integer, PublishedVersion> versionsByNo) {
+        if (paths == null || paths.isEmpty()) {
+            return new OptionMetrics(null, null, null);
+        }
+        boolean qCountConsistent = true;
+        Integer consensusQCount = null;
+        boolean durationConsistent = true;
+        Integer consensusDuration = null;
+        boolean pointsConsistent = true;
+        BigDecimal consensusPoints = null;
+
+        for (int i = 0; i < paths.size(); i++) {
+            ServingPath path = paths.get(i);
+            PublishedVersion version =
+                    versionsByNo == null ? null : versionsByNo.get(path.versionNo());
+
+            Integer qCount = resolvePathQuestionCount(path, version);
+            if (qCount == null) {
+                qCountConsistent = false;
+            } else if (i == 0) {
+                consensusQCount = qCount;
+            } else if (qCountConsistent && !Objects.equals(consensusQCount, qCount)) {
+                qCountConsistent = false;
+            }
+
+            Integer duration = resolvePathDurationMinutes(path, version);
+            if (duration == null) {
+                durationConsistent = false;
+            } else if (i == 0) {
+                consensusDuration = duration;
+            } else if (durationConsistent && !Objects.equals(consensusDuration, duration)) {
+                durationConsistent = false;
+            }
+
+            BigDecimal maxPoints = resolvePathMaxPoints(path, version);
+            if (maxPoints == null) {
+                pointsConsistent = false;
+            } else if (i == 0) {
+                consensusPoints = maxPoints;
+            } else if (pointsConsistent && consensusPoints.compareTo(maxPoints) != 0) {
+                pointsConsistent = false;
+            }
+
+            if (!qCountConsistent && !durationConsistent && !pointsConsistent) {
+                return new OptionMetrics(null, null, null);
+            }
+        }
+
+        return new OptionMetrics(
+                qCountConsistent ? consensusQCount : null,
+                durationConsistent ? consensusDuration : null,
+                pointsConsistent ? consensusPoints : null);
+    }
+
+    private static Integer resolvePathQuestionCount(ServingPath path, PublishedVersion version) {
+        if (path.questionCount() != null) {
+            return path.questionCount();
+        }
+        if (!coversAllVersionParts(path, version)) {
+            return null;
+        }
+        int sum = 0;
+        for (ServingPathPart part : path.parts()) {
+            if (part.questionCount() == null) {
+                return null;
+            }
+            sum += part.questionCount();
+        }
+        return sum;
+    }
+
+    /**
+     * Resolves option duration from {@code path.durationMinutes()} before {@code version.durationMinutes()}
+     * so per-path duration snapshots take precedence over version defaults (agreeing on {@code PublishedExamReader}).
+     */
+    private static Integer resolvePathDurationMinutes(ServingPath path, PublishedVersion version) {
+        if (path.durationMinutes() != null) {
+            return path.durationMinutes();
+        }
+        if (version != null && version.durationMinutes() != null) {
+            return version.durationMinutes();
+        }
+        if (!coversAllVersionParts(path, version)) {
+            return null;
+        }
+        int sum = 0;
+        for (ServingPathPart part : path.parts()) {
+            if (part.durationMinutes() == null) {
+                return null;
+            }
+            sum += part.durationMinutes();
+        }
+        return sum;
+    }
+
+    private static BigDecimal resolvePathMaxPoints(ServingPath path, PublishedVersion version) {
+        if (path.maxPoints() != null) {
+            return path.maxPoints();
+        }
+        if (path.parts() != null && !path.parts().isEmpty()) {
+            if (!coversAllVersionParts(path, version)) {
+                return null;
+            }
+            BigDecimal sum = BigDecimal.ZERO;
+            for (ServingPathPart part : path.parts()) {
+                if (part.maxPoints() == null) {
+                    return null;
+                }
+                sum = sum.add(part.maxPoints());
+            }
+            return sum;
+        }
+        return (version != null && (version.omittedGroups() == null || version.omittedGroups().isEmpty()))
+                ? version.maxScore()
+                : null;
+    }
+
+    private static boolean coversAllVersionParts(ServingPath path, PublishedVersion version) {
+        if (path.parts() == null || path.parts().isEmpty()) {
+            return false;
+        }
+        if (version == null || version.parts() == null || version.parts().isEmpty()) {
+            return true;
+        }
+        Set<String> present = new LinkedHashSet<>();
+        for (ServingPathPart spp : path.parts()) {
+            if (spp.partId() != null) {
+                present.add(spp.partId());
+            }
+        }
+        return version.parts().stream()
+                .allMatch(p -> p.id() != null && present.contains(p.id()));
     }
 
     private static ChoiceSubjectView toSubjectView(

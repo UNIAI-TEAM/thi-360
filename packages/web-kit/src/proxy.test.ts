@@ -25,6 +25,23 @@ function lastHeaders() {
   return new Headers(call[1]?.headers);
 }
 
+function callUrl(index: number) {
+  return String(fetchMock.mock.calls[index]?.[0]);
+}
+
+function callHeaders(index: number) {
+  return new Headers(fetchMock.mock.calls[index]?.[1]?.headers);
+}
+
+function refreshedResponse() {
+  const headers = new Headers();
+  headers.append("set-cookie", "thi360_at=at2; Path=/; Max-Age=300; HttpOnly");
+  headers.append("set-cookie", "thi360_rt=rt2; Path=/; Max-Age=28800; HttpOnly");
+  headers.append("set-cookie", "thi360_ctx=ctx2; Path=/; Max-Age=300; HttpOnly");
+  headers.append("set-cookie", "thi360_xsrf=x2; Path=/; Max-Age=28800");
+  return new Response("{}", { status: 200, headers });
+}
+
 beforeEach(() => {
   vi.stubEnv("THI360_API_URL", API);
   vi.stubGlobal("fetch", fetchMock);
@@ -219,27 +236,10 @@ describe("proxyApiRequest multipart stream", () => {
 });
 
 describe("proxyApiRequest tự làm mới phiên (UNI-2574)", () => {
-  function refreshedResponse() {
-    const headers = new Headers();
-    headers.append("set-cookie", "thi360_at=at2; Path=/; Max-Age=300; HttpOnly");
-    headers.append("set-cookie", "thi360_rt=rt2; Path=/; Max-Age=28800; HttpOnly");
-    headers.append("set-cookie", "thi360_ctx=ctx2; Path=/; Max-Age=300; HttpOnly");
-    headers.append("set-cookie", "thi360_xsrf=x2; Path=/; Max-Age=28800");
-    return new Response("{}", { status: 200, headers });
-  }
-
   function rejectedRefresh() {
     const headers = new Headers();
     headers.append("set-cookie", "thi360_rt=; Path=/; Max-Age=0; HttpOnly");
     return new Response(JSON.stringify({ code: "SESSION_REVOKED" }), { status: 401, headers });
-  }
-
-  function callUrl(index: number) {
-    return String(fetchMock.mock.calls[index]?.[0]);
-  }
-
-  function callHeaders(index: number) {
-    return new Headers(fetchMock.mock.calls[index]?.[1]?.headers);
   }
 
   beforeEach(() => {
@@ -666,5 +666,115 @@ describe("proxyApiRequest byte range (UNI-2698)", () => {
     expect(retryHeaders.get("range")).toBe("bytes=5-5");
     expect(res.status).toBe(206);
     expect(res.headers.get("content-range")).toBe("bytes 5-5/9");
+  });
+});
+
+describe("proxyApiRequest X-Attempt-Session (UNI-2734)", () => {
+  beforeEach(() => {
+    resetSessionRefreshRegistry();
+  });
+
+  it("chuyển tiếp X-Attempt-Session tới upstream trên các lệnh PUT/POST của lượt thi và giữ nguyên chặn header ngoài danh sách", async () => {
+    await handlers.PUT(
+      new NextRequest("http://localhost:3000/api/v1/me/attempts/att-1/answers", {
+        method: "PUT",
+        body: JSON.stringify({ answers: [{ questionId: "q-1", answer: "A" }] }),
+        headers: {
+          "content-type": "application/json",
+          "X-Attempt-Session": "attempt-sess-123",
+          "x-unlisted-secret": "should-not-forward",
+        },
+      }),
+      context("v1", "me", "attempts", "att-1", "answers"),
+    );
+
+    expect(lastHeaders().get("x-attempt-session")).toBe("attempt-sess-123");
+    expect(lastHeaders().get("x-unlisted-secret")).toBeNull();
+
+    await handlers.POST(
+      new NextRequest("http://localhost:3000/api/v1/me/attempts/att-1/heartbeat", {
+        method: "POST",
+        headers: {
+          "X-Attempt-Session": "attempt-sess-456",
+          "x-unlisted-secret": "should-not-forward",
+        },
+      }),
+      context("v1", "me", "attempts", "att-1", "heartbeat"),
+    );
+
+    expect(lastHeaders().get("x-attempt-session")).toBe("attempt-sess-456");
+    expect(lastHeaders().get("x-unlisted-secret")).toBeNull();
+  });
+
+  it("vẫn loại bỏ X-Attempt-Session khi được liệt kê trong header hop-by-hop Connection và chặn header ngoài danh sách", async () => {
+    await handlers.PUT(
+      new NextRequest("http://localhost:3000/api/v1/me/attempts/att-1/answers", {
+        method: "PUT",
+        body: JSON.stringify({ answers: [] }),
+        headers: {
+          "content-type": "application/json",
+          Connection: "keep-alive, X-Attempt-Session",
+          "X-Attempt-Session": "attempt-sess-123",
+          "x-unlisted-secret": "should-not-forward",
+        },
+      }),
+      context("v1", "me", "attempts", "att-1", "answers"),
+    );
+
+    const forwarded = lastHeaders();
+    expect(forwarded.get("x-attempt-session")).toBeNull();
+    expect(forwarded.get("connection")).toBeNull();
+    expect(forwarded.get("x-unlisted-secret")).toBeNull();
+  });
+
+  it("giữ nguyên X-Attempt-Session khi proxy làm mới phiên thi360_at hết hạn trước khi chuyển tiếp request ghi PUT/POST", async () => {
+    const cases = [
+      {
+        method: "PUT" as const,
+        tail: "answers",
+        payload: JSON.stringify({ answers: [{ questionId: "q-1", answer: "B" }] }),
+      },
+      {
+        method: "POST" as const,
+        tail: "submit",
+        payload: JSON.stringify({ confirm: true }),
+      },
+    ];
+
+    for (const testCase of cases) {
+      resetSessionRefreshRegistry();
+      fetchMock.mockReset();
+
+      let receivedBody = "";
+      fetchMock.mockResolvedValueOnce(refreshedResponse()).mockImplementationOnce(async (_url, init) => {
+        receivedBody = await new Response(init?.body ?? null).text();
+        return Response.json({ ok: true });
+      });
+
+      const handler = handlers[testCase.method];
+      const res = await handler(
+        new NextRequest(`http://localhost:3001/api/v1/me/attempts/att-1/${testCase.tail}`, {
+          method: testCase.method,
+          body: testCase.payload,
+          headers: {
+            cookie: "thi360_rt=rt1; thi360_xsrf=x1",
+            "content-type": "application/json",
+            "x-xsrf-token": "x1",
+            "X-Attempt-Session": "attempt-sess-789",
+          },
+        }),
+        context("v1", "me", "attempts", "att-1", testCase.tail),
+      );
+
+      expect(res.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(callUrl(0)).toBe(`${API}/api/v1/auth/refresh`);
+      expect(callHeaders(0).get("x-attempt-session")).toBeNull();
+      expect(callUrl(1)).toBe(`${API}/api/v1/me/attempts/att-1/${testCase.tail}`);
+      expect(receivedBody).toBe(testCase.payload);
+      expect(callHeaders(1).get("x-attempt-session")).toBe("attempt-sess-789");
+      expect(callHeaders(1).get("x-xsrf-token")).toBe("x2");
+      expect(callHeaders(1).get("cookie")).toContain("thi360_at=at2");
+    }
   });
 });

@@ -228,6 +228,221 @@
       "verifiedContinue": "Your email is verified. You can continue."
     }
   },
+  "attempt": {
+    "abortReasons": {
+      "AUDIO_ASSET_INVALID": "An audio file in this exam is invalid or unreadable.",
+      "AUDIO_ASSET_MISSING": "A required audio file for this exam is missing.",
+      "GENERATION_BUSY": "The system is busy handling many exam requests. Please try again in a moment.",
+      "GENERATION_FAILED": "Could not generate the question set for this exam.",
+      "GENERATION_TIMEOUT": "Exam generation took longer than allowed.",
+      "STALE_STARTING": "Exam preparation was interrupted.",
+      "generic": "Unable to prepare the exam right now."
+    },
+    "closed": {
+      "backToMyExams": "Back to My exams",
+      "description": "This attempt has ended and answers can no longer be edited.",
+      "heading": "Attempt closed",
+      "headingChoiceTimeout": "Section 3 selection timed out",
+      "headingTimeUp": "Time is up",
+      "viewResult": "View result"
+    },
+    "dialogs": {
+      "closeLabel": "Close",
+      "finishPart": {
+        "cancel": "Keep working",
+        "confirm": "Finish section",
+        "missingSummary": "{missing}/{total} questions unanswered",
+        "nextPartChoiceNote": "Next is the Section 3 selection step. You have up to 15 minutes to confirm; if time runs out, the attempt ends and Section 3 scores 0.",
+        "nextPartOpensNote": "The next section will open right away and you cannot return to this section.",
+        "partialSummary": "{partial} questions partially answered",
+        "reconcile": "Check attempt status",
+        "title": "Finish section?",
+        "unconfirmedDesc": "Connection was lost before the server responded, so it is unclear whether this section has closed. Once back online, the system checks attempt status before allowing a retry.",
+        "unconfirmedTitle": "Section completion unconfirmed",
+        "warningIrreversible": "Once finished, you cannot return to this section."
+      },
+      "submitConfirm": {
+        "answeredCount": "{answered}/{total} answered",
+        "blankCount": "Unanswered: {count}",
+        "cancel": "Review answers",
+        "confirm": "Submit exam",
+        "description": "Once submitted, the attempt ends and answers cannot be modified.",
+        "essaySaved": "{words} words · saved",
+        "essaySectionTitle": "Essay status",
+        "essayUnderLimitItem": "Question {displayNo}: {wordCount}/{wordLimit} words — below minimum word count",
+        "essayUnderLimitTitle": "Essays below minimum word count (you can still submit)",
+        "essayUnsaved": "{words} words · unsaved",
+        "flaggedCount": "Flagged for review: {count}",
+        "partBreakdownTitle": "Missing questions by section",
+        "partMissingRow": "{missing}/{total} missing",
+        "partialCount": "Partially answered: {count}",
+        "reconcile": "Check attempt status",
+        "title": "Submit exam?",
+        "unconfirmedDesc": "Connection was lost before the server responded, so submission is not yet confirmed. Once back online, the system checks attempt status before retrying.",
+        "unconfirmedTitle": "Submission unconfirmed"
+      }
+    },
+    "editor": {
+      "bold": "Bold",
+      "bulletList": "Bullet list",
+      "italic": "Italic",
+      "loading": "Loading essay editor…",
+      "orderedList": "Numbered list",
+      "redo": "Redo",
+      "toolbarLabel": "Essay formatting",
+      "undo": "Undo"
+    },
+    "errors": {
+      "loadBackToMyExams": "Back to My exams",
+      "loadDescription": "Unable to load attempt details. Please try again.",
+      "loadTitle": "Unable to load attempt",
+      "notFoundDescription": "This attempt does not exist or belongs to a different account.",
+      "notFoundTitle": "Attempt not found",
+      "retry": "Try again"
+    },
+    "evicted": {
+      "backToMyExams": "Back to My exams",
+      "description": "This session can no longer edit answers. Any unsaved edits on this device were not sent to the server.",
+      "heading": "This attempt has been resumed on another device.",
+      "takeoverHere": "Continue here"
+    },
+    "header": {
+      "finishPart": "Finish section",
+      "submit": "Submit exam"
+    },
+    "nav": {
+      "answeredCount": "{answered}/{total} answered",
+      "closeGrid": "Close question list",
+      "controlsLabel": "Question navigation",
+      "emptyFiltered": "No questions match this filter.",
+      "filterAll": "All",
+      "filterFlagged": "Flagged",
+      "filterUnanswered": "Unanswered",
+      "gridLabel": "Question list",
+      "legendAnswered": "Answered",
+      "legendBlank": "Unanswered",
+      "legendCurrent": "Current",
+      "legendFlagged": "Flagged",
+      "legendPartial": "Partial",
+      "legendUnsaved": "Unsaved",
+      "next": "Next",
+      "openGrid": "Questions {current}/{total}",
+      "openGridCompact": "{current}/{total}",
+      "prev": "Previous",
+      "progressLabel": "Progress: {answered} of {total} questions",
+      "questionPosition": "Question {current}/{total}",
+      "stateAnswered": "answered",
+      "stateBlank": "unanswered",
+      "stateCurrent": "current",
+      "stateFlagged": "flagged for review",
+      "statePartial": "partially answered",
+      "stateSaved": "saved",
+      "stateUnsaved": "unsaved"
+    },
+    "partChoice": {
+      "busyNotice": "Your section is still being prepared. This page checks automatically.",
+      "confirmCta": "Confirm section 3 choice",
+      "countsPerSubject": "Questions per subject: {counts}",
+      "deadlineExpired": "Section 3 selection time has expired.",
+      "deadlineWarning": "If not confirmed before the timer ends, the attempt closes and Section 3 scores 0.",
+      "description": "Choose your option for the next section and confirm. Your choice is locked once confirmed.",
+      "errors": {
+        "ATTEMPT_SESSION_REVOKED": "This edit session is no longer active because the attempt was opened elsewhere.",
+        "CHOICE_LOCKED": "Another choice has already been locked for this section.",
+        "CHOICE_NOT_ALLOWED": "This option is invalid or not included in your purchase.",
+        "CHOICE_WINDOW_CLOSED": "The selection window for Section 3 has closed.",
+        "PART_GENERATING": "This section is currently being generated. Please wait a moment.",
+        "PART_NOT_AWAITING": "This section is not awaiting selection right now.",
+        "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+        "SUBJECTS_INVALID": "Please select the exact number of valid subjects required.",
+        "generic": "Unable to confirm selection. Please try again."
+      },
+      "failedDescription": "Your selection is preserved. Earlier sections are unaffected and this section timer has not started.",
+      "failedRetry": "Try again",
+      "failedTitle": "Could not prepare section",
+      "generatingDescription": "Your choice is locked. The section timer starts only when the questions are ready.",
+      "generatingTitle": "Preparing questions for this section",
+      "legendOption": "Choose an option or combination",
+      "legendSubjects": "Select subjects",
+      "selectedProgress": "Selected {selected}/{total}",
+      "subjectsLimitReached": "{total} subjects selected. Uncheck one to choose another.",
+      "timerLabel": "Selection time left",
+      "title": "Choose the third section"
+    },
+    "parts": {
+      "navLabel": "Exam sections",
+      "states": {
+        "AWAITING_CHOICE": "Choosing section",
+        "CLOSED": "Completed",
+        "GENERATING": "Preparing",
+        "GENERATION_FAILED": "Failed",
+        "OPEN": "In progress",
+        "PENDING": "Locked",
+        "SKIPPED": "Skipped"
+      }
+    },
+    "player": {
+      "attachmentsLabel": "Attachments",
+      "noActiveQuestion": "No question available to display.",
+      "offlineBanner": "Connection lost. Latest answers are not saved yet. The timer is still running.",
+      "pageTitle": "Exam attempt",
+      "shortcutHint": "Shortcuts: 1–4 choose option · ← → switch question · F flag for review"
+    },
+    "saveStatus": {
+      "reasons": {
+        "network_error": "Network error",
+        "offline": "Offline",
+        "rate_limited": "Wait {seconds}s",
+        "rejected": "Invalid answer",
+        "server_error": "Server busy",
+        "session_conflict": "Opened elsewhere"
+      },
+      "saved": "Saved",
+      "saving": "Saving...",
+      "unsaved": "Unsaved"
+    },
+    "tabLock": {
+      "badge": "Read-only",
+      "description": "This tab is read-only. Closing the active tab will automatically allow editing here.",
+      "heading": "This attempt is open in another browser tab.",
+      "switchHere": "Switch editing to this tab"
+    },
+    "takeover": {
+      "attemptLabel": "Exam",
+      "cancel": "Cancel",
+      "confirm": "Continue here",
+      "description": "Do you want to continue on this device? The other device will no longer be able to edit.",
+      "lastSeenLabel": "Other session last active",
+      "noteClock": "The timer keeps running while you decide.",
+      "noteUnsaved": "Any unsaved edits on the other device will not appear here.",
+      "title": "Attempt is open in another session"
+    },
+    "timer": {
+      "ariaLabel": "{label}: {hours} hours {minutes} minutes {seconds} seconds",
+      "ariaLabelShort": "{label}: {minutes} minutes {seconds} seconds",
+      "partRemaining": "Section {ord} left",
+      "sharedRemaining": "Exam time left"
+    },
+    "waiting": {
+      "backToMyExams": "Back to My exams",
+      "busyDescription": "Your exam is still being prepared. This page checks automatically—you do not need to click anything. The timer has not started.",
+      "busyNoticeLabel": "Still preparing after 90 seconds",
+      "busyTitle": "System is busy",
+      "clockPaused": "Timer not started",
+      "description": "The system is assembling your exam questions. The timer only starts once your exam is ready, so you do not lose any test time while waiting.",
+      "durationLabel": "Section duration",
+      "durationSharedLabel": "Exam duration",
+      "failedHeading": "Could not prepare the exam",
+      "failedNoticeLabel": "Exam preparation failed",
+      "failedRefundNote": "Your attempt credit has been returned, so no attempt was lost. The timer has not started.",
+      "firstPartLabel": "Opening section",
+      "minutesValue": "{minutes} minutes",
+      "pageTitle": "Preparing exam",
+      "reassureNote": "The exam screen will open automatically once ready. If you accidentally close this page, reopen it from <myExams>My exams</myExams> and choose Continue; a new attempt will not be created.",
+      "retry": "Try again",
+      "title": "Preparing your exam"
+    }
+  },
   "bundle": {
     "badgeWithCount": "Exam bundle · {count, plural, one {# exam} other {# exams}}",
     "buyLabel": "Buy bundle",
@@ -975,8 +1190,6 @@
     "subtitle": "Exam orders for account {username}, newest first. Include your order code when contacting support.",
     "tableLabel": "My orders table",
     "vnpayReasons": {
-      "07": "Amount deducted, but the transaction is flagged for review.",
-      "09": "Your card or account is not registered for Internet Banking.",
       "10": "Card or account authentication failed more than 3 times.",
       "11": "The payment session timed out.",
       "12": "Your card or account is locked.",
@@ -987,7 +1200,134 @@
       "75": "The payment bank is under maintenance.",
       "79": "Authentication failed too many times.",
       "99": "Final result from the payment gateway is not available yet.",
+      "07": "Amount deducted, but the transaction is flagged for review.",
+      "09": "Your card or account is not registered for Internet Banking.",
       "generic": "The bank or VNPAY declined the transaction."
+    }
+  },
+  "prepare": {
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot take exams in the student portal.",
+      "title": "Administrator account"
+    },
+    "afterStartChoices": {
+      "chooseSubjects": "choose {count} of {total} subjects",
+      "deadlineNote": "Selection time limit: up to 15 minutes after the previous section closes. If not confirmed in time, the attempt ends and the optional section scores 0.",
+      "timerNote": "The optional section timer starts only once the question set is ready.",
+      "title": "Choices during the exam"
+    },
+    "answerFormats": {
+      "CLOZE": "Fill in the blank",
+      "ESSAY": "Essay",
+      "MATCHING": "Matching",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "QUESTION_SET": "Question set",
+      "SHORT_ANSWER": "Short answer",
+      "SINGLE_CHOICE": "Single choice",
+      "TRUE_FALSE": "True/False"
+    },
+    "answerFormatsLabel": "Question formats",
+    "backToMyExams": "Back to My exams",
+    "breadcrumbLabel": "Breadcrumb",
+    "breadcrumbMyExams": "My exams",
+    "buyMoreAttempts": "Buy more attempts",
+    "continueAttempt": "Continue",
+    "errorLoad": {
+      "description": "Please check your connection and try again.",
+      "title": "Unable to load exam preparation details"
+    },
+    "exhaustedDescription": "You can buy more attempts to keep practicing this exam.",
+    "exhaustedDescriptionDiscontinued": "This exam is no longer on sale, so more attempts cannot be purchased.",
+    "exhaustedTitle": "You have used all attempts for this exam.",
+    "grantSource": {
+      "compensation": "Compensation",
+      "purchase": "Purchased {date}, order {orderCode}",
+      "purchaseNoOrder": "Purchased {date}"
+    },
+    "inProgressBanner": "You have an unfinished attempt in progress. Continue where you left off without creating a new attempt.",
+    "instructions": {
+      "noteAutoSave": "Answers are saved automatically. The top bar shows Saving, Saved, or Unsaved.",
+      "noteClock": "Remaining time follows the server clock; changing your device clock does not affect the timer.",
+      "noteOffline": "If you lose connection, you can keep working. Answers stay saved on this device and sync when reconnected while the clock keeps running.",
+      "noteSingleDevice": "Each attempt runs on one device at a time. Opening it on another device requires confirming takeover.",
+      "title": "Exam instructions"
+    },
+    "listeningPolicy": {
+      "maxPlays": "Each audio file can be played up to {maxPlays} times.",
+      "noSeek": "No seek bar, pause button, or playback speed controls.",
+      "title": "Listening policy"
+    },
+    "noServingOption": {
+      "contactPending": "Support contact details are being updated.",
+      "descriptionWithContact": "Please contact support via {contact} for a refund or compensation.",
+      "title": "None of your purchased options are currently served."
+    },
+    "notFound": {
+      "description": "This exam access does not exist or belongs to a different account.",
+      "title": "Exam not found in the signed-in account"
+    },
+    "omittedGroupsLabel": "Essay groups temporarily omitted from automatic generation:",
+    "optional": "Optional",
+    "pageTitle": "Prepare for exam",
+    "preChoice": {
+      "chooseSubjectsCount": "Choose {count} of {total} subjects",
+      "chooseSubjectsProgress": "Selected {selected}/{total}",
+      "hintSelectOption": "Please select an option before starting.",
+      "hintSelectSubjects": "Please choose {count} subjects before starting.",
+      "legend": "Pre-start selection",
+      "selectedPathSummary": "Path {code}",
+      "subjectLegend": "Select subjects",
+      "title": "Choose before starting"
+    },
+    "required": "Required",
+    "reviewBadge": "Review exam",
+    "scope": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "sidebar": {
+      "attemptsLeft": "Remaining attempts",
+      "attemptsValue": "{count, plural, one {# attempt} other {# attempts}}",
+      "duration": "Total duration",
+      "grantSource": "Credit source",
+      "maxPoints": "Max points",
+      "questions": "Questions",
+      "startNote": "Clicking Start prepares your exam in a few seconds. The timer starts only when the paper is ready. If preparation fails, your attempt credit is returned.",
+      "title": "Ready to start"
+    },
+    "startCta": "Start exam",
+    "startErrors": {
+      "CHOICE_NOT_ALLOWED": "The selected option is not valid or not included in your purchase.",
+      "NO_ATTEMPTS_LEFT": "You have no attempts left for this exam.",
+      "NO_SERVING_OPTION": "None of your purchased options are currently available.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "SUBJECTS_INVALID": "The selected subjects are incomplete or invalid.",
+      "generic": "Unable to start the exam right now. Please try again."
+    },
+    "structure": {
+      "title": "Exam structure"
+    },
+    "timing": {
+      "FREE": {
+        "description": "You can move freely between sections and edit answers within the shared timer.",
+        "title": "Shared clock, free section navigation"
+      },
+      "PER_PART": {
+        "description": "Complete each section in order. Finishing a section or running out of time opens the next section immediately with no break and no going back.",
+        "title": "Timed per section"
+      },
+      "SHARED": {
+        "description": "Sections are taken sequentially under one shared clock. Finishing a section or running out of time opens the next section; when the shared clock ends, the attempt closes.",
+        "title": "Shared clock for the whole exam"
+      }
+    },
+    "units": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "partCount": "{count, plural, one {# section} other {# sections}}",
+      "points": "{value} points",
+      "questions": "{count, plural, one {# question} other {# questions}}"
     }
   },
   "result": {

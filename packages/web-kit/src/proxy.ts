@@ -21,6 +21,7 @@ const FORWARDED_REQUEST_HEADERS = [
   "idempotency-key",
   "origin",
   "range",
+  "x-attempt-session",
   "x-xsrf-token",
 ] as const;
 

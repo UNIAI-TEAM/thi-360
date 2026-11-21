@@ -116,7 +116,19 @@ public record AttemptPrepareResponse(
             String kind,
             Integer chooseSubjects,
             List<Integer> countsByPick,
-            List<ChoiceSubjectView> subjects) {
+            List<ChoiceSubjectView> subjects,
+            @Schema(
+                    description = "Tổng số câu của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định",
+                    types = {"integer", "null"})
+            Integer questionCount,
+            @Schema(
+                    description = "Tổng thời lượng dự kiến (phút) của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định",
+                    types = {"integer", "null"})
+            Integer durationMinutes,
+            @Schema(
+                    description = "Tổng điểm tối đa của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định",
+                    types = {"number", "null"})
+            BigDecimal maxPoints) {
         public ChoiceOptionView {
             countsByPick = countsByPick == null ? List.of() : List.copyOf(countsByPick);
             subjects = subjects == null ? List.of() : List.copyOf(subjects);

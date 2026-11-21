@@ -228,6 +228,221 @@
       "verifiedContinue": "Email đã được xác minh. Bạn có thể tiếp tục."
     }
   },
+  "attempt": {
+    "abortReasons": {
+      "AUDIO_ASSET_INVALID": "Tệp âm thanh của đề thi không hợp lệ hoặc không đọc được.",
+      "AUDIO_ASSET_MISSING": "Thiếu tệp âm thanh cần thiết cho đề thi.",
+      "GENERATION_BUSY": "Hệ thống đang có nhiều yêu cầu tạo đề. Vui lòng thử lại sau giây lát.",
+      "GENERATION_FAILED": "Chưa tạo được bộ câu hỏi cho đề này.",
+      "GENERATION_TIMEOUT": "Tạo đề quá thời gian cho phép.",
+      "STALE_STARTING": "Việc chuẩn bị đề bị gián đoạn.",
+      "generic": "Không thể chuẩn bị đề thi lúc này."
+    },
+    "closed": {
+      "backToMyExams": "Về Bài thi của tôi",
+      "description": "Lượt thi này đã kết thúc và không thể chỉnh sửa câu trả lời.",
+      "heading": "Lượt thi đã đóng",
+      "headingChoiceTimeout": "Đã quá thời gian chọn phần 3",
+      "headingTimeUp": "Đã hết giờ làm bài",
+      "viewResult": "Xem kết quả"
+    },
+    "dialogs": {
+      "closeLabel": "Đóng",
+      "finishPart": {
+        "cancel": "Quay lại làm tiếp",
+        "confirm": "Hoàn thành phần",
+        "missingSummary": "Còn {missing}/{total} câu chưa trả lời",
+        "nextPartChoiceNote": "Tiếp theo là bước chọn phần 3. Bạn có tối đa 15 phút để xác nhận lựa chọn; quá thời gian thì lượt kết thúc và phần 3 được 0 điểm.",
+        "nextPartOpensNote": "Phần tiếp theo sẽ mở ngay và không thể quay lại phần này.",
+        "partialSummary": "Có {partial} câu đang làm dở",
+        "reconcile": "Kiểm tra trạng thái lượt",
+        "title": "Hoàn thành phần?",
+        "unconfirmedDesc": "Mất kết nối trước khi máy chủ trả lời, nên chưa biết phần thi đã đóng hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.",
+        "unconfirmedTitle": "Chưa xác nhận hoàn thành phần",
+        "warningIrreversible": "Sau khi hoàn thành bạn không thể quay lại phần này."
+      },
+      "submitConfirm": {
+        "answeredCount": "{answered}/{total} câu đã làm",
+        "blankCount": "Số câu bỏ trống: {count}",
+        "cancel": "Quay lại kiểm tra",
+        "confirm": "Nộp bài",
+        "description": "Nộp xong thì lượt thi kết thúc và không thể sửa câu trả lời.",
+        "essaySaved": "{words} chữ · đã lưu",
+        "essaySectionTitle": "Tình trạng bài viết",
+        "essayUnderLimitItem": "Câu {displayNo}: {wordCount}/{wordLimit} chữ — chưa đủ số chữ tối thiểu",
+        "essayUnderLimitTitle": "Bài viết chưa đủ số chữ tối thiểu (vẫn nộp bài được)",
+        "essayUnsaved": "{words} chữ · chưa lưu",
+        "flaggedCount": "Đánh dấu xem lại: {count}",
+        "partBreakdownTitle": "Số câu còn thiếu theo từng phần",
+        "partMissingRow": "Còn thiếu {missing}/{total} câu",
+        "partialCount": "Số câu làm dở: {count}",
+        "reconcile": "Kiểm tra trạng thái lượt",
+        "title": "Nộp bài?",
+        "unconfirmedDesc": "Mất kết nối trước khi máy chủ trả lời, nên chưa biết bài đã nộp hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.",
+        "unconfirmedTitle": "Chưa xác nhận nộp bài"
+      }
+    },
+    "editor": {
+      "bold": "In đậm",
+      "bulletList": "Danh sách dấu đầu dòng",
+      "italic": "In nghiêng",
+      "loading": "Đang tải trình soạn bài viết…",
+      "orderedList": "Danh sách đánh số",
+      "redo": "Làm lại",
+      "toolbarLabel": "Định dạng bài viết",
+      "undo": "Hoàn tác"
+    },
+    "errors": {
+      "loadBackToMyExams": "Về Bài thi của tôi",
+      "loadDescription": "Không tải được thông tin lượt thi. Vui lòng thử lại.",
+      "loadTitle": "Không tải được lượt thi",
+      "notFoundDescription": "Lượt thi không tồn tại hoặc thuộc về tài khoản khác.",
+      "notFoundTitle": "Không tìm thấy lượt thi",
+      "retry": "Thử lại"
+    },
+    "evicted": {
+      "backToMyExams": "Về Bài thi của tôi",
+      "description": "Phiên làm việc này không thể chỉnh sửa bài làm được nữa. Các thay đổi chưa lưu ở đây không được gửi lên máy chủ.",
+      "heading": "Lượt thi đã được tiếp tục ở thiết bị khác.",
+      "takeoverHere": "Tiếp tục tại đây"
+    },
+    "header": {
+      "finishPart": "Hoàn thành phần",
+      "submit": "Nộp bài"
+    },
+    "nav": {
+      "answeredCount": "{answered}/{total} câu đã trả lời",
+      "closeGrid": "Đóng danh sách câu",
+      "controlsLabel": "Điều hướng câu hỏi",
+      "emptyFiltered": "Không có câu nào khớp bộ lọc.",
+      "filterAll": "Tất cả",
+      "filterFlagged": "Đánh dấu",
+      "filterUnanswered": "Chưa làm",
+      "gridLabel": "Danh sách câu hỏi",
+      "legendAnswered": "Đã trả lời",
+      "legendBlank": "Chưa trả lời",
+      "legendCurrent": "Đang xem",
+      "legendFlagged": "Đánh dấu xem lại",
+      "legendPartial": "Trả lời một phần",
+      "legendUnsaved": "Chưa lưu",
+      "next": "Câu sau",
+      "openGrid": "Danh sách câu {current}/{total}",
+      "openGridCompact": "{current}/{total}",
+      "prev": "Câu trước",
+      "progressLabel": "Tiến độ: {answered} trên {total} câu",
+      "questionPosition": "Câu {current}/{total}",
+      "stateAnswered": "đã trả lời",
+      "stateBlank": "chưa trả lời",
+      "stateCurrent": "đang xem",
+      "stateFlagged": "đánh dấu xem lại",
+      "statePartial": "trả lời một phần",
+      "stateSaved": "đã lưu",
+      "stateUnsaved": "chưa lưu"
+    },
+    "partChoice": {
+      "busyNotice": "Đề vẫn đang được chuẩn bị. Trang tự kiểm tra lại.",
+      "confirmCta": "Xác nhận chọn phần 3",
+      "countsPerSubject": "Số câu mỗi môn: {counts}",
+      "deadlineExpired": "Đã hết thời gian chọn phần 3.",
+      "deadlineWarning": "Quá thời gian chọn mà chưa xác nhận thì lượt thi kết thúc, phần 3 được 0 điểm.",
+      "description": "Chọn phương án cho phần thi tiếp theo rồi xác nhận. Lựa chọn bị khóa ngay sau khi xác nhận.",
+      "errors": {
+        "ATTEMPT_SESSION_REVOKED": "Phiên làm bài không còn hợp lệ vì đã mở ở thiết bị khác.",
+        "CHOICE_LOCKED": "Bạn đã xác nhận lựa chọn khác cho phần này nên không thể đổi.",
+        "CHOICE_NOT_ALLOWED": "Lựa chọn này không hợp lệ hoặc không thuộc phạm vi bạn đã mua.",
+        "CHOICE_WINDOW_CLOSED": "Đã quá thời hạn chọn phần 3.",
+        "PART_GENERATING": "Phần này đang được tạo đề. Vui lòng đợi trong giây lát.",
+        "PART_NOT_AWAITING": "Phần thi hiện không ở trạng thái chờ chọn.",
+        "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+        "SUBJECTS_INVALID": "Bạn cần chọn đúng số môn hợp lệ theo quy định.",
+        "generic": "Không xác nhận được lựa chọn. Vui lòng thử lại."
+      },
+      "failedDescription": "Lựa chọn của bạn vẫn được giữ nguyên. Các phần trước không bị ảnh hưởng và đồng hồ phần này chưa chạy.",
+      "failedRetry": "Thử lại",
+      "failedTitle": "Chưa chuẩn bị được phần thi",
+      "generatingDescription": "Lựa chọn đã được khóa. Đồng hồ của phần chỉ chạy khi bộ câu hỏi đã sẵn sàng.",
+      "generatingTitle": "Đang chuẩn bị bộ câu hỏi cho phần thi",
+      "legendOption": "Chọn phương án hoặc tổ hợp",
+      "legendSubjects": "Chọn môn tự chọn",
+      "selectedProgress": "Đã chọn {selected}/{total}",
+      "subjectsLimitReached": "Đã đủ {total} môn. Bỏ chọn một môn để chọn môn khác.",
+      "timerLabel": "Thời gian chọn còn",
+      "title": "Chọn phần thi thứ ba"
+    },
+    "parts": {
+      "navLabel": "Các phần của bài thi",
+      "states": {
+        "AWAITING_CHOICE": "Đang chọn phần",
+        "CLOSED": "Đã hoàn thành",
+        "GENERATING": "Đang chuẩn bị",
+        "GENERATION_FAILED": "Chuẩn bị lỗi",
+        "OPEN": "Đang làm",
+        "PENDING": "Đã khóa",
+        "SKIPPED": "Bỏ qua"
+      }
+    },
+    "player": {
+      "attachmentsLabel": "Tệp đính kèm",
+      "noActiveQuestion": "Không có câu hỏi để hiển thị.",
+      "offlineBanner": "Mất kết nối. Câu trả lời mới nhất chưa được lưu. Thời gian làm bài vẫn tiếp tục.",
+      "pageTitle": "Làm bài thi",
+      "shortcutHint": "Phím tắt: 1–4 chọn phương án · ← → chuyển câu · F đánh dấu xem lại"
+    },
+    "saveStatus": {
+      "reasons": {
+        "network_error": "Lỗi kết nối",
+        "offline": "Mất kết nối",
+        "rate_limited": "Chờ {seconds} giây",
+        "rejected": "Dữ liệu không hợp lệ",
+        "server_error": "Máy chủ bận",
+        "session_conflict": "Mở ở nơi khác"
+      },
+      "saved": "Đã lưu",
+      "saving": "Đang lưu...",
+      "unsaved": "Chưa lưu"
+    },
+    "tabLock": {
+      "badge": "Chỉ xem",
+      "description": "Tab này chỉ để xem. Đóng tab kia thì tab này tự động làm bài tiếp được.",
+      "heading": "Lượt thi này đang mở ở một tab khác của trình duyệt.",
+      "switchHere": "Chuyển sang làm bài ở tab này"
+    },
+    "takeover": {
+      "attemptLabel": "Bài thi",
+      "cancel": "Hủy",
+      "confirm": "Tiếp tục tại đây",
+      "description": "Bạn có muốn tiếp tục làm bài trên thiết bị này? Thiết bị kia sẽ không sửa bài được nữa.",
+      "lastSeenLabel": "Phiên kia hoạt động lần cuối",
+      "noteClock": "Đồng hồ vẫn tiếp tục chạy trong lúc bạn chọn.",
+      "noteUnsaved": "Các thay đổi chưa kịp lưu trên thiết bị kia sẽ không có ở đây.",
+      "title": "Bài thi đang mở ở một phiên khác"
+    },
+    "timer": {
+      "ariaLabel": "{label}: {hours} giờ {minutes} phút {seconds} giây",
+      "ariaLabelShort": "{label}: {minutes} phút {seconds} giây",
+      "partRemaining": "Phần {ord} còn",
+      "sharedRemaining": "Cả bài còn"
+    },
+    "waiting": {
+      "backToMyExams": "Về Bài thi của tôi",
+      "busyDescription": "Đề vẫn đang được chuẩn bị. Trang tự kiểm tra lại, bạn không cần bấm gì. Đồng hồ chưa chạy.",
+      "busyNoticeLabel": "Sau 90 giây vẫn chưa xong",
+      "busyTitle": "Hệ thống đang bận",
+      "clockPaused": "Chưa tính giờ",
+      "description": "Hệ thống đang tạo bộ câu hỏi cho lượt thi của bạn. Đồng hồ chỉ bắt đầu khi đề đã sẵn sàng, nên bạn không mất thời gian làm bài trong lúc chờ.",
+      "durationLabel": "Thời gian của phần",
+      "durationSharedLabel": "Thời gian làm bài",
+      "failedHeading": "Chưa chuẩn bị được đề",
+      "failedNoticeLabel": "Chuẩn bị đề thất bại",
+      "failedRefundNote": "Lượt đã được trả lại, bạn chưa mất lượt nào. Đồng hồ chưa chạy.",
+      "firstPartLabel": "Phần mở đầu",
+      "minutesValue": "{minutes} phút",
+      "pageTitle": "Đang chuẩn bị đề",
+      "reassureNote": "Đề sẵn sàng thì màn làm bài tự mở. Lỡ đóng trang thì mở lại từ <myExams>Bài thi của tôi</myExams> và bấm Tiếp tục; lượt không bị bắt đầu lại.",
+      "retry": "Thử lại",
+      "title": "Đang chuẩn bị đề"
+    }
+  },
   "bundle": {
     "badgeWithCount": "Bộ đề · {count, plural, other {# bài}}",
     "buyLabel": "Mua bộ đề",
@@ -975,8 +1190,6 @@
     "subtitle": "Các đơn mua bài thi của tài khoản {username}, mới nhất trước. Khi cần hỗ trợ, hãy gửi kèm mã đơn.",
     "tableLabel": "Danh sách đơn hàng của tôi",
     "vnpayReasons": {
-      "07": "Trừ tiền thành công nhưng giao dịch bị nghi ngờ.",
-      "09": "Thẻ hoặc tài khoản chưa đăng ký dịch vụ Internet Banking.",
       "10": "Xác thực thông tin thẻ hoặc tài khoản không đúng quá 3 lần.",
       "11": "Giao dịch đã hết thời gian chờ thanh toán.",
       "12": "Thẻ hoặc tài khoản đang bị khóa.",
@@ -987,7 +1200,134 @@
       "75": "Ngân hàng thanh toán đang bảo trì.",
       "79": "Bạn đã nhập sai thông tin xác thực quá số lần cho phép.",
       "99": "Chưa nhận được kết quả cuối từ cổng thanh toán.",
+      "07": "Trừ tiền thành công nhưng giao dịch bị nghi ngờ.",
+      "09": "Thẻ hoặc tài khoản chưa đăng ký dịch vụ Internet Banking.",
       "generic": "Ngân hàng hoặc VNPAY từ chối giao dịch."
+    }
+  },
+  "prepare": {
+    "adminNotice": {
+      "cta": "Mở trang quản trị",
+      "description": "Tài khoản quản trị không làm bài thi ở trang học viên.",
+      "title": "Tài khoản quản trị"
+    },
+    "afterStartChoices": {
+      "chooseSubjects": "chọn đúng {count} trong {total} môn",
+      "deadlineNote": "Thời gian chọn: tối đa 15 phút kể từ lúc phần trước đóng. Quá thời gian mà chưa xác nhận thì lượt thi kết thúc, phần tự chọn được 0 điểm.",
+      "timerNote": "Đồng hồ của phần tự chọn chỉ chạy khi bộ câu hỏi đã sẵn sàng.",
+      "title": "Lựa chọn sẽ gặp trong bài"
+    },
+    "answerFormats": {
+      "CLOZE": "Điền khuyết",
+      "ESSAY": "Tự luận",
+      "MATCHING": "Ghép đôi",
+      "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
+      "QUESTION_SET": "Chùm câu hỏi",
+      "SHORT_ANSWER": "Trả lời ngắn",
+      "SINGLE_CHOICE": "Trắc nghiệm một đáp án",
+      "TRUE_FALSE": "Đúng/Sai"
+    },
+    "answerFormatsLabel": "Dạng câu hỏi",
+    "backToMyExams": "Về Bài thi của tôi",
+    "breadcrumbLabel": "Vị trí trang",
+    "breadcrumbMyExams": "Bài thi của tôi",
+    "buyMoreAttempts": "Mua thêm lượt",
+    "continueAttempt": "Tiếp tục",
+    "errorLoad": {
+      "description": "Vui lòng kiểm tra kết nối mạng và thử lại.",
+      "title": "Không tải được thông tin chuẩn bị bài thi"
+    },
+    "exhaustedDescription": "Bạn có thể mua thêm lượt để tiếp tục luyện tập bài thi này.",
+    "exhaustedDescriptionDiscontinued": "Bài thi này đã ngừng mở bán nên không thể mua thêm lượt.",
+    "exhaustedTitle": "Bạn đã dùng hết lượt của bài này.",
+    "grantSource": {
+      "compensation": "Cấp bù",
+      "purchase": "Mua ngày {date}, đơn {orderCode}",
+      "purchaseNoOrder": "Mua ngày {date}"
+    },
+    "inProgressBanner": "Bạn đang có lượt làm bài chưa hoàn tất. Tiếp tục để làm tiếp, không tạo lượt mới.",
+    "instructions": {
+      "noteAutoSave": "Câu trả lời được lưu tự động. Thanh trên cho biết Đang lưu, Đã lưu hoặc Chưa lưu.",
+      "noteClock": "Thời gian còn lại lấy theo giờ máy chủ; đổi giờ trên thiết bị không làm thay đổi thời gian.",
+      "noteOffline": "Mất kết nối vẫn làm bài tiếp được. Câu trả lời được giữ trên thiết bị và gửi khi có mạng lại; đồng hồ vẫn chạy.",
+      "noteSingleDevice": "Mỗi lượt chỉ làm trên một thiết bị tại một thời điểm. Mở ở thiết bị khác thì phải xác nhận chuyển sang thiết bị đó.",
+      "title": "Hướng dẫn làm bài"
+    },
+    "listeningPolicy": {
+      "maxPlays": "Mỗi tệp âm thanh được nghe tối đa {maxPlays} lần.",
+      "noSeek": "Không có thanh tua, không tạm dừng và không đổi tốc độ phát.",
+      "title": "Chính sách nghe"
+    },
+    "noServingOption": {
+      "contactPending": "Thông tin liên hệ hỗ trợ đang được cập nhật.",
+      "descriptionWithContact": "Vui lòng liên hệ hỗ trợ qua {contact} để được hoàn tiền hoặc cấp bù.",
+      "title": "Các mã bạn đã mua hiện không còn được phục vụ."
+    },
+    "notFound": {
+      "description": "Quyền làm bài không tồn tại hoặc thuộc về tài khoản khác.",
+      "title": "Không tìm thấy bài thi trong tài khoản đang đăng nhập"
+    },
+    "omittedGroupsLabel": "Nhóm tự luận tạm lược khỏi đề tự động:",
+    "optional": "Tự chọn",
+    "pageTitle": "Chuẩn bị làm bài",
+    "preChoice": {
+      "chooseSubjectsCount": "Chọn đúng {count} trong {total} môn",
+      "chooseSubjectsProgress": "Đã chọn {selected}/{total}",
+      "hintSelectOption": "Vui lòng chọn một phương án trước khi bắt đầu.",
+      "hintSelectSubjects": "Vui lòng chọn đủ {count} môn trước khi bắt đầu.",
+      "legend": "Phương án trước khi bắt đầu",
+      "selectedPathSummary": "Đường {code}",
+      "subjectLegend": "Chọn môn tự chọn",
+      "title": "Lựa chọn trước khi bắt đầu"
+    },
+    "required": "Bắt buộc",
+    "reviewBadge": "Bài ôn",
+    "scope": {
+      "FULL": "Bài thi FULL",
+      "PART": "Bài thi theo phần",
+      "SUBJECT": "Bài thi theo môn"
+    },
+    "sidebar": {
+      "attemptsLeft": "Số lượt còn lại",
+      "attemptsValue": "{count, plural, other {# lượt}}",
+      "duration": "Tổng thời gian",
+      "grantSource": "Lượt này dùng từ",
+      "maxPoints": "Điểm tối đa",
+      "questions": "Số câu phải làm",
+      "startNote": "Bấm Bắt đầu thì hệ thống chuẩn bị đề, mất khoảng vài giây. Đồng hồ chỉ chạy khi đề đã sẵn sàng. Nếu không chuẩn bị được đề, lượt được trả lại.",
+      "title": "Sẵn sàng làm bài"
+    },
+    "startCta": "Bắt đầu bài thi",
+    "startErrors": {
+      "CHOICE_NOT_ALLOWED": "Lựa chọn hiện tại không hợp lệ hoặc không thuộc phạm vi bạn đã mua.",
+      "NO_ATTEMPTS_LEFT": "Bạn đã dùng hết lượt của bài thi này.",
+      "NO_SERVING_OPTION": "Các phương án bạn đã mua hiện không còn được phục vụ.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+      "SUBJECTS_INVALID": "Danh sách môn đã chọn chưa đúng số lượng hoặc không hợp lệ.",
+      "generic": "Không thể bắt đầu bài thi lúc này. Vui lòng thử lại."
+    },
+    "structure": {
+      "title": "Cấu trúc bài thi"
+    },
+    "timing": {
+      "FREE": {
+        "description": "Bạn có thể chuyển qua lại giữa các phần và chỉnh sửa câu trả lời trong thời gian làm bài chung.",
+        "title": "Một đồng hồ chung, chuyển phần tự do"
+      },
+      "PER_PART": {
+        "description": "Làm lần lượt từng phần. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay, không có giờ nghỉ và không quay lại phần đã xong.",
+        "title": "Tính giờ từng phần"
+      },
+      "SHARED": {
+        "description": "Các phần làm lần lượt trong một đồng hồ chung. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay; hết giờ chung thì lượt thi kết thúc.",
+        "title": "Một đồng hồ chung cho cả bài"
+      }
+    },
+    "units": {
+      "minutes": "{count, plural, other {# phút}}",
+      "partCount": "{count, plural, other {# phần}}",
+      "points": "{value} điểm",
+      "questions": "{count, plural, other {# câu}}"
     }
   },
   "result": {

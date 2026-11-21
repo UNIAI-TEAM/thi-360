@@ -218,6 +218,17 @@ class AttemptOpenApiContractTest {
         assertThat(summaryProps.has("subjectCounts")).isTrue();
         assertThat(summaryProps.has("seed")).isFalse();
 
+        JsonNode choiceOptionProps = schemas.path("ChoiceOptionView").path("properties");
+        assertThat(choiceOptionProps.path("questionCount").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("integer", "null");
+        assertThat(choiceOptionProps.path("durationMinutes").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("integer", "null");
+        assertThat(choiceOptionProps.path("maxPoints").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("number", "null");
+
         for (String endpointPath :
                 List.of(
                         "/api/v1/me/attempts/{attemptId}/submit",
@@ -338,6 +349,12 @@ class AttemptOpenApiContractTest {
         String attemptItemBlock = extractComponentSchemaBlock(schemaDts, "AttemptItemView");
         assertThat(attemptItemBlock)
                 .contains("attachments?: components[\"schemas\"][\"AttemptAttachmentView\"][];");
+
+        String choiceOptionBlock = extractComponentSchemaBlock(schemaDts, "ChoiceOptionView");
+        assertThat(choiceOptionBlock)
+                .contains("questionCount?: number | null;")
+                .contains("durationMinutes?: number | null;")
+                .contains("maxPoints?: number | null;");
     }
 
     @Test
