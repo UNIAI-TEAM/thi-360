@@ -408,6 +408,8 @@ export function AttemptAudioPlayer({
       audio.playbackRate = 1;
       if (audio.getAttribute("src") !== streamUrl) {
         audio.setAttribute("src", streamUrl);
+      } else if (audio.error != null || audio.networkState === 3) {
+        audio.load();
       }
 
       const targetSec = Math.max(0, snap.positionMs / 1000);

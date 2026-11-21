@@ -28,6 +28,7 @@ import { adminApi } from "./helpers/editor-qa";
 import { WEB_URL, createVerifiedAccount, submitLoginForm, type E2eAccount } from "./helpers/mail";
 
 interface AudioPlayApiPayload {
+  assetId?: string;
   playId?: string | null;
   playsUsed: number;
   playsLeft: number;
@@ -35,6 +36,13 @@ interface AudioPlayApiPayload {
   durationMs: number;
   state: "IDLE" | "PLAYING" | "ENDED" | "EXHAUSTED";
   endReason?: string | null;
+}
+
+interface AudioStopLog {
+  pauseCalls: number;
+  srcCleared: boolean;
+  endedAtPause: boolean | null;
+  currentTimeAtPause: number | null;
 }
 
 interface AudioDomSnapshot {
@@ -84,12 +92,18 @@ interface AttemptReviewApiPayload {
 
 interface AttemptResultApiPayload {
   state?: string;
+  displayScore?: number | null;
+  statistics?: {
+    totalCount?: number;
+    blankCount?: number;
+  };
   segments?: Array<{
     code?: string;
     name?: string;
     partCode?: string;
     fromPosition?: number;
     toPosition?: number;
+    score?: number | null;
   }>;
 }
 
@@ -100,9 +114,23 @@ interface AttemptStateItemPayload {
   content?: string | null;
 }
 
+interface AttemptDisplaySegmentPayload {
+  code?: string;
+  name?: string;
+  fromPosition?: number;
+  toPosition?: number;
+  commandCount?: number;
+  maxPoints?: number;
+}
+
 interface AttemptStateWithDetailsPayload extends AttemptStateApiResponse {
   audioPlays?: AudioPlayApiPayload[];
-  parts: Array<AttemptStateApiResponse["parts"][number] & { items?: AttemptStateItemPayload[] }>;
+  parts: Array<
+    AttemptStateApiResponse["parts"][number] & {
+      items?: AttemptStateItemPayload[];
+      displaySegments?: AttemptDisplaySegmentPayload[];
+    }
+  >;
 }
 
 const SYMBOL_TOKENS_ORDERED = ["2+", "3+", "2-", "3-", "->", "+", "-", "(", ")", "2", "3", "4"] as const;
@@ -171,6 +199,65 @@ function trackAudioNetwork(page: Page, attemptId: string): AudioNetworkTracker {
   };
 }
 
+async function installAudioStopLogScript(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const win = window as Window & { __thi360AudioStopLog?: AudioStopLog };
+    win.__thi360AudioStopLog = {
+      pauseCalls: 0,
+      srcCleared: false,
+      endedAtPause: null,
+      currentTimeAtPause: null,
+    };
+
+    const origPause = HTMLMediaElement.prototype.pause;
+    HTMLMediaElement.prototype.pause = function pauseWithLog(this: HTMLMediaElement): void {
+      if (this.getAttribute("src")) {
+        const log = win.__thi360AudioStopLog!;
+        log.pauseCalls += 1;
+        if (log.endedAtPause === null) {
+          log.endedAtPause = Boolean(this.ended);
+          log.currentTimeAtPause = Number.isFinite(this.currentTime) ? this.currentTime : 0;
+        }
+      }
+      origPause.call(this);
+    };
+
+    const origRemoveAttribute = HTMLMediaElement.prototype.removeAttribute;
+    HTMLMediaElement.prototype.removeAttribute = function removeAttributeWithLog(
+      this: HTMLMediaElement,
+      qualifiedName: string,
+    ): void {
+      if (qualifiedName.toLowerCase() === "src" && Boolean(this.getAttribute("src"))) {
+        win.__thi360AudioStopLog!.srcCleared = true;
+      }
+      origRemoveAttribute.call(this, qualifiedName);
+    };
+  });
+}
+
+async function readAudioStopLog(page: Page): Promise<AudioStopLog | null> {
+  return page.evaluate(() => {
+    const win = window as Window & { __thi360AudioStopLog?: AudioStopLog };
+    return win.__thi360AudioStopLog ?? null;
+  });
+}
+
+async function startPlayAndCaptureAssetId(page: Page, attemptId: string): Promise<string> {
+  const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
+  const playResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes(`/attempts/${attemptId}/audio/`) &&
+      res.url().endsWith("/plays") &&
+      res.request().method() === "POST" &&
+      res.status() === 200,
+  );
+  await audioRegion.getByRole("button", { name: "Nghe" }).click();
+  const playRes = await playResPromise;
+  const assetId = /\/audio\/([^/]+)\/plays$/.exec(playRes.url())?.[1] ?? "";
+  expect(assetId).not.toBe("");
+  return assetId;
+}
+
 async function setupHscaMiniAttempt(
   browser: Browser,
   prefix: string,
@@ -185,6 +272,7 @@ async function setupHscaMiniAttempt(
   await context.addCookies(cookies);
   const page = await context.newPage();
   page.setDefaultTimeout(20_000);
+  await installAudioStopLogScript(page);
 
   const { entitlementId } = await purchaseExamViaUi(page, "DS-HSCA-ANH-MINI");
   const attemptId = await startAttemptFromPrepare(page, entitlementId);
@@ -328,10 +416,17 @@ async function setE2eAudioFault(examId: string, active: boolean): Promise<void> 
 
 async function expectAudioStoppedImmediately(page: Page): Promise<void> {
   const snap1 = await readAudioSnapshot(page);
+  const stopLog = await readAudioStopLog(page);
   if (snap1.exists) {
     expect(snap1.paused, "Audio must be paused immediately on stop trigger").toBe(true);
     expect(snap1.ended, "Audio stop must come from trigger before natural end").toBe(false);
+    expect(snap1.src, "Audio src must be stripped immediately on stop trigger").toBeNull();
   }
+  expect(stopLog, "Audio teardown log must exist on window.__thi360AudioStopLog").not.toBeNull();
+  expect(stopLog!.pauseCalls, "Teardown must explicitly call audio.pause()").toBeGreaterThan(0);
+  expect(stopLog!.srcCleared, "Teardown must clear <audio src>").toBe(true);
+  expect(stopLog!.endedAtPause, "Audio must be stopped before reaching natural ended").toBe(false);
+  expect(stopLog!.currentTimeAtPause ?? 0, "Audio must have started playing before stop").toBeGreaterThan(0);
   await page.waitForTimeout(600);
   const snap2 = await readAudioSnapshot(page);
   if (snap1.exists && snap2.exists) {
@@ -616,22 +711,29 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
     }
   });
 
-  test("AC-7 dừng phát tức thì ở cả 3 nhánh: nộp bài, hết giờ TestClock và phiên khác chiếm quyền", async ({
+  test("AC-7 dừng phát tức thì ở cả 3 nhánh: hoàn thành phần (đóng phần), hết giờ TestClock và phiên khác chiếm quyền", async ({
     browser,
   }) => {
     await resetTestClock();
     try {
-      // Branch (a): Closing/submitting active part during active playback stops audio immediately
+      // Branch (a): Closing active part during active playback stops audio immediately
       {
-        const { context, page } = await setupHscaMiniAttempt(browser, "ac7a");
+        const { context, page, attemptId } = await setupHscaMiniAttempt(browser, "ac7a");
         try {
-          const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
-          await audioRegion.getByRole("button", { name: "Nghe" }).click();
+          const playedAssetId = await startPlayAndCaptureAssetId(page, attemptId);
           await waitForAudioActivelyPlaying(page);
 
           await submitOrFinishPartViaHeaderDialog(page, "Hoàn thành phần");
           await expectAudioStoppedImmediately(page);
           await expect(page.getByRole("button", { name: SUBMIT_BUTTON_NAME })).toBeVisible({ timeout: 20_000 });
+
+          const stateAfterClose = (await getAttemptStateApi(
+            page.request,
+            attemptId,
+          )) as AttemptStateWithDetailsPayload;
+          const closedPlay = (stateAfterClose.audioPlays ?? []).find((entry) => entry.assetId === playedAssetId);
+          expect(closedPlay?.state).toBe("ENDED");
+          expect(closedPlay?.endReason).toBe("CLOSED");
         } finally {
           await context.close();
         }
@@ -661,7 +763,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
             .poll(async () => (await timer.innerText()).trim(), { timeout: 15_000, intervals: [50] })
             .toMatch(/00:02$/);
 
-          await audioRegion.getByRole("button", { name: "Nghe" }).click();
+          const playedAssetId = await startPlayAndCaptureAssetId(page, attemptId);
           await waitForAudioActivelyPlaying(page, 4_000);
 
           await expect(
@@ -671,6 +773,20 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
               .first(),
           ).toBeVisible({ timeout: 10_000 });
           await expectAudioStoppedImmediately(page);
+
+          await expect
+            .poll(
+              async () => {
+                const closedState = (await getAttemptStateApi(
+                  page.request,
+                  attemptId,
+                )) as AttemptStateWithDetailsPayload;
+                const entry = (closedState.audioPlays ?? []).find((item) => item.assetId === playedAssetId);
+                return entry ? { state: entry.state, endReason: entry.endReason } : null;
+              },
+              { timeout: 20_000, message: "TIME_UP phải chuyển audioPlays sang ENDED với endReason=CLOSED" },
+            )
+            .toEqual({ state: "ENDED", endReason: "CLOSED" });
         } finally {
           await resetTestClock();
           await context.close();
@@ -695,10 +811,14 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
           await audioRegionA.getByRole("button", { name: "Nghe" }).click();
           await waitForAudioActivelyPlaying(pageA);
 
+          const sessionTakeoverPromise = pageB.waitForResponse(
+            (res) =>
+              res.url().includes(`/attempts/${attemptId}/session`) &&
+              res.request().method() === "POST" &&
+              res.status() === 200,
+          );
           await takeoverBtnB.click();
-          await expect(
-            pageB.getByRole("button", { name: /^(Nộp bài|Hoàn thành phần)$/ }),
-          ).toBeVisible({ timeout: 15_000 });
+          await sessionTakeoverPromise;
 
           // Trigger server revocation detection from contextA right away.
           await answerCurrentUnit(pageA);
@@ -707,6 +827,9 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
             pageA.getByRole("heading", { name: "Lượt thi đã được tiếp tục ở thiết bị khác." }),
           ).toBeVisible({ timeout: 15_000 });
           await expectAudioStoppedImmediately(pageA);
+          await expect(
+            pageB.getByRole("button", { name: /^(Nộp bài|Hoàn thành phần)$/ }),
+          ).toBeVisible({ timeout: 15_000 });
         } finally {
           await contextB.close();
           await contextA.close();
@@ -837,6 +960,19 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
       const attemptId = await startAttemptFromPrepare(page, entitlementId);
       await expect(page.locator('header [role="timer"]')).toBeVisible({ timeout: 25_000 });
 
+      const initialAttemptState = (await getAttemptStateApi(
+        page.request,
+        attemptId,
+      )) as AttemptStateWithDetailsPayload;
+      const displaySegments = initialAttemptState.parts[0]?.displaySegments ?? [];
+      expect(displaySegments).toHaveLength(4);
+      expect(displaySegments.map((seg) => [seg.fromPosition, seg.toPosition])).toEqual([
+        [1, 9],
+        [10, 15],
+        [16, 20],
+        [21, 25],
+      ]);
+
       // Strictly one countdown timer on the page.
       await expect(page.locator('[role="timer"]')).toHaveCount(1);
 
@@ -908,6 +1044,12 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
       const result = await waitForResultScored(page.request, attemptId);
       expect(result.state).toBe("SCORED");
       expect(result.segments).toHaveLength(4);
+      expect(result.statistics?.totalCount).toBe(25);
+      expect(result.displayScore).not.toBeNull();
+      expect(result.displayScore).toBeDefined();
+      expect(Number.isFinite(Number(result.displayScore))).toBe(true);
+      const segSum = (result.segments ?? []).reduce((acc, s) => acc + Number(s.score ?? 0), 0);
+      expect(Math.abs(segSum - Number(result.displayScore))).toBeLessThanOrEqual(0.001);
     } finally {
       await context.close();
     }

@@ -377,8 +377,8 @@ async function installVsatResultAndReviewRoutes(page: Page): Promise<void> {
     const group = new URL(route.request().url()).searchParams.get("group");
     const items =
       group === "SUBJECT"
-        ? [{ code: "ANH", name: "Tiếng Anh" }]
-        : [{ code: "VSAT", name: "V-SAT" }];
+        ? [{ id: "s-anh", code: "ANH", nameVi: "Tiếng Anh", nameEn: "English" }]
+        : [{ id: "ek-vsat", code: "VSAT", nameVi: "V-SAT", nameEn: "V-SAT" }];
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(items) });
   });
 
@@ -577,6 +577,7 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
           timeout: 10_000,
         });
         await expect(page.locator("[data-segment-header]")).toBeVisible({ timeout: 20_000 });
+        await page.evaluate(() => window.scrollTo(0, 0));
         await expectMatrixClean(page, "vsat-player-segments", cell, playerOverflowOpts);
 
         // 6. vsat-result-segments

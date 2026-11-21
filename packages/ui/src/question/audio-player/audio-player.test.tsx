@@ -982,7 +982,7 @@ describe("hardening review-fe-r1 (FE-R1-01..06, FE-R1-11)", () => {
 
   it("FE-R1-02: sự kiện error trên <audio> chuyển sang Phát lại, dừng progress timer và gọi resumePlay không gọi openPlay; phân biệt NotSupportedError với NotAllowedError", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockAudioMethods();
+    const { playSpy, loadSpy } = mockAudioMethods();
     const adapter = makeAdapter();
 
     const { container, unmount } = render(
@@ -1000,6 +1000,7 @@ describe("hardening review-fe-r1 (FE-R1-01..06, FE-R1-11)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
 
     const audio = container.querySelector("audio")!;
+    Object.defineProperty(audio, "error", { value: { code: 4 }, configurable: true });
     await act(async () => {
       fireEvent(audio, new Event("error"));
     });
@@ -1013,11 +1014,16 @@ describe("hardening review-fe-r1 (FE-R1-01..06, FE-R1-11)", () => {
     });
     expect(adapter.reportProgress).not.toHaveBeenCalled();
 
-    // Clicking Phát lại resumes the existing playId without consuming another play.
+    // Clicking Phát lại reloads the errored <audio> (FE-R2-01) before play() without consuming another play.
+    loadSpy.mockClear();
+    playSpy.mockClear();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: tVi.resume }));
     });
     await waitFor(() => expect(adapter.resumePlay).toHaveBeenCalledWith("play-1"));
+    await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(1));
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(loadSpy.mock.invocationCallOrder[0]).toBeLessThan(playSpy.mock.invocationCallOrder[0]!);
     expect(adapter.openPlay).toHaveBeenCalledTimes(1);
     unmount();
 
@@ -1043,6 +1049,77 @@ describe("hardening review-fe-r1 (FE-R1-01..06, FE-R1-11)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: tVi.resume })).toBeEnabled());
     expect(screen.getByText(tVi.playErrorRetry)).toBeInTheDocument();
     expect(screen.queryByText(tVi.autoplayBlocked)).not.toBeInTheDocument();
+  });
+
+  it("FE-R2-01: networkState === 3 khi resume cùng URL gọi load() trước play(); NotAllowedError thường không gọi load() thừa", async () => {
+    const { playSpy, loadSpy } = mockAudioMethods();
+    const adapter = makeAdapter();
+
+    const view1 = render(
+      <AttemptAudioPlayer
+        assetId="asset-network-no-source"
+        initialState={makeSnapshot()}
+        adapter={adapter}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+
+    const audio = view1.container.querySelector("audio")!;
+    Object.defineProperty(audio, "error", { value: null, configurable: true });
+    Object.defineProperty(audio, "networkState", { value: 3, configurable: true });
+    await act(async () => {
+      fireEvent(audio, new Event("error"));
+    });
+
+    loadSpy.mockClear();
+    playSpy.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.resume }));
+    });
+    await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(1));
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(loadSpy.mock.invocationCallOrder[0]).toBeLessThan(playSpy.mock.invocationCallOrder[0]!);
+    expect(adapter.openPlay).toHaveBeenCalledTimes(1);
+    view1.unmount();
+
+    // Normal NotAllowedError retry with error === null & networkState !== 3 must NOT call load() redundantly.
+    const { playSpy: retryPlaySpy, loadSpy: retryLoadSpy } = mockAudioMethods({
+      playImpl: vi
+        .fn<() => Promise<void>>()
+        .mockRejectedValueOnce(new DOMException("Autoplay blocked", "NotAllowedError"))
+        .mockResolvedValueOnce(undefined),
+    });
+    const retryAdapter = makeAdapter();
+    const view2 = render(
+      <AttemptAudioPlayer
+        assetId="asset-autoplay-no-reload"
+        initialState={makeSnapshot()}
+        adapter={retryAdapter}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.resume })).toBeEnabled());
+
+    const retryAudio = view2.container.querySelector("audio")!;
+    Object.defineProperty(retryAudio, "error", { value: null, configurable: true });
+    Object.defineProperty(retryAudio, "networkState", { value: 2, configurable: true });
+    retryLoadSpy.mockClear();
+    retryPlaySpy.mockClear();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.resume }));
+    });
+    await waitFor(() => expect(retryPlaySpy).toHaveBeenCalledTimes(1));
+    expect(retryLoadSpy).not.toHaveBeenCalled();
+    expect(retryAdapter.openPlay).toHaveBeenCalledTimes(1);
+    view2.unmount();
   });
 
   it("FE-R1-03: bỏ qua initialState cũ (IDLE hoặc positionMs lùi) khi đang phát", async () => {
