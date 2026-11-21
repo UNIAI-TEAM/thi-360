@@ -46,11 +46,18 @@ async function createPaidOrderViaCheckout(browser: Browser, cookies: Awaited<Ret
     await page.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
     await page.waitForURL(/\/mock-vnpay/);
     await page.locator('a[data-mock-action="success"]').click();
-    await page.waitForURL(/\/checkout\/result\?order=/);
+    await page.waitForURL(/\/checkout\/result/);
     await expect(page.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
-    const orderParam = new URL(page.url()).searchParams.get("order");
-    expect(orderParam).toBeTruthy();
-    return orderParam!;
+
+    const urlOrder = new URL(page.url()).searchParams.get("order");
+    if (urlOrder) return urlOrder;
+
+    const orderLink = page.locator('main a[href^="/account/orders/"]').first();
+    await expect(orderLink).toBeVisible();
+    const href = await orderLink.getAttribute("href");
+    const match = href ? /\/account\/orders\/([^/?#]+)/.exec(href) : null;
+    expect(match?.[1], `Could not extract order code from href=${href}`).toBeTruthy();
+    return decodeURIComponent(match![1]!);
   } finally {
     await ctx.close();
   }
