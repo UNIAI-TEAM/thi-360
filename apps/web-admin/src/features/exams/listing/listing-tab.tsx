@@ -2,7 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, Card, EmptyState, IconButton, Skeleton } from "@thi360/ui";
-import { RefreshCw, TriangleAlert, X } from "lucide-react";
+import { RefreshCw, TriangleAlert, Users, X } from "lucide-react";
+import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { usePermissions } from "@/features/session/session-provider";
@@ -69,9 +70,20 @@ export function ExamListingView({ examId }: { examId: string }) {
   const exam = examQuery.data;
   const listing = listingQuery.data;
   const canEdit = !permissions.isLoading && permissions.can(LISTING_EDIT_PERMISSION);
+  const canViewOrders = !permissions.isLoading && permissions.can("ORDER.VIEW");
 
   return (
     <div className="flex flex-col gap-4">
+      {canViewOrders ? (
+        <div className="flex justify-end">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/orders/buyers?exam=${encodeURIComponent(exam.id)}`}>
+              <Users aria-hidden="true" />
+              <span>{t("buyersLink")}</span>
+            </Link>
+          </Button>
+        </div>
+      ) : null}
       <ListingPriceStrip listing={listing} />
       {conflict && (
         <div
