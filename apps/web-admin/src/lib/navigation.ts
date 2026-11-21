@@ -15,7 +15,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
-import { isGradingMockEnabled } from "@/lib/mock/flags";
 
 /**
  * Menu chính của web admin, nguồn duy nhất cho sidebar, breadcrumb và lối tắt ở Bảng điều khiển.
@@ -36,11 +35,6 @@ export interface NavItem {
   permission: PermissionRequirement | null;
   /** Đặt `true` cho mục không hiện thành thẻ lối tắt (chính trang Bảng điều khiển). */
   excludeFromShortcuts?: boolean;
-  /**
-   * Màn chạy được trên dữ liệu mẫu: hiện khi người dùng có `permission`, hoặc khi cờ
-   * `NEXT_PUBLIC_THI360_GRADING_MOCK` bật (chỉ còn `/grading` sau QA UNI-2621).
-   */
-  mockFlag?: "grading";
 }
 
 export interface NavGroup {
@@ -98,7 +92,6 @@ export const NAVIGATION: readonly NavGroup[] = [
         href: "/grading",
         icon: ClipboardCheck,
         permission: "GRADING.VIEW",
-        mockFlag: "grading",
       },
       {
         id: "catalog",
@@ -163,21 +156,12 @@ export const NAVIGATION: readonly NavGroup[] = [
 
 /**
  * Mục đã có trong menu nhưng trang chưa có: ẩn ở sidebar và lối tắt ở Bảng điều khiển dù người dùng đủ quyền
- * (plan B8). Lane làm trang đó bỏ dòng của mình: Lượt thi (FA-4).
+ * (plan B8). FA-4 đã mở trang Lượt thi nên danh sách này rỗng.
  */
-export const HIDDEN_NAV_ITEMS: readonly string[] = ["attempts"];
+export const HIDDEN_NAV_ITEMS: readonly string[] = [];
 
-export interface MockFlags {
-  readonly grading: boolean;
-}
-
-export function currentMockFlags(): MockFlags {
-  return { grading: isGradingMockEnabled() };
-}
-
-/** Hiện khi cờ dữ liệu mẫu của mục bật, hoặc người dùng có quyền (mục không có quyền: mọi người dùng thấy). */
-function isVisible(item: NavItem, granted: ReadonlySet<string>, flags: MockFlags): boolean {
-  if (item.mockFlag && flags[item.mockFlag]) return true;
+/** Hiện khi người dùng có quyền (mục không có quyền: mọi người dùng thấy). */
+function isVisible(item: NavItem, granted: ReadonlySet<string>): boolean {
   return item.permission === null || hasPermission(granted, item.permission);
 }
 
@@ -188,13 +172,12 @@ function isVisible(item: NavItem, granted: ReadonlySet<string>, flags: MockFlags
 export function filterNavigation(
   groups: readonly NavGroup[],
   granted: ReadonlySet<string>,
-  mockFlags: MockFlags = currentMockFlags(),
   hiddenItems: readonly string[] = HIDDEN_NAV_ITEMS,
 ): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !hiddenItems.includes(item.id) && isVisible(item, granted, mockFlags)),
+      items: group.items.filter((item) => !hiddenItems.includes(item.id) && isVisible(item, granted)),
     }))
     .filter((group) => group.items.length > 0);
 }

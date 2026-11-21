@@ -2733,12 +2733,6 @@
       "usernameReserved": "Tên đăng nhập này thuộc danh sách tên dành riêng của hệ thống."
     }
   },
-  "mockData": {
-    "title": "Dữ liệu mẫu.",
-    "description": "Màn này chưa nối backend; thay đổi chỉ giữ tới khi tải lại trang.",
-    "placeholderTitle": "Màn đang dựng",
-    "placeholderDescription": "Màn {screen} đang được dựng trong đợt mockup."
-  },
   "content": {
     "questionType": {
       "SINGLE_CHOICE": "Một đáp án",

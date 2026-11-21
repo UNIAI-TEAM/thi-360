@@ -2733,12 +2733,6 @@
       "usernameReserved": "This username is reserved by the system."
     }
   },
-  "mockData": {
-    "title": "Sample data.",
-    "description": "This screen is not connected to the backend yet; changes last until you reload the page.",
-    "placeholderTitle": "Screen in progress",
-    "placeholderDescription": "The {screen} screen is being built in the mockup round."
-  },
   "content": {
     "questionType": {
       "SINGLE_CHOICE": "Single choice",

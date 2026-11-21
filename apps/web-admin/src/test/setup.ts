@@ -2,9 +2,6 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
-// Cờ dữ liệu mẫu còn lại `/grading` bật trong test để các màn chấm chạy trên kho mẫu (plan B7, QA UNI-2621).
-process.env.NEXT_PUBLIC_THI360_GRADING_MOCK = "true";
-
 afterEach(() => {
   cleanup();
 });
