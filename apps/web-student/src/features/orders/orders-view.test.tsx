@@ -1,8 +1,15 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import type { OrderDetail, OrderPage, OrderSummary } from "@/features/orders/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  MY_ORDERS_QUERY_KEY,
+  type OrderDetail,
+  type OrderPage,
+  type OrderPayAction,
+  type OrderSummary,
+} from "@/features/orders/api";
 import { ApiStatusError } from "@/lib/api/client";
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { renderWithProviders } from "@/test/render";
 import { ADMIN_SESSION, STUDENT_SESSION } from "@/test/storefront-fixtures";
 import { OrdersView } from "./orders-view";
@@ -158,11 +165,194 @@ describe("OrdersView · AC-20", () => {
     expect(within(alert).getByRole("link", { name: "Tạo đơn mới" })).toHaveAttribute("href", "/checkout/HSA-FULL-03");
   });
 
-  it("tài khoản quản trị không gọi API /me/orders", async () => {
-    const loadOrders = vi.fn();
-    renderWithProviders(<OrdersView loadCurrentSession={async () => ADMIN_SESSION} loadOrders={loadOrders} />);
+  it("tài khoản quản trị không gọi API /me/orders và lỗi phiên dùng heading cấp 1", async () => {
+    const adminView = renderWithProviders(
+      <OrdersView loadCurrentSession={async () => ADMIN_SESSION} loadOrders={vi.fn()} />,
+    );
 
     expect(await screen.findByRole("heading", { level: 1, name: "Tài khoản quản trị" })).toBeInTheDocument();
+    adminView.unmount();
+
+    const loadOrders = vi.fn();
+    renderWithProviders(
+      <OrdersView loadCurrentSession={() => Promise.reject(new Error("session err"))} loadOrders={loadOrders} />,
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tải được danh sách đơn" })).toBeInTheDocument();
     expect(loadOrders).not.toHaveBeenCalled();
+  });
+
+  describe("R1-45, R1-57: useCardMode bảng/thẻ và dữ liệu cũ khi refetch lỗi", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it("rộng dùng bảng duy nhất, hẹp dùng CardList và giữ bảng khi refetch lỗi (R1-12, R1-39, R1-45, R1-57, R1-61)", async () => {
+      const setWidth = installContainerWidth(900);
+      const loadOrders = vi
+        .fn<() => Promise<OrderPage>>()
+        .mockResolvedValueOnce({
+          items: [
+            makeOrder({ id: "o-bundle", code: "DH-BUNDLE", productType: "BUNDLE", state: "PENDING_PAYMENT" }),
+            makeOrder({
+              id: "o-free",
+              code: "DH-FREE0",
+              paymentMethod: "FREE",
+              amountDueVnd: 0,
+              promotionDiscountVnd: 200000,
+              voucherDiscountVnd: 0,
+              discountApplied: "PROMOTION_ONLY",
+              state: "FULFILLED",
+            }),
+          ],
+          page: 0,
+          size: 20,
+          totalItems: 2,
+          totalPages: 1,
+        })
+        .mockRejectedValueOnce(new Error("network blip"));
+
+      const payOrder = vi.fn().mockRejectedValue(new ApiStatusError(500, "Temporary failure"));
+      renderWithProviders(
+        <OrdersView loadCurrentSession={async () => STUDENT_SESSION} loadOrders={loadOrders} payOrder={payOrder} />,
+      );
+
+      const table = await screen.findByRole("table");
+      expect(screen.queryByRole("list", { name: "Danh sách đơn hàng của tôi" })).toBeNull();
+      expect(within(table).getByText("Miễn phí")).toBeInTheDocument();
+      expect(within(table).queryByText("Miễn phí nhờ voucher")).toBeNull();
+
+      // Thu hẹp xuống 358px -> chỉ còn CardList, table bị gỡ khỏi DOM
+      setWidth(PHONE_CONTENT_WIDTH);
+      const list = await screen.findByRole("list", { name: "Danh sách đơn hàng của tôi" });
+      expect(screen.queryByRole("table")).toBeNull();
+      expect(within(list).getByRole("link", { name: "DH-BUNDLE" })).toHaveAttribute("href", "/account/orders/DH-BUNDLE");
+      expect(within(list).getByText("Bộ đề")).toBeInTheDocument();
+
+      // Mở rộng lại -> refetch lỗi khi nhấn Pay -> giữ dữ liệu cũ + hiện banner stale + không hiện full error
+      setWidth(900);
+      expect(await screen.findByRole("table")).toBeInTheDocument();
+      await userEvent.click(screen.getAllByRole("button", { name: "Tiếp tục thanh toán" })[0]!);
+      await waitFor(() => expect(payOrder).toHaveBeenCalledTimes(1));
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.queryByRole("heading", { name: "Không tải được danh sách đơn" })).toBeNull();
+      const staleAlerts = screen.getAllByRole("alert");
+      expect(staleAlerts.some((el) => el.textContent?.includes("Dữ liệu chưa được cập nhật."))).toBe(true);
+      expect(screen.getByRole("table")).toBeInTheDocument();
+    });
+  });
+
+  it("chống bấm đúp, khóa chéo Pay/Cancel, giữ Idempotency-Key qua 500, đổi key sau 409, hiện RATE_LIMITED và khôi phục focus sau hủy (R1-2, R1-13, R1-14, R1-37, R1-38, R1-67)", async () => {
+    type PayResult = Awaited<ReturnType<OrderPayAction>>;
+    let resolvePay!: (v: PayResult) => void;
+    const payOrder = vi.fn<OrderPayAction>().mockImplementationOnce(
+      () =>
+        new Promise<PayResult>((resolve) => {
+          resolvePay = resolve;
+        }),
+    );
+
+    const loadOrders = vi.fn().mockResolvedValue({
+      items: [
+        makeOrder({ id: "o-1", code: "DH-111", state: "PENDING_PAYMENT" }),
+        makeOrder({ id: "o-2", code: "DH-222", state: "PENDING_PAYMENT" }),
+      ],
+      page: 0,
+      size: 20,
+      totalItems: 2,
+      totalPages: 1,
+    });
+
+    const navigate = vi.fn();
+    renderWithProviders(
+      <OrdersView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadOrders={loadOrders}
+        payOrder={payOrder}
+        cancelOrder={vi.fn(async () => ({}) as OrderDetail)}
+        navigate={navigate}
+      />,
+    );
+
+    const rows = await screen.findAllByRole("row");
+    const firstPay = within(rows[1]!).getByRole("button", { name: "Tiếp tục thanh toán" });
+    const firstCancel = within(rows[1]!).getByRole("button", { name: "Hủy đơn" });
+    const secondPay = within(rows[2]!).getByRole("button", { name: "Tiếp tục thanh toán" });
+
+    // Nhấp đồng thời khi đang xử lý -> chỉ gọi 1 lần và khóa các nút khác (R1-13, R1-38)
+    await userEvent.click(firstPay);
+    expect(firstCancel).toBeDisabled();
+    expect(secondPay).toBeDisabled();
+    await userEvent.click(firstPay);
+    expect(payOrder).toHaveBeenCalledTimes(1);
+
+    resolvePay({
+      next: "REDIRECT",
+      paymentUrl: "https://sandbox.vnpayment.vn/pay-1",
+      txnRef: "TX-PAY-1",
+      order: {} as OrderDetail,
+    });
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("https://sandbox.vnpayment.vn/pay-1"));
+  });
+
+  it("giữ Idempotency-Key qua 500, tạo key mới sau 409, 429 hiện RATE_LIMITED, ORDER_NOT_PENDING không có Tạo đơn mới và focus về link đơn khi hủy (R1-2, R1-7, R1-14, R1-37, R1-67)", async () => {
+    expect(MY_ORDERS_QUERY_KEY(0, 20, "stu-a")).not.toEqual(MY_ORDERS_QUERY_KEY(0, 20, "stu-b"));
+
+    const order = makeOrder({ code: "DH-RETRY", productCode: "HSA-FULL-03", state: "PENDING_PAYMENT" });
+    const payOrder = vi
+      .fn<OrderPayAction>()
+      .mockRejectedValueOnce(new ApiStatusError(500, "Server busy"))
+      .mockRejectedValueOnce(new ApiStatusError(429, "Too fast", { code: "RATE_LIMITED" }))
+      .mockRejectedValueOnce(new ApiStatusError(409, "Not pending", { code: "ORDER_NOT_PENDING" }))
+      .mockResolvedValueOnce({
+        next: "REDIRECT",
+        paymentUrl: "https://sandbox.vnpayment.vn/pay-2",
+        txnRef: "TX-PAY-2",
+        order: {} as OrderDetail,
+      });
+
+    const cancelOrder = vi.fn(async () => ({ ...order, items: [], updatedAt: "2026-11-17T03:15:00Z", state: "CANCELLED" }) as unknown as OrderDetail);
+
+    renderWithProviders(
+      <OrdersView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadOrders={async () => ({ items: [order], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
+        payOrder={payOrder}
+        cancelOrder={cancelOrder}
+      />,
+    );
+
+    const payBtn = await screen.findByRole("button", { name: "Tiếp tục thanh toán" });
+    await userEvent.click(payBtn);
+    await waitFor(() => expect(payOrder).toHaveBeenCalledTimes(1));
+    const key1 = payOrder.mock.calls[0]?.[1];
+
+    // 429 RATE_LIMITED: giữ nguyên Idempotency-Key + hiện copy 429
+    await userEvent.click(payBtn);
+    await waitFor(() => expect(payOrder).toHaveBeenCalledTimes(2));
+    expect(payOrder.mock.calls[1]?.[1]).toBe(key1);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+    );
+
+    // 409 ORDER_NOT_PENDING: vẫn dùng key1 cho request này, sau đó reset key và không hiện "Tạo đơn mới"
+    await userEvent.click(payBtn);
+    await waitFor(() => expect(payOrder).toHaveBeenCalledTimes(3));
+    expect(payOrder.mock.calls[2]?.[1]).toBe(key1);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Đơn không còn ở trạng thái chờ thanh toán.");
+    expect(within(alert).queryByRole("link", { name: "Tạo đơn mới" })).toBeNull();
+
+    // Lần gọi tiếp theo dùng key mới khác key1
+    await userEvent.click(payBtn);
+    await waitFor(() => expect(payOrder).toHaveBeenCalledTimes(4));
+    expect(payOrder.mock.calls[3]?.[1]).not.toBe(key1);
+
+    // Hủy đơn thành công đưa focus về link chi tiết đơn (R1-67)
+    await userEvent.click(screen.getByRole("button", { name: "Hủy đơn" }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hủy đơn" }));
+    const orderLink = screen.getByRole("link", { name: "DH-RETRY" });
+    await waitFor(() => expect(document.activeElement).toBe(orderLink));
   });
 });

@@ -123,4 +123,31 @@ describe("MyExamsView · 4 trạng thái AC-17 & AC-18", () => {
     expect(await screen.findByRole("heading", { name: "Đề thi thử ĐGNL HSA số 3" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  it("không trùng React key khi hai thẻ Đang kiểm tra dùng chung pendingOrderCode (R1-17, R1-36)", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const secondChecking = {
+        ...CHECKING_CARD,
+        code: "HSA-FULL-05",
+        name: "Đề thi thử ĐGNL HSA số 5",
+      };
+      renderWithProviders(
+        <MyExamsView
+          session={STUDENT_SESSION}
+          loadExams={async () => ({ items: [CHECKING_CARD, secondChecking] })}
+        />,
+      );
+
+      expect(await screen.findByRole("heading", { name: "Đề thi thử ĐGNL HSA số 4" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Đề thi thử ĐGNL HSA số 5" })).toBeInTheDocument();
+      expect(screen.getByText("2 bài")).toBeInTheDocument();
+      const duplicateKeyCalls = errorSpy.mock.calls.filter((args) =>
+        args.some((arg) => typeof arg === "string" && arg.includes("same key")),
+      );
+      expect(duplicateKeyCalls).toHaveLength(0);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });

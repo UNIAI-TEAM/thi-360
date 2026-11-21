@@ -37,7 +37,7 @@ export function CheckingExamCard({
   const locale = useLocale();
   const examKindName = pickName(card.examKind, locale) || card.examKind.code;
   const contactText = formatSupportSummary();
-  const orderCode = card.pendingOrderCode ?? "";
+  const orderCode = card.pendingOrderCode?.trim() ?? "";
 
   return (
     <article className="flex flex-wrap items-center gap-4 rounded-xl border border-warning border-l-4 bg-surface p-5">
@@ -52,15 +52,26 @@ export function CheckingExamCard({
           {card.name}
         </h3>
         <p className="text-body text-text-secondary">
-          {contactText
-            ? t("message", { orderCode, contact: contactText })
-            : t("messageNoContact", { orderCode, pending: support("pending") })}
+          {orderCode
+            ? contactText
+              ? t("message", { orderCode, contact: contactText })
+              : t("messageNoContact", { orderCode, pending: support("pending") })
+            : contactText
+              ? t("messageNoOrder", { contact: contactText })
+              : t("messageNoOrderNoContact", { pending: support("pending") })}
         </p>
       </div>
-      <Button type="button" variant="secondary" loading={reloading} onClick={onReload} className="shrink-0">
-        <RefreshCw aria-hidden />
-        {t("reload")}
-      </Button>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {orderCode && (
+          <Button asChild variant="outline">
+            <Link href={`/account/orders/${encodeURIComponent(orderCode)}`}>{t("viewOrder")}</Link>
+          </Button>
+        )}
+        <Button type="button" variant="secondary" loading={reloading} onClick={onReload}>
+          <RefreshCw aria-hidden />
+          {t("reload")}
+        </Button>
+      </div>
     </article>
   );
 }

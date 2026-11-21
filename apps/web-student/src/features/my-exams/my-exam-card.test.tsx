@@ -192,6 +192,7 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
     expect(screen.getByText("Đang kiểm tra")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Đề thi thử ĐGNL HSA số 3" })).toHaveAttribute("data-exam-content");
     expect(screen.getByText(/DH261117Q4N8T2/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Xem đơn" })).toHaveAttribute("href", "/account/orders/DH261117Q4N8T2");
     expect(screen.getByText(/1900 1234 · hotro@thi360.vn/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Mua|Thanh toán/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Mua|Thanh toán/ })).toBeNull();
@@ -202,7 +203,7 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
     // Khi biến hỗ trợ trống: rơi về thông báo đang cập nhật, không bịa số điện thoại giả.
     vi.stubEnv("NEXT_PUBLIC_SUPPORT_PHONE", "");
     vi.stubEnv("NEXT_PUBLIC_SUPPORT_EMAIL", "");
-    renderWithProviders(
+    const noSupport = renderWithProviders(
       <CheckingExamCard
         card={makeCard({
           entitlementId: null,
@@ -215,6 +216,24 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
       />,
     );
     expect(screen.getByText(/Thông tin liên hệ đang được cập nhật\./)).toBeInTheDocument();
+    noSupport.unmount();
+
+    // Khi pendingOrderCode trống: không ghép "cho đơn ." rỗng và ẩn nút Xem đơn (R1-17).
+    renderWithProviders(
+      <CheckingExamCard
+        card={makeCard({
+          entitlementId: null,
+          state: "CHECKING",
+          pendingOrderCode: null,
+          actions: ["CHECKING"],
+        })}
+        onReload={vi.fn()}
+        reloading={false}
+      />,
+    );
+    expect(screen.queryByText(/cho đơn \./)).toBeNull();
+    expect(screen.getByText(/Đã nhận thanh toán cho đơn hàng của bạn/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Xem đơn" })).toBeNull();
   });
 
   it("song ngữ en (pickName) và data-exam-content: dùng nameEn khi có, rơi về nameVi khi nameEn rỗng; PART bọc data-exam-content", () => {

@@ -1,16 +1,32 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ConfirmDialog, EmptyState, notify, Skeleton, StatusChip, cn, focusRing } from "@thi360/ui";
+import {
+  Button,
+  CardList,
+  CardListItem,
+  ConfirmDialog,
+  EmptyState,
+  ListCard,
+  ListCardTag,
+  notify,
+  Skeleton,
+  StatusChip,
+  cn,
+  focusRing,
+  focusRingInset,
+  useCardMode,
+} from "@thi360/ui";
 import { ArrowLeft, Check, Clock, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import { withCallbackUrl } from "@/features/account/account-links";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl } from "@/lib/env";
+import { coarseTextHitArea } from "@/lib/styles";
 import {
   cancelMyOrder,
   loadMyOrderDetail,
@@ -23,13 +39,38 @@ import {
 import {
   formatDateTime,
   formatOrderSupportSummary,
+  formatTimeOnly,
+  mapHistoryActorKey,
   mapOrderActionError,
   mapVnpayResponseCode,
   ORDER_STATE_TONE,
   type OrderErrorKey,
+  parseHistoryReason,
   PAYMENT_STATE_TONE,
   readBenefitsSnapshot,
+  shouldResetIdempotencyKey,
 } from "./format";
+
+const PAYMENTS_CARD_BREAKPOINT = 768;
+
+function useInlineOverflow(active: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    if (!active) return;
+    const scroller = ref.current;
+    if (!scroller || typeof ResizeObserver === "undefined") return;
+    const measure = () => setOverflows(scroller.scrollWidth - scroller.clientWidth > 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => observer.disconnect();
+  }, [active]);
+
+  return [ref, active && overflows] as const;
+}
 
 export function OrderDetailView({
   code,
@@ -61,6 +102,27 @@ export function OrderDetailView({
 
   const payKeyRef = useRef<string | null>(null);
   const cancelKeyRef = useRef<string | null>(null);
+  const inFlightActionRef = useRef(false);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const prevCodeRef = useRef(code);
+  const pendingCancelFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (cancelOpen || !pendingCancelFocusRef.current) return;
+    pendingCancelFocusRef.current = false;
+    const timer = window.setTimeout(() => headingRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [cancelOpen]);
+
+  useEffect(() => {
+    if (prevCodeRef.current === code) return;
+    prevCodeRef.current = code;
+    setActionError(null);
+    setCancelOpen(false);
+    setCancelError(undefined);
+    payKeyRef.current = null;
+    cancelKeyRef.current = null;
+  }, [code]);
 
   const sessionQuery = useQuery({
     queryKey: SESSION_QUERY_KEY,
@@ -68,9 +130,10 @@ export function OrderDetailView({
     staleTime: 60_000,
   });
 
+  const userId = sessionQuery.data?.id ?? null;
   const isStudent = sessionQuery.data?.access === "EXAM";
   const orderQuery = useQuery({
-    queryKey: MY_ORDER_DETAIL_QUERY_KEY(code),
+    queryKey: MY_ORDER_DETAIL_QUERY_KEY(code, userId),
     queryFn: () => loadOrderDetail(code),
     enabled: isStudent,
   });
@@ -87,10 +150,18 @@ export function OrderDetailView({
     orderQuery.error instanceof ApiStatusError &&
     (orderQuery.error.status === 404 || orderQuery.error.code === "ORDER_NOT_FOUND");
 
+  const hasPayments = Boolean(isStudent && order && order.payments.length > 0);
+  const [paymentsContainerRef, paymentsCardMode] = useCardMode<HTMLDivElement>(
+    hasPayments,
+    PAYMENTS_CARD_BREAKPOINT,
+  );
+  const [paymentsScrollerRef, paymentsOverflow] = useInlineOverflow(hasPayments && !paymentsCardMode);
+
   const supportSummary = formatOrderSupportSummary();
 
   async function handlePay() {
-    if (!order || paying) return;
+    if (!order || inFlightActionRef.current || paying || cancelling) return;
+    inFlightActionRef.current = true;
     setActionError(null);
     const key = payKeyRef.current ?? crypto.randomUUID();
     payKeyRef.current = key;
@@ -100,40 +171,50 @@ export function OrderDetailView({
       payKeyRef.current = null;
       navigate(response.paymentUrl);
     } catch (error) {
-      payKeyRef.current = null;
+      if (shouldResetIdempotencyKey(error)) {
+        payKeyRef.current = null;
+      }
       setActionError(mapOrderActionError(error));
       void orderQuery.refetch();
     } finally {
+      inFlightActionRef.current = false;
       setPaying(false);
     }
   }
 
   function openCancelDialog() {
+    if (inFlightActionRef.current || paying || cancelling) return;
     setCancelError(undefined);
-    cancelKeyRef.current = crypto.randomUUID();
+    cancelKeyRef.current ??= crypto.randomUUID();
     setCancelOpen(true);
   }
 
   async function handleConfirmCancel() {
-    if (!order || cancelling) return;
+    if (!order || inFlightActionRef.current || paying || cancelling) return;
+    inFlightActionRef.current = true;
     const key = cancelKeyRef.current ?? crypto.randomUUID();
     cancelKeyRef.current = key;
     setCancelling(true);
     setCancelError(undefined);
     try {
       const updated = await cancelOrder(order.code, key);
-      queryClient.setQueryData(MY_ORDER_DETAIL_QUERY_KEY(code), updated);
+      queryClient.setQueryData(MY_ORDER_DETAIL_QUERY_KEY(code, userId), updated);
+      void queryClient.invalidateQueries({ queryKey: ["me", "orders"] });
       notify.success(t("cancelDialog.success", { code: order.code }));
+      pendingCancelFocusRef.current = true;
       setCancelOpen(false);
       cancelKeyRef.current = null;
       void orderQuery.refetch();
     } catch (error) {
-      cancelKeyRef.current = null;
+      if (shouldResetIdempotencyKey(error)) {
+        cancelKeyRef.current = null;
+      }
       const errKey = mapOrderActionError(error);
       setCancelError(t(`errors.${errKey}`));
       setActionError(errKey);
       void orderQuery.refetch();
     } finally {
+      inFlightActionRef.current = false;
       setCancelling(false);
     }
   }
@@ -153,6 +234,32 @@ export function OrderDetailView({
     return rawState;
   }
 
+  function formatHistoryReason(rawReason: string): string {
+    const parsed = parseHistoryReason(rawReason);
+    if (parsed.key === "unknown") {
+      return t("detail.history.reasons.unknown");
+    }
+    return t(`detail.history.reasons.${parsed.key}`, { ref: parsed.ref || "—" });
+  }
+
+  function renderActionErrorCta(error: OrderErrorKey, productCode: string) {
+    if (error === "ORDER_EXPIRED" || error === "PAYMENT_ATTEMPTS_EXCEEDED") {
+      return (
+        <Button asChild variant="secondary" size="sm" className={coarseTextHitArea}>
+          <Link href={`/checkout/${encodeURIComponent(productCode)}`}>{t("actions.createNew")}</Link>
+        </Button>
+      );
+    }
+    if (error === "PRODUCT_DISCONTINUED" || error === "PRODUCT_NOT_FOUND") {
+      return (
+        <Button asChild variant="secondary" size="sm" className={coarseTextHitArea}>
+          <Link href="/#exams">{t("actions.toCatalog")}</Link>
+        </Button>
+      );
+    }
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
@@ -161,7 +268,7 @@ export function OrderDetailView({
         <Link
           href="/account/orders"
           className={cn(
-            "inline-flex min-h-11 items-center gap-1.5 self-start font-medium text-primary-text hover:underline",
+            "inline-flex min-h-11 items-center gap-1.5 self-start rounded-sm font-medium text-primary-text hover:underline",
             focusRing,
           )}
         >
@@ -179,8 +286,9 @@ export function OrderDetailView({
         {sessionQuery.isError && (
           <div className="rounded-xl border border-border bg-surface">
             <EmptyState
+              headingLevel={1}
               icon={<TriangleAlert />}
-              title={t("errorTitle")}
+              title={t("detail.errorTitle")}
               description={t("errorDescription")}
               action={
                 <Button type="button" onClick={() => void sessionQuery.refetch()}>
@@ -207,7 +315,7 @@ export function OrderDetailView({
           </div>
         )}
 
-        {isStudent && orderQuery.isLoading && (
+        {isStudent && orderQuery.isLoading && !order && (
           <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-9.5 w-64 max-w-full" />
             <Skeleton className="h-64 w-full rounded-xl" />
@@ -215,7 +323,7 @@ export function OrderDetailView({
           </div>
         )}
 
-        {isStudent && isOrderNotFound && (
+        {isStudent && isOrderNotFound && !order && (
           <div
             role="alert"
             className="flex flex-col items-start gap-4 rounded-xl border border-danger/30 bg-surface p-6 sm:p-8"
@@ -240,7 +348,7 @@ export function OrderDetailView({
           </div>
         )}
 
-        {isStudent && orderQuery.isError && !isOrderNotFound && (
+        {isStudent && orderQuery.isError && !isOrderNotFound && !order && (
           <div
             role="alert"
             className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface px-6 py-12 text-center"
@@ -251,7 +359,7 @@ export function OrderDetailView({
             >
               <TriangleAlert />
             </span>
-            <h1 className="text-title font-semibold text-text">{t("errorTitle")}</h1>
+            <h1 className="text-title font-semibold text-text">{t("detail.errorTitle")}</h1>
             <p className="max-w-sm text-body text-text-muted">{t("errorDescription")}</p>
             <Button type="button" variant="secondary" onClick={() => void orderQuery.refetch()}>
               {common("retry")}
@@ -263,13 +371,17 @@ export function OrderDetailView({
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex flex-col gap-2">
-                <h1 className="text-h1 font-bold text-text tabular-nums">
+                <h1 ref={headingRef} tabIndex={-1} className="text-h1 font-bold text-text tabular-nums outline-hidden">
                   {t("detail.heading", { code: order.code })}
                 </h1>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusChip tone={ORDER_STATE_TONE[order.state]}>{t(`states.${order.state}`)}</StatusChip>
                   <span className="inline-flex h-6 items-center rounded-full bg-subtle px-2.5 text-caption font-medium text-text-secondary">
-                    {order.paymentMethod === "FREE" ? t("amount.freeVoucherNote") : t("amount.vnpay")}
+                    {order.paymentMethod === "FREE"
+                      ? order.voucherDiscountVnd > 0
+                        ? t("amount.freeVoucherNote")
+                        : t("amount.free")
+                      : t("amount.vnpay")}
                   </span>
                   {order.productType === "BUNDLE" && (
                     <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
@@ -281,10 +393,20 @@ export function OrderDetailView({
 
               {order.state === "PENDING_PAYMENT" && (
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <Button type="button" loading={paying} onClick={() => void handlePay()}>
+                  <Button
+                    type="button"
+                    loading={paying}
+                    disabled={cancelling}
+                    onClick={() => void handlePay()}
+                  >
                     {t("actions.continuePayment")}
                   </Button>
-                  <Button type="button" variant="secondary" onClick={openCancelDialog}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={paying || cancelling}
+                    onClick={openCancelDialog}
+                  >
                     {t("actions.cancel")}
                   </Button>
                 </div>
@@ -297,13 +419,46 @@ export function OrderDetailView({
               )}
 
               {order.state === "REPLACED" && order.replacedByOrderCode && (
-                <Button asChild variant="secondary">
+                <Button
+                  asChild
+                  variant="secondary"
+                  className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
+                >
                   <Link href={`/account/orders/${encodeURIComponent(order.replacedByOrderCode)}`}>
                     {t("actions.viewReplacement", { code: order.replacedByOrderCode })}
                   </Link>
                 </Button>
               )}
             </div>
+
+            {orderQuery.isError && (
+              <div
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning bg-warning-bg px-4 py-3.5"
+              >
+                <div className="flex min-w-0 flex-1 basis-72 items-start gap-2.5 text-warning">
+                  <TriangleAlert aria-hidden className="mt-0.5 size-4.5 shrink-0" />
+                  <p className="text-body">
+                    <strong className="font-semibold">{t("staleTitle")}</strong>{" "}
+                    <span className="text-text-secondary">
+                      {orderQuery.dataUpdatedAt > 0
+                        ? t("staleDescription", {
+                            time: formatTimeOnly(new Date(orderQuery.dataUpdatedAt).toISOString()),
+                          })
+                        : t("staleDescriptionNoTime")}
+                    </span>
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={orderQuery.isFetching}
+                  onClick={() => void orderQuery.refetch()}
+                >
+                  {common("retry")}
+                </Button>
+              </div>
+            )}
 
             {actionError && (
               <div
@@ -314,19 +469,7 @@ export function OrderDetailView({
                   <TriangleAlert aria-hidden className="mt-0.5 size-4.5 shrink-0" />
                   <span className="text-body">{t(`errors.${actionError}`)}</span>
                 </div>
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={
-                      actionError === "PRODUCT_DISCONTINUED" || actionError === "PRODUCT_NOT_FOUND"
-                        ? "/#exams"
-                        : `/checkout/${encodeURIComponent(order.productCode)}`
-                    }
-                  >
-                    {actionError === "PRODUCT_DISCONTINUED" || actionError === "PRODUCT_NOT_FOUND"
-                      ? t("actions.toCatalog")
-                      : t("actions.createNew")}
-                  </Link>
-                </Button>
+                {renderActionErrorCta(actionError, order.productCode)}
               </div>
             )}
 
@@ -410,7 +553,9 @@ export function OrderDetailView({
                       <dt className="text-caption text-text-muted">{t("detail.fields.amountDue")}</dt>
                       <dd className="text-title font-bold text-primary-900">
                         {order.paymentMethod === "FREE" || order.amountDueVnd === 0
-                          ? t("amount.freeVoucher")
+                          ? order.voucherDiscountVnd > 0
+                            ? t("amount.freeVoucher")
+                            : t("amount.freeAmount")
                           : storefront("price", { amount: order.amountDueVnd })}
                       </dd>
                     </div>
@@ -521,119 +666,134 @@ export function OrderDetailView({
                 {t("detail.payments.title")}
               </h2>
               {order.payments.length === 0 ? (
-                <p className="text-body text-text-muted">{t("detail.payments.empty")}</p>
+                <p className="text-body text-text-muted">
+                  {order.paymentMethod === "FREE" ? t("detail.payments.empty") : t("detail.payments.emptyVnpay")}
+                </p>
               ) : (
-                <>
-                  <div className="flex flex-col gap-3 md:hidden">
-                    {order.payments.map((payment) => (
-                      <div
-                        key={payment.id}
-                        className="flex flex-col gap-2 rounded-lg border border-border bg-page p-4 tabular-nums"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-semibold text-text">
-                            #{String(payment.attemptSeq).padStart(2, "0")} · {payment.txnRef}
-                          </span>
-                          <StatusChip tone={PAYMENT_STATE_TONE[payment.state]}>
-                            {t(`detail.payments.states.${payment.state}`)}
-                          </StatusChip>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-body">
-                          <span className="text-text-secondary">
-                            {[payment.bankCode, payment.cardType].filter(Boolean).join(" · ") || "VNPAY"}
-                          </span>
-                          <span className="font-semibold text-text">
-                            {storefront("price", { amount: payment.amountVnd })}
-                          </span>
-                        </div>
-                        {payment.responseCode && payment.state !== "SUCCEEDED" && (
-                          <p className="text-caption text-danger">
-                            {t(`vnpayReasons.${mapVnpayResponseCode(payment.responseCode)}`)}
-                          </p>
-                        )}
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-caption text-text-muted">
-                          <span>{formatDateTime(payment.createdAt)}</span>
-                          {payment.duplicate && (
-                            <span className="rounded-full bg-warning-bg px-2 py-0.5 font-semibold text-warning">
-                              {t("detail.payments.duplicate")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div
-                    role="region"
-                    aria-label={t("detail.payments.tableLabel")}
-                    tabIndex={0}
-                    className={cn("hidden overflow-x-auto rounded-lg border border-border md:block", focusRing)}
-                  >
-                    <table className="w-full border-collapse text-left tabular-nums">
-                      <thead>
-                        <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
-                          <th scope="col" className="px-3.5 py-2.5">
-                            {t("detail.payments.attemptSeq")}
-                          </th>
-                          <th scope="col" className="px-3.5 py-2.5">
-                            {t("detail.payments.txnRef")}
-                          </th>
-                          <th scope="col" className="px-3.5 py-2.5">
-                            {t("detail.payments.bank")}
-                          </th>
-                          <th scope="col" className="px-3.5 py-2.5 text-right">
-                            {t("detail.payments.amount")}
-                          </th>
-                          <th scope="col" className="px-3.5 py-2.5">
-                            {t("detail.payments.status")}
-                          </th>
-                          <th scope="col" className="px-3.5 py-2.5">
-                            {t("detail.payments.reason")}
-                          </th>
-                          <th scope="col" className="px-3.5 py-2.5">
-                            {t("detail.payments.createdAt")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {order.payments.map((payment) => (
-                          <tr key={payment.id}>
-                            <td className="px-3.5 py-3 font-semibold">
-                              {String(payment.attemptSeq).padStart(2, "0")}
-                            </td>
-                            <td className="px-3.5 py-3 font-medium text-text">{payment.txnRef}</td>
-                            <td className="px-3.5 py-3 text-text-secondary">
-                              {[payment.bankCode, payment.cardType].filter(Boolean).join(" · ") || "—"}
-                            </td>
-                            <td className="px-3.5 py-3 text-right font-semibold">
-                              {storefront("price", { amount: payment.amountVnd })}
-                            </td>
-                            <td className="px-3.5 py-3">
-                              <div className="flex flex-wrap items-center gap-1.5">
+                <div ref={paymentsContainerRef} className="min-w-0">
+                  {paymentsCardMode ? (
+                    <CardList
+                      aria-label={t("detail.payments.tableLabel")}
+                      className="rounded-lg border border-border bg-surface"
+                    >
+                      {order.payments.map((payment) => (
+                        <CardListItem key={payment.id}>
+                          <div className="min-w-0 flex-1">
+                            <ListCard
+                              title={
+                                <span className="tabular-nums">
+                                  #{String(payment.attemptSeq).padStart(2, "0")} · {payment.txnRef}
+                                </span>
+                              }
+                              status={
                                 <StatusChip tone={PAYMENT_STATE_TONE[payment.state]}>
                                   {t(`detail.payments.states.${payment.state}`)}
                                 </StatusChip>
-                                {payment.duplicate && (
-                                  <span className="rounded-full bg-warning-bg px-2 py-0.5 text-caption font-semibold text-warning">
-                                    {t("detail.payments.duplicate")}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3.5 py-3 text-caption text-text-secondary">
-                              {payment.responseCode && payment.state !== "SUCCEEDED"
-                                ? t(`vnpayReasons.${mapVnpayResponseCode(payment.responseCode)}`)
-                                : "—"}
-                            </td>
-                            <td className="px-3.5 py-3 text-text-secondary whitespace-nowrap">
-                              {formatDateTime(payment.createdAt)}
-                            </td>
+                              }
+                              tags={
+                                payment.duplicate ? (
+                                  <ListCardTag>{t("detail.payments.duplicate")}</ListCardTag>
+                                ) : undefined
+                              }
+                              meta={[
+                                {
+                                  label: t("detail.payments.amount"),
+                                  value: storefront("price", { amount: payment.amountVnd }),
+                                },
+                                {
+                                  label: t("detail.payments.bank"),
+                                  value: [payment.bankCode, payment.cardType].filter(Boolean).join(" · ") || "—",
+                                },
+                                {
+                                  label: t("detail.payments.createdAt"),
+                                  value: formatDateTime(payment.createdAt),
+                                },
+                              ]}
+                            >
+                              {payment.responseCode && payment.state !== "SUCCEEDED" && (
+                                <p className="text-caption text-danger">
+                                  {t(`vnpayReasons.${mapVnpayResponseCode(payment.responseCode)}`)}
+                                </p>
+                              )}
+                            </ListCard>
+                          </div>
+                        </CardListItem>
+                      ))}
+                    </CardList>
+                  ) : (
+                    <div
+                      ref={paymentsScrollerRef}
+                      role="region"
+                      aria-label={t("detail.payments.tableLabel")}
+                      tabIndex={paymentsOverflow ? 0 : undefined}
+                      className={cn("overflow-x-auto rounded-lg border border-border", focusRingInset)}
+                    >
+                      <table className="w-full border-collapse text-left tabular-nums">
+                        <thead>
+                          <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
+                            <th scope="col" className="px-3.5 py-2.5">
+                              {t("detail.payments.attemptSeq")}
+                            </th>
+                            <th scope="col" className="px-3.5 py-2.5">
+                              {t("detail.payments.txnRef")}
+                            </th>
+                            <th scope="col" className="px-3.5 py-2.5">
+                              {t("detail.payments.bank")}
+                            </th>
+                            <th scope="col" className="px-3.5 py-2.5 text-right">
+                              {t("detail.payments.amount")}
+                            </th>
+                            <th scope="col" className="px-3.5 py-2.5">
+                              {t("detail.payments.status")}
+                            </th>
+                            <th scope="col" className="px-3.5 py-2.5">
+                              {t("detail.payments.reason")}
+                            </th>
+                            <th scope="col" className="px-3.5 py-2.5">
+                              {t("detail.payments.createdAt")}
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {order.payments.map((payment) => (
+                            <tr key={payment.id}>
+                              <td className="px-3.5 py-3 font-semibold">
+                                {String(payment.attemptSeq).padStart(2, "0")}
+                              </td>
+                              <td className="px-3.5 py-3 font-medium text-text">{payment.txnRef}</td>
+                              <td className="px-3.5 py-3 text-text-secondary">
+                                {[payment.bankCode, payment.cardType].filter(Boolean).join(" · ") || "—"}
+                              </td>
+                              <td className="px-3.5 py-3 text-right font-semibold">
+                                {storefront("price", { amount: payment.amountVnd })}
+                              </td>
+                              <td className="px-3.5 py-3">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <StatusChip tone={PAYMENT_STATE_TONE[payment.state]}>
+                                    {t(`detail.payments.states.${payment.state}`)}
+                                  </StatusChip>
+                                  {payment.duplicate && (
+                                    <span className="rounded-full bg-warning-bg px-2 py-0.5 text-caption font-semibold text-warning">
+                                      {t("detail.payments.duplicate")}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3.5 py-3 text-caption text-text-secondary">
+                                {payment.responseCode && payment.state !== "SUCCEEDED"
+                                  ? t(`vnpayReasons.${mapVnpayResponseCode(payment.responseCode)}`)
+                                  : "—"}
+                              </td>
+                              <td className="px-3.5 py-3 text-text-secondary whitespace-nowrap">
+                                {formatDateTime(payment.createdAt)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               )}
             </section>
 
@@ -661,14 +821,14 @@ export function OrderDetailView({
                               : t("detail.history.created")}
                           </span>
                           <span className="text-caption text-text-muted">
-                            {entry.actor === "LEARNER"
-                              ? t("detail.history.actorLearner")
-                              : entry.actor === "SYSTEM"
-                                ? t("detail.history.actorSystem")
-                                : entry.actor}
+                            {t(`detail.history.actors.${mapHistoryActorKey(entry.actor)}`)}
                           </span>
                         </div>
-                        {entry.reason && <span className="text-caption text-text-secondary">{entry.reason}</span>}
+                        {entry.reason && (
+                          <span className="text-caption text-text-secondary">
+                            {formatHistoryReason(entry.reason)}
+                          </span>
+                        )}
                       </div>
                       <span className="text-caption text-text-muted tabular-nums">
                         {formatDateTime(entry.at)}
@@ -686,9 +846,11 @@ export function OrderDetailView({
         open={cancelOpen}
         onOpenChange={(open) => {
           if (!open && !cancelling) {
+            if (!cancelError) {
+              cancelKeyRef.current = null;
+            }
             setCancelOpen(false);
             setCancelError(undefined);
-            cancelKeyRef.current = null;
           }
         }}
         title={order ? t("cancelDialog.title", { code: order.code }) : ""}

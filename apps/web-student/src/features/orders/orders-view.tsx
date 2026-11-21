@@ -3,22 +3,30 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  CardList,
+  CardListItem,
   ConfirmDialog,
   EmptyState,
+  ListCard,
+  ListCardTag,
+  ListCardTitleLink,
   notify,
   Pagination,
   Skeleton,
   StatusChip,
   cn,
   focusRing,
+  focusRingInset,
+  useCardMode,
 } from "@thi360/ui";
 import { ArrowRight, Receipt, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import { loadSession, SESSION_QUERY_KEY, type SessionLoader } from "@/features/session/api";
 import { adminUrl } from "@/lib/env";
+import { coarseTextHitArea } from "@/lib/styles";
 import {
   cancelMyOrder,
   loadMyOrders,
@@ -38,7 +46,33 @@ import {
   mapOrderActionError,
   ORDER_STATE_TONE,
   type OrderErrorKey,
+  shouldResetIdempotencyKey,
 } from "./format";
+
+const ORDERS_CARD_BREAKPOINT = 768;
+
+function useInlineOverflow(active: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    if (!active) return;
+    const scroller = ref.current;
+    if (!scroller || typeof ResizeObserver === "undefined") return;
+    const measure = () => setOverflows(scroller.scrollWidth - scroller.clientWidth > 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => observer.disconnect();
+  }, [active]);
+
+  return [ref, active && overflows] as const;
+}
+
+function getFreeAmountText(order: OrderSummary, t: ReturnType<typeof useTranslations<"orders">>) {
+  return order.voucherDiscountVnd > 0 ? t("amount.freeVoucherNote") : t("amount.free");
+}
 
 function OrderAmountCell({ order }: { order: OrderSummary }) {
   const t = useTranslations("orders");
@@ -49,7 +83,7 @@ function OrderAmountCell({ order }: { order: OrderSummary }) {
     return (
       <div className="tabular-nums">
         <div className="font-semibold text-text">{storefront("price", { amount: 0 })}</div>
-        <div className="text-caption text-text-muted">{t("amount.freeVoucherNote")}</div>
+        <div className="text-caption text-text-muted">{getFreeAmountText(order, t)}</div>
       </div>
     );
   }
@@ -98,6 +132,7 @@ export function OrdersView({
 }) {
   const t = useTranslations("orders");
   const common = useTranslations("common");
+  const storefront = useTranslations("storefront");
   const support = useTranslations("landing.support");
   const queryClient = useQueryClient();
 
@@ -110,6 +145,9 @@ export function OrdersView({
 
   const payKeyRef = useRef<{ orderCode: string; key: string } | null>(null);
   const cancelKeyRef = useRef<{ orderCode: string; key: string } | null>(null);
+  const inFlightActionRef = useRef(false);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const pendingCancelFocusRef = useRef<string | null>(null);
 
   const sessionQuery = useQuery({
     queryKey: SESSION_QUERY_KEY,
@@ -117,12 +155,30 @@ export function OrdersView({
     staleTime: 60_000,
   });
 
+  const userId = sessionQuery.data?.id ?? null;
   const isStudent = sessionQuery.data?.access === "EXAM";
   const ordersQuery = useQuery({
-    queryKey: MY_ORDERS_QUERY_KEY(page, ORDERS_PAGE_SIZE),
+    queryKey: MY_ORDERS_QUERY_KEY(page, ORDERS_PAGE_SIZE, userId),
     queryFn: () => loadOrders({ page, size: ORDERS_PAGE_SIZE }),
     enabled: isStudent,
   });
+
+  const hasOrders = Boolean(isStudent && ordersQuery.data && ordersQuery.data.items.length > 0);
+  const [ordersContainerRef, cardMode] = useCardMode<HTMLDivElement>(hasOrders, ORDERS_CARD_BREAKPOINT);
+  const [tableScrollerRef, tableOverflows] = useInlineOverflow(hasOrders && !cardMode);
+
+  useEffect(() => {
+    const cancelledCode = pendingCancelFocusRef.current;
+    if (cancelTarget !== null || !cancelledCode) return;
+    pendingCancelFocusRef.current = null;
+    const timer = window.setTimeout(() => {
+      const orderLink = ordersContainerRef.current?.querySelector<HTMLAnchorElement>(
+        `a[href="/account/orders/${encodeURIComponent(cancelledCode)}"]`,
+      );
+      (orderLink ?? headingRef.current)?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [cancelTarget, ordersContainerRef]);
 
   const account: HeaderAccount = sessionQuery.data
     ? { kind: "user", session: sessionQuery.data }
@@ -133,7 +189,8 @@ export function OrdersView({
   const supportSummary = formatOrderSupportSummary();
 
   async function handlePay(order: OrderSummary) {
-    if (payingCode) return;
+    if (inFlightActionRef.current || payingCode !== null || cancelling) return;
+    inFlightActionRef.current = true;
     setActionError(null);
     const key =
       payKeyRef.current?.orderCode === order.code ? payKeyRef.current.key : crypto.randomUUID();
@@ -144,42 +201,54 @@ export function OrdersView({
       payKeyRef.current = null;
       navigate(response.paymentUrl);
     } catch (error) {
-      payKeyRef.current = null;
+      if (shouldResetIdempotencyKey(error)) {
+        payKeyRef.current = null;
+      }
       setActionError({ code: mapOrderActionError(error), productCode: order.productCode });
       void ordersQuery.refetch();
     } finally {
+      inFlightActionRef.current = false;
       setPayingCode(null);
     }
   }
 
   function openCancelDialog(order: OrderSummary) {
+    if (inFlightActionRef.current || payingCode !== null || cancelling) return;
     setCancelError(undefined);
-    cancelKeyRef.current = { orderCode: order.code, key: crypto.randomUUID() };
+    if (cancelKeyRef.current?.orderCode !== order.code) {
+      cancelKeyRef.current = { orderCode: order.code, key: crypto.randomUUID() };
+    }
     setCancelTarget(order);
   }
 
   async function handleConfirmCancel() {
-    if (!cancelTarget || cancelling) return;
+    if (!cancelTarget || inFlightActionRef.current || payingCode !== null || cancelling) return;
+    inFlightActionRef.current = true;
+    const cancelledCode = cancelTarget.code;
     const key =
-      cancelKeyRef.current?.orderCode === cancelTarget.code
+      cancelKeyRef.current?.orderCode === cancelledCode
         ? cancelKeyRef.current.key
         : crypto.randomUUID();
-    cancelKeyRef.current = { orderCode: cancelTarget.code, key };
+    cancelKeyRef.current = { orderCode: cancelledCode, key };
     setCancelling(true);
     setCancelError(undefined);
     try {
-      await cancelOrder(cancelTarget.code, key);
-      notify.success(t("cancelDialog.success", { code: cancelTarget.code }));
-      void queryClient.invalidateQueries({ queryKey: MY_ORDER_DETAIL_QUERY_KEY(cancelTarget.code) });
+      await cancelOrder(cancelledCode, key);
+      notify.success(t("cancelDialog.success", { code: cancelledCode }));
+      void queryClient.invalidateQueries({ queryKey: MY_ORDER_DETAIL_QUERY_KEY(cancelledCode, userId) });
+      pendingCancelFocusRef.current = cancelledCode;
       setCancelTarget(null);
       cancelKeyRef.current = null;
       void ordersQuery.refetch();
     } catch (error) {
-      cancelKeyRef.current = null;
+      if (shouldResetIdempotencyKey(error)) {
+        cancelKeyRef.current = null;
+      }
       const errKey = mapOrderActionError(error);
       setCancelError(t(`errors.${errKey}`));
       void ordersQuery.refetch();
     } finally {
+      inFlightActionRef.current = false;
       setCancelling(false);
     }
   }
@@ -187,6 +256,7 @@ export function OrdersView({
   function renderOrderActions(order: OrderSummary, compact: boolean) {
     const detailHref = `/account/orders/${encodeURIComponent(order.code)}`;
     const btnSize = compact ? "md" : "sm";
+    const anyActionPending = payingCode !== null || cancelling;
 
     return (
       <div className={cn("flex flex-wrap items-center gap-2", compact && "pt-1")}>
@@ -196,9 +266,9 @@ export function OrdersView({
               type="button"
               size={btnSize}
               loading={payingCode === order.code}
-              disabled={payingCode !== null && payingCode !== order.code}
+              disabled={cancelling || (payingCode !== null && payingCode !== order.code)}
               onClick={() => void handlePay(order)}
-              className={compact ? "flex-1" : undefined}
+              className={cn(compact && "flex-1", !compact && "pointer-coarse:min-h-11")}
             >
               {t("actions.continuePayment")}
             </Button>
@@ -206,14 +276,16 @@ export function OrdersView({
               type="button"
               variant="secondary"
               size={btnSize}
+              disabled={anyActionPending}
               onClick={() => openCancelDialog(order)}
+              className={!compact ? "pointer-coarse:min-h-11" : undefined}
             >
               {t("actions.cancel")}
             </Button>
           </>
         )}
         {order.state === "FULFILLED" && (
-          <Button asChild variant="soft" size={btnSize}>
+          <Button asChild variant="soft" size={btnSize} className={!compact ? "pointer-coarse:min-h-11" : undefined}>
             <Link href="/home">{t("actions.goMyExams")}</Link>
           </Button>
         )}
@@ -224,7 +296,7 @@ export function OrdersView({
               : t("paidCheckingSupportPending", { code: order.code, pending: support("pending") })}
           </p>
         )}
-        <Button asChild variant="link" size={btnSize}>
+        <Button asChild variant="link" size={btnSize} className={coarseTextHitArea}>
           <Link href={detailHref}>
             {t("actions.viewDetail")}
             <ArrowRight aria-hidden />
@@ -232,6 +304,24 @@ export function OrdersView({
         </Button>
       </div>
     );
+  }
+
+  function renderActionErrorCta(error: { code: OrderErrorKey; productCode: string }) {
+    if (error.code === "ORDER_EXPIRED" || error.code === "PAYMENT_ATTEMPTS_EXCEEDED") {
+      return (
+        <Button asChild variant="secondary" size="sm" className={coarseTextHitArea}>
+          <Link href={`/checkout/${encodeURIComponent(error.productCode)}`}>{t("actions.createNew")}</Link>
+        </Button>
+      );
+    }
+    if (error.code === "PRODUCT_DISCONTINUED" || error.code === "PRODUCT_NOT_FOUND") {
+      return (
+        <Button asChild variant="secondary" size="sm" className={coarseTextHitArea}>
+          <Link href="/#exams">{t("actions.toCatalog")}</Link>
+        </Button>
+      );
+    }
+    return null;
   }
 
   return (
@@ -250,6 +340,7 @@ export function OrdersView({
         {sessionQuery.isError && (
           <div className="rounded-xl border border-border bg-surface">
             <EmptyState
+              headingLevel={1}
               icon={<TriangleAlert />}
               title={t("errorTitle")}
               description={t("errorDescription")}
@@ -281,7 +372,9 @@ export function OrdersView({
         {isStudent && sessionQuery.data && (
           <>
             <div className="flex flex-col gap-1.5">
-              <h1 className="text-h1 font-bold text-text">{t("pageTitle")}</h1>
+              <h1 ref={headingRef} tabIndex={-1} className="text-h1 font-bold text-text outline-hidden">
+                {t("pageTitle")}
+              </h1>
               <p className="text-body text-text-muted">
                 {t("subtitle", { username: sessionQuery.data.username })}
               </p>
@@ -296,23 +389,11 @@ export function OrdersView({
                   <TriangleAlert aria-hidden className="mt-0.5 size-4.5 shrink-0" />
                   <span className="text-body">{t(`errors.${actionError.code}`)}</span>
                 </div>
-                <Button asChild variant="secondary" size="sm">
-                  <Link
-                    href={
-                      actionError.code === "PRODUCT_DISCONTINUED" || actionError.code === "PRODUCT_NOT_FOUND"
-                        ? "/#exams"
-                        : `/checkout/${encodeURIComponent(actionError.productCode)}`
-                    }
-                  >
-                    {actionError.code === "PRODUCT_DISCONTINUED" || actionError.code === "PRODUCT_NOT_FOUND"
-                      ? t("actions.toCatalog")
-                      : t("actions.createNew")}
-                  </Link>
-                </Button>
+                {renderActionErrorCta(actionError)}
               </div>
             )}
 
-            {ordersQuery.isLoading && (
+            {ordersQuery.isLoading && !ordersQuery.data && (
               <div
                 role="status"
                 aria-busy="true"
@@ -325,7 +406,7 @@ export function OrdersView({
               </div>
             )}
 
-            {ordersQuery.isError && (
+            {ordersQuery.isError && !ordersQuery.data && (
               <div
                 role="alert"
                 className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface px-6 py-12 text-center"
@@ -339,6 +420,35 @@ export function OrdersView({
                 <h2 className="text-title font-semibold text-text">{t("errorTitle")}</h2>
                 <p className="max-w-sm text-body text-text-muted">{t("errorDescription")}</p>
                 <Button type="button" variant="secondary" onClick={() => void ordersQuery.refetch()}>
+                  {common("retry")}
+                </Button>
+              </div>
+            )}
+
+            {ordersQuery.isError && ordersQuery.data && (
+              <div
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning bg-warning-bg px-4 py-3.5"
+              >
+                <div className="flex min-w-0 flex-1 basis-72 items-start gap-2.5 text-warning">
+                  <TriangleAlert aria-hidden className="mt-0.5 size-4.5 shrink-0" />
+                  <p className="text-body">
+                    <strong className="font-semibold">{t("staleTitle")}</strong>{" "}
+                    <span className="text-text-secondary">
+                      {ordersQuery.dataUpdatedAt > 0
+                        ? t("staleDescription", {
+                            time: formatTimeOnly(new Date(ordersQuery.dataUpdatedAt).toISOString()),
+                          })
+                        : t("staleDescriptionNoTime")}
+                    </span>
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={ordersQuery.isFetching}
+                  onClick={() => void ordersQuery.refetch()}
+                >
                   {common("retry")}
                 </Button>
               </div>
@@ -359,116 +469,138 @@ export function OrdersView({
               </div>
             )}
 
-            {ordersQuery.data && ordersQuery.data.items.length > 0 && (
+            {hasOrders && ordersQuery.data && (
               <>
-                <div className="flex flex-col gap-3 md:hidden">
-                  {ordersQuery.data.items.map((order) => (
-                    <article
-                      key={order.id}
-                      className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+                <div ref={ordersContainerRef} className="min-w-0">
+                  {cardMode ? (
+                    <CardList
+                      aria-label={t("tableLabel")}
+                      className="rounded-xl border border-border bg-surface"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <Link
-                          href={`/account/orders/${encodeURIComponent(order.code)}`}
-                          className={cn("font-semibold text-primary-text hover:underline tabular-nums", focusRing)}
-                        >
-                          {order.code}
-                        </Link>
-                        <OrderStatusCell order={order} />
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        {order.productType === "BUNDLE" && (
-                          <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
-                            {t("bundleBadge")}
-                          </span>
-                        )}
-                        <span data-exam-content className="font-medium text-text">
-                          {order.productName}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-border pt-2.5">
-                        <span className="text-caption text-text-muted tabular-nums">
-                          {formatDateTime(order.createdAt)}
-                        </span>
-                        <OrderAmountCell order={order} />
-                      </div>
-
-                      {renderOrderActions(order, true)}
-                    </article>
-                  ))}
-                </div>
-
-                <div
-                  role="region"
-                  aria-label={t("tableLabel")}
-                  tabIndex={0}
-                  className={cn(
-                    "hidden overflow-x-auto rounded-xl border border-border bg-surface md:block",
-                    focusRing,
-                  )}
-                >
-                  <table className="w-full border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
-                        <th scope="col" className="px-4 py-3">
-                          {t("columns.code")}
-                        </th>
-                        <th scope="col" className="px-4 py-3">
-                          {t("columns.product")}
-                        </th>
-                        <th scope="col" className="px-4 py-3">
-                          {t("columns.createdAt")}
-                        </th>
-                        <th scope="col" className="px-4 py-3 text-right">
-                          {t("columns.amount")}
-                        </th>
-                        <th scope="col" className="px-4 py-3">
-                          {t("columns.status")}
-                        </th>
-                        <th scope="col" className="px-4 py-3">
-                          {t("columns.actions")}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
                       {ordersQuery.data.items.map((order) => (
-                        <tr key={order.id} className="hover:bg-subtle/50">
-                          <td className="px-4 py-3.5 align-top font-semibold whitespace-nowrap tabular-nums">
-                            <Link
-                              href={`/account/orders/${encodeURIComponent(order.code)}`}
-                              className={cn("text-primary-text hover:underline", focusRing)}
+                        <CardListItem key={order.id}>
+                          <div className="min-w-0 flex-1">
+                            <ListCard
+                              title={
+                                <ListCardTitleLink
+                                  href={`/account/orders/${encodeURIComponent(order.code)}`}
+                                  linkComponent={Link}
+                                >
+                                  <span className="tabular-nums">{order.code}</span>
+                                </ListCardTitleLink>
+                              }
+                              caption={<span data-exam-content>{order.productName}</span>}
+                              status={
+                                <StatusChip tone={ORDER_STATE_TONE[order.state]}>
+                                  {t(`states.${order.state}`)}
+                                </StatusChip>
+                              }
+                              tags={
+                                order.productType === "BUNDLE" ? (
+                                  <ListCardTag>{t("bundleBadge")}</ListCardTag>
+                                ) : undefined
+                              }
+                              meta={[
+                                { label: t("columns.createdAt"), value: formatDateTime(order.createdAt) },
+                                {
+                                  label: t("columns.amount"),
+                                  value:
+                                    order.paymentMethod === "FREE" || order.amountDueVnd === 0
+                                      ? order.voucherDiscountVnd > 0
+                                        ? t("amount.freeVoucher")
+                                        : storefront("price", { amount: 0 })
+                                      : storefront("price", { amount: order.amountDueVnd }),
+                                },
+                              ]}
                             >
-                              {order.code}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3.5 align-top">
-                            <div className="flex flex-wrap items-center gap-2">
-                              {order.productType === "BUNDLE" && (
-                                <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
-                                  {t("bundleBadge")}
-                                </span>
+                              {order.state === "PENDING_PAYMENT" && order.expiresAt && (
+                                <p className="text-caption text-text-muted tabular-nums">
+                                  {t("pendingHoldUntil", { time: formatTimeOnly(order.expiresAt) })}
+                                </p>
                               )}
-                              <span data-exam-content className="font-medium text-text">
-                                {order.productName}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 align-top text-text-secondary whitespace-nowrap tabular-nums">
-                            {formatDateTime(order.createdAt)}
-                          </td>
-                          <td className="px-4 py-3.5 text-right align-top whitespace-nowrap">
-                            <OrderAmountCell order={order} />
-                          </td>
-                          <td className="px-4 py-3.5 align-top">
-                            <OrderStatusCell order={order} />
-                          </td>
-                          <td className="px-4 py-3.5 align-top">{renderOrderActions(order, false)}</td>
-                        </tr>
+                              {order.state === "PAID" && (
+                                <p className="text-caption text-text-muted">{t("stateSubtext.PAID")}</p>
+                              )}
+                              <div className="relative z-1 pt-1">{renderOrderActions(order, true)}</div>
+                            </ListCard>
+                          </div>
+                        </CardListItem>
                       ))}
-                    </tbody>
-                  </table>
+                    </CardList>
+                  ) : (
+                    <div
+                      ref={tableScrollerRef}
+                      role="region"
+                      aria-label={t("tableLabel")}
+                      tabIndex={tableOverflows ? 0 : undefined}
+                      className={cn("overflow-x-auto rounded-xl border border-border bg-surface", focusRingInset)}
+                    >
+                      <table className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
+                            <th scope="col" className="px-4 py-3">
+                              {t("columns.code")}
+                            </th>
+                            <th scope="col" className="px-4 py-3">
+                              {t("columns.product")}
+                            </th>
+                            <th scope="col" className="px-4 py-3">
+                              {t("columns.createdAt")}
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right">
+                              {t("columns.amount")}
+                            </th>
+                            <th scope="col" className="px-4 py-3">
+                              {t("columns.status")}
+                            </th>
+                            <th scope="col" className="px-4 py-3">
+                              {t("columns.actions")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {ordersQuery.data.items.map((order) => (
+                            <tr key={order.id} className="hover:bg-subtle/50">
+                              <td className="px-4 py-3.5 align-top font-semibold whitespace-nowrap tabular-nums">
+                                <Link
+                                  href={`/account/orders/${encodeURIComponent(order.code)}`}
+                                  className={cn(
+                                    "inline-flex items-center rounded-sm text-primary-text hover:underline",
+                                    focusRing,
+                                    coarseTextHitArea,
+                                  )}
+                                >
+                                  {order.code}
+                                </Link>
+                              </td>
+                              <td className="px-4 py-3.5 align-top">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {order.productType === "BUNDLE" && (
+                                    <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
+                                      {t("bundleBadge")}
+                                    </span>
+                                  )}
+                                  <span data-exam-content className="font-medium text-text">
+                                    {order.productName}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 align-top text-text-secondary whitespace-nowrap tabular-nums">
+                                {formatDateTime(order.createdAt)}
+                              </td>
+                              <td className="px-4 py-3.5 text-right align-top whitespace-nowrap">
+                                <OrderAmountCell order={order} />
+                              </td>
+                              <td className="px-4 py-3.5 align-top">
+                                <OrderStatusCell order={order} />
+                              </td>
+                              <td className="px-4 py-3.5 align-top">{renderOrderActions(order, false)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {ordersQuery.data.totalPages > 1 && (
@@ -489,9 +621,11 @@ export function OrdersView({
         open={cancelTarget !== null}
         onOpenChange={(open) => {
           if (!open && !cancelling) {
+            if (!cancelError) {
+              cancelKeyRef.current = null;
+            }
             setCancelTarget(null);
             setCancelError(undefined);
-            cancelKeyRef.current = null;
           }
         }}
         title={cancelTarget ? t("cancelDialog.title", { code: cancelTarget.code }) : ""}

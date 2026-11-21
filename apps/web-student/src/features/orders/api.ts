@@ -11,8 +11,10 @@ export type PayOrderResponse = components["schemas"]["PayOrderResponse"];
 
 export const ORDERS_PAGE_SIZE = 20;
 
-export const MY_ORDERS_QUERY_KEY = (page: number, size: number) => ["me", "orders", page, size] as const;
-export const MY_ORDER_DETAIL_QUERY_KEY = (code: string) => ["me", "orders", "detail", code] as const;
+export const MY_ORDERS_QUERY_KEY = (page: number, size: number, userId: string | null = null) =>
+  ["me", "orders", userId, page, size] as const;
+export const MY_ORDER_DETAIL_QUERY_KEY = (code: string, userId: string | null = null) =>
+  ["me", "orders", "detail", userId, code] as const;
 
 export type OrdersLoader = (params: { page: number; size: number }) => Promise<OrderPage>;
 export type OrderDetailLoader = (code: string) => Promise<OrderDetail>;

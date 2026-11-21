@@ -15,7 +15,7 @@ function formatTimeHm(timestampMs: number, locale: string): string {
   return new Intl.DateTimeFormat(intlLocale, {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
     timeZone: APP_TIME_ZONE,
   }).format(new Date(timestampMs));
 }
@@ -32,7 +32,7 @@ export function MyExamsView({
   const locale = useLocale();
 
   const examsQuery = useQuery({
-    queryKey: MY_EXAMS_QUERY_KEY,
+    queryKey: MY_EXAMS_QUERY_KEY(session.id),
     queryFn: loadExams,
   });
 
@@ -158,7 +158,7 @@ export function MyExamsView({
               <div className="flex flex-col gap-3">
                 {checkingCards.map((card) => (
                   <CheckingExamCard
-                    key={card.pendingOrderCode ?? card.code}
+                    key={`${card.pendingOrderCode ?? "checking"}:${card.code}`}
                     card={card}
                     onReload={() => void examsQuery.refetch()}
                     reloading={examsQuery.isFetching}
