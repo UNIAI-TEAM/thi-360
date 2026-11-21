@@ -1,15 +1,16 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import {
   Button,
   Checkbox,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -21,7 +22,9 @@ import {
   notify,
 } from "@thi360/ui";
 
-import { orderErrorCode, resolveOrderErrorMessage } from "../errors";
+import { ApiStatusError } from "@/lib/api/query-client";
+
+import { orderErrorCode, orderFieldErrors, resolveOrderErrorMessage } from "../errors";
 import { formatVnd, parseDigits } from "../format";
 import { orderKeys } from "../keys";
 import {
@@ -35,6 +38,9 @@ import type {
   RefundKind,
 } from "../types";
 import { handleRadioGroupKeyDown } from "./radio-group-key";
+
+type Step1FieldName = "amount" | "externalRef" | "verifiedSystemError" | "reason";
+type AmountErrorKey = "amountInvalid" | "amountExceeded";
 
 export interface RefundDialogProps {
   open: boolean;
@@ -61,11 +67,11 @@ function RefundDialogBody({
   const tErrors = useTranslations("orders.errors");
   const locale = useLocale();
   const queryClient = useQueryClient();
+  const verifiedErrorId = useId();
 
-  const activeRefund = payment.refunds.find(
-    (r) => r.state === "PROCESSING" || r.state === "UNKNOWN",
-  );
   const unknownRefund = payment.refunds.find((r) => r.state === "UNKNOWN");
+  const processingRefund = payment.refunds.find((r) => r.state === "PROCESSING");
+  const activeRefund = unknownRefund ?? processingRefund;
   const hasFailedApiRefund = payment.refunds.some(
     (r) => r.kind === "API" && r.state === "FAILED",
   );
@@ -85,19 +91,37 @@ function RefundDialogBody({
   const [showMarkFailedForm, setShowMarkFailedForm] = useState(false);
   const [markFailedEvidence, setMarkFailedEvidence] = useState("");
   const [markFailedReason, setMarkFailedReason] = useState("");
-  const [markFailedEvidenceError, setMarkFailedEvidenceError] = useState<string | undefined>();
-  const [markFailedReasonError, setMarkFailedReasonError] = useState<string | undefined>();
+  const [markFailedEvidenceErrorKey, setMarkFailedEvidenceErrorKey] = useState<
+    "evidenceRequired" | null
+  >(null);
+  const [markFailedReasonErrorKey, setMarkFailedReasonErrorKey] = useState<
+    "reasonRequired" | null
+  >(null);
 
-  const [amountError, setAmountError] = useState<string | undefined>();
-  const [externalRefError, setExternalRefError] = useState<string | undefined>();
-  const [reasonError, setReasonError] = useState<string | undefined>();
-  const [submitError, setSubmitError] = useState<string | undefined>();
+  const [amountErrorKey, setAmountErrorKey] = useState<AmountErrorKey | null>(null);
+  const [externalRefErrorKey, setExternalRefErrorKey] = useState<"externalRefRequired" | null>(
+    null,
+  );
+  const [verifiedErrorKey, setVerifiedErrorKey] = useState<"verifiedSystemErrorRequired" | null>(
+    null,
+  );
+  const [reasonErrorKey, setReasonErrorKey] = useState<"reasonRequired" | null>(null);
+  const [submitError, setSubmitError] = useState<unknown>(null);
 
   const amountRef = useRef<HTMLInputElement>(null);
   const externalRefInputRef = useRef<HTMLInputElement>(null);
+  const verifiedCheckboxRef = useRef<HTMLButtonElement>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const markEvidenceRef = useRef<HTMLInputElement>(null);
   const markReasonRef = useRef<HTMLTextAreaElement>(null);
+  const openMarkFailedBtnRef = useRef<HTMLButtonElement>(null);
+  const step2HeadingRef = useRef<HTMLParagraphElement>(null);
+  const amountEditedRef = useRef(false);
+  const prevHasActiveRef = useRef(Boolean(activeRefund));
+  const prevRefundableRef = useRef(payment.refundableAmountVnd);
+  const pendingFocusFieldRef = useRef<Step1FieldName | null>(null);
+  const prevStepRef = useRef<1 | 2>(1);
+  const prevShowMarkFailedRef = useRef(false);
   const idempotencyRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const submittingRef = useRef(false);
 
@@ -107,6 +131,50 @@ function RefundDialogBody({
 
   const isBusy =
     createMutation.isPending || queryMutation.isPending || markFailedMutation.isPending;
+
+  useEffect(() => {
+    const hadActive = prevHasActiveRef.current;
+    const prevRefundable = prevRefundableRef.current;
+    const hasActive = Boolean(activeRefund);
+    prevHasActiveRef.current = hasActive;
+    prevRefundableRef.current = payment.refundableAmountVnd;
+
+    const unlockedFromActive = hadActive && !hasActive && payment.refundableAmountVnd > 0;
+    const unlockedFromZero = prevRefundable <= 0 && payment.refundableAmountVnd > 0;
+    if (unlockedFromActive || unlockedFromZero || !amountEditedRef.current) {
+      setAmountInput(String(Math.max(0, payment.refundableAmountVnd)));
+      amountEditedRef.current = false;
+    }
+  }, [activeRefund, payment.refundableAmountVnd]);
+
+  const focusStep1Field = (field: Step1FieldName) => {
+    if (field === "amount") amountRef.current?.focus();
+    else if (field === "externalRef") externalRefInputRef.current?.focus();
+    else if (field === "verifiedSystemError") verifiedCheckboxRef.current?.focus();
+    else reasonRef.current?.focus();
+  };
+
+  useEffect(() => {
+    const prevStep = prevStepRef.current;
+    prevStepRef.current = step;
+    if (step === 2 && kind === "MANUAL" && prevStep === 1) {
+      step2HeadingRef.current?.focus();
+    } else if (step === 1 && prevStep === 2) {
+      const target = pendingFocusFieldRef.current ?? "amount";
+      pendingFocusFieldRef.current = null;
+      focusStep1Field(target);
+    }
+  }, [step, kind]);
+
+  useEffect(() => {
+    const prevOpen = prevShowMarkFailedRef.current;
+    prevShowMarkFailedRef.current = showMarkFailedForm;
+    if (showMarkFailedForm && !prevOpen) {
+      markEvidenceRef.current?.focus();
+    } else if (!showMarkFailedForm && prevOpen && unknownRefund) {
+      openMarkFailedBtnRef.current?.focus();
+    }
+  }, [showMarkFailedForm, unknownRefund]);
 
   const kindOptions: ReadonlyArray<{
     value: RefundKind;
@@ -128,19 +196,26 @@ function RefundDialogBody({
     },
   ];
 
-  const handleQueryUnknown = async () => {
-    if (!unknownRefund || isBusy) return;
-    setSubmitError(undefined);
+  const handleQueryRefund = async (refundId: string) => {
+    if (submittingRef.current || isBusy) return;
+    setSubmitError(null);
+    submittingRef.current = true;
     onBusyChange(true);
     try {
-      const updated = await queryMutation.mutateAsync(unknownRefund.id);
+      const updated = await queryMutation.mutateAsync(refundId);
       notify.success(t("querySuccessToast"));
       if (updated.state === "SUCCEEDED") {
         onClose();
       }
     } catch (error) {
-      setSubmitError(resolveOrderErrorMessage(error, tErrors));
+      setSubmitError(error);
+      if (error instanceof ApiStatusError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: orderKeys.detail(order.code) });
+        void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: orderKeys.attention() });
+      }
     } finally {
+      submittingRef.current = false;
       onBusyChange(false);
     }
   };
@@ -152,19 +227,19 @@ function RefundDialogBody({
     const trimmedEv = markFailedEvidence.trim();
     const trimmedRe = markFailedReason.trim();
     if (!trimmedEv) {
-      setMarkFailedEvidenceError(tLate("evidenceRequired"));
+      setMarkFailedEvidenceErrorKey("evidenceRequired");
       markEvidenceRef.current?.focus();
       return;
     }
     if (!trimmedRe) {
-      setMarkFailedReasonError(t("reasonRequired"));
+      setMarkFailedReasonErrorKey("reasonRequired");
       markReasonRef.current?.focus();
       return;
     }
 
-    setMarkFailedEvidenceError(undefined);
-    setMarkFailedReasonError(undefined);
-    setSubmitError(undefined);
+    setMarkFailedEvidenceErrorKey(null);
+    setMarkFailedReasonErrorKey(null);
+    setSubmitError(null);
     submittingRef.current = true;
     onBusyChange(true);
 
@@ -176,7 +251,12 @@ function RefundDialogBody({
       notify.success(t("markFailedSuccessToast"));
       setShowMarkFailedForm(false);
     } catch (error) {
-      setSubmitError(resolveOrderErrorMessage(error, tErrors));
+      setSubmitError(error);
+      if (error instanceof ApiStatusError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: orderKeys.detail(order.code) });
+        void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: orderKeys.attention() });
+      }
     } finally {
       submittingRef.current = false;
       onBusyChange(false);
@@ -190,33 +270,40 @@ function RefundDialogBody({
   } | null => {
     const parsedAmount = parseDigits(amountInput);
     if (parsedAmount === null || parsedAmount < 1) {
-      setAmountError(t("amountInvalid"));
+      setAmountErrorKey("amountInvalid");
       amountRef.current?.focus();
       return null;
     }
     if (parsedAmount > payment.refundableAmountVnd) {
-      setAmountError(t("amountExceeded"));
+      setAmountErrorKey("amountExceeded");
       amountRef.current?.focus();
       return null;
     }
 
     const trimmedExternalRef = externalRef.trim();
     if (kind === "MANUAL" && !trimmedExternalRef) {
-      setExternalRefError(t("externalRefRequired"));
+      setExternalRefErrorKey("externalRefRequired");
       externalRefInputRef.current?.focus();
+      return null;
+    }
+
+    if (!verifiedSystemError) {
+      setVerifiedErrorKey("verifiedSystemErrorRequired");
+      verifiedCheckboxRef.current?.focus();
       return null;
     }
 
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      setReasonError(t("reasonRequired"));
+      setReasonErrorKey("reasonRequired");
       reasonRef.current?.focus();
       return null;
     }
 
-    setAmountError(undefined);
-    setExternalRefError(undefined);
-    setReasonError(undefined);
+    setAmountErrorKey(null);
+    setExternalRefErrorKey(null);
+    setVerifiedErrorKey(null);
+    setReasonErrorKey(null);
     return { amountVnd: parsedAmount, trimmedReason, trimmedExternalRef };
   };
 
@@ -230,7 +317,7 @@ function RefundDialogBody({
       idempotencyRef.current = { fingerprint, key: crypto.randomUUID() };
     }
 
-    setSubmitError(undefined);
+    setSubmitError(null);
     submittingRef.current = true;
     onBusyChange(true);
 
@@ -250,16 +337,55 @@ function RefundDialogBody({
       onClose();
     } catch (error) {
       const code = orderErrorCode(error);
-      const msg = resolveOrderErrorMessage(error, tErrors);
-      setSubmitError(msg);
-      if (code === "REFUND_AMOUNT_EXCEEDED") {
-        setAmountError(t("amountExceeded"));
-        void queryClient.invalidateQueries({ queryKey: orderKeys.detail(order.code) });
-      } else if (code === "REFUND_EXTERNAL_REF_REQUIRED") {
-        setExternalRefError(t("externalRefRequired"));
+      const fields = orderFieldErrors(error);
+      setSubmitError(error);
+
+      let firstInvalid: Step1FieldName | null = null;
+      const markInvalid = (field: Step1FieldName) => {
+        if (!firstInvalid) firstInvalid = field;
+      };
+
+      if (code === "REFUND_AMOUNT_EXCEEDED" || fields.some((f) => f.field === "amountVnd")) {
+        setAmountErrorKey("amountExceeded");
+        markInvalid("amount");
       }
-      if (step === 2 && (code === "REFUND_AMOUNT_EXCEEDED" || code === "REFUND_EXTERNAL_REF_REQUIRED")) {
+      if (
+        code === "REFUND_EXTERNAL_REF_REQUIRED" ||
+        fields.some((f) => f.field === "externalRef")
+      ) {
+        setExternalRefErrorKey("externalRefRequired");
+        markInvalid("externalRef");
+      }
+      if (
+        code === "REFUND_SYSTEM_ERROR_NOT_VERIFIED" ||
+        fields.some((f) => f.field === "verifiedSystemError")
+      ) {
+        setVerifiedErrorKey("verifiedSystemErrorRequired");
+        markInvalid("verifiedSystemError");
+      }
+      if (fields.some((f) => f.field === "reason")) {
+        setReasonErrorKey("reasonRequired");
+        markInvalid("reason");
+      }
+
+      if (error instanceof ApiStatusError && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: orderKeys.detail(order.code) });
+        void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+        void queryClient.invalidateQueries({ queryKey: orderKeys.attention() });
+      }
+
+      const shouldReturnToStep1 =
+        step === 2 &&
+        (code === "REFUND_AMOUNT_EXCEEDED" ||
+          code === "REFUND_EXTERNAL_REF_REQUIRED" ||
+          code === "REFUND_SYSTEM_ERROR_NOT_VERIFIED" ||
+          code === "VALIDATION_FAILED");
+
+      if (shouldReturnToStep1) {
+        pendingFocusFieldRef.current = firstInvalid;
         setStep(1);
+      } else if (firstInvalid) {
+        focusStep1Field(firstInvalid);
       }
     } finally {
       submittingRef.current = false;
@@ -271,7 +397,7 @@ function RefundDialogBody({
     event.preventDefault();
     if (kind === "MANUAL" && step === 1) {
       if (validateStep1()) {
-        setSubmitError(undefined);
+        setSubmitError(null);
         setStep(2);
       }
       return;
@@ -280,6 +406,19 @@ function RefundDialogBody({
   };
 
   const parsedPreviewAmount = parseDigits(amountInput) ?? 0;
+  const amountError = amountErrorKey ? t(amountErrorKey) : undefined;
+  const externalRefError = externalRefErrorKey ? t(externalRefErrorKey) : undefined;
+  const verifiedError = verifiedErrorKey ? t(verifiedErrorKey) : undefined;
+  const reasonError = reasonErrorKey ? t(reasonErrorKey) : undefined;
+  const markFailedEvidenceError = markFailedEvidenceErrorKey
+    ? tLate(markFailedEvidenceErrorKey)
+    : undefined;
+  const markFailedReasonError = markFailedReasonErrorKey
+    ? t(markFailedReasonErrorKey)
+    : undefined;
+  const submitErrorMessage = submitError
+    ? resolveOrderErrorMessage(submitError, tErrors)
+    : undefined;
 
   return (
     <>
@@ -287,31 +426,42 @@ function RefundDialogBody({
         <DialogTitle>
           {unknownRefund
             ? t("titleResolveUnknown")
-            : kind === "MANUAL"
-              ? t("titleManual")
-              : t("title")}
+            : processingRefund
+              ? t("titleProcessing")
+              : kind === "MANUAL"
+                ? t("titleManual")
+                : t("title")}
         </DialogTitle>
+        <DialogDescription>
+          {unknownRefund
+            ? t("descriptionUnknown")
+            : processingRefund
+              ? t("descriptionProcessing")
+              : t("description")}
+        </DialogDescription>
       </DialogHeader>
 
       <div className="flex flex-col gap-4">
         <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-subtle p-3 text-xs sm:grid-cols-4">
-          <div>
+          <div className="min-w-0">
             <dt className="text-text-secondary">{t("summaryTxnRef")}</dt>
-            <dd className="mt-0.5 font-mono font-semibold text-text">{payment.txnRef}</dd>
+            <dd className="mt-0.5 font-mono font-semibold wrap-anywhere text-text">
+              {payment.txnRef}
+            </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-text-secondary">{t("summaryPaymentAmount")}</dt>
             <dd className="mt-0.5 font-mono font-semibold text-text">
               {formatVnd(payment.amountVnd, locale)}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-text-secondary">{t("summaryAlreadyRefunded")}</dt>
             <dd className="mt-0.5 font-mono font-semibold text-text">
               {formatVnd(payment.refundedAmountVnd, locale)}
             </dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-text-secondary">{t("summaryRemaining")}</dt>
             <dd className="mt-0.5 font-mono font-semibold text-primary-text">
               {formatVnd(payment.refundableAmountVnd, locale)}
@@ -329,13 +479,13 @@ function RefundDialogBody({
           </div>
         ) : null}
 
-        {submitError ? (
+        {submitErrorMessage ? (
           <div
             role="alert"
             className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-bg px-3 py-2.5 text-sm text-danger"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{submitError}</span>
+            <span>{submitErrorMessage}</span>
           </div>
         ) : null}
 
@@ -350,23 +500,26 @@ function RefundDialogBody({
                 <span>{t("unknownNoticeTitle")}</span>
               </div>
               <p className="text-xs text-text">{t("unknownNoticeBody")}</p>
-              <p className="font-mono text-xs text-text-secondary">
+              <p className="font-mono text-xs wrap-anywhere text-text-secondary">
                 {t("unknownRefundId", { id: unknownRefund.id })}
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {unknownRefund.kind === "API" ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  loading={queryMutation.isPending}
+                  disabled={isBusy}
+                  onClick={() => void handleQueryRefund(unknownRefund.id)}
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  <span>{t("queryAction")}</span>
+                </Button>
+              ) : null}
               <Button
-                type="button"
-                variant="primary"
-                loading={queryMutation.isPending}
-                disabled={isBusy}
-                onClick={() => void handleQueryUnknown()}
-              >
-                <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                <span>{t("queryAction")}</span>
-              </Button>
-              <Button
+                ref={openMarkFailedBtnRef}
                 type="button"
                 variant="danger"
                 disabled={isBusy}
@@ -393,14 +546,18 @@ function RefundDialogBody({
                       value={markFailedEvidence}
                       onChange={(e) => {
                         setMarkFailedEvidence(e.target.value);
-                        if (markFailedEvidenceError) setMarkFailedEvidenceError(undefined);
+                        if (markFailedEvidenceErrorKey) setMarkFailedEvidenceErrorKey(null);
                       }}
                       placeholder={tLate("evidencePlaceholder")}
                     />
                   )}
                 </FormField>
 
-                <FormField label={t("markFailedReasonLabel")} required error={markFailedReasonError}>
+                <FormField
+                  label={t("markFailedReasonLabel")}
+                  required
+                  error={markFailedReasonError}
+                >
                   {({ id, ...a11y }) => (
                     <Textarea
                       {...a11y}
@@ -411,7 +568,7 @@ function RefundDialogBody({
                       value={markFailedReason}
                       onChange={(e) => {
                         setMarkFailedReason(e.target.value);
-                        if (markFailedReasonError) setMarkFailedReasonError(undefined);
+                        if (markFailedReasonErrorKey) setMarkFailedReasonErrorKey(null);
                       }}
                       placeholder={t("markFailedReasonPlaceholder")}
                     />
@@ -440,15 +597,71 @@ function RefundDialogBody({
               </DialogFooter>
             )}
           </div>
+        ) : processingRefund ? (
+          <div className="flex flex-col gap-4">
+            <div
+              role="status"
+              className="flex flex-col gap-1.5 rounded-lg border border-info/40 bg-info-bg px-3 py-3 text-sm text-text"
+            >
+              <div className="flex items-center gap-2 font-semibold text-info">
+                <RefreshCw className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{t("processingNoticeTitle")}</span>
+              </div>
+              <p className="text-xs text-text">{t("processingNoticeBody")}</p>
+              <p className="font-mono text-xs wrap-anywhere text-text-secondary">
+                {t("processingRefundId", { id: processingRefund.id })}
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="secondary" disabled={isBusy} onClick={onClose}>
+                {tDialogs("close")}
+              </Button>
+              {processingRefund.kind === "API" ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  loading={queryMutation.isPending}
+                  disabled={isBusy}
+                  onClick={() => void handleQueryRefund(processingRefund.id)}
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  <span>{t("queryAction")}</span>
+                </Button>
+              ) : null}
+            </DialogFooter>
+          </div>
+        ) : payment.refundableAmountVnd <= 0 ? (
+          <div className="flex flex-col gap-4">
+            <div
+              role="status"
+              className="flex flex-col gap-1.5 rounded-lg border border-border bg-subtle px-3 py-3 text-sm text-text"
+            >
+              <p className="font-semibold">{t("noRemainingTitle")}</p>
+              <p className="text-xs text-text-secondary">{t("noRemainingBody")}</p>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={onClose}>
+                {tDialogs("close")}
+              </Button>
+            </DialogFooter>
+          </div>
         ) : step === 2 && kind === "MANUAL" ? (
           <div className="flex flex-col gap-4">
             <div
               role="alert"
               className="flex flex-col gap-1.5 rounded-lg border border-warning/40 bg-warning-bg px-3 py-3 text-sm text-text"
             >
-              <p className="font-semibold">{t("manualStep2Title")}</p>
+              <p
+                ref={step2HeadingRef}
+                tabIndex={-1}
+                className="font-semibold focus:outline-hidden"
+              >
+                {t("manualStep2Title")}
+              </p>
               <p className="text-xs text-text-secondary">{t("manualStep2Warning")}</p>
-              <p className="font-mono text-xs font-medium">
+              <p className="font-mono text-xs font-medium wrap-anywhere">
                 {t("manualStep2Summary", {
                   amount: formatVnd(parsedPreviewAmount, locale),
                   externalRef: externalRef.trim(),
@@ -457,7 +670,15 @@ function RefundDialogBody({
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="secondary" disabled={isBusy} onClick={() => setStep(1)}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isBusy}
+                onClick={() => {
+                  pendingFocusFieldRef.current = "amount";
+                  setStep(1);
+                }}
+              >
                 {tDialogs("back")}
               </Button>
               <Button
@@ -466,7 +687,7 @@ function RefundDialogBody({
                 loading={createMutation.isPending}
                 onClick={() => void submitRefund()}
               >
-                {createMutation.isPending ? tDialogs("submitting") : t("manualStep2Confirm")}
+                {t("manualStep2Confirm")}
               </Button>
             </DialogFooter>
           </div>
@@ -490,7 +711,7 @@ function RefundDialogBody({
                         if (!opt.disabled) {
                           setSelectedKind(opt.value);
                           setStep(1);
-                          setSubmitError(undefined);
+                          setSubmitError(null);
                         }
                       }}
                       onKeyDown={(e) =>
@@ -503,11 +724,24 @@ function RefundDialogBody({
                         "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-55",
                         focusRing,
                         selected
-                          ? "border-primary-600 bg-subtle text-text"
+                          ? "border-2 border-primary-600 bg-subtle text-text"
                           : "border-border bg-surface text-text-secondary hover:border-border-strong",
                       )}
                     >
-                      <span className="text-sm font-semibold text-text">{opt.label}</span>
+                      <span className="flex w-full items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-text">{opt.label}</span>
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "flex size-4 shrink-0 items-center justify-center rounded-full border",
+                            selected
+                              ? "border-primary-600 bg-primary-fill text-on-primary"
+                              : "border-border-strong bg-surface",
+                          )}
+                        >
+                          {selected ? <Check className="size-3" strokeWidth={3} /> : null}
+                        </span>
+                      </span>
                       <span className="text-xs text-text-secondary">{opt.hint}</span>
                     </button>
                   );
@@ -531,8 +765,9 @@ function RefundDialogBody({
                   inputMode="numeric"
                   value={amountInput}
                   onChange={(e) => {
+                    amountEditedRef.current = true;
                     setAmountInput(e.target.value.replace(/\D+/g, ""));
-                    if (amountError) setAmountError(undefined);
+                    if (amountErrorKey) setAmountErrorKey(null);
                   }}
                 />
               )}
@@ -549,7 +784,7 @@ function RefundDialogBody({
                     value={externalRef}
                     onChange={(e) => {
                       setExternalRef(e.target.value);
-                      if (externalRefError) setExternalRefError(undefined);
+                      if (externalRefErrorKey) setExternalRefErrorKey(null);
                     }}
                     placeholder={t("externalRefPlaceholder")}
                   />
@@ -557,21 +792,39 @@ function RefundDialogBody({
               </FormField>
             ) : null}
 
-            <div className="flex items-start gap-2.5 rounded-lg border border-border bg-subtle p-3">
-              <Checkbox
-                id={`refund-verified-${payment.id}`}
-                checked={verifiedSystemError}
-                onCheckedChange={(checked) => setVerifiedSystemError(checked === true)}
-              />
-              <div className="flex flex-col gap-0.5 text-xs">
-                <label
-                  htmlFor={`refund-verified-${payment.id}`}
-                  className="cursor-pointer font-medium text-text"
-                >
-                  {t("verifiedSystemErrorLabel")}
-                </label>
-                <p className="text-text-secondary">{t("verifiedSystemErrorHint")}</p>
+            <div
+              className={cn(
+                "flex flex-col gap-1.5 rounded-lg border p-3",
+                verifiedError ? "border-danger bg-danger-bg/40" : "border-border bg-subtle",
+              )}
+            >
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  ref={verifiedCheckboxRef}
+                  id={`refund-verified-${payment.id}`}
+                  checked={verifiedSystemError}
+                  aria-invalid={verifiedError ? true : undefined}
+                  aria-describedby={verifiedError ? verifiedErrorId : undefined}
+                  onCheckedChange={(checked) => {
+                    setVerifiedSystemError(checked === true);
+                    if (checked === true && verifiedErrorKey) setVerifiedErrorKey(null);
+                  }}
+                />
+                <div className="flex flex-col gap-0.5 text-xs">
+                  <label
+                    htmlFor={`refund-verified-${payment.id}`}
+                    className="cursor-pointer font-medium text-text"
+                  >
+                    {t("verifiedSystemErrorLabel")}
+                  </label>
+                  <p className="text-text-secondary">{t("verifiedSystemErrorHint")}</p>
+                </div>
               </div>
+              {verifiedError ? (
+                <p id={verifiedErrorId} role="alert" className="text-caption text-danger">
+                  {verifiedError}
+                </p>
+              ) : null}
             </div>
 
             <FormField label={t("reasonLabel")} required error={reasonError}>
@@ -585,7 +838,7 @@ function RefundDialogBody({
                   value={reason}
                   onChange={(e) => {
                     setReason(e.target.value);
-                    if (reasonError) setReasonError(undefined);
+                    if (reasonErrorKey) setReasonErrorKey(null);
                   }}
                   placeholder={t("reasonPlaceholder")}
                 />
@@ -597,11 +850,7 @@ function RefundDialogBody({
                 {tDialogs("cancel")}
               </Button>
               <Button type="submit" variant="primary" loading={createMutation.isPending}>
-                {createMutation.isPending
-                  ? tDialogs("submitting")
-                  : kind === "MANUAL"
-                    ? t("submitManualNext")
-                    : t("submitApi")}
+                {kind === "MANUAL" ? t("submitManualNext") : t("submitApi")}
               </Button>
             </DialogFooter>
           </form>

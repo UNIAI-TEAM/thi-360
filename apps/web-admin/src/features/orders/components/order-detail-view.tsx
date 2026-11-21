@@ -14,7 +14,6 @@ import {
   PageHeader,
   Skeleton,
   Table,
-  Tooltip,
   cn,
   focusRing,
 } from "@thi360/ui";
@@ -86,6 +85,7 @@ const TIMELINE_DOT_CLASS: Record<TimelineTone, string> = {
 interface TimelineEntry {
   id: string;
   at: string;
+  orderIndex: number;
   source: "ORDER" | "AUDIT";
   actorLabel: string;
   actorIsRawUsername: boolean;
@@ -100,6 +100,43 @@ interface RefundRowItem {
   payment: PaymentDetailView;
 }
 
+export function canContinueFulfill(order: AdminOrderDetailResponse): boolean {
+  if (order.state !== "PAID") return false;
+  if (order.paymentMethod === "FREE") return true;
+  const counted = order.payments.find((p) => p.state === "SUCCEEDED" && !p.duplicate);
+  if (!counted) return false;
+  const hasActiveRefund = counted.refunds.some(
+    (r) => r.state === "PROCESSING" || r.state === "UNKNOWN",
+  );
+  return !hasActiveRefund && counted.refundedAmountVnd < counted.amountVnd;
+}
+
+function selectPrimaryRefundCandidate(
+  payments: readonly PaymentDetailView[],
+): PaymentDetailView | undefined {
+  const succeeded = payments.filter((p) => p.state === "SUCCEEDED");
+  const isExcess = (p: PaymentDetailView) => p.duplicate || Boolean(p.excessReason);
+  const hasActive = (p: PaymentDetailView) =>
+    p.refunds.some((r) => r.state === "UNKNOWN" || r.state === "PROCESSING");
+
+  const refundableExcess = succeeded.filter(
+    (p) => isExcess(p) && p.refundableAmountVnd > 0 && !hasActive(p),
+  );
+  if (refundableExcess.length > 0) return refundableExcess[0];
+
+  const unknownExcess = succeeded.find(
+    (p) => isExcess(p) && p.refunds.some((r) => r.state === "UNKNOWN"),
+  );
+  if (unknownExcess) return unknownExcess;
+
+  const refundableCounted = succeeded.filter(
+    (p) => !isExcess(p) && p.refundableAmountVnd > 0 && !hasActive(p),
+  );
+  if (refundableCounted.length > 0) return refundableCounted[0];
+
+  return succeeded.find((p) => hasActive(p));
+}
+
 function refundGatewayMessageClass(state: string): string {
   if (state === "FAILED") return "text-danger";
   if (state === "UNKNOWN") return "text-warning";
@@ -109,10 +146,10 @@ function refundGatewayMessageClass(state: string): string {
 function historyDotTone(toState: string, reason: string | null | undefined): TimelineTone {
   const code = reason?.split(":")[0] ?? "";
   if (toState === "FULFILLED" || code === "PAYMENT_SUCCEEDED") return "success";
-  if (toState === "REFUNDED" || code.startsWith("REFUND_")) return "info";
   if (code.includes("REJECTED") || code.includes("FAILED") || code.includes("MISMATCH")) {
     return "danger";
   }
+  if (toState === "REFUNDED" || code.startsWith("REFUND_")) return "info";
   if (
     toState === "PAID" ||
     code.includes("LATE_") ||
@@ -200,6 +237,7 @@ export function OrderDetailView({ code }: { code: string }) {
       items.push({
         id: `history-${h.id}`,
         at: h.at,
+        orderIndex: items.length,
         source: "ORDER",
         actorLabel: actorResolved.label,
         actorIsRawUsername: actorResolved.isRawUsername,
@@ -216,6 +254,7 @@ export function OrderDetailView({ code }: { code: string }) {
       items.push({
         id: `audit-${a.id}`,
         at: a.occurredAt,
+        orderIndex: items.length,
         source: "AUDIT",
         actorLabel: actorResolved.label,
         actorIsRawUsername: actorResolved.isRawUsername,
@@ -226,7 +265,15 @@ export function OrderDetailView({ code }: { code: string }) {
       });
     }
 
-    items.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    items.sort((a, b) => {
+      const ta = Date.parse(a.at);
+      const tb = Date.parse(b.at);
+      const aValid = !Number.isNaN(ta);
+      const bValid = !Number.isNaN(tb);
+      if (aValid !== bValid) return bValid ? 1 : -1;
+      if (aValid && bValid && tb !== ta) return tb - ta;
+      return b.orderIndex - a.orderIndex;
+    });
     return items;
   }, [order, t, tStates, tFallback, tHistory, tAuditActions, tHistoryReasons]);
 
@@ -265,7 +312,7 @@ export function OrderDetailView({ code }: { code: string }) {
             <div className="flex flex-col gap-0.5 font-mono text-xs text-text-secondary">
               <span className="whitespace-nowrap">{formatOrderDateTime(grant.grantedAt, locale)}</span>
               {grant.revokedAt ? (
-                <span className="text-[11px]">
+                <span className="text-caption">
                   {t("detail.grants.revokedAt")}: {formatOrderDateTime(grant.revokedAt, locale)}
                 </span>
               ) : null}
@@ -291,11 +338,11 @@ export function OrderDetailView({ code }: { code: string }) {
                 #{formatAttemptSeq(payment.attemptSeq)} · {payment.txnRef}
               </span>
               {payment.vnpTransactionNo ? (
-                <span className="font-mono text-[11px] wrap-anywhere text-text-secondary">
+                <span className="font-mono text-caption wrap-anywhere text-text-secondary">
                   {t("detail.payments.vnpayTxnNo")}: {payment.vnpTransactionNo}
                 </span>
               ) : null}
-              {bankMeta ? <span className="text-[11px] text-text-secondary">{bankMeta}</span> : null}
+              {bankMeta ? <span className="text-caption text-text-secondary">{bankMeta}</span> : null}
             </div>
           );
         },
@@ -326,7 +373,7 @@ export function OrderDetailView({ code }: { code: string }) {
                 lateSuccessAt={payment.lateSuccessAt}
               />
               {resolutionLabel ? (
-                <span className="text-[11px] text-text-secondary">{resolutionLabel}</span>
+                <span className="text-caption text-text-secondary">{resolutionLabel}</span>
               ) : null}
             </div>
           );
@@ -363,6 +410,10 @@ export function OrderDetailView({ code }: { code: string }) {
                   type="button"
                   variant="outline"
                   size="sm"
+                  aria-label={t("detail.actions.reviewLateSuccessAria", {
+                    seq: formatAttemptSeq(payment.attemptSeq),
+                    txnRef: payment.txnRef,
+                  })}
                   onClick={() => setLateSuccessPaymentId(payment.id)}
                 >
                   {t("detail.actions.reviewLateSuccess")}
@@ -371,6 +422,7 @@ export function OrderDetailView({ code }: { code: string }) {
               {showRefundBtn ? (
                 <PaymentRefundActionButton
                   payment={payment}
+                  context="row"
                   onOpen={() => setRefundPaymentId(payment.id)}
                 />
               ) : null}
@@ -393,7 +445,7 @@ export function OrderDetailView({ code }: { code: string }) {
             <div className="flex max-w-[165px] min-w-0 flex-col gap-0.5 font-mono text-xs text-text">
               <span className="wrap-anywhere">{refund.paymentTxnRef}</span>
               {refund.externalRef ? (
-                <span className="text-[11px] wrap-anywhere text-text-secondary">
+                <span className="text-caption wrap-anywhere text-text-secondary">
                   {refund.externalRef}
                 </span>
               ) : null}
@@ -468,7 +520,11 @@ export function OrderDetailView({ code }: { code: string }) {
         header: () => <span className="block text-right">{t("detail.refunds.action")}</span>,
         cell: ({ row }) => {
           const { refund, payment } = row.original;
-          if (!canRefund || refund.state !== "UNKNOWN") {
+          const canQueryRefund =
+            canRefund &&
+            refund.kind === "API" &&
+            (refund.state === "UNKNOWN" || refund.state === "PROCESSING");
+          if (!canQueryRefund) {
             return <span className="block text-right text-xs text-text-secondary">—</span>;
           }
           return (
@@ -477,6 +533,7 @@ export function OrderDetailView({ code }: { code: string }) {
                 type="button"
                 variant="outline"
                 size="sm"
+                aria-label={t("detail.actions.queryRefundAria", { id: refund.id })}
                 onClick={() => setRefundPaymentId(payment.id)}
               >
                 {t("detail.actions.queryRefund")}
@@ -556,13 +613,9 @@ export function OrderDetailView({ code }: { code: string }) {
     );
   }
 
+  const showContinueFulfill = canContinueFulfill(order);
   const pendingLatePayments = order.payments.filter((p) => p.lateSuccessReview === "PENDING");
-  const primaryRefundCandidate = order.payments.find(
-    (p) =>
-      p.state === "SUCCEEDED" &&
-      (p.refunds.some((r) => r.state === "UNKNOWN" || r.state === "PROCESSING") ||
-        p.refundableAmountVnd > 0),
-  );
+  const primaryRefundCandidate = selectPrimaryRefundCandidate(order.payments);
   const allRefunds: RefundRowItem[] = order.payments.flatMap((payment) =>
     payment.refunds.map((refund) => ({ refund, payment })),
   );
@@ -616,7 +669,7 @@ export function OrderDetailView({ code }: { code: string }) {
                 </Button>
               ) : null}
 
-              {canRecover && order.state === "PAID" ? (
+              {canRecover && showContinueFulfill ? (
                 <Button type="button" variant="primary" size="sm" onClick={() => setFulfillOpen(true)}>
                   {t("detail.actions.continueFulfill")}
                 </Button>
@@ -636,6 +689,7 @@ export function OrderDetailView({ code }: { code: string }) {
               {canRefund && primaryRefundCandidate ? (
                 <PaymentRefundActionButton
                   payment={primaryRefundCandidate}
+                  context="header"
                   onOpen={() => setRefundPaymentId(primaryRefundCandidate.id)}
                 />
               ) : null}
@@ -664,7 +718,7 @@ export function OrderDetailView({ code }: { code: string }) {
         </div>
       ) : null}
 
-      {order.state === "PAID" ? (
+      {showContinueFulfill ? (
         <div
           role="alert"
           className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-bg px-4 py-3 text-sm text-text"
@@ -958,6 +1012,10 @@ export function OrderDetailView({ code }: { code: string }) {
                             type="button"
                             variant="outline"
                             size="sm"
+                            aria-label={t("detail.actions.reviewLateSuccessAria", {
+                              seq: formatAttemptSeq(payment.attemptSeq),
+                              txnRef: payment.txnRef,
+                            })}
                             onClick={() => setLateSuccessPaymentId(payment.id)}
                           >
                             {t("detail.actions.reviewLateSuccess")}
@@ -966,6 +1024,7 @@ export function OrderDetailView({ code }: { code: string }) {
                         {showRefundBtn ? (
                           <PaymentRefundActionButton
                             payment={payment}
+                            context="row"
                             onOpen={() => setRefundPaymentId(payment.id)}
                           />
                         ) : null}
@@ -1001,6 +1060,10 @@ export function OrderDetailView({ code }: { code: string }) {
                 const kindLabel = KNOWN_REFUND_KINDS.has(refund.kind)
                   ? t(`refundKinds.${refund.kind}`)
                   : tFallback("unknown");
+                const canQueryRefund =
+                  canRefund &&
+                  refund.kind === "API" &&
+                  (refund.state === "UNKNOWN" || refund.state === "PROCESSING");
                 return (
                   <ListCard
                     title={
@@ -1047,12 +1110,13 @@ export function OrderDetailView({ code }: { code: string }) {
                         </p>
                       ) : null}
                     </div>
-                    {canRefund && refund.state === "UNKNOWN" ? (
+                    {canQueryRefund ? (
                       <div className="relative z-1 flex flex-wrap gap-2 pt-1">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
+                          aria-label={t("detail.actions.queryRefundAria", { id: refund.id })}
                           onClick={() => setRefundPaymentId(payment.id)}
                         >
                           {t("detail.actions.queryRefund")}
@@ -1129,7 +1193,7 @@ export function OrderDetailView({ code }: { code: string }) {
         )}
       </Card>
 
-      {canRecover ? (
+      {canRecover && showContinueFulfill ? (
         <ContinueFulfillDialog
           open={fulfillOpen}
           onOpenChange={setFulfillOpen}
@@ -1165,31 +1229,39 @@ export function OrderDetailView({ code }: { code: string }) {
 function PaymentRefundActionButton({
   payment,
   onOpen,
+  context,
 }: {
   payment: PaymentDetailView;
   onOpen: () => void;
+  context: "header" | "row";
 }) {
   const t = useTranslations("orders.detail.actions");
-  const hasUnknown = payment.refunds.some((r) => r.state === "UNKNOWN");
-  const hasProcessing = payment.refunds.some((r) => r.state === "PROCESSING");
+  const hasActiveRefund = payment.refunds.some(
+    (r) => r.state === "UNKNOWN" || r.state === "PROCESSING",
+  );
+  const ariaLabel = t("refundAria", {
+    seq: formatAttemptSeq(payment.attemptSeq),
+    txnRef: payment.txnRef,
+  });
 
-  if (hasUnknown) {
+  if (hasActiveRefund) {
+    const reasonId = `refund-lock-${context}-${payment.id}`;
     return (
-      <Button type="button" variant="outline" size="sm" onClick={onOpen}>
-        {t("refund")}
-      </Button>
-    );
-  }
-
-  if (hasProcessing) {
-    return (
-      <Tooltip content={t("refundPendingTooltip")}>
-        <span>
-          <Button type="button" variant="outline" size="sm" disabled>
-            {t("refund")}
-          </Button>
+      <div className="inline-flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled
+          aria-label={ariaLabel}
+          aria-describedby={reasonId}
+        >
+          {t("refund")}
+        </Button>
+        <span id={reasonId} className="text-caption text-text-secondary">
+          {t("refundPendingTooltip")}
         </span>
-      </Tooltip>
+      </div>
     );
   }
 
@@ -1198,7 +1270,7 @@ function PaymentRefundActionButton({
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={onOpen}>
+    <Button type="button" variant="outline" size="sm" aria-label={ariaLabel} onClick={onOpen}>
       {t("refund")}
     </Button>
   );

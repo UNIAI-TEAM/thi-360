@@ -40,14 +40,63 @@ export function formatOrderDateTime(iso: string | null | undefined, locale = "vi
   }).format(new Date(ms));
 }
 
+function parseVnCalendarDate(dateStr: string): { year: number; month: number; day: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(check.getTime()) ||
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day };
+}
+
+export function isValidVnCalendarDate(dateStr: string): boolean {
+  return parseVnCalendarDate(dateStr) !== null;
+}
+
+export function safeDecodeCode(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+export function parseAllowedSort(
+  raw: string | null | undefined,
+  allowedFields: ReadonlySet<string>,
+  fallback: string,
+): string {
+  if (!raw) return fallback;
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  const parts = trimmed.split(",", -1);
+  if (parts.length > 2) return fallback;
+  const field = parts[0]?.trim() ?? "";
+  if (!field || !allowedFields.has(field)) return fallback;
+  if (parts.length === 1 || !parts[1]?.trim()) {
+    return `${field},asc`;
+  }
+  const dir = parts[1].trim().toLowerCase();
+  if (dir !== "asc" && dir !== "desc") return fallback;
+  return `${field},${dir}`;
+}
+
 export function formatOrderDate(dateStr: string | null | undefined, locale = "vi"): string {
   if (!dateStr) return "";
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
-  if (match) {
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const ms = Date.UTC(year, month - 1, day, 12, 0, 0) - VN_OFFSET_MS;
+  const trimmed = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const parsed = parseVnCalendarDate(trimmed);
+    if (!parsed) return dateStr;
+    const ms = Date.UTC(parsed.year, parsed.month - 1, parsed.day, 12, 0, 0) - VN_OFFSET_MS;
     const isEn = normalizeUiLocale(locale) === "en";
     return new Intl.DateTimeFormat(isEn ? "en-GB" : "vi-VN", {
       timeZone: APP_TIME_ZONE,
@@ -73,28 +122,15 @@ export function formatVnpayPayDate(raw: string | null | undefined, locale = "vi"
   const compact = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(trimmed);
   if (compact) {
     const [, yyyy, mm, dd, hh, mi, ss] = compact;
+    const cal = parseVnCalendarDate(`${yyyy}-${mm}-${dd}`);
+    const hour = Number(hh);
+    const minute = Number(mi);
+    const second = Number(ss);
+    if (!cal || hour > 23 || minute > 59 || second > 59) return trimmed;
     const iso = `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}+07:00`;
-    return formatOrderDateTime(iso, locale);
+    return formatOrderDateTime(iso, locale) || trimmed;
   }
   return formatOrderDateTime(trimmed, locale) || trimmed;
-}
-
-function parseVnCalendarDate(dateStr: string): { year: number; month: number; day: number } | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const check = new Date(Date.UTC(year, month - 1, day));
-  if (
-    Number.isNaN(check.getTime()) ||
-    check.getUTCFullYear() !== year ||
-    check.getUTCMonth() !== month - 1 ||
-    check.getUTCDate() !== day
-  ) {
-    return null;
-  }
-  return { year, month, day };
 }
 
 /** Convert local VN calendar date (YYYY-MM-DD) to start of day (00:00:00.000+07:00) in UTC ISO-8601. */

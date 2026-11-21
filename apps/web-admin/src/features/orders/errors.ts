@@ -72,7 +72,18 @@ const CODE_TO_KEY: Record<string, string> = {
  */
 export function resolveOrderErrorMessage(error: unknown, tErrors: OrderErrorTranslator): string {
   const code = orderErrorCode(error);
-  if (code && code in CODE_TO_KEY) {
+  if (code === "VALIDATION_FAILED") {
+    for (const fieldError of orderFieldErrors(error)) {
+      if (
+        fieldError.code &&
+        fieldError.code !== "VALIDATION_FAILED" &&
+        Object.hasOwn(CODE_TO_KEY, fieldError.code)
+      ) {
+        return tErrors(CODE_TO_KEY[fieldError.code]!);
+      }
+    }
+  }
+  if (code && Object.hasOwn(CODE_TO_KEY, code)) {
     return tErrors(CODE_TO_KEY[code]!);
   }
   if (error instanceof ApiStatusError) {

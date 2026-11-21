@@ -123,6 +123,9 @@ export function PaymentClassificationChip({ payment }: { payment: PaymentDetailV
   const t = useTranslations("orders.paymentClassifications");
 
   if (payment.duplicate || payment.excessReason) {
+    if (payment.refundableAmountVnd <= 0 && payment.refundedAmountVnd > 0) {
+      return <StatusChip tone="neutral">{t("EXCESS_REFUNDED")}</StatusChip>;
+    }
     return <StatusChip tone="warning">{t("EXCESS")}</StatusChip>;
   }
   if (payment.lateSuccessReview === "PENDING" || payment.state === "UNKNOWN") {

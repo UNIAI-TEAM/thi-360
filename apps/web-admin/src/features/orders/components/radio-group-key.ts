@@ -25,5 +25,12 @@ export function handleRadioGroupKeyDown<T extends string>(
 
   if (targetIdx === -1) return;
   event.preventDefault();
+  const group = event.currentTarget.closest('[role="radiogroup"]');
   onChange(enabled[targetIdx]!.value);
+  if (group) {
+    const radios = Array.from(
+      group.querySelectorAll<HTMLElement>('[role="radio"]:not([disabled]):not([aria-disabled="true"])'),
+    );
+    radios[targetIdx]?.focus();
+  }
 }

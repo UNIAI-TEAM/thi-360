@@ -173,6 +173,7 @@ export function useMarkRefundFailedMutation(orderCode: string) {
       void queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderCode) });
       void queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: orderKeys.attention() });
+      void queryClient.invalidateQueries({ queryKey: orderKeys.buyersAll() });
     },
   });
 }
