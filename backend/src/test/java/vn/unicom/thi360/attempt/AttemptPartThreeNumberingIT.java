@@ -38,12 +38,17 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
         reset(paperSolverPort);
     }
 
+    private record AttemptSession(Attempt attempt, UUID sessionId) {}
+
     @Test
     void partThreeContinuesNumbering() throws Exception {
         // 1. HSA FULL: Parts 0+1 = 1..100, Part 2 = 101..150
         UUID u1 = createStudent("num-hsa");
         GrantOrderResult.Line hsaLine = grant(u1, "DS-HSA-FULL", 2, List.of());
-        Attempt hsa = advanceToAwaitingChoice(u1, "num-hsa", hsaLine.entitlementId());
+        AttemptSession hsaSession =
+                advanceToAwaitingChoice(u1, "num-hsa", hsaLine.entitlementId());
+        Attempt hsa = hsaSession.attempt();
+        UUID hsaSid = hsaSession.sessionId();
         List<AttemptPart> hsaParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(hsa.getId());
         AttemptPart hsaP2 = hsaParts.get(2);
 
@@ -53,7 +58,7 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
                                         hsa.getId(),
                                         hsaP2.getId(),
                                         "num-hsa-ch",
-                                        null,
+                                        hsaSid,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -64,7 +69,10 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
         // 2. QDA FULL: Parts 0+1 = 1..100, Part 2 (QD02) = 101..150
         UUID u2 = createStudent("num-qda");
         GrantOrderResult.Line qdaLine = grant(u2, "DS-QDA-FULL", 2, List.of());
-        Attempt qda = advanceToAwaitingChoice(u2, "num-qda", qdaLine.entitlementId());
+        AttemptSession qdaSession =
+                advanceToAwaitingChoice(u2, "num-qda", qdaLine.entitlementId());
+        Attempt qda = qdaSession.attempt();
+        UUID qdaSid = qdaSession.sessionId();
         List<AttemptPart> qdaParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(qda.getId());
         AttemptPart qdaP2 = qdaParts.get(2);
 
@@ -74,7 +82,7 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
                                         qda.getId(),
                                         qdaP2.getId(),
                                         "num-qda-ch",
-                                        null,
+                                        qdaSid,
                                         new ConfirmPartChoiceRequest("QD02", null))
                                 .getResponse()
                                 .getStatus())
@@ -87,7 +95,9 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
     void retryKeepsNumbering() throws Exception {
         UUID userId = createStudent("num-retry");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL", 2, List.of());
-        Attempt attempt = advanceToAwaitingChoice(userId, "num-ret", line.entitlementId());
+        AttemptSession session = advanceToAwaitingChoice(userId, "num-ret", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptPart p2 = parts.get(2);
 
@@ -111,7 +121,7 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "num-ret-ch",
-                                        null,
+                                        sid,
                                         new ConfirmPartChoiceRequest(
                                                 "SCIENCE", List.of("LY", "HOA", "SU")))
                                 .getResponse()
@@ -125,7 +135,7 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "num-ret-2",
-                                        null,
+                                        sid,
                                         new RetryPartRequest("retry numbering"))
                                 .getResponse()
                                 .getStatus())
@@ -168,18 +178,19 @@ class AttemptPartThreeNumberingIT extends AbstractAttemptDsIT {
         assertThat(part3Numbers).containsExactlyElementsOf(expectedP3);
     }
 
-    private Attempt advanceToAwaitingChoice(UUID userId, String keyPrefix, UUID entitlementId)
-            throws Exception {
+    private AttemptSession advanceToAwaitingChoice(
+            UUID userId, String keyPrefix, UUID entitlementId) throws Exception {
         Attempt attempt = startAndAwaitOpen(userId, keyPrefix, entitlementId, null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        return attempt;
+        return new AttemptSession(attempt, sid);
     }
 }

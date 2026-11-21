@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.RetryPartRequest;
+import vn.unicom.thi360.attempt.api.ClaimSessionRequest;
 import vn.unicom.thi360.attempt.application.AttemptSessionChecker;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
@@ -40,7 +40,6 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
-import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
 /**
@@ -66,6 +65,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
 
         // 1. PART_NOT_AWAITING when calling choice or retry on OPEN Part 0 or PENDING Part 2
         Attempt a1 = startAndAwaitOpen(userId, "ec-1", hsaLine.entitlementId(), null);
+        UUID sid1 = claimSession(userId, a1.getId());
         List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
         MvcResult choiceP0 =
                 performChoice(
@@ -73,7 +73,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         a1Parts.get(0).getId(),
                         "ec-p0",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(choiceP0.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(choiceP0).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
@@ -84,17 +84,17 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         a1Parts.get(2).getId(),
                         "ec-p2-pend",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(choicePendingP2.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(choicePendingP2).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
 
         // Advance a1 to Part 2 AWAITING_CHOICE
-        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(0).getId(), sid1, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(1).getId(), sid1, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -102,7 +102,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
 
         // retry on AWAITING_CHOICE -> 409 PART_NOT_AWAITING
         MvcResult retryAwaiting =
-                performRetry(userId, a1.getId(), a1P2.getId(), "ec-ret-await", null, null);
+                performRetry(userId, a1.getId(), a1P2.getId(), "ec-ret-await", sid1, null);
         assertThat(retryAwaiting.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(retryAwaiting).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
 
@@ -118,7 +118,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                             a1.getId(),
                             a1P2.getId(),
                             "ec-badopt-" + UUID.randomUUID(),
-                            null,
+                            sid1,
                             badOpt);
             assertThat(r.getResponse().getStatus()).isEqualTo(422);
             assertThat(json(r).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
@@ -140,7 +140,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                             a1.getId(),
                             a1P2.getId(),
                             "ec-badsubj-" + UUID.randomUUID(),
-                            null,
+                            sid1,
                             badSubj);
             assertThat(r.getResponse().getStatus()).isEqualTo(422);
             assertThat(json(r).path("code").asText()).isEqualTo("SUBJECTS_INVALID");
@@ -168,7 +168,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                                             a1.getId(),
                                             a1P2.getId(),
                                             "ec-ok-ch",
-                                            null,
+                                            sid1,
                                             new ConfirmPartChoiceRequest(
                                                     "SCIENCE", List.of("LY", "HOA", "SU")))
                                     .getResponse()
@@ -177,7 +177,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
             assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
 
             MvcResult retryGenerating =
-                    performRetry(userId, a1.getId(), a1P2.getId(), "ec-ret-gen", null, null);
+                    performRetry(userId, a1.getId(), a1P2.getId(), "ec-ret-gen", sid1, null);
             assertThat(retryGenerating.getResponse().getStatus()).isEqualTo(409);
             assertThat(json(retryGenerating).path("code").asText()).isEqualTo("PART_GENERATING");
 
@@ -187,7 +187,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                             a1.getId(),
                             a1P2.getId(),
                             "ec-diff-gen",
-                            null,
+                            sid1,
                             new ConfirmPartChoiceRequest("ANH", null));
             assertThat(diffWhileGen.getResponse().getStatus()).isEqualTo(409);
             assertThat(json(diffWhileGen).path("code").asText()).isEqualTo("CHOICE_LOCKED");
@@ -205,7 +205,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         a1P2.getId(),
                         "ec-diff-open-1",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(diffOptAfterOpen.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffOptAfterOpen).path("code").asText()).isEqualTo("CHOICE_LOCKED");
@@ -216,13 +216,13 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         a1P2.getId(),
                         "ec-diff-open-2",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "DIA")));
         assertThat(diffSubjAfterOpen.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffSubjAfterOpen).path("code").asText()).isEqualTo("CHOICE_LOCKED");
 
         // Close a1 so we can start a2, then verify post-submit choice (same & different) and retry -> 409 PART_NOT_AWAITING
-        assertThat(performSubmit(userId, a1.getId(), "ec-sub-a1", null, null)
+        assertThat(performSubmit(userId, a1.getId(), "ec-sub-a1", sid1, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -233,7 +233,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         a1P2.getId(),
                         "ec-post-sub-same",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SU")));
         assertThat(postSubmitSame.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(postSubmitSame).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
@@ -244,24 +244,25 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         a1P2.getId(),
                         "ec-post-sub-diff",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(postSubmitDiff.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(postSubmitDiff).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
 
         MvcResult postSubmitRetry =
-                performRetry(userId, a1.getId(), a1P2.getId(), "ec-post-sub-ret", null, null);
+                performRetry(userId, a1.getId(), a1P2.getId(), "ec-post-sub-ret", sid1, null);
         assertThat(postSubmitRetry.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(postSubmitRetry).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
 
         // 5. CHOICE_WINDOW_CLOSED when past 15-minute window
         Attempt a2 = startAndAwaitOpen(userId, "ec-2", hsaLine.entitlementId(), null);
+        UUID sid2 = claimSession(userId, a2.getId());
         List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
-        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(0).getId(), sid2, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(1).getId(), sid2, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -274,7 +275,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a2.getId(),
                         a2P2.getId(),
                         "ec-win-closed",
-                        null,
+                        sid2,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(windowClosed.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(windowClosed).path("code").asText()).isEqualTo("CHOICE_WINDOW_CLOSED");
@@ -286,7 +287,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a2.getId(),
                         a2P2.getId(),
                         "ec-win-closed-2",
-                        null,
+                        sid2,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(windowClosedAgain.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(windowClosedAgain).path("code").asText()).isEqualTo("CHOICE_WINDOW_CLOSED");
@@ -294,12 +295,13 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         // 6. Bean Validation: subjectCodes size > 10 & retry reason > 200 -> 400 VALIDATION_FAILED
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt a3 = startAndAwaitOpen(userId, "ec-3", hsaLine.entitlementId(), null);
+        UUID sid3 = claimSession(userId, a3.getId());
         List<AttemptPart> a3Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId());
-        assertThat(performFinishPart(userId, a3.getId(), a3Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, a3.getId(), a3Parts.get(0).getId(), sid3, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, a3.getId(), a3Parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, a3.getId(), a3Parts.get(1).getId(), sid3, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -310,7 +312,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a3.getId(),
                         a3Parts.get(2).getId(),
                         "ec-val-1",
-                        null,
+                        sid3,
                         new ConfirmPartChoiceRequest(
                                 "SCIENCE",
                                 List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")));
@@ -323,7 +325,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a3.getId(),
                         a3Parts.get(2).getId(),
                         "ec-val-2",
-                        null,
+                        sid3,
                         new RetryPartRequest("x".repeat(201)));
         assertThat(longReason.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(longReason).path("code").asText()).isEqualTo("VALIDATION_FAILED");
@@ -334,7 +336,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a3.getId(),
                         a3Parts.get(2).getId(),
                         "ec-val-3",
-                        null,
+                        sid3,
                         new ConfirmPartChoiceRequest("A".repeat(65), null));
         assertThat(longOptionCode.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(longOptionCode).path("code").asText()).isEqualTo("VALIDATION_FAILED");
@@ -345,7 +347,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a3.getId(),
                         a3Parts.get(2).getId(),
                         "ec-val-4",
-                        null,
+                        sid3,
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("S".repeat(65))));
         assertThat(longSubjectCode.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(longSubjectCode).path("code").asText()).isEqualTo("VALIDATION_FAILED");
@@ -406,13 +408,13 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         a3.getId(),
                         a3P2.getId(),
                         "ec-unpub-hsa",
-                        null,
+                        sid3,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(unpubHsaRes.getResponse().getStatus()).isEqualTo(422);
         assertThat(json(unpubHsaRes).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
 
         reset(publishedExamPortSpy);
-        assertThat(performSubmit(userId, a3.getId(), "ec-sub-a3", null, null)
+        assertThat(performSubmit(userId, a3.getId(), "ec-sub-a3", sid3, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(409); // sequential Part 2 unfinished; close cleanly for QDA below
@@ -422,13 +424,14 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         GrantOrderResult.Line qdaLine = grant(userId, "DS-QDA-FULL-MINI", 2, List.of());
         Attempt qdaAttempt = startAndAwaitOpen(userId, "ec-qda", qdaLine.entitlementId(), null);
+        UUID qdaSid = claimSession(userId, qdaAttempt.getId());
         List<AttemptPart> qdaParts =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(qdaAttempt.getId());
-        assertThat(performFinishPart(userId, qdaAttempt.getId(), qdaParts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, qdaAttempt.getId(), qdaParts.get(0).getId(), qdaSid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, qdaAttempt.getId(), qdaParts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, qdaAttempt.getId(), qdaParts.get(1).getId(), qdaSid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -440,7 +443,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         qdaAttempt.getId(),
                         qdaP2.getId(),
                         "ec-qda-subj",
-                        null,
+                        qdaSid,
                         new ConfirmPartChoiceRequest("QD02", List.of("HOA")));
         assertThat(qdaWithSubj.getResponse().getStatus()).isEqualTo(422);
         assertThat(json(qdaWithSubj).path("code").asText()).isEqualTo("SUBJECTS_INVALID");
@@ -491,7 +494,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         qdaAttempt.getId(),
                         qdaP2.getId(),
                         "ec-unpub-qda",
-                        null,
+                        qdaSid,
                         new ConfirmPartChoiceRequest("QD02", null));
         assertThat(unpubQdaRes.getResponse().getStatus()).isEqualTo(422);
         assertThat(json(unpubQdaRes).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
@@ -502,18 +505,26 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("choice-session");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 3, List.of());
         Attempt a1 = startAndAwaitOpen(userId, "sess-a1", line.entitlementId(), null);
+        UUID activeSessionId = UUID.randomUUID();
+        assertThat(
+                        performClaimSession(
+                                        userId,
+                                        a1.getId(),
+                                        new ClaimSessionRequest(activeSessionId, false))
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
         List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
-        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(0).getId(), activeSessionId, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, a1.getId(), a1Parts.get(1).getId(), activeSessionId, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
         AttemptPart a1P2 = a1Parts.get(2);
 
-        UUID activeSessionId = UUID.randomUUID();
         AtomicInteger calls = new AtomicInteger();
         doAnswer(
                         inv -> {
@@ -607,9 +618,6 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
 
         // Revoked session on idempotent replays while IN_PROGRESS -> 409 ATTEMPT_SESSION_REVOKED
         UUID revokedSessionId = UUID.randomUUID();
-        doThrow(new ConflictException("ATTEMPT_SESSION_REVOKED"))
-                .when(attemptSessionChecker)
-                .requireEditSession(argThat(a -> a.getId().equals(a1.getId())), eq(revokedSessionId));
 
         MvcResult replayChoiceRev =
                 performChoice(
@@ -644,20 +652,17 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         // Test revoked session on initial choice and initial retry on a2 without state mutation
 
         Attempt a2 = startAndAwaitOpen(userId, "sess-a2", line.entitlementId(), null);
+        UUID a2Sid = claimSession(userId, a2.getId());
         List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
-        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(0).getId(), a2Sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, a2.getId(), a2Parts.get(1).getId(), a2Sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
         AttemptPart a2P2 = a2Parts.get(2);
-
-        doThrow(new ConflictException("ATTEMPT_SESSION_REVOKED"))
-                .when(attemptSessionChecker)
-                .requireEditSession(argThat(a -> a.getId().equals(a2.getId())), eq(revokedSessionId));
 
         MvcResult initChoiceRev =
                 performChoice(
@@ -691,7 +696,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         a2P2.getId(),
                                         "sess-a2-ch-ok",
-                                        activeSessionId,
+                                        a2Sid,
                                         choiceReq)
                                 .getResponse()
                                 .getStatus())
@@ -717,12 +722,13 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("choice-forbid");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "cf", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -749,7 +755,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "cf-ch",
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SU")));
         assertThat(choice202.getResponse().getStatus()).isEqualTo(202);
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(
@@ -766,7 +772,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "cf-ret",
-                        null,
+                        sid,
                         new RetryPartRequest("retry"));
         assertThat(retry202.getResponse().getStatus()).isEqualTo(202);
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(
@@ -779,7 +785,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "cf-ch",
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SU")));
         assertThat(choiceReplay.getResponse().getStatus()).isEqualTo(200);
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(
@@ -796,6 +802,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
 
         GrantOrderResult.Line ownerLine = grant(owner, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt ownerAttempt = startAndAwaitOpen(owner, "own-1", ownerLine.entitlementId(), null);
+        UUID ownerSid = claimSession(owner, ownerAttempt.getId());
         List<AttemptPart> ownerParts =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(ownerAttempt.getId());
         assertThat(
@@ -803,7 +810,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                                         owner,
                                         ownerAttempt.getId(),
                                         ownerParts.get(0).getId(),
-                                        null,
+                                        ownerSid,
                                         null)
                                 .getResponse()
                                 .getStatus())
@@ -813,7 +820,7 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                                         owner,
                                         ownerAttempt.getId(),
                                         ownerParts.get(1).getId(),
-                                        null,
+                                        ownerSid,
                                         null)
                                 .getResponse()
                                 .getStatus())
@@ -897,13 +904,13 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
                         ownerAttempt.getId(),
                         foreignPartId,
                         "for-c",
-                        null,
+                        ownerSid,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(foreignChoice.getResponse().getStatus()).isEqualTo(404);
         assertThat(json(foreignChoice).path("code").asText()).isEqualTo("NOT_FOUND");
 
         MvcResult foreignRetry =
-                performRetry(owner, ownerAttempt.getId(), foreignPartId, "for-r", null, null);
+                performRetry(owner, ownerAttempt.getId(), foreignPartId, "for-r", ownerSid, null);
         assertThat(foreignRetry.getResponse().getStatus()).isEqualTo(404);
         assertThat(json(foreignRetry).path("code").asText()).isEqualTo("NOT_FOUND");
     }

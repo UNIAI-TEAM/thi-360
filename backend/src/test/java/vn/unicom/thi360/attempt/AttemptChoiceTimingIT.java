@@ -75,17 +75,20 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         reset(paperSolverPort, entitlementPort, idempotentCommand);
     }
 
+    private record AttemptSession(Attempt attempt, UUID sessionId) {}
+
     @Test
     void partThreeClockStartsWhenReady() throws Exception {
         UUID userId = createStudent("p3-clock-ready");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "clk-ready", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -112,7 +115,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             attempt.getId(),
                                             p2.getId(),
                                             "clk-ready-ch",
-                                            null,
+                                            sid,
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -138,15 +141,16 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         UUID u1 = createStudent("ch-dead-early");
         GrantOrderResult.Line l1 = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt a1 = startAndAwaitOpen(u1, "cd-early", l1.entitlementId(), null);
+        UUID sid1 = claimSession(u1, a1.getId());
         List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
-        assertThat(performFinishPart(u1, a1.getId(), a1Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(u1, a1.getId(), a1Parts.get(0).getId(), sid1, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
 
         mutableClock.advance(Duration.ofMinutes(1));
         Instant earlyCloseAt = mutableClock.instant();
-        MvcResult fin1 = performFinishPart(u1, a1.getId(), a1Parts.get(1).getId(), null, null);
+        MvcResult fin1 = performFinishPart(u1, a1.getId(), a1Parts.get(1).getId(), sid1, null);
         assertThat(fin1.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(fin1).path("nextPart").path("state").asText()).isEqualTo("AWAITING_CHOICE");
         AttemptPart a1P2 = attemptPartRepository.findById(a1Parts.get(2).getId()).orElseThrow();
@@ -161,8 +165,9 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         UUID u2 = createStudent("ch-dead-worker");
         GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt a2 = startAndAwaitOpen(u2, "cd-wrk", l2.entitlementId(), null);
+        UUID sid2 = claimSession(u2, a2.getId());
         List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
-        assertThat(performFinishPart(u2, a2.getId(), a2Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(u2, a2.getId(), a2Parts.get(0).getId(), sid2, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -185,7 +190,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         // 1. Boundary: choice_deadline_at - 1s is accepted
         UUID u1 = createStudent("ch-bnd-ok");
         GrantOrderResult.Line l1 = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a1 = advanceToAwaitingChoice(u1, "ch-ok", l1.entitlementId());
+        AttemptSession s1 = advanceToAwaitingChoice(u1, "ch-ok", l1.entitlementId());
+        Attempt a1 = s1.attempt();
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
         mutableClock.setAt(p1.getChoiceDeadlineAt().minusSeconds(1));
         MvcResult okRes =
@@ -194,7 +200,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         p1.getId(),
                         "bnd-ok",
-                        null,
+                        s1.sessionId(),
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(okRes.getResponse().getStatus()).isEqualTo(202);
         awaitPartState(p1.getId(), PartState.OPEN);
@@ -203,7 +209,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u2 = createStudent("ch-bnd-exact");
         GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a2 = advanceToAwaitingChoice(u2, "ch-exact", l2.entitlementId());
+        AttemptSession s2 = advanceToAwaitingChoice(u2, "ch-exact", l2.entitlementId());
+        Attempt a2 = s2.attempt();
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         Instant deadline2 = p2.getChoiceDeadlineAt();
         clearInvocations(entitlementPort);
@@ -215,7 +222,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                         a2.getId(),
                         p2.getId(),
                         "bnd-exp",
-                        null,
+                        s2.sessionId(),
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(expiredRes.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(expiredRes).path("code").asText()).isEqualTo("CHOICE_WINDOW_CLOSED");
@@ -235,7 +242,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u3 = createStudent("ch-wrk-timeout");
         GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a3 = advanceToAwaitingChoice(u3, "ch-wrk", l3.entitlementId());
+        Attempt a3 = advanceToAwaitingChoice(u3, "ch-wrk", l3.entitlementId()).attempt();
         AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
         Instant deadline3 = p3.getChoiceDeadlineAt();
         clearInvocations(entitlementPort);
@@ -256,7 +263,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u4 = createStudent("ch-race");
         GrantOrderResult.Line l4 = grant(u4, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a4 = advanceToAwaitingChoice(u4, "ch-race", l4.entitlementId());
+        AttemptSession s4 = advanceToAwaitingChoice(u4, "ch-race", l4.entitlementId());
+        Attempt a4 = s4.attempt();
         AttemptPart p4 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a4.getId()).get(2);
         Instant deadline4 = p4.getChoiceDeadlineAt();
         clearInvocations(entitlementPort);
@@ -275,7 +283,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                         a4.getId(),
                                         p4.getId(),
                                         "race-ch-k",
-                                        null,
+                                        s4.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null));
                             });
             Future<Integer> workerFuture =
@@ -301,7 +309,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u5 = createStudent("ch-race-win");
         GrantOrderResult.Line l5 = grant(u5, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a5 = advanceToAwaitingChoice(u5, "ch-race-win", l5.entitlementId());
+        AttemptSession s5 = advanceToAwaitingChoice(u5, "ch-race-win", l5.entitlementId());
+        Attempt a5 = s5.attempt();
         AttemptPart p5 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a5.getId()).get(2);
         Instant deadline5 = p5.getChoiceDeadlineAt();
 
@@ -327,7 +336,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a5.getId(),
                                             p5.getId(),
                                             "race-win-k",
-                                            null,
+                                            s5.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null)));
             assertThat(enteredLock.await(10, TimeUnit.SECONDS)).isTrue();
 
@@ -353,7 +362,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u6 = createStudent("ch-lock-bnd");
         GrantOrderResult.Line l6 = grant(u6, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a6 = advanceToAwaitingChoice(u6, "ch-lkb", l6.entitlementId());
+        AttemptSession s6 = advanceToAwaitingChoice(u6, "ch-lkb", l6.entitlementId());
+        Attempt a6 = s6.attempt();
         AttemptPart p6 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a6.getId()).get(2);
         Instant deadline6 = p6.getChoiceDeadlineAt();
         clearInvocations(entitlementPort);
@@ -404,7 +414,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a6.getId(),
                                             p6.getId(),
                                             "lock-bnd-k",
-                                            null,
+                                            s6.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null)));
             assertThat(choiceInIdempotent.await(10, TimeUnit.SECONDS)).isTrue();
             awaitBlockedOnPostgresLock();
@@ -440,8 +450,9 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         UUID u1 = createStudent("lkb-p2-exp");
         GrantOrderResult.Line l1 = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt a1 = startAndAwaitOpen(u1, "lkb-p2", l1.entitlementId(), null);
+        UUID sid1 = claimSession(u1, a1.getId());
         List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
-        assertThat(performFinishPart(u1, a1.getId(), a1Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(u1, a1.getId(), a1Parts.get(0).getId(), sid1, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -495,7 +506,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a1.getId(),
                                             p2.getId(),
                                             "lkb-p2-ch",
-                                            null,
+                                            sid1,
                                             new ConfirmPartChoiceRequest("ANH", null)));
             assertThat(choiceEntered.await(10, TimeUnit.SECONDS)).isTrue();
             awaitBlockedOnPostgresLock();
@@ -523,7 +534,9 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u2 = createStudent("lkb-p3-exp");
         GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a2 = advanceToAwaitingChoice(u2, "lkb-p3", l2.entitlementId());
+        AttemptSession s2 = advanceToAwaitingChoice(u2, "lkb-p3", l2.entitlementId());
+        Attempt a2 = s2.attempt();
+        UUID sid2 = s2.sessionId();
         AttemptPart a2P2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         assertThat(
                         performChoice(
@@ -531,7 +544,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         a2P2.getId(),
                                         "lkb-p3-init",
-                                        null,
+                                        sid2,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -585,7 +598,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a2.getId(),
                                             a2P2.getId(),
                                             "lkb-p3-new-key",
-                                            null,
+                                            sid2,
                                             new ConfirmPartChoiceRequest("ANH", null)));
             assertThat(resendEntered.await(10, TimeUnit.SECONDS)).isTrue();
             awaitBlockedOnPostgresLock();
@@ -617,8 +630,9 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         UUID u3 = createStudent("lkb-cascade-15m");
         GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt a3 = startAndAwaitOpen(u3, "lkb-cas", l3.entitlementId(), null);
+        UUID sid3 = claimSession(u3, a3.getId());
         List<AttemptPart> a3Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId());
-        assertThat(performFinishPart(u3, a3.getId(), a3Parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(u3, a3.getId(), a3Parts.get(0).getId(), sid3, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
@@ -673,7 +687,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a3.getId(),
                                             a3P2.getId(),
                                             "lkb-cas-ch",
-                                            null,
+                                            sid3,
                                             new ConfirmPartChoiceRequest("ANH", null)));
             assertThat(cascadeEntered.await(10, TimeUnit.SECONDS)).isTrue();
             awaitBlockedOnPostgresLock();
@@ -711,7 +725,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         // 1. persistGeneratedPart discards without writing items or usage if SHARED deadline_at <= now
         UUID u1 = createStudent("sh-guard-gen");
         GrantOrderResult.Line l1 = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a1 = advanceToAwaitingChoice(u1, "shg-1", l1.entitlementId());
+        AttemptSession s1 = advanceToAwaitingChoice(u1, "shg-1", l1.entitlementId());
+        Attempt a1 = s1.attempt();
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
 
         CountDownLatch entered = new CountDownLatch(1);
@@ -735,7 +750,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a1.getId(),
                                             p1.getId(),
                                             "shg-1-ch",
-                                            null,
+                                            s1.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -785,7 +800,9 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u2 = createStudent("sh-guard-ret");
         GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a2 = advanceToAwaitingChoice(u2, "shg-2", l2.entitlementId());
+        AttemptSession s2 = advanceToAwaitingChoice(u2, "shg-2", l2.entitlementId());
+        Attempt a2 = s2.attempt();
+        UUID sid2 = s2.sessionId();
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
 
         AtomicBoolean failFirst = new AtomicBoolean(true);
@@ -808,7 +825,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         p2.getId(),
                                         "shg-2-ch",
-                                        null,
+                                        sid2,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -874,7 +891,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a2.getId(),
                                             p2.getId(),
                                             "shg-2-ret",
-                                            null,
+                                            sid2,
                                             new RetryPartRequest("late shared retry")));
             assertThat(retryEntered.await(10, TimeUnit.SECONDS)).isTrue();
             awaitBlockedOnPostgresLock();
@@ -900,7 +917,8 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID u3 = createStudent("sh-prec-choice");
         GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a3 = advanceToAwaitingChoice(u3, "shg-3", l3.entitlementId());
+        AttemptSession s3 = advanceToAwaitingChoice(u3, "shg-3", l3.entitlementId());
+        Attempt a3 = s3.attempt();
         AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
         Instant choiceDeadline3 = p3.getChoiceDeadlineAt();
         Instant sharedDeadline3 = choiceDeadline3.minus(Duration.ofMinutes(5));
@@ -956,7 +974,7 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
                                             a3.getId(),
                                             p3.getId(),
                                             "shg-3-ch",
-                                            null,
+                                            s3.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null)));
             assertThat(choice3Entered.await(10, TimeUnit.SECONDS)).isTrue();
             awaitBlockedOnPostgresLock();
@@ -999,18 +1017,19 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         throw new AssertionError("Timed out waiting for PostgreSQL lock contention");
     }
 
-    private Attempt advanceToAwaitingChoice(UUID userId, String keyPrefix, UUID entitlementId)
-            throws Exception {
+    private AttemptSession advanceToAwaitingChoice(
+            UUID userId, String keyPrefix, UUID entitlementId) throws Exception {
         Attempt attempt = startAndAwaitOpen(userId, keyPrefix, entitlementId, null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        return attempt;
+        return new AttemptSession(attempt, sid);
     }
 }
