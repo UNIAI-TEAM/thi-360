@@ -266,6 +266,138 @@
     },
     "wrongOldPassword": "Current password is incorrect."
   },
+  "checkout": {
+    "accessBanner": {
+      "buyMore": "Buy more attempts",
+      "checkingDescription": "An order for this exam is currently awaiting payment verification. You do not need to place a new order or pay again.",
+      "checkingTitle": "Checking order {orderCode}",
+      "continueAttempt": "Continue",
+      "enterExam": "Go to exam",
+      "existingInProgressTitle": "You have an attempt in progress ({count} attempts for this exam)",
+      "existingTitle": "You currently have {count} attempts for this exam",
+      "viewPaymentStatus": "View payment status"
+    },
+    "account": {
+      "adminBlockedCta": "Open admin portal",
+      "adminBlockedDescription": "Administrator accounts cannot buy or take exams in the student portal.",
+      "adminBlockedTitle": "Administrator account",
+      "changedDescription": "You opened this page with account {previous}, while the active session is now {current}. Please review the account before paying.",
+      "changedTitle": "Signed-in account changed",
+      "continueAsCurrent": "Continue as {username}",
+      "grantNotice": "Once completed, the exam will be granted to account {username}.",
+      "switchAccount": "Sign in with another account",
+      "title": "Account receiving exam"
+    },
+    "backToCatalog": "Back to exam catalog",
+    "backToExam": "Back to exam",
+    "gone": {
+      "description": "{name} has been discontinued and is no longer available for purchase.",
+      "title": "This exam is no longer on sale"
+    },
+    "heading": "Confirm purchase",
+    "loadError": {
+      "description": "Please check your internet connection and try again.",
+      "title": "Unable to load checkout details"
+    },
+    "notFound": {
+      "description": "The requested exam does not exist or is no longer listed.",
+      "title": "Exam not found"
+    },
+    "pageTitle": "Confirm purchase",
+    "priceChanged": {
+      "description": "Price or benefits have been updated to the latest version ({latest}). Please review before paying.",
+      "descriptionWithSeen": "Price or benefits updated to {latest} (previously shown {seen}). Please review before paying.",
+      "title": "Price or benefits changed"
+    },
+    "product": {
+      "attemptsGranted": "{count, plural, one {# attempt} other {# attempts}}",
+      "sectionTitle": "Exam summary",
+      "version": "Version v{version}"
+    },
+    "refund": {
+      "body": "Exam access is granted immediately after completion and cannot be refunded once activated.",
+      "supportLabel": "Payment support:",
+      "title": "Refund policy"
+    },
+    "result": {
+      "buyAgain": "Buy exam again",
+      "checkAgain": "Check again",
+      "checkingBadge": "Checking",
+      "checkingHeading": "Checking payment",
+      "checkingPending": "Confirming VNPAY transaction status for order {code}. Please wait a moment.",
+      "checkingTimeoutBody": "Verification has taken longer than 60 seconds for order {code}. Status remains Checking — please do not pay again.",
+      "checkingTimeoutHeading": "Awaiting payment confirmation",
+      "checkingTimeoutSupport": "If the exam does not appear in a few minutes, contact support via {contact} with order code {code}.",
+      "closedBody": "Order {code} is no longer awaiting payment.",
+      "closedHeading": "Order closed",
+      "failedBody": "Transaction for order {code} did not complete.",
+      "failedGuestBody": "Transaction for order {code} was not completed ({reason}). Sign in to review your order and retry payment if needed.",
+      "failedHeading": "Payment unsuccessful",
+      "guestCheckingBody": "Payment confirmation is still in progress for order {code}. Sign in to view detailed status.",
+      "guestCheckingHeading": "Awaiting payment confirmation",
+      "guestFailedHeading": "Payment unsuccessful",
+      "guestSignInCheck": "Sign in to check order",
+      "guestSignInView": "Sign in to view exam",
+      "guestSuccessBody": "Payment for order {code} succeeded. Sign in with the purchasing account to view and start your exam.",
+      "guestSuccessHeading": "Payment successful",
+      "invalidSignatureBody": "The VNPAY response signature is invalid or corrupted. Please check My orders before retrying payment.",
+      "invalidSignatureHeading": "Could not verify payment response",
+      "loadErrorBody": "Could not load order details right now. Please try again.",
+      "loadErrorHeading": "Unable to check payment result",
+      "missingOrderBody": "No valid order code or payment return parameters were found in this link.",
+      "missingOrderHeading": "Missing transaction details",
+      "notOwnedBody": "Order {code} was not found in account {username}. You may be signed in with a different account.",
+      "notOwnedHeading": "Order not found in the signed-in account",
+      "retryPay": "Retry payment",
+      "retryingPay": "Redirecting to VNPAY...",
+      "successBody": "Order {code} has been confirmed. Exam access is now active in your account.",
+      "successFreeBody": "Order {code} used a free voucher and exam access has been granted immediately.",
+      "successHeading": "Exam granted",
+      "txnRefLabel": "Transaction ref:",
+      "viewMyExams": "Go to My exams",
+      "viewOrder": "View order details",
+      "viewOrders": "View my orders"
+    },
+    "resultPageTitle": "Payment result",
+    "subtitle": "Review your account, exam details, and payment breakdown before continuing.",
+    "summary": {
+      "ctaFree": "Apply voucher & get exam",
+      "ctaVnpay": "Pay with VNPAY",
+      "errorGeneric": "Unable to create order. Please try again.",
+      "errorRateLimited": "Too many requests. Please wait a moment and try again.",
+      "freeVoucher": "0 VND (voucher applied)",
+      "listPrice": "List price",
+      "promotion": "Auto promotion ({name})",
+      "promotionFallback": "Auto promotion",
+      "submitting": "Creating order...",
+      "title": "Payment summary",
+      "totalDue": "Total due",
+      "voucherDiscount": "Voucher ({code})"
+    },
+    "voucher": {
+      "applied": "Applied voucher {code} (-{discount}).",
+      "appliedCombined": "Applied voucher {code} (-{discount}) together with the auto promotion.",
+      "appliedReplacedPromo": "Applied voucher {code} (-{discount}). Replaced the auto promotion because this voucher saves more.",
+      "apply": "Apply",
+      "checking": "Checking...",
+      "emptyInput": "Please enter a voucher code.",
+      "errors": {
+        "RATE_LIMITED": "Too many voucher checks. Please try again in a few minutes.",
+        "VOUCHER_EXHAUSTED": "This voucher code has reached its usage limit.",
+        "VOUCHER_EXPIRED": "This voucher code has expired.",
+        "VOUCHER_INVALID": "This voucher code does not exist or is invalid.",
+        "VOUCHER_NOT_APPLICABLE": "This voucher code is not applicable to this exam.",
+        "VOUCHER_NOT_ELIGIBLE": "Your account is not eligible for this voucher.",
+        "VOUCHER_USER_LIMIT": "You have reached your personal usage limit for this voucher.",
+        "generic": "Unable to apply voucher code. Please try again."
+      },
+      "label": "Enter voucher code",
+      "notBetter": "Code {code} does not beat the active auto promotion, so the best price is kept.",
+      "placeholder": "Example: SAVE20",
+      "remove": "Remove",
+      "sectionTitle": "Voucher code"
+    }
+  },
   "common": {
     "appName": "Thi 360",
     "backHome": "Back to home",

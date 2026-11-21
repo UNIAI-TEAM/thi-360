@@ -28,6 +28,8 @@ describe("web-student tiêu đề trang", () => {
     expect((await (await import("./home/page")).generateMetadata()).title).toBe("Bài thi của tôi");
     expect((await (await import("./account/orders/page")).generateMetadata()).title).toBe("Đơn của tôi");
     expect((await (await import("./account/orders/[code]/page")).generateMetadata()).title).toBe("Chi tiết đơn hàng");
+    expect((await (await import("./checkout/[code]/page")).generateMetadata()).title).toBe("Xác nhận mua");
+    expect((await (await import("./checkout/result/page")).generateMetadata()).title).toBe("Kết quả thanh toán");
     expect((await (await import("./forbidden/page")).generateMetadata()).title).toBe(
       "Bạn không có quyền vào trang này",
     );
@@ -42,6 +44,8 @@ describe("web-student tiêu đề trang", () => {
       expect((await (await import("./home/page")).generateMetadata()).title).toBe("My exams");
       expect((await (await import("./account/orders/page")).generateMetadata()).title).toBe("My orders");
       expect((await (await import("./account/orders/[code]/page")).generateMetadata()).title).toBe("Order details");
+      expect((await (await import("./checkout/[code]/page")).generateMetadata()).title).toBe("Confirm purchase");
+      expect((await (await import("./checkout/result/page")).generateMetadata()).title).toBe("Payment result");
       expect((await (await import("./not-found")).generateMetadata()).title).toBe(
         `${enMessages.notFound.title} · Thi 360`,
       );
