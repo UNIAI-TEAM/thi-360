@@ -8,4 +8,8 @@ import java.util.UUID;
 public interface RefundProgress {
 
     boolean hasNonRejectedRefund(UUID orderId);
+
+    default boolean isFullyRefunded(UUID orderId) {
+        return false;
+    }
 }

@@ -222,6 +222,12 @@ thi360:
       quote-per-user-minute-window: PT1M
       quote-per-user-day-limit: ${THI360_VOUCHER_QUOTE_DAY_LIMIT:50}
       quote-per-user-day-window: PT24H
+    refund:
+      vnpay-code02-policy: ${THI360_VNPAY_REFUND_CODE02_POLICY:UNKNOWN}
+      server-ip: ${THI360_VNPAY_SERVER_IP:127.0.0.1}
+    reconciliation:
+      cron: ${THI360_COMMERCE_RECONCILIATION_CRON:0 0 2 * * *}
+      zone: ${THI360_COMMERCE_RECONCILIATION_ZONE:Asia/Ho_Chi_Minh}
   vnpay:
     mode: ${THI360_VNPAY_MODE:}
     tmn-code: ${THI360_VNPAY_TMN_CODE:}

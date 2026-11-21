@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import vn.unicom.thi360.audit.spi.AuditActorType;
@@ -120,15 +122,48 @@ public class FulfillmentService {
             log.info("Skipping fulfillment for order {} because a non-rejected refund exists", order.getCode());
             return false;
         }
+        if (refundProgress.isFullyRefunded(orderId)) {
+            Instant now = clock.instant();
+            order.markRefunded(now);
+            purchaseOrderRepository.save(order);
+            orderHistoryRepository.save(new OrderHistory(
+                    Ids.newId(),
+                    order.getId(),
+                    OrderState.PAID,
+                    OrderState.REFUNDED,
+                    "SYSTEM",
+                    "REFUNDED_BEFORE_FULFILLMENT",
+                    now));
+            return false;
+        }
+        return fulfillLockedPaidOrder(order, "SYSTEM", "FULFILLED");
+    }
 
-        List<PurchaseOrderItem> items = purchaseOrderItemRepository.findByOrderIdOrderByPositionAsc(orderId);
+    /**
+     * Cấp quyền trên đơn {@code PAID} đã được khóa dòng trong transaction hiện tại của bên gọi
+     * (dùng chung cho {@link #fulfill(UUID)} và {@code OrderRecoverService} để tránh tự deadlock
+     * {@code REQUIRES_NEW}).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean fulfillLockedPaidOrder(PurchaseOrder order, String actorName, String historyReason) {
+        if (order == null) {
+            return false;
+        }
+        if (order.getState() == OrderState.FULFILLED) {
+            return true;
+        }
+        if (order.getState() != OrderState.PAID) {
+            return false;
+        }
+
+        List<PurchaseOrderItem> items = purchaseOrderItemRepository.findByOrderIdOrderByPositionAsc(order.getId());
         if (items.isEmpty()) {
             throw new IllegalStateException("Order " + order.getCode() + " has no purchase_order_item rows");
         }
 
         // Thứ tự khóa: purchase_order (đã khóa) -> promotion -> entitlement -> entitlement_grant.
         if (order.getPromotionId() != null || order.getVoucherId() != null) {
-            promotionRedemptionService.confirmByOrder(orderId);
+            promotionRedemptionService.confirmByOrder(order.getId());
         }
 
         List<GrantLine> lines = items.stream()
@@ -151,8 +186,8 @@ public class FulfillmentService {
                 order.getId(),
                 OrderState.PAID,
                 OrderState.FULFILLED,
-                "SYSTEM",
-                "FULFILLED",
+                StringUtils.hasText(actorName) ? actorName : "SYSTEM",
+                StringUtils.hasText(historyReason) ? historyReason : "FULFILLED",
                 now));
 
         auditRecorder.record(AuditEvent.builder("commerce", "ENTITLEMENT_GRANTED")
