@@ -11,6 +11,8 @@ import {
   resolveOrderActorLabel,
   resolveOrderAuditActionLabel,
 } from "../audit-labels";
+import { OrderApiError, resolveOrderErrorMessage } from "../errors";
+import { formatOrderDate, formatVnpayPayDate, safeDecodeCode } from "../format";
 
 const VIETNAMESE_DIACRITIC_RE =
   /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
@@ -170,5 +172,36 @@ describe("order audit action labels (AC-23)", () => {
     expect(translate("dialogs.continueFulfill.descriptionPrefix", { code: "DH1", attempts: 5 })).toBe(
       "Order DH1 will grant 5 attempts for",
     );
+  });
+
+  it("resolveOrderErrorMessage xử lý INVALID_TIME_RANGE dưới VALIDATION_FAILED và code prototype-safe (R1-32, R1-62)", () => {
+    const tViErrors = createTranslator({ locale: "vi", messages: vi, namespace: "orders.errors" });
+    const tEnErrors = createTranslator({ locale: "en", messages: en, namespace: "orders.errors" });
+    const trVi = (key: string) => (tViErrors as unknown as (k: string) => string)(key);
+    const trEn = (key: string) => (tEnErrors as unknown as (k: string) => string)(key);
+
+    const timeRangeErr = new OrderApiError(400, "", "VALIDATION_FAILED", [
+      { field: "to", code: "INVALID_TIME_RANGE", message: "raw range error" },
+    ]);
+    expect(resolveOrderErrorMessage(timeRangeErr, trVi)).toBe(
+      "Khoảng thời gian tìm kiếm không hợp lệ.",
+    );
+    expect(resolveOrderErrorMessage(timeRangeErr, trEn)).toBe("Invalid time range selected.");
+
+    expect(resolveOrderErrorMessage({ code: "toString" }, trVi)).toBe(
+      "Có lỗi xảy ra khi xử lý yêu cầu.",
+    );
+  });
+
+  it("formatVnpayPayDate, formatOrderDate và safeDecodeCode xử lý an toàn chuỗi sai định dạng (R1-18, R1-58, R1-59)", () => {
+    expect(formatVnpayPayDate("20269999000000", "vi")).toBe("20269999000000");
+    expect(formatVnpayPayDate("20260230000000", "vi")).toBe("20260230000000");
+    expect(formatVnpayPayDate("20261121090500", "vi")).toContain("21/11/2026");
+
+    expect(formatOrderDate("2026-02-31", "vi")).toBe("2026-02-31");
+    expect(formatOrderDate("2026-11-20", "vi")).toBe("20/11/2026");
+
+    expect(safeDecodeCode("%ZZ")).toBe("%ZZ");
+    expect(safeDecodeCode("DH%2D01")).toBe("DH-01");
   });
 });

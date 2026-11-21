@@ -40,7 +40,15 @@ describe("OrderAttentionStrip (AC-3)", () => {
 
     for (const btn of [lateBtn, paidBtn, unknownBtn, dupBtn, reviewBtn, refundUnknownBtn]) {
       expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(btn.querySelector("svg")).toBeNull();
     }
+
+    expect(lateBtn).toHaveTextContent("2");
+    expect(paidBtn).toHaveTextContent("1");
+    expect(unknownBtn).toHaveTextContent("3");
+    expect(dupBtn).toHaveTextContent("4");
+    expect(reviewBtn).toHaveTextContent("5");
+    expect(refundUnknownBtn).toHaveTextContent("1");
 
     await user.click(dupBtn);
     expect(onSelect).toHaveBeenCalledWith("DUPLICATE_UNREFUNDED");
@@ -58,6 +66,7 @@ describe("OrderAttentionStrip (AC-3)", () => {
     const activeDupBtn = screen.getByRole("button", { name: /Thanh toán dư chưa hoàn/ });
     expect(activeDupBtn).toHaveAttribute("aria-pressed", "true");
     expect(activeDupBtn.className).toContain("border-primary-600");
+    expect(activeDupBtn.querySelector("svg")).not.toBeNull();
 
     await user.click(activeDupBtn);
     expect(onSelect).toHaveBeenCalledWith("");

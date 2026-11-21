@@ -1,6 +1,8 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { onlineManager } from "@tanstack/react-query";
 
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
@@ -16,6 +18,11 @@ withRealApi();
 describe("ReconciliationReportCard (AC-22)", () => {
   beforeEach(() => {
     fakeApi.reset();
+    onlineManager.setOnline(true);
+  });
+
+  afterEach(() => {
+    onlineManager.setOnline(true);
   });
 
   it("hiện đủ 4 số đếm và ngày giờ tạo báo cáo khi available = true", async () => {
@@ -90,5 +97,34 @@ describe("ReconciliationReportCard (AC-22)", () => {
       expect(screen.getByText(/20\/11\/2026/)).toBeInTheDocument();
     });
     expect(calls).toBe(2);
+  });
+
+  it("hiện thông báo ngoại tuyến và nút Thử tải lại khi offline thay vì skeleton vô hạn (R1-42)", async () => {
+    const user = userEvent.setup();
+    fakeApi.get("/api/v1/admin/reconciliation-reports/latest", () =>
+      ok(makeReconciliationLatest()),
+    );
+
+    try {
+      act(() => {
+        onlineManager.setOnline(false);
+      });
+
+      renderOrdersUi(<ReconciliationReportCard />);
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Thiết bị đang ngoại tuyến, chưa tải được báo cáo đối soát.");
+
+      act(() => {
+        onlineManager.setOnline(true);
+      });
+      await user.click(screen.getByRole("button", { name: "Thử tải lại" }));
+
+      expect(await screen.findByText(/20\/11\/2026/)).toBeInTheDocument();
+    } finally {
+      act(() => {
+        onlineManager.setOnline(true);
+      });
+    }
   });
 });

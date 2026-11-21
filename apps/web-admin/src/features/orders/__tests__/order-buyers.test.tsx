@@ -1,6 +1,8 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { onlineManager } from "@tanstack/react-query";
 
 import { ExamListingView } from "@/features/exams/listing/listing-tab";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
@@ -77,6 +79,10 @@ describe("OrderBuyersView & Exam buyers link (AC-5, AC-6)", () => {
     resetMockNavigation("/orders/buyers", "");
   });
 
+  afterEach(() => {
+    onlineManager.setOnline(true);
+  });
+
   it("đếm đúng số tài khoản riêng biệt, gộp nhiều đơn của cùng người mua và hiển thị tổng đã trả + lượt còn lại (AC-5 một tài khoản mua hai đơn)", async () => {
     fakeApi.get("/api/v1/admin/exams", () =>
       ok({
@@ -103,6 +109,9 @@ describe("OrderBuyersView & Exam buyers link (AC-5, AC-6)", () => {
       "href",
       "/orders/DH-261120-0001",
     );
+    expect(
+      screen.getByRole("link", { name: "Xem đơn DH-261121-0002 của an.nguyen" }),
+    ).toHaveAttribute("href", "/orders/DH-261121-0002");
   });
 
   it("hiện trạng thái rỗng và lỗi có nút thử lại; không gọi /admin/exams khi thiếu EXAM.VIEW", async () => {
@@ -149,9 +158,8 @@ describe("OrderBuyersView & Exam buyers link (AC-5, AC-6)", () => {
       permissions: ["EXAM.VIEW", "EXAM.MODIFY"],
     });
 
-    await waitFor(() => {
-      expect(screen.queryByRole("link", { name: /Người mua/ })).not.toBeInTheDocument();
-    });
+    await screen.findByRole("form", { name: "Thông tin bán" });
+    expect(screen.queryByRole("link", { name: /Người mua/ })).not.toBeInTheDocument();
   });
 
   it("chế độ en: dùng số ít '1 paid order' và số nhiều '2 paid orders' cùng data-exam-content trên option động (D-1, D-6)", async () => {
@@ -226,5 +234,98 @@ describe("OrderBuyersView & Exam buyers link (AC-5, AC-6)", () => {
     } finally {
       rectSpy.mockRestore();
     }
+  });
+
+  it("tự động kéo page về trang hợp lệ khi URL vượt quá totalPages (R1-29)", async () => {
+    const requestedPages: number[] = [];
+    fakeApi.get("/api/v1/admin/exams", () =>
+      ok({
+        items: [{ id: EXAM_ID, code: "IELTS-01", name: "IELTS Academic 01" }],
+      }),
+    );
+    fakeApi.get("/api/v1/admin/exams/{id}/buyers", (req) => {
+      const params = req.options?.params as { query?: { page?: number } } | undefined;
+      const page = Number(params?.query?.page ?? 0);
+      requestedPages.push(page);
+      return ok(
+        makeBuyersResponse([makeBuyerRow()], {
+          page: 0,
+          size: 20,
+          totalItems: 1,
+          totalPages: 1,
+          totalBuyers: 1,
+        }),
+      );
+    });
+
+    resetMockNavigation("/orders/buyers", `?exam=${EXAM_ID}&page=5`);
+    renderOrdersUi(<OrderBuyersView />);
+
+    expect(await screen.findByText("Nguyen Van An")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestedPages).toContain(0);
+    });
+  });
+
+  it("khi ngoại tuyến và đổi bài thi, hiện trạng thái ngoại tuyến thay vì giữ dữ liệu cũ (R1-42)", async () => {
+    const user = userEvent.setup();
+    const exam2Id = "019a0000-0000-7000-8000-000000000202";
+    fakeApi.get("/api/v1/admin/exams", () =>
+      ok({
+        items: [
+          { id: EXAM_ID, code: "IELTS-01", name: "IELTS Academic 01" },
+          { id: exam2Id, code: "IELTS-02", name: "IELTS Academic 02" },
+        ],
+      }),
+    );
+    fakeApi.get("/api/v1/admin/exams/{id}/buyers", (req) => {
+      const params = req.options?.params as { path?: { id?: string } } | undefined;
+      if (params?.path?.id === EXAM_ID) {
+        return ok(makeBuyersResponse([makeBuyerRow()], { totalBuyers: 1, totalItems: 1 }));
+      }
+      return ok(makeBuyersResponse([], { totalBuyers: 0, totalItems: 0 }));
+    });
+
+    resetMockNavigation("/orders/buyers", `?exam=${EXAM_ID}`);
+    renderOrdersUi(<OrderBuyersView />);
+
+    expect(await screen.findByText("Nguyen Van An")).toBeInTheDocument();
+
+    act(() => {
+      onlineManager.setOnline(false);
+    });
+
+    const selectTrigger = screen.getByRole("combobox", { name: "Bài thi" });
+    await user.click(selectTrigger);
+    await user.click(await screen.findByRole("option", { name: /IELTS Academic 02/ }));
+
+    expect(await screen.findByText("Đang ngoại tuyến")).toBeInTheDocument();
+    expect(screen.queryByText("Nguyen Van An")).not.toBeInTheDocument();
+  });
+
+  it("hiện lỗi tải danh sách bài thi để chọn với nút Thử lại và khôi phục khi gọi lại thành công (R1-43)", async () => {
+    const user = userEvent.setup();
+    let examCalls = 0;
+    fakeApi.get("/api/v1/admin/exams", () => {
+      examCalls += 1;
+      if (examCalls === 1) {
+        return fail(500, { code: "INTERNAL_ERROR", message: "boom" });
+      }
+      return ok({
+        items: [{ id: EXAM_ID, code: "IELTS-01", name: "IELTS Academic 01" }],
+      });
+    });
+
+    resetMockNavigation("/orders/buyers", "");
+    renderOrdersUi(<OrderBuyersView />);
+
+    expect(
+      await screen.findByText("Không tải được danh sách bài thi để chọn."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+
+    const selectTrigger = await screen.findByRole("combobox", { name: "Bài thi" });
+    await user.click(selectTrigger);
+    expect(await screen.findByRole("option", { name: /IELTS Academic 01/ })).toBeInTheDocument();
   });
 });

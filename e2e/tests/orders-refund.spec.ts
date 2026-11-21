@@ -73,31 +73,42 @@ async function createCustomAdmin(permissionCodes: string[]) {
   let roleId = "";
   let userId = "";
 
-  const roleRes = await api.post(`${ADMIN_URL}/api/v1/admin/roles`, {
-    headers,
-    data: {
-      access: "MANAGE",
-      code: roleCode,
-      name: `FA3 Custom Role ${seq}`,
-      permissionCodes,
-      status: "ACTIVE",
-    },
-  });
-  expect(roleRes.status(), `create role ${roleCode}: ${await roleRes.text()}`).toBe(201);
-  roleId = ((await roleRes.json()) as { id: string }).id;
+  try {
+    const roleRes = await api.post(`${ADMIN_URL}/api/v1/admin/roles`, {
+      headers,
+      data: {
+        access: "MANAGE",
+        code: roleCode,
+        name: `FA3 Custom Role ${seq}`,
+        permissionCodes,
+        status: "ACTIVE",
+      },
+    });
+    expect(roleRes.status(), `create role ${roleCode}: ${await roleRes.text()}`).toBe(201);
+    roleId = ((await roleRes.json()) as { id: string }).id;
 
-  const userRes = await api.post(`${ADMIN_URL}/api/v1/admin/users`, {
-    headers,
-    data: {
-      username,
-      fullName: `FA3 Tester ${seq}`,
-      password: ACCOUNT_PASSWORD,
-      mustChangePassword: false,
-      roleIds: [roleId],
-    },
-  });
-  expect(userRes.status(), `create user ${username}: ${await userRes.text()}`).toBe(201);
-  userId = ((await userRes.json()) as { id: string }).id;
+    const userRes = await api.post(`${ADMIN_URL}/api/v1/admin/users`, {
+      headers,
+      data: {
+        username,
+        fullName: `FA3 Tester ${seq}`,
+        password: ACCOUNT_PASSWORD,
+        mustChangePassword: false,
+        roleIds: [roleId],
+      },
+    });
+    expect(userRes.status(), `create user ${username}: ${await userRes.text()}`).toBe(201);
+    userId = ((await userRes.json()) as { id: string }).id;
+  } catch (err) {
+    if (userId) {
+      await api.delete(`${ADMIN_URL}/api/v1/admin/users/${userId}`, { headers }).catch(() => {});
+    }
+    if (roleId) {
+      await api.delete(`${ADMIN_URL}/api/v1/admin/roles/${roleId}`, { headers }).catch(() => {});
+    }
+    await api.dispose().catch(() => {});
+    throw err;
+  }
 
   return {
     username,
@@ -172,12 +183,23 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
         await loginAsCredentials(examCtx, examOnlyAdmin.username, ACCOUNT_PASSWORD, "vi");
         const page = await examCtx.newPage();
         await page.goto(`${ADMIN_URL}/exams/${encodeURIComponent(sharedExamId)}/listing`);
+        await expect(page.getByRole("form", { name: "Thông tin bán" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Bài thi" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Đơn hàng" })).toHaveCount(0);
         await expect(page.getByRole("link", { name: /Người mua/ })).toHaveCount(0);
 
-        await page.goto(`${ADMIN_URL}/orders`);
-        await expect(page).toHaveURL(/\/forbidden/);
+        for (const forbiddenRoute of [
+          `${ADMIN_URL}/orders`,
+          `${ADMIN_URL}/orders/${encodeURIComponent(orderCode)}`,
+          `${ADMIN_URL}/orders/buyers?exam=${encodeURIComponent(sharedExamId)}`,
+        ]) {
+          await page.goto(forbiddenRoute);
+          await expect(
+            page.getByRole("heading", { name: "Bạn không có quyền vào trang này" }),
+          ).toBeVisible();
+          await expect(page.getByText(orderCode)).toHaveCount(0);
+          await expect(page.locator("table")).toHaveCount(0);
+        }
       } finally {
         await examCtx.close();
       }
@@ -189,15 +211,57 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
         const page = await orderCtx.newPage();
         await page.goto(`${ADMIN_URL}/orders`);
         await expect(page.getByRole("link", { name: "Đơn hàng" })).toBeVisible();
-        await expect(page.getByRole("link", { name: orderCode })).toBeVisible();
+        await expect(page.getByRole("link", { name: orderCode, exact: true })).toBeVisible();
 
-        await page.getByRole("link", { name: orderCode }).click();
+        await page.getByRole("link", { name: orderCode, exact: true }).click();
         await page.waitForURL(new RegExp(`/orders/${encodeURIComponent(orderCode)}`));
         await expect(page.getByRole("heading", { name: new RegExp(orderCode) })).toBeVisible();
         await expect(page.getByRole("button", { name: "Hoàn tiền" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Tiếp tục cấp quyền" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Xử lý tiền về muộn" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Tra cứu lại" })).toHaveCount(0);
+
+        // Non-vacuous AC-10 check on an eligible PAID order without ORDER.RECOVER
+        const detailPattern = `**/api/v1/admin/orders/${encodeURIComponent(orderCode)}`;
+        await page.route(detailPattern, async (route) => {
+          const response = await route.fetch();
+          const payload = (await response.json()) as Record<string, unknown> & {
+            payments?: Array<Record<string, unknown>>;
+          };
+          const payments = Array.isArray(payload.payments)
+            ? payload.payments.map((p, idx) =>
+                idx === 0
+                  ? {
+                      ...p,
+                      state: "SUCCEEDED",
+                      duplicate: false,
+                      refundedAmountVnd: 0,
+                      refundableAmountVnd: p.amountVnd ?? payload.amountDueVnd ?? 100000,
+                      refunds: [],
+                    }
+                  : p,
+              )
+            : [];
+          await route.fulfill({
+            response,
+            json: {
+              ...payload,
+              state: "PAID",
+              paymentStatus: "SUCCEEDED",
+              refundStatus: "NONE",
+              payments,
+            },
+          });
+        });
+        try {
+          await page.reload();
+          await expect(page.getByRole("heading", { name: new RegExp(orderCode) })).toBeVisible();
+          await expect(page.getByText("Đã thu tiền · Chờ cấp quyền").first()).toBeVisible();
+          await expect(page.getByText("Đã thu tiền nhưng chưa cấp quyền")).toBeVisible();
+          await expect(page.getByRole("button", { name: "Tiếp tục cấp quyền" })).toHaveCount(0);
+        } finally {
+          await page.unroute(detailPattern);
+        }
       } finally {
         await orderCtx.close();
       }
@@ -264,7 +328,7 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
           const page = await ctx.newPage();
 
           await page.goto(`${ADMIN_URL}/orders`);
-          await expect(page.getByRole("link", { name: orderCode })).toBeVisible();
+          await expect(page.getByRole("link", { name: orderCode, exact: true })).toBeVisible();
           await expectMatrixClean(page, "orders-list", cell, {
             elementOverflow: { scope: "main", allowAccessibleScroller: true },
           });
