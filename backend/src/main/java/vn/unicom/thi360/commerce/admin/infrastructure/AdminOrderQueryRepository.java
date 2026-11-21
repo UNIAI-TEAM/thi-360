@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 import vn.unicom.thi360.commerce.admin.api.AdminOrderDetailResponse.GrantView;
+import vn.unicom.thi360.commerce.admin.api.AdminOrderSummaryItem;
 import vn.unicom.thi360.commerce.admin.api.ExamBuyerOrderRef;
 import vn.unicom.thi360.commerce.admin.api.OrderAttentionSummary;
 import vn.unicom.thi360.commerce.admin.domain.AdminPaymentStatus;
@@ -202,7 +203,7 @@ public class AdminOrderQueryRepository {
 
         String sql = """
                 SELECT o.id, o.code, o.user_id, o.buyer_username, o.buyer_full_name, o.product_type,
-                       o.exam_id, o.product_code, o.product_name, o.list_price_vnd, o.amount_due_vnd,
+                       o.exam_id, o.bundle_id, o.product_code, o.product_name, o.list_price_vnd, o.amount_due_vnd,
                        o.payment_method, o.state, o.needs_review, o.created_at, o.paid_at, o.fulfilled_at
                 FROM commerce.purchase_order o%s
                 ORDER BY %s
@@ -217,6 +218,7 @@ public class AdminOrderQueryRepository {
                 rs.getString("buyer_full_name"),
                 ProductType.valueOf(rs.getString("product_type")),
                 rs.getObject("exam_id", UUID.class),
+                rs.getObject("bundle_id", UUID.class),
                 rs.getString("product_code"),
                 rs.getString("product_name"),
                 rs.getLong("list_price_vnd"),
@@ -228,6 +230,29 @@ public class AdminOrderQueryRepository {
                 toInstant(rs.getTimestamp("paid_at")),
                 toInstant(rs.getTimestamp("fulfilled_at"))));
         return new PagedOrderRows(rows, total);
+    }
+
+    public Map<UUID, List<AdminOrderSummaryItem>> findOrderSummaryItemsByOrderIds(Collection<UUID> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return Map.of();
+        }
+        String sql = """
+                SELECT order_id, exam_id, exam_code, exam_name, position
+                FROM commerce.purchase_order_item
+                WHERE order_id IN (:orderIds)
+                ORDER BY order_id ASC, position ASC, id ASC
+                """;
+        Map<UUID, List<AdminOrderSummaryItem>> result = new HashMap<>();
+        jdbc.query(sql, new MapSqlParameterSource("orderIds", orderIds), rs -> {
+            UUID orderId = rs.getObject("order_id", UUID.class);
+            AdminOrderSummaryItem item = new AdminOrderSummaryItem(
+                    rs.getObject("exam_id", UUID.class),
+                    rs.getString("exam_code"),
+                    rs.getString("exam_name"),
+                    rs.getInt("position"));
+            result.computeIfAbsent(orderId, ignored -> new ArrayList<>()).add(item);
+        });
+        return result;
     }
 
     public Map<UUID, List<PaymentSnapshot>> findPaymentSnapshotsByOrderIds(Collection<UUID> orderIds) {
@@ -544,6 +569,7 @@ public class AdminOrderQueryRepository {
             String buyerFullName,
             ProductType productType,
             UUID examId,
+            UUID bundleId,
             String productCode,
             String productName,
             long listPriceVnd,
@@ -555,6 +581,28 @@ public class AdminOrderQueryRepository {
             Instant paidAt,
             Instant fulfilledAt
     ) {
+        public OrderRow(
+                UUID orderId,
+                String code,
+                UUID buyerUserId,
+                String buyerUsername,
+                String buyerFullName,
+                ProductType productType,
+                UUID examId,
+                String productCode,
+                String productName,
+                long listPriceVnd,
+                long amountDueVnd,
+                PaymentMethod paymentMethod,
+                OrderState orderState,
+                boolean needsReview,
+                Instant createdAt,
+                Instant paidAt,
+                Instant fulfilledAt) {
+            this(orderId, code, buyerUserId, buyerUsername, buyerFullName, productType, examId, null,
+                    productCode, productName, listPriceVnd, amountDueVnd, paymentMethod, orderState,
+                    needsReview, createdAt, paidAt, fulfilledAt);
+        }
     }
 
     public record PagedOrderRows(List<OrderRow> rows, long totalItems) {

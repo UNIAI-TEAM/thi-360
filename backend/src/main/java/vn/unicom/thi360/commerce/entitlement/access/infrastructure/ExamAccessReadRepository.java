@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import vn.unicom.thi360.commerce.entitlement.access.api.MyExamBundleRef;
+import vn.unicom.thi360.commerce.order.domain.ProductType;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 
 /**
@@ -28,14 +30,47 @@ public class ExamAccessReadRepository {
         this.jdbc = jdbc;
     }
 
-    /** The exam products (never a bundle, CM-6) whose normalised code is in the list. */
+    /** The storefront products (both single exams and bundles, TM 10.2 & 16.4) whose normalised code is in the list. */
     public List<ProductRef> findProductsByCodes(Collection<String> normalizedCodes) {
         if (normalizedCodes.isEmpty()) {
             return List.of();
         }
-        return jdbc.query(PRODUCT_SELECT + " WHERE product_type = 'EXAM' AND code_normalized = ANY (?)",
+        return jdbc.query(PRODUCT_SELECT + " WHERE code_normalized = ANY (?)",
                 ps -> ps.setArray(1, ps.getConnection().createArrayOf("text", normalizedCodes.toArray())),
                 (rs, row) -> product(rs));
+    }
+
+    /** Purchased bundles containing each exam for {@code userId}, keyed by exam ID (TM 16.4). */
+    public Map<UUID, List<MyExamBundleRef>> findPurchasedBundlesByUser(UUID userId) {
+        Map<UUID, List<MyExamBundleRef>> result = new HashMap<>();
+        jdbc.query("""
+                SELECT exam_id, bundle_id, product_code, product_name
+                FROM (
+                    SELECT DISTINCT ON (i.exam_id, o.bundle_id)
+                           i.exam_id,
+                           o.bundle_id,
+                           o.product_code,
+                           o.product_name
+                    FROM commerce.purchase_order o
+                    JOIN commerce.purchase_order_item i ON i.order_id = o.id
+                    WHERE o.user_id = ?
+                      AND o.product_type = 'BUNDLE'
+                      AND o.bundle_id IS NOT NULL
+                      AND o.state IN ('PAID', 'FULFILLED')
+                    ORDER BY i.exam_id, o.bundle_id, o.paid_at DESC NULLS LAST, o.created_at DESC, o.id DESC
+                ) latest_bundles
+                ORDER BY product_code ASC, bundle_id ASC
+                """,
+                rs -> {
+                    UUID examId = rs.getObject("exam_id", UUID.class);
+                    MyExamBundleRef ref = new MyExamBundleRef(
+                            rs.getObject("bundle_id", UUID.class),
+                            rs.getString("product_code"),
+                            rs.getString("product_name"));
+                    result.computeIfAbsent(examId, ignored -> new ArrayList<>()).add(ref);
+                },
+                userId);
+        return result;
     }
 
     /** The exam products of these exams. */
@@ -100,16 +135,35 @@ public class ExamAccessReadRepository {
     }
 
     private static final String PRODUCT_SELECT = """
-            SELECT exam_id, code, code_normalized, sale_state, card::text AS card
+            SELECT product_type, exam_id, bundle_id, code, code_normalized, sale_state, card::text AS card,
+                   detail::text AS detail
             FROM commerce.storefront_product""";
 
     private static ProductRef product(java.sql.ResultSet rs) throws SQLException {
-        return new ProductRef(rs.getObject("exam_id", UUID.class), rs.getString("code"),
-                rs.getString("code_normalized"), SaleState.valueOf(rs.getString("sale_state")), rs.getString("card"));
+        return new ProductRef(
+                ProductType.valueOf(rs.getString("product_type")),
+                rs.getObject("exam_id", UUID.class),
+                rs.getObject("bundle_id", UUID.class),
+                rs.getString("code"),
+                rs.getString("code_normalized"),
+                SaleState.valueOf(rs.getString("sale_state")),
+                rs.getString("card"),
+                rs.getString("detail"));
     }
 
-    /** One storefront row: the product code of an exam, whether it is still on sale, and its prebuilt card JSON. */
-    public record ProductRef(UUID examId, String code, String codeNormalized, SaleState saleState, String card) {
+    /** One storefront row: the product code of an exam or bundle, sale state, prebuilt card JSON, and detail JSON. */
+    public record ProductRef(
+            ProductType productType,
+            UUID examId,
+            UUID bundleId,
+            String code,
+            String codeNormalized,
+            SaleState saleState,
+            String card,
+            String detail) {
+        public ProductRef(UUID examId, String code, String codeNormalized, SaleState saleState, String card) {
+            this(ProductType.EXAM, examId, null, code, codeNormalized, saleState, card, null);
+        }
     }
 
     /** One grant of an entitlement: whether it still has a usable attempt, and the option codes it bought. */

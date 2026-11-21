@@ -269,6 +269,72 @@ public class PurchaseOrder {
                 PaymentMethod.FREE, OrderState.PAID, null, now, now);
     }
 
+    public static PurchaseOrder createPendingBundleOrder(
+            UUID id,
+            String code,
+            UUID userId,
+            String buyerUsername,
+            String buyerFullName,
+            UUID bundleId,
+            int bundleVersionNo,
+            String productCode,
+            String productName,
+            long listPriceVnd,
+            UUID promotionId,
+            long promotionDiscountVnd,
+            UUID voucherId,
+            String voucherCode,
+            long voucherDiscountVnd,
+            DiscountApplied discountApplied,
+            long amountDueVnd,
+            int attemptsPerExam,
+            Map<String, Object> benefits,
+            String resultView,
+            Instant expiresAt,
+            Instant now) {
+        return new PurchaseOrder(
+                id, code, userId, buyerUsername, buyerFullName, ProductType.BUNDLE,
+                null, null,
+                Objects.requireNonNull(bundleId, "bundleId must not be null"),
+                bundleVersionNo,
+                List.of(), productCode, productName,
+                listPriceVnd, promotionId, promotionDiscountVnd, voucherId, voucherCode, voucherDiscountVnd,
+                discountApplied, amountDueVnd, attemptsPerExam, benefits, resultView,
+                PaymentMethod.VNPAY, OrderState.PENDING_PAYMENT, expiresAt, null, now);
+    }
+
+    public static PurchaseOrder createFreeBundleOrder(
+            UUID id,
+            String code,
+            UUID userId,
+            String buyerUsername,
+            String buyerFullName,
+            UUID bundleId,
+            int bundleVersionNo,
+            String productCode,
+            String productName,
+            long listPriceVnd,
+            UUID promotionId,
+            long promotionDiscountVnd,
+            UUID voucherId,
+            String voucherCode,
+            long voucherDiscountVnd,
+            DiscountApplied discountApplied,
+            int attemptsPerExam,
+            Map<String, Object> benefits,
+            String resultView,
+            Instant now) {
+        return new PurchaseOrder(
+                id, code, userId, buyerUsername, buyerFullName, ProductType.BUNDLE,
+                null, null,
+                Objects.requireNonNull(bundleId, "bundleId must not be null"),
+                bundleVersionNo,
+                List.of(), productCode, productName,
+                listPriceVnd, promotionId, promotionDiscountVnd, voucherId, voucherCode, voucherDiscountVnd,
+                discountApplied, 0L, attemptsPerExam, benefits, resultView,
+                PaymentMethod.FREE, OrderState.PAID, null, now, now);
+    }
+
     public void markPaid(Instant now) {
         this.state = OrderState.PAID;
         if (this.paidAt == null) {

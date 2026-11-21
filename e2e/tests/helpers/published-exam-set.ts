@@ -26,6 +26,18 @@ export interface PublishedExam {
   };
 }
 
+export interface PublishedBundle {
+  code: string;
+  name: string;
+  summary: string;
+  description: string;
+  kind: string;
+  examCodes: string[];
+  priceVnd: number;
+  attemptsPerExam: number;
+  resultView: string;
+}
+
 export interface PublishedExamSet {
   version: number;
   note: string;
@@ -41,6 +53,7 @@ export interface PublishedExamSet {
     assets: Array<{ role: string; fileName: string }>;
   };
   exams: PublishedExam[];
+  sp2eBundle?: PublishedBundle;
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -87,6 +100,14 @@ export function imageQuestion(): PublishedExamSet["imageQuestion"] {
 
 export function accounts(): PublishedExamSet["accounts"] {
   return publishedExamSet().accounts;
+}
+
+export function sp2eBundle(): PublishedBundle {
+  const bundle = publishedExamSet().sp2eBundle;
+  if (!bundle) {
+    throw new Error("Missing sp2eBundle in published-exam-set.json");
+  }
+  return bundle;
 }
 
 export interface WaitForPublishedExamSetOptions {
