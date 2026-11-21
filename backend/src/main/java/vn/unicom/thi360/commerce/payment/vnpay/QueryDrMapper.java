@@ -91,21 +91,21 @@ public final class QueryDrMapper {
             String expectedTxnRef,
             long expectedAmountVnd,
             String txnStatus) {
+        String returnedTxnRef = trimToNull(result.txnRef());
+        String expectedRef = trimToNull(expectedTxnRef);
+        if (returnedTxnRef == null || expectedRef == null || !returnedTxnRef.equals(expectedRef)) {
+            return new QueryDrDecision(
+                    DecisionKind.UNKNOWN_NEEDS_REVIEW,
+                    "QUERYDR_TXN_REF_MISMATCH",
+                    "VNPAY_QUERYDR_TXN_REF_MISMATCH",
+                    false);
+        }
         if ("00".equals(txnStatus)) {
             if (result.amountVnd() == null || result.amountVnd() != expectedAmountVnd) {
                 return new QueryDrDecision(
                         DecisionKind.UNKNOWN_NEEDS_REVIEW,
                         "QUERYDR_AMOUNT_MISMATCH",
                         "VNPAY_QUERYDR_AMOUNT_MISMATCH",
-                        false);
-            }
-            String returnedTxnRef = trimToNull(result.txnRef());
-            String expectedRef = trimToNull(expectedTxnRef);
-            if (returnedTxnRef == null || expectedRef == null || !returnedTxnRef.equals(expectedRef)) {
-                return new QueryDrDecision(
-                        DecisionKind.UNKNOWN_NEEDS_REVIEW,
-                        "QUERYDR_TXN_REF_MISMATCH",
-                        "VNPAY_QUERYDR_TXN_REF_MISMATCH",
                         false);
             }
             return new QueryDrDecision(DecisionKind.SUCCEEDED, "QUERYDR_SUCCEEDED_00", null, false);

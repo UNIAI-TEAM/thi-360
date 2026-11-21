@@ -205,6 +205,81 @@ class QueryDrClaimRepositoryIT extends AbstractIntegrationTest {
                 .isEqualTo("CREATED");
     }
 
+    @Test
+    void transitionAgedPaymentsPastMaxAgeSkipsLockedRowsWithoutBlockingAndClearsNextQueryAt() throws Exception {
+        Instant baseNow = Instant.parse("2026-11-21T12:00:00Z");
+        LearnerAccount buyer = fixtures.createLearner();
+        StoredTestProduct product = fixtures.insertOnSaleProduct("HSA", 120_000L, 1);
+        StubOrder order = fixtures.insertStubOrder(
+                buyer, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                120_000L, baseNow.minusSeconds(60), null);
+
+        Instant agedCreatedAt = baseNow.minus(MAX_AGE).minus(Duration.ofMinutes(5));
+        Timestamp pastCooldown = Timestamp.from(baseNow.minusSeconds(30));
+        StubPayment lockedCreated = insertAt(order, 1, PaymentState.CREATED, agedCreatedAt);
+        StubPayment unlockedCreated = insertAt(order, 2, PaymentState.CREATED, agedCreatedAt);
+        StubPayment unlockedUnknown = insertAt(order, 3, PaymentState.UNKNOWN, agedCreatedAt);
+        jdbc.update(
+                "UPDATE commerce.payment SET next_query_at = ? WHERE id IN (?, ?, ?)",
+                pastCooldown,
+                lockedCreated.id(),
+                unlockedCreated.id(),
+                unlockedUnknown.id());
+
+        CountDownLatch lockedLatch = new CountDownLatch(1);
+        CountDownLatch releaseLatch = new CountDownLatch(1);
+        try (ExecutorService exec = Executors.newSingleThreadExecutor()) {
+            Future<?> locker = exec.submit(() -> new TransactionTemplate(txManager).executeWithoutResult(status -> {
+                jdbc.queryForObject(
+                        "SELECT id FROM commerce.payment WHERE id = ? FOR UPDATE",
+                        UUID.class,
+                        lockedCreated.id());
+                lockedLatch.countDown();
+                try {
+                    if (!releaseLatch.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("Timed out waiting for releaseLatch");
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(ex);
+                }
+            }));
+
+            try {
+                assertThat(lockedLatch.await(5, TimeUnit.SECONDS)).isTrue();
+                int updated = claimRepository.transitionAgedPaymentsPastMaxAge(
+                        baseNow.minus(MAX_AGE), baseNow);
+                assertThat(updated).isGreaterThanOrEqualTo(2);
+
+                assertThat(jdbc.queryForObject(
+                        "SELECT state FROM commerce.payment WHERE id = ?", String.class, unlockedCreated.id()))
+                        .isEqualTo("UNKNOWN");
+                assertThat(jdbc.queryForObject(
+                        "SELECT next_query_at FROM commerce.payment WHERE id = ?",
+                        OffsetDateTime.class, unlockedCreated.id()))
+                        .isNull();
+                assertThat(jdbc.queryForObject(
+                        "SELECT state FROM commerce.payment WHERE id = ?", String.class, unlockedUnknown.id()))
+                        .isEqualTo("UNKNOWN");
+                assertThat(jdbc.queryForObject(
+                        "SELECT next_query_at FROM commerce.payment WHERE id = ?",
+                        OffsetDateTime.class, unlockedUnknown.id()))
+                        .isNull();
+            } finally {
+                releaseLatch.countDown();
+            }
+            locker.get(10, TimeUnit.SECONDS);
+
+            assertThat(jdbc.queryForObject(
+                    "SELECT state FROM commerce.payment WHERE id = ?", String.class, lockedCreated.id()))
+                    .isEqualTo("CREATED");
+            assertThat(jdbc.queryForObject(
+                    "SELECT next_query_at FROM commerce.payment WHERE id = ?",
+                    OffsetDateTime.class, lockedCreated.id()))
+                    .isNotNull();
+        }
+    }
+
     private StubPayment insertAt(StubOrder order, int seq, PaymentState state, Instant createdAt) {
         StubPayment p = fixtures.insertStubPayment(order, seq, 100_000L, state);
         jdbc.update(

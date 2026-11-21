@@ -5,14 +5,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,6 +24,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -317,37 +324,55 @@ public class RealVnpayGateway implements VnpayGateway, DisposableBean {
             throw new IllegalStateException("Failed to serialize VNPAY " + command + " request payload", ex);
         }
 
+        Duration readTimeout = clientProperties.readTimeout();
+        long timeoutNanos = readTimeout.compareTo(Duration.ofDays(365)) > 0
+                ? TimeUnit.DAYS.toNanos(365)
+                : Math.max(1L, readTimeout.toNanos());
+
         HttpRequest httpRequest = HttpRequest.newBuilder(apiUri)
-                .timeout(clientProperties.readTimeout())
+                .timeout(readTimeout)
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
                 .build();
 
-        HttpResponse<InputStream> response;
+        HttpResponse<byte[]> response;
+        CompletableFuture<HttpResponse<byte[]>> responseFuture = null;
         try {
-            response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
-        } catch (HttpTimeoutException ex) {
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+            responseFuture = httpClient.sendAsync(httpRequest, boundedBodyHandler(command));
+            response = responseFuture.get(timeoutNanos, TimeUnit.NANOSECONDS);
+        } catch (TimeoutException ex) {
+            if (responseFuture != null) {
+                responseFuture.cancel(true);
+            }
             throw new VnpayTransportException(true, null, "VNPAY " + command + " timed out", ex);
         } catch (InterruptedException ex) {
+            if (responseFuture != null) {
+                responseFuture.cancel(true);
+            }
             Thread.currentThread().interrupt();
             throw new VnpayTransportException(false, null, "VNPAY " + command + " interrupted", ex);
-        } catch (IOException ex) {
+        } catch (ExecutionException | RuntimeException ex) {
+            VnpayTransportException nestedTransport = findCause(ex, VnpayTransportException.class);
+            if (nestedTransport != null) {
+                throw nestedTransport;
+            }
+            HttpTimeoutException nestedTimeout = findCause(ex, HttpTimeoutException.class);
+            if (nestedTimeout != null) {
+                throw new VnpayTransportException(true, null, "VNPAY " + command + " timed out", ex);
+            }
             throw new VnpayTransportException(false, null, "VNPAY " + command + " network error", ex);
         }
 
         int statusCode = response.statusCode();
-        String rawBody;
-        try (InputStream bodyStream = response.body()) {
-            if (statusCode < 200 || statusCode >= 300) {
-                throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " HTTP " + statusCode);
-            }
-            rawBody = readBoundedUtf8(bodyStream, statusCode, command);
-        } catch (HttpTimeoutException ex) {
-            throw new VnpayTransportException(true, statusCode, "VNPAY " + command + " timed out", ex);
-        } catch (IOException ex) {
-            throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " network error", ex);
+        if (statusCode < 200 || statusCode >= 300) {
+            throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " HTTP " + statusCode);
         }
+        byte[] bodyBytes = response.body();
+        String rawBody = bodyBytes == null ? "" : new String(bodyBytes, StandardCharsets.UTF_8);
 
         if (!StringUtils.hasText(rawBody)) {
             throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " empty response");
@@ -364,23 +389,98 @@ public class RealVnpayGateway implements VnpayGateway, DisposableBean {
         }
     }
 
-    private static String readBoundedUtf8(InputStream bodyStream, int statusCode, String command) throws IOException {
-        if (bodyStream == null) {
-            return "";
-        }
-        byte[] chunk = new byte[4096];
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int total = 0;
-        int read;
-        while ((read = bodyStream.read(chunk)) != -1) {
-            total += read;
-            if (total > MAX_RESPONSE_BYTES) {
-                throw new VnpayTransportException(
-                        false, statusCode, "VNPAY " + command + " response exceeds " + MAX_RESPONSE_BYTES + " bytes");
+    private static HttpResponse.BodyHandler<byte[]> boundedBodyHandler(String command) {
+        return responseInfo -> {
+            int statusCode = responseInfo.statusCode();
+            if (statusCode < 200 || statusCode >= 300) {
+                return HttpResponse.BodySubscribers.replacing(new byte[0]);
             }
-            out.write(chunk, 0, read);
+            return new BoundedBytesSubscriber(statusCode, command);
+        };
+    }
+
+    private static <T extends Throwable> T findCause(Throwable throwable, Class<T> targetType) {
+        Throwable current = throwable;
+        for (int depth = 0; current != null && depth < 16; depth++) {
+            if (targetType.isInstance(current)) {
+                return targetType.cast(current);
+            }
+            current = current.getCause();
         }
-        return out.toString(StandardCharsets.UTF_8);
+        return null;
+    }
+
+    private static final class BoundedBytesSubscriber implements HttpResponse.BodySubscriber<byte[]> {
+
+        private final int statusCode;
+        private final String command;
+        private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        private final CompletableFuture<byte[]> result = new CompletableFuture<>();
+        private Flow.Subscription subscription;
+        private long totalBytes;
+        private boolean failed;
+
+        private BoundedBytesSubscriber(int statusCode, String command) {
+            this.statusCode = statusCode;
+            this.command = command;
+        }
+
+        @Override
+        public CompletionStage<byte[]> getBody() {
+            return result;
+        }
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            if (this.subscription != null) {
+                subscription.cancel();
+                return;
+            }
+            this.subscription = Objects.requireNonNull(subscription, "subscription must not be null");
+            this.subscription.request(Long.MAX_VALUE);
+        }
+
+        @Override
+        public void onNext(List<ByteBuffer> items) {
+            if (failed || result.isDone()) {
+                return;
+            }
+            for (ByteBuffer item : items) {
+                int remaining = item.remaining();
+                if (remaining == 0) {
+                    continue;
+                }
+                if (totalBytes + remaining > MAX_RESPONSE_BYTES) {
+                    failed = true;
+                    if (subscription != null) {
+                        subscription.cancel();
+                    }
+                    result.completeExceptionally(new VnpayTransportException(
+                            false,
+                            statusCode,
+                            "VNPAY " + command + " response exceeds " + MAX_RESPONSE_BYTES + " bytes"));
+                    return;
+                }
+                byte[] chunk = new byte[remaining];
+                item.get(chunk);
+                buffer.write(chunk, 0, chunk.length);
+                totalBytes += remaining;
+            }
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            if (!failed) {
+                result.completeExceptionally(throwable);
+            }
+        }
+
+        @Override
+        public void onComplete() {
+            if (!failed && !result.isDone()) {
+                result.complete(buffer.toByteArray());
+            }
+        }
     }
 
     private static long scaleAndValidateAmount(long amountVnd) {

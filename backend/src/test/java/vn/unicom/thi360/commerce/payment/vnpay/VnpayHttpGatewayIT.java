@@ -502,6 +502,30 @@ class VnpayHttpGatewayIT {
                 null, "DH261121ERR99", "20261121100000", null, null, null, null));
         assertThat(err99.signatureValid()).isTrue();
         assertThat(err99.responseCode()).isEqualTo("99");
+
+        // 4. R2-7: Phản hồi lỗi != "00" ("91") nhưng mang vnp_TmnCode hoặc vnp_Command sai vẫn phải bị từ chối.
+        for (String[] cmdAndTmn : new String[][] {
+            {"querydr", "OTHER-TMN"},
+            {"refund", TEST_TMN}
+        }) {
+            handlerRef.set(req -> {
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("vnp_ResponseId", "resp_91_bad_env");
+                resp.put("vnp_Command", cmdAndTmn[0]);
+                resp.put("vnp_ResponseCode", "91");
+                resp.put("vnp_Message", "Not Found");
+                resp.put("vnp_TmnCode", cmdAndTmn[1]);
+                resp.put("vnp_SecureHash", signQueryDrResponse(resp));
+                return MockResponse.json(200, resp);
+            });
+            QueryDrResult res91 = gateway.queryDr(new QueryDrRequest(
+                    null, "DH261121ERR91ENV", "20261121100000", null, null, null, null));
+            assertThat(res91.signatureValid()).isFalse();
+            assertThat(res91.responseCode()).isNull();
+            assertThat(res91.txnRef()).isNull();
+            assertThat(res91.amountVnd()).isNull();
+            assertThat(res91.transactionStatus()).isNull();
+        }
     }
 
     @Test
@@ -551,6 +575,62 @@ class VnpayHttpGatewayIT {
                 HttpResponse.BodyHandlers.ofString());
         assertThat(ping.statusCode()).isEqualTo(200);
         externalClient.close();
+
+        // R2-12: Gateway dựng bằng constructor 5 tham số (ownsHttpClient = true) phải đóng HttpClient khi destroy().
+        RealVnpayGateway ownedGateway = createGateway(apiUrl, Duration.ofSeconds(2));
+        assertThat(ownedGateway.queryDr(new QueryDrRequest(
+                null, "DH_OWNED_BEFORE_CLOSE", "20261121100000", null, null, null, null)).signatureValid()).isTrue();
+        ownedGateway.destroy();
+        assertThatThrownBy(() -> ownedGateway.queryDr(new QueryDrRequest(
+                null, "DH_OWNED_AFTER_CLOSE", "20261121100000", null, null, null, null)))
+                .isInstanceOf(VnpayTransportException.class)
+                .satisfies(ex -> {
+                    VnpayTransportException tex = (VnpayTransportException) ex;
+                    assertThat(tex.isTimeout()).isFalse();
+                    assertThat(tex.getHttpStatus()).isNull();
+                    assertThat(stackTraceOf(ex)).doesNotContain(TEST_SECRET);
+                });
+    }
+
+    @Test
+    void midBodyReadTimeoutThrowsVnpayTransportTimeoutWithinReadTimeout() {
+        server.createContext("/merchant_webapi/api/mid-body-stall", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] partial = "{\"vnp_ResponseCode\":".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write(partial);
+            exchange.getResponseBody().flush();
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            try {
+                exchange.close();
+            } catch (Exception ignored) {
+                // Client may have already closed the socket when readTimeout elapsed.
+            }
+        });
+
+        String stallUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/merchant_webapi/api/mid-body-stall";
+        RealVnpayGateway stallGateway = createGateway(stallUrl, Duration.ofMillis(400));
+        try {
+            long startedNs = System.nanoTime();
+            assertThatThrownBy(() -> stallGateway.queryDr(new QueryDrRequest(
+                    null, "DH_BODY_STALL", "20261121100000", null, null, null, null)))
+                    .isInstanceOf(VnpayTransportException.class)
+                    .satisfies(ex -> {
+                        VnpayTransportException tex = (VnpayTransportException) ex;
+                        assertThat(tex.isTimeout()).isTrue();
+                        assertThat(tex.getHttpStatus()).isNull();
+                        assertThat(stackTraceOf(ex)).doesNotContain(TEST_SECRET);
+                    });
+            long elapsedMs = (System.nanoTime() - startedNs) / 1_000_000L;
+            assertThat(elapsedMs).isLessThan(1200L);
+        } finally {
+            stallGateway.destroy();
+        }
     }
 
     @Test

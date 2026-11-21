@@ -179,6 +179,9 @@ public class QueryDrService {
     /** Tra cứu trực tiếp một lần thanh toán theo ID (kể cả khi đã {@code FAILED}, phục vụ đối soát). */
     public ApplyResult queryPaymentNow(UUID paymentId) {
         Objects.requireNonNull(paymentId, "paymentId must not be null");
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("QueryDrService.queryPaymentNow must run outside any database transaction");
+        }
         ClaimedPayment target = readOnlyTx.execute(status -> {
             Payment payment = paymentRepository.findById(paymentId).orElse(null);
             if (payment == null) {
@@ -332,8 +335,10 @@ public class QueryDrService {
             String requestId,
             RuntimeException ex) {
         String errorType = ex.getClass().getSimpleName();
-        log.error("Unexpected non-transport error calling VNPAY querydr: txnRef={}, orderCode={}, requestId={}, errorType={}",
-                claimed.txnRef(), claimed.orderCode(), requestId, errorType, ex);
+        String redactedMessage = redactConfiguredSecret(ex.getMessage());
+        String safeDetail = StringUtils.hasText(redactedMessage) ? redactedMessage : errorType;
+        log.error("Unexpected non-transport error calling VNPAY querydr: txnRef={}, orderCode={}, requestId={}, errorType={}, detail={}",
+                claimed.txnRef(), claimed.orderCode(), requestId, errorType, safeDetail);
 
         Map<String, Object> rawPayload = new LinkedHashMap<>();
         rawPayload.put("_requestId", requestId);
@@ -374,7 +379,7 @@ public class QueryDrService {
                 }
             });
         }
-        raw.putIfAbsent("_requestId", requestId);
+        raw.put("_requestId", requestId);
         return Map.copyOf(raw);
     }
 

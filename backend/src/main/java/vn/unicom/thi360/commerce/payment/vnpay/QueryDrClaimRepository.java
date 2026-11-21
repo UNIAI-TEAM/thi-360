@@ -107,6 +107,21 @@ public class QueryDrClaimRepository {
             ORDER BY c.attempt_seq ASC, c.id ASC
             """;
 
+    private static final String TRANSITION_AGED_PAYMENTS_SQL = """
+            WITH aged AS (
+                SELECT id
+                FROM commerce.payment
+                WHERE created_at < ?
+                  AND (state = 'CREATED' OR (state = 'UNKNOWN' AND next_query_at IS NOT NULL))
+                ORDER BY order_id ASC, attempt_seq ASC, id ASC
+                FOR UPDATE SKIP LOCKED
+            )
+            UPDATE commerce.payment p
+            SET state = 'UNKNOWN', next_query_at = NULL, updated_at = ?, version = p.version + 1
+            FROM aged
+            WHERE p.id = aged.id
+            """;
+
     private static final RowMapper<ClaimedPayment> ROW_MAPPER = QueryDrClaimRepository::mapRow;
 
     private final JdbcTemplate jdbcTemplate;
@@ -186,22 +201,8 @@ public class QueryDrClaimRepository {
         Objects.requireNonNull(now, "now must not be null");
         OffsetDateTime cutoffUtc = utc(cutoff);
         OffsetDateTime nowUtc = utc(now);
-        Integer updated = requiresNewTx.execute(status -> {
-            int createdTransitioned = jdbcTemplate.update("""
-                    UPDATE commerce.payment
-                    SET state = 'UNKNOWN', next_query_at = NULL, updated_at = ?, version = version + 1
-                    WHERE state = 'CREATED'
-                      AND created_at < ?
-                    """, nowUtc, cutoffUtc);
-            int unknownCleared = jdbcTemplate.update("""
-                    UPDATE commerce.payment
-                    SET next_query_at = NULL, updated_at = ?, version = version + 1
-                    WHERE state = 'UNKNOWN'
-                      AND created_at < ?
-                      AND next_query_at IS NOT NULL
-                    """, nowUtc, cutoffUtc);
-            return createdTransitioned + unknownCleared;
-        });
+        Integer updated = requiresNewTx.execute(status -> jdbcTemplate.update(
+                TRANSITION_AGED_PAYMENTS_SQL, cutoffUtc, nowUtc));
         return updated == null ? 0 : updated;
     }
 

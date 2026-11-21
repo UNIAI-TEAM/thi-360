@@ -81,12 +81,18 @@ public class OrderExpiryService {
         ExpiredOrderCandidate cursor = null;
         int batchSize = orderExpiryProperties.batchSize();
         for (int batch = 0; batch < MAX_BATCHES; batch++) {
+            if (Thread.currentThread().isInterrupted()) {
+                break;
+            }
             List<ExpiredOrderCandidate> candidates = orderExpiryRepository.findExpiredPendingOrderIds(
                     clock.instant(), queryDrProperties.maxAge(), cursor, batchSize);
             if (candidates.isEmpty()) {
                 break;
             }
             for (ExpiredOrderCandidate candidate : candidates) {
+                if (Thread.currentThread().isInterrupted()) {
+                    break;
+                }
                 try {
                     if (processExpiredOrder(candidate.id())) {
                         expiredCount++;
@@ -94,6 +100,9 @@ public class OrderExpiryService {
                 } catch (RuntimeException ex) {
                     log.warn("Unexpected error expiring pending order {}", candidate.id(), ex);
                 }
+            }
+            if (Thread.currentThread().isInterrupted()) {
+                break;
             }
             cursor = candidates.getLast();
             if (candidates.size() < batchSize) {
@@ -104,15 +113,24 @@ public class OrderExpiryService {
     }
 
     private boolean processExpiredOrder(UUID orderId) {
+        if (Thread.currentThread().isInterrupted()) {
+            return false;
+        }
         List<ClaimedPayment> claimedPayments = queryDrClaimRepository.claimOpenForOrder(
                 orderId, clock.instant(), queryDrProperties.maxAge(), queryDrProperties.cooldown());
         for (ClaimedPayment claimed : claimedPayments) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            }
             try {
                 queryDrService.executeClaimedQuery(claimed);
             } catch (RuntimeException ex) {
                 log.warn("Unexpected error executing querydr for claimed payment {} on order {}",
                         claimed.paymentId(), orderId, ex);
             }
+        }
+        if (Thread.currentThread().isInterrupted()) {
+            return false;
         }
         return Boolean.TRUE.equals(txTemplate.execute(status -> tryExpireOrderInTx(orderId)));
     }

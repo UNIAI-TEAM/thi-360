@@ -68,6 +68,7 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private OrderExpiryService orderExpiryService;
+    @Autowired private OrderExpiryProperties orderExpiryProperties;
     @Autowired private OutboxRelay outboxRelay;
     @Autowired private MutableClock mutableClock;
 
@@ -347,6 +348,112 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
             assertThat(orderState(stuckOrderIds.getFirst())).isEqualTo("PENDING_PAYMENT");
         } finally {
             CommerceTestFixtures.deleteStubOrdersForUser(jdbc, stuckBuyer.id());
+        }
+    }
+
+    @Test
+    void expiresMoreThanOneBatchUsingKeysetCursorIncludingEqualExpiresAtAcrossBoundary() {
+        assertThat(orderExpiryProperties.batchSize()).isEqualTo(20);
+        Instant now = mutableClock.instant().truncatedTo(ChronoUnit.MILLIS);
+        mutableClock.setAt(now);
+
+        LearnerAccount buyer = fixtures.createLearner();
+        StoredTestProduct product = fixtures.insertOnSaleProduct("HSA", 200_000L, 1);
+
+        Instant boundaryExpiresAt = now.minus(Duration.ofMinutes(10));
+        Instant actionableCreatedAt = now.minus(Duration.ofHours(1));
+        Instant stuckAgedAt = now.minus(Duration.ofHours(25));
+
+        List<UUID> actionableOrderIds = new ArrayList<>(25);
+        List<UUID> stuckOrderIds = new ArrayList<>(6);
+        List<Object[]> orderRows = new ArrayList<>(31);
+        List<Object[]> paymentRows = new ArrayList<>(31);
+
+        try {
+            // 25 actionable expired orders: 18 strictly before boundary, 4 sharing exact boundaryExpiresAt
+            // (straddling batch boundary indices 19 and 20), and 3 strictly after boundary.
+            for (int i = 0; i < 25; i++) {
+                UUID orderId = Ids.newId();
+                actionableOrderIds.add(orderId);
+                String orderCode = "ACTP" + String.format("%02d", i) + UUID.randomUUID().toString().substring(0, 6);
+                Instant expiresAt;
+                if (i < 18) {
+                    expiresAt = boundaryExpiresAt.minusSeconds(100L - i);
+                } else if (i < 22) {
+                    expiresAt = boundaryExpiresAt;
+                } else {
+                    expiresAt = boundaryExpiresAt.plusSeconds(i - 21L);
+                }
+                Timestamp expTs = Timestamp.from(expiresAt);
+                Timestamp createdTs = Timestamp.from(actionableCreatedAt);
+                orderRows.add(new Object[] {
+                    orderId, orderCode, buyer.id(), buyer.username(), buyer.fullName(),
+                    product.examId(), product.versionNo(), "ACTPROD-" + i, product.name(),
+                    product.listPriceVnd(), 200_000L, product.attemptsGranted(),
+                    expTs, createdTs, createdTs
+                });
+                paymentRows.add(new Object[] {
+                    Ids.newId(), orderId, orderCode + "01",
+                    "FAILED", null, null,
+                    createdTs, createdTs
+                });
+            }
+
+            // 6 interspersed stuck UNKNOWN > 24h orders before, at, and after boundaryExpiresAt.
+            Instant[] stuckExpires = new Instant[] {
+                boundaryExpiresAt.minusSeconds(120),
+                boundaryExpiresAt.minusSeconds(50),
+                boundaryExpiresAt,
+                boundaryExpiresAt,
+                boundaryExpiresAt.plusSeconds(2),
+                boundaryExpiresAt.plusSeconds(30)
+            };
+            for (int i = 0; i < stuckExpires.length; i++) {
+                UUID orderId = Ids.newId();
+                stuckOrderIds.add(orderId);
+                String orderCode = "STKP" + String.format("%02d", i) + UUID.randomUUID().toString().substring(0, 6);
+                Timestamp expTs = Timestamp.from(stuckExpires[i]);
+                Timestamp agedTs = Timestamp.from(stuckAgedAt);
+                orderRows.add(new Object[] {
+                    orderId, orderCode, buyer.id(), buyer.username(), buyer.fullName(),
+                    product.examId(), product.versionNo(), "STKPROD-" + i, product.name(),
+                    product.listPriceVnd(), 200_000L, product.attemptsGranted(),
+                    expTs, agedTs, agedTs
+                });
+                paymentRows.add(new Object[] {
+                    Ids.newId(), orderId, orderCode + "01",
+                    "UNKNOWN", null, null,
+                    agedTs, agedTs
+                });
+            }
+
+            jdbc.batchUpdate("""
+                    INSERT INTO commerce.purchase_order
+                        (id, code, user_id, buyer_username, buyer_full_name, product_type, exam_id, exam_version_no,
+                         option_codes, product_code, product_name, list_price_vnd, discount_applied, amount_due_vnd,
+                         attempts_granted, benefits, result_view, payment_method, state, expires_at,
+                         created_at, updated_at, version)
+                    VALUES (?, ?, ?, ?, ?, 'EXAM', ?, ?, '{}'::text[], ?, ?, ?, 'NONE', ?, ?,
+                            '{}'::jsonb, 'FULL_SOLUTION', 'VNPAY', 'PENDING_PAYMENT', ?, ?, ?, 0)
+                    """, orderRows);
+            jdbc.batchUpdate("""
+                    INSERT INTO commerce.payment
+                        (id, order_id, attempt_seq, txn_ref, vnp_create_date, vnp_expire_date, amount_vnd,
+                         state, is_duplicate, late_success_review, late_success_at, created_at, updated_at, version)
+                    VALUES (?, ?, 1, ?, '20261120100000', '20261120101500', 200000, ?, false, ?, ?, ?, ?, 0)
+                    """, paymentRows);
+
+            int expiredCount = orderExpiryService.expirePendingOrders();
+            assertThat(expiredCount).isEqualTo(25);
+
+            for (UUID actionableId : actionableOrderIds) {
+                assertThat(orderState(actionableId)).isEqualTo("EXPIRED");
+            }
+            for (UUID stuckId : stuckOrderIds) {
+                assertThat(orderState(stuckId)).isEqualTo("PENDING_PAYMENT");
+            }
+        } finally {
+            CommerceTestFixtures.deleteStubOrdersForUser(jdbc, buyer.id());
         }
     }
 

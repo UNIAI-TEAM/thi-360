@@ -102,11 +102,15 @@ public class VnpayRealSigner {
     }
 
     /**
-     * Dựng chuỗi query cho URL chuyển hướng HTTP {@code pay}: luôn mã hóa URL UTF-8
-     * ngay cả khi {@code pay-encoding} là {@link PayEncodingRule#RAW}.
+     * Dựng chuỗi query cho URL chuyển hướng HTTP {@code pay} theo {@code pay-encoding};
+     * nếu cấu hình là {@link PayEncodingRule#RAW} thì dùng {@link PayEncodingRule#JAVA_URL_ENCODER}
+     * để bảo đảm URL chuyển hướng hợp lệ.
      */
     public String buildPayQueryString(Map<String, String> params) {
-        return formatPayParams(params, PayEncodingRule.JAVA_URL_ENCODER);
+        PayEncodingRule rule = signingProperties.payEncoding() == PayEncodingRule.RAW
+                ? PayEncodingRule.JAVA_URL_ENCODER
+                : signingProperties.payEncoding();
+        return formatPayParams(params, rule);
     }
 
     private static String formatPayParams(Map<String, String> params, PayEncodingRule rule) {

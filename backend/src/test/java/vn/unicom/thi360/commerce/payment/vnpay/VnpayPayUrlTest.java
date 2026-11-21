@@ -206,6 +206,65 @@ class VnpayPayUrlTest {
         assertThat(rawGateway.verify(tampered)).isFalse();
     }
 
+    @Test
+    void payQueryStringFollowsConfiguredPayEncodingRule() {
+        String orderInfo = "Thanh toan don A * B ~ 1";
+
+        RealVnpayGateway rfcGateway = createGatewayWithEncoding(PayEncodingRule.RFC_3986);
+        String rfcUrl = rfcGateway.pay(new PayRequest(
+                "DH261121RFC01", "DH261121RFC", 50_000L, orderInfo, "vn",
+                "https://thi360.example/checkout/result", "203.0.113.7", null, null));
+        String rfcRawQuery = URI.create(rfcUrl).getRawQuery();
+        assertThat(rfcRawQuery)
+                .contains("vnp_OrderInfo=Thanh%20toan%20don%20A%20%2A%20B%20~%201")
+                .doesNotContain("+")
+                .doesNotContain("%7E");
+        assertThat(rfcGateway.verify(parseQueryParams(rfcUrl))).isTrue();
+
+        RealVnpayGateway pyGateway = createGatewayWithEncoding(PayEncodingRule.PYTHON_QUOTE_PLUS);
+        String pyUrl = pyGateway.pay(new PayRequest(
+                "DH261121PY01", "DH261121PY", 50_000L, orderInfo, "vn",
+                "https://thi360.example/checkout/result", "203.0.113.7", null, null));
+        String pyRawQuery = URI.create(pyUrl).getRawQuery();
+        assertThat(pyRawQuery)
+                .contains("vnp_OrderInfo=Thanh+toan+don+A+%2A+B+~+1")
+                .doesNotContain("%20")
+                .doesNotContain("%7E");
+        assertThat(pyGateway.verify(parseQueryParams(pyUrl))).isTrue();
+
+        RealVnpayGateway rawGateway = createGatewayWithEncoding(PayEncodingRule.RAW);
+        String rawUrl = rawGateway.pay(new PayRequest(
+                "DH261121RAW02", "DH261121RAW", 50_000L, orderInfo, "vn",
+                "https://thi360.example/checkout/result", "203.0.113.7", null, null));
+        String rawRawQuery = URI.create(rawUrl).getRawQuery();
+        assertThat(rawRawQuery)
+                .contains("vnp_OrderInfo=Thanh+toan+don+A+*+B+%7E+1")
+                .doesNotContain("%20")
+                .doesNotContain("%2A");
+        assertThat(rawGateway.verify(parseQueryParams(rawUrl))).isTrue();
+    }
+
+    private RealVnpayGateway createGatewayWithEncoding(PayEncodingRule encodingRule) {
+        VnpayRealSigner customSigner = new VnpayRealSigner(
+                new VnpaySigningProperties(encodingRule, null, null, null));
+        VnpayProperties props = new VnpayProperties(
+                "SANDBOX",
+                "TEST-TMN",
+                "TEST-HASH-SECRET-KEY-001",
+                "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+                "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
+                List.of(),
+                null,
+                null,
+                null);
+        return new RealVnpayGateway(
+                props,
+                new VnpayClientProperties(null, null, null),
+                customSigner,
+                new ObjectMapper(),
+                Clock.fixed(FIXED_UTC, ZoneOffset.UTC));
+    }
+
     private static Map<String, String> parseQueryParams(String url) {
         String query = URI.create(url).getRawQuery();
         Map<String, String> map = new LinkedHashMap<>();
