@@ -345,17 +345,35 @@ for (const cell of matrixCells()) {
         await expect(
           page.getByRole("heading", { level: 1, name: cell.lang === "vi" ? "Tạo bộ đề" : "Create bundle" }),
         ).toBeVisible();
-        await page.getByRole("combobox", { name: cell.lang === "vi" ? "Kỳ thi" : "Exam kind" }).click();
+        await page.getByRole("combobox", { name: cell.lang === "vi" ? "Kỳ thi" : "Exam kind", exact: true }).click();
         await page.getByRole("option", { name: /\(SP2E\)/ }).click();
         await expect(page.getByText("DS-SP2E-MATH-2026", { exact: true }).first()).toBeVisible();
         for (const examCode of sp2eBundle().examCodes) {
-          const exam = examByCode(examCode);
-          await page.getByRole("checkbox", { name: new RegExp(escapeRegExp(exam.name)) }).check();
+          await page
+            .getByRole("checkbox", {
+              name: cell.lang === "vi" ? `Chọn ${examCode}` : `Select ${examCode}`,
+              exact: true,
+            })
+            .check();
         }
-        await page.getByLabel(cell.lang === "vi" ? "Giá bộ" : "Bundle price").fill("99000");
-        await page.getByLabel(cell.lang === "vi" ? "Số lượt mỗi bài" : "Attempts per exam").fill("3");
+        await page.getByLabel(cell.lang === "vi" ? "Giá bộ" : "Bundle price", { exact: true }).fill("99000");
+        await page.getByLabel(cell.lang === "vi" ? "Số lượt mỗi bài" : "Attempts per exam", { exact: true }).fill("3");
         await settle(page);
         await expectMatrixClean(page, "bundle-admin-form", cell, {
+          allowLanguage: await buildAllowLanguage(page),
+        });
+
+        // 2b. bundle-admin-edit
+        await page.goto(`${ADMIN_URL}/bundles/${reviewBundleId}`);
+        await expect(page.getByRole("heading", { level: 1 })).toContainText(reviewBundleCode.startsWith("BO-VIS-REV") ? "Bộ đề ôn HSA trực quan" : "");
+        await expect(
+          page.getByRole("list", {
+            name: cell.lang === "vi" ? "Thứ tự bài thi trong bộ" : "Order of exams in bundle",
+          }),
+        ).toBeVisible();
+        await settle(page);
+        await expectMatrixClean(page, "bundle-admin-edit", cell, {
+          elementOverflow: { scope: "main", allowAccessibleScroller: true },
           allowLanguage: await buildAllowLanguage(page),
         });
 
@@ -455,7 +473,7 @@ for (const cell of matrixCells()) {
         await expect(page.locator('section[aria-labelledby^="bundle-group-"]').first()).toBeVisible();
         await expect(
           page.getByRole("heading", {
-            level: 3,
+            level: 2,
             name: cell.lang === "vi" ? "Bài mua lẻ" : "Individual exams",
           }),
         ).toBeVisible();

@@ -71,18 +71,18 @@ test.describe("FB · Bộ đề trên web", () => {
 
       await adminPage.goto(`${ADMIN_URL}/bundles`);
       const menu = adminPage.getByRole("navigation", { name: "Menu chính" });
-      await expect(menu.getByRole("link", { name: "Bộ đề" })).toBeVisible();
+      await expect(menu.getByRole("link", { name: "Bộ đề", exact: true })).toBeVisible();
       await expect(adminPage.getByRole("heading", { level: 1, name: "Bộ đề" })).toBeVisible();
 
       await adminPage.getByRole("link", { name: "Tạo bộ đề" }).first().click();
       await expect(adminPage).toHaveURL(`${ADMIN_URL}/bundles/new`);
 
-      await adminPage.getByLabel("Mã bộ").fill(bundleCode);
-      await adminPage.getByLabel("Tên bộ").fill(bundleName);
-      await adminPage.getByLabel("Mô tả ngắn trên thẻ").fill(bundleSummary);
-      await adminPage.getByLabel("Mô tả").fill(bundleDescription);
+      await adminPage.getByLabel("Mã bộ", { exact: true }).fill(bundleCode);
+      await adminPage.getByLabel("Tên bộ", { exact: true }).fill(bundleName);
+      await adminPage.getByLabel("Mô tả ngắn trên thẻ", { exact: true }).fill(bundleSummary);
+      await adminPage.getByLabel("Mô tả", { exact: true }).fill(bundleDescription);
 
-      await adminPage.getByRole("combobox", { name: "Kỳ thi" }).click();
+      await adminPage.getByRole("combobox", { name: "Kỳ thi", exact: true }).click();
       await adminPage.getByRole("option", { name: /\(SP2E\)/ }).click();
 
       const candidatesTable = adminPage.getByRole("table", { name: "Danh sách bài thi đang bán cùng kỳ thi" });
@@ -97,8 +97,8 @@ test.describe("FB · Bộ đề trên web", () => {
         adminPage.getByRole("list", { name: "Thứ tự bài thi trong bộ" }).getByRole("listitem"),
       ).toHaveCount(3);
 
-      await adminPage.getByLabel("Giá bộ").fill("99000");
-      await adminPage.getByLabel("Số lượt mỗi bài").fill("3");
+      await adminPage.getByLabel("Giá bộ", { exact: true }).fill("99000");
+      await adminPage.getByLabel("Số lượt mỗi bài", { exact: true }).fill("3");
       await adminPage.getByRole("radio", { name: /^Điểm và đáp án/ }).check();
       await adminPage.getByRole("checkbox", { name: /Ôn luyện bổ sung/ }).check();
       await adminPage.getByRole("checkbox", { name: /Giải thích bằng AI/ }).check();
@@ -198,10 +198,10 @@ test.describe("FB · Bộ đề trên web", () => {
       await expect(studentPage).toHaveURL(`${WEB_URL}/checkout/${encodeURIComponent(bundleCode)}?v=1&p=99000`);
       await expect(studentPage.getByRole("heading", { level: 1, name: "Xác nhận mua" })).toBeVisible();
 
-      const breakdownRegion = studentPage.getByRole("region", { name: "Các bài trong bộ và quyền nhận được" });
-      await expect(breakdownRegion).toBeVisible();
+      const breakdownList = studentPage.getByRole("list", { name: "Các bài trong bộ và quyền nhận được" });
+      await expect(breakdownList).toBeVisible();
       for (const examName of expectedExamNames) {
-        await expect(breakdownRegion.getByText(examName, { exact: true })).toBeVisible();
+        await expect(breakdownList.getByText(examName, { exact: true })).toBeVisible();
       }
       await expect(studentPage.getByText("99.000 đ").first()).toBeVisible();
 
@@ -357,7 +357,7 @@ test.describe("FB · Bộ đề trên web", () => {
       const adminPage = await adminCtx.newPage();
 
       await adminPage.goto(`${ADMIN_URL}/bundles/new`);
-      await adminPage.getByRole("combobox", { name: "Kỳ thi" }).click();
+      await adminPage.getByRole("combobox", { name: "Kỳ thi", exact: true }).click();
       await adminPage.getByRole("option", { name: /\(HSA\)/ }).click();
 
       const candidatesTable = adminPage.getByRole("table", { name: "Danh sách bài thi đang bán cùng kỳ thi" });
@@ -374,12 +374,12 @@ test.describe("FB · Bộ đề trên web", () => {
       await reviewRow.getByRole("checkbox").check();
       await stdRow.getByRole("checkbox").check();
 
-      await adminPage.getByLabel("Mã bộ").fill(reviewBundleCode);
-      await adminPage.getByLabel("Tên bộ").fill(reviewBundleName);
-      await adminPage.getByLabel("Mô tả ngắn trên thẻ").fill(`Bộ đề HSA có bài ôn ${CLEAN_RUN_SUFFIX}`);
-      await adminPage.getByLabel("Mô tả").fill(`Kiểm tra nhãn Bài ôn trong bộ đề ${CLEAN_RUN_SUFFIX}.`);
-      await adminPage.getByLabel("Giá bộ").fill("59000");
-      await adminPage.getByLabel("Số lượt mỗi bài").fill("2");
+      await adminPage.getByLabel("Mã bộ", { exact: true }).fill(reviewBundleCode);
+      await adminPage.getByLabel("Tên bộ", { exact: true }).fill(reviewBundleName);
+      await adminPage.getByLabel("Mô tả ngắn trên thẻ", { exact: true }).fill(`Bộ đề HSA có bài ôn ${CLEAN_RUN_SUFFIX}`);
+      await adminPage.getByLabel("Mô tả", { exact: true }).fill(`Kiểm tra nhãn Bài ôn trong bộ đề ${CLEAN_RUN_SUFFIX}.`);
+      await adminPage.getByLabel("Giá bộ", { exact: true }).fill("59000");
+      await adminPage.getByLabel("Số lượt mỗi bài", { exact: true }).fill("2");
 
       const [createRes] = await Promise.all([
         adminPage.waitForResponse(
