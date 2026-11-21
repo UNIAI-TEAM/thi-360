@@ -2,23 +2,43 @@ package vn.unicom.thi360.identity.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.commerce.entitlement.access.infrastructure.ExamAccessReadRepository;
+import vn.unicom.thi360.commerce.entitlement.access.infrastructure.ExamAccessReadRepository.ProductRef;
+import vn.unicom.thi360.commerce.entitlement.application.EntitlementLearningProvider;
+import vn.unicom.thi360.commerce.entitlement.domain.Entitlement;
+import vn.unicom.thi360.commerce.entitlement.domain.EntitlementSource;
+import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementRepository;
+import vn.unicom.thi360.commerce.storefront.domain.SaleState;
+import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
 import vn.unicom.thi360.identity.api.StudentLearningResponse;
 import vn.unicom.thi360.identity.api.StudentLearningResponse.StudentLearningAttempt;
 import vn.unicom.thi360.identity.api.StudentLearningResponse.StudentLearningEntitlement;
@@ -328,5 +348,325 @@ class StudentLearningProviderTests {
                 mock(PlatformTransactionManager.class),
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 AppMessages.defaultInstance());
+    }
+
+    @Nested
+    class EntitlementLearningProviderUnitTests {
+
+        private final EntitlementRepository entitlementRepository = mock(EntitlementRepository.class);
+        private final ExamAccessReadRepository examAccessReadRepository = mock(ExamAccessReadRepository.class);
+        private final PublishedExamPort publishedExamPort = mock(PublishedExamPort.class);
+        private final EntitlementLearningProvider provider = new EntitlementLearningProvider(
+                entitlementRepository, examAccessReadRepository, publishedExamPort, new ObjectMapper());
+
+        @Test
+        void nullUserId_returnsEmptyWithoutDownstreamCalls() {
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(null);
+
+            assertThat(data.dataAvailable()).isFalse();
+            assertThat(data.entitlements()).isEmpty();
+            assertThat(data.attempts()).isEmpty();
+            verifyNoInteractions(entitlementRepository, examAccessReadRepository, publishedExamPort);
+        }
+
+        @Test
+        void emptyEntitlements_returnsEmptyWithoutExamLookups() {
+            UUID userId = UUID.randomUUID();
+            when(entitlementRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId)).thenReturn(List.of());
+
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(userId);
+
+            assertThat(data.dataAvailable()).isFalse();
+            assertThat(data.entitlements()).isEmpty();
+            verify(entitlementRepository).findByUserIdOrderByCreatedAtAscIdAsc(userId);
+            verifyNoInteractions(examAccessReadRepository, publishedExamPort);
+        }
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void projectedExams_useSingleBatchLookupWithDistinctIdsAndSkipPublishedExamPort() {
+            UUID userId = UUID.randomUUID();
+            UUID exam1 = UUID.randomUUID();
+            UUID exam2 = UUID.randomUUID();
+            UUID ent1 = UUID.randomUUID();
+            UUID ent2 = UUID.randomUUID();
+            UUID ent3 = UUID.randomUUID();
+
+            Entitlement purchase = mockEntitlement(ent1, exam1, EntitlementSource.PURCHASE, 4, 1, 1, 0);
+            Entitlement classGrant = mockEntitlement(ent2, exam1, EntitlementSource.CLASS, 2, 0, 0, 0);
+            Entitlement secondExam = mockEntitlement(ent3, exam2, EntitlementSource.CLASS, 3, 1, 0, 0);
+
+            when(entitlementRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId))
+                    .thenReturn(List.of(purchase, classGrant, secondExam));
+            when(examAccessReadRepository.findProductsByExamIds(any()))
+                    .thenReturn(List.of(
+                            new ProductRef(exam1, "HSA-01", "hsa-01", SaleState.ON_SALE, "{\"name\":\"HSA Exam 1\"}"),
+                            new ProductRef(exam2, "VACT-01", "vact-01", SaleState.ON_SALE, "{\"name\":\"V-ACT Exam 1\"}")));
+
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(userId);
+
+            ArgumentCaptor<Collection<UUID>> idsCaptor = ArgumentCaptor.forClass(Collection.class);
+            verify(examAccessReadRepository, times(1)).findProductsByExamIds(idsCaptor.capture());
+            assertThat(idsCaptor.getValue()).containsExactlyInAnyOrder(exam1, exam2);
+            verifyNoInteractions(publishedExamPort);
+
+            assertThat(data.dataAvailable()).isTrue();
+            assertThat(data.entitlements()).containsExactly(
+                    new EntitlementItem(
+                            ent1, exam1, "HSA-01", "HSA Exam 1", EntitlementLearningSource.PURCHASE,
+                            4, 1, 1, 0, 2, EntitlementLearningStatus.ACTIVE),
+                    new EntitlementItem(
+                            ent2, exam1, "HSA-01", "HSA Exam 1", EntitlementLearningSource.CLASS,
+                            2, 0, 0, 0, 2, EntitlementLearningStatus.ACTIVE),
+                    new EntitlementItem(
+                            ent3, exam2, "VACT-01", "V-ACT Exam 1", EntitlementLearningSource.CLASS,
+                            3, 1, 0, 0, 2, EntitlementLearningStatus.ACTIVE));
+        }
+
+        @Test
+        void unprojectedAndPartialStorefrontRows_fallBackToPublishedExamPortAndMergeFields() {
+            UUID userId = UUID.randomUUID();
+            UUID unprojectedExam = UUID.randomUUID();
+            UUID emptyCardExam = UUID.randomUUID();
+            UUID corruptJsonExam = UUID.randomUUID();
+            UUID nonTextNameExam = UUID.randomUUID();
+            UUID blankCodeExam = UUID.randomUUID();
+            UUID missingEverywhereExam = UUID.randomUUID();
+            UUID partialMissingServingExam = UUID.randomUUID();
+
+            List<Entitlement> entitlements = List.of(
+                    mockEntitlement(UUID.randomUUID(), unprojectedExam, EntitlementSource.PURCHASE, 2, 0, 0, 0),
+                    mockEntitlement(UUID.randomUUID(), emptyCardExam, EntitlementSource.PURCHASE, 2, 0, 0, 0),
+                    mockEntitlement(UUID.randomUUID(), corruptJsonExam, EntitlementSource.PURCHASE, 2, 0, 0, 0),
+                    mockEntitlement(UUID.randomUUID(), nonTextNameExam, EntitlementSource.PURCHASE, 2, 0, 0, 0),
+                    mockEntitlement(UUID.randomUUID(), blankCodeExam, EntitlementSource.CLASS, 2, 0, 0, 0),
+                    mockEntitlement(UUID.randomUUID(), missingEverywhereExam, EntitlementSource.PURCHASE, 1, 0, 0, 0),
+                    mockEntitlement(UUID.randomUUID(), partialMissingServingExam, EntitlementSource.PURCHASE, 1, 0, 0, 0));
+            when(entitlementRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId)).thenReturn(entitlements);
+
+            when(examAccessReadRepository.findProductsByExamIds(any())).thenReturn(List.of(
+                    new ProductRef(emptyCardExam, "SF-EMPTY", "sf-empty", SaleState.ON_SALE, "{}"),
+                    new ProductRef(corruptJsonExam, "SF-BAD", "sf-bad", SaleState.ON_SALE, "{not-valid-json"),
+                    new ProductRef(nonTextNameExam, "SF-NUM", "sf-num", SaleState.ON_SALE, "{\"name\":123}"),
+                    new ProductRef(blankCodeExam, "   ", "", SaleState.ON_SALE, "{\"name\":\"Storefront Name\"}"),
+                    new ProductRef(partialMissingServingExam, "SF-ONLY", "sf-only", SaleState.ON_SALE, "{\"name\":\"  \"}")));
+
+            when(publishedExamPort.findServing(unprojectedExam))
+                    .thenReturn(Optional.of(servingExam(unprojectedExam, "UNPROJ-1", "Unprojected Exam")));
+            when(publishedExamPort.findServing(emptyCardExam))
+                    .thenReturn(Optional.of(servingExam(emptyCardExam, "SERV-EMPTY", "Fallback Empty Card Name")));
+            when(publishedExamPort.findServing(corruptJsonExam))
+                    .thenReturn(Optional.of(servingExam(corruptJsonExam, "SERV-BAD", "Fallback Bad Json Name")));
+            when(publishedExamPort.findServing(nonTextNameExam))
+                    .thenReturn(Optional.of(servingExam(nonTextNameExam, "SERV-NUM", "Fallback Numeric Name")));
+            when(publishedExamPort.findServing(blankCodeExam))
+                    .thenReturn(Optional.of(servingExam(blankCodeExam, "SERV-CODE", "Fallback Serving Name")));
+            when(publishedExamPort.findServing(missingEverywhereExam)).thenReturn(Optional.empty());
+            when(publishedExamPort.findServing(partialMissingServingExam)).thenReturn(Optional.empty());
+
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(userId);
+
+            assertThat(data.dataAvailable()).isTrue();
+            assertThat(data.entitlements()).hasSize(7);
+
+            assertThat(data.entitlements().get(0).examCode()).isEqualTo("UNPROJ-1");
+            assertThat(data.entitlements().get(0).examName()).isEqualTo("Unprojected Exam");
+
+            // Partial storefront rows preserve non-blank fields and fill only missing code/name from PublishedExamPort
+            assertThat(data.entitlements().get(1).examCode()).isEqualTo("SF-EMPTY");
+            assertThat(data.entitlements().get(1).examName()).isEqualTo("Fallback Empty Card Name");
+
+            assertThat(data.entitlements().get(2).examCode()).isEqualTo("SF-BAD");
+            assertThat(data.entitlements().get(2).examName()).isEqualTo("Fallback Bad Json Name");
+
+            assertThat(data.entitlements().get(3).examCode()).isEqualTo("SF-NUM");
+            assertThat(data.entitlements().get(3).examName()).isEqualTo("Fallback Numeric Name");
+
+            assertThat(data.entitlements().get(4).examCode()).isEqualTo("SERV-CODE");
+            assertThat(data.entitlements().get(4).examName()).isEqualTo("Storefront Name");
+            assertThat(data.entitlements().get(4).source()).isEqualTo(EntitlementLearningSource.CLASS);
+
+            // Absent from both storefront and PublishedExamPort -> preserves row with null code and name
+            assertThat(data.entitlements().get(5).examCode()).isNull();
+            assertThat(data.entitlements().get(5).examName()).isNull();
+
+            assertThat(data.entitlements().get(6).examCode()).isEqualTo("SF-ONLY");
+            assertThat(data.entitlements().get(6).examName()).isNull();
+        }
+
+        @Test
+        void computeStatus_coversAllBranchesIncludingPartialRefundExhausted() {
+            UUID userId = UUID.randomUUID();
+            UUID examId = UUID.randomUUID();
+
+            Entitlement active = mockEntitlement(UUID.randomUUID(), examId, EntitlementSource.PURCHASE, 4, 1, 1, 1);
+            Entitlement inUse = mockEntitlement(UUID.randomUUID(), examId, EntitlementSource.PURCHASE, 3, 1, 1, 1);
+            Entitlement revoked = mockEntitlement(UUID.randomUUID(), examId, EntitlementSource.PURCHASE, 2, 0, 0, 2);
+            Entitlement exhaustedAllUsed =
+                    mockEntitlement(UUID.randomUUID(), examId, EntitlementSource.PURCHASE, 2, 2, 0, 0);
+            // R1-4: total=2, used=1, reserved=0, revoked=1, left=0 -> EXHAUSTED (not REVOKED)
+            Entitlement partialRefundExhausted =
+                    mockEntitlement(UUID.randomUUID(), examId, EntitlementSource.PURCHASE, 2, 1, 0, 1);
+
+            when(entitlementRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId))
+                    .thenReturn(List.of(active, inUse, revoked, exhaustedAllUsed, partialRefundExhausted));
+            when(examAccessReadRepository.findProductsByExamIds(any()))
+                    .thenReturn(List.of(new ProductRef(examId, "EX-S", "ex-s", SaleState.ON_SALE, "{\"name\":\"Exam S\"}")));
+
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(userId);
+
+            assertThat(data.entitlements())
+                    .extracting(EntitlementItem::status)
+                    .containsExactly(
+                            EntitlementLearningStatus.ACTIVE,
+                            EntitlementLearningStatus.IN_USE,
+                            EntitlementLearningStatus.REVOKED,
+                            EntitlementLearningStatus.EXHAUSTED,
+                            EntitlementLearningStatus.EXHAUSTED);
+        }
+
+        private static Entitlement mockEntitlement(
+                UUID id, UUID examId, EntitlementSource source, int total, int used, int reserved, int revoked) {
+            Entitlement entitlement = mock(Entitlement.class);
+            when(entitlement.getId()).thenReturn(id);
+            when(entitlement.getExamId()).thenReturn(examId);
+            when(entitlement.getSource()).thenReturn(source);
+            when(entitlement.getAttemptsTotal()).thenReturn(total);
+            when(entitlement.getAttemptsUsed()).thenReturn(used);
+            when(entitlement.getAttemptsReserved()).thenReturn(reserved);
+            when(entitlement.getAttemptsRevoked()).thenReturn(revoked);
+            when(entitlement.attemptsLeft()).thenReturn(total - used - reserved - revoked);
+            return entitlement;
+        }
+
+        private static ServingExam servingExam(UUID examId, String code, String name) {
+            PublishedVersion version = new PublishedVersion(
+                    examId,
+                    1,
+                    "PUBLISHED",
+                    "ON_SALE",
+                    NOW,
+                    code,
+                    name,
+                    UUID.randomUUID(),
+                    "HSA",
+                    "PART",
+                    "TOAN",
+                    null,
+                    "STANDARD",
+                    "SHARED",
+                    60,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of());
+            return new ServingExam(examId, "PUBLISHED", version, List.of());
+        }
+    }
+
+    @Nested
+    class StudentLearningResponseSchemaAnnotationTests {
+
+        @Test
+        void responseAndNestedItemRecordsDeclareExpectedRequiredAndNullableSchemas() {
+            Map<String, Schema> responseSchemas = recordSchemas(StudentLearningResponse.class);
+            assertThat(responseSchemas.keySet())
+                    .containsExactlyInAnyOrder(
+                            "userId",
+                            "dataAvailable",
+                            "entitlements",
+                            "attempts",
+                            "assessments",
+                            "practice",
+                            "supportRequests");
+            responseSchemas.forEach((name, schema) -> {
+                assertThat(schema.requiredMode())
+                        .as("StudentLearningResponse.%s requiredMode", name)
+                        .isEqualTo(Schema.RequiredMode.REQUIRED);
+                assertThat(List.of(schema.types()))
+                        .as("StudentLearningResponse.%s types", name)
+                        .doesNotContain("null");
+            });
+
+            Map<String, Schema> entitlementSchemas = recordSchemas(StudentLearningEntitlement.class);
+            for (String required : List.of(
+                    "entitlementId",
+                    "examId",
+                    "source",
+                    "attemptsTotal",
+                    "attemptsUsed",
+                    "attemptsReserved",
+                    "attemptsRevoked",
+                    "attemptsLeft",
+                    "status")) {
+                assertThat(entitlementSchemas.get(required).requiredMode())
+                        .as("StudentLearningEntitlement.%s requiredMode", required)
+                        .isEqualTo(Schema.RequiredMode.REQUIRED);
+                assertThat(List.of(entitlementSchemas.get(required).types())).doesNotContain("null");
+            }
+            for (String nullable : List.of("examCode", "examName")) {
+                Schema schema = entitlementSchemas.get(nullable);
+                assertThat(schema.requiredMode())
+                        .as("StudentLearningEntitlement.%s requiredMode", nullable)
+                        .isNotEqualTo(Schema.RequiredMode.REQUIRED);
+                assertThat(List.of(schema.types()))
+                        .as("StudentLearningEntitlement.%s types", nullable)
+                        .containsExactlyInAnyOrder("string", "null");
+            }
+
+            Map<String, Schema> attemptSchemas = recordSchemas(StudentLearningAttempt.class);
+            for (String required : List.of("attemptId", "examId", "examName", "examKindCode", "scope", "status")) {
+                assertThat(attemptSchemas.get(required).requiredMode())
+                        .as("StudentLearningAttempt.%s requiredMode", required)
+                        .isEqualTo(Schema.RequiredMode.REQUIRED);
+                assertThat(List.of(attemptSchemas.get(required).types())).doesNotContain("null");
+            }
+            assertNullableSchema(attemptSchemas.get("attemptNo"), "StudentLearningAttempt.attemptNo", "integer", "");
+            assertNullableSchema(
+                    attemptSchemas.get("startedAt"), "StudentLearningAttempt.startedAt", "string", "date-time");
+            assertNullableSchema(
+                    attemptSchemas.get("finishedAt"), "StudentLearningAttempt.finishedAt", "string", "date-time");
+            assertNullableSchema(attemptSchemas.get("score"), "StudentLearningAttempt.score", "number", "");
+            assertNullableSchema(attemptSchemas.get("maxScore"), "StudentLearningAttempt.maxScore", "number", "");
+        }
+
+        private static void assertNullableSchema(
+                Schema schema, String propertyName, String expectedBaseType, String expectedFormat) {
+            assertThat(schema.requiredMode())
+                    .as("%s requiredMode", propertyName)
+                    .isNotEqualTo(Schema.RequiredMode.REQUIRED);
+            assertThat(List.of(schema.types()))
+                    .as("%s types", propertyName)
+                    .containsExactlyInAnyOrder(expectedBaseType, "null");
+            assertThat(schema.format()).as("%s format", propertyName).isEqualTo(expectedFormat);
+        }
+
+        private static Map<String, Schema> recordSchemas(Class<?> recordClass) {
+            Map<String, Schema> result = new LinkedHashMap<>();
+            for (RecordComponent component : recordClass.getRecordComponents()) {
+                Schema schema = component.getAnnotation(Schema.class);
+                if (schema == null && component.getAccessor() != null) {
+                    schema = component.getAccessor().getAnnotation(Schema.class);
+                }
+                if (schema == null) {
+                    try {
+                        Field field = recordClass.getDeclaredField(component.getName());
+                        schema = field.getAnnotation(Schema.class);
+                    } catch (NoSuchFieldException ex) {
+                        throw new AssertionError("Missing record field " + component.getName(), ex);
+                    }
+                }
+                assertThat(schema)
+                        .as("@Schema on %s.%s", recordClass.getSimpleName(), component.getName())
+                        .isNotNull();
+                result.put(component.getName(), schema);
+            }
+            return result;
+        }
     }
 }

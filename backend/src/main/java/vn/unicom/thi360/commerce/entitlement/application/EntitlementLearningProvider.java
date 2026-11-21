@@ -99,17 +99,28 @@ public class EntitlementLearningProvider implements StudentLearningProvider {
         List<ProductRef> products = examAccessReadRepository.findProductsByExamIds(distinctExamIds);
         for (ProductRef product : products) {
             if (product.examId() != null && !resolved.containsKey(product.examId())) {
-                resolved.put(product.examId(), new ExamSummary(product.code(), extractCardName(product.card())));
+                resolved.put(
+                        product.examId(),
+                        new ExamSummary(nonBlankOrNull(product.code()), extractCardName(product.card())));
             }
         }
 
         for (UUID examId : distinctExamIds) {
-            if (resolved.containsKey(examId)) {
+            ExamSummary existing = resolved.get(examId);
+            if (existing != null && existing.code() != null && existing.name() != null) {
                 continue;
             }
             publishedExamPort.findServing(examId)
                     .map(PublishedExamPort.ServingExam::version)
-                    .ifPresent(version -> resolved.put(examId, new ExamSummary(version.code(), version.name())));
+                    .ifPresent(version -> resolved.put(
+                            examId,
+                            new ExamSummary(
+                                    existing != null && existing.code() != null
+                                            ? existing.code()
+                                            : nonBlankOrNull(version.code()),
+                                    existing != null && existing.name() != null
+                                            ? existing.name()
+                                            : nonBlankOrNull(version.name()))));
         }
         return resolved;
     }
@@ -122,14 +133,17 @@ public class EntitlementLearningProvider implements StudentLearningProvider {
             JsonNode tree = objectMapper.readTree(cardJson);
             JsonNode nameNode = tree.path("name");
             if (nameNode.isTextual()) {
-                String text = nameNode.asText();
-                return text.isBlank() ? null : text;
+                return nonBlankOrNull(nameNode.asText());
             }
             return null;
         } catch (JsonProcessingException ex) {
             log.debug("Could not extract name from storefront_product.card JSON", ex);
             return null;
         }
+    }
+
+    private static String nonBlankOrNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private static EntitlementLearningSource mapSource(EntitlementSource source) {

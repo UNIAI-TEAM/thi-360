@@ -55,7 +55,9 @@ public class AttemptLearningProvider implements StudentLearningProvider {
         BigDecimal score = scored
                 ? (attempt.getDisplayScore() != null ? attempt.getDisplayScore() : attempt.getRawScore())
                 : null;
-        BigDecimal maxScore = scored ? resolveScaleMax(attempt) : null;
+        BigDecimal maxScore = !scored
+                ? null
+                : (attempt.getDisplayScore() != null ? resolveScaleMax(attempt) : attempt.getMaxScore());
         return new AttemptItem(
                 attempt.getId(),
                 attempt.getExamId(),

@@ -52,6 +52,7 @@ import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptRepository;
 import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.commerce.spi.EntitlementPort;
 import vn.unicom.thi360.commerce.storefront.application.StorefrontProjectionService;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserSource;
@@ -84,6 +85,7 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private MutableClock mutableClock;
     @Autowired private EntitlementGrantService grantService;
+    @Autowired private EntitlementPort entitlementPort;
     @Autowired private StorefrontProjectionService storefrontProjectionService;
     @Autowired private AttemptRepository attemptRepository;
     @Autowired private AttemptPartRepository attemptPartRepository;
@@ -129,11 +131,12 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         UUID hsaReviewId = AttemptTestFixtures.dsExamId(jdbc, "DS-HSA-REVIEW-MINI");
         UUID bcaFullId = AttemptTestFixtures.dsExamId(jdbc, "DS-BCA-FULL-MINI");
         UUID hsaSubjToanId = AttemptTestFixtures.dsExamId(jdbc, "DS-HSA-SUBJECT-TOAN-MINI");
+        UUID thptqgInfoId = AttemptTestFixtures.dsExamId(jdbc, "DS-THPTQG-INFORMATICS-MINI");
         UUID sptInfoId = AttemptTestFixtures.dsExamId(jdbc, "DS-SPT-INFORMATICS-MINI");
         UUID vactLangId = AttemptTestFixtures.dsExamId(jdbc, "DS-VACT-PART-LANGUAGE-MINI");
 
-        // Project two exams into commerce.storefront_product and leave others unprojected
-        // so both the batch storefront lookup and PublishedExamPort fallback are exercised.
+        // Ensure hsaMathId & vactToanId stay projected in commerce.storefront_product;
+        // thptqgMathId will be explicitly removed before calling /learning to verify live PublishedExamPort fallback.
         projectStorefrontIfAbsent(hsaMathId);
         projectStorefrontIfAbsent(vactToanId);
 
@@ -214,8 +217,17 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
                 gradingErrorAttempt.getId());
 
         // 4. REVOKED entitlement (2 total, 0 used, 2 revoked, 0 left)
+        mutableClock.advance(Duration.ofMinutes(5));
         GrantOrderResult.Line revokedEnt = grant(studentA, "DS-HSA-REVIEW-MINI", 2);
         grantService.revokeUnused(revokedEnt.grantId());
+
+        // 4b. Partial-refund EXHAUSTED entitlement (2 total: 1 used, 0 reserved, 1 revoked, 0 left -> EXHAUSTED)
+        mutableClock.advance(Duration.ofMinutes(5));
+        GrantOrderResult.Line partialRefundEnt = grant(studentA, "DS-THPTQG-INFORMATICS-MINI", 2);
+        UUID partialRefundUsedAttempt = Ids.newId();
+        entitlementPort.reserve(studentA, partialRefundEnt.entitlementId(), partialRefundUsedAttempt);
+        entitlementPort.confirmUse(partialRefundUsedAttempt);
+        grantService.revokeUnused(partialRefundEnt.grantId());
 
         // 5. PENDING_REVIEW (natural + regrading=true with residual DB scores)
         mutableClock.advance(Duration.ofMinutes(5));
@@ -264,12 +276,34 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         assertThat(attemptRepository.findById(gradingAttempt.getId()).orElseThrow().getState())
                 .isEqualTo(AttemptState.GRADING);
 
-        MvcResult res = mockMvc.perform(get("/api/v1/admin/users/{id}/learning", studentA)
-                        .with(asUser(Permissions.USER_LEARNING_VIEW)))
-                .andExpect(status().isOk())
-                .andReturn();
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM commerce.storefront_product WHERE exam_id = ?",
+                        Integer.class,
+                        hsaMathId))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM commerce.storefront_product WHERE exam_id = ?",
+                        Integer.class,
+                        vactToanId))
+                .isEqualTo(1);
+        jdbc.update("DELETE FROM commerce.storefront_product WHERE exam_id = ?", thptqgMathId);
+        assertThat(jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM commerce.storefront_product WHERE exam_id = ?",
+                        Integer.class,
+                        thptqgMathId))
+                .isZero();
 
-        String rawBody = res.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String rawBody;
+        try {
+            MvcResult res = mockMvc.perform(get("/api/v1/admin/users/{id}/learning", studentA)
+                            .with(asUser(Permissions.USER_LEARNING_VIEW)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            rawBody = res.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        } finally {
+            storefrontProjectionService.project(thptqgMathId);
+        }
+
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(rawBody);
         JsonNode root = objectMapper.readTree(rawBody);
 
@@ -282,16 +316,23 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         assertThat(root.path("supportRequests").isArray()).isTrue();
         assertThat(root.path("supportRequests")).isEmpty();
 
-        // Verify entitlements[]
+        // Verify entitlements[] raw size and createdAt ASC, id ASC ordering before map indexing
+        JsonNode entitlementsArray = root.path("entitlements");
+        assertThat(entitlementsArray.isArray()).isTrue();
+        assertThat(entitlementsArray).hasSize(7);
+        List<UUID> actualEntitlementOrder = new ArrayList<>();
         Map<UUID, JsonNode> entsById = new LinkedHashMap<>();
-        for (JsonNode entNode : root.path("entitlements")) {
-            entsById.put(UUID.fromString(entNode.path("entitlementId").asText()), entNode);
+        for (JsonNode entNode : entitlementsArray) {
+            UUID entId = UUID.fromString(entNode.path("entitlementId").asText());
+            actualEntitlementOrder.add(entId);
+            entsById.put(entId, entNode);
         }
-        assertThat(entsById.keySet()).containsExactlyInAnyOrder(
+        assertThat(actualEntitlementOrder).containsExactly(
                 activeEnt.entitlementId(),
                 inUseEnt.entitlementId(),
                 exhaustedEnt.entitlementId(),
                 revokedEnt.entitlementId(),
+                partialRefundEnt.entitlementId(),
                 bcaEnt.entitlementId(),
                 gradingEnt.entitlementId());
         assertThat(entsById).doesNotContainKey(studentBEnt.entitlementId());
@@ -342,21 +383,39 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         assertThat(revokedNode.path("attemptsLeft").asInt()).isEqualTo(0);
         assertThat(revokedNode.path("status").asText()).isEqualTo("REVOKED");
 
-        // Verify attempts[]
+        JsonNode partialRefundNode = entsById.get(partialRefundEnt.entitlementId());
+        assertThat(partialRefundNode.path("examId").asText()).isEqualTo(thptqgInfoId.toString());
+        assertThat(partialRefundNode.path("examCode").asText()).isEqualTo("DS-THPTQG-INFORMATICS-MINI");
+        assertThat(partialRefundNode.path("examName").asText()).isEqualTo("THPTQG Tin học (thu nhỏ)");
+        assertThat(partialRefundNode.path("source").asText()).isEqualTo("PURCHASE");
+        assertThat(partialRefundNode.path("attemptsTotal").asInt()).isEqualTo(2);
+        assertThat(partialRefundNode.path("attemptsUsed").asInt()).isEqualTo(1);
+        assertThat(partialRefundNode.path("attemptsReserved").asInt()).isEqualTo(0);
+        assertThat(partialRefundNode.path("attemptsRevoked").asInt()).isEqualTo(1);
+        assertThat(partialRefundNode.path("attemptsLeft").asInt()).isEqualTo(0);
+        assertThat(partialRefundNode.path("status").asText()).isEqualTo("EXHAUSTED");
+
+        // Verify attempts[] raw size and startedAt DESC, createdAt DESC ordering before map indexing
+        JsonNode attemptsArray = root.path("attempts");
+        assertThat(attemptsArray.isArray()).isTrue();
+        assertThat(attemptsArray).hasSize(9);
+        List<UUID> actualAttemptOrder = new ArrayList<>();
         Map<UUID, JsonNode> attemptsById = new LinkedHashMap<>();
-        for (JsonNode attNode : root.path("attempts")) {
-            attemptsById.put(UUID.fromString(attNode.path("attemptId").asText()), attNode);
+        for (JsonNode attNode : attemptsArray) {
+            UUID attId = UUID.fromString(attNode.path("attemptId").asText());
+            actualAttemptOrder.add(attId);
+            attemptsById.put(attId, attNode);
         }
-        assertThat(attemptsById.keySet()).containsExactlyInAnyOrder(
-                scoredPositive.getId(),
-                scoredZero.getId(),
-                inProgressHsa.getId(),
-                vactScored.getId(),
-                vactInProgress.getId(),
-                gradingErrorAttempt.getId(),
-                pendingNatural.getId(),
+        assertThat(actualAttemptOrder).containsExactly(
+                gradingAttempt.getId(),
                 pendingRegrading.getId(),
-                gradingAttempt.getId());
+                pendingNatural.getId(),
+                gradingErrorAttempt.getId(),
+                vactInProgress.getId(),
+                vactScored.getId(),
+                inProgressHsa.getId(),
+                scoredZero.getId(),
+                scoredPositive.getId());
         assertThat(attemptsById).doesNotContainKeys(startingId, abortedId, studentBAttempt.getId());
 
         JsonNode scoredPosNode = attemptsById.get(scoredPositive.getId());
@@ -550,6 +609,19 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         Attempt essayAttempt = startAndAwaitOpen(studentA, bcaEnt.entitlementId(), new PreChoiceInput("CA2", null));
         submitBcaWithEssay(studentA, essayAttempt.getId(), "<p>" + learnerSecretAnswer + "</p>");
         drainOutbox();
+        assertThat(attemptRepository.findById(essayAttempt.getId()).orElseThrow().getState())
+                .isEqualTo(AttemptState.PENDING_REVIEW);
+        jdbc.update(
+                """
+                UPDATE attempt.attempt
+                SET state = 'PENDING_REVIEW',
+                    regrading = true,
+                    raw_score = 42.50,
+                    display_score = 42.50,
+                    graded_at = now()
+                WHERE id = ?
+                """,
+                essayAttempt.getId());
 
         // Student A: GRADING_ERROR attempt with sensitive grading_error string
         mutableClock.advance(Duration.ofMinutes(5));
@@ -615,12 +687,20 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
                 .doesNotContain(sensitiveGradingError);
 
         assertThat(jsonNode.path("attempts")).isNotEmpty();
+        boolean sawRegradingEssayAttempt = false;
         for (JsonNode attemptNode : jsonNode.path("attempts")) {
+            if (essayAttempt.getId().toString().equals(attemptNode.path("attemptId").asText())) {
+                sawRegradingEssayAttempt = true;
+                assertThat(attemptNode.path("status").asText()).isEqualTo("PENDING_REVIEW");
+                assertThat(attemptNode.path("score").isNull()).isTrue();
+                assertThat(attemptNode.path("maxScore").isNull()).isTrue();
+            }
             if (!"SCORED".equals(attemptNode.path("status").asText())) {
                 assertThat(attemptNode.path("score").isNull()).isTrue();
                 assertThat(attemptNode.path("maxScore").isNull()).isTrue();
             }
         }
+        assertThat(sawRegradingEssayAttempt).isTrue();
     }
 
     @Test
@@ -631,13 +711,50 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         JsonNode openApiRoot = objectMapper.readTree(Files.readString(openApiPath, StandardCharsets.UTF_8));
         JsonNode schemas = openApiRoot.path("components").path("schemas");
 
-        JsonNode learningRespProps = schemas.path("StudentLearningResponse").path("properties");
+        String liveOpenApiRaw = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        JsonNode liveSchemas = objectMapper.readTree(liveOpenApiRaw).path("components").path("schemas");
+        for (String schemaName : List.of(
+                "StudentLearningResponse", "StudentLearningEntitlement", "StudentLearningAttempt")) {
+            assertThat(liveSchemas.path(schemaName))
+                    .as("Live /v3/api-docs schema %s matches checked-in openapi.json", schemaName)
+                    .isEqualTo(schemas.path(schemaName));
+        }
+
+        JsonNode learningRespSchema = schemas.path("StudentLearningResponse");
+        assertThat(learningRespSchema.path("required"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder(
+                        "userId",
+                        "dataAvailable",
+                        "entitlements",
+                        "attempts",
+                        "assessments",
+                        "practice",
+                        "supportRequests");
+        JsonNode learningRespProps = learningRespSchema.path("properties");
         assertThat(learningRespProps.path("entitlements").path("items").path("$ref").asText())
                 .isEqualTo("#/components/schemas/StudentLearningEntitlement");
         assertThat(learningRespProps.path("attempts").path("items").path("$ref").asText())
                 .isEqualTo("#/components/schemas/StudentLearningAttempt");
 
-        JsonNode entitlementProps = schemas.path("StudentLearningEntitlement").path("properties");
+        JsonNode entitlementSchema = schemas.path("StudentLearningEntitlement");
+        assertThat(entitlementSchema.path("required"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder(
+                        "entitlementId",
+                        "examId",
+                        "source",
+                        "attemptsTotal",
+                        "attemptsUsed",
+                        "attemptsReserved",
+                        "attemptsRevoked",
+                        "attemptsLeft",
+                        "status");
+        JsonNode entitlementProps = entitlementSchema.path("properties");
         for (String field : List.of(
                 "entitlementId",
                 "examId",
@@ -654,6 +771,12 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
                     .as("StudentLearningEntitlement.%s in openapi.json", field)
                     .isTrue();
         }
+        assertThat(entitlementProps.path("examCode").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("string", "null");
+        assertThat(entitlementProps.path("examName").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("string", "null");
         assertThat(entitlementProps.path("source").path("enum"))
                 .extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("PURCHASE", "CLASS");
@@ -661,7 +784,12 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
                 .extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("ACTIVE", "IN_USE", "EXHAUSTED", "REVOKED");
 
-        JsonNode attemptProps = schemas.path("StudentLearningAttempt").path("properties");
+        JsonNode attemptSchema = schemas.path("StudentLearningAttempt");
+        assertThat(attemptSchema.path("required"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder(
+                        "attemptId", "examId", "examName", "examKindCode", "scope", "status");
+        JsonNode attemptProps = attemptSchema.path("properties");
         for (String field : List.of(
                 "attemptId",
                 "examId",
@@ -678,6 +806,23 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
                     .as("StudentLearningAttempt.%s in openapi.json", field)
                     .isTrue();
         }
+        assertThat(attemptProps.path("attemptNo").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("integer", "null");
+        assertThat(attemptProps.path("startedAt").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("string", "null");
+        assertThat(attemptProps.path("startedAt").path("format").asText()).isEqualTo("date-time");
+        assertThat(attemptProps.path("finishedAt").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("string", "null");
+        assertThat(attemptProps.path("finishedAt").path("format").asText()).isEqualTo("date-time");
+        assertThat(attemptProps.path("score").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("number", "null");
+        assertThat(attemptProps.path("maxScore").path("type"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("number", "null");
         assertThat(attemptProps.path("status").path("enum"))
                 .extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR");
@@ -685,6 +830,8 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
         String schemaDts = Files.readString(schemaDtsPath, StandardCharsets.UTF_8);
         String responseBlock = extractComponentSchemaBlock(schemaDts, "StudentLearningResponse");
         assertThat(responseBlock)
+                .contains("userId: string;")
+                .contains("dataAvailable: boolean;")
                 .contains("entitlements: components[\"schemas\"][\"StudentLearningEntitlement\"][];")
                 .contains("attempts: components[\"schemas\"][\"StudentLearningAttempt\"][];")
                 .doesNotContain("entitlements: Record<string, never>[]")
@@ -692,6 +839,10 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
 
         String entitlementBlock = extractComponentSchemaBlock(schemaDts, "StudentLearningEntitlement");
         assertThat(entitlementBlock)
+                .contains("entitlementId: string;")
+                .contains("examId: string;")
+                .contains("examCode?: string | null;")
+                .contains("examName?: string | null;")
                 .contains("source: \"PURCHASE\" | \"CLASS\";")
                 .contains("status: \"ACTIVE\" | \"IN_USE\" | \"EXHAUSTED\" | \"REVOKED\";")
                 .doesNotContain("Record<string, never>")
@@ -699,6 +850,16 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
 
         String attemptBlock = extractComponentSchemaBlock(schemaDts, "StudentLearningAttempt");
         assertThat(attemptBlock)
+                .contains("attemptId: string;")
+                .contains("examId: string;")
+                .contains("examName: string;")
+                .contains("examKindCode: string;")
+                .contains("scope: string;")
+                .contains("attemptNo?: number | null;")
+                .contains("startedAt?: string | null;")
+                .contains("finishedAt?: string | null;")
+                .contains("score?: number | null;")
+                .contains("maxScore?: number | null;")
                 .contains("status: \"IN_PROGRESS\" | \"GRADING\" | \"PENDING_REVIEW\" | \"SCORED\" | \"GRADING_ERROR\";")
                 .doesNotContain("Record<string, never>")
                 .doesNotContain(": never");
@@ -874,12 +1035,18 @@ class AdminUserLearningIT extends AbstractIntegrationTest {
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {
-        Pattern pattern = Pattern.compile("(?ms)^ {8}" + Pattern.quote(schemaName) + ": .*?^ {8}\\};");
-        Matcher matcher = pattern.matcher(schemaDts);
-        assertThat(matcher.find())
-                .as("Found schema block for %s in schema.d.ts", schemaName)
+        Pattern header = Pattern.compile("(?m)^([ \\t]*)" + Pattern.quote(schemaName) + ":\\s*\\{");
+        Matcher headerMatcher = header.matcher(schemaDts);
+        assertThat(headerMatcher.find())
+                .as("Found schema block header for %s in schema.d.ts", schemaName)
                 .isTrue();
-        return matcher.group();
+        String indent = headerMatcher.group(1);
+        Pattern end = Pattern.compile("(?m)^" + Pattern.quote(indent) + "\\};");
+        Matcher endMatcher = end.matcher(schemaDts);
+        assertThat(endMatcher.find(headerMatcher.end()))
+                .as("Found schema block end for %s in schema.d.ts", schemaName)
+                .isTrue();
+        return schemaDts.substring(headerMatcher.start(), endMatcher.end());
     }
 
     private static Path resolveWorkspaceFile(Path relativeFromRepoRoot) {
