@@ -228,6 +228,36 @@
       "verifiedContinue": "Email đã được xác minh. Bạn có thể tiếp tục."
     }
   },
+  "attempt": {
+    "abortReasons": {
+      "AUDIO_ASSET_INVALID": "Tệp âm thanh của đề thi không hợp lệ hoặc không đọc được.",
+      "AUDIO_ASSET_MISSING": "Thiếu tệp âm thanh cần thiết cho đề thi.",
+      "GENERATION_BUSY": "Hệ thống đang có nhiều yêu cầu tạo đề. Vui lòng thử lại sau giây lát.",
+      "GENERATION_FAILED": "Chưa tạo được bộ câu hỏi cho đề này.",
+      "GENERATION_TIMEOUT": "Tạo đề quá thời gian cho phép.",
+      "STALE_STARTING": "Việc chuẩn bị đề bị gián đoạn.",
+      "generic": "Không thể chuẩn bị đề thi lúc này."
+    },
+    "waiting": {
+      "backToMyExams": "Về Bài thi của tôi",
+      "busyDescription": "Đề vẫn đang được chuẩn bị. Trang tự kiểm tra lại, bạn không cần bấm gì. Đồng hồ chưa chạy.",
+      "busyNoticeLabel": "Sau 90 giây vẫn chưa xong",
+      "busyTitle": "Hệ thống đang bận",
+      "clockPaused": "Chưa tính giờ",
+      "description": "Hệ thống đang tạo bộ câu hỏi cho lượt thi của bạn. Đồng hồ chỉ bắt đầu khi đề đã sẵn sàng, nên bạn không mất thời gian làm bài trong lúc chờ.",
+      "durationLabel": "Thời gian của phần",
+      "durationSharedLabel": "Thời gian làm bài",
+      "failedHeading": "Chưa chuẩn bị được đề",
+      "failedNoticeLabel": "Chuẩn bị đề thất bại",
+      "failedRefundNote": "Lượt đã được trả lại, bạn chưa mất lượt nào. Đồng hồ chưa chạy.",
+      "firstPartLabel": "Phần mở đầu",
+      "minutesValue": "{minutes} phút",
+      "pageTitle": "Đang chuẩn bị đề",
+      "reassureNote": "Đề sẵn sàng thì màn làm bài tự mở. Lỡ đóng trang thì mở lại từ <myExams>Bài thi của tôi</myExams> và bấm Tiếp tục; lượt không bị bắt đầu lại.",
+      "retry": "Thử lại",
+      "title": "Đang chuẩn bị đề"
+    }
+  },
   "changePassword": {
     "back": "Quay lại",
     "confirmPasswordLabel": "Nhập lại mật khẩu mới",
@@ -830,6 +860,131 @@
       "79": "Bạn đã nhập sai thông tin xác thực quá số lần cho phép.",
       "99": "Chưa nhận được kết quả cuối từ cổng thanh toán.",
       "generic": "Ngân hàng hoặc VNPAY từ chối giao dịch."
+    }
+  },
+  "prepare": {
+    "adminNotice": {
+      "cta": "Mở trang quản trị",
+      "description": "Tài khoản quản trị không làm bài thi ở trang học viên.",
+      "title": "Tài khoản quản trị"
+    },
+    "afterStartChoices": {
+      "chooseSubjects": "chọn đúng {count} trong {total} môn",
+      "deadlineNote": "Thời gian chọn: tối đa 15 phút kể từ lúc phần trước đóng. Quá thời gian mà chưa xác nhận thì lượt thi kết thúc, phần tự chọn được 0 điểm.",
+      "timerNote": "Đồng hồ của phần tự chọn chỉ chạy khi bộ câu hỏi đã sẵn sàng.",
+      "title": "Lựa chọn sẽ gặp trong bài"
+    },
+    "answerFormats": {
+      "CLOZE": "Điền khuyết",
+      "ESSAY": "Tự luận",
+      "MATCHING": "Ghép đôi",
+      "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
+      "QUESTION_SET": "Chùm câu hỏi",
+      "SHORT_ANSWER": "Trả lời ngắn",
+      "SINGLE_CHOICE": "Trắc nghiệm một đáp án",
+      "TRUE_FALSE": "Đúng/Sai"
+    },
+    "answerFormatsLabel": "Dạng câu hỏi",
+    "backToMyExams": "Về Bài thi của tôi",
+    "breadcrumbLabel": "Vị trí trang",
+    "breadcrumbMyExams": "Bài thi của tôi",
+    "buyMoreAttempts": "Mua thêm lượt",
+    "continueAttempt": "Tiếp tục",
+    "errorLoad": {
+      "description": "Vui lòng kiểm tra kết nối mạng và thử lại.",
+      "title": "Không tải được thông tin chuẩn bị bài thi"
+    },
+    "exhaustedDescription": "Bạn có thể mua thêm lượt để tiếp tục luyện tập bài thi này.",
+    "exhaustedDescriptionDiscontinued": "Bài thi này đã ngừng mở bán nên không thể mua thêm lượt.",
+    "exhaustedTitle": "Bạn đã dùng hết lượt của bài này.",
+    "grantSource": {
+      "compensation": "Cấp bù",
+      "purchase": "Mua ngày {date}, đơn {orderCode}",
+      "purchaseNoOrder": "Mua ngày {date}"
+    },
+    "inProgressBanner": "Bạn đang có lượt làm bài chưa hoàn tất. Tiếp tục để làm tiếp, không tạo lượt mới.",
+    "instructions": {
+      "noteAutoSave": "Câu trả lời được lưu tự động. Thanh trên cho biết Đang lưu, Đã lưu hoặc Chưa lưu.",
+      "noteClock": "Thời gian còn lại lấy theo giờ máy chủ; đổi giờ trên thiết bị không làm thay đổi thời gian.",
+      "noteOffline": "Mất kết nối vẫn làm bài tiếp được. Câu trả lời được giữ trên thiết bị và gửi khi có mạng lại; đồng hồ vẫn chạy.",
+      "noteSingleDevice": "Mỗi lượt chỉ làm trên một thiết bị tại một thời điểm. Mở ở thiết bị khác thì phải xác nhận chuyển sang thiết bị đó.",
+      "title": "Hướng dẫn làm bài"
+    },
+    "listeningPolicy": {
+      "maxPlays": "Mỗi tệp âm thanh được nghe tối đa {maxPlays} lần.",
+      "noSeek": "Không có thanh tua, không tạm dừng và không đổi tốc độ phát.",
+      "title": "Chính sách nghe"
+    },
+    "noServingOption": {
+      "contactPending": "Thông tin liên hệ hỗ trợ đang được cập nhật.",
+      "descriptionWithContact": "Vui lòng liên hệ hỗ trợ qua {contact} để được hoàn tiền hoặc cấp bù.",
+      "title": "Các mã bạn đã mua hiện không còn được phục vụ."
+    },
+    "notFound": {
+      "description": "Quyền làm bài không tồn tại hoặc thuộc về tài khoản khác.",
+      "title": "Không tìm thấy bài thi trong tài khoản đang đăng nhập"
+    },
+    "omittedGroupsLabel": "Nhóm tự luận tạm lược khỏi đề tự động:",
+    "optional": "Tự chọn",
+    "pageTitle": "Chuẩn bị làm bài",
+    "preChoice": {
+      "chooseSubjectsCount": "Chọn đúng {count} trong {total} môn",
+      "chooseSubjectsProgress": "Đã chọn {selected}/{total}",
+      "hintSelectOption": "Vui lòng chọn một phương án trước khi bắt đầu.",
+      "hintSelectSubjects": "Vui lòng chọn đủ {count} môn trước khi bắt đầu.",
+      "legend": "Phương án trước khi bắt đầu",
+      "selectedPathSummary": "Đường {code}",
+      "subjectLegend": "Chọn môn tự chọn",
+      "title": "Lựa chọn trước khi bắt đầu"
+    },
+    "required": "Bắt buộc",
+    "reviewBadge": "Bài ôn",
+    "scope": {
+      "FULL": "Bài thi FULL",
+      "PART": "Bài thi theo phần",
+      "SUBJECT": "Bài thi theo môn"
+    },
+    "sidebar": {
+      "attemptsLeft": "Số lượt còn lại",
+      "attemptsValue": "{count, plural, other {# lượt}}",
+      "duration": "Tổng thời gian",
+      "grantSource": "Lượt này dùng từ",
+      "maxPoints": "Điểm tối đa",
+      "questions": "Số câu phải làm",
+      "startNote": "Bấm Bắt đầu thì hệ thống chuẩn bị đề, mất khoảng vài giây. Đồng hồ chỉ chạy khi đề đã sẵn sàng. Nếu không chuẩn bị được đề, lượt được trả lại.",
+      "title": "Sẵn sàng làm bài"
+    },
+    "startCta": "Bắt đầu bài thi",
+    "startErrors": {
+      "CHOICE_NOT_ALLOWED": "Lựa chọn hiện tại không hợp lệ hoặc không thuộc phạm vi bạn đã mua.",
+      "NO_ATTEMPTS_LEFT": "Bạn đã dùng hết lượt của bài thi này.",
+      "NO_SERVING_OPTION": "Các phương án bạn đã mua hiện không còn được phục vụ.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+      "SUBJECTS_INVALID": "Danh sách môn đã chọn chưa đúng số lượng hoặc không hợp lệ.",
+      "generic": "Không thể bắt đầu bài thi lúc này. Vui lòng thử lại."
+    },
+    "structure": {
+      "title": "Cấu trúc bài thi"
+    },
+    "timing": {
+      "FREE": {
+        "description": "Bạn có thể chuyển qua lại giữa các phần và chỉnh sửa câu trả lời trong thời gian làm bài chung.",
+        "title": "Một đồng hồ chung, chuyển phần tự do"
+      },
+      "PER_PART": {
+        "description": "Làm lần lượt từng phần. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay, không có giờ nghỉ và không quay lại phần đã xong.",
+        "title": "Tính giờ từng phần"
+      },
+      "SHARED": {
+        "description": "Các phần làm lần lượt trong một đồng hồ chung. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay; hết giờ chung thì lượt thi kết thúc.",
+        "title": "Một đồng hồ chung cho cả bài"
+      }
+    },
+    "units": {
+      "minutes": "{count, plural, other {# phút}}",
+      "partCount": "{count, plural, other {# phần}}",
+      "points": "{value} điểm",
+      "questions": "{count, plural, other {# câu}}"
     }
   },
   "storefront": {

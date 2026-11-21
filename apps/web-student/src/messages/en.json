@@ -228,6 +228,36 @@
       "verifiedContinue": "Your email is verified. You can continue."
     }
   },
+  "attempt": {
+    "abortReasons": {
+      "AUDIO_ASSET_INVALID": "An audio file in this exam is invalid or unreadable.",
+      "AUDIO_ASSET_MISSING": "A required audio file for this exam is missing.",
+      "GENERATION_BUSY": "The system is busy handling many exam requests. Please try again in a moment.",
+      "GENERATION_FAILED": "Could not generate the question set for this exam.",
+      "GENERATION_TIMEOUT": "Exam generation took longer than allowed.",
+      "STALE_STARTING": "Exam preparation was interrupted.",
+      "generic": "Unable to prepare the exam right now."
+    },
+    "waiting": {
+      "backToMyExams": "Back to My exams",
+      "busyDescription": "Your exam is still being prepared. This page checks automatically—you do not need to click anything. The timer has not started.",
+      "busyNoticeLabel": "Still preparing after 90 seconds",
+      "busyTitle": "System is busy",
+      "clockPaused": "Timer not started",
+      "description": "The system is assembling your exam questions. The timer only starts once your exam is ready, so you do not lose any test time while waiting.",
+      "durationLabel": "Section duration",
+      "durationSharedLabel": "Exam duration",
+      "failedHeading": "Could not prepare the exam",
+      "failedNoticeLabel": "Exam preparation failed",
+      "failedRefundNote": "Your attempt credit has been returned, so no attempt was lost. The timer has not started.",
+      "firstPartLabel": "Opening section",
+      "minutesValue": "{minutes} minutes",
+      "pageTitle": "Preparing exam",
+      "reassureNote": "The exam screen will open automatically once ready. If you accidentally close this page, reopen it from <myExams>My exams</myExams> and choose Continue; a new attempt will not be created.",
+      "retry": "Try again",
+      "title": "Preparing your exam"
+    }
+  },
   "changePassword": {
     "back": "Back",
     "confirmPasswordLabel": "Confirm new password",
@@ -830,6 +860,131 @@
       "79": "Authentication failed too many times.",
       "99": "Final result from the payment gateway is not available yet.",
       "generic": "The bank or VNPAY declined the transaction."
+    }
+  },
+  "prepare": {
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot take exams in the student portal.",
+      "title": "Administrator account"
+    },
+    "afterStartChoices": {
+      "chooseSubjects": "choose {count} of {total} subjects",
+      "deadlineNote": "Selection time limit: up to 15 minutes after the previous section closes. If not confirmed in time, the attempt ends and the optional section scores 0.",
+      "timerNote": "The optional section timer starts only once the question set is ready.",
+      "title": "Choices during the exam"
+    },
+    "answerFormats": {
+      "CLOZE": "Fill in the blank",
+      "ESSAY": "Essay",
+      "MATCHING": "Matching",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "QUESTION_SET": "Question set",
+      "SHORT_ANSWER": "Short answer",
+      "SINGLE_CHOICE": "Single choice",
+      "TRUE_FALSE": "True/False"
+    },
+    "answerFormatsLabel": "Question formats",
+    "backToMyExams": "Back to My exams",
+    "breadcrumbLabel": "Breadcrumb",
+    "breadcrumbMyExams": "My exams",
+    "buyMoreAttempts": "Buy more attempts",
+    "continueAttempt": "Continue",
+    "errorLoad": {
+      "description": "Please check your connection and try again.",
+      "title": "Unable to load exam preparation details"
+    },
+    "exhaustedDescription": "You can buy more attempts to keep practicing this exam.",
+    "exhaustedDescriptionDiscontinued": "This exam is no longer on sale, so more attempts cannot be purchased.",
+    "exhaustedTitle": "You have used all attempts for this exam.",
+    "grantSource": {
+      "compensation": "Compensation",
+      "purchase": "Purchased {date}, order {orderCode}",
+      "purchaseNoOrder": "Purchased {date}"
+    },
+    "inProgressBanner": "You have an unfinished attempt in progress. Continue where you left off without creating a new attempt.",
+    "instructions": {
+      "noteAutoSave": "Answers are saved automatically. The top bar shows Saving, Saved, or Unsaved.",
+      "noteClock": "Remaining time follows the server clock; changing your device clock does not affect the timer.",
+      "noteOffline": "If you lose connection, you can keep working. Answers stay saved on this device and sync when reconnected while the clock keeps running.",
+      "noteSingleDevice": "Each attempt runs on one device at a time. Opening it on another device requires confirming takeover.",
+      "title": "Exam instructions"
+    },
+    "listeningPolicy": {
+      "maxPlays": "Each audio file can be played up to {maxPlays} times.",
+      "noSeek": "No seek bar, pause button, or playback speed controls.",
+      "title": "Listening policy"
+    },
+    "noServingOption": {
+      "contactPending": "Support contact details are being updated.",
+      "descriptionWithContact": "Please contact support via {contact} for a refund or compensation.",
+      "title": "None of your purchased options are currently served."
+    },
+    "notFound": {
+      "description": "This exam access does not exist or belongs to a different account.",
+      "title": "Exam not found in the signed-in account"
+    },
+    "omittedGroupsLabel": "Essay groups temporarily omitted from automatic generation:",
+    "optional": "Optional",
+    "pageTitle": "Prepare for exam",
+    "preChoice": {
+      "chooseSubjectsCount": "Choose {count} of {total} subjects",
+      "chooseSubjectsProgress": "Selected {selected}/{total}",
+      "hintSelectOption": "Please select an option before starting.",
+      "hintSelectSubjects": "Please choose {count} subjects before starting.",
+      "legend": "Pre-start selection",
+      "selectedPathSummary": "Path {code}",
+      "subjectLegend": "Select subjects",
+      "title": "Choose before starting"
+    },
+    "required": "Required",
+    "reviewBadge": "Review exam",
+    "scope": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "sidebar": {
+      "attemptsLeft": "Remaining attempts",
+      "attemptsValue": "{count, plural, one {# attempt} other {# attempts}}",
+      "duration": "Total duration",
+      "grantSource": "Credit source",
+      "maxPoints": "Max points",
+      "questions": "Questions",
+      "startNote": "Clicking Start prepares your exam in a few seconds. The timer starts only when the paper is ready. If preparation fails, your attempt credit is returned.",
+      "title": "Ready to start"
+    },
+    "startCta": "Start exam",
+    "startErrors": {
+      "CHOICE_NOT_ALLOWED": "The selected option is not valid or not included in your purchase.",
+      "NO_ATTEMPTS_LEFT": "You have no attempts left for this exam.",
+      "NO_SERVING_OPTION": "None of your purchased options are currently available.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "SUBJECTS_INVALID": "The selected subjects are incomplete or invalid.",
+      "generic": "Unable to start the exam right now. Please try again."
+    },
+    "structure": {
+      "title": "Exam structure"
+    },
+    "timing": {
+      "FREE": {
+        "description": "You can move freely between sections and edit answers within the shared timer.",
+        "title": "Shared clock, free section navigation"
+      },
+      "PER_PART": {
+        "description": "Complete each section in order. Finishing a section or running out of time opens the next section immediately with no break and no going back.",
+        "title": "Timed per section"
+      },
+      "SHARED": {
+        "description": "Sections are taken sequentially under one shared clock. Finishing a section or running out of time opens the next section; when the shared clock ends, the attempt closes.",
+        "title": "Shared clock for the whole exam"
+      }
+    },
+    "units": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "partCount": "{count, plural, one {# section} other {# sections}}",
+      "points": "{value} points",
+      "questions": "{count, plural, one {# question} other {# questions}}"
     }
   },
   "storefront": {
