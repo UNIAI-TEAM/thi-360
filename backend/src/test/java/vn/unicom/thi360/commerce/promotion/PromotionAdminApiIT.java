@@ -81,7 +81,8 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
     @Test
     void usedPromotionLocksFields() throws Exception {
         Promotion voucher = saveVoucher(10, 2);
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), UUID.randomUUID(), 20_000L);
+        UUID buyerId = UUID.randomUUID();
+        redemptionService.reserve(voucher.getId(), buyerId, stubOrder(buyerId), 20_000L);
         long rev = reloadRevision(voucher.getId());
 
         // Allowed fields succeed: name, description, endsAt, totalLimit, status
@@ -141,8 +142,10 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
     @Test
     void usedPromotionLimitsEditableValues() throws Exception {
         Promotion voucher = saveVoucher(5, 1);
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), UUID.randomUUID(), 20_000L);
-        redemptionService.reserve(voucher.getId(), UUID.randomUUID(), UUID.randomUUID(), 20_000L);
+        UUID b1 = UUID.randomUUID();
+        UUID b2 = UUID.randomUUID();
+        redemptionService.reserve(voucher.getId(), b1, stubOrder(b1), 20_000L);
+        redemptionService.reserve(voucher.getId(), b2, stubOrder(b2), 20_000L);
         long rev = reloadRevision(voucher.getId());
 
         patchJson(voucher.getId(), Map.of(
@@ -240,7 +243,7 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                 .andExpect(jsonPath("$.price").value(170_000L));
 
         // Reserve one redemption before stopping
-        UUID orderId = UUID.randomUUID();
+        UUID orderId = stubOrder(learner, "DH-STOP-1");
         redemptionService.reserve(promoId, learner, orderId, "DH-STOP-1", 25_000L);
 
         // Stop immediately takes effect: voucher -> VOUCHER_INVALID, auto -> storefront reverts to listPrice
@@ -313,7 +316,8 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                 .andExpect(jsonPath("$.items").isEmpty());
 
         Promotion used = createRandomVoucher(10, 1);
-        redemptionService.reserve(used.getId(), UUID.randomUUID(), UUID.randomUUID(), 20_000L);
+        UUID usedBuyer = UUID.randomUUID();
+        redemptionService.reserve(used.getId(), usedBuyer, stubOrder(usedBuyer), 20_000L);
         mockMvc.perform(delete(BASE + "/" + used.getId()).with(adminAll()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("PROMOTION_IN_USE"));
@@ -534,7 +538,7 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                 now.minus(2, ChronoUnit.DAYS), now.minus(1, ChronoUnit.HOURS), null, null, false,
                 PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.STOPPED, now, actor, "promo.admin"));
 
-        redemptionService.reserve(runningAutoId, learner, UUID.randomUUID(), "DH-" + tag, 20_000L);
+        redemptionService.reserve(runningAutoId, learner, stubOrder(learner, "DH-" + tag), "DH-" + tag, 20_000L);
 
         // Filter by kind + state + q
         mockMvc.perform(get(BASE)
@@ -581,9 +585,9 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
         // Add more redemptions across CONFIRMED / RELEASED and distinct users to test state, search & paging (R1-19, R1-21)
         UUID learner2 = createActiveLearnerWithDetails("alpha." + tag.toLowerCase(), "Nguyen Minh " + tag);
         UUID learner3 = createActiveLearnerWithDetails("beta." + tag.toLowerCase(), "Tran Thu " + tag);
-        UUID order2 = UUID.randomUUID();
-        UUID order3 = UUID.randomUUID();
-        UUID order4 = UUID.randomUUID();
+        UUID order2 = stubOrder(learner2, "DH-ORD2-" + tag);
+        UUID order3 = stubOrder(learner3, "DH-ORD3-" + tag);
+        UUID order4 = stubOrder(learner3, "DH-ORD4-" + tag);
         redemptionService.reserve(runningAutoId, learner2, order2, "DH-ORD2-" + tag, 20_000L);
         redemptionService.confirm(runningAutoId, order2);
         redemptionService.reserve(runningAutoId, learner3, order3, "DH-ORD3-" + tag, 20_000L);

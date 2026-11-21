@@ -34,6 +34,7 @@ import vn.unicom.thi360.commerce.storefront.api.ExamKindRef;
 import vn.unicom.thi360.commerce.storefront.api.IntRange;
 import vn.unicom.thi360.commerce.storefront.api.LocalizedName;
 import vn.unicom.thi360.commerce.storefront.api.ProductCard;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
 
 /**
@@ -124,12 +125,7 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
             attemptsFake = null;
         }
         for (UUID userId : accountIds) {
-            jdbc.update("DELETE FROM commerce.entitlement_usage WHERE grant_id IN (SELECT g.id"
-                    + " FROM commerce.entitlement_grant g JOIN commerce.entitlement e ON e.id = g.entitlement_id"
-                    + " WHERE e.user_id = ?)", userId);
-            jdbc.update("DELETE FROM commerce.entitlement_grant WHERE entitlement_id IN (SELECT id"
-                    + " FROM commerce.entitlement WHERE user_id = ?)", userId);
-            jdbc.update("DELETE FROM commerce.entitlement WHERE user_id = ?", userId);
+            CommerceTestFixtures.deleteStubOrdersForUser(jdbc, userId);
             jdbc.update("DELETE FROM identity.user_account WHERE id = ?", userId);
         }
         accountIds.clear();
@@ -249,9 +245,11 @@ abstract class AbstractExamAccessIT extends AbstractIntegrationTest {
     protected GrantOrderResult.Line grant(UUID userId, UUID examId, int attempts, List<String> optionCodes,
             int examVersionNo) {
         UUID orderId = UUID.randomUUID();
+        String orderCode = "ORD-" + orderId.toString().replace("-", "").substring(0, 12).toUpperCase();
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, userId, examId, orderCode);
         GrantLine line = new GrantLine(examId, examVersionNo, attempts, optionCodes, Map.of("ai", true), "FULL");
         return grantService.grantForOrder(new GrantOrderCommand(
-                orderId, "ORD-" + orderId.toString().substring(0, 8), userId, List.of(line))).lines().get(0);
+                orderId, orderCode, userId, List.of(line))).lines().get(0);
     }
 
     /** Holds one attempt: it stays reserved, as while an attempt is open. Returns the attempt id. */

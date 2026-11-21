@@ -30,8 +30,8 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
         Promotion voucher = saveVoucher(5, 2);
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
-        UUID orderA = UUID.randomUUID();
-        UUID orderB = UUID.randomUUID();
+        UUID orderA = stubOrder(userA, "DH001");
+        UUID orderB = stubOrder(userB, "DH002");
 
         // Reserve -> RESERVED & used_count + 1; idempotent repeat changes nothing.
         RedemptionView reservedA = redemptionService.reserve(voucher.getId(), userA, orderA, "DH001", 20_000L);
@@ -69,7 +69,7 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
     void confirmedRedemptionIsNeverReleased() {
         Promotion voucher = saveVoucher(5, null);
         UUID userId = UUID.randomUUID();
-        UUID orderId = UUID.randomUUID();
+        UUID orderId = stubOrder(userId);
 
         redemptionService.reserve(voucher.getId(), userId, orderId, 20_000L);
         redemptionService.confirm(voucher.getId(), orderId);
@@ -86,8 +86,8 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
         Promotion voucher = saveVoucher(1, null);
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
-        UUID orderA = UUID.randomUUID();
-        UUID orderB = UUID.randomUUID();
+        UUID orderA = stubOrder(userA);
+        UUID orderB = stubOrder(userB);
 
         // Order A reserves and releases, freeing the single slot.
         redemptionService.reserve(voucher.getId(), userA, orderA, 20_000L);
@@ -121,9 +121,10 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
         Promotion voucher = saveVoucher(1, null);
 
         // Success path: reserveForOrder -> confirmByOrder
-        UUID orderConfirmed = UUID.randomUUID();
+        UUID userConfirmed = UUID.randomUUID();
+        UUID orderConfirmed = stubOrder(userConfirmed, "DH-BATCH-1");
         List<RedemptionView> reserved = redemptionService.reserveForOrder(
-                UUID.randomUUID(), orderConfirmed, "DH-BATCH-1",
+                userConfirmed, orderConfirmed, "DH-BATCH-1",
                 List.of(new ReserveRequest(auto.getId(), 10_000L), new ReserveRequest(voucher.getId(), 20_000L)));
         assertThat(reserved).hasSize(2).allSatisfy(v -> assertThat(v.state()).isEqualTo(RedemptionState.RESERVED));
 
@@ -133,9 +134,10 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
         assertThat(count(promotionRow(voucher.getId()), "used_count")).isEqualTo(1);
 
         // Atomic rollback: second promo is exhausted -> neither redemption nor used_count persists for orderFailed
-        UUID orderFailed = UUID.randomUUID();
+        UUID userFailed = UUID.randomUUID();
+        UUID orderFailed = stubOrder(userFailed, "DH-BATCH-FAIL");
         assertThatThrownBy(() -> redemptionService.reserveForOrder(
-                UUID.randomUUID(), orderFailed, "DH-BATCH-FAIL",
+                userFailed, orderFailed, "DH-BATCH-FAIL",
                 List.of(new ReserveRequest(auto.getId(), 10_000L), new ReserveRequest(voucher.getId(), 20_000L))))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting(e -> ((BusinessRuleException) e).getCode())
@@ -147,9 +149,10 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
 
         // releaseByOrder + reclaimByOrder within limit keeps over_limit_count == 0
         Promotion secondVoucher = saveVoucher(5, null);
-        UUID orderReleaseReclaim = UUID.randomUUID();
+        UUID userReleaseReclaim = UUID.randomUUID();
+        UUID orderReleaseReclaim = stubOrder(userReleaseReclaim, "DH-BATCH-REL");
         redemptionService.reserveForOrder(
-                UUID.randomUUID(), orderReleaseReclaim, "DH-BATCH-REL",
+                userReleaseReclaim, orderReleaseReclaim, "DH-BATCH-REL",
                 List.of(new ReserveRequest(auto.getId(), 10_000L), new ReserveRequest(secondVoucher.getId(), 15_000L)));
         List<RedemptionView> released = redemptionService.releaseByOrder(orderReleaseReclaim);
         assertThat(released).hasSize(2).allSatisfy(v -> assertThat(v.state()).isEqualTo(RedemptionState.RELEASED));
@@ -194,7 +197,7 @@ class PromotionRedemptionIT extends PromotionIntegrationTest {
         // Released redemption cannot be re-reserved or confirmed (409 CONFLICT); within-limit reclaim keeps over_limit=0
         Promotion voucher = saveVoucher(2, null);
         UUID userId = UUID.randomUUID();
-        UUID orderId = UUID.randomUUID();
+        UUID orderId = stubOrder(userId);
         redemptionService.reserve(voucher.getId(), userId, orderId, 10_000L);
         redemptionService.release(voucher.getId(), orderId);
 

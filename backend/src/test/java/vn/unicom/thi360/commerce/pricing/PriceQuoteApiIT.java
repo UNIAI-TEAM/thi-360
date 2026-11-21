@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.pricing.PricingTestClockConfig.MutableClock;
 import vn.unicom.thi360.commerce.promotion.application.PromotionRedemptionService;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
@@ -40,6 +41,7 @@ import vn.unicom.thi360.commerce.promotion.domain.PromotionStatus;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionAudienceRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionScopeItemRepository;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
 
@@ -67,6 +69,7 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
     private final List<UUID> classIds = new ArrayList<>();
     private final List<UUID> examIds = new ArrayList<>();
     private final List<UUID> promotionIds = new ArrayList<>();
+    private final List<UUID> orderIds = new ArrayList<>();
 
     @AfterEach
     void cleanup() {
@@ -80,6 +83,13 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
             jdbc.update("DELETE FROM commerce.promotion WHERE id = ?", promoId);
         }
         promotionIds.clear();
+        for (UUID orderId : orderIds) {
+            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        }
+        orderIds.clear();
+        for (UUID userId : userIds) {
+            CommerceTestFixtures.deleteStubOrdersForUser(jdbc, userId);
+        }
         for (UUID examId : examIds) {
             jdbc.update("DELETE FROM commerce.storefront_product WHERE exam_id = ?", examId);
         }
@@ -155,12 +165,12 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
         Promotion exhausted = saveVoucher("EXH" + shortToken(), DiscountType.AMOUNT, 20_000L, null,
                 now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), 1, null, false,
                 PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, null);
-        redemptionService.reserve(exhausted.getId(), otherUser, UUID.randomUUID(), 20_000L);
+        redemptionService.reserve(exhausted.getId(), otherUser, stubOrder(otherUser, product.examId(), OrderState.PAID), 20_000L);
 
         Promotion userLimited = saveVoucher("ULM" + shortToken(), DiscountType.AMOUNT, 20_000L, null,
                 now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), 10, 1, false,
                 PromotionScope.ALL, PromotionAudienceType.ALL, PromotionStatus.ACTIVE, null);
-        redemptionService.reserve(userLimited.getId(), userId, UUID.randomUUID(), 20_000L);
+        redemptionService.reserve(userLimited.getId(), userId, stubOrder(userId, product.examId(), OrderState.PAID), 20_000L);
 
         Promotion wrongScope = saveVoucher("SCP" + shortToken(), DiscountType.AMOUNT, 20_000L, null,
                 now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
@@ -213,11 +223,12 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
     }
 
     /**
-     * AC-12: Pins temporary CM-2 behavior where {@link ProvisionalPurchaseHistory} always returns {@code false},
-     * allowing {@code NEW_ACCOUNT} vouchers until CM-3a replaces {@link PurchaseHistory} with real order history.
+     * AC-12 / E8 (updated for CM-3a): real {@link PurchaseHistory} allows {@code NEW_ACCOUNT} vouchers when a learner
+     * has no {@code FULFILLED} order (including when only {@code PENDING_PAYMENT} or {@code CANCELLED} orders exist),
+     * and rejects with {@code 422 VOUCHER_NOT_ELIGIBLE} once the learner has a {@code FULFILLED} order.
      */
     @Test
-    void newAccountUsesProvisionalHistory() throws Exception {
+    void newAccountEligibilityFollowsRealPurchaseHistory() throws Exception {
         UUID userId = createLearner(2, false);
         TestProduct product = insertOnSaleProduct("HSA", 200_000L, 3, 1);
         Instant now = Instant.now();
@@ -226,9 +237,19 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
                 now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, null, false,
                 PromotionScope.ALL, PromotionAudienceType.NEW_ACCOUNT, PromotionStatus.ACTIVE, null);
 
+        // No order yet -> eligible
         JsonNode quote = assertQuoteSuccess(userId, product.code(), newAccountVoucher.getCode(), 165_000L);
         assertThat(quote.path("discountApplied").asText()).isEqualTo("VOUCHER_ONLY");
         assertThat(quote.path("voucher").path("code").asText()).isEqualTo(newAccountVoucher.getCode());
+
+        // PENDING_PAYMENT and CANCELLED orders do not consume NEW_ACCOUNT eligibility (E8)
+        stubOrder(userId, UUID.randomUUID(), OrderState.PENDING_PAYMENT);
+        stubOrder(userId, UUID.randomUUID(), OrderState.CANCELLED);
+        assertQuoteSuccess(userId, product.code(), newAccountVoucher.getCode(), 165_000L);
+
+        // Once the learner has a FULFILLED order -> 422 VOUCHER_NOT_ELIGIBLE
+        stubOrder(userId, product.examId(), OrderState.FULFILLED);
+        assertQuoteError(userId, product.code(), newAccountVoucher.getCode(), "VOUCHER_NOT_ELIGIBLE");
     }
 
     @Test
@@ -588,6 +609,13 @@ class PriceQuoteApiIT extends AbstractIntegrationTest {
             voucher.softDelete(deletedAt, null, null);
         }
         return promotionRepository.saveAndFlush(voucher);
+    }
+
+    private UUID stubOrder(UUID userId, UUID examId, OrderState state) {
+        UUID orderId = Ids.newId();
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, userId, examId, "PQSTUB-" + shortToken(), state);
+        orderIds.add(orderId);
+        return orderId;
     }
 
     private static String shortToken() {

@@ -26,6 +26,7 @@ import vn.unicom.thi360.commerce.promotion.domain.PromotionStatus;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionScopeItemRepository;
 import vn.unicom.thi360.commerce.storefront.application.StorefrontProjectionService;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.ids.Ids;
 
 /**
@@ -49,6 +50,7 @@ class StorefrontPromotionIT extends AbstractStorefrontIT {
     private PromotionRedemptionService redemptionService;
 
     private final Set<UUID> createdPromotionIds = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> createdOrderIds = ConcurrentHashMap.newKeySet();
 
     @AfterEach
     void cleanupPromotions() {
@@ -57,6 +59,10 @@ class StorefrontPromotionIT extends AbstractStorefrontIT {
             jdbc.update("DELETE FROM commerce.promotion WHERE id = ?", id);
         }
         createdPromotionIds.clear();
+        for (UUID orderId : createdOrderIds) {
+            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        }
+        createdOrderIds.clear();
     }
 
     @Test
@@ -110,7 +116,8 @@ class StorefrontPromotionIT extends AbstractStorefrontIT {
         assertThat(before.path("price").asLong()).isEqualTo(150_000L);
         assertThat(before.path("promotion").path("name").asText()).isEqualTo(auto.getName());
 
-        redemptionService.reserve(auto.getId(), UUID.randomUUID(), UUID.randomUUID(), 50_000L);
+        UUID u1 = UUID.randomUUID();
+        redemptionService.reserve(auto.getId(), u1, stubOrder(u1, exam.examId), 50_000L);
 
         JsonNode after = json(publicGet(BASE + "/products?q=" + exam.code, ip)
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("items").get(0);
@@ -182,7 +189,8 @@ class StorefrontPromotionIT extends AbstractStorefrontIT {
                 .andExpect(status().isNotModified());
 
         // Exhaust promo -> order and ETag revert
-        redemptionService.reserve(auto.getId(), UUID.randomUUID(), UUID.randomUUID(), 250_000L);
+        UUID u2 = UUID.randomUUID();
+        redemptionService.reserve(auto.getId(), u2, stubOrder(u2, p1Expensive.examId), 250_000L);
         MvcResult afterExhaustResult = publicGet(BASE + "/products?sort=PRICE_ASC&size=2&page=0&q=" + tag, ip)
                 .andExpect(status().isOk()).andReturn();
         assertThat(afterExhaustResult.getResponse().getHeader(HttpHeaders.ETAG)).isNotEqualTo(etagWithPromo);
@@ -207,6 +215,14 @@ class StorefrontPromotionIT extends AbstractStorefrontIT {
                 PromotionScope.EXAM, PromotionStatus.ACTIVE, Instant.now(), null, null));
         scopeItemRepository.saveAndFlush(PromotionScopeItem.forExam(Ids.newId(), promoId, examId));
         return saved;
+    }
+
+    private UUID stubOrder(UUID userId, UUID examId) {
+        UUID orderId = Ids.newId();
+        CommerceTestFixtures.insertMinimalStubOrder(
+                jdbc, orderId, userId, examId, "SF-" + orderId.toString().replace("-", "").substring(0, 12).toUpperCase());
+        createdOrderIds.add(orderId);
+        return orderId;
     }
 
     private static List<String> codes(JsonNode page) {

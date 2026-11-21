@@ -26,6 +26,7 @@ import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionStatus;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionAudienceRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.ids.Ids;
 
@@ -51,6 +52,7 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
     private JdbcTemplate jdbc;
 
     private final Set<UUID> createdPromotionIds = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> createdOrderIds = ConcurrentHashMap.newKeySet();
 
     @AfterEach
     void cleanup() {
@@ -59,6 +61,10 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
             jdbc.update("DELETE FROM commerce.promotion WHERE id = ?", id);
         }
         createdPromotionIds.clear();
+        for (UUID orderId : createdOrderIds) {
+            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        }
+        createdOrderIds.clear();
     }
 
     @Test
@@ -69,7 +75,7 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
         PricedProduct product = new PricedProduct(examId, kindId, 200_000L);
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
-        UUID orderA = UUID.randomUUID();
+        UUID orderA = stubOrder(userA, examId, "DH-A-" + shortToken());
 
         // 1. Voucher with total_limit = 1, per_user_limit = 1, reserved by orderA of userA
         UUID voucherId = track(Ids.newId());
@@ -167,8 +173,8 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
         PricedProduct product = new PricedProduct(UUID.randomUUID(), UUID.randomUUID(), 200_000L);
         UUID userA = UUID.randomUUID();
         UUID userB = UUID.randomUUID();
-        UUID orderA = UUID.randomUUID();
-        UUID orderB = UUID.randomUUID();
+        UUID orderA = stubOrder(userA, product.examId(), "DH-A-" + shortToken());
+        UUID orderB = stubOrder(userB, product.examId(), "DH-B-" + shortToken());
 
         UUID autoId = track(Ids.newId());
         promotionRepository.saveAndFlush(Promotion.auto(
@@ -214,5 +220,16 @@ class PriceCalculatorIT extends AbstractIntegrationTest {
     private UUID track(UUID id) {
         createdPromotionIds.add(id);
         return id;
+    }
+
+    private UUID stubOrder(UUID userId, UUID examId, String orderCode) {
+        UUID orderId = Ids.newId();
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, userId, examId, orderCode);
+        createdOrderIds.add(orderId);
+        return orderId;
+    }
+
+    private static String shortToken() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 }

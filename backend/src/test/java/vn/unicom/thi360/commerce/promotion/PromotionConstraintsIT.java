@@ -93,8 +93,8 @@ class PromotionConstraintsIT extends PromotionIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         // Duplicate (promotion_id, order_id) in promotion_redemption rejected
-        UUID orderId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        UUID orderId = stubOrder(userId);
         jdbc.update("""
                 INSERT INTO commerce.promotion_redemption
                     (id, promotion_id, user_id, order_id, discount_vnd, state, created_at, updated_at)
