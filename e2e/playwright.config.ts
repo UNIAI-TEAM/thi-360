@@ -66,6 +66,7 @@ export default defineConfig({
         THI360_API_PORT: process.env.THI360_API_PORT ?? apiPort,
         THI360_WEB_URL: webUrl,
         THI360_ADMIN_URL: adminUrl,
+        THI360_VNPAY_MOCKPAYURL: process.env.THI360_VNPAY_MOCKPAYURL ?? `${apiUrl}/mock-vnpay`,
         // Relax the per-IP login rate limit (default 20/min) so the suite's
         // platform logins cannot trip RateLimitFilter. Applies only to the
         // backend spawned for e2e runs.

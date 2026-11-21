@@ -45,7 +45,7 @@ describe("StudentHeader", () => {
     );
   });
 
-  it("đã đăng nhập thấy Bài thi của tôi, Hồ sơ và menu tài khoản; Lịch sử, Đơn của tôi nằm trong danh sách ẩn (AC-14)", () => {
+  it("đã đăng nhập thấy Bài thi của tôi, Hồ sơ, Đơn của tôi và menu tài khoản; Lịch sử vẫn ẩn (AC-22)", () => {
     nav.pathname = "/home";
     renderWithProviders(<StudentHeader account={{ kind: "user", session: STUDENT }} />);
 
@@ -55,11 +55,12 @@ describe("StudentHeader", () => {
     expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
       ["Bài thi của tôi", "/home"],
       ["Hồ sơ", "/account/profile"],
+      ["Đơn của tôi", "/account/orders"],
     ]);
     expect(within(navigation).getByRole("link", { name: "Bài thi của tôi" })).toHaveAttribute("aria-current", "page");
     expect(within(navigation).getByRole("link", { name: "Hồ sơ" })).not.toHaveAttribute("aria-current");
+    expect(within(navigation).getByRole("link", { name: "Đơn của tôi" })).not.toHaveAttribute("aria-current");
     expect(within(banner).queryByRole("link", { name: "Lịch sử" })).toBeNull();
-    expect(within(banner).queryByRole("link", { name: "Đơn của tôi" })).toBeNull();
     expect(within(banner).getByRole("button", { name: "Menu tài khoản" })).toBeInTheDocument();
     expect(within(banner).queryByRole("link", { name: "Đăng nhập" })).toBeNull();
     expect(within(banner).queryByRole("link", { name: "Đăng ký" })).toBeNull();
@@ -117,5 +118,15 @@ describe("StudentHeader", () => {
     expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "My exams" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My orders" })).toHaveAttribute("href", "/account/orders");
+    expect(screen.queryByRole("link", { name: "History" })).toBeNull();
+  });
+
+  it("đánh dấu Đơn của tôi đang chọn cả ở chi tiết đơn", () => {
+    nav.pathname = "/account/orders/DH261117K7M2Q9";
+    renderWithProviders(<StudentHeader account={{ kind: "user", session: STUDENT }} />);
+
+    expect(screen.getByRole("link", { name: "Đơn của tôi" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Bài thi của tôi" })).not.toHaveAttribute("aria-current");
   });
 });
