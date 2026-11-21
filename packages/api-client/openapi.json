@@ -2894,11 +2894,25 @@
             },
             "type" : "array"
           },
+          "durationMinutes" : {
+            "description" : "Tổng thời lượng dự kiến (phút) của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
           "kind" : {
             "type" : "string"
           },
+          "maxPoints" : {
+            "description" : "Tổng điểm tối đa của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định",
+            "type" : [ "number", "null" ]
+          },
           "name" : {
             "type" : "string"
+          },
+          "questionCount" : {
+            "description" : "Tổng số câu của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
           },
           "subjects" : {
             "items" : {

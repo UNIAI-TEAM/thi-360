@@ -4467,8 +4467,20 @@ export interface components {
             chooseSubjects?: number;
             code?: string;
             countsByPick?: number[];
+            /**
+             * Format: int32
+             * @description Tổng thời lượng dự kiến (phút) của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định
+             */
+            durationMinutes?: number | null;
             kind?: string;
+            /** @description Tổng điểm tối đa của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định */
+            maxPoints?: number | null;
             name?: string;
+            /**
+             * Format: int32
+             * @description Tổng số câu của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định
+             */
+            questionCount?: number | null;
             subjects?: components["schemas"]["ChoiceSubjectView"][];
         };
         ChoiceSubjectView: {
