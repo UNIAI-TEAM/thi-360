@@ -42,11 +42,15 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
         reset(paperSolverPort);
     }
 
+    private record AttemptSession(Attempt attempt, UUID sessionId) {}
+
     @Test
     void replayChoice() throws Exception {
         UUID userId = createStudent("idem-choice");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToAwaitingChoice(userId, "ich", line.entitlementId());
+        AttemptSession session = advanceToAwaitingChoice(userId, "ich", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptPart p2 = parts.get(2);
 
@@ -57,7 +61,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         null,
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(missing.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(missing).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
@@ -68,7 +72,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "   ",
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(blank.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(blank).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
@@ -87,14 +91,14 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
 
         ConfirmPartChoiceRequest req1 =
                 new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SINH"));
-        MvcResult first = performChoice(userId, attempt.getId(), p2.getId(), "ch-k1", null, req1);
+        MvcResult first = performChoice(userId, attempt.getId(), p2.getId(), "ch-k1", sid, req1);
         assertThat(first.getResponse().getStatus()).isEqualTo(202);
         assertThat(json(first).path("state").asText()).isEqualTo("GENERATING");
         awaitPartState(p2.getId(), PartState.OPEN);
         assertThat(p2Calls.get()).isEqualTo(1);
 
         // Replay same key + same body -> 200 OK with CURRENT state (OPEN), zero extra generation
-        MvcResult replay = performChoice(userId, attempt.getId(), p2.getId(), "ch-k1", null, req1);
+        MvcResult replay = performChoice(userId, attempt.getId(), p2.getId(), "ch-k1", sid, req1);
         assertThat(replay.getResponse().getStatus()).isEqualTo(200);
         JsonNode replayJson = json(replay);
         assertThat(replayJson.path("state").asText()).isEqualTo("OPEN");
@@ -108,18 +112,18 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SU")),
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("SINH", "LY", "HOA")))) {
             MvcResult reused =
-                    performChoice(userId, attempt.getId(), p2.getId(), "ch-k1", null, diffBody);
+                    performChoice(userId, attempt.getId(), p2.getId(), "ch-k1", sid, diffBody);
             assertThat(reused.getResponse().getStatus()).isEqualTo(409);
             assertThat(json(reused).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
         }
         MvcResult diffPartReused =
-                performChoice(userId, attempt.getId(), parts.get(0).getId(), "ch-k1", null, req1);
+                performChoice(userId, attempt.getId(), parts.get(0).getId(), "ch-k1", sid, req1);
         assertThat(diffPartReused.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffPartReused).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
 
         // R1-16: foreign or non-existent partId with reused key -> 404 NOT_FOUND
         MvcResult foreignPartReused =
-                performChoice(userId, attempt.getId(), UUID.randomUUID(), "ch-k1", null, req1);
+                performChoice(userId, attempt.getId(), UUID.randomUUID(), "ch-k1", sid, req1);
         assertThat(foreignPartReused.getResponse().getStatus()).isEqualTo(404);
         assertThat(json(foreignPartReused).path("code").asText()).isEqualTo("NOT_FOUND");
 
@@ -130,7 +134,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "ch-k2",
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(locked.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(locked).path("code").asText()).isEqualTo("CHOICE_LOCKED");
@@ -140,16 +144,18 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
     void replayRetry() throws Exception {
         UUID userId = createStudent("idem-retry");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToAwaitingChoice(userId, "iret", line.entitlementId());
+        AttemptSession session = advanceToAwaitingChoice(userId, "iret", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptPart p2 = parts.get(2);
 
         // Missing and blank Idempotency-Key -> 400 IDEMPOTENCY_KEY_REQUIRED
-        MvcResult missing = performRetry(userId, attempt.getId(), p2.getId(), null, null, null);
+        MvcResult missing = performRetry(userId, attempt.getId(), p2.getId(), null, sid, null);
         assertThat(missing.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(missing).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
 
-        MvcResult blank = performRetry(userId, attempt.getId(), p2.getId(), "  ", null, null);
+        MvcResult blank = performRetry(userId, attempt.getId(), p2.getId(), "  ", sid, null);
         assertThat(blank.getResponse().getStatus()).isEqualTo(400);
         assertThat(json(blank).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
 
@@ -176,7 +182,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "iret-ch",
-                                        null,
+                                        sid,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -185,7 +191,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
 
         RetryPartRequest retReq1 = new RetryPartRequest("retry 1");
         MvcResult firstRetry =
-                performRetry(userId, attempt.getId(), p2.getId(), "ret-k1", null, retReq1);
+                performRetry(userId, attempt.getId(), p2.getId(), "ret-k1", sid, retReq1);
         assertThat(firstRetry.getResponse().getStatus()).isEqualTo(202);
         assertThat(json(firstRetry).path("state").asText()).isEqualTo("GENERATING");
         awaitPartState(p2.getId(), PartState.OPEN);
@@ -193,7 +199,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
 
         // Replay same key + same body -> 200 OK with OPEN state, zero extra generation
         MvcResult replayRetry =
-                performRetry(userId, attempt.getId(), p2.getId(), "ret-k1", null, retReq1);
+                performRetry(userId, attempt.getId(), p2.getId(), "ret-k1", sid, retReq1);
         assertThat(replayRetry.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(replayRetry).path("state").asText()).isEqualTo("OPEN");
         assertThat(p2Calls.get()).isEqualTo(2);
@@ -205,19 +211,19 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "ret-k1",
-                        null,
+                        sid,
                         new RetryPartRequest("retry 2"));
         assertThat(diffReason.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffReason).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
 
         MvcResult diffPart =
-                performRetry(userId, attempt.getId(), parts.get(0).getId(), "ret-k1", null, retReq1);
+                performRetry(userId, attempt.getId(), parts.get(0).getId(), "ret-k1", sid, retReq1);
         assertThat(diffPart.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(diffPart).path("code").asText()).isEqualTo("IDEMPOTENCY_KEY_REUSED");
 
         // R1-16: foreign or non-existent partId with reused key -> 404 NOT_FOUND
         MvcResult foreignPartRetry =
-                performRetry(userId, attempt.getId(), UUID.randomUUID(), "ret-k1", null, retReq1);
+                performRetry(userId, attempt.getId(), UUID.randomUUID(), "ret-k1", sid, retReq1);
         assertThat(foreignPartRetry.getResponse().getStatus()).isEqualTo(404);
         assertThat(json(foreignPartRetry).path("code").asText()).isEqualTo("NOT_FOUND");
     }
@@ -227,7 +233,9 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
         // 1. Different-choice race -> one 202, one 409 CHOICE_LOCKED, 1 generation
         UUID u1 = createStudent("conc-diff");
         GrantOrderResult.Line l1 = grant(u1, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt a1 = advanceToAwaitingChoice(u1, "cdiff", l1.entitlementId());
+        AttemptSession s1Sess = advanceToAwaitingChoice(u1, "cdiff", l1.entitlementId());
+        Attempt a1 = s1Sess.attempt();
+        UUID sid1 = s1Sess.sessionId();
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
 
         AtomicInteger p1Calls = new AtomicInteger();
@@ -254,7 +262,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                                         a1.getId(),
                                         p1.getId(),
                                         "cdiff-k1",
-                                        null,
+                                        sid1,
                                         new ConfirmPartChoiceRequest("ANH", null));
                             });
             Future<MvcResult> f2 =
@@ -266,7 +274,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                                         a1.getId(),
                                         p1.getId(),
                                         "cdiff-k2",
-                                        null,
+                                        sid1,
                                         new ConfirmPartChoiceRequest(
                                                 "SCIENCE", List.of("LY", "HOA", "SU")));
                             });
@@ -283,7 +291,9 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
             reset(paperSolverPort);
             UUID u2 = createStudent("conc-same");
             GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
-            Attempt a2 = advanceToAwaitingChoice(u2, "csame", l2.entitlementId());
+            AttemptSession s2Sess = advanceToAwaitingChoice(u2, "csame", l2.entitlementId());
+            Attempt a2 = s2Sess.attempt();
+            UUID sid2 = s2Sess.sessionId();
             AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
 
             AtomicInteger p2Calls = new AtomicInteger();
@@ -308,7 +318,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         p2.getId(),
                                         "csame-k1",
-                                        null,
+                                        sid2,
                                         new ConfirmPartChoiceRequest(
                                                 "SCIENCE", List.of("LY", "HOA", "SINH")));
                             });
@@ -321,7 +331,7 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         p2.getId(),
                                         "csame-k2",
-                                        null,
+                                        sid2,
                                         new ConfirmPartChoiceRequest(
                                                 "science", List.of("sinh", "ly", "hoa")));
                             });
@@ -336,18 +346,19 @@ class AttemptChoiceIdempotencyIT extends AbstractAttemptDsIT {
         }
     }
 
-    private Attempt advanceToAwaitingChoice(UUID userId, String keyPrefix, UUID entitlementId)
-            throws Exception {
+    private AttemptSession advanceToAwaitingChoice(
+            UUID userId, String keyPrefix, UUID entitlementId) throws Exception {
         Attempt attempt = startAndAwaitOpen(userId, keyPrefix, entitlementId, null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        return attempt;
+        return new AttemptSession(attempt, sid);
     }
 }

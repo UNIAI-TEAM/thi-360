@@ -105,7 +105,7 @@ class AttemptOpenApiContractTest {
         for (String schemaName : ANSWER_SUBTYPE_SCHEMAS) {
             expectedAnswerRefs.add("#/components/schemas/" + schemaName);
         }
-        for (String ownerSchema : List.of("FinalAnswerChange", "AttemptItemView")) {
+        for (String ownerSchema : List.of("FinalAnswerChange", "AnswerChange", "AttemptItemView")) {
             JsonNode answerProp = schemas.path(ownerSchema).path("properties").path("answer");
             assertThat(answerProp.isMissingNode()).isFalse();
             assertThat(answerProp.toString()).doesNotContain("AttemptQuestionBody");
@@ -134,6 +134,59 @@ class AttemptOpenApiContractTest {
                                 .path("maxItems")
                                 .asInt())
                 .isEqualTo(500);
+        assertThat(
+                        schemas.path("SaveAnswersRequest")
+                                .path("properties")
+                                .path("changes")
+                                .path("maxItems")
+                                .asInt())
+                .isEqualTo(50);
+        assertThat(
+                        schemas.path("SaveAnswersRequest")
+                                .path("properties")
+                                .path("flags")
+                                .path("maxItems")
+                                .asInt())
+                .isEqualTo(50);
+
+        JsonNode sessionConflictLastSeen =
+                schemas.path("AttemptSessionConflictResponse")
+                        .path("properties")
+                        .path("lastSeenAt");
+        assertThat(sessionConflictLastSeen.isMissingNode()).isFalse();
+        assertThat(sessionConflictLastSeen.path("format").asText()).isEqualTo("date-time");
+
+        JsonNode paths = root.path("paths");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/session").path("post").path("operationId").asText())
+                .isEqualTo("claimSession");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/heartbeat").path("post").path("operationId").asText())
+                .isEqualTo("heartbeat");
+
+        JsonNode saveAnswersOp =
+                paths.path("/api/v1/me/attempts/{attemptId}/answers").path("put");
+        assertThat(saveAnswersOp.path("operationId").asText()).isEqualTo("saveAnswers");
+        JsonNode retryAfterSchema =
+                saveAnswersOp
+                        .path("responses")
+                        .path("429")
+                        .path("headers")
+                        .path("Retry-After")
+                        .path("schema");
+        assertThat(retryAfterSchema.path("type").asText()).isEqualTo("integer");
+
+        JsonNode downloadAssetOp =
+                paths.path("/api/v1/me/attempts/{attemptId}/assets/{assetId}").path("get");
+        assertThat(downloadAssetOp.path("operationId").asText())
+                .isEqualTo("downloadAttemptAsset");
+        JsonNode assetBinarySchema =
+                downloadAssetOp
+                        .path("responses")
+                        .path("200")
+                        .path("content")
+                        .path("application/octet-stream")
+                        .path("schema");
+        assertThat(assetBinarySchema.path("type").asText()).isEqualTo("string");
+        assertThat(assetBinarySchema.path("format").asText()).isEqualTo("binary");
 
         JsonNode confirmReq = schemas.path("ConfirmPartChoiceRequest");
         assertThat(confirmReq.path("required")).extracting(JsonNode::asText).contains("optionCode");
@@ -223,6 +276,23 @@ class AttemptOpenApiContractTest {
                     .contains("\"Idempotency-Key\": string;")
                     .doesNotContain("\"Idempotency-Key\"?:");
         }
+
+        String answerChangeBlock = extractComponentSchemaBlock(schemaDts, "AnswerChange");
+        assertThat(answerChangeBlock)
+                .doesNotContain(": never")
+                .contains("SingleChoiceAnswer");
+        String conflictBlock =
+                extractComponentSchemaBlock(schemaDts, "AttemptSessionConflictResponse");
+        assertThat(conflictBlock).contains("lastSeenAt?: string;");
+
+        extractOperationBlock(schemaDts, "claimSession");
+        extractOperationBlock(schemaDts, "heartbeat");
+        String saveAnswersOpBlock = extractOperationBlock(schemaDts, "saveAnswers");
+        assertThat(saveAnswersOpBlock)
+                .contains("\"Retry-After\"?: number;")
+                .doesNotContain("\"Retry-After\"?: unknown;");
+        String downloadAssetOpBlock = extractOperationBlock(schemaDts, "downloadAttemptAsset");
+        assertThat(downloadAssetOpBlock).contains("\"application/octet-stream\": string;");
 
         String partChoiceResponseBlock = extractComponentSchemaBlock(schemaDts, "PartChoiceResponse");
         assertThat(partChoiceResponseBlock)

@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -281,6 +283,45 @@ public class Attempt {
         this.state = AttemptState.GRADING;
         this.endReason = Objects.requireNonNull(endReason, "endReason must not be null");
         this.finishedAt = Objects.requireNonNull(finishedAt, "finishedAt must not be null");
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
+    /** Claims the initial active edit session for an in-progress attempt (LT F10). */
+    public void claimSession(UUID sessionId, Instant seenAt) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot claim session from state " + this.state);
+        }
+        this.editSessionId = Objects.requireNonNull(sessionId, "sessionId must not be null");
+        this.editSessionSeenAt = Objects.requireNonNull(seenAt, "seenAt must not be null");
+        this.updatedAt = seenAt;
+    }
+
+    /** Replaces the active edit session when another device confirms takeover (LT F10, AC-11.07). */
+    public void takeoverSession(UUID sessionId, Instant seenAt) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot take over session from state " + this.state);
+        }
+        this.editSessionId = Objects.requireNonNull(sessionId, "sessionId must not be null");
+        this.editSessionSeenAt = Objects.requireNonNull(seenAt, "seenAt must not be null");
+        this.updatedAt = seenAt;
+    }
+
+    /** Refreshes the last-seen timestamp of the current edit session (LT §7.1). */
+    public void touchSession(Instant seenAt) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot touch session from state " + this.state);
+        }
+        this.editSessionSeenAt = Objects.requireNonNull(seenAt, "seenAt must not be null");
+        this.updatedAt = seenAt;
+    }
+
+    /** Updates the student's last viewed part/item position on an in-progress attempt (LT §7.1). */
+    public void updateLastPosition(Map<String, Object> lastPosition, Instant now) {
+        if (this.state != AttemptState.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot update position from state " + this.state);
+        }
+        this.lastPosition =
+                lastPosition == null ? null : Collections.unmodifiableMap(new LinkedHashMap<>(lastPosition));
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 

@@ -117,12 +117,13 @@ class AttemptSpiIT extends AbstractAttemptDsIT {
         assertThat(realStart.getResponse().getStatus()).isEqualTo(202);
         UUID inProgId = UUID.fromString(json(realStart).path("attemptId").asText());
         awaitTerminalStartState(inProgId, AttemptState.IN_PROGRESS);
+        UUID sid = claimSession(userId, inProgId);
 
         assertThat(attemptStatusProvider.findOpenAttempt(userId, line.entitlementId()))
                 .contains(new OpenAttempt(inProgId, OpenAttemptState.IN_PROGRESS));
 
         // 3. Submit via real POST /me/attempts/{id}/submit -> GRADING, activeAttempt false, findOpenAttempt empty, findLatestResultAttempt present
-        MvcResult submitRes = performSubmit(userId, inProgId, "spi-real-submit", null, null);
+        MvcResult submitRes = performSubmit(userId, inProgId, "spi-real-submit", sid, null);
         assertThat(submitRes.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(submitRes).path("state").asText()).isEqualTo("GRADING");
         Attempt submitted = attemptRepository.findById(inProgId).orElseThrow();
