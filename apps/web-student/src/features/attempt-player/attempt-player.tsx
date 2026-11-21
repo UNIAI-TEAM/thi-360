@@ -136,7 +136,7 @@ type AttemptEndReason = "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOS
 
 function inferAttemptEndReason(state: AttemptStateResponse): AttemptEndReason | null {
   if (!CLOSED_STATES.has(state.state)) return null;
-  const parts = state.parts ?? [];
+  const parts = [...(state.parts ?? [])].sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
   for (const part of parts) {
     if (
       part.state === "SKIPPED" &&
@@ -157,13 +157,11 @@ function inferAttemptEndReason(state: AttemptStateResponse): AttemptEndReason | 
   ) {
     return "TIME_UP";
   }
+  const lastPart = parts[parts.length - 1];
   if (
-    parts.some(
-      (part) =>
-        part.closedAt &&
-        part.deadlineAt &&
-        Date.parse(part.closedAt) >= Date.parse(part.deadlineAt),
-    )
+    lastPart?.closedAt &&
+    lastPart?.deadlineAt &&
+    Date.parse(lastPart.closedAt) >= Date.parse(lastPart.deadlineAt)
   ) {
     return "TIME_UP";
   }
@@ -443,10 +441,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         if (loadPhaseRef.current !== "ready") {
           setReloadNonce((n) => n + 1);
         } else {
-          if (editSessionRef.current?.getSnapshot().status === "error") {
-            await editSessionRef.current.claim(false);
+          await editSessionRef.current?.resumeAfterAuthRefresh();
+          if ((saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0) {
+            void saveQueueRef.current?.flushNow();
           }
-          await saveQueueRef.current?.flushNow();
         }
       } catch {
         redirectingForAuthRef.current = true;
@@ -601,6 +599,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     async function bootstrap() {
+      loadPhaseRef.current = "loading";
       try {
         const depsNow = resolvedDepsRef.current;
         const [initialState, drafts, meta] = await Promise.all([
@@ -611,6 +610,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         if (cancelled) return;
 
         applyFreshServerStateRef.current(initialState, meta?.lastPosition);
+        loadPhaseRef.current = "ready";
         setLoadPhase("ready");
 
         if (initialState.state !== "IN_PROGRESS") {
@@ -660,8 +660,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           return;
         }
         if (error instanceof ApiStatusError && (error.status === 404 || error.code === "ATTEMPT_NOT_FOUND")) {
+          loadPhaseRef.current = "not_found";
           setLoadPhase("not_found");
         } else {
+          loadPhaseRef.current = "error";
           setLoadPhase("error");
         }
       }
@@ -707,9 +709,15 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       } else {
         setFinishDialogStatus("idle");
       }
+      if (fresh.state === "IN_PROGRESS") {
+        void saveQueueRef.current?.flushNow();
+      }
     } catch (error) {
       if (error instanceof ApiStatusError && error.status === 401) {
-        void handleAttemptUnauthorized();
+        await handleAttemptUnauthorized();
+        if (!redirectingForAuthRef.current) {
+          setFinishDialogStatus("unconfirmed");
+        }
         return;
       }
       setFinishDialogStatus("unconfirmed");
@@ -726,10 +734,14 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         setSubmitDialogStatus("idle");
       } else {
         setSubmitDialogStatus("idle");
+        void saveQueueRef.current?.flushNow();
       }
     } catch (error) {
       if (error instanceof ApiStatusError && error.status === 401) {
-        void handleAttemptUnauthorized();
+        await handleAttemptUnauthorized();
+        if (!redirectingForAuthRef.current) {
+          setSubmitDialogStatus("unconfirmed");
+        }
         return;
       }
       setSubmitDialogStatus("unconfirmed");
@@ -1353,6 +1365,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           editSessionRef.current?.markEvicted();
         } else if (
           error.code === "CHOICE_WINDOW_CLOSED" ||
+          error.code === "CHOICE_LOCKED" ||
           error.code === "PART_NOT_AWAITING" ||
           error.code === "PART_GENERATING"
         ) {
@@ -1394,6 +1407,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           editSessionRef.current?.markEvicted();
         } else if (
           error.code === "CHOICE_WINDOW_CLOSED" ||
+          error.code === "CHOICE_LOCKED" ||
           error.code === "PART_NOT_AWAITING" ||
           error.code === "PART_GENERATING"
         ) {
@@ -1437,7 +1451,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     } catch (error) {
       if (error instanceof ApiStatusError) {
         if (error.status === 401) {
-          void handleAttemptUnauthorized();
+          await handleAttemptUnauthorized();
+          if (!redirectingForAuthRef.current) {
+            setFinishDialogStatus("idle");
+          }
           return;
         }
         if (error.code === "ATTEMPT_SESSION_REVOKED") {
@@ -1488,7 +1505,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     } catch (error) {
       if (error instanceof ApiStatusError) {
         if (error.status === 401) {
-          void handleAttemptUnauthorized();
+          await handleAttemptUnauthorized();
+          if (!redirectingForAuthRef.current) {
+            setSubmitDialogStatus("idle");
+          }
           return;
         }
         if (error.code === "ATTEMPT_SESSION_REVOKED") {
@@ -1727,7 +1747,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                   </div>
                 ) : null}
 
-                <fieldset disabled={isReadOnly} className="min-w-0">
+                <fieldset disabled={isReadOnly} data-attempt-question-fieldset="" className="min-w-0">
                   {activeUnit.kind === "QUESTION_SET" ? (
                     <Question
                       mode="answer"

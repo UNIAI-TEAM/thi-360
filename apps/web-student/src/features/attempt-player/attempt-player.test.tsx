@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -1252,5 +1252,351 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
 
     expect(loadFn).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("heading", { name: "Đã quá thời gian chọn phần 3" })).toBeInTheDocument();
+  });
+
+  it("401 trên claimEditSession và submitAttempt khi refreshSession thành công sẽ hồi phục sessionId và mở khóa hộp thoại Nộp bài (FE-R2-1)", async () => {
+    const user = userEvent.setup();
+    const openState: AttemptStateResponse = {
+      attemptId: "att-401-recover",
+      state: "IN_PROGRESS",
+      navigationMode: "FREE",
+      timing: "SHARED",
+      deadlineAt: "2026-11-21T11:00:00Z",
+      examName: "Đề làm mới phiên ngầm",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "OPEN",
+          items: [makeOpenMcqItem("q-rec", 1, "Câu hồi phục phiên")],
+        },
+      ],
+    };
+    const closedState: AttemptStateResponse = {
+      ...openState,
+      state: "GRADING",
+      parts: [{ ord: 1, partId: "p1", partName: "Phần 1", state: "CLOSED", items: [] }],
+    };
+
+    const loadAttemptStateFn = vi
+      .fn<() => Promise<AttemptStateResponse>>()
+      .mockResolvedValueOnce(openState)
+      .mockResolvedValueOnce(closedState);
+
+    const claimEditSessionFn = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(401, "Access token expired"))
+      .mockResolvedValueOnce({
+        conflict: false as const,
+        sessionId: "sess-recovered",
+        serverNow: "2026-11-21T10:00:05Z",
+      });
+
+    const submitAttemptFn = vi
+      .fn<NonNullable<AttemptPlayerDeps["submitAttemptFn"]>>()
+      .mockRejectedValueOnce(new ApiStatusError(401, "Access token expired"))
+      .mockResolvedValueOnce({
+        attemptId: "att-401-recover",
+        state: "GRADING" as const,
+        endReason: "SUBMITTED" as const,
+        parts: [],
+        results: [],
+        serverNow: "2026-11-21T10:01:00Z",
+      });
+
+    const refreshSessionFn = vi.fn(async () => undefined);
+    const navigateFn = vi.fn();
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-401-recover"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn,
+          claimEditSessionFn,
+          submitAttemptFn,
+          refreshSessionFn,
+          navigateFn,
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu hồi phục phiên")).toBeInTheDocument();
+    await waitFor(() => expect(claimEditSessionFn).toHaveBeenCalledTimes(2));
+    expect(refreshSessionFn).toHaveBeenCalledTimes(1);
+    expect(navigateFn).not.toHaveBeenCalled();
+
+    // Open Submit dialog and submit -> hits 401 -> refreshSession succeeds -> dialog unlocks (not stuck busy)
+    await user.click(screen.getByRole("button", { name: "Nộp bài" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Nộp bài" }));
+
+    await waitFor(() => expect(refreshSessionFn).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Quay lại kiểm tra" })).toBeEnabled());
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(navigateFn).not.toHaveBeenCalled();
+
+    // Click Submit again -> uses recovered sessionId "sess-recovered" and closes attempt
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Nộp bài" }));
+    await waitFor(() => expect(submitAttemptFn).toHaveBeenCalledTimes(2));
+    expect(submitAttemptFn.mock.calls[1]?.[1]).toBe("sess-recovered");
+    expect(await screen.findByRole("heading", { name: "Lượt thi đã đóng" })).toBeInTheDocument();
+  });
+
+  it("inferAttemptEndReason PER_PART chỉ xét phần cuối, không gán TIME_UP khi phần trước hết giờ nhưng phần cuối nộp sớm (FE-R2-2)", async () => {
+    const perPartEarlySubmitState: AttemptStateResponse = {
+      attemptId: "att-per-part-early",
+      state: "SCORED",
+      timing: "PER_PART",
+      examName: "Đề nhiều phần nộp sớm",
+      serverNow: "2026-11-21T10:25:00Z",
+      parts: [
+        {
+          ord: 2,
+          partId: "p2",
+          state: "CLOSED",
+          deadlineAt: "2026-11-21T10:30:00Z",
+          closedAt: "2026-11-21T10:20:00Z",
+          items: [],
+        },
+        {
+          ord: 1,
+          partId: "p1",
+          state: "CLOSED",
+          deadlineAt: "2026-11-21T10:10:00Z",
+          closedAt: "2026-11-21T10:10:00Z",
+          items: [],
+        },
+      ],
+    };
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-per-part-early"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn: vi.fn(async () => perPartEarlySubmitState) })}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Lượt thi đã đóng" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Đã hết giờ làm bài" })).not.toBeInTheDocument();
+  });
+
+  it("409 CHOICE_LOCKED tự động gọi loadAttemptStateFn để đồng bộ trạng thái phần mới (FE-R2-3)", async () => {
+    const user = userEvent.setup();
+    const awaitingState: AttemptStateResponse = {
+      attemptId: "att-choice-locked",
+      state: "IN_PROGRESS",
+      navigationMode: "SEQUENTIAL",
+      timing: "PER_PART",
+      examName: "Đề khóa lựa chọn",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        { ord: 1, partId: "p1", state: "CLOSED", items: [] },
+        {
+          ord: 3,
+          partId: "p3",
+          state: "AWAITING_CHOICE",
+          choiceDeadlineAt: "2026-11-21T10:15:00Z",
+          items: [],
+        },
+      ],
+    };
+    const generatingState: AttemptStateResponse = {
+      ...awaitingState,
+      parts: [
+        { ord: 1, partId: "p1", state: "CLOSED", items: [] },
+        { ord: 3, partId: "p3", state: "GENERATING", items: [] },
+      ],
+    };
+
+    const loadAttemptStateFn = vi
+      .fn<() => Promise<AttemptStateResponse>>()
+      .mockResolvedValueOnce(awaitingState)
+      .mockResolvedValueOnce(generatingState);
+    const confirmPartChoiceFn = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(409, "Choice locked", { code: "CHOICE_LOCKED" }));
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-choice-locked"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn, confirmPartChoiceFn })}
+      />,
+    );
+
+    expect(await screen.findByText("Chọn phần thi thứ ba")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Xác nhận chọn phần 3" }));
+
+    await waitFor(() => expect(loadAttemptStateFn).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Đang chuẩn bị bộ câu hỏi cho phần thi")).toBeInTheDocument();
+  });
+
+  it("đối soát trả về IN_PROGRESS lập tức xả nháp đang chờ debounce (FE-R2-4)", async () => {
+    const user = userEvent.setup();
+    const openState: AttemptStateResponse = {
+      attemptId: "att-reconcile-flush",
+      state: "IN_PROGRESS",
+      navigationMode: "FREE",
+      timing: "SHARED",
+      deadlineAt: "2026-11-21T11:00:00Z",
+      examName: "Đề đối soát xả nháp",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          state: "OPEN",
+          items: [
+            {
+              itemId: "sa-rec",
+              displayNo: 1,
+              unitCount: 1,
+              content: "Câu tự điền đối soát",
+              questionType: "SHORT_ANSWER",
+              answerSeq: 0,
+              flagged: false,
+              questionBody: { type: "SHORT_ANSWER" },
+            },
+          ],
+        },
+      ],
+    };
+
+    const loadAttemptStateFn = vi.fn(async () => openState);
+    const saveAnswersFn = vi.fn(async (_a: string, _s: string, body: attemptApi.SaveAnswersRequest) => ({
+      results: (body.changes ?? []).map((c) => ({
+        itemId: c.itemId,
+        seq: c.seq,
+        status: "SAVED" as const,
+      })),
+      serverNow: "2026-11-21T10:00:05Z",
+    }));
+    const submitAttemptFn = vi.fn(async () => {
+      throw new Error("Transient timeout");
+    });
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-reconcile-flush"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn, saveAnswersFn, submitAttemptFn })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu tự điền đối soát")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeEnabled());
+
+    // Type within 800ms debounce, then immediately trigger Submit (cancels debounce timer) -> transient error
+    await user.type(screen.getByRole("textbox"), "123");
+    expect(saveAnswersFn).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Nộp bài" }));
+    await user.click(screen.getByRole("dialog").querySelectorAll("button")[1]!);
+    expect(await screen.findByRole("heading", { name: "Chưa xác nhận nộp bài" })).toBeInTheDocument();
+    expect(saveAnswersFn).not.toHaveBeenCalled();
+
+    // Reconcile returns IN_PROGRESS -> flushes pending debounced answer immediately!
+    await user.click(screen.getByRole("button", { name: "Kiểm tra trạng thái lượt" }));
+    await waitFor(() =>
+      expect(saveAnswersFn).toHaveBeenCalledWith(
+        "att-reconcile-flush",
+        "sess-1",
+        expect.objectContaining({
+          changes: [{ itemId: "sa-rec", seq: 3, answer: { type: "SHORT_ANSWER", text: "123" } }],
+        }),
+      ),
+    );
+    expect(await screen.findByText("Đã lưu")).toBeInTheDocument();
+  });
+
+  it("401 trên finishPartFn và reconcile giữ hộp thoại mở khóa sau khi refreshSession thành công (FE-R2-1)", async () => {
+    const user = userEvent.setup();
+    const seqState: AttemptStateResponse = {
+      attemptId: "att-401-finish",
+      state: "IN_PROGRESS",
+      navigationMode: "SEQUENTIAL",
+      timing: "PER_PART",
+      examName: "Đề hoàn thành phần 401",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "OPEN",
+          items: [makeOpenMcqItem("q-f1", 1, "Câu phần 1")],
+        },
+        {
+          ord: 2,
+          partId: "p2",
+          partName: "Phần 2",
+          state: "PENDING",
+          items: [],
+        },
+      ],
+    };
+    const part2OpenState: AttemptStateResponse = {
+      ...seqState,
+      parts: [
+        { ord: 1, partId: "p1", partName: "Phần 1", state: "CLOSED", items: [] },
+        { ord: 2, partId: "p2", partName: "Phần 2", state: "OPEN", items: [makeOpenMcqItem("q-f2", 2, "Câu phần 2")] },
+      ],
+    };
+
+    const loadAttemptStateFn = vi
+      .fn<() => Promise<AttemptStateResponse>>()
+      .mockResolvedValueOnce(seqState)
+      .mockRejectedValueOnce(new ApiStatusError(401, "Expired during reconcile"))
+      .mockResolvedValueOnce(part2OpenState);
+    const finishPartFn = vi
+      .fn<NonNullable<AttemptPlayerDeps["finishPartFn"]>>()
+      .mockRejectedValueOnce(new ApiStatusError(401, "Expired during finish"))
+      .mockRejectedValueOnce(new Error("Transient network loss"))
+      .mockResolvedValueOnce({
+        attemptId: "att-401-finish",
+        attemptState: "IN_PROGRESS",
+        closedPart: { ord: 1, partCode: "P1", partId: "p1", partName: "Phần 1", state: "CLOSED" },
+        results: [],
+        serverNow: "2026-11-21T10:02:00Z",
+      });
+    const refreshSessionFn = vi.fn(async () => undefined);
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-401-finish"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn, finishPartFn, refreshSessionFn })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu phần 1")).toBeInTheDocument();
+
+    // 1. 401 on finishPart -> refresh succeeds -> Finish dialog unlocks to clickable/cancelable ("idle")
+    await user.click(screen.getByRole("button", { name: "Hoàn thành phần" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Hoàn thành phần" }));
+
+    await waitFor(() => expect(refreshSessionFn).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Quay lại làm tiếp" })).toBeEnabled());
+    expect(within(dialog).getByRole("button", { name: "Hoàn thành phần" })).toBeEnabled();
+
+    // 2. Retry hits transient network error -> enters unconfirmed; reconcile hits 401 -> unlocks back to unconfirmed
+    await user.click(within(dialog).getByRole("button", { name: "Hoàn thành phần" }));
+    expect(await within(dialog).findByRole("button", { name: "Kiểm tra trạng thái lượt" })).toBeEnabled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" }));
+    await waitFor(() => expect(refreshSessionFn).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" })).toBeEnabled(),
+    );
+    expect(within(dialog).getByRole("button", { name: "Quay lại làm tiếp" })).toBeEnabled();
+
+    // 3. Reconcile succeeds and advances to Part 2
+    await user.click(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" }));
+    expect(await screen.findByText("Câu phần 2")).toBeInTheDocument();
   });
 });

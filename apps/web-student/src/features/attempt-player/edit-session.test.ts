@@ -179,4 +179,126 @@ describe("EditSessionController & AttemptTabLock (AC-21, AC-22, AC-30)", () => {
 
     tab2.destroy();
   });
+
+  it("AttemptTabLock bỏ qua sự kiện beforeunload ở cả acquiring lẫn primary_owner, chỉ nhả khóa khi pagehide (VIS-R2-1)", async () => {
+    const bus = createBroadcastBus();
+    const tab1 = new AttemptTabLock({
+      userId: "user-1",
+      attemptId: "att-unload",
+      tabId: "tab-1",
+      acquireTimeoutMs: 50,
+      createChannel: bus.factory,
+    });
+    tab1.start();
+    expect(tab1.getRole()).toBe("acquiring");
+
+    // Synthetic or cancelled beforeunload during acquiring MUST NOT cancel acquireTimer
+    window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
+    await vi.advanceTimersByTimeAsync(60);
+    expect(tab1.getRole()).toBe("primary_owner");
+
+    const tab2 = new AttemptTabLock({
+      userId: "user-1",
+      attemptId: "att-unload",
+      tabId: "tab-2",
+      acquireTimeoutMs: 50,
+      createChannel: bus.factory,
+    });
+    tab2.start();
+    await vi.advanceTimersByTimeAsync(60);
+    expect(tab2.getRole()).toBe("secondary_readonly");
+
+    // Cancelled beforeunload while primary_owner MUST NOT drop edit lock
+    window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
+    await vi.advanceTimersByTimeAsync(60);
+    expect(tab1.getRole()).toBe("primary_owner");
+    expect(tab2.getRole()).toBe("secondary_readonly");
+
+    // pagehide releases primary_owner cleanly so secondary tab takes over
+    window.dispatchEvent(new Event("pagehide"));
+    expect(tab1.getRole()).toBe("secondary_readonly");
+    await vi.advanceTimersByTimeAsync(60);
+    expect(tab2.getRole()).toBe("primary_owner");
+
+    tab1.destroy();
+    tab2.destroy();
+  });
+
+  it("xử lý 401 khi claim() và sendHeartbeatNow() bằng resumeAfterAuthRefresh (FE-R2-1)", async () => {
+    // 1. 401 on claim -> sets error, then resumeAfterAuthRefresh() re-claims to active
+    const claimSessionFn = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(401, "Expired"))
+      .mockResolvedValueOnce({
+        conflict: false as const,
+        sessionId: "sess-recovered",
+        serverNow: "2026-11-21T10:00:05Z",
+      });
+    const heartbeatFn = vi
+      .fn<(attemptId: string, sessionId: string) => Promise<HeartbeatResponse>>()
+      .mockResolvedValue({ serverNow: "2026-11-21T10:00:35Z", state: "IN_PROGRESS" });
+
+    const statuses: string[] = [];
+    const onUnauthorizedClaim = vi.fn();
+    const claimCtrl = new EditSessionController({
+      attemptId: "att-401-claim",
+      userId: "user-1",
+      claimSessionFn,
+      heartbeatFn,
+      onStatusChange: (snap) => statuses.push(snap.status),
+      onUnauthorized: onUnauthorizedClaim,
+    });
+
+    const failedSnap = await claimCtrl.claim(false);
+    expect(failedSnap.status).toBe("error");
+    expect(failedSnap.sessionId).toBeNull();
+    expect(onUnauthorizedClaim).toHaveBeenCalledTimes(1);
+    expect(statuses).toContain("error");
+
+    await claimCtrl.resumeAfterAuthRefresh();
+    expect(claimCtrl.getSnapshot()).toEqual({
+      status: "active",
+      sessionId: "sess-recovered",
+      lastSeenAt: undefined,
+    });
+
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
+    expect(heartbeatFn).toHaveBeenCalledWith("att-401-claim", "sess-recovered");
+    claimCtrl.destroy();
+
+    // 2. 401 on sendHeartbeatNow -> stops timer while keeping active, resumeAfterAuthRefresh restarts 30s heartbeat
+    const hbFn2 = vi
+      .fn<(attemptId: string, sessionId: string) => Promise<HeartbeatResponse>>()
+      .mockRejectedValueOnce(new ApiStatusError(401, "Expired"))
+      .mockResolvedValue({ serverNow: "2026-11-21T10:01:00Z", state: "IN_PROGRESS" });
+    const onUnauthorizedHb = vi.fn();
+    const hbCtrl = new EditSessionController({
+      attemptId: "att-401-hb",
+      userId: "user-1",
+      claimSessionFn: vi.fn(async () => ({
+        conflict: false as const,
+        sessionId: "sess-hb",
+        serverNow: "2026-11-21T10:00:00Z",
+      })),
+      heartbeatFn: hbFn2,
+      onUnauthorized: onUnauthorizedHb,
+    });
+
+    await hbCtrl.claim(false);
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
+    expect(hbFn2).toHaveBeenCalledTimes(1);
+    expect(onUnauthorizedHb).toHaveBeenCalledTimes(1);
+
+    // Timer stopped while awaiting silent refresh
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
+    expect(hbFn2).toHaveBeenCalledTimes(1);
+
+    // Silent refresh succeeds -> restarts heartbeat immediately + resumes 30s interval
+    await hbCtrl.resumeAfterAuthRefresh();
+    expect(hbFn2).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
+    expect(hbFn2).toHaveBeenCalledTimes(3);
+
+    hbCtrl.destroy();
+  });
 });

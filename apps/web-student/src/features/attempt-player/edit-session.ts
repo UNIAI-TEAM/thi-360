@@ -93,7 +93,6 @@ export class AttemptTabLock {
         this.release();
       };
       window.addEventListener("pagehide", this.unloadHandler);
-      window.addEventListener("beforeunload", this.unloadHandler);
     }
 
     this.beginAcquire();
@@ -125,7 +124,6 @@ export class AttemptTabLock {
     this.destroyed = true;
     if (typeof window !== "undefined" && this.unloadHandler) {
       window.removeEventListener("pagehide", this.unloadHandler);
-      window.removeEventListener("beforeunload", this.unloadHandler);
       this.unloadHandler = null;
     }
     if (this.channel) {
@@ -350,6 +348,7 @@ export class EditSessionController {
       if (this.destroyed) return this.getSnapshot();
       if (error instanceof ApiStatusError && error.status === 401) {
         this.stopHeartbeat();
+        this.setStatus("error");
         this.onUnauthorized?.();
         return this.getSnapshot();
       }
@@ -395,6 +394,18 @@ export class EditSessionController {
           this.onAttemptClosed?.(error.code);
         }
       }
+    }
+  }
+
+  async resumeAfterAuthRefresh(): Promise<void> {
+    if (this.destroyed || this.pausedForReadonly) {
+      return;
+    }
+    if (this.status === "error" || this.status === "idle" || this.status === "claiming") {
+      await this.claim(false);
+    } else if (this.status === "active" && this.sessionId) {
+      this.startHeartbeat();
+      void this.sendHeartbeatNow();
     }
   }
 
