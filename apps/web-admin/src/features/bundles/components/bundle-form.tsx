@@ -41,7 +41,16 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Controller, type FieldErrors, useForm, useWatch } from "react-hook-form";
 
 import { BlockRadioGroup } from "@/features/exams/components/block-radio-group";
@@ -211,6 +220,8 @@ export function BundleForm({
   const activeExamKindId = values.examKindItemId;
 
   const examKindsQuery = useExamKindOptionsQuery(true);
+  const isExamKindsOffline =
+    examKindsQuery.fetchStatus === "paused" && !examKindsQuery.data;
   const candidatesQuery = useBundleCandidatesQuery(
     activeExamKindId,
     Boolean(activeExamKindId),
@@ -710,28 +721,36 @@ export function BundleForm({
     values.examIds.length,
   ]);
 
-  const focusChecklistTarget = (key: string) => {
-    if (key === "description") {
-      descriptionRef.current?.focus();
-      return;
-    }
-    if (key === "price") {
-      priceInputRef.current?.focus();
-      return;
-    }
-    if (key === "attempts") {
-      attemptsInputRef.current?.focus();
-      return;
-    }
+  const resolveChecklistTarget = (key: string): HTMLElement | null => {
+    if (key === "description") return descriptionRef.current;
+    if (key === "price") return priceInputRef.current;
+    if (key === "attempts") return attemptsInputRef.current;
     if (key === "unavailableItem") {
       const firstBad = selectedItems.find((item) => item.saleState !== "ON_SALE");
       const removeBtn = firstBad ? removeButtonRefs.current.get(firstBad.examId) : undefined;
-      if (removeBtn) {
-        removeBtn.focus();
-        return;
-      }
+      if (removeBtn) return removeBtn;
     }
-    focusExamIdsField();
+    return (
+      pickerRef.current?.querySelector<HTMLElement>(
+        'button[role="checkbox"]:not([disabled]), input[type="checkbox"]:not([disabled])',
+      ) ?? pickerRef.current
+    );
+  };
+
+  const focusChecklistTarget = (
+    event: MouseEvent<HTMLAnchorElement>,
+    key: string,
+  ) => {
+    if (isReadOnly) return;
+    const target = resolveChecklistTarget(key);
+    if (
+      !target ||
+      ("disabled" in target && Boolean((target as { disabled?: boolean }).disabled))
+    ) {
+      return;
+    }
+    event.preventDefault();
+    target.focus();
   };
 
   const counterText = (field: "summary" | "description" | "benefitNote") =>
@@ -885,7 +904,25 @@ export function BundleForm({
                     />
                   )}
                 </FormField>
-                {examKindsQuery.isError && (
+                {isExamKindsOffline ? (
+                  <div
+                    role="alert"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-subtle px-3 py-2 text-caption text-text-secondary"
+                  >
+                    <span className="flex items-center gap-2">
+                      <WifiOff aria-hidden className="size-4 shrink-0" />
+                      <span>{t("form.examKindsOffline")}</span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void examKindsQuery.refetch()}
+                    >
+                      {t("actions.retry")}
+                    </Button>
+                  </div>
+                ) : examKindsQuery.isError ? (
                   <div
                     role="alert"
                     className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-caption text-danger"
@@ -900,7 +937,7 @@ export function BundleForm({
                       {t("actions.retry")}
                     </Button>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <FormField
@@ -1638,12 +1675,9 @@ export function BundleForm({
                     <li key={item.key}>
                       <a
                         href={item.href}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          focusChecklistTarget(item.key);
-                        }}
+                        onClick={(event) => focusChecklistTarget(event, item.key)}
                         className={cn(
-                          "font-medium text-danger hover:underline",
+                          "relative inline-flex items-center font-medium text-danger hover:underline pointer-coarse:min-h-11",
                           focusRing,
                         )}
                       >

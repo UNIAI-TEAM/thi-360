@@ -57,7 +57,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
   const canPublish = can("EXAM.PUBLISH");
 
   const query = useBundleDetailQuery(bundleId);
-  const [hasConflict, setHasConflict] = useState(false);
+  const [conflictState, setConflictState] = useState<"none" | "reloaded" | "refetch_failed">("none");
   const [reloadSeq, setReloadSeq] = useState(0);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -68,11 +68,13 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
   useSetBreadcrumbLeaf(query.data ? query.data.code : t("edit.title"));
 
   const handleConflict = async () => {
-    setHasConflict(true);
     const refetchResult = await query.refetch();
     if (!refetchResult.isError) {
       setIsFormDirty(false);
       setReloadSeq((seq) => seq + 1);
+      setConflictState("reloaded");
+    } else {
+      setConflictState("refetch_failed");
     }
   };
 
@@ -202,7 +204,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         />
       </div>
 
-      {hasConflict && (
+      {conflictState === "reloaded" && (
         <div
           role="alert"
           className="flex flex-col gap-3 rounded-lg border border-warning bg-warning-bg p-4 text-warning sm:flex-row sm:items-center sm:justify-between"
@@ -222,14 +224,45 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => setHasConflict(false)}
+            onClick={() => setConflictState("none")}
           >
             {t("actions.dismiss")}
           </Button>
         </div>
       )}
 
-      {query.isError && (
+      {conflictState === "refetch_failed" && (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-lg border border-danger bg-danger-bg p-4 text-danger sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <CircleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+            <div className="flex flex-col gap-0.5">
+              <p className="text-body font-semibold">
+                {t("form.banners.conflictRefetchFailedTitle")}
+              </p>
+              <p className="text-caption text-text">
+                {t("form.banners.conflictRefetchFailedDescription", {
+                  reason: query.error
+                    ? resolveBundleErrorMessage(query.error, tErrors)
+                    : t("edit.errorDescription"),
+                })}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void handleConflict()}
+          >
+            {t("actions.retry")}
+          </Button>
+        </div>
+      )}
+
+      {conflictState !== "refetch_failed" && query.isError && (
         <div
           role="alert"
           className="flex flex-col gap-3 rounded-lg border border-danger bg-danger-bg p-4 text-danger sm:flex-row sm:items-center sm:justify-between"
@@ -265,7 +298,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         onDirtyChange={setIsFormDirty}
         onConflict={handleConflict}
         onSaved={() => {
-          setHasConflict(false);
+          setConflictState("none");
           setIsFormDirty(false);
           setReloadSeq((seq) => seq + 1);
         }}
@@ -276,7 +309,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         open={publishOpen}
         onOpenChange={setPublishOpen}
         onConflict={handleConflict}
-        onCompleted={() => setHasConflict(false)}
+        onCompleted={() => setConflictState("none")}
       />
 
       <BundleDiscontinueDialog
@@ -284,7 +317,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         open={discontinueOpen}
         onOpenChange={setDiscontinueOpen}
         onConflict={handleConflict}
-        onCompleted={() => setHasConflict(false)}
+        onCompleted={() => setConflictState("none")}
       />
     </div>
   );

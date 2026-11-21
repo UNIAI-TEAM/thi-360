@@ -8946,6 +8946,8 @@
       },
       "banners": {
         "conflictDescription": "The latest data from the server has been loaded; your unsaved edits did not overwrite it.",
+        "conflictRefetchFailedDescription": "Your unsaved edits are still preserved. Click Retry to load the latest version ({reason}).",
+        "conflictRefetchFailedTitle": "Bundle was updated by another user, but loading the latest version failed.",
         "conflictTitle": "Bundle was updated by another user.",
         "discontinuedReadOnly": "This bundle is discontinued and can no longer be edited.",
         "readOnly": "You have read-only access to bundles. Exam modification permission is required to make changes.",
@@ -8997,6 +8999,7 @@
       "counter": "{count, number} / {max, number} characters",
       "currency": "VND",
       "examKindsError": "Could not load exam kinds.",
+      "examKindsOffline": "Your device is offline, so loading exam kinds is paused.",
       "fields": {
         "attemptsPerExam": "Attempts per exam",
         "benefitNote": "Benefit applicability notes",

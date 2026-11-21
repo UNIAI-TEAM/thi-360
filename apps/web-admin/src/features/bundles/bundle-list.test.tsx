@@ -7,6 +7,8 @@ import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-wid
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import {
+  bundleMockReplace,
+  currentBundleMockSearch,
   EXAM_KIND_OPTIONS,
   KIND_SPT_ID,
   makeBundleListPage,
@@ -331,8 +333,10 @@ describe("BundleListView (AC-5)", () => {
     expect(search).toHaveValue("SP2E TOAN");
   });
 
-  it("R1-30, R1-47, R1-49: ẩn chip thay đổi chưa công bố khi DISCONTINUED, dùng icon Xem + Link trong menu, và kẹp page vượt quá totalPages", async () => {
+  it("R1-30, R1-47, R1-49, R2-1/2/3: ẩn chip thay đổi chưa công bố khi DISCONTINUED, dùng icon Xem + Link trong menu, và kẹp page vượt quá totalPages kèm xóa page khỏi URL", async () => {
     resetBundleNavigation("/bundles", "page=99");
+    const replacedUrls: string[] = [];
+    bundleMockReplace.fn = (href) => replacedUrls.push(href);
     const requestedPages: unknown[] = [];
     fakeApi.get("/api/v1/admin/bundles", (call) => {
       const q = (call.options?.params as { query?: { page?: number } } | undefined)?.query;
@@ -369,6 +373,10 @@ describe("BundleListView (AC-5)", () => {
 
     await screen.findByText("Bộ đề SP2E khối A00");
     expect(requestedPages).toContain(0);
+    await waitFor(() => {
+      expect(currentBundleMockSearch()).toBe("");
+    });
+    expect(replacedUrls).toContain("/bundles");
 
     // R1-30: DISCONTINUED bundle does not render "Có thay đổi chưa công bố"
     expect(screen.queryByText("Có thay đổi chưa công bố")).toBeNull();
@@ -382,5 +390,33 @@ describe("BundleListView (AC-5)", () => {
     const editMenuItem = await screen.findByRole("menuitem", { name: "Sửa bộ đề" });
     expect(editMenuItem.tagName).toBe("A");
     expect(editMenuItem).toHaveAttribute("href", "/bundles/b-pub-1");
+  });
+
+  it("R2-14/15: điều hướng trực tiếp ?page=3 khi danh sách rỗng (totalItems=0, totalPages=0) kẹp về trang 1, xóa page=3 khỏi URL và không dựng Pagination", async () => {
+    resetBundleNavigation("/bundles", "page=3");
+    const replacedUrls: string[] = [];
+    bundleMockReplace.fn = (href) => replacedUrls.push(href);
+    const requestedPages: unknown[] = [];
+    fakeApi.get("/api/v1/admin/bundles", (call) => {
+      const q = (call.options?.params as { query?: { page?: number } } | undefined)?.query;
+      requestedPages.push(q?.page);
+      return ok(
+        makeBundleListPage([], {
+          page: q?.page ?? 0,
+          totalItems: 0,
+          totalPages: 0,
+        }),
+      );
+    });
+
+    renderBundlesUi(<BundleListView />);
+
+    expect(await screen.findByText("Chưa có bộ đề nào")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestedPages).toContain(0);
+      expect(currentBundleMockSearch()).toBe("");
+    });
+    expect(replacedUrls).toContain("/bundles");
+    expect(screen.queryByRole("navigation")).toBeNull();
   });
 });

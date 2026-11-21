@@ -282,4 +282,289 @@ describe("Bundle Publish & Discontinue Actions (AC-7)", () => {
     });
     expect(screen.queryByText("Lưu thay đổi trước khi công bố")).toBeNull();
   });
+
+  it("R2-6: công bố từ danh sách gặp 412 (còn trên trang) tự cập nhật expectedRevision và thành công khi thử lại", async () => {
+    resetBundleNavigation("/bundles", "");
+    let listRow = makeBundleSummary({
+      id: BUNDLE_ID_1,
+      status: "DRAFT",
+      saleState: null,
+      revision: 2,
+    });
+    fakeApi.get("/api/v1/admin/bundles", () => ok(makeBundleListPage([listRow])));
+    fakeApi.get("/api/v1/admin/bundles/{id}", () =>
+      ok(makeBundleDetail({ id: BUNDLE_ID_1, status: "DRAFT", revision: 5 })),
+    );
+
+    let publishCalls = 0;
+    const sentBodies: unknown[] = [];
+    fakeApi.post("/api/v1/admin/bundles/{id}/publish", (call) => {
+      publishCalls += 1;
+      sentBodies.push(call.options?.body);
+      if (publishCalls === 1) {
+        listRow = makeBundleSummary({
+          id: BUNDLE_ID_1,
+          status: "DRAFT",
+          saleState: null,
+          revision: 5,
+        });
+        return fail(412, { code: "BUNDLE_REVISION_CONFLICT" });
+      }
+      listRow = makeBundleSummary({
+        id: BUNDLE_ID_1,
+        status: "PUBLISHED",
+        saleState: "ON_SALE",
+        revision: 6,
+      });
+      return ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          revision: 6,
+        }),
+      );
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleListView />);
+
+    await screen.findByText("Bộ đề SP2E khối A00");
+    await user.click(screen.getByRole("button", { name: "Thao tác khác với BO-SP2E-001" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Công bố" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Công bố bộ đề?" });
+    await user.click(within(dialog).getByRole("button", { name: "Công bố" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại.",
+    );
+
+    await waitFor(() => {
+      expect(sentBodies).toHaveLength(1);
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Công bố" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(sentBodies).toEqual([{ expectedRevision: 2 }, { expectedRevision: 5 }]);
+    const listTable = screen.getByRole("table", { name: "Danh sách bộ đề" });
+    expect(await within(listTable).findByText("Đang bán")).toBeInTheDocument();
+  });
+
+  it("R2-6: ngừng bán từ danh sách gặp 412 (còn trên trang) tự cập nhật expectedRevision và thành công khi thử lại", async () => {
+    resetBundleNavigation("/bundles", "");
+    let listRow = makeBundleSummary({
+      id: BUNDLE_ID_1,
+      status: "PUBLISHED",
+      saleState: "ON_SALE",
+      revision: 5,
+    });
+    fakeApi.get("/api/v1/admin/bundles", () => ok(makeBundleListPage([listRow])));
+    fakeApi.get("/api/v1/admin/bundles/{id}", () =>
+      ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          revision: 8,
+        }),
+      ),
+    );
+
+    let discCalls = 0;
+    const sentBodies: unknown[] = [];
+    fakeApi.post("/api/v1/admin/bundles/{id}/discontinue", (call) => {
+      discCalls += 1;
+      sentBodies.push(call.options?.body);
+      if (discCalls === 1) {
+        listRow = makeBundleSummary({
+          id: BUNDLE_ID_1,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          revision: 8,
+        });
+        return fail(412, { code: "BUNDLE_REVISION_CONFLICT" });
+      }
+      listRow = makeBundleSummary({
+        id: BUNDLE_ID_1,
+        status: "DISCONTINUED",
+        saleState: "DISCONTINUED",
+        revision: 9,
+      });
+      return ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "DISCONTINUED",
+          saleState: "DISCONTINUED",
+          revision: 9,
+        }),
+      );
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleListView />);
+
+    await screen.findByText("Bộ đề SP2E khối A00");
+    await user.click(screen.getByRole("button", { name: "Thao tác khác với BO-SP2E-001" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ngừng bán" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Ngừng bán bộ đề?" });
+    await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại.",
+    );
+
+    await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(sentBodies).toEqual([{ expectedRevision: 5 }, { expectedRevision: 8 }]);
+    const listTable = screen.getByRole("table", { name: "Danh sách bộ đề" });
+    expect(await within(listTable).findByText("Ngừng bán")).toBeInTheDocument();
+  });
+
+  it("R2-7/8: công bố từ danh sách gặp 412 khi sửa đồng thời đẩy bộ đề khỏi bộ lọc (list refetch trả rỗng) vẫn lấy revision qua getBundle và thử lại thành công", async () => {
+    resetBundleNavigation("/bundles", "status=DRAFT");
+    let listCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles", () => {
+      listCalls += 1;
+      if (listCalls === 1) {
+        return ok(
+          makeBundleListPage([
+            makeBundleSummary({
+              id: BUNDLE_ID_1,
+              status: "DRAFT",
+              saleState: null,
+              revision: 2,
+            }),
+          ]),
+        );
+      }
+      return ok(makeBundleListPage([], { totalItems: 0, totalPages: 0 }));
+    });
+
+    let detailCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      detailCalls += 1;
+      return ok(makeBundleDetail({ id: BUNDLE_ID_1, status: "DRAFT", revision: 7 }));
+    });
+
+    let publishCalls = 0;
+    const sentBodies: unknown[] = [];
+    fakeApi.post("/api/v1/admin/bundles/{id}/publish", (call) => {
+      publishCalls += 1;
+      sentBodies.push(call.options?.body);
+      if (publishCalls === 1) {
+        return fail(412, { code: "BUNDLE_REVISION_CONFLICT" });
+      }
+      return ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          revision: 8,
+        }),
+      );
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleListView />);
+
+    await screen.findByText("Bộ đề SP2E khối A00");
+    await user.click(screen.getByRole("button", { name: "Thao tác khác với BO-SP2E-001" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Công bố" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Công bố bộ đề?" });
+    await user.click(within(dialog).getByRole("button", { name: "Công bố" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại.",
+    );
+    await waitFor(() => {
+      expect(detailCalls).toBe(1);
+      expect(listCalls).toBeGreaterThanOrEqual(2);
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Công bố" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(sentBodies).toEqual([{ expectedRevision: 2 }, { expectedRevision: 7 }]);
+  });
+
+  it("R2-7/8: ngừng bán từ danh sách gặp 412 khi sửa đồng thời đẩy bộ đề khỏi bộ lọc (list refetch trả rỗng) vẫn lấy revision qua getBundle và thử lại thành công", async () => {
+    resetBundleNavigation("/bundles", "q=BO-SP2E-001");
+    let listCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles", () => {
+      listCalls += 1;
+      if (listCalls === 1) {
+        return ok(
+          makeBundleListPage([
+            makeBundleSummary({
+              id: BUNDLE_ID_1,
+              status: "PUBLISHED",
+              saleState: "ON_SALE",
+              revision: 5,
+            }),
+          ]),
+        );
+      }
+      return ok(makeBundleListPage([], { totalItems: 0, totalPages: 0 }));
+    });
+
+    let detailCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      detailCalls += 1;
+      return ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          code: "BO-SP2E-RENAMED",
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          revision: 9,
+        }),
+      );
+    });
+
+    let discCalls = 0;
+    const sentBodies: unknown[] = [];
+    fakeApi.post("/api/v1/admin/bundles/{id}/discontinue", (call) => {
+      discCalls += 1;
+      sentBodies.push(call.options?.body);
+      if (discCalls === 1) {
+        return fail(412, { code: "BUNDLE_REVISION_CONFLICT" });
+      }
+      return ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          code: "BO-SP2E-RENAMED",
+          status: "DISCONTINUED",
+          saleState: "DISCONTINUED",
+          revision: 10,
+        }),
+      );
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleListView />);
+
+    await screen.findByText("Bộ đề SP2E khối A00");
+    await user.click(screen.getByRole("button", { name: "Thao tác khác với BO-SP2E-001" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ngừng bán" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Ngừng bán bộ đề?" });
+    await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại.",
+    );
+    await waitFor(() => {
+      expect(detailCalls).toBe(1);
+      expect(listCalls).toBeGreaterThanOrEqual(2);
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(sentBodies).toEqual([{ expectedRevision: 5 }, { expectedRevision: 9 }]);
+  });
 });

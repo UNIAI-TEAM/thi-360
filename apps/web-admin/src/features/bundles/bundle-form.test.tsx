@@ -636,20 +636,39 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
     await user.type(nameInput, "Tên sửa chưa lưu");
     await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
-    // Refetch failed: form keeps unsaved input and shows inline Retry alert + corrected vi copy
-    expect(await screen.findByText("Không tải được bộ đề")).toBeInTheDocument();
+    // Refetch failed: form keeps unsaved input and shows ONE coherent conflict-refetch-failed alert (no contradictory "has been reloaded" copy)
+    expect(
+      await screen.findByText(
+        "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Thay đổi chưa lưu vẫn được giữ nguyên\. Bấm Thử lại để nạp bản mới nhất/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
+      ),
+    ).toBeNull();
+    expect(screen.queryByText("Không tải được bộ đề")).toBeNull();
+    expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Tên sửa chưa lưu");
+
+    // Click Retry -> succeeds, loads server revision 4, and transitions cleanly to reloaded conflict banner
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Bộ đề từ người khác");
+    });
+    expect(
+      screen.queryByText(
+        "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất.",
+      ),
+    ).toBeNull();
+    expect(screen.getByText("Bộ đề vừa được người khác cập nhật.")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Tên sửa chưa lưu");
-
-    // Click Retry -> succeeds and loads server revision 4
-    await user.click(screen.getByRole("button", { name: "Thử lại" }));
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Bộ đề từ người khác");
-    });
   });
 
   it("R1-28, R1-31, R1-32, R1-51 & gộp nhóm môn trùng: beforeunload khi bẩn, region cuộn bảng, vùng chạm checkbox, focus + LiveStatus khi xóa, fieldErrors có chỉ số và không trùng tiêu đề môn", async () => {
@@ -744,6 +763,91 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
     expect(document.activeElement).toBe(orderHeading);
     expect(
       screen.getByText("Đã bỏ SP2E-TOAN-P1 khỏi bộ đề (còn 0 bài)."),
+    ).toBeInTheDocument();
+  });
+
+  it("R2-9/10/11: liên kết Cần xử lý có pointer-coarse:min-h-11 và ở chế độ chỉ đọc không chặn điều hướng neo (preventDefault)", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    fakeApi.get("/api/v1/admin/bundles/{id}", () =>
+      ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "DRAFT",
+          description: null,
+          listPriceVnd: null,
+          attemptsPerExam: null,
+        }),
+      ),
+    );
+    fakeApi.get("/api/v1/admin/bundles/candidates", () => ok([makeCandidate()]));
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />, {
+      permissions: ["EXAM.VIEW"],
+    });
+
+    const descLink = await screen.findByRole("link", { name: "Chưa có mô tả bộ đề." });
+    const priceLink = screen.getByRole("link", { name: "Chưa đặt giá bộ đề lớn hơn 0 đồng." });
+    const attemptsLink = screen.getByRole("link", { name: "Chưa đặt số lượt mỗi bài (1–100)." });
+
+    for (const link of [descLink, priceLink, attemptsLink]) {
+      expect(link).toHaveClass(
+        "relative",
+        "inline-flex",
+        "items-center",
+        "pointer-coarse:min-h-11",
+      );
+
+      let defaultPrevented: boolean | undefined;
+      const listener = (event: Event) => {
+        defaultPrevented = event.defaultPrevented;
+      };
+      document.addEventListener("click", listener, { once: true });
+      await user.click(link);
+      expect(defaultPrevented).toBe(false);
+    }
+
+    expect(screen.getByLabelText("Mô tả")).toBeDisabled();
+    expect(document.activeElement).not.toBe(screen.getByLabelText("Mô tả"));
+  });
+
+  it("R2-12: mở /bundles/new khi ngoại tuyến hiện cảnh báo ngoại tuyến cho Kỳ thi và khôi phục khi bấm Thử lại lúc có mạng", async () => {
+    let kindCalls = 0;
+    fakeApi.get("/api/v1/catalog/options", () => {
+      kindCalls += 1;
+      return ok(EXAM_KIND_OPTIONS);
+    });
+    onlineManager.setOnline(false);
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleCreatePage />);
+
+    const offlineAlert = await screen.findByRole("alert");
+    expect(offlineAlert).toHaveTextContent(
+      "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách kỳ thi.",
+    );
+    const retryBtn = within(offlineAlert).getByRole("button", { name: "Thử lại" });
+    expect(kindCalls).toBe(0);
+
+    await user.click(retryBtn);
+    expect(kindCalls).toBe(0);
+    expect(
+      screen.getByText("Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách kỳ thi."),
+    ).toBeInTheDocument();
+
+    act(() => {
+      onlineManager.setOnline(true);
+    });
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách kỳ thi."),
+      ).toBeNull();
+    });
+    await user.click(screen.getByRole("combobox", { name: /Kỳ thi/ }));
+    expect(
+      await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }),
     ).toBeInTheDocument();
   });
 });

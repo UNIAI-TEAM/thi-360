@@ -8946,6 +8946,8 @@
       },
       "banners": {
         "conflictDescription": "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
+        "conflictRefetchFailedDescription": "Thay đổi chưa lưu vẫn được giữ nguyên. Bấm Thử lại để nạp bản mới nhất ({reason}).",
+        "conflictRefetchFailedTitle": "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất.",
         "conflictTitle": "Bộ đề vừa được người khác cập nhật.",
         "discontinuedReadOnly": "Bộ đề đã ngừng bán nên không thể chỉnh sửa thêm.",
         "readOnly": "Bạn chỉ có quyền xem bộ đề. Cần quyền sửa bài thi để tạo hoặc cập nhật.",
@@ -8997,6 +8999,7 @@
       "counter": "{count, number} / {max, number} ký tự",
       "currency": "đ",
       "examKindsError": "Không tải được danh sách kỳ thi.",
+      "examKindsOffline": "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách kỳ thi.",
       "fields": {
         "attemptsPerExam": "Số lượt mỗi bài",
         "benefitNote": "Giới hạn áp dụng của quyền lợi",

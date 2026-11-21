@@ -45,9 +45,21 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type KeyboardEvent,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { usePermissions } from "@/features/session/session-provider";
+
+import { getBundle } from "../api";
 
 import { resolveBundleErrorMessage } from "../errors";
 import { formatBundleDateTime, formatNumber, formatVnd } from "../format";
@@ -95,6 +107,22 @@ function parseSize(raw: string | null): number {
   return PAGE_SIZE_OPTIONS.includes(num) ? num : DEFAULT_PAGE_SIZE;
 }
 
+function buildBundleQueryString(
+  nextStatus: BundleStatusFilter,
+  nextExamKind: string,
+  nextQ: string,
+  nextPage: number,
+  nextSize: number,
+): string {
+  const next = new URLSearchParams();
+  if (nextStatus !== "ALL") next.set("status", nextStatus);
+  if (nextExamKind) next.set("examKind", nextExamKind);
+  if (nextQ.trim()) next.set("q", nextQ.trim());
+  if (nextPage > 1) next.set("page", String(nextPage));
+  if (nextSize !== DEFAULT_PAGE_SIZE) next.set("size", String(nextSize));
+  return next.toString();
+}
+
 export function BundleListView() {
   const t = useTranslations("bundles");
   const tErrors = useTranslations("bundles.errors");
@@ -124,6 +152,7 @@ export function BundleListView() {
   const [discontinueTarget, setDiscontinueTarget] = useState<BundleActionTarget | null>(null);
 
   const [syncedSearchKey, setSyncedSearchKey] = useState<string | null>(null);
+  const [pendingClampQs, setPendingClampQs] = useState<string | null>(null);
   const lastSyncedSearchRef = useRef<string | null>(null);
   const searchTimerRef = useRef<number | null>(null);
   const searchInputId = useId();
@@ -133,8 +162,12 @@ export function BundleListView() {
     setPrevSearchKey(searchParamsKey);
     if (searchParamsKey === syncedSearchKey) {
       setSyncedSearchKey(null);
+      if (pendingClampQs === searchParamsKey) {
+        setPendingClampQs(null);
+      }
     } else {
       if (syncedSearchKey !== null) setSyncedSearchKey(null);
+      if (pendingClampQs !== null) setPendingClampQs(null);
       const nextStatus = parseStatusFilter(searchParams.get("status"));
       const nextExamKind = searchParams.get("examKind") ?? "";
       const nextQ = searchParams.get("q") ?? "";
@@ -168,6 +201,15 @@ export function BundleListView() {
 
   useEffect(() => cancelPendingSearch, [cancelPendingSearch]);
 
+  const commitUrl = useCallback(
+    (qs: string) => {
+      if (qs === searchParamsKey) return;
+      lastSyncedSearchRef.current = qs;
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParamsKey],
+  );
+
   const syncUrl = useCallback(
     (
       nextStatus: BundleStatusFilter,
@@ -176,19 +218,13 @@ export function BundleListView() {
       nextPage: number,
       nextSize: number,
     ) => {
-      const next = new URLSearchParams();
-      if (nextStatus !== "ALL") next.set("status", nextStatus);
-      if (nextExamKind) next.set("examKind", nextExamKind);
-      if (nextQ.trim()) next.set("q", nextQ.trim());
-      if (nextPage > 1) next.set("page", String(nextPage));
-      if (nextSize !== DEFAULT_PAGE_SIZE) next.set("size", String(nextSize));
-      const qs = next.toString();
+      const qs = buildBundleQueryString(nextStatus, nextExamKind, nextQ, nextPage, nextSize);
+      setPendingClampQs(null);
       if (qs === searchParamsKey) return;
-      lastSyncedSearchRef.current = qs;
       setSyncedSearchKey(qs);
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      commitUrl(qs);
     },
-    [pathname, router, searchParamsKey],
+    [commitUrl, searchParamsKey],
   );
 
   const handleSearchChange = (nextValue: string) => {
@@ -267,24 +303,30 @@ export function BundleListView() {
     listQuery.fetchStatus === "paused" && (!listQuery.data || listQuery.isPlaceholderData);
 
   const maxPage =
-    !isOffline &&
-    listQuery.data &&
-    !listQuery.isPlaceholderData &&
-    listQuery.data.totalPages >= 1
-      ? listQuery.data.totalPages
+    !isOffline && listQuery.data && !listQuery.isPlaceholderData
+      ? Math.max(1, listQuery.data.totalPages)
       : null;
 
   if (maxPage !== null && page > maxPage) {
+    const clampedQs = buildBundleQueryString(
+      statusFilter,
+      examKindFilter,
+      debouncedQ,
+      maxPage,
+      pageSize,
+    );
     setPage(maxPage);
+    if (clampedQs !== searchParamsKey) {
+      setSyncedSearchKey(clampedQs);
+      setPendingClampQs(clampedQs);
+    }
   }
 
-  const prevPageRef = useRef(page);
   useEffect(() => {
-    if (maxPage !== null && prevPageRef.current > maxPage && page <= maxPage) {
-      syncUrl(statusFilter, examKindFilter, debouncedQ, page, pageSize);
+    if (pendingClampQs !== null) {
+      commitUrl(pendingClampQs);
     }
-    prevPageRef.current = page;
-  }, [debouncedQ, examKindFilter, maxPage, page, pageSize, statusFilter, syncUrl]);
+  }, [commitUrl, pendingClampQs]);
 
   const examKindOptions: SelectOption[] = useMemo(() => {
     const base: SelectOption[] = [{ value: "__ALL__", label: t("list.filters.examKindAll") }];
@@ -619,7 +661,7 @@ export function BundleListView() {
   const resolveLiveTarget = (target: BundleActionTarget | null): BundleActionTarget | null => {
     if (!target) return null;
     const fresh = listQuery.data?.items.find((item) => item.id === target.id);
-    return fresh
+    return fresh && fresh.revision > target.revision
       ? {
           id: fresh.id,
           code: fresh.code,
@@ -629,6 +671,31 @@ export function BundleListView() {
         }
       : target;
   };
+
+  const refreshActionTarget = useCallback(
+    async (
+      targetId: string,
+      setTarget: Dispatch<SetStateAction<BundleActionTarget | null>>,
+    ) => {
+      try {
+        const latest = await getBundle(targetId);
+        setTarget((prev) =>
+          prev && prev.id === targetId
+            ? {
+                id: latest.id,
+                code: latest.code,
+                name: latest.name,
+                revision: latest.revision,
+                status: latest.status,
+              }
+            : prev,
+        );
+      } catch {
+        // Keep current dialog target on refresh error; list invalidation or retry handles it gracefully.
+      }
+    },
+    [],
+  );
 
   const livePublishTarget = resolveLiveTarget(publishTarget);
   const liveDiscontinueTarget = resolveLiveTarget(discontinueTarget);
@@ -875,6 +942,12 @@ export function BundleListView() {
         onOpenChange={(open) => {
           if (!open) setPublishTarget(null);
         }}
+        onConflict={() => {
+          if (publishTarget) {
+            return refreshActionTarget(publishTarget.id, setPublishTarget);
+          }
+          return undefined;
+        }}
         onCompleted={(updated) => {
           setLiveMessage(t("dialogs.publish.successToast", { code: updated.code }));
         }}
@@ -885,6 +958,12 @@ export function BundleListView() {
         open={liveDiscontinueTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDiscontinueTarget(null);
+        }}
+        onConflict={() => {
+          if (discontinueTarget) {
+            return refreshActionTarget(discontinueTarget.id, setDiscontinueTarget);
+          }
+          return undefined;
         }}
         onCompleted={(updated) => {
           setLiveMessage(t("dialogs.discontinue.successToast", { code: updated.code }));

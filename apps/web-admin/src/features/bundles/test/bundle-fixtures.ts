@@ -195,6 +195,7 @@ const mockNavListeners = new Set<() => void>();
 export function resetBundleNavigation(pathname = "/bundles", search = "") {
   mockPathname = pathname;
   mockSearch = search.startsWith("?") ? search.slice(1) : search;
+  bundleMockReplace.fn = undefined;
   for (const listener of mockNavListeners) listener();
 }
 
@@ -206,6 +207,10 @@ function navigate(href: string) {
 }
 
 export const bundleMockPush = { fn: (href: string) => navigate(href) };
+export const bundleMockReplace: { fn?: (href: string) => void } = {};
+export function currentBundleMockSearch(): string {
+  return mockSearch;
+}
 
 export function createBundleNextNavMock() {
   return {
@@ -231,7 +236,10 @@ export function createBundleNextNavMock() {
     },
     useRouter: () => ({
       push: (href: string) => bundleMockPush.fn(href),
-      replace: navigate,
+      replace: (href: string) => {
+        navigate(href);
+        bundleMockReplace.fn?.(href);
+      },
       prefetch: () => Promise.resolve(),
       back: () => {},
       forward: () => {},
