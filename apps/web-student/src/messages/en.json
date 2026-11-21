@@ -507,6 +507,157 @@
     "eyebrow": "ERROR 404",
     "title": "Page not found"
   },
+  "orders": {
+    "actions": {
+      "cancel": "Cancel order",
+      "continuePayment": "Continue payment",
+      "createNew": "Create new order",
+      "goMyExams": "Go to My exams",
+      "toCatalog": "Back to the exam catalog",
+      "viewDetail": "View details",
+      "viewReplacement": "View replacement order {code}"
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts do not create or view exam purchase orders in the student portal.",
+      "title": "Administrator account"
+    },
+    "amount": {
+      "discountSummary": "{amount} off",
+      "freeVoucher": "0 VND (voucher applied)",
+      "freeVoucherNote": "Free with voucher",
+      "vnpay": "VNPAY"
+    },
+    "backToList": "My orders",
+    "bundleBadge": "Bundle",
+    "cancelDialog": {
+      "confirm": "Cancel order",
+      "description": "Pending order {code} will be cancelled. Any discount code used on this order will be released.",
+      "keep": "Keep order",
+      "success": "Order {code} cancelled.",
+      "title": "Cancel order {code}?"
+    },
+    "columns": {
+      "actions": "Actions",
+      "amount": "Amount",
+      "code": "Order code",
+      "createdAt": "Created at",
+      "product": "Exam",
+      "status": "Status"
+    },
+    "detail": {
+      "attemptsValue": "{count, plural, one {# attempt} other {# attempts}}",
+      "benefits": {
+        "ai": "AI explanations",
+        "no": "No",
+        "practice": "Extra practice",
+        "resultView": "Result view",
+        "strengths": "Strengths and weaknesses",
+        "yes": "Yes"
+      },
+      "fields": {
+        "amountDue": "Amount due",
+        "attempts": "Attempts granted",
+        "benefits": "Benefits",
+        "buyer": "Buyer account",
+        "createdAt": "Created at",
+        "expiresAt": "Price held until",
+        "fulfilledAt": "Granted at",
+        "listPrice": "List price",
+        "paidAt": "Paid at",
+        "product": "Product",
+        "promotion": "Automatic promotion",
+        "version": "Purchased version",
+        "voucher": "Discount code"
+      },
+      "heading": "Order {code}",
+      "history": {
+        "actorLearner": "Learner",
+        "actorSystem": "System",
+        "created": "Order created",
+        "empty": "No history events yet.",
+        "title": "Order history",
+        "transition": "{from} → {to}"
+      },
+      "itemsTitle": "Exams in order ({count})",
+      "payments": {
+        "amount": "Amount",
+        "attemptSeq": "Attempt",
+        "bank": "Bank",
+        "createdAt": "Time",
+        "duplicate": "Duplicate",
+        "empty": "Free order; no VNPAY payment attempts.",
+        "reason": "Details",
+        "states": {
+          "CREATED": "Created",
+          "FAILED": "Failed",
+          "SUCCEEDED": "Succeeded",
+          "UNKNOWN": "Unknown"
+        },
+        "status": "Status",
+        "tableLabel": "Payment attempts",
+        "title": "Payment attempts",
+        "txnRef": "Reference"
+      },
+      "snapshotTitle": "Order summary"
+    },
+    "detailPageTitle": "Order details",
+    "emptyDescription": "When you purchase an exam, your orders will appear here.",
+    "emptyTitle": "You have no orders yet",
+    "errorDescription": "Check your internet connection and try again.",
+    "errorTitle": "Unable to load orders",
+    "errors": {
+      "ORDER_EXPIRED": "This order has expired. Please create a new order at the current price.",
+      "ORDER_NOT_FOUND": "Order not found in the signed-in account. Please check that you are signed in with the account used to purchase.",
+      "ORDER_NOT_PENDING": "This order is no longer awaiting payment.",
+      "PAYMENT_ATTEMPTS_EXCEEDED": "This order has exceeded the maximum payment attempts. Please create a new order.",
+      "PRODUCT_DISCONTINUED": "This exam is no longer on sale. Payment cannot continue for this order.",
+      "PRODUCT_NOT_FOUND": "The exam for this order could not be found.",
+      "generic": "Unable to complete the action. Please try again or create a new order."
+    },
+    "exploreExams": "Explore exams",
+    "notFound": {
+      "backToOrders": "Back to My orders",
+      "description": "Order not found in the signed-in account. Please check that you are signed in with the account used to purchase.",
+      "otherAccount": "Sign in with another account",
+      "title": "Order not found"
+    },
+    "pageTitle": "My orders",
+    "paidChecking": "Payment received for order {code}. The exam is being granted to your account.",
+    "paidCheckingSupport": "If it takes too long, contact support via {contact} and include order code {code}.",
+    "paidCheckingSupportPending": "If it takes too long, contact support and include order code {code}. {pending}",
+    "pendingHoldUntil": "Price held until {time}",
+    "replacedBy": "Replaced by order {code}",
+    "stateSubtext": {
+      "PAID": "Payment received, granting exam"
+    },
+    "states": {
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired",
+      "FULFILLED": "Exam granted",
+      "PAID": "Checking",
+      "PENDING_PAYMENT": "Awaiting payment",
+      "REFUNDED": "Refunded",
+      "REPLACED": "Replaced"
+    },
+    "subtitle": "Exam orders for account {username}, newest first. Include your order code when contacting support.",
+    "tableLabel": "My orders table",
+    "vnpayReasons": {
+      "07": "Amount deducted, but the transaction is flagged for review.",
+      "09": "Your card or account is not registered for Internet Banking.",
+      "10": "Card or account authentication failed more than 3 times.",
+      "11": "The payment session timed out.",
+      "12": "Your card or account is locked.",
+      "13": "You entered an incorrect authentication password (OTP).",
+      "24": "You cancelled the payment on VNPAY.",
+      "51": "Insufficient bank balance for this payment.",
+      "65": "Your account has exceeded the daily transaction limit.",
+      "75": "The payment bank is under maintenance.",
+      "79": "Authentication failed too many times.",
+      "99": "Final result from the payment gateway is not available yet.",
+      "generic": "The bank or VNPAY declined the transaction."
+    }
+  },
   "storefront": {
     "access": {
       "adminNote": "Administrator accounts have no buy or start buttons. Public information only.",
