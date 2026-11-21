@@ -353,8 +353,8 @@
       "notOwnedBody": "Không tìm thấy đơn {code} trong tài khoản {username}. Có thể bạn đang đăng nhập bằng một tài khoản khác.",
       "notOwnedHeading": "Không tìm thấy đơn trong tài khoản đang đăng nhập",
       "pollErrorNotice": "Tạm thời không kiểm tra được trạng thái mới nhất. Hệ thống vẫn đang tiếp tục thử lại.",
+      "pollErrorTimeoutNotice": "Không kiểm tra lại được trạng thái đơn lúc này. Hãy bấm Kiểm tra lại ngay hoặc liên hệ hỗ trợ.",
       "retryPay": "Thanh toán lại",
-      "retryingPay": "Đang chuyển tới VNPAY...",
       "successBody": "Đơn {code} đã được xác nhận thành công. Bài thi đã được cấp vào tài khoản của bạn.",
       "successFreeBody": "Đơn {code} đã được áp dụng voucher miễn phí và cấp bài thi ngay lập tức.",
       "successHeading": "Đã cấp bài thi",
@@ -376,7 +376,6 @@
       "listPrice": "Giá gốc",
       "promotion": "Ưu đãi tự động (<examContent>{name}</examContent>)",
       "promotionFallback": "Ưu đãi tự động",
-      "submitting": "Đang tạo đơn hàng...",
       "title": "Chi tiết thanh toán",
       "totalDue": "Thành tiền",
       "voucherDiscount": "Mã giảm giá ({code})"
@@ -386,7 +385,6 @@
       "appliedCombined": "Đã áp dụng mã {code} (-{discount}) cùng ưu đãi tự động.",
       "appliedReplacedPromo": "Đã áp dụng mã {code} (-{discount}). Mã này giảm nhiều hơn nên đã thay thế ưu đãi tự động.",
       "apply": "Áp dụng",
-      "checking": "Đang kiểm tra...",
       "emptyInput": "Vui lòng nhập mã giảm giá.",
       "errors": {
         "RATE_LIMITED": "Bạn kiểm tra mã quá nhanh. Vui lòng thử lại sau ít phút.",

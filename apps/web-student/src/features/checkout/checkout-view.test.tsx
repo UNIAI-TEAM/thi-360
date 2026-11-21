@@ -1,8 +1,10 @@
+import { focusManager, QueryClient } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  CHECKOUT_QUOTE_QUERY_KEY,
   type CreateOrderResponse,
   OrderConflictError,
   type PriceQuote,
@@ -551,7 +553,7 @@ describe("CheckoutView", () => {
   it("hiện banner đang có lượt, khóa mua khi checking / access loading / access error, và xử lý IN_PROGRESS với 0 lượt (AC-9, R1-5, R1-25, R1-27)", async () => {
     const user = userEvent.setup();
 
-    // R1-25: accessQuery đang loading -> nút mua bị khóa
+    // R1-25: accessQuery đang loading -> nút mua bị khóa và có aria-busy
     const pendingView = renderWithProviders(
       <CheckoutView
         code="HSA-FULL-01"
@@ -561,7 +563,9 @@ describe("CheckoutView", () => {
         requestQuote={async () => makeQuote()}
       />,
     );
-    expect(await screen.findByRole("button", { name: "Thanh toán qua VNPAY" })).toBeDisabled();
+    const pendingPayBtn = await screen.findByRole("button", { name: "Thanh toán qua VNPAY" });
+    expect(pendingPayBtn).toBeDisabled();
+    expect(pendingPayBtn).toHaveAttribute("aria-busy", "true");
     pendingView.unmount();
 
     // R1-25: accessQuery lỗi -> nút mua bị khóa + có alert và nút Thử lại
@@ -594,6 +598,7 @@ describe("CheckoutView", () => {
     await user.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(await screen.findByText("Bạn đang có 2 lượt với bài thi này")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vào bài thi" })).toHaveAttribute("href", "/prepare/ent-1");
+    expect(screen.getByRole("button", { name: "Mua thêm lượt" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Thanh toán qua VNPAY" })).toBeEnabled();
     errAccessView.unmount();
 
@@ -720,7 +725,11 @@ describe("CheckoutView", () => {
     goneView.unmount();
   });
 
-  it("reset state khi đổi prop code và cô lập cache quote theo userId (R1-7, R1-29)", async () => {
+  it("reset state khi đổi prop code và cô lập cache quote theo userId (R1-7, R1-29, R2-14)", async () => {
+    expect(CHECKOUT_QUOTE_QUERY_KEY("HSA-FULL-01", 2, 250000, "stu-a")).not.toEqual(
+      CHECKOUT_QUOTE_QUERY_KEY("HSA-FULL-01", 2, 250000, "stu-b"),
+    );
+
     const user = userEvent.setup();
     const requestQuote = vi.fn(async ({ code }: { code: string }) =>
       makeQuote({ productCode: code, versionNo: code === "HSA-FULL-01" ? 2 : 5 }),
@@ -754,6 +763,41 @@ describe("CheckoutView", () => {
 
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect(await screen.findByText("Phiên bản v5")).toBeInTheDocument();
+    view.unmount();
+
+    // R2-14: dùng chung QueryClient giữa 2 tài khoản -> user B phải gọi requestQuote mới
+    const sharedClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const sharedQuoteLoader = vi.fn(async () => makeQuote({ productCode: "HSA-FULL-01", versionNo: 2 }));
+    const otherStudent = { ...STUDENT_SESSION, id: "user-other-2", username: "student02", fullName: "Học viên 02" };
+
+    const viewA = renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={sharedQuoteLoader}
+      />,
+      { client: sharedClient },
+    );
+    expect(await screen.findByText("Phiên bản v2")).toBeInTheDocument();
+    expect(sharedQuoteLoader).toHaveBeenCalledTimes(1);
+    viewA.unmount();
+
+    sharedClient.removeQueries({ queryKey: ["session"] });
+    const viewB = renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={async () => otherStudent}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={sharedQuoteLoader}
+      />,
+      { client: sharedClient },
+    );
+    expect(await within(screen.getByRole("main")).findByText("student02")).toBeInTheDocument();
+    await waitFor(() => expect(sharedQuoteLoader).toHaveBeenCalledTimes(2));
+    viewB.unmount();
   });
 
   it("401 qua QueryProvider làm mới phiên trước khi đẩy về /login, chặn admin và tuân thủ song ngữ en (AC-12, R1-24, R1-59, R1-63)", async () => {
@@ -839,5 +883,264 @@ describe("CheckoutView", () => {
     expect(within(mainEl).getByRole("link", { name: "Sign in with another account" })).toHaveClass(
       "focus-visible:ring-primary-text",
     );
+  });
+
+  it("áp dụng voucher hợp lệ trên ?v=&p= không hiện cảnh báo sai giá nhưng đổi versionNo vẫn cảnh báo (R2-1)", async () => {
+    const user = userEvent.setup();
+    navState.search = "v=2&p=250000";
+
+    const requestQuote = vi
+      .fn()
+      .mockResolvedValueOnce(makeQuote({ versionNo: 2, finalPrice: 250000, changed: false }))
+      .mockResolvedValueOnce(
+        makeQuote({
+          versionNo: 2,
+          finalPrice: 200000,
+          discountApplied: "VOUCHER_ONLY",
+          promotion: undefined,
+          voucher: {
+            id: "v-1",
+            code: "GIAM50K",
+            name: "Giam 50K",
+            discountType: "AMOUNT",
+            discountValue: 50000,
+            discountVnd: 50000,
+            combinable: false,
+          },
+          changed: true,
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeQuote({
+          versionNo: 3,
+          finalPrice: 220000,
+          discountApplied: "VOUCHER_ONLY",
+          promotion: undefined,
+          voucher: {
+            id: "v-2",
+            code: "GIAM50K",
+            name: "Giam 50K",
+            discountType: "AMOUNT",
+            discountValue: 50000,
+            discountVnd: 50000,
+            combinable: false,
+          },
+          changed: true,
+        }),
+      );
+
+    renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={requestQuote}
+      />,
+    );
+
+    const input = await screen.findByLabelText("Nhập mã giảm giá");
+    await user.type(input, "GIAM50K");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+
+    expect(await screen.findByText(/Đã áp dụng mã GIAM50K/)).toBeInTheDocument();
+    expect(requestQuote).toHaveBeenNthCalledWith(2, {
+      code: "HSA-FULL-01",
+      voucherCode: "GIAM50K",
+      seenVersionNo: 2,
+    });
+    expect(requestQuote.mock.calls[1]![0]).not.toHaveProperty("seenPrice");
+    expect(screen.queryByRole("heading", { name: "Giá hoặc quyền lợi đã thay đổi" })).toBeNull();
+
+    // Khi response voucher tăng versionNo -> vẫn phải hiện banner cảnh báo thay đổi giá/phiên bản
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+    expect(await screen.findByRole("heading", { name: "Giá hoặc quyền lợi đã thay đổi" })).toBeInTheDocument();
+  });
+
+  it("xóa priceChangedSeen khi xác nhận đổi tài khoản (R2-2) và giữ form khi background session refetch lỗi (R2-4)", async () => {
+    const user = userEvent.setup();
+    const otherStudent = { ...STUDENT_SESSION, id: "user-other-2", username: "student02", fullName: "Học viên 02" };
+    const loadCurrentSession = vi
+      .fn()
+      .mockResolvedValueOnce(STUDENT_SESSION)
+      .mockResolvedValue(otherStudent);
+    const submitOrder = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new OrderConflictError(
+          "PRICE_CHANGED",
+          "Price changed",
+          makeQuote({ finalPrice: 280000, versionNo: 3, changed: false }),
+        ),
+      )
+      .mockRejectedValueOnce(new OrderConflictError("ACCOUNT_CHANGED", "Account changed"));
+
+    const ackView = renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={loadCurrentSession}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={async () => makeQuote({ versionNo: 2, finalPrice: 250000, changed: false })}
+        submitOrder={submitOrder}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Thanh toán qua VNPAY" }));
+    expect(await screen.findByRole("heading", { name: "Giá hoặc quyền lợi đã thay đổi" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Thanh toán qua VNPAY" }));
+    expect(await screen.findByRole("heading", { name: "Tài khoản đăng nhập đã thay đổi" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tiếp tục với student02" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "Giá hoặc quyền lợi đã thay đổi" })).toBeNull(),
+    );
+    ackView.unmount();
+
+    // R2-4: background sessionQuery refetch (focus) lỗi 500 -> giữ nguyên form checkout và mã đã nhập
+    const bgSessionLoader = vi
+      .fn()
+      .mockResolvedValueOnce(STUDENT_SESSION)
+      .mockRejectedValueOnce(new ApiStatusError(500, "Transient session blip"));
+
+    renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={bgSessionLoader}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={async () => makeQuote()}
+      />,
+    );
+
+    const voucherInput = await screen.findByLabelText("Nhập mã giảm giá");
+    await user.type(voucherInput, "KEEPME");
+
+    try {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+      await waitFor(() => expect(bgSessionLoader).toHaveBeenCalledTimes(2));
+    } finally {
+      focusManager.setFocused(undefined);
+    }
+
+    expect(screen.getByRole("heading", { level: 1, name: "Xác nhận mua" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Không thể tải thông tin thanh toán" })).toBeNull();
+    expect(screen.getByLabelText("Nhập mã giảm giá")).toHaveValue("KEEPME");
+    expect(screen.getByRole("button", { name: "Thanh toán qua VNPAY" })).toBeEnabled();
+  });
+
+  it("xử lý requestQuote 410 ngừng bán (R2-17), 422 VOUCHER_EXHAUSTED reset VoucherBox + refetch quote (R2-18), VoucherBox 401 refetch session (R2-3, R2-16) và access forbidden (R2-23)", async () => {
+    const user = userEvent.setup();
+
+    // R2-17: requestQuote ban đầu trả 410 ProductGoneError
+    const goneView = renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={vi.fn().mockRejectedValueOnce(new ProductGoneError({ code: "HSA-FULL-01", name: "Đề HSA ngừng bán" }))}
+      />,
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Bài thi này hiện đã ngừng bán" })).toBeInTheDocument();
+    expect(screen.getByText("Đề HSA ngừng bán")).toHaveAttribute("data-exam-content");
+    goneView.unmount();
+
+    // R2-18 + R2-3 + R2-16: áp dụng voucher trước -> submitOrder 422 VOUCHER_EXHAUSTED xóa overrideQuote, reset VoucherBox & refetch baseQuoteQuery;
+    // VoucherBox 401 gọi sessionQuery.refetch() và hiện lỗi chung khi session vẫn sống
+    const baseAfterExhausted = makeQuote({ finalPrice: 250000, voucher: undefined });
+    const requestQuote = vi
+      .fn()
+      .mockResolvedValueOnce(makeQuote({ finalPrice: 250000, voucher: undefined }))
+      .mockResolvedValueOnce(
+        makeQuote({
+          finalPrice: 200000,
+          discountApplied: "VOUCHER_ONLY",
+          promotion: undefined,
+          voucher: {
+            id: "v-1",
+            code: "GIAM50K",
+            name: "Giam 50K",
+            discountType: "AMOUNT",
+            discountValue: 50000,
+            discountVnd: 50000,
+            combinable: false,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(baseAfterExhausted)
+      .mockRejectedValueOnce(new ApiStatusError(401, "Unauthorized", { code: "UNAUTHORIZED" }));
+
+    const loadSessionSpy = vi.fn().mockResolvedValue(STUDENT_SESSION);
+    const submitOrder = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(422, "Exhausted", { code: "VOUCHER_EXHAUSTED" }))
+      .mockRejectedValueOnce(new ApiStatusError(401, "Unauthorized", { code: "UNAUTHORIZED" }));
+
+    const voucherResetView = renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={loadSessionSpy}
+        loadAccess={async () => ({ kind: "rows", rows: [] })}
+        requestQuote={requestQuote}
+        submitOrder={submitOrder}
+      />,
+    );
+
+    const voucherInput = await screen.findByLabelText("Nhập mã giảm giá");
+    await user.type(voucherInput, "GIAM50K");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+    expect(await screen.findByText(/Đã áp dụng mã GIAM50K/)).toBeInTheDocument();
+    expect(screen.getByText("200.000 đ")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Thanh toán qua VNPAY" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Mã giảm giá đã hết lượt sử dụng.");
+    expect(screen.queryByText(/Đã áp dụng mã GIAM50K/)).toBeNull();
+    expect(screen.getByLabelText("Nhập mã giảm giá")).toHaveValue("");
+    await waitFor(() => expect(requestQuote).toHaveBeenCalledTimes(3));
+    expect(screen.getByText("250.000 đ")).toBeInTheDocument();
+
+    // R2-3 + R2-16: VoucherBox 401 -> refetch session, session vẫn sống -> hiện lỗi chung ở VoucherBox
+    const sessionCallsBeforeVoucher401 = loadSessionSpy.mock.calls.length;
+    await user.type(screen.getByLabelText("Nhập mã giảm giá"), "ANYCODE");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+    await waitFor(() => expect(loadSessionSpy.mock.calls.length).toBeGreaterThan(sessionCallsBeforeVoucher401));
+    expect(await screen.findByText("Không thể áp dụng mã giảm giá. Vui lòng thử lại.")).toBeInTheDocument();
+
+    // R2-3: submitOrder 401 -> refetch session, session vẫn sống -> hiện lỗi chung ở Summary
+    const sessionCallsBeforeSubmit401 = loadSessionSpy.mock.calls.length;
+    await user.click(screen.getByRole("button", { name: "Thanh toán qua VNPAY" }));
+    await waitFor(() => expect(loadSessionSpy.mock.calls.length).toBeGreaterThan(sessionCallsBeforeSubmit401));
+    expect(await screen.findByText("Không thể tạo đơn hàng. Vui lòng thử lại.")).toBeInTheDocument();
+    voucherResetView.unmount();
+
+    // R2-23: accessQuery trả { kind: "forbidden" } -> tự refetch session và hiện alert kèm nút Thử lại
+    const forbiddenSessionLoader = vi.fn().mockResolvedValue(STUDENT_SESSION);
+    const forbiddenAccessLoader = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: "forbidden" })
+      .mockResolvedValueOnce({ kind: "rows", rows: [] });
+
+    renderWithProviders(
+      <CheckoutView
+        code="HSA-FULL-01"
+        initialProduct={{ status: "ok", product: makeProduct() }}
+        loadCurrentSession={forbiddenSessionLoader}
+        loadAccess={forbiddenAccessLoader}
+        requestQuote={async () => makeQuote()}
+      />,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Chưa kiểm tra được quyền sử dụng");
+    expect(screen.getByRole("button", { name: "Thanh toán qua VNPAY" })).toBeDisabled();
+    await waitFor(() => expect(forbiddenSessionLoader).toHaveBeenCalledTimes(2));
+
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => expect(forbiddenAccessLoader).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(forbiddenSessionLoader).toHaveBeenCalledTimes(3));
+    expect(await screen.findByRole("button", { name: "Thanh toán qua VNPAY" })).toBeEnabled();
   });
 });

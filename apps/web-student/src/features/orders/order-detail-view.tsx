@@ -37,6 +37,7 @@ import {
   payMyOrder,
 } from "./api";
 import {
+  focusAfterDialogUnmount,
   formatDateTime,
   formatOrderSupportSummary,
   formatTimeOnly,
@@ -110,8 +111,7 @@ export function OrderDetailView({
   useEffect(() => {
     if (cancelOpen || !pendingCancelFocusRef.current) return;
     pendingCancelFocusRef.current = false;
-    const timer = window.setTimeout(() => headingRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
+    return focusAfterDialogUnmount(() => headingRef.current);
   }, [cancelOpen]);
 
   useEffect(() => {
@@ -323,7 +323,7 @@ export function OrderDetailView({
           </div>
         )}
 
-        {isStudent && isOrderNotFound && !order && (
+        {isStudent && isOrderNotFound && (
           <div
             role="alert"
             className="flex flex-col items-start gap-4 rounded-xl border border-danger/30 bg-surface p-6 sm:p-8"
@@ -367,7 +367,7 @@ export function OrderDetailView({
           </div>
         )}
 
-        {isStudent && order && (
+        {isStudent && order && !isOrderNotFound && (
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex flex-col gap-2">
@@ -422,7 +422,7 @@ export function OrderDetailView({
                 <Button
                   asChild
                   variant="secondary"
-                  className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
+                  className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal wrap-anywhere"
                 >
                   <Link href={`/account/orders/${encodeURIComponent(order.replacedByOrderCode)}`}>
                     {t("actions.viewReplacement", { code: order.replacedByOrderCode })}
@@ -723,12 +723,12 @@ export function OrderDetailView({
                   ) : (
                     <div
                       ref={paymentsScrollerRef}
-                      role="region"
-                      aria-label={t("detail.payments.tableLabel")}
+                      role={paymentsOverflow ? "region" : undefined}
+                      aria-label={paymentsOverflow ? t("detail.payments.tableLabel") : undefined}
                       tabIndex={paymentsOverflow ? 0 : undefined}
                       className={cn("overflow-x-auto rounded-lg border border-border", focusRingInset)}
                     >
-                      <table className="w-full border-collapse text-left tabular-nums">
+                      <table aria-label={t("detail.payments.tableLabel")} className="w-full border-collapse text-left tabular-nums">
                         <thead>
                           <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
                             <th scope="col" className="px-3.5 py-2.5">
@@ -746,7 +746,7 @@ export function OrderDetailView({
                             <th scope="col" className="px-3.5 py-2.5">
                               {t("detail.payments.status")}
                             </th>
-                            <th scope="col" className="px-3.5 py-2.5">
+                            <th scope="col" className="min-w-48 px-3.5 py-2.5">
                               {t("detail.payments.reason")}
                             </th>
                             <th scope="col" className="px-3.5 py-2.5">
@@ -779,7 +779,7 @@ export function OrderDetailView({
                                   )}
                                 </div>
                               </td>
-                              <td className="px-3.5 py-3 text-caption text-text-secondary">
+                              <td className="min-w-48 px-3.5 py-3 text-caption text-text-secondary">
                                 {payment.responseCode && payment.state !== "SUCCEEDED"
                                   ? t(`vnpayReasons.${mapVnpayResponseCode(payment.responseCode)}`)
                                   : "—"}

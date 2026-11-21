@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { MyExamsResponse } from "@/features/my-exams/api";
+import { MY_EXAMS_QUERY_KEY, type MyExamsResponse } from "@/features/my-exams/api";
 import { renderWithProviders } from "@/test/render";
 import { STUDENT_SESSION } from "@/test/storefront-fixtures";
 import { MyExamsView } from "./my-exams-view";
@@ -124,7 +124,8 @@ describe("MyExamsView · 4 trạng thái AC-17 & AC-18", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("không trùng React key khi hai thẻ Đang kiểm tra dùng chung pendingOrderCode (R1-17, R1-36)", async () => {
+  it("không trùng React key khi hai thẻ Đang kiểm tra dùng chung pendingOrderCode (R1-17, R1-36) và phân biệt cache key theo userId (R2-15)", async () => {
+    expect(MY_EXAMS_QUERY_KEY("stu-a")).not.toEqual(MY_EXAMS_QUERY_KEY("stu-b"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const secondChecking = {

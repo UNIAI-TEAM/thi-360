@@ -204,3 +204,57 @@ export function readBenefitsSnapshot(raw: unknown): BenefitsSnapshot {
     note: typeof record.note === "string" && record.note.trim().length > 0 ? record.note.trim() : undefined,
   };
 }
+
+/**
+ * Restore focus after ConfirmDialog finishes its exit animation and unmounts from the DOM
+ * so Radix FocusScope does not trap or revert focus during the 200ms dialog-out transition.
+ */
+export function focusAfterDialogUnmount(getTarget: () => HTMLElement | null): () => void {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return () => {};
+  }
+
+  let focusTimer: number | undefined;
+  let cancelled = false;
+
+  const scheduleFocus = () => {
+    if (cancelled) return;
+    focusTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        getTarget()?.focus();
+      }
+    }, 0);
+  };
+
+  if (!document.querySelector('[role="dialog"]') || typeof MutationObserver === "undefined") {
+    scheduleFocus();
+    return () => {
+      cancelled = true;
+      if (focusTimer !== undefined) window.clearTimeout(focusTimer);
+    };
+  }
+
+  let fallbackTimer: number | undefined;
+  const observer = new MutationObserver(() => {
+    if (!document.querySelector('[role="dialog"]')) {
+      observer.disconnect();
+      if (fallbackTimer !== undefined) {
+        window.clearTimeout(fallbackTimer);
+        fallbackTimer = undefined;
+      }
+      scheduleFocus();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  fallbackTimer = window.setTimeout(() => {
+    observer.disconnect();
+    scheduleFocus();
+  }, 400);
+
+  return () => {
+    cancelled = true;
+    observer.disconnect();
+    if (focusTimer !== undefined) window.clearTimeout(focusTimer);
+    if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
+  };
+}

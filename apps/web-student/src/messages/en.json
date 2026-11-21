@@ -353,8 +353,8 @@
       "notOwnedBody": "Order {code} was not found in account {username}. You may be signed in with a different account.",
       "notOwnedHeading": "Order not found in the signed-in account",
       "pollErrorNotice": "Could not refresh the latest order status right now. Checking will continue automatically.",
+      "pollErrorTimeoutNotice": "Could not refresh order status right now. Click Check again or contact support.",
       "retryPay": "Retry payment",
-      "retryingPay": "Redirecting to VNPAY...",
       "successBody": "Order {code} has been confirmed. Exam access is now active in your account.",
       "successFreeBody": "Order {code} used a free voucher and exam access has been granted immediately.",
       "successHeading": "Exam granted",
@@ -376,7 +376,6 @@
       "listPrice": "List price",
       "promotion": "Auto promotion (<examContent>{name}</examContent>)",
       "promotionFallback": "Auto promotion",
-      "submitting": "Creating order...",
       "title": "Payment summary",
       "totalDue": "Total due",
       "voucherDiscount": "Voucher ({code})"
@@ -386,7 +385,6 @@
       "appliedCombined": "Applied voucher {code} (-{discount}) together with the auto promotion.",
       "appliedReplacedPromo": "Applied voucher {code} (-{discount}). Replaced the auto promotion because this voucher saves more.",
       "apply": "Apply",
-      "checking": "Checking...",
       "emptyInput": "Please enter a voucher code.",
       "errors": {
         "RATE_LIMITED": "Too many voucher checks. Please try again in a few minutes.",

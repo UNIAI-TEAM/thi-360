@@ -39,8 +39,8 @@ describe("AC-25: đơn bộ đề có examId trống", () => {
       <OrdersView loadCurrentSession={async () => STUDENT_SESSION} loadOrders={async () => bundlePage} />,
     );
 
-    const tableRegion = await screen.findByRole("region", { name: "Danh sách đơn hàng của tôi" });
-    const scoped = within(tableRegion);
+    const table = await screen.findByRole("table", { name: "Danh sách đơn hàng của tôi" });
+    const scoped = within(table);
     expect(scoped.getByRole("link", { name: "DH261121BUNDLE" })).toHaveAttribute(
       "href",
       "/account/orders/DH261121BUNDLE",

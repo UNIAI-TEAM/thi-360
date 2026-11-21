@@ -40,6 +40,7 @@ import {
   payMyOrder,
 } from "./api";
 import {
+  focusAfterDialogUnmount,
   formatDateTime,
   formatOrderSupportSummary,
   formatTimeOnly,
@@ -171,13 +172,12 @@ export function OrdersView({
     const cancelledCode = pendingCancelFocusRef.current;
     if (cancelTarget !== null || !cancelledCode) return;
     pendingCancelFocusRef.current = null;
-    const timer = window.setTimeout(() => {
+    return focusAfterDialogUnmount(() => {
       const orderLink = ordersContainerRef.current?.querySelector<HTMLAnchorElement>(
         `a[href="/account/orders/${encodeURIComponent(cancelledCode)}"]`,
       );
-      (orderLink ?? headingRef.current)?.focus();
-    }, 0);
-    return () => window.clearTimeout(timer);
+      return orderLink ?? headingRef.current;
+    });
   }, [cancelTarget, ordersContainerRef]);
 
   const account: HeaderAccount = sessionQuery.data
@@ -268,7 +268,7 @@ export function OrdersView({
               loading={payingCode === order.code}
               disabled={cancelling || (payingCode !== null && payingCode !== order.code)}
               onClick={() => void handlePay(order)}
-              className={cn(compact && "flex-1", !compact && "pointer-coarse:min-h-11")}
+              className={cn(compact && "flex-1", "pointer-coarse:min-h-11")}
             >
               {t("actions.continuePayment")}
             </Button>
@@ -278,14 +278,14 @@ export function OrdersView({
               size={btnSize}
               disabled={anyActionPending}
               onClick={() => openCancelDialog(order)}
-              className={!compact ? "pointer-coarse:min-h-11" : undefined}
+              className="pointer-coarse:min-h-11"
             >
               {t("actions.cancel")}
             </Button>
           </>
         )}
         {order.state === "FULFILLED" && (
-          <Button asChild variant="soft" size={btnSize} className={!compact ? "pointer-coarse:min-h-11" : undefined}>
+          <Button asChild variant="soft" size={btnSize} className="pointer-coarse:min-h-11">
             <Link href="/home">{t("actions.goMyExams")}</Link>
           </Button>
         )}
@@ -296,12 +296,14 @@ export function OrdersView({
               : t("paidCheckingSupportPending", { code: order.code, pending: support("pending") })}
           </p>
         )}
-        <Button asChild variant="link" size={btnSize} className={coarseTextHitArea}>
-          <Link href={detailHref}>
-            {t("actions.viewDetail")}
-            <ArrowRight aria-hidden />
-          </Link>
-        </Button>
+        {!compact && (
+          <Button asChild variant="link" size={btnSize} className={coarseTextHitArea}>
+            <Link href={detailHref}>
+              {t("actions.viewDetail")}
+              <ArrowRight aria-hidden />
+            </Link>
+          </Button>
+        )}
       </div>
     );
   }
@@ -530,18 +532,18 @@ export function OrdersView({
                   ) : (
                     <div
                       ref={tableScrollerRef}
-                      role="region"
-                      aria-label={t("tableLabel")}
+                      role={tableOverflows ? "region" : undefined}
+                      aria-label={tableOverflows ? t("tableLabel") : undefined}
                       tabIndex={tableOverflows ? 0 : undefined}
                       className={cn("overflow-x-auto rounded-xl border border-border bg-surface", focusRingInset)}
                     >
-                      <table className="w-full border-collapse text-left">
+                      <table aria-label={t("tableLabel")} className="w-full border-collapse text-left">
                         <thead>
                           <tr className="border-b border-border bg-table-head text-caption font-semibold text-text-muted">
                             <th scope="col" className="px-4 py-3">
                               {t("columns.code")}
                             </th>
-                            <th scope="col" className="px-4 py-3">
+                            <th scope="col" className="min-w-48 px-4 py-3">
                               {t("columns.product")}
                             </th>
                             <th scope="col" className="px-4 py-3">
@@ -573,7 +575,7 @@ export function OrdersView({
                                   {order.code}
                                 </Link>
                               </td>
-                              <td className="px-4 py-3.5 align-top">
+                              <td className="min-w-48 px-4 py-3.5 align-top">
                                 <div className="flex flex-wrap items-center gap-2">
                                   {order.productType === "BUNDLE" && (
                                     <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">

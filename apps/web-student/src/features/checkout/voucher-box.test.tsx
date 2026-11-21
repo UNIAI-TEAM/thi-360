@@ -117,7 +117,6 @@ describe("VoucherBox · AC-6", () => {
     expect(requestQuote).toHaveBeenNthCalledWith(1, {
       code: "HSA-FULL-01",
       voucherCode: "GIAM20",
-      seenPrice: 300000,
       seenVersionNo: 1,
     });
     const appliedStatus = await screen.findByRole("status");
@@ -281,6 +280,74 @@ describe("VoucherBox · AC-6", () => {
 
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("chuyển seenPrice/seenVersionNo khi gỡ mã (R2-1), gọi onUnauthorized khi gỡ mã 401 (R2-16) và hiện lỗi chung khi phiên vẫn sống (R2-3)", async () => {
+    const user = userEvent.setup();
+    const onRemoveUnauthorized = vi.fn();
+    const removeRequest = vi
+      .fn()
+      .mockResolvedValueOnce(makeQuote())
+      .mockRejectedValueOnce(new ApiStatusError(401, "Unauthorized", { code: "UNAUTHORIZED" }));
+
+    const quoteWithVoucher = makeQuote({
+      finalPrice: 240000,
+      discountApplied: "VOUCHER_ONLY",
+      voucher: {
+        id: "v-1",
+        code: "GIAM20",
+        name: "Giảm 20%",
+        discountType: "PERCENT",
+        discountValue: 20,
+        discountVnd: 60000,
+        combinable: false,
+      },
+    });
+
+    const removeOkView = renderWithProviders(
+      <VoucherBox
+        productCode="HSA-FULL-01"
+        seenPrice={300000}
+        seenVersionNo={2}
+        quote={quoteWithVoucher}
+        requestQuote={removeRequest}
+        onQuoteApplied={vi.fn()}
+        onUnauthorized={onRemoveUnauthorized}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Gỡ mã" }));
+    expect(removeRequest).toHaveBeenNthCalledWith(1, {
+      code: "HSA-FULL-01",
+      seenPrice: 300000,
+      seenVersionNo: 2,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Gỡ mã" }));
+    await waitFor(() => expect(onRemoveUnauthorized).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
+    removeOkView.unmount();
+
+    // R2-3: session vẫn sống sau refetch -> báo lỗi chung và đưa focus về ô nhập
+    const activeRaceView = renderWithProviders(
+      <VoucherBox
+        productCode="HSA-FULL-01"
+        quote={makeQuote()}
+        requestQuote={vi.fn().mockRejectedValueOnce(new ApiStatusError(401, "Unauthorized", { code: "UNAUTHORIZED" }))}
+        onQuoteApplied={vi.fn()}
+        onUnauthorized={async () => true}
+      />,
+    );
+
+    const input = screen.getByLabelText("Nhập mã giảm giá");
+    await user.type(input, "GIAM20");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Không thể áp dụng mã giảm giá. Vui lòng thử lại.",
+    );
+    await waitFor(() => expect(input).toHaveFocus());
+    activeRaceView.unmount();
   });
 
   const errorCases: Array<{

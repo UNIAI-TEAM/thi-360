@@ -467,4 +467,168 @@ describe("CheckoutResultView", () => {
     );
     expect(screen.getByRole("link", { name: "Xem đơn của tôi" })).toHaveAttribute("href", "/account/orders");
   });
+
+  it("không dừng poll vì vnp_TxnRef cũ đã FAILED khi đã tạo lần thanh toán mới (R2-5) và chờ session khi verifyReturn 404 (R2-25)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      navState.search = "vnp_TxnRef=DH0101&vnp_ResponseCode=24&vnp_SecureHash=valid";
+      const loadOrderDetail = vi.fn().mockResolvedValue(
+        makeOrder({
+          code: "DH01",
+          state: "PENDING_PAYMENT",
+          fulfilledAt: undefined,
+          payments: [
+            {
+              id: "pay-1",
+              attemptSeq: 1,
+              txnRef: "DH0101",
+              amountVnd: 300000,
+              state: "FAILED",
+              responseCode: "24",
+              duplicate: false,
+              createdAt: "2026-11-21T03:01:00Z",
+            },
+            {
+              id: "pay-2",
+              attemptSeq: 2,
+              txnRef: "DH0102",
+              amountVnd: 300000,
+              state: "CREATED",
+              duplicate: false,
+              createdAt: "2026-11-21T03:02:00Z",
+            },
+          ],
+        }),
+      );
+
+      const staleTxnView = renderWithProviders(
+        <CheckoutResultView
+          loadCurrentSession={async () => STUDENT_SESSION}
+          verifyReturn={async () => ({ orderCode: "DH01", paymentState: "FAILED" })}
+          loadOrderDetail={loadOrderDetail}
+        />,
+      );
+
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { level: 1, name: "Thanh toán chưa thành công" })).toBeNull();
+      expect(loadOrderDetail).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(loadOrderDetail).toHaveBeenCalledTimes(2);
+      staleTxnView.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // R2-25: verifyReturn 404 khi sessionQuery đang tải -> giữ skeleton, không nháy CTA khách
+    navState.search = "vnp_TxnRef=DH404WAIT&vnp_ResponseCode=00&vnp_SecureHash=valid";
+    let resolveSession!: (session: typeof STUDENT_SESSION | null) => void;
+    renderWithProviders(
+      <CheckoutResultView
+        loadCurrentSession={() =>
+          new Promise((resolve) => {
+            resolveSession = resolve;
+          })
+        }
+        verifyReturn={vi.fn().mockRejectedValueOnce(new ApiStatusError(404, "Not found", { code: "ORDER_NOT_FOUND" }))}
+      />,
+    );
+
+    const loadingStatus = await screen.findByRole("status", { name: "Đang tải" });
+    expect(loadingStatus).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("link", { name: "Đăng nhập" })).toBeNull();
+
+    await act(async () => {
+      resolveSession(STUDENT_SESSION);
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tìm thấy đơn hàng" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Xem đơn của tôi" })).toHaveAttribute("href", "/account/orders");
+  });
+
+  it("poll trả 404 ORDER_NOT_FOUND ẩn đơn cũ và dừng poll (R2-6), lỗi sau timeout 60s không hứa tự thử lại (R2-26)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      // R2-6: PENDING_PAYMENT -> poll 404 ORDER_NOT_FOUND
+      navState.search = "order=DHSWITCH404&state=checking";
+      const loadSwitchingOrder = vi
+        .fn()
+        .mockResolvedValueOnce(makeOrder({ code: "DHSWITCH404", state: "PENDING_PAYMENT", fulfilledAt: undefined }))
+        .mockRejectedValueOnce(new ApiStatusError(404, "Not found", { code: "ORDER_NOT_FOUND" }));
+
+      const switchView = renderWithProviders(
+        <CheckoutResultView loadCurrentSession={async () => STUDENT_SESSION} loadOrderDetail={loadSwitchingOrder} />,
+      );
+
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Không tìm thấy đơn trong tài khoản đang đăng nhập" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Đề thi thử ĐGNL HSA số 1")).toBeNull();
+      const callsAfter404 = loadSwitchingOrder.mock.calls.length;
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+      expect(loadSwitchingOrder).toHaveBeenCalledTimes(callsAfter404);
+      switchView.unmount();
+
+      // R2-26: poll cuối trước timeout 60s lỗi -> khi timeout dừng poll, alert không hứa hệ thống vẫn tự thử lại
+      navState.search = "order=DHTIMEOUTERR&state=checking";
+      let pollCount = 0;
+      const loadTimeoutThenErr = vi.fn(async () => {
+        pollCount += 1;
+        if (pollCount >= 30) {
+          throw new ApiStatusError(500, "Still down");
+        }
+        return makeOrder({ code: "DHTIMEOUTERR", state: "PENDING_PAYMENT", fulfilledAt: undefined });
+      });
+
+      renderWithProviders(
+        <CheckoutResultView loadCurrentSession={async () => STUDENT_SESSION} loadOrderDetail={loadTimeoutThenErr} />,
+      );
+
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+      for (let i = 0; i < 30; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2000);
+        });
+      }
+      expect(screen.getByRole("heading", { level: 1, name: "Đang kiểm tra thanh toán" })).toBeInTheDocument();
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Không kiểm tra lại được trạng thái đơn lúc này. Hãy bấm Kiểm tra lại ngay hoặc liên hệ hỗ trợ.",
+      );
+      expect(alert).not.toHaveTextContent("Hệ thống vẫn đang tiếp tục thử lại.");
+
+      const callsAtTimeout = loadTimeoutThenErr.mock.calls.length;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+      expect(loadTimeoutThenErr).toHaveBeenCalledTimes(callsAtTimeout);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

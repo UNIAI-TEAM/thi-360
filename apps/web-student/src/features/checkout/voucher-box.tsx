@@ -69,7 +69,7 @@ export function VoucherBox({
   requestQuote?: PriceQuoteAction;
   onQuoteApplied: (nextQuote: PriceQuote, meta: { action: "apply" | "remove"; submittedCode?: string }) => void;
   onProductGone?: (product: { code: string; name: string }) => void;
-  onUnauthorized?: () => void;
+  onUnauthorized?: () => Promise<boolean | void> | void;
   disabled?: boolean;
 }) {
   const t = useTranslations("checkout.voucher");
@@ -109,7 +109,6 @@ export function VoucherBox({
       const nextQuote = await requestQuote({
         code: productCode,
         voucherCode: trimmed,
-        ...(seenPrice !== undefined ? { seenPrice } : {}),
         ...(seenVersionNo !== undefined ? { seenVersionNo } : {}),
       });
 
@@ -138,7 +137,11 @@ export function VoucherBox({
         return;
       }
       if (error instanceof ApiStatusError && error.status === 401) {
-        onUnauthorized?.();
+        const sessionStillActive = await onUnauthorized?.();
+        if (sessionStillActive) {
+          shouldFocusInputRef.current = true;
+          setFeedback({ kind: "error", errorKey: "generic" });
+        }
         return;
       }
       shouldFocusInputRef.current = true;
@@ -167,7 +170,11 @@ export function VoucherBox({
         return;
       }
       if (error instanceof ApiStatusError && error.status === 401) {
-        onUnauthorized?.();
+        const sessionStillActive = await onUnauthorized?.();
+        if (sessionStillActive) {
+          shouldFocusInputRef.current = true;
+          setFeedback({ kind: "error", errorKey: "generic" });
+        }
         return;
       }
       shouldFocusInputRef.current = true;

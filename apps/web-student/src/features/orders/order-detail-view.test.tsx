@@ -129,7 +129,11 @@ describe("OrderDetailView · AC-14 & AC-21", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Đơn DH261117K7M2Q9" })).toBeInTheDocument();
     expect(screen.getByText("Chờ thanh toán")).toBeInTheDocument();
     expect(screen.getByText("DH261117K7M2Q901")).toBeInTheDocument();
-    const paymentsTable = screen.getByRole("region", { name: "Danh sách giao dịch thanh toán" });
+    expect(screen.queryByRole("region", { name: "Danh sách giao dịch thanh toán" })).toBeNull();
+    const paymentsTable = screen.getByRole("table", { name: "Danh sách giao dịch thanh toán" });
+    expect(within(paymentsTable).getByRole("columnheader", { name: "Chi tiết" })).toHaveClass("min-w-48");
+    const firstRowCells = within(within(paymentsTable).getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(firstRowCells[5]).toHaveClass("min-w-48");
     expect(within(paymentsTable).getByText("Tài khoản ngân hàng không đủ số dư để thanh toán.")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Tiếp tục thanh toán" }));
@@ -512,5 +516,71 @@ describe("OrderDetailView · AC-14 & AC-21", () => {
     for (const token of forbiddenRawTokens) {
       expect(document.body.textContent).not.toContain(token);
     }
+  });
+
+  it("refetch trả 404 ORDER_NOT_FOUND ẩn đơn cũ và banner stale (R2-8)", async () => {
+    const pending = makeDetail({ code: "DH-REFETCH-404" });
+    const loadDetail = vi
+      .fn()
+      .mockResolvedValueOnce(pending)
+      .mockRejectedValueOnce(new ApiStatusError(404, "Not found", { code: "ORDER_NOT_FOUND" }));
+    const payOrder = vi.fn().mockRejectedValueOnce(new ApiStatusError(500, "Temp err"));
+
+    renderWithProviders(
+      <OrderDetailView
+        code="DH-REFETCH-404"
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadOrderDetail={loadDetail}
+        payOrder={payOrder}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Đơn DH-REFETCH-404" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Tiếp tục thanh toán" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tìm thấy đơn hàng" })).toBeInTheDocument();
+    expect(screen.queryByText("Đề thi thử ĐGNL HSA số 3")).toBeNull();
+    expect(screen.queryByText(/Dữ liệu chưa được cập nhật/)).toBeNull();
+  });
+
+  it("cancelOrder giữ Idempotency-Key qua 500 kể cả khi đóng mở lại dialog, và tạo key mới sau 409 (R2-19)", async () => {
+    const order = makeDetail({ code: "DH-CAN-IDEM", state: "PENDING_PAYMENT" });
+    const cancelOrder = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(500, "Server 500"))
+      .mockRejectedValueOnce(new ApiStatusError(500, "Server 500 again"))
+      .mockRejectedValueOnce(new ApiStatusError(409, "Not pending", { code: "ORDER_NOT_PENDING" }))
+      .mockResolvedValueOnce(makeDetail({ code: "DH-CAN-IDEM", state: "CANCELLED" }));
+
+    renderWithProviders(
+      <OrderDetailView
+        code="DH-CAN-IDEM"
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadOrderDetail={async () => order}
+        cancelOrder={cancelOrder}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Hủy đơn" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(1));
+    const key1 = cancelOrder.mock.calls[0]?.[1];
+
+    // Thử lại ngay trong hộp thoại -> dùng lại key1
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(2));
+    expect(cancelOrder.mock.calls[1]?.[1]).toBe(key1);
+
+    // Đóng hộp thoại khi đang có lỗi rồi mở lại -> vẫn dùng lại key1, lần 3 trả 409 -> xóa key
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Giữ đơn" }));
+    await userEvent.click(screen.getByRole("button", { name: "Hủy đơn" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(3));
+    expect(cancelOrder.mock.calls[2]?.[1]).toBe(key1);
+
+    // Sau 409 -> lần gọi tiếp theo dùng key mới
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(4));
+    expect(cancelOrder.mock.calls[3]?.[1]).not.toBe(key1);
   });
 });

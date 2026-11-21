@@ -157,7 +157,10 @@ export function CheckoutResultView({
     orderQuery.error instanceof ApiStatusError &&
     (orderQuery.error.status === 404 || orderQuery.error.code === "ORDER_NOT_FOUND");
 
-  const verifiedFailed = hasVnpParams && verifyQuery.data?.paymentState === "FAILED";
+  const verifiedFailed =
+    hasVnpParams &&
+    verifyQuery.data?.paymentState === "FAILED" &&
+    (!latestPayment || latestPayment.txnRef === vnpParams.vnp_TxnRef);
   const isFailedAttempt = Boolean(
     order && order.state === "PENDING_PAYMENT" && (latestPayment?.state === "FAILED" || verifiedFailed),
   );
@@ -165,6 +168,7 @@ export function CheckoutResultView({
   const shouldPoll =
     Boolean(order) &&
     !timedOut &&
+    !isOrderNotFound &&
     (order!.state === "PAID" || (order!.state === "PENDING_PAYMENT" && !isFailedAttempt));
 
   const {
@@ -281,6 +285,9 @@ export function CheckoutResultView({
     }
 
     if (isVerifyNotFound) {
+      if (sessionQuery.isLoading) {
+        return renderLoadingCard(true);
+      }
       return (
         <EmptyState
           headingLevel={1}
@@ -496,7 +503,7 @@ export function CheckoutResultView({
       return renderLoadingCard();
     }
 
-    if (isOrderNotFound && !order) {
+    if (isOrderNotFound) {
       return (
         <EmptyState
           headingLevel={1}
@@ -661,7 +668,7 @@ export function CheckoutResultView({
               className="flex items-start gap-2 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-caption font-medium text-warning"
             >
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>{t("pollErrorNotice")}</span>
+              <span>{timedOut ? t("pollErrorTimeoutNotice") : t("pollErrorNotice")}</span>
             </p>
           )}
 
@@ -712,7 +719,7 @@ export function CheckoutResultView({
             <Button
               asChild
               variant="primary"
-              className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
+              className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal wrap-anywhere"
             >
               <Link href={`/account/orders/${encodeURIComponent(order.replacedByOrderCode)}`}>
                 {ordersT("actions.viewReplacement", { code: order.replacedByOrderCode })}

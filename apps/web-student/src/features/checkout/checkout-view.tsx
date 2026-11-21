@@ -202,7 +202,8 @@ export function CheckoutView({
 
   const hasBaselineMismatch = useMemo(() => {
     if (!activeQuote) return false;
-    if (activeQuote.changed) return true;
+    if (baseQuoteQuery.data?.changed) return true;
+    if (!overrideQuote?.voucher && activeQuote.changed) return true;
     if (seenVersionNo !== undefined && activeQuote.versionNo !== seenVersionNo) return true;
     if (baseQuoteQuery.data && activeQuote.versionNo !== baseQuoteQuery.data.versionNo) return true;
     if (!overrideQuote && seenPrice !== undefined && activeQuote.finalPrice !== seenPrice) return true;
@@ -212,8 +213,23 @@ export function CheckoutView({
   const showPriceChangedBanner = Boolean(priceChangedSeen || hasBaselineMismatch);
   const displaySeenPrice = priceChangedSeen?.seenPrice ?? seenPrice;
 
+  const isAccessForbidden = accessQuery.data?.kind === "forbidden";
   const accessUnavailable =
     accessQuery.isLoading || accessQuery.isError || accessQuery.data?.kind !== "rows";
+
+  const forbiddenSessionKey = `${code}:${acknowledgedSession?.id ?? ""}`;
+  const forbiddenRefetchKeyRef = useRef<string | null>(null);
+  const { refetch: refetchSession } = sessionQuery;
+
+  useEffect(() => {
+    if (!isAccessForbidden) {
+      forbiddenRefetchKeyRef.current = null;
+      return;
+    }
+    if (forbiddenRefetchKeyRef.current === forbiddenSessionKey) return;
+    forbiddenRefetchKeyRef.current = forbiddenSessionKey;
+    void refetchSession();
+  }, [forbiddenSessionKey, isAccessForbidden, refetchSession]);
 
   const accessRow = useMemo(() => {
     if (accessQuery.data?.kind !== "rows") return undefined;
@@ -239,6 +255,7 @@ export function CheckoutView({
     setBaselineSession(nextUser);
     setAccountConflict(null);
     setOverrideQuote(null);
+    setPriceChangedSeen(null);
     setSubmitError(null);
     setVoucherResetVersion((v) => v + 1);
     idempotencyKeyRef.current = null;
@@ -331,7 +348,10 @@ export function CheckoutView({
 
       if (error instanceof ApiStatusError) {
         if (error.status === 401) {
-          void sessionQuery.refetch();
+          const res = await sessionQuery.refetch();
+          if (res.isSuccess) {
+            setSubmitError({ kind: "generic" });
+          }
           return;
         }
         if (error.status === 429 || error.code === "RATE_LIMITED") {
@@ -368,7 +388,7 @@ export function CheckoutView({
   }
 
   function renderAccessBanner() {
-    if (accessQuery.isError) {
+    if (accessQuery.isError || isAccessForbidden) {
       return (
         <section
           role="alert"
@@ -381,7 +401,16 @@ export function CheckoutView({
               <p className="text-body text-text-secondary">{t("accessBanner.loadErrorDescription")}</p>
             </div>
           </div>
-          <Button type="button" variant="secondary" onClick={() => void accessQuery.refetch()}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              if (isAccessForbidden) {
+                void sessionQuery.refetch();
+              }
+              void accessQuery.refetch();
+            }}
+          >
             {common("retry")}
           </Button>
         </section>
@@ -489,7 +518,7 @@ export function CheckoutView({
 
         {sessionQuery.isLoading || isSessionUnauthorized ? (
           renderSkeleton()
-        ) : sessionQuery.isError ? (
+        ) : sessionQuery.isError && !liveSession ? (
           <EmptyState
             headingLevel={1}
             icon={<TriangleAlert />}
@@ -588,7 +617,7 @@ export function CheckoutView({
                   type="button"
                   variant="primary"
                   onClick={() => void handleAcknowledgeNewAccount()}
-                  className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
+                  className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal wrap-anywhere"
                 >
                   {t("account.continueAsCurrent", { username: accountChanged.current.username })}
                 </Button>
@@ -772,7 +801,10 @@ export function CheckoutView({
                     requestQuote={requestQuote}
                     disabled={isBlockedByChecking || Boolean(accountChanged) || submitting}
                     onProductGone={(gone) => setGoneProduct(gone)}
-                    onUnauthorized={() => void sessionQuery.refetch()}
+                    onUnauthorized={async () => {
+                      const res = await sessionQuery.refetch();
+                      return res.isSuccess;
+                    }}
                     onQuoteApplied={(nextQuote) => {
                       setOverrideQuote(nextQuote);
                       setSubmitError(null);
@@ -862,7 +894,7 @@ export function CheckoutView({
                         type="button"
                         variant={activeQuote.finalPrice === 0 ? "exam" : "primary"}
                         size="lg"
-                        loading={submitting}
+                        loading={submitting || accessQuery.isLoading}
                         disabled={
                           accessUnavailable ||
                           isBlockedByChecking ||

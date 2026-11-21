@@ -8,6 +8,7 @@ import {
   type OrderPayAction,
   type OrderSummary,
 } from "@/features/orders/api";
+import { focusAfterDialogUnmount } from "@/features/orders/format";
 import { ApiStatusError } from "@/lib/api/client";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { renderWithProviders } from "@/test/render";
@@ -113,8 +114,11 @@ describe("OrdersView · AC-20", () => {
       />,
     );
 
-    const tableRegion = await screen.findByRole("region", { name: "Danh sách đơn hàng của tôi" });
-    const scoped = within(tableRegion);
+    expect(screen.queryByRole("region", { name: "Danh sách đơn hàng của tôi" })).toBeNull();
+    const table = await screen.findByRole("table", { name: "Danh sách đơn hàng của tôi" });
+    const scoped = within(table);
+    expect(scoped.getByRole("columnheader", { name: "Bài thi" })).toHaveClass("min-w-48");
+    expect(within(scoped.getAllByRole("row")[1]!).getAllByRole("cell")[1]).toHaveClass("min-w-48");
     expect(scoped.getByRole("link", { name: "DH-PENDING" })).toHaveAttribute("href", "/account/orders/DH-PENDING");
     expect(scoped.getByText("Chờ thanh toán")).toBeInTheDocument();
     expect(scoped.getByText("Đang kiểm tra")).toBeInTheDocument();
@@ -140,7 +144,7 @@ describe("OrdersView · AC-20", () => {
 
     // Phân trang sang trang 2
     await userEvent.click(screen.getByRole("button", { name: "Trang 2" }));
-    expect(await within(screen.getByRole("region", { name: "Danh sách đơn hàng của tôi" })).findByText("DH-PAGE2")).toBeInTheDocument();
+    expect(await within(screen.getByRole("table", { name: "Danh sách đơn hàng của tôi" })).findByText("DH-PAGE2")).toBeInTheDocument();
   });
 
   it("lỗi khi /pay từ chối hiện thông báo và nút tạo đơn mới", async () => {
@@ -157,20 +161,22 @@ describe("OrdersView · AC-20", () => {
       <OrdersView loadCurrentSession={async () => STUDENT_SESSION} loadOrders={loadOrders} payOrder={payOrder} />,
     );
 
-    const tableRegion = await screen.findByRole("region", { name: "Danh sách đơn hàng của tôi" });
-    await userEvent.click(within(tableRegion).getByRole("button", { name: "Tiếp tục thanh toán" }));
+    const table = await screen.findByRole("table", { name: "Danh sách đơn hàng của tôi" });
+    await userEvent.click(within(table).getByRole("button", { name: "Tiếp tục thanh toán" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/Đơn đã hết hạn thanh toán/);
     expect(within(alert).getByRole("link", { name: "Tạo đơn mới" })).toHaveAttribute("href", "/checkout/HSA-FULL-03");
   });
 
-  it("tài khoản quản trị không gọi API /me/orders và lỗi phiên dùng heading cấp 1", async () => {
+  it("tài khoản quản trị không gọi API /me/orders và lỗi phiên dùng heading cấp 1 (R2-12)", async () => {
+    const adminLoadOrders = vi.fn();
     const adminView = renderWithProviders(
-      <OrdersView loadCurrentSession={async () => ADMIN_SESSION} loadOrders={vi.fn()} />,
+      <OrdersView loadCurrentSession={async () => ADMIN_SESSION} loadOrders={adminLoadOrders} />,
     );
 
     expect(await screen.findByRole("heading", { level: 1, name: "Tài khoản quản trị" })).toBeInTheDocument();
+    expect(adminLoadOrders).not.toHaveBeenCalled();
     adminView.unmount();
 
     const loadOrders = vi.fn();
@@ -187,7 +193,7 @@ describe("OrdersView · AC-20", () => {
       vi.restoreAllMocks();
     });
 
-    it("rộng dùng bảng duy nhất, hẹp dùng CardList và giữ bảng khi refetch lỗi (R1-12, R1-39, R1-45, R1-57, R1-61)", async () => {
+    it("rộng dùng bảng duy nhất, hẹp dùng CardList và giữ bảng khi refetch lỗi (R1-12, R1-39, R1-45, R1-57, R1-61, R2-20, R2-21)", async () => {
       const setWidth = installContainerWidth(900);
       const loadOrders = vi
         .fn<() => Promise<OrderPage>>()
@@ -222,12 +228,24 @@ describe("OrdersView · AC-20", () => {
       expect(within(table).getByText("Miễn phí")).toBeInTheDocument();
       expect(within(table).queryByText("Miễn phí nhờ voucher")).toBeNull();
 
-      // Thu hẹp xuống 358px -> chỉ còn CardList, table bị gỡ khỏi DOM
+      // Thu hẹp xuống 358px -> chỉ còn CardList, table bị gỡ khỏi DOM, chỉ có 1 link tới chi tiết đơn và giữ pointer-coarse:min-h-11
       setWidth(PHONE_CONTENT_WIDTH);
       const list = await screen.findByRole("list", { name: "Danh sách đơn hàng của tôi" });
       expect(screen.queryByRole("table")).toBeNull();
       expect(within(list).getByRole("link", { name: "DH-BUNDLE" })).toHaveAttribute("href", "/account/orders/DH-BUNDLE");
       expect(within(list).getByText("Bộ đề")).toBeInTheDocument();
+      expect(within(list).queryByRole("link", { name: /Xem chi tiết/ })).toBeNull();
+      const cardItems = within(list).getAllByRole("listitem");
+      expect(
+        within(cardItems[0]!).getAllByRole("link").filter((el) => el.getAttribute("href") === "/account/orders/DH-BUNDLE"),
+      ).toHaveLength(1);
+      expect(within(cardItems[0]!).getByRole("button", { name: "Tiếp tục thanh toán" })).toHaveClass(
+        "pointer-coarse:min-h-11",
+      );
+      expect(within(cardItems[0]!).getByRole("button", { name: "Hủy đơn" })).toHaveClass("pointer-coarse:min-h-11");
+      expect(within(cardItems[1]!).getByRole("link", { name: "Vào Bài thi của tôi" })).toHaveClass(
+        "pointer-coarse:min-h-11",
+      );
 
       // Mở rộng lại -> refetch lỗi khi nhấn Pay -> giữ dữ liệu cũ + hiện banner stale + không hiện full error
       setWidth(900);
@@ -354,5 +372,67 @@ describe("OrdersView · AC-20", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Hủy đơn" }));
     const orderLink = screen.getByRole("link", { name: "DH-RETRY" });
     await waitFor(() => expect(document.activeElement).toBe(orderLink));
+  });
+
+  it("cancelOrder giữ Idempotency-Key qua 500 kể cả khi đóng mở lại dialog, và tạo key mới sau 409 (R2-19)", async () => {
+    const order = makeOrder({ code: "DH-LIST-CAN", state: "PENDING_PAYMENT" });
+    const cancelOrder = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(500, "Server 500"))
+      .mockRejectedValueOnce(new ApiStatusError(500, "Server 500 again"))
+      .mockRejectedValueOnce(new ApiStatusError(409, "Not pending", { code: "ORDER_NOT_PENDING" }))
+      .mockResolvedValueOnce({ ...order, items: [], updatedAt: "2026-11-17T03:15:00Z", state: "CANCELLED" } as unknown as OrderDetail);
+
+    renderWithProviders(
+      <OrdersView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadOrders={async () => ({ items: [order], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
+        cancelOrder={cancelOrder}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Hủy đơn" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(1));
+    const key1 = cancelOrder.mock.calls[0]?.[1];
+
+    // Thử lại trong dialog -> giữ nguyên key1
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(2));
+    expect(cancelOrder.mock.calls[1]?.[1]).toBe(key1);
+
+    // Đóng dialog khi đang có lỗi rồi mở lại -> giữ nguyên key1, lần 3 trả 409 -> xóa key
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Giữ đơn" }));
+    await userEvent.click(screen.getByRole("button", { name: "Hủy đơn" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(3));
+    expect(cancelOrder.mock.calls[2]?.[1]).toBe(key1);
+
+    // Lần gọi tiếp theo tạo key mới
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Hủy đơn" }));
+    await waitFor(() => expect(cancelOrder).toHaveBeenCalledTimes(4));
+    expect(cancelOrder.mock.calls[3]?.[1]).not.toBe(key1);
+  });
+
+  it("focusAfterDialogUnmount đợi [role='dialog'] gỡ khỏi DOM trước khi focus (R1-67, R2-7, R2-11, R2-22)", async () => {
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const target = document.createElement("button");
+    target.type = "button";
+    target.textContent = "Target";
+    document.body.append(dialog, target);
+
+    const cleanup = focusAfterDialogUnmount(() => target);
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 25));
+      expect(document.activeElement).not.toBe(target);
+
+      dialog.remove();
+      await waitFor(() => expect(document.activeElement).toBe(target));
+    } finally {
+      cleanup();
+      dialog.remove();
+      target.remove();
+    }
   });
 });
