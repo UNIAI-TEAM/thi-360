@@ -532,11 +532,13 @@ public class AttemptResultService {
     }
 
     private static ReviewGradingDetail projectGradingDetail(AttemptItem item) {
-        Map<String, Object> raw = item.getGradingDetail();
+        return projectGradingDetail(item.getQuestionType(), item.getGradingDetail());
+    }
+
+    static ReviewGradingDetail projectGradingDetail(QuestionType type, Map<String, Object> raw) {
         if (raw == null || raw.isEmpty()) {
             return null;
         }
-        QuestionType type = item.getQuestionType();
         if (type == QuestionType.ESSAY) {
             Boolean blankEssay = boolVal(raw.get("blankEssay"));
             Integer wordCount = intVal(raw.get("wordCount"));
