@@ -115,11 +115,22 @@ test.describe("Luồng mua bài thi & kết quả VNPAY", () => {
     await page.goto(currentUrl);
     await expect(page.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeVisible();
 
+    let postTimeoutPolls = 0;
+    page.on("request", (req: Request) => {
+      if (req.method() === "GET" && req.url().includes("/api/v1/me/orders/")) {
+        postTimeoutPolls += 1;
+      }
+    });
+
     await page.clock.fastForward(62_000);
     await expect(page.getByRole("heading", { level: 1, name: "Đang kiểm tra thanh toán" })).toBeVisible();
     await expect(page.getByText(/DH[A-Z0-9]+/i).first()).toBeVisible();
     await expect(page.getByText(/liên hệ hỗ trợ/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Kiểm tra lại ngay" })).toBeVisible();
+
+    postTimeoutPolls = 0;
+    await page.clock.fastForward(10_000);
+    expect(postTimeoutPolls).toBe(0);
   });
 
   test("AC-4: voucher giảm 100% -> 0 đ -> cấp bài thi ngay không qua VNPAY", async ({ context, page }) => {
@@ -191,38 +202,69 @@ test.describe("Luồng mua bài thi & kết quả VNPAY", () => {
     const { account: userB } = await createVerifiedAccount("co.tabB");
 
     const sharedContext = await browser.newContext();
-    await sharedContext.addCookies(cookiesA);
+    try {
+      await sharedContext.addCookies(cookiesA);
 
-    const pageA = await sharedContext.newPage();
-    await pageA.goto(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}`);
-    await expect(pageA.getByText(userA.username)).toBeVisible();
+      const pageA = await sharedContext.newPage();
+      await pageA.goto(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}`);
+      await expect(
+        pageA.getByRole("region", { name: "Tài khoản nhận bài thi" }).getByText(userA.username, { exact: true }),
+      ).toBeVisible();
 
-    const pageB = await sharedContext.newPage();
-    await pageB.goto(`${WEB_URL}/home`);
-    await pageB.getByRole("button", { name: "Menu tài khoản" }).click();
-    await pageB.getByRole("menuitem", { name: "Đăng xuất" }).click();
-    await pageB.waitForURL(/\/login/);
-    await submitLoginForm(pageB, userB.username, ACCOUNT_PASSWORD);
-    await pageB.waitForURL(/\/home/);
-    await pageB.close();
+      const pageB = await sharedContext.newPage();
+      await pageB.goto(`${WEB_URL}/home`);
+      await pageB.getByRole("button", { name: "Menu tài khoản" }).click();
+      await pageB.getByRole("menuitem", { name: "Đăng xuất" }).click();
+      await pageB.waitForURL(/\/login/);
+      await submitLoginForm(pageB, userB.username, ACCOUNT_PASSWORD);
+      await pageB.waitForURL(/\/home/);
+      await pageB.close();
 
-    await pageA.bringToFront();
-    const accountWarn = pageA.getByRole("heading", { name: "Tài khoản đăng nhập đã thay đổi" });
-    if (!(await accountWarn.isVisible())) {
+      // Giu /api/v1/me truoc khi nhan Thanh toan de bat buoc kiem tra duong 409 ACCOUNT_CHANGED
+      let holdMe = true;
+      let releaseMe!: () => void;
+      const meGate = new Promise<void>((resolve) => {
+        releaseMe = resolve;
+      });
+      await pageA.route("**/api/v1/me", async (route) => {
+        if (holdMe) {
+          await meGate;
+        }
+        await route.fallback();
+      });
+
+      try {
+        await pageA.bringToFront();
+        const conflictResponsePromise = pageA.waitForResponse(
+          (res) => res.request().method() === "POST" && res.url().includes("/api/v1/me/orders"),
+        );
+        await pageA.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
+        const conflictResponse = await conflictResponsePromise;
+        expect(conflictResponse.status()).toBe(409);
+        const conflictBody = (await conflictResponse.json()) as { code?: string };
+        expect(conflictBody.code).toBe("ACCOUNT_CHANGED");
+
+        holdMe = false;
+        releaseMe();
+        await expect(pageA.getByRole("heading", { name: "Tài khoản đăng nhập đã thay đổi" })).toBeVisible();
+      } finally {
+        holdMe = false;
+        releaseMe();
+        await pageA.unroute("**/api/v1/me").catch(() => {});
+      }
+
+      const accountWarn = pageA.getByRole("heading", { name: "Tài khoản đăng nhập đã thay đổi" });
+      await pageA.getByRole("button", { name: `Tiếp tục với ${userB.username}` }).click();
+      await expect(accountWarn).toHaveCount(0);
+
       await pageA.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
+      await pageA.waitForURL(/\/mock-vnpay/);
+      await pageA.locator('a[data-mock-action="success"]').click();
+      await pageA.waitForURL(/\/checkout\/result/);
+      await expect(pageA.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
+    } finally {
+      await sharedContext.close();
     }
-    await expect(accountWarn).toBeVisible();
-
-    await pageA.getByRole("button", { name: `Tiếp tục với ${userB.username}` }).click();
-    await expect(accountWarn).toHaveCount(0);
-
-    await pageA.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
-    await pageA.waitForURL(/\/mock-vnpay/);
-    await pageA.locator('a[data-mock-action="success"]').click();
-    await pageA.waitForURL(/\/checkout\/result/);
-    await expect(pageA.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
-
-    await sharedContext.close();
 
     // Không có đơn nào được tạo cho tài khoản cũ (userA)
     const checkCtxA = await browser.newContext();
@@ -245,10 +287,10 @@ test.describe("Luồng mua bài thi & kết quả VNPAY", () => {
     const { cookies } = await createVerifiedAccount("co.dbl");
     await context.addCookies(cookies);
 
-    let postCount = 0;
+    const orderRequests: Request[] = [];
     page.on("request", (req: Request) => {
       if (req.method() === "POST" && req.url().includes("/api/v1/me/orders")) {
-        postCount += 1;
+        orderRequests.push(req);
       }
     });
 
@@ -256,7 +298,8 @@ test.describe("Luồng mua bài thi & kết quả VNPAY", () => {
     const payButton = page.getByRole("button", { name: "Thanh toán qua VNPAY" });
     await payButton.dblclick();
     await page.waitForURL(/\/mock-vnpay/);
-    expect(postCount).toBe(1);
+    expect(orderRequests).toHaveLength(1);
+    expect(orderRequests[0]!.headers()["idempotency-key"]).toBeTruthy();
 
     await page.goto(`${WEB_URL}/account/orders`);
     await expect(page.getByText(exam.name).first()).toBeVisible();
@@ -272,61 +315,75 @@ test.describe("Luồng mua bài thi & kết quả VNPAY", () => {
 
     // AC-12: khách vào /checkout/[code]?v=1&p=1000 -> /login giữ callbackUrl -> đăng nhập quay lại đúng URL
     const guestContext = await browser.newContext();
-    const guestPage = await guestContext.newPage();
-    await guestPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}?v=1&p=1000`);
-    await expectUrlWithCallback(guestPage, "/login", `${WEB_URL}/checkout/${exam.productCode}?v=1&p=1000`);
-    await submitLoginForm(guestPage, userA.username, ACCOUNT_PASSWORD);
-    await expect(guestPage).toHaveURL(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}?v=1&p=1000`);
-    await guestContext.close();
+    try {
+      const guestPage = await guestContext.newPage();
+      await guestPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}?v=1&p=1000`);
+      await expectUrlWithCallback(guestPage, "/login", `${WEB_URL}/checkout/${exam.productCode}?v=1&p=1000`);
+      await submitLoginForm(guestPage, userA.username, ACCOUNT_PASSWORD);
+      await expect(guestPage).toHaveURL(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}?v=1&p=1000`);
+    } finally {
+      await guestContext.close();
+    }
 
     // AC-13: hoàn tất VNPAY rồi mở URL return bằng phiên khách -> không gọi /me/orders -> đăng nhập lại xem được đơn
+    let resultUrl = "";
+    let createdOrderCode = "";
     const ctxA = await browser.newContext();
-    await ctxA.addCookies(cookiesA);
-    const pageA = await ctxA.newPage();
-    await pageA.goto(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}`);
-    await pageA.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
-    await pageA.waitForURL(/\/mock-vnpay/);
-    await pageA.locator('a[data-mock-action="success"]').click();
-    await pageA.waitForURL(/\/checkout\/result/);
-    await expect(pageA.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
-    const resultUrl = pageA.url();
-    const orderCodeMatch = /order=([^&]+)/.exec(resultUrl) ?? [];
-    await pageA.getByRole("link", { name: "Xem chi tiết đơn" }).click();
-    await pageA.waitForURL(/\/account\/orders\/([^/]+)/);
-    const createdOrderCode = pageA.url().split("/").pop() ?? orderCodeMatch[1] ?? "";
-    await ctxA.close();
+    try {
+      await ctxA.addCookies(cookiesA);
+      const pageA = await ctxA.newPage();
+      await pageA.goto(`${WEB_URL}/checkout/${encodeURIComponent(exam.productCode)}`);
+      await pageA.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
+      await pageA.waitForURL(/\/mock-vnpay/);
+      await pageA.locator('a[data-mock-action="success"]').click();
+      await pageA.waitForURL(/\/checkout\/result/);
+      await expect(pageA.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
+      resultUrl = pageA.url();
+      const orderCodeMatch = /order=([^&]+)/.exec(resultUrl) ?? [];
+      await pageA.getByRole("link", { name: "Xem chi tiết đơn" }).click();
+      await pageA.waitForURL(/\/account\/orders\/([^/]+)/);
+      createdOrderCode = pageA.url().split("/").pop() ?? orderCodeMatch[1] ?? "";
+    } finally {
+      await ctxA.close();
+    }
 
     const vnpGuestCtx = await browser.newContext();
-    const vnpGuestPage = await vnpGuestCtx.newPage();
-    const orderApiCalls: string[] = [];
-    vnpGuestPage.on("request", (req) => {
-      if (req.url().includes("/api/v1/me/orders")) orderApiCalls.push(req.url());
-    });
-    await vnpGuestPage.goto(resultUrl);
-    await expect(vnpGuestPage.getByRole("heading", { level: 1, name: "Thanh toán thành công" })).toBeVisible();
-    expect(orderApiCalls).toEqual([]);
+    try {
+      const vnpGuestPage = await vnpGuestCtx.newPage();
+      const orderApiCalls: string[] = [];
+      vnpGuestPage.on("request", (req) => {
+        if (req.url().includes("/api/v1/me/orders")) orderApiCalls.push(req.url());
+      });
+      await vnpGuestPage.goto(resultUrl);
+      await expect(vnpGuestPage.getByRole("heading", { level: 1, name: "Thanh toán thành công" })).toBeVisible();
+      expect(orderApiCalls).toEqual([]);
 
-    const signInLink = vnpGuestPage.getByRole("link", { name: "Đăng nhập để xem bài thi" });
-    await expect(signInLink).toHaveAttribute(
-      "href",
-      `/login?callbackUrl=%2Fcheckout%2Fresult%3Forder%3D${encodeURIComponent(createdOrderCode)}`,
-    );
-    await signInLink.click();
-    await submitLoginForm(vnpGuestPage, userA.username, ACCOUNT_PASSWORD);
-    await expect(vnpGuestPage.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
-    await vnpGuestCtx.close();
+      const signInLink = vnpGuestPage.getByRole("link", { name: "Đăng nhập để xem bài thi" });
+      await expect(signInLink).toHaveAttribute(
+        "href",
+        `/login?callbackUrl=%2Fcheckout%2Fresult%3Forder%3D${encodeURIComponent(createdOrderCode)}`,
+      );
+      await signInLink.click();
+      await submitLoginForm(vnpGuestPage, userA.username, ACCOUNT_PASSWORD);
+      await expect(vnpGuestPage.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
+    } finally {
+      await vnpGuestCtx.close();
+    }
 
     // AC-14: tài khoản B mở đơn của tài khoản A -> 404 an toàn trên cả hai trang
     const ctxB = await browser.newContext();
-    await ctxB.addCookies(cookiesB);
-    const pageB = await ctxB.newPage();
-    await pageB.goto(`${WEB_URL}/checkout/result?order=${encodeURIComponent(createdOrderCode)}`);
-    await expect(
-      pageB.getByRole("heading", { name: "Không tìm thấy đơn trong tài khoản đang đăng nhập" }),
-    ).toBeVisible();
-    await pageB.goto(`${WEB_URL}/account/orders/${encodeURIComponent(createdOrderCode)}`);
-    await expect(pageB.getByRole("heading", { name: "Không tìm thấy đơn hàng" })).toBeVisible();
-    await expect(pageB.getByText(/Không tìm thấy đơn trong tài khoản đang đăng nhập/)).toBeVisible();
-    await ctxB.close();
+    try {
+      await ctxB.addCookies(cookiesB);
+      const pageB = await ctxB.newPage();
+      await pageB.goto(`${WEB_URL}/checkout/result?order=${encodeURIComponent(createdOrderCode)}`);
+      await expect(
+        pageB.getByRole("heading", { name: "Không tìm thấy đơn trong tài khoản đang đăng nhập" }),
+      ).toBeVisible();
+      await pageB.goto(`${WEB_URL}/account/orders/${encodeURIComponent(createdOrderCode)}`);
+      await expect(pageB.getByRole("heading", { name: "Không tìm thấy đơn hàng" })).toBeVisible();
+      await expect(pageB.getByText(/Không tìm thấy đơn trong tài khoản đang đăng nhập/)).toBeVisible();
+    } finally {
+      await ctxB.close();
+    }
   });
 });

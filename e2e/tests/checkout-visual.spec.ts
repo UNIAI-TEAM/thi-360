@@ -29,9 +29,11 @@ let failedOrderCode = "";
 let checkingOrderCode = "";
 let guestResultUrl = "";
 
-function pickSaleExamCode(): string {
+function pickDistinctSaleExamCodes(): [string, string, string] {
   const discontinued = publishedExamSet().discontinuedExam;
-  return (allExams().find((exam) => exam.code !== discontinued) ?? allExams()[0]!).productCode;
+  const saleExams = allExams().filter((exam) => exam.code !== discontinued);
+  expect(saleExams.length).toBeGreaterThanOrEqual(3);
+  return [saleExams[0]!.productCode, saleExams[1]!.productCode, saleExams[2]!.productCode];
 }
 
 test.beforeAll(async () => {
@@ -53,13 +55,14 @@ test.beforeAll(async () => {
 
   const setupCtx = await browser.newContext();
   try {
-    examCode = pickSaleExamCode();
+    const [fulfilledExamCode, failedExamCode, checkingExamCode] = pickDistinctSaleExamCodes();
+    examCode = fulfilledExamCode;
     await setupCtx.addCookies(richCookies);
 
     const setupPage = await setupCtx.newPage();
 
     // 1. Don thanh cong (FULFILLED -> cho /home populated, result success, guest result & order detail)
-    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
+    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(fulfilledExamCode)}`);
     await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
     await setupPage.waitForURL(/\/mock-vnpay/);
     await setupPage.locator('a[data-mock-action="success"]').click();
@@ -69,8 +72,8 @@ test.beforeAll(async () => {
     const successDetailHref = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
     fulfilledOrderCode = (successDetailHref ?? "").split("/").pop() ?? "";
 
-    // 2. Don that bai (FAILED)
-    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
+    // 2. Don that bai (FAILED) — dung de thi rieng de tranh dung don dang cho / trung san pham
+    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(failedExamCode)}`);
     await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
     await setupPage.waitForURL(/\/mock-vnpay/);
     await setupPage.locator('a[data-mock-action="failed"]').click();
@@ -79,8 +82,8 @@ test.beforeAll(async () => {
     const failedDetailHref = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
     failedOrderCode = (failedDetailHref ?? "").split("/").pop() ?? "";
 
-    // 3. Don cho / dang kiem tra (CHECKING)
-    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
+    // 3. Don cho / dang kiem tra (CHECKING) — dung de thi thu 3 rieng biet
+    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(checkingExamCode)}`);
     await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
     await setupPage.waitForURL(/\/mock-vnpay/);
     await setupPage.locator('a[data-mock-action="no_response"]').click();
@@ -92,13 +95,16 @@ test.beforeAll(async () => {
     expect(fulfilledOrderCode).toMatch(/^DH/i);
     expect(failedOrderCode).toMatch(/^DH/i);
     expect(checkingOrderCode).toMatch(/^DH/i);
+    expect(fulfilledOrderCode).not.toBe(failedOrderCode);
+    expect(failedOrderCode).not.toBe(checkingOrderCode);
+    expect(fulfilledOrderCode).not.toBe(checkingOrderCode);
   } finally {
     await setupCtx.close();
   }
 });
 
 test.afterAll(async () => {
-  await browser.close();
+  await browser?.close();
 });
 
 async function openCell(
