@@ -1,15 +1,17 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { onlineManager } from "@tanstack/react-query";
+import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SESSION_QUERY_KEY } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import enMessages from "@/messages/en.json";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { renderWithProviders } from "@/test/render";
 import { ADMIN_SESSION, STUDENT_SESSION } from "@/test/storefront-fixtures";
 import {
+  ATTEMPT_RESULT_QUERY_KEY,
   GRADING_POLL_INTERVAL_MS,
   GRADING_POLL_TIMEOUT_MS,
   loadCatalogOptions,
@@ -197,20 +199,23 @@ describe("AttemptResultView · AC-1..AC-9, AC-17..AC-19, AC-22", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Đề HSA tổng hợp số 1" })).toBeInTheDocument();
     errView.unmount();
 
-    onlineManager.setOnline(false);
-    const offlineView = renderWithProviders(
-      <AttemptResultView
-        attemptId={ATTEMPT_UUID_1}
-        loadCurrentSession={async () => STUDENT_SESSION}
-        loadResult={async () => makeResult()}
-        loadExamKinds={async () => EXAM_KINDS}
-        loadSubjects={async () => SUBJECTS}
-      />,
-    );
-    expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Thử lại" })).toHaveClass("h-11");
-    offlineView.unmount();
-    onlineManager.setOnline(true);
+    try {
+      onlineManager.setOnline(false);
+      const offlineView = renderWithProviders(
+        <AttemptResultView
+          attemptId={ATTEMPT_UUID_1}
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadResult={async () => makeResult()}
+          loadExamKinds={async () => EXAM_KINDS}
+          loadSubjects={async () => SUBJECTS}
+        />,
+      );
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Thử lại" })).toHaveClass("h-11");
+      offlineView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("hiển thị đầy đủ kết quả SCORED, data-exam-content, SCORE ẩn CTA xem lại, SKIPPED part, và điểm 0 thật (AC-1, AC-3, AC-4, AC-8, AC-9)", async () => {
@@ -721,7 +726,31 @@ describe("AttemptResultView · AC-1..AC-9, AC-17..AC-19, AC-22", () => {
     expect(await screen.findByText("English")).toBeInTheDocument();
     expect(await screen.findAllByText("HSA Assessment")).toHaveLength(2);
     expect(screen.getAllByText("Mathematics").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Hóa học")).toBeInTheDocument();
     enView.unmount();
+
+    // Non-known optionCode in choices (VATLI) falls back to resolveCatalogLabel(optionCode, subjectMap, locale) -> "Physics" (R2-5)
+    const vatliChoiceView = renderWithProviders(
+      <AttemptResultView
+        attemptId="11111111-1111-4111-8111-111111111015"
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadResult={async () =>
+          makeResult({
+            subjectCode: "TOAN",
+            choices: {
+              "part-4": { optionCode: "VATLI" },
+            },
+          })
+        }
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+      { locale: "en", messages: enMessages },
+    );
+
+    expect(await screen.findByText("Physics")).toBeInTheDocument();
+    expect(screen.getByText("Hóa học")).toBeInTheDocument();
+    vatliChoiceView.unmount();
 
     // Vietnamese ANH + subject.name fallback when catalog empty + nullable max omits /0 (R1-14, R1-16, R1-51)
     const fallbackView = renderWithProviders(
@@ -763,5 +792,135 @@ describe("AttemptResultView · AC-1..AC-9, AC-17..AC-19, AC-22", () => {
       }),
     );
     await expect(loadCatalogOptions("EXAM")).rejects.toMatchObject({ status: 500 });
+  });
+
+  it("xử lý SESSION_QUERY_KEY stale khi offline (có/chưa có result cache, Thử lại gọi resultQuery), malformed UUID offline, và Thử lại offline sau lỗi session (R2-1, R2-2)", async () => {
+    // Case (i): Stale STUDENT_SESSION + cached fresh result + offline -> renders LoadedResultContent with 1 <h1> and no offline card
+    const cachedClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    cachedClient.setQueryData(SESSION_QUERY_KEY, STUDENT_SESSION, {
+      updatedAt: Date.now() - 120_000,
+    });
+    cachedClient.setQueryData(
+      ATTEMPT_RESULT_QUERY_KEY(ATTEMPT_UUID_1, STUDENT_SESSION.id),
+      makeResult(),
+      { updatedAt: Date.now() },
+    );
+
+    try {
+      onlineManager.setOnline(false);
+      const cachedView = renderWithProviders(
+        <AttemptResultView
+          attemptId={ATTEMPT_UUID_1}
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadResult={async () => makeResult()}
+          loadExamKinds={async () => EXAM_KINDS}
+          loadSubjects={async () => SUBJECTS}
+        />,
+        { client: cachedClient },
+      );
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Đề HSA tổng hợp số 1" })).toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.queryByText("Không có kết nối")).not.toBeInTheDocument();
+      cachedView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Case (ii): Stale STUDENT_SESSION + no cached result + offline -> 1 offline card & 1 <h1>, Retry targets resultQuery
+    const coldResultClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    coldResultClient.setQueryData(SESSION_QUERY_KEY, STUDENT_SESSION, {
+      updatedAt: Date.now() - 120_000,
+    });
+    const loadResultSpy = vi.fn(async () => makeResult());
+
+    try {
+      onlineManager.setOnline(false);
+      const coldResultView = renderWithProviders(
+        <AttemptResultView
+          attemptId={ATTEMPT_UUID_1}
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadResult={loadResultSpy}
+          loadExamKinds={async () => EXAM_KINDS}
+          loadSubjects={async () => SUBJECTS}
+        />,
+        { client: coldResultClient },
+      );
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByText("Không có kết nối")).toHaveLength(1);
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(loadResultSpy).not.toHaveBeenCalled();
+
+      const resultCacheQuery = coldResultClient
+        .getQueryCache()
+        .find({ queryKey: ATTEMPT_RESULT_QUERY_KEY(ATTEMPT_UUID_1, STUDENT_SESSION.id) })!;
+      const sessionCacheQuery = coldResultClient.getQueryCache().find({ queryKey: SESSION_QUERY_KEY })!;
+      const resultFetchSpy = vi.spyOn(resultCacheQuery, "fetch");
+      const sessionFetchSpy = vi.spyOn(sessionCacheQuery, "fetch");
+
+      act(() => {
+        onlineManager.setOnline(true);
+        fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+        expect(resultFetchSpy).toHaveBeenCalledTimes(1);
+        expect(sessionFetchSpy).not.toHaveBeenCalled();
+      });
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Đề HSA tổng hợp số 1" })).toBeInTheDocument();
+      expect(loadResultSpy).toHaveBeenCalled();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.queryByText("Không có kết nối")).not.toBeInTheDocument();
+      coldResultView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Offline with malformed attemptId still shows offline card cleanly when session has no data
+    try {
+      onlineManager.setOnline(false);
+      const invalidOfflineView = renderWithProviders(
+        <AttemptResultView
+          attemptId="not-a-uuid"
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadResult={async () => makeResult()}
+          loadExamKinds={async () => EXAM_KINDS}
+          loadSubjects={async () => SUBJECTS}
+        />,
+      );
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      invalidOfflineView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Offline Retry after session error shows offline without stacking session error card
+    const sessionFailThenOk = vi
+      .fn<() => Promise<typeof STUDENT_SESSION>>()
+      .mockRejectedValueOnce(new Error("session fail"))
+      .mockResolvedValueOnce(STUDENT_SESSION);
+    const errRetryView = renderWithProviders(
+      <AttemptResultView
+        attemptId={ATTEMPT_UUID_1}
+        loadCurrentSession={sessionFailThenOk}
+        loadResult={async () => makeResult()}
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tải được kết quả lượt thi" })).toBeInTheDocument();
+
+    try {
+      onlineManager.setOnline(false);
+      await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.queryByText("Không tải được kết quả lượt thi")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      errRetryView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 });

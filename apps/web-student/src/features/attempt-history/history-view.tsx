@@ -279,6 +279,7 @@ export function AttemptHistoryView({
   );
 
   const items = useMemo(() => historyQuery.data?.items ?? [], [historyQuery.data]);
+  const isSessionOffline = sessionQuery.isPaused && !sessionQuery.data;
   const isHistoryOffline = isStudent && historyQuery.isPaused;
   const showItems = isStudent && !isHistoryOffline && Boolean(historyQuery.data) && items.length > 0;
   const [containerRef, cardMode] = useCardMode<HTMLDivElement>(
@@ -328,7 +329,7 @@ export function AttemptHistoryView({
           </div>
         )}
 
-        {sessionQuery.isPaused && (
+        {isSessionOffline && (
           <div className="rounded-xl border border-border bg-surface">
             <EmptyState
               headingLevel={2}
@@ -349,7 +350,7 @@ export function AttemptHistoryView({
           </div>
         )}
 
-        {sessionQuery.isError && (
+        {sessionQuery.isError && !sessionQuery.isPaused && !sessionQuery.data && (
           <div className="rounded-xl border border-border bg-surface">
             <EmptyState
               headingLevel={2}

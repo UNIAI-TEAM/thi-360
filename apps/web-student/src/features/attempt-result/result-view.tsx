@@ -540,7 +540,8 @@ export function AttemptResultView({
     error instanceof ApiStatusError && error.status === 409 && error.code === "ATTEMPT_NOT_FINISHED";
 
   const result = resultQuery.data;
-  const isOffline = sessionQuery.isPaused || (isStudent && validAttemptId && resultQuery.isPaused && !result);
+  const isSessionOffline = sessionQuery.isPaused && !sessionQuery.data;
+  const isOffline = isSessionOffline || (isStudent && validAttemptId && resultQuery.isPaused && !result);
 
   function handleReloadGrading() {
     setReloadCount((count) => count + 1);
@@ -571,7 +572,7 @@ export function AttemptResultView({
           </div>
         )}
 
-        {sessionQuery.isError && (
+        {sessionQuery.isError && !sessionQuery.isPaused && !sessionQuery.data && (
           <div className="rounded-xl border border-border bg-surface">
             <EmptyState
               headingLevel={1}
@@ -603,7 +604,7 @@ export function AttemptResultView({
           </div>
         )}
 
-        {isOffline && !isNotFound && !isNotFinished && (
+        {isOffline && (!isStudent || (!isNotFound && !isNotFinished)) && (
           <div className="rounded-2xl border border-border bg-surface p-6">
             <EmptyState
               headingLevel={1}
@@ -615,7 +616,7 @@ export function AttemptResultView({
                   type="button"
                   variant="secondary"
                   className="h-11"
-                  onClick={() => void (sessionQuery.isPaused ? sessionQuery.refetch() : resultQuery.refetch())}
+                  onClick={() => void (isSessionOffline ? sessionQuery.refetch() : resultQuery.refetch())}
                 >
                   {common("retry")}
                 </Button>

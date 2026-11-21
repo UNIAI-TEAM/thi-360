@@ -1,13 +1,14 @@
 import { onlineManager, QueryClient } from "@tanstack/react-query";
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useSyncExternalStore, type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SESSION_QUERY_KEY } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import enMessages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { ADMIN_SESSION, STUDENT_SESSION } from "@/test/storefront-fixtures";
-import type { AttemptReviewResponse } from "./api";
+import { ATTEMPT_REVIEW_QUERY_KEY, type AttemptReviewResponse } from "./api";
 import { AttemptReviewView } from "./review-view";
 
 const ATTEMPT_UUID_1 = "22222222-2222-4222-8222-222222222201";
@@ -442,18 +443,21 @@ describe("AttemptReviewView · AC-10..AC-12, AC-17, AC-23", () => {
     errView.unmount();
 
     // Offline isPaused handling (R1-36)
-    onlineManager.setOnline(false);
-    const offlineView = renderWithProviders(
-      <AttemptReviewView
-        attemptId={ATTEMPT_UUID_1}
-        loadCurrentSession={async () => STUDENT_SESSION}
-        loadReview={async () => makeFullReview()}
-      />,
-    );
-    expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Thử lại" })).toHaveClass("h-11");
-    offlineView.unmount();
-    onlineManager.setOnline(true);
+    try {
+      onlineManager.setOnline(false);
+      const offlineView = renderWithProviders(
+        <AttemptReviewView
+          attemptId={ATTEMPT_UUID_1}
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadReview={async () => makeFullReview()}
+        />,
+      );
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Thử lại" })).toHaveClass("h-11");
+      offlineView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("render đủ 8 dạng câu, giữ optionOrder, criteria tự luận không bịa max, đếm từ khi thiếu wordCount, và bảng chọn câu + Câu trước/Câu sau (AC-11)", async () => {
@@ -901,5 +905,127 @@ describe("AttemptReviewView · AC-10..AC-12, AC-17, AC-23", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "Không tìm thấy bài làm" })).toBeInTheDocument();
     expect(screen.queryByText("Chọn thủ đô của Việt Nam")).not.toBeInTheDocument();
+  });
+
+  it("xử lý SESSION_QUERY_KEY stale khi offline (có/chưa có review cache, Thử lại gọi reviewQuery), malformed UUID offline, và Thử lại offline sau lỗi session (R2-1, R2-2)", async () => {
+    // Case (i): Stale STUDENT_SESSION + cached fresh review + offline -> renders LoadedReviewContent with 1 <h1> and no offline card
+    const cachedClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    cachedClient.setQueryData(SESSION_QUERY_KEY, STUDENT_SESSION, {
+      updatedAt: Date.now() - 120_000,
+    });
+    cachedClient.setQueryData(
+      ATTEMPT_REVIEW_QUERY_KEY(ATTEMPT_UUID_1, STUDENT_SESSION.id),
+      { kind: "ok", data: makeFullReview("FULL_SOLUTION") },
+      { updatedAt: Date.now() },
+    );
+
+    try {
+      onlineManager.setOnline(false);
+      const cachedView = renderWithProviders(
+        <AttemptReviewView
+          attemptId={ATTEMPT_UUID_1}
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadReview={async () => makeFullReview("FULL_SOLUTION")}
+        />,
+        { client: cachedClient },
+      );
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Xem lại bài làm" })).toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.queryByText("Không có kết nối")).not.toBeInTheDocument();
+      cachedView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Case (ii): Stale STUDENT_SESSION + no cached review + offline -> 1 offline card & 1 <h1>, Retry targets reviewQuery
+    const coldReviewClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    coldReviewClient.setQueryData(SESSION_QUERY_KEY, STUDENT_SESSION, {
+      updatedAt: Date.now() - 120_000,
+    });
+    const loadReviewSpy = vi.fn(async () => makeFullReview("FULL_SOLUTION"));
+
+    try {
+      onlineManager.setOnline(false);
+      const coldReviewView = renderWithProviders(
+        <AttemptReviewView
+          attemptId={ATTEMPT_UUID_1}
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadReview={loadReviewSpy}
+        />,
+        { client: coldReviewClient },
+      );
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByText("Không có kết nối")).toHaveLength(1);
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(loadReviewSpy).not.toHaveBeenCalled();
+
+      const reviewCacheQuery = coldReviewClient
+        .getQueryCache()
+        .find({ queryKey: ATTEMPT_REVIEW_QUERY_KEY(ATTEMPT_UUID_1, STUDENT_SESSION.id) })!;
+      const sessionCacheQuery = coldReviewClient.getQueryCache().find({ queryKey: SESSION_QUERY_KEY })!;
+      const reviewFetchSpy = vi.spyOn(reviewCacheQuery, "fetch");
+      const sessionFetchSpy = vi.spyOn(sessionCacheQuery, "fetch");
+
+      act(() => {
+        onlineManager.setOnline(true);
+        fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+        expect(reviewFetchSpy).toHaveBeenCalledTimes(1);
+        expect(sessionFetchSpy).not.toHaveBeenCalled();
+      });
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Xem lại bài làm" })).toBeInTheDocument();
+      expect(loadReviewSpy).toHaveBeenCalled();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.queryByText("Không có kết nối")).not.toBeInTheDocument();
+      coldReviewView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Offline with malformed attemptId still shows offline card cleanly when session has no data
+    try {
+      onlineManager.setOnline(false);
+      const invalidOfflineView = renderWithProviders(
+        <AttemptReviewView
+          attemptId="not-a-uuid"
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadReview={async () => makeFullReview("FULL_SOLUTION")}
+        />,
+      );
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      invalidOfflineView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Offline Retry after session error shows offline without stacking session error card
+    const sessionFailThenOk = vi
+      .fn<() => Promise<typeof STUDENT_SESSION>>()
+      .mockRejectedValueOnce(new Error("session fail"))
+      .mockResolvedValueOnce(STUDENT_SESSION);
+    const errRetryView = renderWithProviders(
+      <AttemptReviewView
+        attemptId={ATTEMPT_UUID_1}
+        loadCurrentSession={sessionFailThenOk}
+        loadReview={async () => makeFullReview("FULL_SOLUTION")}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tải được bài làm" })).toBeInTheDocument();
+
+    try {
+      onlineManager.setOnline(false);
+      await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+
+      expect(await screen.findByRole("heading", { level: 1, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.queryByText("Không tải được bài làm")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      errRetryView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 });

@@ -1,9 +1,10 @@
-import { onlineManager } from "@tanstack/react-query";
+import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogOptionResponse } from "@/features/attempt-result/api";
+import { SESSION_QUERY_KEY } from "@/features/session/api";
 import enMessages from "@/messages/en.json";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { renderWithProviders } from "@/test/render";
@@ -158,19 +159,22 @@ describe("AttemptHistoryView · AC-4, AC-13..AC-16, AC-18, AC-19", () => {
     staleView.unmount();
 
     // Offline cold load & offline filter change (R1-36)
-    onlineManager.setOnline(false);
-    const offlineColdView = renderWithProviders(
-      <AttemptHistoryView
-        loadCurrentSession={async () => STUDENT_SESSION}
-        loadHistory={async () => ({ items: [makeItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
-        loadExamKinds={async () => EXAM_KINDS}
-        loadSubjects={async () => SUBJECTS}
-      />,
-    );
-    expect(await screen.findByRole("heading", { level: 2, name: "Không có kết nối" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Thử lại" })).toHaveClass("h-11");
-    offlineColdView.unmount();
-    onlineManager.setOnline(true);
+    try {
+      onlineManager.setOnline(false);
+      const offlineColdView = renderWithProviders(
+        <AttemptHistoryView
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadHistory={async () => ({ items: [makeItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
+          loadExamKinds={async () => EXAM_KINDS}
+          loadSubjects={async () => SUBJECTS}
+        />,
+      );
+      expect(await screen.findByRole("heading", { level: 2, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Thử lại" })).toHaveClass("h-11");
+      offlineColdView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("áp dụng quy tắc điểm AC-4, V-ACT, REGRADING (AC-19), choiceOptions.ANH, variant=exam, và F20 compensated/fault (AC-18)", async () => {
@@ -582,5 +586,103 @@ describe("AttemptHistoryView · AC-4, AC-13..AC-16, AC-18, AC-19", () => {
     expect(contLinks).toHaveLength(1);
     expect(contLinks[0]).toHaveTextContent("Continue");
     expect(contLinks[0]!.className).toContain("bg-accent-500");
+  });
+
+  it("ẩn danh sách và badge tổng lượt khi đổi bộ lọc lúc mất kết nối (R2-3)", async () => {
+    const loadHistorySpy = vi.fn(async () => ({
+      items: [
+        makeItem({ attemptId: "att-1", examName: "Đề HSA tổng hợp số 1" }),
+        makeItem({ attemptId: "att-2", examName: "Đề HSA tổng hợp số 2" }),
+      ],
+      page: 0,
+      size: 20,
+      totalItems: 2,
+      totalPages: 1,
+    }));
+
+    renderWithProviders(
+      <AttemptHistoryView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadHistory={loadHistorySpy}
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+    );
+
+    expect(await screen.findByText("Đề HSA tổng hợp số 1")).toBeInTheDocument();
+    expect(screen.getByText("Đề HSA tổng hợp số 2")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("2 lượt");
+
+    try {
+      onlineManager.setOnline(false);
+      act(() => {
+        navMocks.setSearch("?scope=PART");
+      });
+
+      expect(await screen.findByRole("heading", { level: 2, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByText("Không có kết nối")).toHaveLength(1);
+      expect(screen.queryByText("Đề HSA tổng hợp số 1")).not.toBeInTheDocument();
+      expect(screen.queryByText("Đề HSA tổng hợp số 2")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("không chồng hai thẻ offline khi SESSION_QUERY_KEY stale và không chồng lỗi session khi Thử lại lúc offline (R2-1, R2-2)", async () => {
+    const staleClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    staleClient.setQueryData(SESSION_QUERY_KEY, STUDENT_SESSION, {
+      updatedAt: Date.now() - 120_000,
+    });
+
+    try {
+      onlineManager.setOnline(false);
+      const staleView = renderWithProviders(
+        <AttemptHistoryView
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadHistory={async () => ({ items: [makeItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
+          loadExamKinds={async () => EXAM_KINDS}
+          loadSubjects={async () => SUBJECTS}
+        />,
+        { client: staleClient },
+      );
+
+      expect(await screen.findByRole("heading", { level: 2, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByText("Không có kết nối")).toHaveLength(1);
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(screen.queryByText("Không tải được lịch sử luyện thi")).not.toBeInTheDocument();
+      staleView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    const sessionFailThenOk = vi
+      .fn<() => Promise<typeof STUDENT_SESSION>>()
+      .mockRejectedValueOnce(new Error("session fail"))
+      .mockResolvedValueOnce(STUDENT_SESSION);
+
+    const errRetryView = renderWithProviders(
+      <AttemptHistoryView
+        loadCurrentSession={sessionFailThenOk}
+        loadHistory={async () => ({ items: [makeItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Không tải được lịch sử luyện thi" })).toBeInTheDocument();
+
+    try {
+      onlineManager.setOnline(false);
+      await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+
+      expect(await screen.findByRole("heading", { level: 2, name: "Không có kết nối" })).toBeInTheDocument();
+      expect(screen.getAllByText("Không có kết nối")).toHaveLength(1);
+      expect(screen.queryByText("Không tải được lịch sử luyện thi")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      errRetryView.unmount();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 });

@@ -216,8 +216,9 @@ export function AttemptReviewView({
   const isNotFound = !validAttemptId || (error instanceof ApiStatusError && error.status === 404);
   const isNotAvailable =
     error instanceof ApiStatusError && error.status === 409 && error.code === "REVIEW_NOT_AVAILABLE";
+  const isSessionOffline = sessionQuery.isPaused && !sessionQuery.data;
   const isOffline =
-    sessionQuery.isPaused ||
+    isSessionOffline ||
     (isStudent && validAttemptId && reviewQuery.isPaused && !reviewData && !isNotIncluded);
   const resultHref = `/attempts/${encodeURIComponent(normalizedAttemptId)}/result`;
 
@@ -245,7 +246,7 @@ export function AttemptReviewView({
           </div>
         )}
 
-        {sessionQuery.isError && (
+        {sessionQuery.isError && !sessionQuery.isPaused && !sessionQuery.data && (
           <div className="rounded-xl border border-border bg-surface">
             <EmptyState
               headingLevel={1}
@@ -277,7 +278,7 @@ export function AttemptReviewView({
           </div>
         )}
 
-        {isOffline && !isNotFound && !isNotAvailable && !isNotIncluded && (
+        {isOffline && (!isStudent || (!isNotFound && !isNotAvailable && !isNotIncluded)) && (
           <div className="rounded-2xl border border-border bg-surface p-6">
             <EmptyState
               headingLevel={1}
@@ -289,7 +290,7 @@ export function AttemptReviewView({
                   type="button"
                   variant="secondary"
                   className="h-11"
-                  onClick={() => void (sessionQuery.isPaused ? sessionQuery.refetch() : reviewQuery.refetch())}
+                  onClick={() => void (isSessionOffline ? sessionQuery.refetch() : reviewQuery.refetch())}
                 >
                   {common("retry")}
                 </Button>
