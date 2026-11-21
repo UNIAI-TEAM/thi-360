@@ -27,6 +27,7 @@ import vn.unicom.thi360.commerce.admin.api.AdminOrderDetailResponse.OrderItemVie
 import vn.unicom.thi360.commerce.admin.api.AdminOrderDetailResponse.PaymentDetailView;
 import vn.unicom.thi360.commerce.admin.api.AdminOrderListResponse;
 import vn.unicom.thi360.commerce.admin.api.AdminOrderSummary;
+import vn.unicom.thi360.commerce.admin.api.AdminOrderSummaryItem;
 import vn.unicom.thi360.commerce.admin.api.ExamBuyerOrderRef;
 import vn.unicom.thi360.commerce.admin.api.ExamBuyerRow;
 import vn.unicom.thi360.commerce.admin.api.ExamBuyersResponse;
@@ -129,6 +130,8 @@ public class AdminOrderQueryService {
                     queryRepository.findPaymentSnapshotsByOrderIds(orderIds);
             Map<UUID, List<RefundSnapshot>> refundsByOrder =
                     queryRepository.findRefundSnapshotsByOrderIds(orderIds);
+            Map<UUID, List<AdminOrderSummaryItem>> itemsByOrder =
+                    queryRepository.findOrderSummaryItemsByOrderIds(orderIds);
 
             List<AdminOrderSummary> summaries = new ArrayList<>(paged.rows().size());
             for (OrderRow row : paged.rows()) {
@@ -148,6 +151,7 @@ public class AdminOrderQueryService {
                         row.buyerFullName(),
                         row.productType(),
                         row.examId(),
+                        row.bundleId(),
                         row.productCode(),
                         row.productName(),
                         row.listPriceVnd(),
@@ -160,7 +164,8 @@ public class AdminOrderQueryService {
                         attentionTypes,
                         row.createdAt(),
                         row.paidAt(),
-                        row.fulfilledAt()));
+                        row.fulfilledAt(),
+                        itemsByOrder.getOrDefault(row.orderId(), List.of())));
             }
             return new AdminOrderListResponse(
                     summaries, pageQuery.page(), pageQuery.size(), paged.totalItems(), totalPages, attention);

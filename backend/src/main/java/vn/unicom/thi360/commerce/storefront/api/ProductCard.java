@@ -5,15 +5,15 @@ import vn.unicom.thi360.commerce.pricing.PriceCalculator.PriceResult;
 
 @Schema(description = "Thẻ sản phẩm ở danh mục (TM 10.2). Giá khuyến mãi tính lúc đọc, phần còn lại dựng sẵn.")
 public record ProductCard(
-        @Schema(description = "Mã sản phẩm, cũng là mã bài thi", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Mã sản phẩm, cũng là mã bài thi hoặc mã bộ đề", requiredMode = Schema.RequiredMode.REQUIRED)
         String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(description = "Tóm tắt; trống nếu quản trị viên chưa nhập", nullable = true) String summary,
         @Schema(description = "Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định", nullable = true) String coverUrl,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ExamKindRef examKind,
-        @Schema(description = "Hình thức (E4): FULL, PART hay SUBJECT", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Hình thức (E4): FULL, PART, SUBJECT hay BUNDLE", requiredMode = Schema.RequiredMode.REQUIRED)
         String format,
-        @Schema(description = "Tên phần (PART) hoặc môn (SUBJECT) ghi trên thẻ; null với FULL", nullable = true)
+        @Schema(description = "Tên phần (PART) hoặc môn (SUBJECT) ghi trên thẻ; null với FULL và BUNDLE", nullable = true)
         LocalizedName scopeLabel,
         @Schema(description = "STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
@@ -25,13 +25,39 @@ public record ProductCard(
         @Schema(description = "Giá phải trả sau khuyến mãi tự động, đồng", requiredMode = Schema.RequiredMode.REQUIRED)
         long price,
         @Schema(description = "Khuyến mãi tự động đang áp; null nếu không có", nullable = true) PromotionBadge promotion,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int versionNo) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int versionNo,
+        @Schema(description = "EXAM hoặc BUNDLE", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        String productType) {
+
+    public ProductCard(
+            String code,
+            String name,
+            String summary,
+            String coverUrl,
+            ExamKindRef examKind,
+            String format,
+            LocalizedName scopeLabel,
+            String buildMode,
+            IntRange questionCount,
+            IntRange durationMinutes,
+            int attemptsGranted,
+            long listPrice,
+            long price,
+            PromotionBadge promotion,
+            int versionNo) {
+        this(code, name, summary, coverUrl, examKind, format, scopeLabel, buildMode, questionCount, durationMinutes,
+                attemptsGranted, listPrice, price, promotion, versionNo, "EXAM");
+    }
+
+    public ProductCard {
+        productType = (productType == null || productType.isBlank()) ? "EXAM" : productType;
+    }
 
     /** The same card with the price computed for now. */
     public ProductCard withPrice(PriceResult result) {
         PromotionBadge badge = result.promotion() == null
                 ? null : new PromotionBadge(result.promotion().name(), result.promotion().endsAt());
         return new ProductCard(code, name, summary, coverUrl, examKind, format, scopeLabel, buildMode, questionCount,
-                durationMinutes, attemptsGranted, result.listPrice(), result.price(), badge, versionNo);
+                durationMinutes, attemptsGranted, result.listPrice(), result.price(), badge, versionNo, productType);
     }
 }

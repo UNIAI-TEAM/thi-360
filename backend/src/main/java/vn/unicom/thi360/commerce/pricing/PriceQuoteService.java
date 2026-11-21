@@ -67,7 +67,7 @@ public class PriceQuoteService {
         Objects.requireNonNull(request, "request must not be null");
 
         PricedProduct product = new PricedProduct(
-                stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
+                stored.examId(), stored.bundleId(), stored.examKindItemId(), stored.listPriceVnd());
         UUID pendingOrderId = pendingPaymentOrderLookup
                 .findPendingPaymentOrderId(userId, StorefrontSearchText.normalize(stored.code()))
                 .orElse(null);

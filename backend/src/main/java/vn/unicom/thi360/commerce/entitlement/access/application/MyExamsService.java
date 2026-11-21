@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import vn.unicom.thi360.commerce.entitlement.access.api.MyExamBundleRef;
 import vn.unicom.thi360.commerce.entitlement.access.api.MyExamCard;
 import vn.unicom.thi360.commerce.entitlement.access.domain.ExamAccessState;
 import vn.unicom.thi360.commerce.entitlement.access.domain.MyExamAction;
@@ -81,6 +82,7 @@ public class MyExamsService {
         Map<UUID, List<GrantOptions>> grants = repository.findGrantOptions(entitlements.stream().map(EntitlementRow::id).toList());
         Map<UUID, String> pendingByExam = new HashMap<>();
         pending.forEach(p -> pendingByExam.putIfAbsent(p.examId(), p.orderCode()));
+        Map<UUID, List<MyExamBundleRef>> bundlesByExam = repository.findPurchasedBundlesByUser(userId);
 
         Map<UUID, Optional<ServingExam>> servingByExam = new HashMap<>();
         Function<UUID, Optional<ServingExam>> serving = examId -> servingByExam.computeIfAbsent(examId, exams::findServing);
@@ -96,7 +98,8 @@ public class MyExamsService {
                         order.orderCode(), order.examId());
                 continue;
             }
-            cards.add(card(product, null, null, null, null, order.orderCode(), serving));
+            cards.add(card(product, null, null, null, null, order.orderCode(),
+                    bundlesByExam.getOrDefault(product.examId(), List.of()), serving));
         }
         AttemptStatusProvider provider = attempts.get();
         for (int i = entitlements.size() - 1; i >= 0; i--) {
@@ -110,14 +113,15 @@ public class MyExamsService {
             cards.add(card(product, entitlement, rangeGrant(grants.getOrDefault(entitlement.id(), List.of())),
                     provider.findOpenAttempt(userId, entitlement.id()).orElse(null),
                     provider.findLatestResultAttempt(userId, entitlement.id()).orElse(null),
-                    pendingByExam.get(entitlement.examId()), serving));
+                    pendingByExam.get(entitlement.examId()),
+                    bundlesByExam.getOrDefault(product.examId(), List.of()), serving));
         }
         return cards;
     }
 
     private MyExamCard card(ProductRef product, EntitlementRow entitlement, Set<String> grantOptionCodes,
             OpenAttempt open, ResultAttempt result, String pendingOrderCode,
-            Function<UUID, Optional<ServingExam>> serving) {
+            List<MyExamBundleRef> bundles, Function<UUID, Optional<ServingExam>> serving) {
         ProductCard stored = read(product.card());
         boolean hasEntitlement = entitlement != null;
         int attemptsLeft = hasEntitlement ? entitlement.attemptsLeft() : 0;
@@ -158,7 +162,8 @@ public class MyExamsService {
                 pendingOrderCode != null,
                 pendingOrderCode,
                 MyExamAction.of(state, attemptsLeft, open != null, result != null, hasHistory, onSale,
-                        pendingOrderCode != null));
+                        pendingOrderCode != null),
+                bundles);
     }
 
     /**

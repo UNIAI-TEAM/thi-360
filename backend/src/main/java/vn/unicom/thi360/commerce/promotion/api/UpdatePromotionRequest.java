@@ -36,9 +36,40 @@ public record UpdatePromotionRequest(
         @Schema(nullable = true) PromotionScope scope,
         @Schema(nullable = true) List<UUID> examKindIds,
         @Schema(nullable = true) List<UUID> examIds,
+        @Schema(nullable = true) List<UUID> bundleIds,
         @Schema(nullable = true) PromotionAudienceType audience,
         @Schema(nullable = true) List<UUID> audienceClassIds,
         @Schema(nullable = true) List<UUID> audienceUserIds,
         @Schema(nullable = true) PromotionStatus status
 ) {
+    public UpdatePromotionRequest(
+            Long expectedRevision,
+            PromotionKind kind,
+            String name,
+            String description,
+            Boolean clearDescription,
+            String code,
+            DiscountType discountType,
+            Long discountValue,
+            Long maxDiscountVnd,
+            Boolean clearMaxDiscountVnd,
+            Instant startsAt,
+            Instant endsAt,
+            Integer totalLimit,
+            Boolean clearTotalLimit,
+            Integer perUserLimit,
+            Boolean clearPerUserLimit,
+            Boolean combinable,
+            PromotionScope scope,
+            List<UUID> examKindIds,
+            List<UUID> examIds,
+            PromotionAudienceType audience,
+            List<UUID> audienceClassIds,
+            List<UUID> audienceUserIds,
+            PromotionStatus status) {
+        this(expectedRevision, kind, name, description, clearDescription, code, discountType, discountValue,
+                maxDiscountVnd, clearMaxDiscountVnd, startsAt, endsAt, totalLimit, clearTotalLimit,
+                perUserLimit, clearPerUserLimit, combinable, scope, examKindIds, examIds, null, audience,
+                audienceClassIds, audienceUserIds, status);
+    }
 }
