@@ -215,6 +215,8 @@ for (const cell of matrixCells()) {
               name: cell.lang === "vi" ? "Xác nhận mua" : "Confirm purchase",
             }),
           ).toBeVisible();
+          await expect(page.locator("#checkout-buy-button")).toBeVisible();
+          await expect(page.locator("#checkout-buy-button")).toBeEnabled();
           await expectMatrixClean(page, "checkout-confirm", cell);
 
           await page.goto(`${WEB_URL}/checkout/result?order=${encodeURIComponent(fulfilledOrderCode)}`);
@@ -255,6 +257,7 @@ for (const cell of matrixCells()) {
               name: cell.lang === "vi" ? "Đơn của tôi" : "My orders",
             }),
           ).toBeVisible();
+          await expect(page.getByText(fulfilledOrderCode)).toBeVisible();
           await expectMatrixClean(page, "orders-list", cell, {
             elementOverflow: { scope: "main", allowAccessibleScroller: true },
           });

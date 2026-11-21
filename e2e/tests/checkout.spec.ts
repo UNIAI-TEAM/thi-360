@@ -215,7 +215,8 @@ test.describe("Luồng mua bài thi & kết quả VNPAY", () => {
       await pageB.goto(`${WEB_URL}/home`);
       await pageB.getByRole("button", { name: "Menu tài khoản" }).click();
       await pageB.getByRole("menuitem", { name: "Đăng xuất" }).click();
-      await pageB.waitForURL(/\/login/);
+      await expect(pageB).toHaveURL(`${WEB_URL}/`);
+      await pageB.goto(`${WEB_URL}/login`);
       await submitLoginForm(pageB, userB.username, ACCOUNT_PASSWORD);
       await pageB.waitForURL(/\/home/);
       await pageB.close();
