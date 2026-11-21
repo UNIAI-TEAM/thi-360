@@ -398,6 +398,10 @@ class AttemptOpenApiContractTest {
         assertThat(resultProps.has("practiceScoreNote")).isTrue();
         assertThat(resultProps.has("choices")).isTrue();
         assertThat(resultProps.has("segments")).isTrue();
+        JsonNode segmentsProp = resultProps.path("segments");
+        assertThat(segmentsProp.path("type").asText()).isEqualTo("array");
+        assertThat(segmentsProp.path("items").path("$ref").asText())
+                .isEqualTo("#/components/schemas/AttemptResultSegment");
         assertThat(resultProps.has("gradingError")).isFalse();
         assertThat(resultProps.has("solution")).isFalse();
         assertThat(resultProps.has("gradingGuide")).isFalse();
@@ -449,9 +453,15 @@ class AttemptOpenApiContractTest {
                 .contains("AttemptResultSegment")
                 .doesNotContain("gradingError");
         assertThat(extractComponentSchemaBlock(schemaDts, "AttemptResultSegment"))
+                .contains("code?:")
+                .contains("name?:")
+                .contains("partCode?:")
                 .contains("fromPosition?:")
                 .contains("toPosition?:")
                 .contains("pendingReview?:")
+                .contains("score?:")
+                .contains("maxPoints?:")
+                .contains("stats?:")
                 .contains("AttemptResultUnitStats");
         assertThat(extractComponentSchemaBlock(schemaDts, "AttemptHistoryItem"))
                 .contains("choices?:")

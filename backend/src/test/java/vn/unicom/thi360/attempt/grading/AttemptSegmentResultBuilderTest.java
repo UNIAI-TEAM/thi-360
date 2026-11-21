@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -274,6 +275,111 @@ class AttemptSegmentResultBuilderTest {
         assertThat(segments.get(4).maxPoints()).isEqualByComparingTo("4.00");
         assertThat(segments.get(4).stats().blankCount()).isEqualTo(4);
         assertThat(segments.get(4).stats().totalCount()).isEqualTo(4);
+    }
+
+    @Test
+    void clozeFallbackAndSparseBlankResultsRecoverCleanly() {
+        UUID attemptId = UUID.randomUUID();
+        UUID partId = UUID.randomUUID();
+        AttemptPart part = closedPart(partId, attemptId, "p1", "Part 1", 0, new BigDecimal("17.00"), 9);
+
+        // 1. Empty blankResults -> uniform split across straddling blanks
+        AttemptItem emptyEntriesCloze = gradedItem(attemptId, partId, null, 1, QuestionType.CLOZE, 3,
+                new BigDecimal("6.00"), new BigDecimal("3.0000"), ItemOutcome.PARTIAL,
+                Map.of("exactFraction", "3", "blankResults", List.of()));
+
+        // 2. Sparse blankResults (3 entries for unitCount = 4), exercising:
+        //    - entry 0: null pointsMax (falls back to 8/4 = 2.00), malformed exactFraction ("bad/frac" -> 1.5),
+        //      and unrecognized outcome string ("UNKNOWN_STATUS" -> item outcome PARTIAL)
+        //    - entry 1: valid CORRECT entry ("3/2" = 1.5)
+        //    - entry 2: PENDING_REVIEW blank outcome (segment pendingReview=true, score=null)
+        //    - index 3 (pos 7): missing from sparse blankResults -> BLANK with 0 earned (never double-counts)
+        Map<String, Object> nullMaxMalformedEntry = new HashMap<>();
+        nullMaxMalformedEntry.put("id", "b1");
+        nullMaxMalformedEntry.put("outcome", "UNKNOWN_STATUS");
+        nullMaxMalformedEntry.put("pointsEarned", 1.5);
+        nullMaxMalformedEntry.put("pointsMax", null);
+        nullMaxMalformedEntry.put("exactFraction", "bad/frac");
+
+        AttemptItem sparseCloze = gradedItem(attemptId, partId, null, 2, QuestionType.CLOZE, 4,
+                new BigDecimal("8.00"), new BigDecimal("3.0000"), ItemOutcome.PARTIAL,
+                Map.of(
+                        "exactFraction", "3",
+                        "blankResults", List.of(
+                                nullMaxMalformedEntry,
+                                Map.of("id", "b2", "outcome", "CORRECT", "pointsEarned", 1.5, "pointsMax", 2.0, "exactFraction", "3/2"),
+                                Map.of("id", "b3", "outcome", "PENDING_REVIEW", "pointsEarned", 0.0, "pointsMax", 2.0, "exactFraction", "0"))));
+
+        // 3. Empty/absent blankResults with item outcome PENDING_REVIEW -> marks straddling segments pending
+        AttemptItem pendingCloze = gradedItem(attemptId, partId, null, 3, QuestionType.CLOZE, 2,
+                new BigDecimal("3.00"), null, ItemOutcome.PENDING_REVIEW, Map.of());
+
+        PublishedVersion version = versionWithParts(List.of(partWithSegments("p1", List.of(
+                new Segment("EMPTY_HEAD", "Empty Head", 1, 1, null, null),
+                new Segment("EMPTY_TAIL", "Empty Tail", 2, 3, null, null),
+                new Segment("SPARSE_HEAD", "Sparse Head", 4, 5, null, null),
+                new Segment("SPARSE_PEND", "Sparse Pending", 6, 6, null, null),
+                new Segment("SPARSE_TAIL", "Sparse Tail", 7, 7, null, null),
+                new Segment("ITEM_PEND", "Item Pending", 8, 8, null, null),
+                new Segment("ITEM_PEND_TAIL", "Item Pending Tail", 9, 9, null, null)))));
+
+        List<SegmentResultView> segments = builder.build(
+                Optional.of(version), List.of(part), List.of(emptyEntriesCloze, sparseCloze, pendingCloze));
+        assertThat(segments).hasSize(7);
+
+        // Empty blankResults uniform split: 3/3 = 1.00 per blank, max 6/3 = 2.00 per blank
+        assertThat(segments.get(0).code()).isEqualTo("EMPTY_HEAD");
+        assertThat(segments.get(0).pendingReview()).isFalse();
+        assertThat(segments.get(0).score()).isEqualByComparingTo("1.00");
+        assertThat(segments.get(0).maxPoints()).isEqualByComparingTo("2.00");
+        assertThat(segments.get(0).stats().partialCount()).isEqualTo(1);
+        assertThat(segments.get(0).stats().totalCount()).isEqualTo(1);
+
+        assertThat(segments.get(1).code()).isEqualTo("EMPTY_TAIL");
+        assertThat(segments.get(1).score()).isEqualByComparingTo("2.00");
+        assertThat(segments.get(1).maxPoints()).isEqualByComparingTo("4.00");
+        assertThat(segments.get(1).stats().partialCount()).isEqualTo(2);
+        assertThat(segments.get(1).stats().totalCount()).isEqualTo(2);
+
+        // Sparse head (pos 4..5): null pointsMax fallback (2.00) + entry 1 max (2.00) = 4.00;
+        // malformed exactFraction fallback (1.5) + "3/2" (1.5) = 3.00; unrecognized outcome -> PARTIAL
+        assertThat(segments.get(2).code()).isEqualTo("SPARSE_HEAD");
+        assertThat(segments.get(2).pendingReview()).isFalse();
+        assertThat(segments.get(2).score()).isEqualByComparingTo("3.00");
+        assertThat(segments.get(2).maxPoints()).isEqualByComparingTo("4.00");
+        assertThat(segments.get(2).stats().partialCount()).isEqualTo(1);
+        assertThat(segments.get(2).stats().correctCount()).isEqualTo(1);
+        assertThat(segments.get(2).stats().totalCount()).isEqualTo(2);
+
+        // Sparse PENDING_REVIEW blank (pos 6): pendingReview=true, score=null
+        assertThat(segments.get(3).code()).isEqualTo("SPARSE_PEND");
+        assertThat(segments.get(3).pendingReview()).isTrue();
+        assertThat(segments.get(3).score()).isNull();
+        assertThat(segments.get(3).maxPoints()).isEqualByComparingTo("2.00");
+        assertThat(segments.get(3).stats().pendingReviewCount()).isEqualTo(1);
+        assertThat(segments.get(3).stats().totalCount()).isEqualTo(1);
+
+        // Sparse tail (pos 7, index >= blankEntries.size()): 0 earned (no re-split!), BLANK outcome
+        assertThat(segments.get(4).code()).isEqualTo("SPARSE_TAIL");
+        assertThat(segments.get(4).pendingReview()).isFalse();
+        assertThat(segments.get(4).score()).isEqualByComparingTo("0.00");
+        assertThat(segments.get(4).maxPoints()).isEqualByComparingTo("2.00");
+        assertThat(segments.get(4).stats().blankCount()).isEqualTo(1);
+        assertThat(segments.get(4).stats().partialCount()).isZero();
+        assertThat(segments.get(4).stats().totalCount()).isEqualTo(1);
+
+        // Absent blankResults with item outcome PENDING_REVIEW (pos 8 & pos 9)
+        assertThat(segments.get(5).code()).isEqualTo("ITEM_PEND");
+        assertThat(segments.get(5).pendingReview()).isTrue();
+        assertThat(segments.get(5).score()).isNull();
+        assertThat(segments.get(5).maxPoints()).isEqualByComparingTo("1.50");
+        assertThat(segments.get(5).stats().pendingReviewCount()).isEqualTo(1);
+
+        assertThat(segments.get(6).code()).isEqualTo("ITEM_PEND_TAIL");
+        assertThat(segments.get(6).pendingReview()).isTrue();
+        assertThat(segments.get(6).score()).isNull();
+        assertThat(segments.get(6).maxPoints()).isEqualByComparingTo("1.50");
+        assertThat(segments.get(6).stats().pendingReviewCount()).isEqualTo(1);
     }
 
     private static AttemptPart closedPart(

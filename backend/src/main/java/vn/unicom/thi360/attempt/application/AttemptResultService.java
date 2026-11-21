@@ -116,37 +116,6 @@ public class AttemptResultService {
     private record SubjectCatalog(
             Map<String, String> namesByCode, Map<UUID, CatalogItemView> itemsById) {}
 
-    public AttemptResultService(
-            AttemptAccessGate accessGate,
-            AttemptGuard attemptGuard,
-            AttemptPartRepository attemptPartRepository,
-            AttemptItemRepository attemptItemRepository,
-            AttemptEventRepository attemptEventRepository,
-            EntitlementPort entitlementPort,
-            QuestionSourcePort questionSourcePort,
-            QuestionAttachmentPort questionAttachmentPort,
-            PublishedExamPort publishedExamPort,
-            CatalogLookup catalogLookup,
-            AttemptQuestionSanitizer sanitizer,
-            MessageSource messageSource,
-            PlatformTransactionManager transactionManager) {
-        this(
-                accessGate,
-                attemptGuard,
-                attemptPartRepository,
-                attemptItemRepository,
-                attemptEventRepository,
-                entitlementPort,
-                questionSourcePort,
-                questionAttachmentPort,
-                publishedExamPort,
-                catalogLookup,
-                sanitizer,
-                messageSource,
-                transactionManager,
-                new AttemptSegmentResultBuilder());
-    }
-
     @Autowired
     public AttemptResultService(
             AttemptAccessGate accessGate,

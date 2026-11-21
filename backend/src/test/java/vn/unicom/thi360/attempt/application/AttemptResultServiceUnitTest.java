@@ -145,7 +145,8 @@ class AttemptResultServiceUnitTest {
                 catalogLookup,
                 new AttemptQuestionSanitizer(),
                 messages,
-                txManager);
+                txManager,
+                new AttemptSegmentResultBuilder());
 
         solutionAssetService = new AttemptSolutionAssetService(
                 accessGate,

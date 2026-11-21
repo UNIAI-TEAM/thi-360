@@ -71,25 +71,30 @@ public class AttemptSegmentResultBuilder {
         }
 
         void recordClozeBlank(AttemptItem item, int unitSpan, int blankIndex, List<Map<?, ?>> blankEntries) {
-            if (blankIndex < blankEntries.size()) {
-                Map<?, ?> entry = blankEntries.get(blankIndex);
-                ItemOutcome blankOutcome = parseOutcomeOrDefault(entry.get("outcome"), item.getOutcome());
-                BigDecimal rawBlankMax = toBigDecimal(entry.get("pointsMax"));
-                ExactRational blankMax = rawBlankMax != null
-                        ? ExactRational.of(rawBlankMax)
-                        : ExactRational.of(item.getPointsMax()).divide(ExactRational.of(unitSpan, 1));
-                itemsMax = itemsMax.add(blankMax);
-                if (blankOutcome == ItemOutcome.PENDING_REVIEW) {
-                    pendingReview = true;
-                    pendingReviewCount++;
+            ExactRational unitDivisor = ExactRational.of(unitSpan, 1);
+            if (!blankEntries.isEmpty()) {
+                if (blankIndex < blankEntries.size()) {
+                    Map<?, ?> entry = blankEntries.get(blankIndex);
+                    ItemOutcome blankOutcome = parseOutcomeOrDefault(entry.get("outcome"), item.getOutcome());
+                    BigDecimal rawBlankMax = toBigDecimal(entry.get("pointsMax"));
+                    ExactRational blankMax = rawBlankMax != null
+                            ? ExactRational.of(rawBlankMax)
+                            : ExactRational.of(item.getPointsMax()).divide(unitDivisor);
+                    itemsMax = itemsMax.add(blankMax);
+                    if (blankOutcome == ItemOutcome.PENDING_REVIEW) {
+                        pendingReview = true;
+                        pendingReviewCount++;
+                    } else {
+                        earned = earned.add(exactBlankEarned(entry));
+                        addOutcome(blankOutcome, 1);
+                    }
                 } else {
-                    earned = earned.add(exactBlankEarned(entry));
-                    addOutcome(blankOutcome, 1);
+                    itemsMax = itemsMax.add(ExactRational.of(item.getPointsMax()).divide(unitDivisor));
+                    addOutcome(ItemOutcome.BLANK, 1);
                 }
                 return;
             }
 
-            ExactRational unitDivisor = ExactRational.of(unitSpan, 1);
             itemsMax = itemsMax.add(ExactRational.of(item.getPointsMax()).divide(unitDivisor));
             if (item.getOutcome() == ItemOutcome.PENDING_REVIEW) {
                 pendingReview = true;

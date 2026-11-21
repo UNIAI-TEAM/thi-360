@@ -131,26 +131,61 @@ class HscaVsatGradingIT extends AbstractIntegrationTest {
 
     @Test
     void hscaMathAttemptScores() throws Exception {
-        UUID student = createStudent("hsca-math");
-        GrantOrderResult.Line grant = grant(student, "DS-HSCA-TOAN");
-        Attempt attempt = startAndAwaitOpen(student, grant.entitlementId());
+        UUID student = null;
+        Attempt attempt = null;
+        List<AttemptPart> parts = List.of();
+        List<AttemptItem> allItems = List.of();
+        Map<VersionKey, JsonNode> snaps = Map.of();
+        List<AttemptItem> scItems = List.of();
+        List<AttemptItem> mcItems = List.of();
+        List<AttemptItem> setChildItems = List.of();
+        List<AttemptItem> saItems = List.of();
+        List<AttemptItem> mcPartialCandidates = new ArrayList<>();
+        List<AttemptItem> mcOther = new ArrayList<>();
+
+        // AttemptStartService draws with SecureRandom from the seeded TOAN 0.25 MC pool (14 PARTIAL + 8 ALL_OR_NOTHING),
+        // giving ~0.2% probability of 0 PARTIAL draws on a single attempt; retry up to 5 times so AC-4 is never vacuous.
+        for (int draw = 0; draw < 5; draw++) {
+            student = createStudent("hsca-math");
+            GrantOrderResult.Line grant = grant(student, "DS-HSCA-TOAN");
+            attempt = startAndAwaitOpen(student, grant.entitlementId());
+
+            parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+            assertThat(parts).hasSize(3);
+
+            allItems = loadOrderedItems(attempt.getId(), parts);
+            snaps = loadSnapshots(allItems);
+
+            scItems = leafItems(allItems, QuestionType.SINGLE_CHOICE, false);
+            mcItems = leafItems(allItems, QuestionType.MULTIPLE_CHOICE, false);
+            setChildItems = leafItems(allItems, QuestionType.SINGLE_CHOICE, true);
+            saItems = leafItems(allItems, QuestionType.SHORT_ANSWER, false);
+
+            assertThat(scItems).hasSize(20);
+            assertThat(mcItems).hasSize(5);
+            assertThat(setChildItems).hasSize(5);
+            assertThat(saItems).hasSize(10);
+
+            mcPartialCandidates.clear();
+            mcOther.clear();
+            for (AttemptItem item : mcItems) {
+                JsonNode snap = snaps.get(key(item));
+                if ("PARTIAL".equals(snap.path("body").path("scoringRule").asText())
+                        && countCorrectOptions(snap) >= 2) {
+                    mcPartialCandidates.add(item);
+                } else {
+                    mcOther.add(item);
+                }
+            }
+            if (!mcPartialCandidates.isEmpty()) {
+                break;
+            }
+        }
+        assertThat(mcPartialCandidates)
+                .as("DS-HSCA-TOAN must draw at least 1 PARTIAL MULTIPLE_CHOICE item with >= 2 correct options")
+                .isNotEmpty();
+
         UUID sessionId = claimSession(student, attempt.getId());
-
-        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(parts).hasSize(3);
-
-        List<AttemptItem> allItems = loadOrderedItems(attempt.getId(), parts);
-        Map<VersionKey, JsonNode> snaps = loadSnapshots(allItems);
-
-        List<AttemptItem> scItems = leafItems(allItems, QuestionType.SINGLE_CHOICE, false);
-        List<AttemptItem> mcItems = leafItems(allItems, QuestionType.MULTIPLE_CHOICE, false);
-        List<AttemptItem> setChildItems = leafItems(allItems, QuestionType.SINGLE_CHOICE, true);
-        List<AttemptItem> saItems = leafItems(allItems, QuestionType.SHORT_ANSWER, false);
-
-        assertThat(scItems).hasSize(20);
-        assertThat(mcItems).hasSize(5);
-        assertThat(setChildItems).hasSize(5);
-        assertThat(saItems).hasSize(10);
 
         Map<UUID, AnswerValue> answers = new LinkedHashMap<>();
 
@@ -165,17 +200,6 @@ class HscaVsatGradingIT extends AbstractIntegrationTest {
         }
 
         // 5 MC (0.25 each): pick up to 2 PARTIAL (>=2 correct options) items to test 0.125 half-credit
-        List<AttemptItem> mcPartialCandidates = new ArrayList<>();
-        List<AttemptItem> mcOther = new ArrayList<>();
-        for (AttemptItem item : mcItems) {
-            JsonNode snap = snaps.get(key(item));
-            if ("PARTIAL".equals(snap.path("body").path("scoringRule").asText())
-                    && countCorrectOptions(snap) >= 2) {
-                mcPartialCandidates.add(item);
-            } else {
-                mcOther.add(item);
-            }
-        }
         List<AttemptItem> mcChosenPartial = new ArrayList<>();
         while (mcChosenPartial.size() < 2 && !mcPartialCandidates.isEmpty()) {
             mcChosenPartial.add(mcPartialCandidates.removeFirst());
@@ -241,6 +265,9 @@ class HscaVsatGradingIT extends AbstractIntegrationTest {
                 expectedMcWrong++;
             }
         }
+        assertThat(expectedMcPartial)
+                .as("DS-HSCA-TOAN must draw at least 1 PARTIAL MULTIPLE_CHOICE item with >= 2 correct options")
+                .isGreaterThanOrEqualTo(1);
         BigDecimal expectedTotal = new BigDecimal("4.25").add(expectedMcScore).setScale(2, RoundingMode.HALF_UP);
 
         Attempt scored = attemptRepository.findById(attempt.getId()).orElseThrow();
@@ -842,9 +869,9 @@ class HscaVsatGradingIT extends AbstractIntegrationTest {
         UUID s2 = createSubject();
         UUID s3 = createSubject();
         UUID s4 = createSubject();
-        insertMultipleChoicePartial(s1, new BigDecimal("0.25"), 2, 2);
-        insertMultipleChoicePartial(s2, new BigDecimal("0.25"), 2, 2);
-        insertMultipleChoicePartial(s3, new BigDecimal("0.25"), 2, 2);
+        insertMultipleChoicePartial(s1, new BigDecimal("0.25"), 3, 1);
+        insertMultipleChoicePartial(s2, new BigDecimal("0.25"), 3, 1);
+        insertMultipleChoicePartial(s3, new BigDecimal("0.25"), 3, 1);
         insertSingleChoice(s4, new BigDecimal("0.25"));
 
         String partsJson = """
@@ -883,7 +910,8 @@ class HscaVsatGradingIT extends AbstractIntegrationTest {
         Map<UUID, AnswerValue> answers = new LinkedHashMap<>();
         for (int i = 0; i < halfCreditMcCount; i++) {
             AttemptItem item = mcItems.get(i);
-            answers.put(item.getId(), partialMultipleChoice(snaps.get(key(item))));
+            // Submit 2 of 3 correct options so HALF_CREDIT (0.1250) strictly differs from PROPORTIONAL (0.1667)
+            answers.put(item.getId(), partialMultipleChoice(snaps.get(key(item)), 2));
         }
         completeSequentialAttempt(student, attempt.getId(), sessionId, parts, answers);
         return attemptRepository.findById(attempt.getId()).orElseThrow();
@@ -1076,12 +1104,20 @@ class HscaVsatGradingIT extends AbstractIntegrationTest {
     }
 
     private static AnswerValue.MultipleChoice partialMultipleChoice(JsonNode snapshot) {
+        return partialMultipleChoice(snapshot, 1);
+    }
+
+    private static AnswerValue.MultipleChoice partialMultipleChoice(JsonNode snapshot, int selectedCount) {
+        List<String> correctIds = new ArrayList<>();
         for (JsonNode opt : snapshot.path("body").path("options")) {
             if (opt.path("correct").asBoolean(false)) {
-                return new AnswerValue.MultipleChoice(List.of(opt.path("id").asText()));
+                correctIds.add(opt.path("id").asText());
             }
         }
-        throw new IllegalStateException("No correct option in MC snapshot");
+        assertThat(correctIds.size())
+                .as("MC snapshot must have more than %s correct options so partial selection stays strictly partial", selectedCount)
+                .isGreaterThan(selectedCount);
+        return new AnswerValue.MultipleChoice(List.copyOf(correctIds.subList(0, selectedCount)));
     }
 
     private static AnswerValue.MultipleChoice wrongMultipleChoice(JsonNode snapshot) {
