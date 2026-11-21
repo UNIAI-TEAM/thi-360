@@ -620,7 +620,7 @@ class AttemptAssetIT extends AbstractAttemptDsIT {
                                                     BigDecimal.ONE))),
                             createdQuestions);
 
-            // R1-29: also test mixed-case entity-encoded admin asset URL in decoded HTML attribute without data-asset-id
+            // R1-29: also test mixed-case admin asset URL without data-asset-id, with entity-encoded query separator
             UUID mixedCaseQ =
                     createAndReadyQuestion(
                             adminId,

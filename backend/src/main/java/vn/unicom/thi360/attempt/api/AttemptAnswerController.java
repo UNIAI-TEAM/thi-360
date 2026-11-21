@@ -40,7 +40,7 @@ public class AttemptAnswerController {
                     @Header(
                             name = HttpHeaders.RETRY_AFTER,
                             description = "Seconds until the rate-limit window refills",
-                            schema = @Schema(type = "integer")),
+                            schema = @Schema(implementation = Integer.class)),
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public SaveAnswersResponse saveAnswers(
             @PathVariable UUID attemptId,

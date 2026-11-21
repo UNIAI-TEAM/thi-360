@@ -38548,7 +38548,10 @@
             "headers" : {
               "Retry-After" : {
                 "description" : "Seconds until the rate-limit window refills",
-                "schema" : { },
+                "schema" : {
+                  "format" : "int32",
+                  "type" : "integer"
+                },
                 "style" : "simple"
               }
             }

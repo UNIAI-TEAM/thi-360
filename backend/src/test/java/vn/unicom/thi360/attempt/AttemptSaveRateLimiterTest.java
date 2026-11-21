@@ -96,13 +96,33 @@ class AttemptSaveRateLimiterTest {
         when(newConn.isOpen()).thenReturn(true);
 
         AttemptSaveRateLimiter limiter = new AttemptSaveRateLimiter(lettuce, 20, Duration.ofSeconds(10));
-        ReflectionTestUtils.setField(limiter, "connection", closedPriorConn);
-        ReflectionTestUtils.setField(limiter, "proxyManager", mock(io.github.bucket4j.distributed.proxy.ProxyManager.class));
+        ReflectionTestUtils.setField(
+                limiter,
+                "holder",
+                newHolder(
+                        closedPriorConn,
+                        mock(io.github.bucket4j.distributed.proxy.ProxyManager.class)));
 
         assertThatCode(() -> limiter.checkLimit(UUID.randomUUID())).doesNotThrowAnyException();
         verify(closedPriorConn, times(1)).close();
         verify(newConn, times(1)).close();
-        assertThat(ReflectionTestUtils.getField(limiter, "connection")).isNull();
-        assertThat(ReflectionTestUtils.getField(limiter, "proxyManager")).isNull();
+        assertThat(ReflectionTestUtils.getField(limiter, "holder")).isNull();
+    }
+
+    private static Object newHolder(
+            StatefulRedisConnection<String, byte[]> connection,
+            io.github.bucket4j.distributed.proxy.ProxyManager<String> proxyManager) {
+        try {
+            Class<?> holderClass =
+                    Class.forName(AttemptSaveRateLimiter.class.getName() + "$Holder");
+            var ctor =
+                    holderClass.getDeclaredConstructor(
+                            StatefulRedisConnection.class,
+                            io.github.bucket4j.distributed.proxy.ProxyManager.class);
+            ctor.setAccessible(true);
+            return ctor.newInstance(connection, proxyManager);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 }

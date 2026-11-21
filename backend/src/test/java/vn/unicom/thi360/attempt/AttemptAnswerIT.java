@@ -750,13 +750,18 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
             assertThat(reloaded.getLastPosition()).containsEntry("partId", part0.getId().toString());
             assertThat(reloaded.getLastPosition()).containsEntry("itemId", bundle.matching().getId().toString());
 
-            // Unopened (PENDING) part or partial mismatched {openPartId, foreignItemId} leaves lastPosition completely intact (R1-13/R1-14)
+            // Unopened (PENDING) part (including itemId-only) or partial mismatched {openPartId, foreignItemId} leaves lastPosition completely intact (R1-13/R1-14, R2-5)
             AttemptPart pendingPart = parts.get(1);
-            AttemptItem pendingItem = attemptItemRepository.findByPartIdOrderByOrdAsc(pendingPart.getId()).getFirst();
+            AttemptItem pendingItem =
+                    attemptItemRepository.findByPartIdOrderByOrdAsc(pendingPart.getId()).stream()
+                            .filter(i -> i.isInScope() && i.getParentItemId() == null)
+                            .findFirst()
+                            .orElseThrow();
             for (AttemptPosition badPos :
                     List.of(
                             new AttemptPosition(pendingPart.getId(), null),
                             new AttemptPosition(pendingPart.getId(), pendingItem.getId()),
+                            new AttemptPosition(null, pendingItem.getId()),
                             new AttemptPosition(part0.getId(), otherItem.getId()),
                             new AttemptPosition(part0.getId(), pendingItem.getId()))) {
                 assertThat(
@@ -817,25 +822,27 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                     new SaveAnswersRequest(null, List.of(new FlagChange(bundle.singleChoice().getId(), false)), null));
             assertThat(attemptItemRepository.findById(bundle.singleChoice().getId()).orElseThrow().isFlagged()).isFalse();
 
-            // Closed part position is ignored after finishing Part 0 (R1-13/R1-14)
+            // Closed part position (both explicit partId and itemId-only) is ignored after finishing Part 0 (R1-13/R1-14, R2-5)
             assertThat(performFinishPart(userId, attempt.getId(), part0.getId(), sid, null)
                     .getResponse().getStatus()).isEqualTo(200);
-            assertThat(
-                            performPutAnswers(
-                                            userId,
-                                            attempt.getId(),
-                                            sid,
-                                            new SaveAnswersRequest(
-                                                    List.of(),
-                                                    List.of(),
-                                                    new AttemptPosition(part0.getId(), bundle.matching().getId())))
-                                    .getResponse()
-                                    .getStatus())
-                    .isEqualTo(200);
-            Attempt afterClosedPos = attemptRepository.findById(attempt.getId()).orElseThrow();
-            assertThat(afterClosedPos.getLastPosition())
-                    .containsEntry("partId", part0.getId().toString())
-                    .containsEntry("itemId", bundle.singleChoice().getId().toString());
+            for (AttemptPosition closedPos :
+                    List.of(
+                            new AttemptPosition(part0.getId(), bundle.matching().getId()),
+                            new AttemptPosition(null, bundle.matching().getId()))) {
+                assertThat(
+                                performPutAnswers(
+                                                userId,
+                                                attempt.getId(),
+                                                sid,
+                                                new SaveAnswersRequest(List.of(), List.of(), closedPos))
+                                        .getResponse()
+                                        .getStatus())
+                        .isEqualTo(200);
+                Attempt afterClosedPos = attemptRepository.findById(attempt.getId()).orElseThrow();
+                assertThat(afterClosedPos.getLastPosition())
+                        .containsEntry("partId", part0.getId().toString())
+                        .containsEntry("itemId", bundle.singleChoice().getId().toString());
+            }
         } finally {
             AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
         }
@@ -931,7 +938,7 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
         String item1Opt0 = item1.getOptionOrder().get(0);
         String item1Opt1 = item1.getOptionOrder().get(1);
 
-        ExecutorService pool = Executors.newFixedThreadPool(2);
+        ExecutorService pool = Executors.newFixedThreadPool(3);
         try {
             for (int round = 0; round < 3; round++) {
                 long lowSeq = round * 10L + 1;
@@ -965,7 +972,7 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                 assertThat(((AnswerValue.SingleChoice) after.getAnswer()).optionId()).isEqualTo(item1Opt1);
             }
 
-            // 2. PUT /answers racing with POST /finish -> deterministically prove BOTH interleavings (R1-20)
+            // 2. PUT /answers racing with POST /finish -> deterministically prove BOTH interleavings (R1-20, R2-1..R2-3)
             // 2a. PUT-first interleaving: PUT holds attempt lock first while finish waits on FOR UPDATE -> SAVED with answerReceivedAt <= closedAt
             UUID userId2 = createStudent("ans-race-fin-putfirst");
             GrantOrderResult.Line line2 = grant(userId2, "DS-HSA-FULL-MINI", 2, List.of());
@@ -1002,6 +1009,8 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                     pool.submit(
                             () -> performFinishPart(userId2, a2.getId(), p0A.getId(), sid2, null));
             awaitLockWait("attempt.attempt");
+            assertThat(putFutureA.isDone()).isFalse();
+            assertThat(finFutureA.isDone()).isFalse();
 
             mutableClock.advance(Duration.ofSeconds(1));
             releasePartA.countDown();
@@ -1056,6 +1065,8 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                                                     null,
                                                     null)));
             awaitLockWait("attempt.attempt");
+            assertThat(finFutureB.isDone()).isFalse();
+            assertThat(putFutureB.isDone()).isFalse();
 
             mutableClock.advance(Duration.ofSeconds(1));
             releasePartB.countDown();
@@ -1171,6 +1182,53 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
             assertThat(attemptItemRepository.findById(bundle.shortAnswer().getId()).orElseThrow().isFlagged()).isFalse();
             assertThat(attemptItemRepository.findById(bundle.setChildChoice().getId()).orElseThrow().isFlagged()).isFalse();
             assertThat(attemptRepository.findById(full.getId()).orElseThrow().getLastPosition()).isNull();
+
+            // Position-only request (empty changes & flags) on child of out-of-scope QUESTION_SET hits DB parent lookup and leaves lastPosition unchanged (R2-5)
+            assertThat(
+                            performPutAnswers(
+                                            userId,
+                                            full.getId(),
+                                            fullSid,
+                                            new SaveAnswersRequest(
+                                                    List.of(),
+                                                    List.of(),
+                                                    new AttemptPosition(fp1.getId(), bundle.setChildChoice().getId())))
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(200);
+            assertThat(attemptRepository.findById(full.getId()).orElseThrow().getLastPosition()).isNull();
+
+            // Establish a valid non-null lastPosition on fp1, then verify position-only out-of-scope child leaves it unchanged
+            assertThat(
+                            performPutAnswers(
+                                            userId,
+                                            full.getId(),
+                                            fullSid,
+                                            new SaveAnswersRequest(
+                                                    List.of(),
+                                                    List.of(),
+                                                    new AttemptPosition(fp1.getId(), bundle.singleChoice().getId())))
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(200);
+            assertThat(attemptRepository.findById(full.getId()).orElseThrow().getLastPosition())
+                    .containsEntry("partId", fp1.getId().toString())
+                    .containsEntry("itemId", bundle.singleChoice().getId().toString());
+            assertThat(
+                            performPutAnswers(
+                                            userId,
+                                            full.getId(),
+                                            fullSid,
+                                            new SaveAnswersRequest(
+                                                    List.of(),
+                                                    List.of(),
+                                                    new AttemptPosition(fp1.getId(), bundle.setChildChoice().getId())))
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(200);
+            assertThat(attemptRepository.findById(full.getId()).orElseThrow().getLastPosition())
+                    .containsEntry("partId", fp1.getId().toString())
+                    .containsEntry("itemId", bundle.singleChoice().getId().toString());
         } finally {
             AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
         }
@@ -1221,27 +1279,35 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                 });
     }
 
-    private void awaitLockWait(String tableFragment) throws InterruptedException {
+    private void awaitLockWait(String qualifiedTable) throws InterruptedException {
+        String tableRegex = qualifiedTable.replace(".", "\\.") + "([^_a-z0-9]|$)";
         long deadlineNanos = System.nanoTime() + Duration.ofSeconds(15).toNanos();
         while (System.nanoTime() < deadlineNanos) {
             Integer waiting =
                     jdbc.queryForObject(
                             """
-                            SELECT COUNT(*) FROM pg_stat_activity
-                            WHERE datname = current_database()
-                              AND pid <> pg_backend_pid()
-                              AND state = 'active'
-                              AND wait_event_type = 'Lock'
-                              AND query ILIKE ?
+                            SELECT COUNT(DISTINCT a.pid)
+                            FROM pg_stat_activity a
+                            JOIN pg_locks w ON w.pid = a.pid AND NOT w.granted
+                            JOIN pg_locks t ON t.pid = a.pid
+                                           AND t.locktype = 'tuple'
+                                           AND t.relation = CAST(? AS regclass)
+                            WHERE a.datname = current_database()
+                              AND a.pid <> pg_backend_pid()
+                              AND a.state = 'active'
+                              AND a.wait_event_type = 'Lock'
+                              AND a.query ~* ?
                             """,
                             Integer.class,
-                            "%" + tableFragment + "%");
+                            qualifiedTable,
+                            tableRegex);
             if (waiting != null && waiting > 0) {
                 return;
             }
             Thread.sleep(10);
         }
-        throw new AssertionError("Timed out waiting for PostgreSQL FOR UPDATE lock contention on " + tableFragment);
+        throw new AssertionError(
+                "Timed out waiting for PostgreSQL FOR UPDATE lock contention on " + qualifiedTable);
     }
 
     private EightTypeBundle replaceWithAllEightTypes(UUID attemptId, UUID partId) throws Exception {

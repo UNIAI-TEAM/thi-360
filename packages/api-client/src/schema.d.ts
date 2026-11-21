@@ -30438,7 +30438,7 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the rate-limit window refills */
-                    "Retry-After"?: unknown;
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

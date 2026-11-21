@@ -161,10 +161,32 @@ class AttemptOpenApiContractTest {
                 .isEqualTo("claimSession");
         assertThat(paths.path("/api/v1/me/attempts/{attemptId}/heartbeat").path("post").path("operationId").asText())
                 .isEqualTo("heartbeat");
-        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/answers").path("put").path("operationId").asText())
-                .isEqualTo("saveAnswers");
-        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/assets/{assetId}").path("get").path("operationId").asText())
+
+        JsonNode saveAnswersOp =
+                paths.path("/api/v1/me/attempts/{attemptId}/answers").path("put");
+        assertThat(saveAnswersOp.path("operationId").asText()).isEqualTo("saveAnswers");
+        JsonNode retryAfterSchema =
+                saveAnswersOp
+                        .path("responses")
+                        .path("429")
+                        .path("headers")
+                        .path("Retry-After")
+                        .path("schema");
+        assertThat(retryAfterSchema.path("type").asText()).isEqualTo("integer");
+
+        JsonNode downloadAssetOp =
+                paths.path("/api/v1/me/attempts/{attemptId}/assets/{assetId}").path("get");
+        assertThat(downloadAssetOp.path("operationId").asText())
                 .isEqualTo("downloadAttemptAsset");
+        JsonNode assetBinarySchema =
+                downloadAssetOp
+                        .path("responses")
+                        .path("200")
+                        .path("content")
+                        .path("application/octet-stream")
+                        .path("schema");
+        assertThat(assetBinarySchema.path("type").asText()).isEqualTo("string");
+        assertThat(assetBinarySchema.path("format").asText()).isEqualTo("binary");
 
         JsonNode submitParams =
                 root.path("paths")
@@ -228,8 +250,12 @@ class AttemptOpenApiContractTest {
 
         extractOperationBlock(schemaDts, "claimSession");
         extractOperationBlock(schemaDts, "heartbeat");
-        extractOperationBlock(schemaDts, "saveAnswers");
-        extractOperationBlock(schemaDts, "downloadAttemptAsset");
+        String saveAnswersOpBlock = extractOperationBlock(schemaDts, "saveAnswers");
+        assertThat(saveAnswersOpBlock)
+                .contains("\"Retry-After\"?: number;")
+                .doesNotContain("\"Retry-After\"?: unknown;");
+        String downloadAssetOpBlock = extractOperationBlock(schemaDts, "downloadAttemptAsset");
+        assertThat(downloadAssetOpBlock).contains("\"application/octet-stream\": string;");
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {

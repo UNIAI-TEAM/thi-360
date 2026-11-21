@@ -1,10 +1,13 @@
 package vn.unicom.thi360.attempt;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -13,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.AnswerChange;
 import vn.unicom.thi360.attempt.api.FinalAnswerChange;
@@ -27,6 +31,12 @@ import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.api.BulkQuestionStatusRequest;
+import vn.unicom.thi360.questionbank.api.SaveQuestionRequest;
+import vn.unicom.thi360.questionbank.domain.QuestionBody;
+import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.shared.ids.Ids;
 
 /**
  * Integration tests verifying the production {@code FinalAnswerWriter} implementation inside
@@ -309,5 +319,164 @@ class AttemptFinalAnswersIT extends AbstractAttemptDsIT {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    void outOfScopeQuestionSetParentRejectsChildFinalAnswer() throws Exception {
+        UUID userId = createStudent("fin-ans-set-oos");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "fa-set-oos", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
+        AttemptPart p0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).getFirst();
+        AttemptItem validSibling = singleChoiceItems(p0.getId()).getFirst();
+        String validSiblingOpt = validSibling.getOptionOrder().getFirst();
+
+        UUID adminId = UUID.randomUUID();
+        UUID childQId = UUID.randomUUID();
+        UUID setQId = createAndReadyQuestionSet(adminId, childQId);
+        List<UUID> createdQuestions = List.of(setQId);
+
+        try {
+            int baseOrd =
+                    attemptItemRepository.findByPartIdOrderByOrdAsc(p0.getId()).stream()
+                            .mapToInt(AttemptItem::getOrd)
+                            .max()
+                            .orElse(0)
+                            + 1;
+            UUID setItemId = Ids.newId();
+            AttemptItem setItem =
+                    AttemptItem.create(
+                            setItemId,
+                            attempt.getId(),
+                            p0.getId(),
+                            null,
+                            "SEC",
+                            "TOAN",
+                            "B",
+                            null,
+                            baseOrd,
+                            null,
+                            0,
+                            setQId,
+                            1,
+                            QuestionType.QUESTION_SET,
+                            BigDecimal.ONE,
+                            null);
+            AttemptItem childItem =
+                    AttemptItem.create(
+                            Ids.newId(),
+                            attempt.getId(),
+                            p0.getId(),
+                            null,
+                            "SEC",
+                            "TOAN",
+                            "B",
+                            setItemId,
+                            baseOrd + 1,
+                            99,
+                            1,
+                            childQId,
+                            1,
+                            QuestionType.SINGLE_CHOICE,
+                            BigDecimal.ONE,
+                            List.of("c1a", "c1b"));
+            attemptItemRepository.saveAllAndFlush(List.of(setItem, childItem));
+            jdbc.update("UPDATE attempt.attempt_item SET in_scope = false WHERE id = ?", setItemId);
+
+            // Only pass childItem (NOT setItem) so AnswerService.writeFinalAnswers must load parent via loadParentItems (R2-11)
+            FinishPartRequest req =
+                    new FinishPartRequest(
+                            List.of(
+                                    new FinalAnswerChange(
+                                            childItem.getId(), 1L, new AnswerValue.SingleChoice("c1a")),
+                                    new FinalAnswerChange(
+                                            validSibling.getId(),
+                                            1L,
+                                            new AnswerValue.SingleChoice(validSiblingOpt))));
+            MvcResult finRes = performFinishPart(userId, attempt.getId(), p0.getId(), sid, req);
+            assertThat(finRes.getResponse().getStatus()).isEqualTo(200);
+
+            JsonNode results = json(finRes).path("results");
+            assertThat(results).hasSize(2);
+            assertThat(results.get(0).path("itemId").asText()).isEqualTo(childItem.getId().toString());
+            assertThat(results.get(0).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(results.get(0).path("reason").asText()).isEqualTo("NOT_IN_SCOPE");
+            assertThat(results.get(1).path("itemId").asText()).isEqualTo(validSibling.getId().toString());
+            assertThat(results.get(1).path("status").asText()).isEqualTo("SAVED");
+
+            AttemptItem reloadedChild = attemptItemRepository.findById(childItem.getId()).orElseThrow();
+            assertThat(reloadedChild.getAnswer()).isNull();
+            assertThat(reloadedChild.getAnswerSeq()).isZero();
+            AttemptItem reloadedSibling = attemptItemRepository.findById(validSibling.getId()).orElseThrow();
+            assertThat(reloadedSibling.getAnswerSeq()).isEqualTo(1L);
+            assertThat(((AnswerValue.SingleChoice) reloadedSibling.getAnswer()).optionId())
+                    .isEqualTo(validSiblingOpt);
+        } finally {
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, createdQuestions);
+        }
+    }
+
+    private UUID createAndReadyQuestionSet(UUID adminId, UUID childQId) throws Exception {
+        QuestionBody.QuestionSetBody body =
+                new QuestionBody.QuestionSetBody(
+                        QuestionType.QUESTION_SET,
+                        "<p>Passage</p>",
+                        1,
+                        List.of(
+                                new QuestionBody.ChildQuestion(
+                                        QuestionType.SINGLE_CHOICE,
+                                        "<p>Child 1</p>",
+                                        new QuestionBody.SingleChoiceBody(
+                                                QuestionType.SINGLE_CHOICE,
+                                                List.of(
+                                                        new QuestionBody.ChoiceOption("c1a", "<p>A</p>", true),
+                                                        new QuestionBody.ChoiceOption("c1b", "<p>B</p>", false)),
+                                                true),
+                                        null,
+                                        BigDecimal.ONE,
+                                        null,
+                                        null,
+                                        List.of(),
+                                        childQId)));
+        SaveQuestionRequest req =
+                new SaveQuestionRequest(
+                        QuestionType.QUESTION_SET,
+                        "TOAN",
+                        "G12",
+                        "TH",
+                        null,
+                        null,
+                        BigDecimal.ONE,
+                        List.of(),
+                        List.of(),
+                        "<p>Set</p>",
+                        null,
+                        List.of(),
+                        List.of(),
+                        body,
+                        "AT3-FA-SET-" + UUID.randomUUID().toString().substring(0, 8));
+        MvcResult createRes =
+                mockMvc.perform(
+                                post("/api/v1/admin/questions")
+                                        .with(asUser(adminId, "q-admin", Permissions.QUESTION_MODIFY))
+                                        .header("Idempotency-Key", "at3-fa-cr-" + UUID.randomUUID())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(req)))
+                        .andReturn();
+        assertThat(createRes.getResponse().getStatus()).isBetween(200, 201);
+        UUID id = UUID.fromString(json(createRes).path("summary").path("id").asText());
+
+        MvcResult readyRes =
+                mockMvc.perform(
+                                post("/api/v1/admin/questions/bulk/ready")
+                                        .with(asUser(adminId, "q-admin", Permissions.QUESTION_MODIFY))
+                                        .header("Idempotency-Key", "at3-fa-rd-" + UUID.randomUUID())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        new BulkQuestionStatusRequest(List.of(id)))))
+                        .andReturn();
+        assertThat(readyRes.getResponse().getStatus()).isEqualTo(200);
+        return id;
     }
 }

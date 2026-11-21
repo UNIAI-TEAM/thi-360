@@ -603,20 +603,38 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
             assertThat(hbLockAfter.getFinishedAt()).isEqualTo(hbLockDeadline);
             assertThat(hbLockAfter.getEditSessionSeenAt()).isEqualTo(hbLockSeenAt);
 
-            // (c) Revoked session heartbeat on an overdue attempt throws 409 ATTEMPT_SESSION_REVOKED AND still closes overdue attempt
+            // (c) Revoked session heartbeat that expires while waiting on FOR UPDATE throws 409 ATTEMPT_SESSION_REVOKED
+            // AND still closes overdue attempt via catch (ConflictException) fallback (EditSessionService:195-198)
             mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
             Attempt hbRevoked = startAndAwaitOpen(userId, "hb-overdue-revoked", singleLine.entitlementId(), null);
             claimSession(userId, hbRevoked.getId());
+            Instant hbRevokedSeenAt =
+                    attemptRepository.findById(hbRevoked.getId()).orElseThrow().getEditSessionSeenAt();
             Instant hbRevokedDeadline =
                     attemptPartRepository.findByAttemptIdOrderByOrdAsc(hbRevoked.getId()).getFirst().getDeadlineAt();
+
+            mutableClock.setAt(hbRevokedDeadline.minusSeconds(1));
+            CountDownLatch lockHeld5 = new CountDownLatch(1);
+            CountDownLatch releaseLock5 = new CountDownLatch(1);
+            Future<Void> holder5 = holdAttemptRowLock(pool, hbRevoked.getId(), lockHeld5, releaseLock5);
+            assertThat(lockHeld5.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> hbRevokedFuture =
+                    pool.submit(() -> performHeartbeat(userId, hbRevoked.getId(), UUID.randomUUID()));
+            awaitAttemptRowLockWait();
+            assertThat(hbRevokedFuture.isDone()).isFalse();
             mutableClock.setAt(hbRevokedDeadline.plusSeconds(5));
-            MvcResult hbRevokedRes = performHeartbeat(userId, hbRevoked.getId(), UUID.randomUUID());
+            releaseLock5.countDown();
+            holder5.get(15, TimeUnit.SECONDS);
+
+            MvcResult hbRevokedRes = hbRevokedFuture.get(15, TimeUnit.SECONDS);
             assertThat(hbRevokedRes.getResponse().getStatus()).isEqualTo(409);
             assertThat(json(hbRevokedRes).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
             Attempt hbRevokedAfter = attemptRepository.findById(hbRevoked.getId()).orElseThrow();
             assertThat(hbRevokedAfter.getState()).isEqualTo(AttemptState.GRADING);
             assertThat(hbRevokedAfter.getEndReason()).isEqualTo(EndReason.TIME_UP);
             assertThat(hbRevokedAfter.getFinishedAt()).isEqualTo(hbRevokedDeadline);
+            assertThat(hbRevokedAfter.getEditSessionSeenAt()).isEqualTo(hbRevokedSeenAt);
         } finally {
             pool.shutdownNow();
         }
@@ -652,12 +670,17 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
             Integer waiting =
                     jdbc.queryForObject(
                             """
-                            SELECT COUNT(*) FROM pg_stat_activity
-                            WHERE datname = current_database()
-                              AND pid <> pg_backend_pid()
-                              AND state = 'active'
-                              AND wait_event_type = 'Lock'
-                              AND query ILIKE '%attempt.attempt%'
+                            SELECT COUNT(DISTINCT a.pid)
+                            FROM pg_stat_activity a
+                            JOIN pg_locks w ON w.pid = a.pid AND NOT w.granted
+                            JOIN pg_locks t ON t.pid = a.pid
+                                           AND t.locktype = 'tuple'
+                                           AND t.relation = CAST('attempt.attempt' AS regclass)
+                            WHERE a.datname = current_database()
+                              AND a.pid <> pg_backend_pid()
+                              AND a.state = 'active'
+                              AND a.wait_event_type = 'Lock'
+                              AND a.query ~* 'attempt\\.attempt([^_a-z0-9]|$)'
                             """,
                             Integer.class);
             if (waiting != null && waiting > 0) {
