@@ -401,6 +401,13 @@
       "saving": "Đang lưu...",
       "unsaved": "Chưa lưu"
     },
+    "segments": {
+      "commands": "{count, plural, other {# lệnh hỏi}}",
+      "maxPoints": "{points} điểm",
+      "navGroupLabel": "Nhóm phân đoạn {name}",
+      "range": "Câu {from}–{to}",
+      "ungrouped": "Câu hỏi khác"
+    },
     "tabLock": {
       "badge": "Chỉ xem",
       "description": "Tab này chỉ để xem. Đóng tab kia thì tab này tự động làm bài tiếp được.",
@@ -1429,6 +1436,24 @@
       "FULL": "Bài thi FULL",
       "PART": "Bài thi theo phần",
       "SUBJECT": "Bài thi theo môn"
+    },
+    "segments": {
+      "columns": {
+        "blank": "Bỏ trống",
+        "correct": "Đúng",
+        "partial": "Đúng một phần",
+        "pending": "Chờ chấm",
+        "range": "Phạm vi câu",
+        "score": "Điểm phân đoạn",
+        "segment": "Phân đoạn",
+        "wrong": "Sai"
+      },
+      "description": "Điểm từng phân đoạn hiển thị trong phạm vi bài làm.",
+      "manualChip": "Chấm tay",
+      "pendingDescription": "Điểm của phân đoạn đã chấm xong là điểm riêng của phân đoạn đó, chưa phải điểm tổng.",
+      "range": "Câu {from}–{to}",
+      "segmentScoreLabel": "Điểm phân đoạn",
+      "title": "Điểm theo phân đoạn"
     },
     "states": {
       "GRADING": "Đang chấm",

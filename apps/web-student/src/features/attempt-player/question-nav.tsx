@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Flag, LayoutGrid } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ItemCompletionStatus } from "./mappers";
+import { type AttemptDisplaySegmentView, groupNavItemsBySegment } from "./segments/segment-units";
 
 export type QuestionNavFilter = "all" | "unanswered" | "flagged";
 
@@ -20,6 +21,7 @@ export interface QuestionNavItem {
 
 export interface QuestionNavProps {
   items: QuestionNavItem[];
+  segments?: AttemptDisplaySegmentView[];
   currentUnitIndex: number;
   totalUnits: number;
   currentDisplayNumber: number;
@@ -35,6 +37,7 @@ export interface QuestionNavProps {
 
 interface QuestionNavGridProps {
   items: QuestionNavItem[];
+  segments?: AttemptDisplaySegmentView[];
   filter: QuestionNavFilter;
   onChangeFilter: (filter: QuestionNavFilter) => void;
   onSelectUnit: (unitIndex: number) => void;
@@ -42,11 +45,13 @@ interface QuestionNavGridProps {
 
 function QuestionNavGrid({
   items,
+  segments,
   filter,
   onChangeFilter,
   onSelectUnit,
 }: QuestionNavGridProps) {
   const t = useTranslations("attempt.nav");
+  const segT = useTranslations("attempt.segments");
 
   const answeredCount = useMemo(
     () => items.filter((item) => item.completion === "complete").length,
@@ -63,6 +68,11 @@ function QuestionNavGrid({
     return items;
   }, [filter, items]);
 
+  const segmentGroups = useMemo(() => {
+    if (!segments || segments.length === 0) return null;
+    return groupNavItemsBySegment(filteredItems, segments, items);
+  }, [filteredItems, items, segments]);
+
   function buildItemAriaLabel(item: QuestionNavItem): string {
     const parts: string[] = [`${item.displayNo}`];
     if (item.isCurrent) parts.push(t("stateCurrent"));
@@ -76,6 +86,51 @@ function QuestionNavGrid({
     parts.push(item.unsaved ? t("stateUnsaved") : t("stateSaved"));
     if (item.flagged) parts.push(t("stateFlagged"));
     return parts.join(", ");
+  }
+
+  function renderNavItemButton(item: QuestionNavItem) {
+    return (
+      <button
+        key={item.itemId}
+        type="button"
+        data-completion={item.completion}
+        data-flagged={item.flagged ? "true" : "false"}
+        data-unsaved={item.unsaved ? "true" : "false"}
+        aria-current={item.isCurrent ? "step" : undefined}
+        aria-label={buildItemAriaLabel(item)}
+        onClick={() => onSelectUnit(item.unitIndex)}
+        className={cn(
+          "relative inline-flex h-9 items-center justify-center rounded-lg border text-label font-semibold tabular-nums transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+          item.completion === "complete" &&
+            "border-primary-600 bg-primary-fill text-on-primary",
+          item.completion === "partial" &&
+            "border-primary-600 border-dashed bg-primary-50 text-primary-800",
+          item.completion === "blank" &&
+            "border-border bg-surface text-text hover:border-border-strong hover:bg-subtle",
+          item.isCurrent && "ring-2 ring-primary-700 ring-offset-2 ring-offset-surface",
+          focusRing,
+        )}
+      >
+        <span>{item.displayNo}</span>
+
+        {item.unsaved ? (
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 size-2.5 rounded-full border border-surface bg-warning"
+          />
+        ) : null}
+
+        {item.flagged ? (
+          <Flag
+            aria-hidden="true"
+            className={cn(
+              "absolute bottom-0.5 right-0.5 size-2.5",
+              item.completion === "complete" ? "text-gold-400" : "text-warning",
+            )}
+          />
+        ) : null}
+      </button>
+    );
   }
 
   return (
@@ -124,53 +179,34 @@ function QuestionNavGrid({
         <p className="rounded-lg border border-border bg-subtle px-3 py-4 text-center text-caption text-text-muted">
           {t("emptyFiltered")}
         </p>
+      ) : segmentGroups ? (
+        <div aria-label={t("gridLabel")} className="flex flex-col gap-3">
+          {segmentGroups.map((group, groupIdx) => (
+            <div
+              key={group.segment?.code ?? `seg-${groupIdx}`}
+              className="flex flex-col gap-1.5"
+            >
+              {group.segment ? (
+                <div data-exam-content className="text-caption font-semibold text-text-secondary">
+                  {group.segment.name || group.segment.code}
+                </div>
+              ) : (
+                <div className="text-caption font-semibold text-text-secondary">
+                  {segT("ungrouped")}
+                </div>
+              )}
+              <div className="grid grid-cols-5 gap-2">
+                {group.items.map(renderNavItemButton)}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div
           aria-label={t("gridLabel")}
           className="grid grid-cols-5 gap-2"
         >
-          {filteredItems.map((item) => (
-            <button
-              key={item.itemId}
-              type="button"
-              data-completion={item.completion}
-              data-flagged={item.flagged ? "true" : "false"}
-              data-unsaved={item.unsaved ? "true" : "false"}
-              aria-current={item.isCurrent ? "step" : undefined}
-              aria-label={buildItemAriaLabel(item)}
-              onClick={() => onSelectUnit(item.unitIndex)}
-              className={cn(
-                "relative inline-flex h-9 items-center justify-center rounded-lg border text-label font-semibold tabular-nums transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-                item.completion === "complete" &&
-                  "border-primary-600 bg-primary-fill text-on-primary",
-                item.completion === "partial" &&
-                  "border-primary-600 border-dashed bg-primary-50 text-primary-800",
-                item.completion === "blank" &&
-                  "border-border bg-surface text-text hover:border-border-strong hover:bg-subtle",
-                item.isCurrent && "ring-2 ring-primary-700 ring-offset-2 ring-offset-surface",
-                focusRing,
-              )}
-            >
-              <span>{item.displayNo}</span>
-
-              {item.unsaved ? (
-                <span
-                  aria-hidden="true"
-                  className="absolute -top-1 -right-1 size-2.5 rounded-full border border-surface bg-warning"
-                />
-              ) : null}
-
-              {item.flagged ? (
-                <Flag
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute bottom-0.5 right-0.5 size-2.5",
-                    item.completion === "complete" ? "text-gold-400" : "text-warning",
-                  )}
-                />
-              ) : null}
-            </button>
-          ))}
+          {filteredItems.map(renderNavItemButton)}
         </div>
       )}
 
@@ -208,6 +244,7 @@ function QuestionNavGrid({
 
 export function QuestionNav({
   items,
+  segments,
   currentUnitIndex,
   totalUnits,
   currentDisplayNumber,
@@ -294,6 +331,7 @@ export function QuestionNav({
     >
       <QuestionNavGrid
         items={items}
+        segments={segments}
         filter={filter}
         onChangeFilter={setFilter}
         onSelectUnit={onSelectUnit}
@@ -309,6 +347,7 @@ export function QuestionNav({
         </DialogHeader>
         <QuestionNavGrid
           items={items}
+          segments={segments}
           filter={filter}
           onChangeFilter={setFilter}
           onSelectUnit={(unitIndex) => {

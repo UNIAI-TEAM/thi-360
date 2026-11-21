@@ -3,6 +3,7 @@ import { createBrowserApiClient, toApiStatusError } from "@/lib/api/client";
 
 export type AttemptResultResponse = components["schemas"]["AttemptResultResponse"];
 export type AttemptResultPart = components["schemas"]["AttemptResultPart"];
+export type AttemptResultSegment = components["schemas"]["AttemptResultSegment"];
 export type AttemptResultSubject = components["schemas"]["AttemptResultSubject"];
 export type AttemptResultUnitStats = components["schemas"]["AttemptResultUnitStats"];
 export type AttemptResultVactComponent = components["schemas"]["AttemptResultVactComponent"];

@@ -401,6 +401,13 @@
       "saving": "Saving...",
       "unsaved": "Unsaved"
     },
+    "segments": {
+      "commands": "{count, plural, one {# item} other {# items}}",
+      "maxPoints": "{points} pts",
+      "navGroupLabel": "Segment {name}",
+      "range": "Questions {from}–{to}",
+      "ungrouped": "Other questions"
+    },
     "tabLock": {
       "badge": "Read-only",
       "description": "This tab is read-only. Closing the active tab will automatically allow editing here.",
@@ -1429,6 +1436,24 @@
       "FULL": "FULL exam",
       "PART": "Section exam",
       "SUBJECT": "Subject exam"
+    },
+    "segments": {
+      "columns": {
+        "blank": "Blank",
+        "correct": "Correct",
+        "partial": "Partial",
+        "pending": "Pending review",
+        "range": "Questions",
+        "score": "Segment score",
+        "segment": "Segment",
+        "wrong": "Wrong"
+      },
+      "description": "Scores by display segment within your exam scope.",
+      "manualChip": "Manual grading",
+      "pendingDescription": "Scores shown for graded segments are segment scores only, not the total exam score.",
+      "range": "Questions {from}–{to}",
+      "segmentScoreLabel": "Segment score",
+      "title": "Segment breakdown"
     },
     "states": {
       "GRADING": "Grading",

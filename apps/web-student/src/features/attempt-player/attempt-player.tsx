@@ -17,7 +17,14 @@ import { ApiStatusError } from "@/lib/api/client";
 import { webUrl } from "@/lib/env";
 import { useQuery } from "@tanstack/react-query";
 import { Button, cn, focusRing } from "@thi360/ui";
-import { Question, orderById } from "@thi360/ui/question";
+import {
+  AttemptAudioPlayer,
+  type AudioClosedReason,
+  type AudioPlayAdapter,
+  type AudioPlaybackSnapshot,
+  Question,
+  orderById,
+} from "@thi360/ui/question";
 import { buildLoginUrl } from "@thi360/web-kit/redirect";
 import {
   AlertCircle,
@@ -45,6 +52,11 @@ import {
   submitAttempt,
 } from "./api";
 import {
+  type AttemptAudioApi,
+  createAttemptAudioAdapter,
+  toAudioPlaybackSnapshot,
+} from "./audio/attempt-audio-adapter";
+import {
   AttemptTabLock,
   EditSessionController,
   type EditSessionSnapshot,
@@ -55,15 +67,16 @@ import { FinishPartDialog } from "./finish-part-dialog";
 import { LazyEssayEditor } from "./lazy-essay-editor";
 import {
   type ApiAnswerValue,
+  type AttemptAttachmentView,
   type AttemptItemView,
   type AttemptPartStateView,
   type AttemptStateResponse,
   buildQuestionSetKitValue,
-  buildQuestionUnits,
   classifyItemCompletion,
   getEssayLimitStatus,
   getLeafItems,
   parseLastPosition,
+  sanitizeItemAttachments,
   toApiAnswer,
   toKitAnswer,
 } from "./mappers";
@@ -71,6 +84,8 @@ import { PartChoiceView } from "./part-choice-view";
 import { PartNavigation } from "./part-navigation";
 import { QuestionNav, type QuestionNavItem } from "./question-nav";
 import { AttemptSaveQueue, type SaveStatusSnapshot } from "./save-queue";
+import { SegmentHeader } from "./segments/segment-header";
+import { buildSegmentedQuestionUnits } from "./segments/segment-units";
 import {
   type ServerClockAnchor,
   createServerClockAnchor,
@@ -108,6 +123,13 @@ export interface AttemptPlayerDeps {
   refreshSessionFn?: typeof refreshSession;
   navigateFn?: (url: string) => void;
   createTabLockChannelFn?: (name: string) => TabLockChannel | null;
+  audioApi?: AttemptAudioApi;
+}
+
+function extractAttemptAssetId(url: string | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/\/assets\/([^/?#]+)/i);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
 export interface AttemptPlayerProps {
@@ -314,6 +336,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       refreshSessionFn: deps.refreshSessionFn ?? refreshSession,
       navigateFn: deps.navigateFn ?? defaultNavigate,
       createTabLockChannelFn: deps.createTabLockChannelFn,
+      audioApi: deps.audioApi,
     }),
     [deps],
   );
@@ -331,6 +354,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   const [unitIndex, setUnitIndex] = useState(0);
   const [answersByItem, setAnswersByItem] = useState<Record<string, ApiAnswerValue | null>>({});
   const [flagsByItem, setFlagsByItem] = useState<Record<string, boolean>>({});
+  const [audioSnapshotsByAsset, setAudioSnapshotsByAsset] = useState<
+    Record<string, AudioPlaybackSnapshot>
+  >({});
+  const [audioStopSignal, setAudioStopSignal] = useState(0);
   const [saveStatus, setSaveStatus] = useState<SaveStatusSnapshot>(DEFAULT_SAVE_STATUS);
   const [sessionSnap, setSessionSnap] = useState<EditSessionSnapshot>(INITIAL_EDIT_SESSION_SNAP);
   const [tabRole, setTabRole] = useState<TabLockRole>("acquiring");
@@ -395,6 +422,17 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       setServerClock((prev) =>
         prev ? reanchorServerClock(prev, nextState.serverNow) : createServerClockAnchor(nextState.serverNow),
       );
+
+      if (Array.isArray(nextState.audioPlays)) {
+        const maxPlays = nextState.audioPolicy?.maxPlays ?? 2;
+        const nextSnapshots: Record<string, AudioPlaybackSnapshot> = {};
+        for (const entry of nextState.audioPlays) {
+          if (entry.assetId) {
+            nextSnapshots[entry.assetId] = toAudioPlaybackSnapshot(entry, maxPlays);
+          }
+        }
+        setAudioSnapshotsByAsset(nextSnapshots);
+      }
 
       if (nextState.state === "IN_PROGRESS") {
         setClosedEndReason(null);
@@ -490,6 +528,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         const controller = editSessionRef.current;
         if (!controller) return;
         if (nextRole === "secondary_readonly") {
+          setAudioStopSignal((n) => n + 1);
           controller.setReadonlyTab(true);
         } else if (nextRole === "primary_owner") {
           controller.setReadonlyTab(false);
@@ -511,8 +550,11 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         sessionSnapRef.current = snap;
         setSessionSnap(snap);
         if (snap.status === "takeover_required") {
+          setAudioStopSignal((n) => n + 1);
           setFinishDialogOpen(false);
           setSubmitDialogOpen(false);
+        } else if (snap.status === "evicted") {
+          setAudioStopSignal((n) => n + 1);
         }
         if (snap.status === "active" && saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
           void saveQueueRef.current.flushNow();
@@ -525,6 +567,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       },
       onAttemptClosed: (reason) => {
         if (!cancelled) {
+          setAudioStopSignal((n) => n + 1);
           if (reason === "TIME_UP") {
             setClosedEndReason("TIME_UP");
           }
@@ -568,10 +611,12 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         }
       },
       onSessionRevoked: () => {
+        setAudioStopSignal((n) => n + 1);
         editSession.markEvicted();
       },
       onAttemptOrPartClosed: (reason) => {
         if (!cancelled) {
+          setAudioStopSignal((n) => n + 1);
           if (reason === "TIME_UP") {
             setClosedEndReason("TIME_UP");
           }
@@ -630,7 +675,11 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           parseLastPosition(initialState.lastPosition as Record<string, unknown> | undefined)?.itemId ??
           meta?.lastPosition?.itemId;
         if (targetPart && preferredItemId) {
-          const units = buildQuestionUnits(targetPart.items, attemptId);
+          const units = buildSegmentedQuestionUnits(
+            targetPart.items,
+            attemptId,
+            targetPart.displaySegments,
+          );
           const matchedUnitIdx = units.findIndex(
             (u) => u.id === preferredItemId || u.leafItems.some((c) => c.itemId === preferredItemId),
           );
@@ -823,6 +872,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       setTimerTick({ deadlineKey: timerKey, remainingMs: nextMs });
       if (nextMs !== null && nextMs <= 0 && expiredHandledDeadlineRef.current !== activeDeadlineIso) {
         expiredHandledDeadlineRef.current = activeDeadlineIso;
+        setAudioStopSignal((n) => n + 1);
         setClosedEndReason((prev) => prev ?? "TIME_UP");
         window.setTimeout(() => {
           void reloadServerStateRef.current().catch(() => undefined);
@@ -891,12 +941,61 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   }, [awaitingChoiceDeadlineIso, hasServerClock]);
 
   const units = useMemo(
-    () => (activePart ? buildQuestionUnits(activePart.items, attemptId) : []),
+    () =>
+      activePart
+        ? buildSegmentedQuestionUnits(activePart.items, attemptId, activePart.displaySegments)
+        : [],
     [activePart, attemptId],
   );
 
   const safeUnitIndex = units.length > 0 ? Math.min(unitIndex, units.length - 1) : 0;
   const activeUnit = units[safeUnitIndex] ?? null;
+
+  const maxAudioPlays = attemptState?.audioPolicy?.maxPlays ?? 2;
+
+  const unitAttachments = useMemo(() => {
+    if (!activeUnit) return [];
+    const seenAssetIds = new Set<string>();
+    const merged: AttemptAttachmentView[] = [];
+    const pushList = (list: AttemptAttachmentView[]) => {
+      for (const att of list) {
+        const assetKey = att.assetId || extractAttemptAssetId(att.url);
+        if (assetKey) {
+          if (seenAssetIds.has(assetKey)) continue;
+          seenAssetIds.add(assetKey);
+        }
+        merged.push(att);
+      }
+    };
+    pushList(activeUnit.attachments);
+    for (const child of activeUnit.childItems) {
+      const childAudio = sanitizeItemAttachments(child.attachments, attemptId).filter((att) =>
+        att.mime?.startsWith("audio/"),
+      );
+      pushList(childAudio);
+    }
+    return merged;
+  }, [activeUnit, attemptId]);
+
+  const activeSessionId = sessionSnap.sessionId ?? null;
+  const audioAdaptersByAsset = useMemo(() => {
+    const map: Record<string, AudioPlayAdapter> = {};
+    for (const att of unitAttachments) {
+      if (!att.mime?.startsWith("audio/")) continue;
+      const assetId = att.assetId || extractAttemptAssetId(att.url);
+      if (assetId && !map[assetId]) {
+        map[assetId] = createAttemptAudioAdapter({
+          attemptId,
+          assetId,
+          maxPlays: maxAudioPlays,
+          getSessionId: () => activeSessionId,
+          reloadAttemptState: () => resolvedDeps.loadAttemptStateFn(attemptId),
+          audioApi: resolvedDeps.audioApi,
+        });
+      }
+    }
+    return map;
+  }, [activeSessionId, attemptId, maxAudioPlays, resolvedDeps, unitAttachments]);
 
   const isSecondaryTab = tabRole === "secondary_readonly";
   const isEvicted = sessionSnap.status === "evicted";
@@ -1432,6 +1531,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   }
 
   async function handleFinishPart() {
+    setAudioStopSignal((n) => n + 1);
     const partId = activePart?.partId;
     const sessionId = editSessionRef.current?.getSessionId();
     const queue = saveQueueRef.current;
@@ -1480,6 +1580,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   }
 
   async function handleConfirmSubmit() {
+    setAudioStopSignal((n) => n + 1);
     const sessionId = editSessionRef.current?.getSessionId();
     const queue = saveQueueRef.current;
     if (!sessionId || !queue) return;
@@ -1560,6 +1661,25 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           ? `${t("saveStatus.unsaved")} · ${saveStatusReasonText}`
           : t("saveStatus.unsaved");
 
+  let activeAudioClosedReason: AudioClosedReason | null = null;
+  if (isEvicted || sessionSnap.status === "takeover_required") {
+    activeAudioClosedReason = "EVICTED";
+  } else if (closedEndReason === "TIME_UP" || (remainingMs !== null && remainingMs <= 0)) {
+    activeAudioClosedReason = "TIME_UP";
+  } else if (
+    submitDialogStatus === "submitting" ||
+    closedEndReason === "SUBMITTED" ||
+    CLOSED_STATES.has(attemptState.state)
+  ) {
+    activeAudioClosedReason = "SUBMITTED";
+  } else if (
+    finishDialogStatus === "submitting" ||
+    activePart?.state === "CLOSED" ||
+    activePart?.state === "SKIPPED"
+  ) {
+    activeAudioClosedReason = "PART_CLOSED";
+  }
+
   return (
     <div className="flex min-h-dvh flex-col bg-page text-text">
       <header className="sticky top-0 z-20 border-b border-border bg-surface">
@@ -1580,7 +1700,13 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                 setSelectedPartOrd(ord);
                 setUnitIndex(0);
                 const targetPart = parts.find((p) => p.ord === ord);
-                const targetUnits = targetPart ? buildQuestionUnits(targetPart.items, attemptId) : [];
+                const targetUnits = targetPart
+                  ? buildSegmentedQuestionUnits(
+                      targetPart.items,
+                      attemptId,
+                      targetPart.displaySegments,
+                    )
+                  : [];
                 const targetItemId = targetUnits[0]?.leafItems[0]?.itemId ?? targetUnits[0]?.id;
                 if (targetPart?.partId && targetItemId) {
                   const hadDirtyItems = (saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0;
@@ -1719,6 +1845,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         ) : activeUnit ? (
           <QuestionNav
             items={navItems}
+            segments={activePart?.displaySegments}
             currentUnitIndex={safeUnitIndex}
             totalUnits={units.length}
             currentDisplayNumber={activeUnit.displayStart}
@@ -1730,23 +1857,62 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             canNext={safeUnitIndex < units.length - 1}
             footer={<p className="text-caption text-text-muted">{t("player.shortcutHint")}</p>}
           >
+            {activeUnit.segment ? (
+              <SegmentHeader
+                segment={activeUnit.segment}
+                isSegmentStart={activeUnit.isSegmentStart}
+              />
+            ) : null}
+
             <div className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
-              {activeUnit.attachments.length > 0 ? (
+              {unitAttachments.length > 0 ? (
                 <div
                   aria-label={t("player.attachmentsLabel")}
                   className="mb-4 space-y-2 rounded-xl border border-border bg-subtle p-3.5"
                 >
-                  {activeUnit.attachments.map((att, idx) => {
+                  {unitAttachments.map((att, idx) => {
                     const safeUrl = att.url;
                     if (!safeUrl) return null;
                     if (att.mime?.startsWith("audio/")) {
+                      const resolvedAssetId = att.assetId || extractAttemptAssetId(safeUrl);
+                      const adapter = resolvedAssetId
+                        ? audioAdaptersByAsset[resolvedAssetId]
+                        : undefined;
+                      if (!resolvedAssetId || !adapter) return null;
+                      const initialAudioState =
+                        audioSnapshotsByAsset[resolvedAssetId] ??
+                        toAudioPlaybackSnapshot(undefined, maxAudioPlays);
                       return (
-                        <audio
-                          key={att.assetId ?? idx}
-                          controls
-                          preload="none"
-                          src={safeUrl}
-                          className="w-full"
+                        <AttemptAudioPlayer
+                          key={`${resolvedAssetId}:${sessionSnap.sessionId ?? "pending"}`}
+                          assetId={resolvedAssetId}
+                          fileName={att.fileName}
+                          initialState={initialAudioState}
+                          maxPlays={maxAudioPlays}
+                          adapter={adapter}
+                          disabled={
+                            isReadOnly || isSessionClaimPending || !sessionSnap.sessionId
+                          }
+                          closedReason={activeAudioClosedReason}
+                          stopSignal={audioStopSignal}
+                          isOnline={saveStatus.isOnline}
+                          onStateChange={(snap) =>
+                            setAudioSnapshotsByAsset((prev) => ({
+                              ...prev,
+                              [resolvedAssetId]: snap,
+                            }))
+                          }
+                          onClosed={(reason) => {
+                            if (reason === "TIME_UP") {
+                              setClosedEndReason("TIME_UP");
+                            }
+                            void reloadServerStateRef.current().catch(() => undefined);
+                          }}
+                          onSessionRevoked={() => {
+                            setAudioStopSignal((n) => n + 1);
+                            editSessionRef.current?.markEvicted();
+                          }}
+                          onUnauthorized={() => void handleAttemptUnauthorizedRef.current()}
                         />
                       );
                     }

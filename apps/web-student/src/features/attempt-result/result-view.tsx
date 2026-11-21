@@ -69,6 +69,7 @@ import {
   resolveCatalogLabel,
   resolveResultStatusTone,
 } from "./format";
+import { SegmentBreakdownSection } from "./segment-breakdown-section";
 import { ThinkingSubsections } from "./thinking-subsections";
 import { useInlineOverflow } from "./use-inline-overflow";
 
@@ -1164,6 +1165,14 @@ function LoadedResultContent({
             ))}
           </div>
         </section>
+      )}
+
+      {result.segments && result.segments.length > 0 && (
+        <SegmentBreakdownSection
+          segments={result.segments}
+          hasPendingAttempt={result.state === "PENDING_REVIEW" && !result.regrading}
+          locale={locale}
+        />
       )}
 
       {!isVact && result.subjects && result.subjects.length > 0 && (
