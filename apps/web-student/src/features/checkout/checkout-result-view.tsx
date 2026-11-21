@@ -23,6 +23,7 @@ import {
   mapOrderActionError,
   mapVnpayResponseCode,
   type OrderErrorKey,
+  shouldResetIdempotencyKey,
 } from "@/features/orders/format";
 import { loadOptionalSession, type OptionalSessionLoader } from "@/features/session/api";
 import { useOptionalSession } from "@/features/session/use-optional-session";
@@ -93,6 +94,7 @@ export function CheckoutResultView({
 
   const retryPayKeyRef = useRef<string | null>(null);
   const pollStartedAtRef = useRef<number | null>(null);
+  const inFlightRetryPayRef = useRef(false);
 
   const sessionQuery = useOptionalSession(loadCurrentSession);
   const session = sessionQuery.data;
@@ -114,18 +116,35 @@ export function CheckoutResultView({
       verifyQuery.error.status === 422 ||
       verifyQuery.error.status === 400);
 
+  const isVerifyNotFound =
+    hasVnpParams &&
+    verifyQuery.isError &&
+    verifyQuery.error instanceof ApiStatusError &&
+    (verifyQuery.error.status === 404 || verifyQuery.error.code === "ORDER_NOT_FOUND");
+
   const verifiedOrderCode = hasVnpParams ? (verifyQuery.data?.orderCode ?? "") : directOrderCode.trim();
+  const prevOrderCodeRef = useRef(verifiedOrderCode);
+
+  useEffect(() => {
+    if (prevOrderCodeRef.current === verifiedOrderCode) return;
+    prevOrderCodeRef.current = verifiedOrderCode;
+    setTimedOut(false);
+    setRetryPayError(null);
+    retryPayKeyRef.current = null;
+    pollStartedAtRef.current = null;
+  }, [verifiedOrderCode]);
+
   const orderResultUrl = verifiedOrderCode
     ? `/checkout/result?order=${encodeURIComponent(verifiedOrderCode)}`
     : currentResultUrl;
   const canLoadOrder = Boolean(
     isStudent &&
       verifiedOrderCode &&
-      (!hasVnpParams || (verifyQuery.isSuccess && !isInvalidSignature)),
+      (!hasVnpParams || (verifyQuery.isSuccess && !isInvalidSignature && !isVerifyNotFound)),
   );
 
   const orderQuery = useQuery({
-    queryKey: MY_ORDER_DETAIL_QUERY_KEY(verifiedOrderCode),
+    queryKey: MY_ORDER_DETAIL_QUERY_KEY(verifiedOrderCode, session?.id ?? null),
     queryFn: () => loadOrderDetail(verifiedOrderCode),
     enabled: canLoadOrder,
     retry: false,
@@ -138,13 +157,22 @@ export function CheckoutResultView({
     orderQuery.error instanceof ApiStatusError &&
     (orderQuery.error.status === 404 || orderQuery.error.code === "ORDER_NOT_FOUND");
 
+  const verifiedFailed = hasVnpParams && verifyQuery.data?.paymentState === "FAILED";
+  const isFailedAttempt = Boolean(
+    order && order.state === "PENDING_PAYMENT" && (latestPayment?.state === "FAILED" || verifiedFailed),
+  );
+
   const shouldPoll =
     Boolean(order) &&
     !timedOut &&
-    (order!.state === "PAID" ||
-      (order!.state === "PENDING_PAYMENT" && latestPayment?.state !== "FAILED"));
+    (order!.state === "PAID" || (order!.state === "PENDING_PAYMENT" && !isFailedAttempt));
 
-  const { isFetching: isOrderFetching, dataUpdatedAt: orderUpdatedAt, refetch: refetchOrder } = orderQuery;
+  const {
+    isFetching: isOrderFetching,
+    dataUpdatedAt: orderUpdatedAt,
+    errorUpdatedAt: orderErrorUpdatedAt,
+    refetch: refetchOrder,
+  } = orderQuery;
 
   useEffect(() => {
     if (!shouldPoll) {
@@ -169,10 +197,11 @@ export function CheckoutResultView({
     }, remaining);
 
     return () => window.clearTimeout(timer);
-  }, [shouldPoll, order?.state, isOrderFetching, orderUpdatedAt, refetchOrder]);
+  }, [shouldPoll, order?.state, isOrderFetching, orderUpdatedAt, orderErrorUpdatedAt, refetchOrder]);
 
   async function handleRetryPay() {
-    if (!order || retryingPay) return;
+    if (!order || inFlightRetryPayRef.current || retryingPay) return;
+    inFlightRetryPayRef.current = true;
     setRetryPayError(null);
     const key = retryPayKeyRef.current ?? crypto.randomUUID();
     retryPayKeyRef.current = key;
@@ -182,10 +211,13 @@ export function CheckoutResultView({
       retryPayKeyRef.current = null;
       navigate(response.paymentUrl);
     } catch (error) {
-      retryPayKeyRef.current = null;
+      if (shouldResetIdempotencyKey(error)) {
+        retryPayKeyRef.current = null;
+      }
       setRetryPayError(mapOrderActionError(error));
       void orderQuery.refetch();
     } finally {
+      inFlightRetryPayRef.current = false;
       setRetryingPay(false);
     }
   }
@@ -200,24 +232,35 @@ export function CheckoutResultView({
     ? { kind: "user", session }
     : sessionQuery.isLoading
       ? { kind: "loading" }
-      : { kind: "none" };
+      : sessionQuery.isError
+        ? { kind: "none" }
+        : { kind: "guest" };
 
   const supportSummary = formatOrderSupportSummary();
 
+  function renderLoadingCard(compact = false) {
+    return (
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label={common("loading")}
+        className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6"
+      >
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-5 w-full" />
+        {!compact && <Skeleton className="h-10 w-44" />}
+      </div>
+    );
+  }
+
   function renderBody() {
     if (hasVnpParams && verifyQuery.isLoading) {
-      return (
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-5 w-full" />
-          <Skeleton className="h-10 w-44" />
-        </div>
-      );
+      return renderLoadingCard();
     }
 
     if (isInvalidSignature) {
       return (
-        <section className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
+        <section role="alert" className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
           <div className="flex items-start gap-3">
             <XCircle aria-hidden className="mt-0.5 size-6 shrink-0 text-danger" />
             <div className="flex flex-col gap-1.5">
@@ -237,9 +280,40 @@ export function CheckoutResultView({
       );
     }
 
+    if (isVerifyNotFound) {
+      return (
+        <EmptyState
+          headingLevel={1}
+          icon={<TriangleAlert />}
+          title={ordersT("notFound.title")}
+          description={t("verifyNotFoundBody")}
+          action={
+            isStudent ? (
+              <Button asChild variant="primary">
+                <Link href="/account/orders">{t("viewOrders")}</Link>
+              </Button>
+            ) : session && session.access !== "EXAM" ? (
+              <Button asChild variant="primary">
+                <a href={adminUrl()}>{ordersT("adminNotice.cta")}</a>
+              </Button>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button asChild variant="primary">
+                  <Link href={withCallbackUrl("/login", currentResultUrl)}>{headerT("login")}</Link>
+                </Button>
+                <Button asChild variant="secondary">
+                  <Link href="/">{common("backHome")}</Link>
+                </Button>
+              </div>
+            )
+          }
+        />
+      );
+    }
+
     if (hasVnpParams && verifyQuery.isError) {
       return (
-        <section className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
+        <section role="alert" className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
           <div className="flex items-start gap-3">
             <TriangleAlert aria-hidden className="mt-0.5 size-6 shrink-0 text-danger" />
             <div className="flex flex-col gap-1.5">
@@ -260,11 +334,22 @@ export function CheckoutResultView({
     }
 
     if (sessionQuery.isLoading) {
+      return renderLoadingCard(true);
+    }
+
+    if (sessionQuery.isError) {
       return (
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-5 w-full" />
-        </div>
+        <EmptyState
+          headingLevel={1}
+          icon={<TriangleAlert />}
+          title={t("loadErrorHeading")}
+          description={t("loadErrorBody")}
+          action={
+            <Button type="button" variant="secondary" onClick={() => void sessionQuery.refetch()}>
+              {common("retry")}
+            </Button>
+          }
+        />
       );
     }
 
@@ -272,6 +357,7 @@ export function CheckoutResultView({
       if (!verifiedOrderCode) {
         return (
           <EmptyState
+            headingLevel={1}
             icon={<TriangleAlert />}
             title={t("missingOrderHeading")}
             description={t("missingOrderBody")}
@@ -287,9 +373,27 @@ export function CheckoutResultView({
       const vnpState = verifyQuery.data?.paymentState;
       const loginHref = withCallbackUrl("/login", orderResultUrl);
 
+      if (!hasVnpParams) {
+        return (
+          <section className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-6">
+            <div className="flex flex-col gap-1.5">
+              <h1 className="text-h2 font-bold text-text">{t("guestOrderSignInHeading")}</h1>
+              <p className="text-body text-text-secondary">
+                {t("guestOrderSignInBody", { code: verifiedOrderCode })}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild variant="primary">
+                <Link href={loginHref}>{t("guestSignInCheck")}</Link>
+              </Button>
+            </div>
+          </section>
+        );
+      }
+
       if (vnpState === "SUCCEEDED") {
         return (
-          <section className="flex flex-col gap-5 rounded-xl border border-primary/30 bg-surface p-6">
+          <section className="flex flex-col gap-5 rounded-xl border border-border-primary bg-surface p-6">
             <div className="flex items-start gap-3">
               <CheckCircle2 aria-hidden className="mt-0.5 size-6 shrink-0 text-primary-text" />
               <div className="flex flex-col gap-1.5">
@@ -314,7 +418,7 @@ export function CheckoutResultView({
       if (vnpState === "FAILED") {
         const reason = ordersT(`vnpayReasons.${mapVnpayResponseCode(vnpResponseCode)}`);
         return (
-          <section className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
+          <section role="alert" className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
             <div className="flex items-start gap-3">
               <XCircle aria-hidden className="mt-0.5 size-6 shrink-0 text-danger" />
               <div className="flex flex-col gap-1.5">
@@ -335,7 +439,7 @@ export function CheckoutResultView({
 
       return (
         <section className="flex flex-col gap-5 rounded-xl border border-warning bg-surface p-6">
-          <div className="flex items-start gap-3">
+          <div role="status" className="flex items-start gap-3">
             <Clock aria-hidden className="mt-0.5 size-6 shrink-0 text-warning" />
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
@@ -359,6 +463,7 @@ export function CheckoutResultView({
     if (session.access !== "EXAM") {
       return (
         <EmptyState
+          headingLevel={1}
           icon={<TriangleAlert />}
           title={ordersT("adminNotice.title")}
           description={ordersT("adminNotice.description")}
@@ -374,6 +479,7 @@ export function CheckoutResultView({
     if (!verifiedOrderCode) {
       return (
         <EmptyState
+          headingLevel={1}
           icon={<TriangleAlert />}
           title={t("missingOrderHeading")}
           description={t("missingOrderBody")}
@@ -386,19 +492,14 @@ export function CheckoutResultView({
       );
     }
 
-    if (orderQuery.isLoading) {
-      return (
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-6">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-5 w-full" />
-          <Skeleton className="h-10 w-44" />
-        </div>
-      );
+    if (orderQuery.isLoading && !order) {
+      return renderLoadingCard();
     }
 
-    if (isOrderNotFound) {
+    if (isOrderNotFound && !order) {
       return (
         <EmptyState
+          headingLevel={1}
           icon={<TriangleAlert />}
           title={t("notOwnedHeading")}
           description={t("notOwnedBody", { code: verifiedOrderCode, username: session.username })}
@@ -416,14 +517,15 @@ export function CheckoutResultView({
       );
     }
 
-    if (orderQuery.isError || !order) {
+    if (!order) {
       return (
         <EmptyState
+          headingLevel={1}
           icon={<TriangleAlert />}
           title={t("loadErrorHeading")}
           description={t("loadErrorBody")}
           action={
-            <Button type="button" variant="secondary" onClick={() => void orderQuery.refetch()}>
+            <Button type="button" variant="secondary" onClick={handleCheckAgain}>
               {common("retry")}
             </Button>
           }
@@ -434,7 +536,7 @@ export function CheckoutResultView({
     if (order.state === "FULFILLED") {
       const isFreeVoucher = order.amountDueVnd === 0 && order.voucherDiscountVnd > 0;
       return (
-        <section className="flex flex-col gap-5 rounded-xl border border-primary/30 bg-surface p-6">
+        <section className="flex flex-col gap-5 rounded-xl border border-border-primary bg-surface p-6">
           <div className="flex items-start gap-3">
             <CheckCircle2 aria-hidden className="mt-0.5 size-6 shrink-0 text-primary-text" />
             <div className="flex flex-col gap-1.5">
@@ -475,11 +577,15 @@ export function CheckoutResultView({
       );
     }
 
-    if (order.state === "PENDING_PAYMENT" && latestPayment?.state === "FAILED") {
-      const reasonText = ordersT(`vnpayReasons.${mapVnpayResponseCode(latestPayment.responseCode)}`);
+    if (isFailedAttempt) {
+      const reasonCode =
+        latestPayment?.state === "FAILED"
+          ? latestPayment.responseCode
+          : (latestPayment?.responseCode ?? vnpResponseCode);
+      const reasonText = ordersT(`vnpayReasons.${mapVnpayResponseCode(reasonCode)}`);
       return (
         <section className="flex flex-col gap-5 rounded-xl border border-danger/30 bg-surface p-6">
-          <div className="flex items-start gap-3">
+          <div role="alert" className="flex items-start gap-3">
             <XCircle aria-hidden className="mt-0.5 size-6 shrink-0 text-danger" />
             <div className="flex flex-col gap-1.5">
               <h1 className="text-h2 font-bold text-text">{t("failedHeading")}</h1>
@@ -493,7 +599,8 @@ export function CheckoutResultView({
               {order.productName}
             </span>
             <span>
-              {t("txnRefLabel")} {latestPayment.txnRef} · {storefront("price", { amount: order.amountDueVnd })}
+              {latestPayment?.txnRef ? `${t("txnRefLabel")} ${latestPayment.txnRef}` : order.code} ·{" "}
+              {storefront("price", { amount: order.amountDueVnd })}
             </span>
           </div>
 
@@ -510,7 +617,7 @@ export function CheckoutResultView({
               loading={retryingPay}
               onClick={() => void handleRetryPay()}
             >
-              {retryingPay ? t("retryingPay") : t("retryPay")}
+              {t("retryPay")}
             </Button>
             <Button asChild variant="secondary">
               <Link href={`/account/orders/${encodeURIComponent(order.code)}`}>{t("viewOrder")}</Link>
@@ -523,7 +630,7 @@ export function CheckoutResultView({
     if (order.state === "PENDING_PAYMENT" || order.state === "PAID") {
       return (
         <section className="flex flex-col gap-5 rounded-xl border border-warning bg-surface p-6">
-          <div className="flex items-start gap-3">
+          <div role="status" aria-live="polite" className="flex items-start gap-3">
             <Clock aria-hidden className="mt-0.5 size-6 shrink-0 text-warning" />
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
@@ -547,6 +654,16 @@ export function CheckoutResultView({
               )}
             </div>
           </div>
+
+          {orderQuery.isError && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-caption font-medium text-warning"
+            >
+              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>{t("pollErrorNotice")}</span>
+            </p>
+          )}
 
           <div className="flex flex-col gap-1 rounded-lg bg-page p-4 text-caption text-text-secondary tabular-nums">
             <span data-exam-content className="text-body font-semibold text-text">
@@ -592,7 +709,11 @@ export function CheckoutResultView({
         </div>
         <div className="flex flex-wrap gap-3">
           {order.replacedByOrderCode ? (
-            <Button asChild variant="primary">
+            <Button
+              asChild
+              variant="primary"
+              className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
+            >
               <Link href={`/account/orders/${encodeURIComponent(order.replacedByOrderCode)}`}>
                 {ordersT("actions.viewReplacement", { code: order.replacedByOrderCode })}
               </Link>

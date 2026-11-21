@@ -49,6 +49,7 @@ export function StudentHomeView({
 
         {sessionQuery.isError && (
           <EmptyState
+            headingLevel={1}
             icon={<TriangleAlert />}
             title={t("errorLoadAccountTitle")}
             description={t("errorLoadAccountDescription")}

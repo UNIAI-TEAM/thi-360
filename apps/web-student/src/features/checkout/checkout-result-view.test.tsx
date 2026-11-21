@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OrderDetail } from "@/features/orders/api";
@@ -95,10 +95,19 @@ describe("CheckoutResultView", () => {
     expect(screen.getByText("0 đ (đã áp dụng voucher)")).toBeInTheDocument();
   });
 
-  it("hiện Thanh toán chưa thành công kèm lý do và Thanh toán lại gọi /pay (AC-2)", async () => {
+  it("hiện Thanh toán chưa thành công kèm lý do, Thanh toán lại giữ Idempotency-Key qua 500 và giữ tĩnh nhãn nút (AC-2, R1-32, R1-65)", async () => {
     const user = userEvent.setup();
     navState.search = "vnp_TxnRef=DHFAIL0101&vnp_ResponseCode=24&vnp_SecureHash=valid";
-    const payOrder = vi.fn().mockResolvedValue({ paymentUrl: "http://mock-vnpay/retry02" });
+    let resolveSecondPay!: (val: { paymentUrl: string }) => void;
+    const payOrder = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(500, "Server error"))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecondPay = resolve;
+          }),
+      );
     const navigate = vi.fn();
 
     renderWithProviders(
@@ -132,18 +141,141 @@ describe("CheckoutResultView", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Thanh toán chưa thành công" })).toBeInTheDocument();
     expect(screen.getByText("Bạn đã hủy giao dịch trên VNPAY.")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Thanh toán lại" }));
-    expect(payOrder).toHaveBeenCalledWith("DHFAIL01", expect.any(String));
+    const retryBtn = screen.getByRole("button", { name: "Thanh toán lại" });
+    await user.click(retryBtn);
+    const firstKey = payOrder.mock.calls[0]![1];
+    expect(await screen.findByText("Không thực hiện được thao tác. Vui lòng thử lại hoặc tạo đơn mới.")).toBeInTheDocument();
+
+    await user.click(retryBtn);
+    // R1-65: giữ nguyên nhãn nút khi loading
+    expect(retryBtn).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("button", { name: "Đang chuyển tới VNPAY..." })).toBeNull();
+    // R1-32: retry sau 500 dùng lại đúng Idempotency-Key
+    expect(payOrder.mock.calls[1]![1]).toBe(firstKey);
+
+    resolveSecondPay({ paymentUrl: "http://mock-vnpay/retry02" });
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(navigate).toHaveBeenCalledWith("http://mock-vnpay/retry02");
   });
 
-  it("poll mỗi 2 giây và dừng ở 60 giây với màn hình Đang kiểm tra thanh toán (AC-3, AC-5)", async () => {
+  it("xử lý verifyReturn FAILED ngay cả khi latestPayment còn CREATED do trễ IPN (R1-11)", async () => {
+    navState.search = "vnp_TxnRef=DHLAG0101&vnp_ResponseCode=24&vnp_SecureHash=valid";
+
+    renderWithProviders(
+      <CheckoutResultView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        verifyReturn={async () => ({ orderCode: "DHLAG01", paymentState: "FAILED" })}
+        loadOrderDetail={async () =>
+          makeOrder({
+            code: "DHLAG01",
+            state: "PENDING_PAYMENT",
+            fulfilledAt: undefined,
+            payments: [
+              {
+                id: "pay-1",
+                attemptSeq: 1,
+                txnRef: "DHLAG0101",
+                amountVnd: 300000,
+                state: "CREATED",
+                duplicate: false,
+                createdAt: "2026-11-21T03:01:00Z",
+              },
+            ],
+          })
+        }
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Thanh toán chưa thành công" })).toBeInTheDocument();
+    expect(screen.getByText("Bạn đã hủy giao dịch trên VNPAY.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thanh toán lại" })).toBeInTheDocument();
+  });
+
+  it("poll mỗi 2 giây, hỗ trợ order.state=PAID (0 đ CHECKING AC-5), giữ card khi poll lỗi tạm thời và reset khi đổi verifiedOrderCode (AC-3, AC-5, R1-9, R1-31, R1-35, R1-48)", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     try {
+      // Phần A: PAID (0 đ CHECKING AC-5) poll 2s -> FULFILLED
+      navState.search = "order=DHPAID0&state=checking";
+      const loadPaid = vi
+        .fn()
+        .mockResolvedValueOnce(
+          makeOrder({
+            code: "DHPAID0",
+            state: "PAID",
+            paymentMethod: "FREE",
+            amountDueVnd: 0,
+            fulfilledAt: undefined,
+            payments: [],
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeOrder({
+            code: "DHPAID0",
+            state: "FULFILLED",
+            paymentMethod: "FREE",
+            amountDueVnd: 0,
+            voucherDiscountVnd: 300000,
+          }),
+        );
+
+      const paidView = renderWithProviders(
+        <CheckoutResultView loadCurrentSession={async () => STUDENT_SESSION} loadOrderDetail={loadPaid} />,
+      );
+
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
+      expect(screen.getByText("Đang kiểm tra")).toBeInTheDocument();
+      expect(screen.getAllByText(/DHPAID0/).length).toBeGreaterThan(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(screen.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeInTheDocument();
+      paidView.unmount();
+
+      // Phần B: Lỗi poll tạm thời giữ checking card và tự phục hồi (R1-9)
+      navState.search = "order=DHFLAKY&state=checking";
+      const loadFlaky = vi
+        .fn()
+        .mockResolvedValueOnce(makeOrder({ code: "DHFLAKY", state: "PENDING_PAYMENT", fulfilledAt: undefined }))
+        .mockRejectedValueOnce(new ApiStatusError(500, "Transient blip"))
+        .mockResolvedValueOnce(makeOrder({ code: "DHFLAKY", state: "FULFILLED" }));
+
+      const flakyView = renderWithProviders(
+        <CheckoutResultView loadCurrentSession={async () => STUDENT_SESSION} loadOrderDetail={loadFlaky} />,
+      );
+
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      // Vẫn giữ màn checking, hiện cảnh báo không phá hủy
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent("Tạm thời không kiểm tra được trạng thái mới nhất");
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(screen.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeInTheDocument();
+      flakyView.unmount();
+
+      // Phần C: Timeout 60s dừng poll và đổi verifiedOrderCode reset timedOut (AC-3, R1-31)
       navState.search = "order=DHPEND60&state=checking";
       const loadOrderDetail = vi.fn(async () =>
         makeOrder({
-          code: "DHPEND60",
+          code: navState.search.includes("DHNEW02") ? "DHNEW02" : "DHPEND60",
           state: "PENDING_PAYMENT",
           fulfilledAt: undefined,
           payments: [
@@ -160,7 +292,7 @@ describe("CheckoutResultView", () => {
         }),
       );
 
-      renderWithProviders(
+      const timeoutView = renderWithProviders(
         <CheckoutResultView loadCurrentSession={async () => STUDENT_SESSION} loadOrderDetail={loadOrderDetail} />,
       );
 
@@ -171,8 +303,6 @@ describe("CheckoutResultView", () => {
       }
 
       expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
-      expect(screen.getByText("Đang kiểm tra")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Xem chi tiết đơn" })).toHaveAttribute("href", "/account/orders/DHPEND60");
       expect(loadOrderDetail).toHaveBeenCalledTimes(1);
 
       await act(async () => {
@@ -201,12 +331,24 @@ describe("CheckoutResultView", () => {
         await vi.advanceTimersByTimeAsync(1);
       });
       expect(loadOrderDetail).toHaveBeenCalledTimes(countAtTimeout + 1);
+
+      // R1-31: đổi sang order khác phải reset timedOut
+      navState.search = "order=DHNEW02&state=checking";
+      timeoutView.rerender(
+        <CheckoutResultView loadCurrentSession={async () => STUDENT_SESSION} loadOrderDetail={loadOrderDetail} />,
+      );
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+      }
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("chạy ở chế độ khách khi chưa đăng nhập mà không gọi /me/orders (AC-13)", async () => {
+  it("chạy ở chế độ khách khi chưa đăng nhập, hiện link Đăng nhập/Đăng ký ở header và lời nhắc trung lập cho ?order= (AC-13, R1-10, R1-66)", async () => {
     navState.search = "vnp_TxnRef=DHGUEST01&vnp_ResponseCode=00&vnp_SecureHash=valid";
     const loadOrderDetail = vi.fn();
 
@@ -219,12 +361,29 @@ describe("CheckoutResultView", () => {
     );
 
     expect(await screen.findByRole("heading", { level: 1, name: "Thanh toán thành công" })).toBeInTheDocument();
+    const banner = screen.getByRole("banner");
+    expect(within(banner).getByRole("link", { name: "Đăng nhập" })).toBeInTheDocument();
+    expect(within(banner).getByRole("link", { name: "Đăng ký" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Đăng nhập để xem bài thi" })).toHaveAttribute(
       "href",
       "/login?callbackUrl=%2Fcheckout%2Fresult%3Forder%3DDHGUEST01",
     );
     expect(loadOrderDetail).not.toHaveBeenCalled();
     okGuest.unmount();
+
+    // R1-10: ?order= không có vnp_* -> lời nhắc trung lập, KHÔNG có chip "Đang kiểm tra"
+    navState.search = "order=DHBOOKMARK1";
+    const bookmarkGuest = renderWithProviders(
+      <CheckoutResultView loadCurrentSession={async () => null} loadOrderDetail={loadOrderDetail} />,
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Đăng nhập để xem trạng thái đơn hàng" })).toBeInTheDocument();
+    expect(screen.getByText("Đăng nhập để xem kết quả đơn DHBOOKMARK1.")).toBeInTheDocument();
+    expect(screen.queryByText("Đang kiểm tra")).toBeNull();
+    expect(screen.getByRole("link", { name: "Đăng nhập để kiểm tra đơn" })).toHaveAttribute(
+      "href",
+      "/login?callbackUrl=%2Fcheckout%2Fresult%3Forder%3DDHBOOKMARK1",
+    );
+    bookmarkGuest.unmount();
 
     navState.search = "vnp_TxnRef=DHGUEST02&vnp_ResponseCode=24&vnp_SecureHash=valid";
     const failedGuest = renderWithProviders(
@@ -244,12 +403,47 @@ describe("CheckoutResultView", () => {
 
     navState.search = "";
     renderWithProviders(<CheckoutResultView loadCurrentSession={async () => null} loadOrderDetail={loadOrderDetail} />);
-    expect(await screen.findByRole("heading", { name: "Thiếu thông tin giao dịch" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute(
+    expect(await screen.findByRole("heading", { level: 1, name: "Thiếu thông tin giao dịch" })).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).getByRole("link", { name: "Đăng nhập" })).toHaveAttribute(
       "href",
       "/login?callbackUrl=%2Fcheckout%2Fresult",
     );
     expect(loadOrderDetail).not.toHaveBeenCalled();
+  });
+
+  it("xử lý lỗi sessionQuery 500 với nút Thử lại và verifyReturn 404 ORDER_NOT_FOUND không hiện Thử lại (R1-33, R1-34)", async () => {
+    const user = userEvent.setup();
+    navState.search = "order=DH123";
+    const loadSession = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiStatusError(500, "Session error"))
+      .mockResolvedValueOnce(STUDENT_SESSION);
+
+    const errView = renderWithProviders(
+      <CheckoutResultView
+        loadCurrentSession={loadSession}
+        loadOrderDetail={async () => makeOrder({ code: "DH123", state: "FULFILLED" })}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Không thể kiểm tra kết quả thanh toán" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Đăng nhập để kiểm tra đơn" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeInTheDocument();
+    errView.unmount();
+
+    // R1-34: verifyReturn 404 ORDER_NOT_FOUND -> trạng thái terminal không có nút Thử lại
+    navState.search = "vnp_TxnRef=DHMISSING01&vnp_ResponseCode=00&vnp_SecureHash=valid";
+    renderWithProviders(
+      <CheckoutResultView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        verifyReturn={vi.fn().mockRejectedValueOnce(new ApiStatusError(404, "Not found", { code: "ORDER_NOT_FOUND" }))}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tìm thấy đơn hàng" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Xem đơn của tôi" })).toHaveAttribute("href", "/account/orders");
+    expect(screen.queryByRole("button", { name: "Thử lại" })).toBeNull();
   });
 
   it("xử lý 404 đơn thuộc tài khoản khác trên /checkout/result (AC-14)", async () => {
@@ -265,7 +459,7 @@ describe("CheckoutResultView", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Không tìm thấy đơn trong tài khoản đang đăng nhập" }),
+      await screen.findByRole("heading", { level: 1, name: "Không tìm thấy đơn trong tài khoản đang đăng nhập" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Đăng nhập bằng tài khoản khác" })).toHaveAttribute(
       "href",

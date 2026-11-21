@@ -41,7 +41,7 @@ describe("StudentHomeView", () => {
     const loadExams = vi.fn<() => Promise<MyExamsResponse>>().mockResolvedValue({ items: [] });
     renderWithProviders(<StudentHomeView loadCurrentSession={failSession} loadMyExams={loadExams} />);
 
-    expect(await screen.findByText("Không tải được trang")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Không tải được trang" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
 
     expect(await screen.findByRole("heading", { level: 1, name: "Bài thi của tôi" })).toBeInTheDocument();
