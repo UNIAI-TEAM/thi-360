@@ -51,6 +51,21 @@ class AttemptNavigationPolicyTest {
     }
 
     @Test
+    void resolveAccountsForTimingAndPartCount() {
+        assertThat(policy.resolve("THPTQG", AttemptTiming.SHARED, 3)).isEqualTo(NavigationMode.FREE);
+        assertThat(policy.resolve("thptqg", AttemptTiming.SHARED, 1)).isEqualTo(NavigationMode.FREE);
+        assertThat(policy.resolve("THPTQG", AttemptTiming.PER_PART, 1)).isEqualTo(NavigationMode.FREE);
+        assertThat(policy.resolve("THPTQG", AttemptTiming.PER_PART, 2))
+                .isEqualTo(NavigationMode.SEQUENTIAL);
+        assertThat(policy.resolve("HSA", AttemptTiming.SHARED, 3))
+                .isEqualTo(NavigationMode.SEQUENTIAL);
+        assertThat(policy.resolve("HSA", AttemptTiming.PER_PART, 1))
+                .isEqualTo(NavigationMode.SEQUENTIAL);
+        assertThat(policy.resolve(null, AttemptTiming.SHARED, 3))
+                .isEqualTo(NavigationMode.SEQUENTIAL);
+    }
+
+    @Test
     void modeCapabilitiesMatchFreeAndSequentialContracts() {
         assertThat(policy.opensAllPartsOnStart(NavigationMode.FREE)).isTrue();
         assertThat(policy.opensAllPartsOnStart(NavigationMode.SEQUENTIAL)).isFalse();
@@ -84,7 +99,8 @@ class AttemptNavigationPolicyTest {
         Attempt sequentialAttempt = openAttempt("HSCA", NavigationMode.SEQUENTIAL);
         assertThatCode(() -> guard.requirePartFinishAllowed(sequentialAttempt))
                 .doesNotThrowAnyException();
-        assertThatCode(() -> guard.requirePartFinishAllowed(null)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> guard.requirePartFinishAllowed(null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     private static Attempt openAttempt(String examKindCode, NavigationMode mode) {

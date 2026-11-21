@@ -446,7 +446,8 @@ public class AttemptStartService {
                         version.partCode(),
                         version.subjectItemId(),
                         timing,
-                        navigationPolicy.resolveForExamKind(version.kindCode()),
+                        navigationPolicy.resolve(
+                                version.kindCode(), timing, plan.plannedParts().size()),
                         plan.choices(),
                         seed,
                         generationToken,
@@ -589,7 +590,9 @@ public class AttemptStartService {
                     attemptRepository.save(attempt);
 
                     boolean openAllParts =
-                            navigationPolicy.opensAllPartsOnStart(attempt.getNavigationMode());
+                            navigationPolicy.opensAllPartsOnStart(attempt.getNavigationMode())
+                                    && (job.timing() == AttemptTiming.SHARED
+                                            || job.plannedParts().size() <= 1);
                     List<AttemptPart> partEntities = new ArrayList<>(job.plannedParts().size());
                     Map<String, UUID> partIdByCode = new LinkedHashMap<>();
                     List<AttemptItem> rootItems = new ArrayList<>();

@@ -2,6 +2,7 @@ package vn.unicom.thi360.attempt.application;
 
 import java.util.Locale;
 import org.springframework.stereotype.Component;
+import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
 
 /**
@@ -36,6 +37,21 @@ public class AttemptNavigationPolicy {
     /** Resolves the snapshotted {@link NavigationMode} for an exam kind code at attempt start. */
     public NavigationMode resolveForExamKind(String examKindCode) {
         return resolveModeForExamKind(examKindCode);
+    }
+
+    /**
+     * Resolves the snapshotted {@link NavigationMode} for an exam kind, timing mode, and part count
+     * at prepare/start time (BS §4, R1-4). Multi-part {@link AttemptTiming#PER_PART} attempts stay
+     * {@link NavigationMode#SEQUENTIAL} so independent per-part timers never run concurrently, while
+     * single-part {@code THPTQG} {@code PER_PART} exams and all {@code SHARED} {@code THPTQG} exams
+     * resolve to {@link NavigationMode#FREE}.
+     */
+    public NavigationMode resolve(String examKindCode, AttemptTiming timing, int partCount) {
+        if (resolveForExamKind(examKindCode) == NavigationMode.FREE
+                && (timing == AttemptTiming.SHARED || partCount <= 1)) {
+            return NavigationMode.FREE;
+        }
+        return NavigationMode.SEQUENTIAL;
     }
 
     /** Returns {@code true} when all non-after-start parts should open immediately on start. */

@@ -66,7 +66,6 @@ import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.api.SubmitAttemptResponse;
 import vn.unicom.thi360.attempt.application.AttemptDeadlineWorker;
-import vn.unicom.thi360.attempt.application.OverdueAttemptCloser;
 import vn.unicom.thi360.attempt.audio.AudioAssetFixture;
 import vn.unicom.thi360.attempt.domain.AbortReason;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
@@ -164,7 +163,6 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
     @Autowired private ObjectStorage objectStorage;
 
     @MockitoSpyBean private EntitlementPort entitlementPort;
-    @MockitoSpyBean private OverdueAttemptCloser overdueCloser;
     @MockitoSpyBean private PaperSolverPort paperSolverPort;
 
     private final List<UUID> createdUsers = new ArrayList<>();
@@ -177,14 +175,14 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
     void setUp() {
         AttemptTestFixtures.ensureDsBuilt(context);
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
-        Mockito.reset(entitlementPort, overdueCloser, paperSolverPort);
+        Mockito.reset(entitlementPort, paperSolverPort);
     }
 
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
-        Mockito.reset(entitlementPort, overdueCloser, paperSolverPort);
+        Mockito.reset(entitlementPort, paperSolverPort);
 
         for (UUID userId : createdUsers) {
             jdbc.update(
@@ -677,8 +675,9 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                 .when(entitlementPort)
                 .confirmUse(attemptA);
 
+        CompletableFuture<SubmitAttemptResponse> submitFutureA = null;
         try {
-            CompletableFuture<SubmitAttemptResponse> submitFutureA =
+            submitFutureA =
                     CompletableFuture.supplyAsync(
                             () -> {
                                 try {
@@ -710,6 +709,7 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
         } finally {
             enteredA.countDown();
             releaseA.countDown();
+            awaitQuietly(submitFutureA);
             clearInvocations(entitlementPort);
             mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         }
@@ -739,12 +739,13 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                 .when(entitlementPort)
                 .confirmUse(attemptB);
 
+        CompletableFuture<Integer> workerFutureB = null;
+        CompletableFuture<SubmitAttemptResponse> submitFutureB = null;
         try {
-            CompletableFuture<Integer> workerFutureB =
-                    CompletableFuture.supplyAsync(() -> deadlineWorker.sweepOverdue());
+            workerFutureB = CompletableFuture.supplyAsync(() -> deadlineWorker.sweepOverdue());
 
             assertThat(enteredB.await(10, TimeUnit.SECONDS)).isTrue();
-            CompletableFuture<SubmitAttemptResponse> submitFutureB =
+            submitFutureB =
                     CompletableFuture.supplyAsync(
                             () -> {
                                 try {
@@ -762,7 +763,7 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                                 }
                             });
 
-            awaitAttemptRowLockWait();
+            awaitAttemptRowLockWait(submitFutureB);
             releaseB.countDown();
 
             assertThat(workerFutureB.get(15, TimeUnit.SECONDS)).isEqualTo(1);
@@ -780,6 +781,8 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
         } finally {
             enteredB.countDown();
             releaseB.countDown();
+            awaitQuietly(workerFutureB);
+            awaitQuietly(submitFutureB);
         }
     }
 
@@ -1113,10 +1116,14 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                         List.of(),
                         new AttemptPosition(p0PartId, p0ItemA)));
 
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
         CompletableFuture<SaveAnswersResponse> concurrentP0 =
                 CompletableFuture.supplyAsync(
                         () -> {
+                            ready.countDown();
                             try {
+                                assertThat(go.await(10, TimeUnit.SECONDS)).isTrue();
                                 return putAnswers(
                                         userId,
                                         attemptId,
@@ -1132,7 +1139,9 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
         CompletableFuture<SaveAnswersResponse> concurrentP2 =
                 CompletableFuture.supplyAsync(
                         () -> {
+                            ready.countDown();
                             try {
+                                assertThat(go.await(10, TimeUnit.SECONDS)).isTrue();
                                 return putAnswers(
                                         userId,
                                         attemptId,
@@ -1146,16 +1155,31 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                             }
                         });
 
-        assertThat(concurrentP0.get(10, TimeUnit.SECONDS).results().getFirst().status())
-                .isEqualTo(FinalAnswerStatus.SAVED);
-        assertThat(concurrentP2.get(10, TimeUnit.SECONDS).results().getFirst().status())
-                .isEqualTo(FinalAnswerStatus.SAVED);
+        try {
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            go.countDown();
+
+            assertThat(concurrentP0.get(10, TimeUnit.SECONDS).results().getFirst().status())
+                    .isEqualTo(FinalAnswerStatus.SAVED);
+            assertThat(concurrentP2.get(10, TimeUnit.SECONDS).results().getFirst().status())
+                    .isEqualTo(FinalAnswerStatus.SAVED);
+        } finally {
+            go.countDown();
+            awaitQuietly(concurrentP0);
+            awaitQuietly(concurrentP2);
+        }
 
         JsonNode finalState = getState(userId, attemptId);
         assertThat(readAnswer(findItem(finalState, p0ItemA))).isEqualTo(p0AnsA);
         assertThat(readAnswer(findItem(finalState, p2ItemA))).isEqualTo(p2AnsA);
         assertThat(readAnswer(findItem(finalState, p0ItemB))).isEqualTo(p0AnsB);
         assertThat(readAnswer(findItem(finalState, p2ItemB))).isEqualTo(p2AnsB);
+        String lastPartId = finalState.path("lastPosition").path("partId").asText();
+        String lastItemId = finalState.path("lastPosition").path("itemId").asText();
+        assertThat(Map.entry(lastPartId, lastItemId))
+                .isIn(
+                        Map.entry(p0PartId.toString(), p0ItemB.toString()),
+                        Map.entry(p2PartId.toString(), p2ItemB.toString()));
     }
 
     @Test
@@ -1303,6 +1327,23 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
         assertThat(attemptItemRepository.findById(p0ItemId).orElseThrow().getAnswer()).isNull();
     }
 
+    @Test
+    void prepareHonorsOpenAttemptSnapshottedNavigationMode() throws Exception {
+        PublishedExam exam = publishThptqgMath2025Exam();
+        UUID userId = createStudent("r1-7-snap-mode");
+        GrantOrderResult.Line grant = grant(userId, exam.examId(), exam.versionNo(), 2, List.of());
+
+        UUID attemptId = startAndAwaitInProgress(userId, grant.entitlementId(), "r1-7-start", null);
+        jdbc.update(
+                "UPDATE attempt.attempt SET navigation_mode = 'SEQUENTIAL' WHERE id = ?",
+                attemptId);
+
+        AttemptPrepareResponse prepare = getPrepare(userId, grant.entitlementId());
+        assertThat(prepare.openAttempt()).isNotNull();
+        assertThat(prepare.openAttempt().attemptId()).isEqualTo(attemptId);
+        assertThat(prepare.navigationMode()).isEqualTo(NavigationMode.SEQUENTIAL);
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private void verifySequentialKind(
@@ -1399,6 +1440,8 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
 
         assertThat(attempt.getExamKindCode()).isEqualTo("THPTQG");
         assertThat(attempt.getNavigationMode()).isEqualTo(NavigationMode.FREE);
+        assertThat(attempt.getDeadlineAt())
+                .isEqualTo(attempt.getStartedAt().plus(Duration.ofMinutes(50)));
         assertThat(parts).hasSize(2);
         assertThat(parts).extracting(AttemptPart::getState).containsOnly(PartState.OPEN);
         assertThat(parts).extracting(AttemptPart::getDeadlineAt).containsOnly(attempt.getDeadlineAt());
@@ -1684,13 +1727,39 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
         };
     }
 
-    private void awaitAttemptRowLockWait() throws InterruptedException {
+    private static void awaitQuietly(CompletableFuture<?> future) {
+        if (future == null) {
+            return;
+        }
+        try {
+            future.get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } catch (Exception ignored) {
+            // Primary failure is handled in test body; finally only joins background tasks before teardown.
+        }
+    }
+
+    private void awaitAttemptRowLockWait(CompletableFuture<?> blockedTask)
+            throws InterruptedException {
         long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (System.nanoTime() < deadlineNanos) {
+            if (blockedTask.isDone()) {
+                if (blockedTask.isCompletedExceptionally()) {
+                    try {
+                        blockedTask.join();
+                    } catch (RuntimeException ex) {
+                        throw new AssertionError(
+                                "Blocked submit task failed before acquiring lock wait", ex);
+                    }
+                }
+                return;
+            }
             Integer waiting =
                     jdbc.queryForObject(
                             "SELECT count(*) FROM pg_stat_activity "
-                                    + "WHERE pid <> pg_backend_pid() "
+                                    + "WHERE datname = current_database() "
+                                    + "AND pid <> pg_backend_pid() "
                                     + "AND wait_event_type = 'Lock' "
                                     + "AND state = 'active' "
                                     + "AND query ILIKE '%attempt%'",
@@ -1728,9 +1797,9 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                                     new QuestionBody.ShortAnswerBody(
                                             QuestionType.SHORT_ANSWER, List.of("1"), "", null),
                                     null));
-            questionService.markReady(created.summary().id(), created.summary().revision());
             UUID qId = created.summary().id();
             createdQuestionIds.add(qId);
+            questionService.markReady(qId, created.summary().revision());
             return qId;
         } finally {
             SecurityContextHolder.setContext(prev);
@@ -1759,6 +1828,7 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                                     null,
                                     "STANDARD",
                                     null));
+            createdExamIds.add(created.id());
             if (!"THPTQG_MATH_2025".equals(created.templateCode())) {
                 examService.loadTemplate(
                         created.id(),
@@ -1810,7 +1880,6 @@ class AttemptFreeNavigationIT extends AbstractIntegrationTest {
                             created.id(),
                             "pub-" + code,
                             new ExamPublishRequest(validPathIds, "AT-8 free nav", revForPublish));
-            createdExamIds.add(created.id());
             return new PublishedExam(created.id(), published.version());
         } finally {
             SecurityContextHolder.setContext(prev);

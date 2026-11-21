@@ -71,10 +71,55 @@ public class AttemptLifecycleService {
     private final PartTransitionHook partTransitionHook;
     private final AttemptAudioPlayRepository attemptAudioPlayRepository;
     private final AttemptNavigationPolicy navigationPolicy;
+    private final AttemptGuard attemptGuard;
     private final TransactionTemplate txTemplate;
     private final Clock clock;
 
     @Autowired
+    public AttemptLifecycleService(
+            AttemptAccessGate accessGate,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptEventRepository attemptEventRepository,
+            PublishedExamPort publishedExamPort,
+            EntitlementPort entitlementPort,
+            OutboxPublisher outboxPublisher,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            AttemptSessionChecker attemptSessionChecker,
+            FinalAnswerWriter finalAnswerWriter,
+            ObjectProvider<PartTransitionHook> partTransitionHookProvider,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptNavigationPolicy navigationPolicy,
+            AttemptGuard attemptGuard,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
+        this(
+                accessGate,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptEventRepository,
+                publishedExamPort,
+                entitlementPort,
+                outboxPublisher,
+                idempotentCommand,
+                overdueAttemptCloser,
+                attemptSessionChecker,
+                finalAnswerWriter,
+                Objects.requireNonNull(partTransitionHookProvider)
+                        .getIfAvailable(() -> PartTransitionHook.NOOP),
+                Objects.requireNonNull(
+                        attemptAudioPlayRepository,
+                        "attemptAudioPlayRepository must not be null"),
+                Objects.requireNonNull(navigationPolicy, "navigationPolicy must not be null"),
+                Objects.requireNonNull(attemptGuard, "attemptGuard must not be null"),
+                transactionManager,
+                clock,
+                true);
+    }
+
     public AttemptLifecycleService(
             AttemptAccessGate accessGate,
             AttemptRepository attemptRepository,
@@ -112,6 +157,7 @@ public class AttemptLifecycleService {
                         attemptAudioPlayRepository,
                         "attemptAudioPlayRepository must not be null"),
                 Objects.requireNonNull(navigationPolicy, "navigationPolicy must not be null"),
+                null,
                 transactionManager,
                 clock,
                 true);
@@ -153,6 +199,7 @@ public class AttemptLifecycleService {
                         attemptAudioPlayRepository,
                         "attemptAudioPlayRepository must not be null"),
                 AttemptNavigationPolicy.defaultPolicy(),
+                null,
                 transactionManager,
                 clock,
                 true);
@@ -190,6 +237,7 @@ public class AttemptLifecycleService {
                 partTransitionHook,
                 null,
                 AttemptNavigationPolicy.defaultPolicy(),
+                null,
                 transactionManager,
                 clock,
                 false);
@@ -228,6 +276,7 @@ public class AttemptLifecycleService {
                 partTransitionHook,
                 attemptAudioPlayRepository,
                 AttemptNavigationPolicy.defaultPolicy(),
+                null,
                 transactionManager,
                 clock,
                 true);
@@ -249,6 +298,7 @@ public class AttemptLifecycleService {
             PartTransitionHook partTransitionHook,
             AttemptAudioPlayRepository attemptAudioPlayRepository,
             AttemptNavigationPolicy navigationPolicy,
+            AttemptGuard attemptGuard,
             PlatformTransactionManager transactionManager,
             Clock clock,
             boolean requireAudioPlayRepository) {
@@ -272,10 +322,21 @@ public class AttemptLifecycleService {
                                 attemptAudioPlayRepository,
                                 "attemptAudioPlayRepository must not be null")
                         : attemptAudioPlayRepository;
-        this.navigationPolicy =
+        AttemptNavigationPolicy effectivePolicy =
                 navigationPolicy == null ? AttemptNavigationPolicy.defaultPolicy() : navigationPolicy;
-        this.txTemplate = new TransactionTemplate(Objects.requireNonNull(transactionManager));
+        this.navigationPolicy = effectivePolicy;
         this.clock = Objects.requireNonNull(clock);
+        this.attemptGuard =
+                attemptGuard != null
+                        ? attemptGuard
+                        : new AttemptGuard(
+                                this.attemptRepository,
+                                this.attemptPartRepository,
+                                this.overdueAttemptCloser,
+                                this.attemptSessionChecker,
+                                effectivePolicy,
+                                this.clock);
+        this.txTemplate = new TransactionTemplate(Objects.requireNonNull(transactionManager));
     }
 
     /** Finishes an open non-final sequential part, writes final answers, and opens or hooks the next part. */
@@ -331,9 +392,7 @@ public class AttemptLifecycleService {
         if (partIdx < 0) {
             throw new NotFoundException("NOT_FOUND", null);
         }
-        if (!navigationPolicy.allowsPartFinish(attempt.getNavigationMode())) {
-            throw new ConflictException("PART_FINISH_NOT_ALLOWED");
-        }
+        attemptGuard.requirePartFinishAllowed(attempt);
         if (partIdx == parts.size() - 1) {
             throw new ConflictException("ATTEMPT_PART_IS_LAST");
         }
@@ -594,33 +653,37 @@ public class AttemptLifecycleService {
                             buildPartClosedData(openPart, PartCloseReason.TIME_UP, partClosedAt, List.of())));
 
             int nextIdx = openIdx + 1;
-            if (nextIdx >= parts.size()) {
+            if (nextIdx < parts.size()) {
+                AttemptPart nextPart = parts.get(nextIdx);
+                if (nextPart.getState() == PartState.PENDING) {
+                    if (requiresAfterStartChoice(attempt, nextPart)) {
+                        partTransitionHook.onPartClosedBeforeChoice(
+                                attempt, openPart, nextPart, partClosedAt);
+                    } else {
+                        Instant nextDeadline =
+                                nextPart.getDurationMinutes() != null
+                                        ? partClosedAt.plus(
+                                                Duration.ofMinutes(nextPart.getDurationMinutes()))
+                                        : null;
+                        nextPart.open(partClosedAt, nextDeadline);
+                        attemptEventRepository.save(
+                                new AttemptEvent(
+                                        Ids.newId(),
+                                        attempt.getId(),
+                                        AttemptEventType.PART_OPENED,
+                                        null,
+                                        nextPart.getId(),
+                                        now,
+                                        buildPartOpenedData(nextPart, partClosedAt)));
+                    }
+                }
+            }
+            if (!hasNonTerminalPart(parts)) {
+                Instant attemptClosedAt = latestClosedAt(parts, partClosedAt);
                 closeAttemptInLock(
-                        attempt, parts, EndReason.TIME_UP, partClosedAt, null, List.of(), now);
+                        attempt, parts, EndReason.TIME_UP, attemptClosedAt, null, List.of(), now);
                 closePlayingAudioForParts(attempt.getId(), closedPartIds, now);
                 return true;
-            }
-
-            AttemptPart nextPart = parts.get(nextIdx);
-            if (nextPart.getState() == PartState.PENDING) {
-                if (requiresAfterStartChoice(attempt, nextPart)) {
-                    partTransitionHook.onPartClosedBeforeChoice(attempt, openPart, nextPart, partClosedAt);
-                } else {
-                    Instant nextDeadline =
-                            nextPart.getDurationMinutes() != null
-                                    ? partClosedAt.plus(Duration.ofMinutes(nextPart.getDurationMinutes()))
-                                    : null;
-                    nextPart.open(partClosedAt, nextDeadline);
-                    attemptEventRepository.save(
-                            new AttemptEvent(
-                                    Ids.newId(),
-                                    attempt.getId(),
-                                    AttemptEventType.PART_OPENED,
-                                    null,
-                                    nextPart.getId(),
-                                    now,
-                                    buildPartOpenedData(nextPart, partClosedAt)));
-                }
             }
         }
 
@@ -824,15 +887,45 @@ public class AttemptLifecycleService {
     }
 
     private static int indexOfOverdueOpenPart(List<AttemptPart> parts, Instant now) {
+        int bestIdx = -1;
+        Instant earliestDeadline = null;
         for (int i = 0; i < parts.size(); i++) {
             AttemptPart part = parts.get(i);
+            Instant deadline = part.getDeadlineAt();
             if (part.getState() == PartState.OPEN
-                    && part.getDeadlineAt() != null
-                    && !now.isBefore(part.getDeadlineAt())) {
-                return i;
+                    && deadline != null
+                    && !now.isBefore(deadline)
+                    && (earliestDeadline == null || deadline.isBefore(earliestDeadline))) {
+                earliestDeadline = deadline;
+                bestIdx = i;
             }
         }
-        return -1;
+        return bestIdx;
+    }
+
+    private static boolean hasNonTerminalPart(List<AttemptPart> parts) {
+        for (AttemptPart part : parts) {
+            PartState st = part.getState();
+            if (st == PartState.OPEN
+                    || st == PartState.PENDING
+                    || st == PartState.AWAITING_CHOICE
+                    || st == PartState.GENERATING
+                    || st == PartState.GENERATION_FAILED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Instant latestClosedAt(List<AttemptPart> parts, Instant fallback) {
+        Instant latest = fallback;
+        for (AttemptPart part : parts) {
+            if (part.getClosedAt() != null
+                    && (latest == null || part.getClosedAt().isAfter(latest))) {
+                latest = part.getClosedAt();
+            }
+        }
+        return latest;
     }
 
     private static int indexOfPart(List<AttemptPart> parts, UUID partId) {

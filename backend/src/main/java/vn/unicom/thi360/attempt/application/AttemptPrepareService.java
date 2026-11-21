@@ -146,6 +146,14 @@ public class AttemptPrepareService {
                         .toList();
 
         AttemptTiming timing = AttemptTiming.valueOf(version.timing());
+        NavigationMode navigationMode =
+                open.map(Attempt::getNavigationMode)
+                        .orElseGet(
+                                () ->
+                                        navigationPolicy.resolve(
+                                                version.kindCode(),
+                                                timing,
+                                                structure.parts().size()));
         AllowedOptions allowedOptions =
                 resolveAllowedOptions(serving.servingPaths(), desc.optionCodes());
         List<String> answerFormats = deriveAnswerFormats(version, allowedOptions);
@@ -164,7 +172,7 @@ public class AttemptPrepareService {
                 version.instructions(),
                 timing,
                 structure.durationMinutes(),
-                navigationPolicy.resolveForExamKind(version.kindCode()),
+                navigationMode,
                 desc.attemptsLeft(),
                 serving.status(),
                 openView,

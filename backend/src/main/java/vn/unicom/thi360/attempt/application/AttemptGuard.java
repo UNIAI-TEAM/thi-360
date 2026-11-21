@@ -77,7 +77,8 @@ public class AttemptGuard {
 
     /** Rejects manual part-finish requests when the attempt navigation mode forbids them (BS §4). */
     public void requirePartFinishAllowed(Attempt attempt) {
-        if (attempt != null && !navigationPolicy.allowsPartFinish(attempt.getNavigationMode())) {
+        Objects.requireNonNull(attempt, "attempt must not be null");
+        if (!navigationPolicy.allowsPartFinish(attempt.getNavigationMode())) {
             throw new ConflictException("PART_FINISH_NOT_ALLOWED");
         }
     }
