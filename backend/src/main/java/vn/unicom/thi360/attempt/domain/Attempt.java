@@ -286,6 +286,60 @@ public class Attempt {
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
+    /**
+     * Applies aggregated grading output and transitions to {@code SCORED} or {@code PENDING_REVIEW}.
+     * When {@code regrading == true} and essays remain pending, preserves prior scored totals per LT §9.2.
+     */
+    public void applyGradingResult(
+            boolean pendingReview,
+            BigDecimal maxScore,
+            BigDecimal rawScore,
+            BigDecimal displayScore,
+            Map<String, Object> result,
+            Instant gradedAt,
+            Instant now) {
+        if (this.state != AttemptState.GRADING
+                && this.state != AttemptState.GRADING_ERROR
+                && this.state != AttemptState.PENDING_REVIEW
+                && this.state != AttemptState.SCORED) {
+            throw new IllegalStateException("Cannot apply grading result from state " + this.state);
+        }
+        if (!pendingReview || !this.regrading) {
+            this.maxScore = maxScore;
+            this.result = result;
+        }
+        this.gradingError = null;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        if (pendingReview) {
+            this.state = AttemptState.PENDING_REVIEW;
+            if (!this.regrading) {
+                this.rawScore = null;
+                this.displayScore = null;
+            }
+        } else {
+            this.state = AttemptState.SCORED;
+            this.regrading = false;
+            this.rawScore = rawScore;
+            this.displayScore = displayScore;
+            this.gradedAt = Objects.requireNonNull(gradedAt, "gradedAt must not be null");
+        }
+    }
+
+    /**
+     * Marks grading failure after outbox retries are exhausted; never sets score to zero (AC-20).
+     */
+    public void markGradingError(String errorMessage, Instant now) {
+        if (this.state != AttemptState.GRADING && this.state != AttemptState.GRADING_ERROR) {
+            throw new IllegalStateException("Cannot mark grading error from state " + this.state);
+        }
+        String clean = (errorMessage == null || errorMessage.isBlank()) ? "GRADING_FAILED" : errorMessage.trim();
+        this.state = AttemptState.GRADING_ERROR;
+        this.gradingError = clean.length() > 1000 ? clean.substring(0, 1000) : clean;
+        this.rawScore = null;
+        this.displayScore = null;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
     /** Claims the initial active edit session for an in-progress attempt (LT F10). */
     public void claimSession(UUID sessionId, Instant seenAt) {
         if (this.state != AttemptState.IN_PROGRESS) {
