@@ -624,6 +624,10 @@
     "loading": "Đang tải",
     "logoMark": "360",
     "notificationsLabel": "Thông báo",
+    "offline": {
+      "description": "Kiểm tra kết nối mạng rồi thử lại.",
+      "title": "Không có kết nối"
+    },
     "retry": "Thử lại"
   },
   "errorPage": {
@@ -660,6 +664,103 @@
       "profile": "Hồ sơ"
     },
     "register": "Đăng ký"
+  },
+  "history": {
+    "actions": {
+      "continue": "Tiếp tục",
+      "viewResult": "Xem kết quả"
+    },
+    "adminNotice": {
+      "cta": "Mở trang quản trị",
+      "description": "Tài khoản quản trị không có lịch sử làm bài ở trang học viên.",
+      "title": "Tài khoản quản trị"
+    },
+    "attemptNo": "Lần {count}",
+    "choiceOptions": {
+      "ANH": "Tiếng Anh",
+      "CS": "Khoa học máy tính",
+      "ENGLISH": "Tiếng Anh",
+      "ICT": "Tin học ứng dụng",
+      "KH": "Khoa học",
+      "SCIENCE": "Khoa học",
+      "TA": "Tiếng Anh"
+    },
+    "columns": {
+      "actions": "Thao tác",
+      "attemptStarted": "Lần làm · Bắt đầu",
+      "choice": "Lựa chọn",
+      "exam": "Bài thi",
+      "scope": "Phạm vi",
+      "score": "Điểm",
+      "status": "Trạng thái"
+    },
+    "count": "{count, plural, other {# lượt}}",
+    "empty": {
+      "clearFilters": "Xóa bộ lọc",
+      "description": "Thử đổi từ khóa, khoảng ngày hoặc bỏ bớt điều kiện lọc.",
+      "noAttemptsDescription": "Chọn bài thi ở Bài thi của tôi để bắt đầu làm bài. Kết quả các lượt đã làm sẽ hiện tại đây.",
+      "noAttemptsTitle": "Bạn chưa có lượt luyện thi nào",
+      "outOfRangeBack": "Về trang 1",
+      "outOfRangeDescription": "Trang này không có lượt thi nào. Quay lại trang đầu để xem các lượt gần nhất.",
+      "outOfRangeTitle": "Trang này chưa có dữ liệu",
+      "title": "Chưa có lượt thi phù hợp",
+      "toMyExams": "Bài thi của tôi"
+    },
+    "error": {
+      "description": "Các lượt thi của bạn vẫn được giữ. Hãy thử lại sau ít phút.",
+      "title": "Không tải được lịch sử luyện thi"
+    },
+    "examFilterChip": "Bài: <examContent>{name}</examContent>",
+    "examFilterClear": "Bỏ lọc theo bài",
+    "examFilterUnknown": "Đang lọc theo bài thi đã chọn",
+    "fault": {
+      "compensated": "Lượt bị ảnh hưởng bởi lỗi hệ thống, đã cấp bù 1 lượt",
+      "systemFault": "Lượt kết thúc do lỗi hệ thống"
+    },
+    "filters": {
+      "clear": "Xóa bộ lọc",
+      "from": "Từ ngày",
+      "kind": "Kỳ thi",
+      "kindAll": "Tất cả kỳ thi",
+      "label": "Lọc lịch sử luyện thi",
+      "q": "Tìm theo tên bài",
+      "qPlaceholder": "Ví dụ: HSA tổng hợp",
+      "scope": "Phạm vi thi",
+      "scopeAll": "Tất cả phạm vi",
+      "to": "Đến ngày"
+    },
+    "listTitle": "Các lượt thi",
+    "loading": "Đang tải lịch sử luyện thi",
+    "noChoice": "—",
+    "noScore": "Chưa có điểm",
+    "pageTitle": "Lịch sử luyện thi",
+    "paginationLabel": "Phân trang lịch sử luyện thi",
+    "regradingNote": "Điểm trước khi chấm lại",
+    "scopeDetails": {
+      "PART": "Phần {code}",
+      "SUBJECT": "Môn {name}"
+    },
+    "scopes": {
+      "FULL": "Bài thi FULL",
+      "PART": "Bài thi theo phần",
+      "SUBJECT": "Bài thi theo môn"
+    },
+    "stale": {
+      "description": "Không tải lại được dữ liệu; đang hiện bản đã tải lúc {time}.",
+      "descriptionNoTime": "Không tải lại được dữ liệu; đang hiện bản đã tải trước đó.",
+      "title": "Dữ liệu chưa được cập nhật."
+    },
+    "states": {
+      "GRADING": "Đang chấm",
+      "GRADING_ERROR": "Đang xử lý kết quả",
+      "IN_PROGRESS": "Đang làm",
+      "PENDING_REVIEW": "Chờ chấm",
+      "REGRADING": "Đang chấm lại",
+      "SCORED": "Đã chấm"
+    },
+    "subtitle": "Các lượt thi của bạn, lượt mới nhất ở trên. Chọn Xem kết quả để mở đúng kết quả của từng lượt.",
+    "tableLabel": "Danh sách lịch sử luyện thi",
+    "vactPracticeNote": "Điểm luyện tập"
   },
   "home": {
     "actions": {
@@ -1031,8 +1132,6 @@
     "subtitle": "Các đơn mua bài thi của tài khoản {username}, mới nhất trước. Khi cần hỗ trợ, hãy gửi kèm mã đơn.",
     "tableLabel": "Danh sách đơn hàng của tôi",
     "vnpayReasons": {
-      "07": "Trừ tiền thành công nhưng giao dịch bị nghi ngờ.",
-      "09": "Thẻ hoặc tài khoản chưa đăng ký dịch vụ Internet Banking.",
       "10": "Xác thực thông tin thẻ hoặc tài khoản không đúng quá 3 lần.",
       "11": "Giao dịch đã hết thời gian chờ thanh toán.",
       "12": "Thẻ hoặc tài khoản đang bị khóa.",
@@ -1043,6 +1142,8 @@
       "75": "Ngân hàng thanh toán đang bảo trì.",
       "79": "Bạn đã nhập sai thông tin xác thực quá số lần cho phép.",
       "99": "Chưa nhận được kết quả cuối từ cổng thanh toán.",
+      "07": "Trừ tiền thành công nhưng giao dịch bị nghi ngờ.",
+      "09": "Thẻ hoặc tài khoản chưa đăng ký dịch vụ Internet Banking.",
       "generic": "Ngân hàng hoặc VNPAY từ chối giao dịch."
     }
   },
@@ -1170,6 +1271,240 @@
       "points": "{value} điểm",
       "questions": "{count, plural, other {# câu}}"
     }
+  },
+  "result": {
+    "actions": {
+      "myExams": "Bài thi của tôi",
+      "pendingReviewNote": "Câu tự luận xem lại được sau khi chấm xong.",
+      "reviewAutoGraded": "Xem lại câu đã chấm tự động",
+      "reviewFull": "Xem lại bài",
+      "scoreOnlyNote": "Bài thi này chỉ cho xem điểm, không có phần xem lại bài làm.",
+      "unavailableNote": "Chưa thể xem lại bài làm ở trạng thái hiện tại."
+    },
+    "adminNotice": {
+      "cta": "Mở trang quản trị",
+      "description": "Tài khoản quản trị không xem kết quả lượt thi ở trang học viên.",
+      "title": "Tài khoản quản trị"
+    },
+    "attemptNo": "Lần {count}",
+    "backToHistory": "Lịch sử luyện thi",
+    "choiceOptions": {
+      "ANH": "Tiếng Anh",
+      "CS": "Khoa học máy tính",
+      "ENGLISH": "Tiếng Anh",
+      "ICT": "Tin học ứng dụng",
+      "KH": "Khoa học",
+      "SCIENCE": "Khoa học",
+      "TA": "Tiếng Anh"
+    },
+    "endReasons": {
+      "CHOICE_TIMEOUT": "Quá hạn chọn phần 3",
+      "FAULT_CLOSED": "Đóng do lỗi hệ thống",
+      "SUBMITTED": "Nộp bài",
+      "TIME_UP": "Hết giờ"
+    },
+    "errorDescription": "Kiểm tra kết nối mạng rồi thử lại.",
+    "errorTitle": "Không tải được kết quả lượt thi",
+    "eyebrow": "Kết quả lượt thi",
+    "fault": {
+      "compensatedBanner": "Lượt bị ảnh hưởng bởi lỗi hệ thống, đã cấp bù 1 lượt",
+      "faultNoticeBanner": "Lượt kết thúc do lỗi hệ thống",
+      "reasonLabel": "Ghi chú:"
+    },
+    "grading": {
+      "description": "Bài làm đã được ghi nhận. Hệ thống đang tính điểm, trang sẽ tự cập nhật.",
+      "heading": "Đang chấm",
+      "reload": "Tải lại",
+      "timeoutDescription": "Quá trình chấm mất nhiều thời gian hơn dự kiến. Kết quả sẽ cập nhật trong Lịch sử luyện thi khi hoàn tất.",
+      "timeoutHeading": "Đang tính điểm, bạn có thể quay lại sau"
+    },
+    "gradingError": {
+      "heading": "Đang xử lý kết quả",
+      "message": "Bài làm đã được ghi nhận, kết quả đang được xử lý"
+    },
+    "info": {
+      "attemptNo": "Lần làm",
+      "choices": "Lựa chọn đã chọn",
+      "duration": "Thời gian làm bài thực tế",
+      "durationHoursMinutes": "{hours} giờ {minutes} phút",
+      "durationMinutes": "{minutes} phút",
+      "durationSeconds": "{seconds} giây",
+      "durationZero": "0 giây",
+      "endReason": "Cách kết thúc",
+      "examKind": "Kỳ thi",
+      "finishedAt": "Kết thúc",
+      "noChoices": "Không có",
+      "part": "Phần thi",
+      "scope": "Phạm vi thi",
+      "startedAt": "Bắt đầu",
+      "subject": "Môn thi",
+      "title": "Thông tin lượt thi"
+    },
+    "loading": "Đang tải kết quả lượt thi",
+    "notFinished": {
+      "continueAttempt": "Tiếp tục làm bài",
+      "description": "Lượt thi này vẫn đang mở hoặc đang được chuẩn bị nên chưa có kết quả.",
+      "title": "Lượt thi chưa kết thúc",
+      "toHistory": "Lịch sử luyện thi"
+    },
+    "notFound": {
+      "description": "Lượt thi không tồn tại hoặc không thuộc tài khoản đang đăng nhập.",
+      "eyebrow": "MÃ LỖI 404",
+      "title": "Không tìm thấy kết quả lượt thi",
+      "toHistory": "Lịch sử luyện thi",
+      "toHome": "Bài thi của tôi"
+    },
+    "pageTitle": "Kết quả lượt thi",
+    "parts": {
+      "description": "Điểm phần là tổng điểm các câu trong phần.",
+      "manualChip": "Chấm tay",
+      "maxScoreNote": "Điểm tối đa của phần: {max}.",
+      "partScoreLabel": "Điểm phần",
+      "pendingDescription": "Điểm của phần đã chấm xong là điểm riêng của phần đó, chưa phải điểm tổng.",
+      "skippedBadge": "Bị bỏ qua",
+      "skippedChoiceTimeout": "Không làm phần 3: quá thời gian chọn",
+      "skippedFallback": "Phần này đã bị bỏ qua và tính 0 điểm.",
+      "skippedFaultClosed": "Phần bị bỏ qua do lượt kết thúc vì lỗi hệ thống.",
+      "title": "Điểm từng phần"
+    },
+    "scopes": {
+      "FULL": "Bài thi FULL",
+      "PART": "Bài thi theo phần",
+      "SUBJECT": "Bài thi theo môn"
+    },
+    "states": {
+      "GRADING": "Đang chấm",
+      "GRADING_ERROR": "Đang xử lý kết quả",
+      "PENDING_REVIEW": "Chờ chấm",
+      "REGRADING": "Đang chấm lại",
+      "SCORED": "Đã chấm"
+    },
+    "stats": {
+      "blank": "Bỏ trống",
+      "correct": "Đúng",
+      "denominator": "Trên {total} câu phải làm.",
+      "partial": "Đúng một phần",
+      "pending": "Chờ chấm",
+      "title": "Thống kê câu hỏi",
+      "unitQuestions": "{count, plural, other {# câu}}",
+      "wrong": "Sai"
+    },
+    "subjects": {
+      "columns": {
+        "blank": "Bỏ trống",
+        "correct": "Đúng",
+        "partial": "Đúng một phần",
+        "pending": "Chờ chấm",
+        "score": "Điểm môn",
+        "subject": "Môn",
+        "wrong": "Sai"
+      },
+      "description": "Điểm từng môn thực tế đã làm trong lượt thi.",
+      "manualChip": "Chấm tay",
+      "maxScoreNote": "Tối đa {max}",
+      "pendingDescription": "Điểm của môn đã chấm xong là điểm riêng của môn đó, chưa phải điểm tổng.",
+      "subjectScoreLabel": "Điểm môn",
+      "title": "Điểm theo môn"
+    },
+    "total": {
+      "pendingDescription": "Bài có câu tự luận chấm tay. Điểm tổng hiện sau khi người chấm chấm xong mọi câu tự luận.",
+      "pendingReturnNote": "Bạn có thể rời trang. Khi chấm xong, mở lại lượt này từ Lịch sử luyện thi để xem điểm tổng.",
+      "pendingTitle": "Chờ chấm",
+      "regradingNote": "Người chấm đang chấm lại câu tự luận. Điểm bên trên là điểm trước khi chấm lại và có thể đổi khi chấm xong.",
+      "scaleDescription": "Tổng điểm các câu trong phạm vi bài làm. Câu bỏ trống được 0 điểm.",
+      "title": "Tổng điểm",
+      "vactScaleDescription": "Điểm luyện tập quy từ điểm các câu về thang {scaleMax}."
+    },
+    "vact": {
+      "collapseSubsections": "Ẩn chi tiết 2 tiểu mục",
+      "components": {
+        "ANH": "Tiếng Anh",
+        "SCIENTIFIC_THINKING": "Tư duy khoa học",
+        "TOAN": "Toán học",
+        "VIETNAMESE": "Tiếng Việt"
+      },
+      "componentsCaption": "Số câu đúng và tỷ lệ đúng theo từng thành phần (không hiện điểm thành phần).",
+      "componentsTitle": "Kết quả theo thành phần",
+      "correctRatio": "{correct}/{total} câu đúng · {rate}%",
+      "expandSubsections": "Xem riêng 2 tiểu mục (12 và 18 câu)",
+      "practiceNote": "Không phải điểm V-ACT chính thức",
+      "scoreLabel": "Điểm luyện tập",
+      "subsectionQuestions": "{count, plural, other {# câu}}",
+      "subsections": {
+        "logicData": "Logic và phân tích số liệu",
+        "scientificReasoning": "Suy luận khoa học"
+      }
+    }
+  },
+  "review": {
+    "adminNotice": {
+      "cta": "Mở trang quản trị",
+      "description": "Tài khoản quản trị không xem lại bài làm ở trang học viên.",
+      "title": "Tài khoản quản trị"
+    },
+    "backToResult": "Về kết quả",
+    "emptyPart": {
+      "description": "Phần này hiện chưa có câu hỏi nào để xem lại.",
+      "title": "Không có câu hỏi trong phần này"
+    },
+    "errorDescription": "Kiểm tra kết nối mạng rồi thử lại.",
+    "errorTitle": "Không tải được bài làm",
+    "essayCriteria": {
+      "commentCol": "Nhận xét tiêu chí",
+      "criterionCol": "Tiêu chí",
+      "criterionFallback": "Tiêu chí {index}",
+      "pointsCol": "Điểm",
+      "pointsValue": "{points} điểm",
+      "title": "Điểm từng tiêu chí"
+    },
+    "loading": "Đang tải bài làm để xem lại",
+    "nav": {
+      "currentItem": "đang xem",
+      "next": "Câu sau",
+      "paletteItemAria": "{label}, {outcome}",
+      "paletteLegend": "Chú thích trạng thái câu",
+      "paletteSummary": "Đúng {correct} · Đúng một phần {partial} · Sai {wrong} · Bỏ trống {blank}",
+      "paletteTitle": "Danh sách câu",
+      "partsLabel": "Các phần của đề",
+      "prev": "Câu trước",
+      "skippedPartBadge": "Bị bỏ qua"
+    },
+    "notAvailable": {
+      "backToResult": "Về kết quả",
+      "description": "Kết quả của lượt này chưa sẵn sàng. Bạn xem lại bài được sau khi chấm xong.",
+      "title": "Chưa thể xem lại bài làm"
+    },
+    "notFound": {
+      "description": "Lượt thi không tồn tại hoặc không thuộc tài khoản đang đăng nhập.",
+      "eyebrow": "MÃ LỖI 404",
+      "title": "Không tìm thấy bài làm",
+      "toHistory": "Lịch sử luyện thi",
+      "toHome": "Bài thi của tôi"
+    },
+    "notIncluded": {
+      "backToResult": "Về kết quả",
+      "description": "Bài thi bạn đã mua chỉ cho xem điểm. Bạn vẫn xem được điểm của lượt này ở trang kết quả.",
+      "title": "Bài thi này không có phần xem lại bài làm"
+    },
+    "outcomes": {
+      "BLANK": "bỏ trống",
+      "CORRECT": "đúng",
+      "PARTIAL": "đúng một phần",
+      "PENDING_REVIEW": "chờ chấm",
+      "WRONG": "sai"
+    },
+    "pageTitle": "Xem lại bài làm",
+    "pendingBanner": "Lượt thi còn câu tự luận đang chờ chấm. Bạn chỉ xem lại được các câu đã chấm tự động cho tới khi chấm xong.",
+    "questionLabel": "Câu {no}",
+    "questionRangeLabel": "Câu {from}–{to}",
+    "scoreOnlyNotice": "Không hiển thị lời giải cho mức quyền lợi hiện tại.",
+    "skippedPart": {
+      "description": "Phần này đã bị bỏ qua nên không có câu để xem lại. Phần được {score}/{max} điểm.",
+      "descriptionNoScore": "Phần này đã bị bỏ qua nên không có câu để xem lại.",
+      "title": "Phần này bị bỏ qua"
+    },
+    "subtitle": "{examName} · {scope} · Lần {attemptNo}",
+    "subtitleWithScore": "{examName} · {scope} · Lần {attemptNo} · Tổng điểm {score}/{max}"
   },
   "storefront": {
     "access": {
