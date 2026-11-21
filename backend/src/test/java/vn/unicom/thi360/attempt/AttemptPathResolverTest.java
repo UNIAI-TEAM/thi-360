@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.ChoiceOptionView;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse.PreparePartView;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.application.AttemptPathResolver;
@@ -20,6 +21,8 @@ import vn.unicom.thi360.attempt.application.AttemptPathResolver.ResolvedStartPla
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.spi.PaperSolverPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Combination;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.CombinationSubject;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.OmittedGroup;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
@@ -116,7 +119,11 @@ class AttemptPathResolverTest {
                 .containsExactly(new OmittedGroup("Essay V1", BigDecimal.ONE));
         assertThat(prepare.parts()).extracting(PreparePartView::name).containsExactly("Part 1 V1", "Part 2 V1");
         assertThat(prepare.preChoice().options()).hasSize(1);
-        assertThat(prepare.preChoice().options().getFirst().code()).isEqualTo("CS");
+        ChoiceOptionView csOption = prepare.preChoice().options().getFirst();
+        assertThat(csOption.code()).isEqualTo("CS");
+        assertThat(csOption.questionCount()).isEqualTo(22);
+        assertThat(csOption.durationMinutes()).isEqualTo(60);
+        assertThat(csOption.maxPoints()).isEqualByComparingTo("7");
     }
 
     @Test
@@ -234,6 +241,222 @@ class AttemptPathResolverTest {
                 fixedServing, List.of(), new PreChoiceInput(null, List.of("TOAN"))))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasFieldOrPropertyWithValue("code", "CHOICE_NOT_ALLOWED");
+    }
+
+    @Test
+    void choiceOptionsExposeDistinctPerPathMetricsAcrossOptionsCombinationsAndAfterStart() {
+        UUID examId = UUID.randomUUID();
+
+        // 1. PRE_START Option-based (CS vs ICT with different questionCount, durationMinutes, maxPoints)
+        Option csOpt = new Option("o-cs", "ORIENTATION", "CS", "Khoa học máy tính", null, null, List.of());
+        Option ictOpt = new Option("o-ict", "ORIENTATION", "ICT", "Tin học ứng dụng", null, null, List.of());
+        Part p1Opt = new Part("p1", 1, "Tin học", 50, 28, 28, 28, "CHOICE", 1, new BigDecimal("10"),
+                List.of(), List.of(), List.of(), List.of(csOpt, ictOpt),
+                List.of(
+                        new PartPath("o-cs", 28, new BigDecimal("10"), 50),
+                        new PartPath("o-ict", 30, new BigDecimal("12"), 55)),
+                List.of());
+        PublishedVersion optVersion = version(examId, 1, "Informatics", "PER_PART", null,
+                new BigDecimal("12"), null, List.of(), List.of(p1Opt), List.of("o-cs", "o-ict"));
+        ServingExam optServing = new ServingExam(examId, "PUBLISHED", optVersion, List.of(
+                new ServingPath("o-cs", 1, List.of(new PathChoice("p1", "o-cs", "ORIENTATION", "CS", "Khoa học máy tính")),
+                        28, new BigDecimal("10"), 50,
+                        List.of(new ServingPathPart("p1", "Tin học", 28, new BigDecimal("10"), 50)), List.of()),
+                new ServingPath("o-ict", 1, List.of(new PathChoice("p1", "o-ict", "ORIENTATION", "ICT", "Tin học ứng dụng")),
+                        30, new BigDecimal("12"), 55,
+                        List.of(new ServingPathPart("p1", "Tin học", 30, new BigDecimal("12"), 55)), List.of())));
+
+        PrepareStructure optPrepare = resolver.buildPrepareStructure(optServing, List.of());
+        assertThat(optPrepare.preChoice()).isNotNull();
+        assertThat(optPrepare.preChoice().options()).hasSize(2);
+        ChoiceOptionView csView = optPrepare.preChoice().options().get(0);
+        ChoiceOptionView ictView = optPrepare.preChoice().options().get(1);
+        assertThat(csView.code()).isEqualTo("CS");
+        assertThat(csView.questionCount()).isEqualTo(28);
+        assertThat(csView.durationMinutes()).isEqualTo(50);
+        assertThat(csView.maxPoints()).isEqualByComparingTo("10");
+        assertThat(ictView.code()).isEqualTo("ICT");
+        assertThat(ictView.questionCount()).isEqualTo(30);
+        assertThat(ictView.durationMinutes()).isEqualTo(55);
+        assertThat(ictView.maxPoints()).isEqualByComparingTo("12");
+
+        // 2. PRE_START Combination-based (BCA CA1 vs CA2 with fallback from parts/version when path totals are null)
+        Part bcaP1 = new Part("p1", 1, "Phần 1", null, 30, 30, 30, "ALL", null, new BigDecimal("40"),
+                List.of(), List.of(), List.of(), List.of(),
+                List.of(new PartPath("p2:CA1", 30, new BigDecimal("40"), null),
+                        new PartPath("p2:CA2", 30, new BigDecimal("40"), null)),
+                List.of());
+        Part bcaP2 = new Part("p2", 2, "Tổ hợp", null, null, null, null, "CHOICE", 1, null,
+                List.of(), List.of(), List.of(), List.of(),
+                List.of(new PartPath("p2:CA1", 20, new BigDecimal("60"), null),
+                        new PartPath("p2:CA2", 25, new BigDecimal("70"), null)),
+                List.of());
+        Combination ca1 = new Combination("p2", "CA1", "Tổ hợp CA1", null, 1,
+                List.of(new CombinationSubject("TOAN", "Toán", 0), new CombinationSubject("LY", "Vật lí", 1)));
+        Combination ca2 = new Combination("p2", "CA2", "Tổ hợp CA2", null, 1,
+                List.of(new CombinationSubject("TOAN", "Toán", 0), new CombinationSubject("HOA", "Hóa học", 1)));
+        PublishedVersion bcaVersion = new PublishedVersion(
+                examId, 1, "SERVING", "PUBLISHED", Instant.parse("2026-11-20T00:00:00Z"),
+                "BCA-CODE", "BCA Exam", UUID.randomUUID(), "BCA", "FULL", null, null,
+                "STANDARD", "SHARED", 180, new BigDecimal("100"), null, "RAW", null,
+                List.of(bcaP1, bcaP2), List.of(ca1, ca2), List.of(),
+                List.of("p2:CA1", "p2:CA2"), List.of("p2:CA1", "p2:CA2"), null);
+        ServingPath ca1Path = new ServingPath("p2:CA1", 1,
+                List.of(new PathChoice("p2", "p2:CA1", "COMBINATION", "CA1", "Tổ hợp CA1")),
+                null, null, null,
+                List.of(new ServingPathPart("p1", "Phần 1", 30, new BigDecimal("40"), null),
+                        new ServingPathPart("p2", "Tổ hợp", 20, new BigDecimal("60"), null)),
+                List.of(ca1));
+        ServingPath ca2Path = new ServingPath("p2:CA2", 1,
+                List.of(new PathChoice("p2", "p2:CA2", "COMBINATION", "CA2", "Tổ hợp CA2")),
+                55, new BigDecimal("110"), 195,
+                List.of(new ServingPathPart("p1", "Phần 1", 30, new BigDecimal("40"), null),
+                        new ServingPathPart("p2", "Tổ hợp", 25, new BigDecimal("70"), null)),
+                List.of(ca2));
+        ServingExam bcaServing = new ServingExam(examId, "PUBLISHED", bcaVersion, List.of(ca1Path, ca2Path));
+
+        PrepareStructure bcaPrepare = resolver.buildPrepareStructure(bcaServing, List.of());
+        assertThat(bcaPrepare.preChoice()).isNotNull();
+        assertThat(bcaPrepare.preChoice().options()).hasSize(2);
+        ChoiceOptionView ca1View = bcaPrepare.preChoice().options().get(0);
+        ChoiceOptionView ca2View = bcaPrepare.preChoice().options().get(1);
+        assertThat(ca1View.code()).isEqualTo("CA1");
+        assertThat(ca1View.questionCount()).isEqualTo(50);
+        assertThat(ca1View.durationMinutes()).isEqualTo(180);
+        assertThat(ca1View.maxPoints()).isEqualByComparingTo("100");
+        assertThat(ca2View.code()).isEqualTo("CA2");
+        assertThat(ca2View.questionCount()).isEqualTo(55);
+        assertThat(ca2View.durationMinutes()).isEqualTo(195);
+        assertThat(ca2View.maxPoints()).isEqualByComparingTo("110");
+
+        // 3. AFTER_START HSA FULL options also populate path metrics
+        Option sciOpt = new Option("o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học", 3, List.of(17, 17, 16), List.of());
+        Option anhOpt = new Option("o-anh", "FIXED", "ANH", "Tiếng Anh", null, null, List.of());
+        Part hsaP1 = new Part("p1", 1, "Toán", 75, 50, 50, 50, "ALL", null, new BigDecimal("50"),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+        Part hsaP3 = new Part("p3", 2, "Tự chọn", 60, 50, 50, 50, "CHOICE", 1, new BigDecimal("50"),
+                List.of(), List.of(), List.of(), List.of(sciOpt, anhOpt), List.of(), List.of());
+        PublishedVersion hsaVersion = new PublishedVersion(
+                examId, 1, "SERVING", "PUBLISHED", Instant.parse("2026-11-20T00:00:00Z"),
+                "HSA-FULL", "HSA Full", UUID.randomUUID(), "HSA", "FULL", null, null,
+                "STANDARD", "PER_PART", null, new BigDecimal("100"), null, "RAW", null,
+                List.of(hsaP1, hsaP3), List.of(), List.of(),
+                List.of("o-sci", "o-anh"), List.of("o-sci", "o-anh"), null);
+        ServingExam hsaServing = new ServingExam(examId, "PUBLISHED", hsaVersion, List.of(
+                new ServingPath("o-sci", 1, List.of(new PathChoice("p3", "o-sci", "SUBJECT_CHOICE", "SCIENCE", "Khoa học")),
+                        100, new BigDecimal("100"), 135,
+                        List.of(new ServingPathPart("p1", "Toán", 50, new BigDecimal("50"), 75),
+                                new ServingPathPart("p3", "Khoa học", 50, new BigDecimal("50"), 60)),
+                        List.of()),
+                new ServingPath("o-anh", 1, List.of(new PathChoice("p3", "o-anh", "FIXED", "ANH", "Tiếng Anh")),
+                        90, new BigDecimal("90"), 120,
+                        List.of(new ServingPathPart("p1", "Toán", 50, new BigDecimal("50"), 75),
+                                new ServingPathPart("p3", "Tiếng Anh", 40, new BigDecimal("40"), 45)),
+                        List.of())));
+
+        PrepareStructure hsaPrepare = resolver.buildPrepareStructure(hsaServing, List.of());
+        assertThat(hsaPrepare.preChoice()).isNull();
+        assertThat(hsaPrepare.afterStartChoices()).hasSize(1);
+        List<ChoiceOptionView> hsaOptions = hsaPrepare.afterStartChoices().getFirst().options();
+        assertThat(hsaOptions).hasSize(2);
+        assertThat(hsaOptions.get(0).code()).isEqualTo("SCIENCE");
+        assertThat(hsaOptions.get(0).questionCount()).isEqualTo(100);
+        assertThat(hsaOptions.get(0).durationMinutes()).isEqualTo(135);
+        assertThat(hsaOptions.get(0).maxPoints()).isEqualByComparingTo("100");
+        assertThat(hsaOptions.get(1).code()).isEqualTo("ANH");
+        assertThat(hsaOptions.get(1).questionCount()).isEqualTo(90);
+        assertThat(hsaOptions.get(1).durationMinutes()).isEqualTo(120);
+        assertThat(hsaOptions.get(1).maxPoints()).isEqualByComparingTo("90");
+    }
+
+    @Test
+    void multiPathOptionMetricsRequireConsensusAndCompareBigDecimalByValue() {
+        UUID examId = UUID.randomUUID();
+        Option optA = new Option("o-a", "BRANCH", "OPT_A", "Option A", null, null, List.of());
+        Option optB = new Option("o-b", "BRANCH", "OPT_B", "Option B", null, null, List.of());
+        Part p1 = new Part("p1", 1, "Part 1", 90, 25, 25, 25, "CHOICE", 1, new BigDecimal("50"),
+                List.of(), List.of(), List.of(), List.of(optA, optB), List.of(), List.of());
+        Part p2 = new Part("p2", 2, "Part 2", 90, 25, 25, 25, "ALL", null, new BigDecimal("50"),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+        PublishedVersion v = version(examId, 1, "Multi-path Consensus", "PER_PART", null,
+                new BigDecimal("100"), null, List.of(), List.of(p1, p2), List.of("a-1", "a-2", "b-1", "b-2"));
+
+        // OPT_A matches two paths: agree on duration (180) and maxPoints (100 vs 100.0), disagree on questionCount (50 vs 60)
+        ServingPath a1 = new ServingPath("a-1", 1, List.of(new PathChoice("p1", "o-a", "BRANCH", "OPT_A", "Option A")),
+                50, new BigDecimal("100"), 180,
+                List.of(new ServingPathPart("p1", "Part 1", 25, new BigDecimal("50"), 90),
+                        new ServingPathPart("p2", "Part 2", 25, new BigDecimal("50"), 90)),
+                List.of());
+        ServingPath a2 = new ServingPath("a-2", 1, List.of(new PathChoice("p1", "o-a", "BRANCH", "OPT_A", "Option A")),
+                60, new BigDecimal("100.0"), 180,
+                List.of(new ServingPathPart("p1", "Part 1", 30, new BigDecimal("50.0"), 90),
+                        new ServingPathPart("p2", "Part 2", 30, new BigDecimal("50.0"), 90)),
+                List.of());
+
+        // OPT_B matches two paths: agree on questionCount (40), disagree on duration (120 vs 150) and maxPoints (80 vs 90)
+        ServingPath b1 = new ServingPath("b-1", 1, List.of(new PathChoice("p1", "o-b", "BRANCH", "OPT_B", "Option B")),
+                40, new BigDecimal("80"), 120, List.of(), List.of());
+        ServingPath b2 = new ServingPath("b-2", 1, List.of(new PathChoice("p1", "o-b", "BRANCH", "OPT_B", "Option B")),
+                40, new BigDecimal("90"), 150, List.of(), List.of());
+
+        ServingExam serving = new ServingExam(examId, "PUBLISHED", v, List.of(a1, a2, b1, b2));
+        PrepareStructure prepare = resolver.buildPrepareStructure(serving, List.of());
+
+        ChoiceOptionView viewA = prepare.preChoice().options().get(0);
+        assertThat(viewA.code()).isEqualTo("OPT_A");
+        assertThat(viewA.questionCount()).isNull();
+        assertThat(viewA.durationMinutes()).isEqualTo(180);
+        assertThat(viewA.maxPoints()).isEqualByComparingTo("100");
+
+        ChoiceOptionView viewB = prepare.preChoice().options().get(1);
+        assertThat(viewB.code()).isEqualTo("OPT_B");
+        assertThat(viewB.questionCount()).isEqualTo(40);
+        assertThat(viewB.durationMinutes()).isNull();
+        assertThat(viewB.maxPoints()).isNull();
+    }
+
+    @Test
+    void optionMetricsWithNullOrIncompleteMetricFailClosedToNull() {
+        UUID examId = UUID.randomUUID();
+        Option partialMulti = new Option("o-pm", "BRANCH", "PARTIAL", "Partial", null, null, List.of());
+        Option incompleteSingle = new Option("o-inc", "BRANCH", "INCOMPLETE", "Incomplete", null, null, List.of());
+        Part p1 = new Part("p1", 1, "Part 1", null, null, null, null, "CHOICE", 1, null,
+                List.of(), List.of(), List.of(), List.of(partialMulti, incompleteSingle), List.of(), List.of());
+        Part p2 = new Part("p2", 2, "Part 2", null, null, null, null, "ALL", null, null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+        PublishedVersion v = version(examId, 1, "Null Metric Fail-Closed", "PER_PART", null,
+                null, null, List.of(), List.of(p1, p2), List.of("pm-1", "pm-2", "inc-1"));
+
+        // PARTIAL matches 2 paths: pm-1 has (50, 90, 100); pm-2 has null questionCount and null maxPoints -> both fail closed to null, duration stays 90
+        ServingPath pm1 = new ServingPath("pm-1", 1, List.of(new PathChoice("p1", "o-pm", "BRANCH", "PARTIAL", "Partial")),
+                50, new BigDecimal("100"), 90, List.of(), List.of());
+        ServingPath pm2 = new ServingPath("pm-2", 1, List.of(new PathChoice("p1", "o-pm", "BRANCH", "PARTIAL", "Partial")),
+                null, null, 90,
+                List.of(new ServingPathPart("p1", "Part 1", 25, new BigDecimal("50"), 45),
+                        new ServingPathPart("p2", "Part 2", null, null, 45)),
+                List.of());
+
+        // INCOMPLETE single path has null totals and one part missing questionCount & durationMinutes -> never partial sum
+        ServingPath inc1 = new ServingPath("inc-1", 1, List.of(new PathChoice("p1", "o-inc", "BRANCH", "INCOMPLETE", "Incomplete")),
+                null, null, null,
+                List.of(new ServingPathPart("p1", "Part 1", 20, new BigDecimal("50"), 30),
+                        new ServingPathPart("p2", "Part 2", null, new BigDecimal("50"), null)),
+                List.of());
+
+        ServingExam serving = new ServingExam(examId, "PUBLISHED", v, List.of(pm1, pm2, inc1));
+        PrepareStructure prepare = resolver.buildPrepareStructure(serving, List.of());
+
+        ChoiceOptionView partialView = prepare.preChoice().options().get(0);
+        assertThat(partialView.code()).isEqualTo("PARTIAL");
+        assertThat(partialView.questionCount()).isNull();
+        assertThat(partialView.durationMinutes()).isEqualTo(90);
+        assertThat(partialView.maxPoints()).isNull();
+
+        ChoiceOptionView incompleteView = prepare.preChoice().options().get(1);
+        assertThat(incompleteView.code()).isEqualTo("INCOMPLETE");
+        assertThat(incompleteView.questionCount()).isNull();
+        assertThat(incompleteView.durationMinutes()).isNull();
+        assertThat(incompleteView.maxPoints()).isEqualByComparingTo("100");
     }
 
     private ServingExam branchServingExam(UUID examId) {

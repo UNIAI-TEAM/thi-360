@@ -139,6 +139,7 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
             assertThat(scienceOpt.path("chooseSubjects").asInt()).isEqualTo(3);
             assertThat(scienceOpt.path("subjects")).hasSize(5);
             assertThat(scienceOpt.path("countsByPick")).hasSize(3);
+            assertChoiceOptionMatchesSinglePath(scienceOpt, hsaServing, "SCIENCE");
         } finally {
             jdbc.update(
                     "UPDATE exam.exam_version SET config = ?::jsonb WHERE exam_id = ? AND version_no = 1",
@@ -168,7 +169,10 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(spt);
         assertThat(spt.path("preChoice").path("preselectedCode").asText()).isEqualTo("CS");
         assertThat(spt.path("preChoice").path("options")).hasSize(1);
-        assertThat(spt.path("preChoice").path("options").get(0).path("code").asText()).isEqualTo("CS");
+        JsonNode csOpt = spt.path("preChoice").path("options").get(0);
+        assertThat(csOpt.path("code").asText()).isEqualTo("CS");
+        ServingExam sptServing = publishedExamPort.findServing(sptCsLine.examId()).orElseThrow();
+        assertChoiceOptionMatchesSinglePath(csOpt, sptServing, "CS");
         assertThat(spt.path("omittedGroups")).isNotEmpty();
         assertThat(spt.path("parts").get(1).path("questionCount").asInt()).isEqualTo(2);
 
@@ -369,6 +373,35 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
                     "UPDATE exam.exam_version SET parts = ?::jsonb WHERE exam_id = ? AND version_no = 1",
                     originalPartsJson,
                     hsaBase.examId());
+        }
+    }
+
+    private static void assertChoiceOptionMatchesSinglePath(
+            JsonNode optionJson, ServingExam serving, String optionCode) {
+        ServingPath path =
+                serving.servingPaths().stream()
+                        .filter(p -> p.choices().stream().anyMatch(c -> optionCode.equals(c.code())))
+                        .findFirst()
+                        .orElseThrow();
+        if (path.questionCount() == null) {
+            assertThat(optionJson.path("questionCount").isNull()).isTrue();
+        } else {
+            assertThat(optionJson.path("questionCount").asInt()).isEqualTo(path.questionCount());
+        }
+        Integer expectedDuration =
+                path.durationMinutes() != null ? path.durationMinutes() : serving.version().durationMinutes();
+        if (expectedDuration == null) {
+            assertThat(optionJson.path("durationMinutes").isNull()).isTrue();
+        } else {
+            assertThat(optionJson.path("durationMinutes").asInt()).isEqualTo(expectedDuration);
+        }
+        BigDecimal expectedMaxPoints =
+                path.maxPoints() != null ? path.maxPoints() : serving.version().maxScore();
+        if (expectedMaxPoints == null) {
+            assertThat(optionJson.path("maxPoints").isNull()).isTrue();
+        } else {
+            assertThat(new BigDecimal(optionJson.path("maxPoints").asText()))
+                    .isEqualByComparingTo(expectedMaxPoints);
         }
     }
 }
