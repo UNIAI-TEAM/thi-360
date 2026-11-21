@@ -251,10 +251,10 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | merge PR #157 (`11527568`) |
 | AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | merge PR #160 (`d75b1369`) |
 | AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | merge PR #164 (`f0d05797`) |
-| AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | đang làm (bro) |
-| AT-4 | UNI-2725 | Chấm tự động, tổng hợp, kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | AT-2a | AT-2b, AT-3 | 5 | chưa mở |
+| AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | merge PR #166 (`26db8dac`) |
+| AT-4 | UNI-2725 | Chấm tự động, tổng hợp, kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | AT-2a | AT-2b, AT-3 | 5 | đang làm (bro) |
 | AT-5 | UNI-2726 | Hàng chờ chấm tự luận, số đếm, chấm lại, vận hành lượt, API chấm và kéo dài đề làm thử | AT-4 |  | 4 | chưa mở |
-| AT-6 | UNI-2727 | Phát audio có giới hạn lần nghe, kiểm tệp audio khi mở lượt | AT-2a, AT-3 |  | 3 | chưa mở |
+| AT-6 | UNI-2727 | Phát audio có giới hạn lần nghe, kiểm tệp audio khi mở lượt | AT-2a, AT-3 |  | 3 | đang làm (cty) |
 | AT-7 | UNI-2728 | Chấm H-SCA, V-SAT, kết quả theo phân đoạn | AT-4 | AT-5 | 2 | chưa mở |
 | AT-8 | UNI-2729 | THPTQG chuyển tự do giữa các phần | AT-2a | AT-3, AT-6 | 2 | chưa mở |
 | FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | merge PR #149 (`1e49a9e5`) |
