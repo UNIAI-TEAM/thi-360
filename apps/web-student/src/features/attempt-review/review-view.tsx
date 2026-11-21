@@ -132,6 +132,10 @@ function EssayCriteriaSection({
   );
 }
 
+type ReviewQueryOutcome =
+  | { kind: "ok"; data: AttemptReviewResponse }
+  | { kind: "not_included" };
+
 export function AttemptReviewView({
   attemptId,
   loadCurrentSession = loadSession,
@@ -164,15 +168,27 @@ export function AttemptReviewView({
 
   const reviewQuery = useQuery({
     queryKey: ATTEMPT_REVIEW_QUERY_KEY(attemptId, userId),
-    queryFn: () => loadReview(attemptId),
+    queryFn: async (): Promise<ReviewQueryOutcome> => {
+      try {
+        return { kind: "ok", data: await loadReview(attemptId) };
+      } catch (err) {
+        if (err instanceof ApiStatusError && err.status === 403) {
+          return { kind: "not_included" };
+        }
+        throw err;
+      }
+    },
     enabled: isStudent,
     retry: false,
   });
 
+  const isNotIncluded = reviewQuery.data?.kind === "not_included";
+  const reviewData = reviewQuery.data?.kind === "ok" ? reviewQuery.data.data : undefined;
+
   const resultQuery = useQuery({
     queryKey: ATTEMPT_RESULT_QUERY_KEY(attemptId, userId),
     queryFn: () => loadResult(attemptId),
-    enabled: isStudent && reviewQuery.isSuccess,
+    enabled: isStudent && Boolean(reviewData),
     retry: false,
     staleTime: 60_000,
   });
@@ -185,7 +201,6 @@ export function AttemptReviewView({
 
   const error = reviewQuery.error;
   const isNotFound = error instanceof ApiStatusError && error.status === 404;
-  const isNotIncluded = error instanceof ApiStatusError && error.status === 403;
   const isNotAvailable = error instanceof ApiStatusError && error.status === 409;
   const resultHref = `/attempts/${encodeURIComponent(attemptId)}/result`;
 
@@ -324,10 +339,10 @@ export function AttemptReviewView({
           </div>
         )}
 
-        {isStudent && reviewQuery.data && (
+        {isStudent && reviewData && (
           <LoadedReviewContent
             attemptId={attemptId}
-            reviewData={reviewQuery.data}
+            reviewData={reviewData}
             resultData={resultQuery.data}
             urlPartParam={urlPartParam}
             manualPart={manualPart}
@@ -646,11 +661,11 @@ function LoadedReviewContent({
               </span>
             </div>
 
-            <div className="flex gap-2 border-t border-border pt-3">
+            <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
               <Button
                 type="button"
                 variant="secondary"
-                className="h-11 flex-1"
+                className="h-11 w-full min-w-0 px-2.5"
                 disabled={activeIndex <= 0}
                 onClick={() => {
                   const prev = partItems[activeIndex - 1];
@@ -663,7 +678,7 @@ function LoadedReviewContent({
               <Button
                 type="button"
                 variant="secondary"
-                className="h-11 flex-1"
+                className="h-11 w-full min-w-0 px-2.5"
                 disabled={activeIndex < 0 || activeIndex >= partItems.length - 1}
                 onClick={() => {
                   const next = partItems[activeIndex + 1];

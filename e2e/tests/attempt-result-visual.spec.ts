@@ -501,6 +501,8 @@ for (const cell of matrixCells()) {
         ).toBeVisible();
         await expect(page.getByText(/MÃ LỖI 404|ERROR 404/)).toHaveCount(0);
         await settle(page);
+        await expect(page).toHaveURL(new RegExp(`/attempts/${ATTEMPT_FORBIDDEN}/review$`));
+        await expect(page.locator("header nav")).toBeVisible();
         await expectMatrixClean(page, "review-score-only-403", cell);
 
         // 8. history-list

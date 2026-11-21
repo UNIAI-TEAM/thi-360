@@ -205,8 +205,9 @@ describe("AttemptResultView · AC-1..AC-9, AC-17..AC-19, AC-22", () => {
     expect(screen.getByText("108,5")).toBeInTheDocument();
     expect(screen.getByText("/150")).toBeInTheDocument();
 
-    // 5 buckets + denominator
+    // 4 buckets on SCORED (pending bucket hidden when 0) + denominator
     expect(screen.getByText("Trên 120 câu phải làm.")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Tổng điểm" })).queryByText("Chờ chấm")).not.toBeInTheDocument();
     // Metadata <dl>: choices + Asia/Ho_Chi_Minh (+07) timestamp + duration + endReason
     expect(await screen.findByText("Khoa học: Vật lí, Hóa học")).toBeInTheDocument();
     expect(screen.getByText("08:00, 20/11/2026")).toBeInTheDocument();
@@ -394,6 +395,8 @@ describe("AttemptResultView · AC-1..AC-9, AC-17..AC-19, AC-22", () => {
       "/attempts/att-pending/review",
     );
     expect(screen.getAllByText("Chấm tay").length).toBeGreaterThanOrEqual(2);
+    // PENDING_REVIEW keeps the pending stat bucket visible alongside the pending score placeholder
+    expect(within(screen.getByRole("region", { name: "Tổng điểm" })).getAllByText("Chờ chấm")).toHaveLength(2);
     pendingView.unmount();
 
     // REGRADING keeps previous score visible + FAULT + compensated banners
@@ -493,6 +496,8 @@ describe("AttemptResultView · AC-1..AC-9, AC-17..AC-19, AC-22", () => {
       );
 
       expect(await screen.findByText(s.expectedDenom)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: "Tổng điểm" })).toBeInTheDocument();
+      expect(screen.getAllByText("Điểm luyện tập")).toHaveLength(1);
       expect(screen.getByText("Không phải điểm V-ACT chính thức")).toBeInTheDocument();
       expect(screen.queryByRole("region", { name: "Điểm theo môn" })).not.toBeInTheDocument();
 

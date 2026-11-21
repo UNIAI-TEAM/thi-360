@@ -1,36 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { ADMIN_URL, adminApi, loginAdmin, RUN_ID } from "./helpers/editor-qa";
-import { createVerifiedAccount, WEB_URL, type SessionCookies } from "./helpers/mail";
+import { ADMIN_URL, adminApi, createKnowledgeTree, loginAdmin, RUN_ID, type AdminApi } from "./helpers/editor-qa";
+import { createVerifiedAccount, solidPng, WEB_URL, type SessionCookies } from "./helpers/mail";
 import { examByCode, publishedExamSet, waitForPublishedExamSet } from "./helpers/published-exam-set";
-import { publishApi, type CheckResult } from "./helpers/wave-2b";
+import { getExam, getStructure, publishApi, SOLVER_TIMEOUT_MS, type CheckResult } from "./helpers/wave-2b";
 
 /**
  * E2E chức năng cho FS-6 (UNI-2735):
  * - AC-10: SCORE không cho xem lại (ẩn CTA ở /result, truy cập thẳng /review hiện màn 403 thân thiện)
  * - AC-13 & AC-16: Lịch sử có đủ dòng FULL & theo phần riêng biệt; lọc scope/tìm kiếm + /history?examId=<uuid> + Back giữ query
  * - AC-17: 404 (id lạ & cross-user trên cả /result và /review), 409 ATTEMPT_NOT_FINISHED khi lượt còn mở
- * - AC-23: Ảnh lời giải (/solution-assets/) trên DS-HSA-SUBJECT-TOAN — 0 request khi SCORE_AND_ANSWERS;
- *          khi admin chuyển listing sang FULL_SOLUTION và publish, tài khoản mới mua lượt mở /review tải ảnh 200 & naturalWidth > 0 (khôi phục trong finally).
+ * - AC-23: Ảnh lời giải (/solution-assets/) trên đề REVIEW 1 câu tạo riêng — 0 request khi SCORE_AND_ANSWERS;
+ *          khi admin chuyển listing sang FULL_SOLUTION và publish, tài khoản mới mua lượt mở /review tải ảnh 200 & naturalWidth > 0 (ngừng bán trong finally).
  */
 test.setTimeout(300_000);
 
 const API_URL = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 
-interface ListingSnapshot {
+interface AdminListingResponse {
   revision: number;
-  coverAssetId?: string | null;
-  summary?: string | null;
-  description?: string | null;
-  objectives?: string | null;
-  audience?: string | null;
-  listPriceVnd?: number | null;
-  attemptsGranted?: number | null;
-  benefitAiExplanation?: boolean;
-  benefitStrengthWeakness?: boolean;
-  benefitPractice?: boolean;
-  benefitNote?: string | null;
-  resultView: string;
+  minPriceVnd?: number | null;
 }
 
 interface AttemptStatePayload {
@@ -239,60 +228,158 @@ async function submitAndWaitScored(
   throw new Error(`Attempt ${attemptId} did not finish grading`);
 }
 
-async function setExamResultViewAndPublish(examCode: string, resultView: string): Promise<string> {
-  const admin = await adminApi();
+async function createDeterministicSolutionImageExam(
+  admin: AdminApi,
+): Promise<{ examId: string; examCode: string }> {
   const { api, headers } = admin;
-  try {
-    const listRes = await api.get(`${ADMIN_URL}/api/v1/admin/exams`, { params: { q: examCode, page: "0", size: "50" } });
-    expect(listRes.ok(), `GET /admin/exams?q=${examCode}`).toBe(true);
-    const listBody = (await listRes.json()) as { items: Array<{ id: string; code: string }> };
-    const exam = listBody.items.find((item) => item.code === examCode);
-    expect(exam, `Exam ${examCode} not found`).toBeDefined();
-    const examId = exam!.id;
+  const tree = await createKnowledgeTree(admin, "TOAN", "fs6img");
 
-    const getListingRes = await api.get(`${ADMIN_URL}/api/v1/admin/exams/${examId}/listing`);
-    expect(getListingRes.ok(), `GET listing ${examId}`).toBe(true);
-    const before = (await getListingRes.json()) as ListingSnapshot;
-    const previousResultView = before.resultView;
+  const uploadRes = await api.post(`${ADMIN_URL}/api/v1/admin/question-assets`, {
+    headers: { ...headers, "idempotency-key": randomUUID() },
+    multipart: {
+      kind: "IMAGE",
+      file: { name: "solution-diagram.png", mimeType: "image/png", buffer: solidPng(64) },
+    },
+  });
+  expect(uploadRes.status(), `POST /question-assets: ${await uploadRes.text()}`).toBe(201);
+  const uploaded = (await uploadRes.json()) as { id: string };
+  const assetId = uploaded.id;
 
-    if (previousResultView !== resultView) {
-      const putRes = await api.put(`${ADMIN_URL}/api/v1/admin/exams/${examId}/listing`, {
-        headers,
-        data: {
-          expectedRevision: before.revision,
-          coverAssetId: before.coverAssetId ?? null,
-          summary: before.summary ?? null,
-          description: before.description ?? null,
-          objectives: before.objectives ?? null,
-          audience: before.audience ?? null,
-          listPriceVnd: before.listPriceVnd ?? null,
-          attemptsGranted: before.attemptsGranted ?? null,
-          benefitAiExplanation: before.benefitAiExplanation ?? false,
-          benefitStrengthWeakness: before.benefitStrengthWeakness ?? false,
-          benefitPractice: before.benefitPractice ?? false,
-          benefitNote: before.benefitNote ?? null,
-          resultView,
-        },
-      });
-      expect(putRes.ok(), `PUT listing ${examId}: ${await putRes.text()}`).toBe(true);
+  const qCreateRes = await api.post(`${ADMIN_URL}/api/v1/admin/questions`, {
+    headers: { ...headers, "idempotency-key": randomUUID() },
+    data: {
+      type: "SINGLE_CHOICE",
+      subjectCode: "TOAN",
+      gradeCode: "G12",
+      difficultyCode: "TH",
+      points: 1,
+      knowledge: [{ nodeId: tree.leafId, primary: true }],
+      tagCodes: [],
+      content: `<p>Câu hỏi minh họa ảnh lời giải ${RUN_ID}.</p>`,
+      solution: `<p>Lời giải chi tiết có ảnh minh họa.</p><figure class="image" data-width="medium" data-zoom="true"><img data-asset-id="${assetId}" src="/api/v1/admin/question-assets/${assetId}" alt="Minh họa lời giải" /></figure>`,
+      commonMistakes: [],
+      attachmentIds: [],
+      body: {
+        type: "SINGLE_CHOICE",
+        options: [
+          { id: randomUUID(), content: "<p>Đáp án A</p>", correct: true },
+          { id: randomUUID(), content: "<p>Đáp án B</p>", correct: false },
+          { id: randomUUID(), content: "<p>Đáp án C</p>", correct: false },
+          { id: randomUUID(), content: "<p>Đáp án D</p>", correct: false },
+        ],
+        shuffleOptions: false,
+      },
+      sourceCode: `E2E-FS6-IMG-Q-${RUN_ID}`.slice(0, 60),
+    },
+  });
+  expect(qCreateRes.status(), `POST /questions: ${await qCreateRes.text()}`).toBe(201);
+  const qCreated = (await qCreateRes.json()) as { summary: { id: string; revision: number } };
 
-      const checkRes = await api.post(`${ADMIN_URL}/api/v1/admin/exams/${examId}/check`, {
-        headers,
-        data: {},
-      });
-      expect(checkRes.ok(), `POST check ${examId}: ${await checkRes.text()}`).toBe(true);
-      const checkBody = (await checkRes.json()) as CheckResult;
-      const pathIds = checkBody.paths.filter((p) => p.result === "VALID").map((p) => p.pathId);
-      expect(pathIds.length, `No publishable pathIds for ${examCode}`).toBeGreaterThan(0);
+  const readyRes = await api.post(`${ADMIN_URL}/api/v1/admin/questions/${qCreated.summary.id}/ready`, {
+    headers,
+    data: { expectedRevision: qCreated.summary.revision },
+  });
+  expect(readyRes.status(), `POST /questions/${qCreated.summary.id}/ready: ${await readyRes.text()}`).toBe(200);
 
-      const pubRes = await publishApi(admin, examId, pathIds);
-      expect(pubRes.ok(), `POST publish ${examId}: ${await pubRes.text()}`).toBe(true);
-    }
+  const examCode = `E2E-FS6-IMG-${RUN_ID}`.toUpperCase().slice(0, 30);
+  const examCreateRes = await api.post(`${ADMIN_URL}/api/v1/admin/exams`, {
+    headers: { ...headers, "idempotency-key": randomUUID() },
+    data: {
+      kind: "HSA",
+      scope: "SUBJECT",
+      subjectCode: "TOAN",
+      buildMode: "REVIEW",
+      code: examCode,
+      name: `FS6 Giải có ảnh ${RUN_ID}`,
+      description: `Đề ôn kiểm thử AC-23 ảnh lời giải ${RUN_ID}`,
+    },
+  });
+  expect(examCreateRes.status(), `POST /exams: ${await examCreateRes.text()}`).toBe(201);
+  const createdExam = (await examCreateRes.json()) as { id: string; code: string };
+  const examId = createdExam.id;
 
-    return previousResultView;
-  } finally {
-    await api.dispose();
-  }
+  const structure = await getStructure(admin, examId);
+  const part = structure.parts[0];
+  expect(part, `Missing part in ${examCode}`).toBeDefined();
+  part!.durationMinutes = 10;
+  part!.questionCount = 1;
+  const section = part!.sections?.[0];
+  expect(section, `Missing section in ${examCode}`).toBeDefined();
+  section!.questionCount = 1;
+  const block = section!.blocks?.[0];
+  expect(block, `Missing block in ${examCode}`).toBeDefined();
+  block!.questionType = "SINGLE_CHOICE";
+  block!.questionCount = 1;
+  block!.knowledgeScope = { nodeIds: [tree.leafId], competencyCodes: [] };
+
+  const structRes = await api.put(`${ADMIN_URL}/api/v1/admin/exams/${examId}/structure`, {
+    headers,
+    data: {
+      parts: structure.parts,
+      examQuotas: structure.examQuotas ?? [],
+      expectedRevision: structure.revision,
+    },
+  });
+  expect(structRes.status(), `PUT /exams/${examId}/structure: ${await structRes.text()}`).toBe(200);
+
+  return { examId, examCode: createdExam.code };
+}
+
+async function publishReviewListingVersion(
+  admin: AdminApi,
+  request: APIRequestContext,
+  examId: string,
+  productCode: string,
+  resultView: "SCORE_AND_ANSWERS" | "FULL_SOLUTION",
+): Promise<void> {
+  const { api, headers } = admin;
+  const getListingRes = await api.get(`${ADMIN_URL}/api/v1/admin/exams/${examId}/listing`);
+  expect(getListingRes.ok(), `GET listing ${examId}: ${getListingRes.status()}`).toBe(true);
+  const listing = (await getListingRes.json()) as AdminListingResponse;
+
+  const putRes = await api.put(`${ADMIN_URL}/api/v1/admin/exams/${examId}/listing`, {
+    headers,
+    data: {
+      expectedRevision: listing.revision,
+      summary: `Đề ôn 1 câu minh họa ảnh lời giải ${RUN_ID}`,
+      description: `Đề ôn kiểm thử AC-23 ảnh lời giải ${RUN_ID}`,
+      listPriceVnd: Math.max(10_000, listing.minPriceVnd ?? 5_000),
+      attemptsGranted: 5,
+      benefitAiExplanation: false,
+      benefitStrengthWeakness: false,
+      benefitPractice: false,
+      resultView,
+    },
+  });
+  expect(putRes.ok(), `PUT listing ${examId}: ${await putRes.text()}`).toBe(true);
+
+  const checkRes = await api.post(`${ADMIN_URL}/api/v1/admin/exams/${examId}/check`, {
+    headers,
+    data: {},
+    timeout: SOLVER_TIMEOUT_MS,
+  });
+  expect(checkRes.ok(), `POST check ${examId}: ${await checkRes.text()}`).toBe(true);
+  const checkBody = (await checkRes.json()) as CheckResult & { listingCheck?: { status?: string } };
+  expect(checkBody.status, `Check status for ${productCode}`).toBe("VALID");
+  expect(checkBody.listingCheck?.status).not.toBe("FAIL");
+  const pathIds = checkBody.paths.filter((p) => p.result === "VALID").map((p) => p.pathId);
+  expect(pathIds.length, `No valid pathIds for ${productCode}`).toBeGreaterThan(0);
+
+  const pubRes = await publishApi(admin, examId, pathIds);
+  expect(pubRes.ok(), `POST publish ${examId}: ${await pubRes.text()}`).toBe(true);
+  const { version } = (await pubRes.json()) as { version: number };
+
+  await expect
+    .poll(
+      async () => {
+        const res = await request.get(`${WEB_URL}/api/v1/public/storefront/products/${encodeURIComponent(productCode)}`);
+        if (!res.ok()) return false;
+        const body = (await res.json()) as { versionNo?: number; resultView?: string };
+        return (body.versionNo ?? 0) >= version && body.resultView === resultView;
+      },
+      { message: `storefront sync for ${productCode} v${version} (${resultView})`, timeout: 30_000, intervals: [250, 500, 1000] },
+    )
+    .toBe(true);
 }
 
 test.describe("FS-6 Kết quả, Xem lại & Lịch sử", () => {
@@ -419,46 +506,53 @@ test.describe("FS-6 Kết quả, Xem lại & Lịch sử", () => {
     context,
     page,
   }) => {
-    const set = publishedExamSet();
-    const imgExam = examByCode(set.imageQuestion.examCode);
-
-    const student = await createVerifiedAccount(`fs6.img.${RUN_ID}`);
-    await context.addCookies(student.cookies);
-
-    await buyExamViaCheckout(browser, student.cookies, imgExam.productCode);
-    const ent1 = await findEntitlementId(context.request, imgExam.code);
-    const { attemptId: saAttemptId, sessionId: saSessionId } = await startAttemptToInProgress(
-      context.request,
-      student.cookies,
-      ent1.entitlementId,
-    );
-    await submitAndWaitScored(context.request, student.cookies, saAttemptId, saSessionId);
-
-    const solutionRequestsWhenLocked: string[] = [];
-    const reqListener = (req: { url(): string }) => {
-      const reqUrl = req.url();
-      if (reqUrl.includes("/solution-assets/")) {
-        solutionRequestsWhenLocked.push(reqUrl);
-      }
-    };
-    page.on("request", reqListener);
-    await page.goto(`${WEB_URL}/attempts/${saAttemptId}/review`);
-    await expect(page.getByRole("heading", { level: 1, name: "Xem lại bài làm" })).toBeVisible();
-    await expect(page.getByText("Không hiển thị lời giải cho mức quyền lợi hiện tại.")).toBeVisible();
-    page.off("request", reqListener);
-
-    expect(solutionRequestsWhenLocked).toHaveLength(0);
-    await expect(page.locator('img[src*="/solution-assets/"]')).toHaveCount(0);
-
-    // Toggle DS-HSA-SUBJECT-TOAN listing to FULL_SOLUTION, publish, then use a fresh 2nd student so entitlement snapshots FULL_SOLUTION; always restore in finally
-    const previousResultView = await setExamResultViewAndPublish(imgExam.code, "FULL_SOLUTION");
+    const admin = await adminApi();
+    let createdExamId: string | null = null;
     try {
+      const created = await createDeterministicSolutionImageExam(admin);
+      createdExamId = created.examId;
+      const { examCode } = created;
+
+      // Phase 1: SCORE_AND_ANSWERS — student 1 sees answer key notice and zero /solution-assets/ requests
+      await publishReviewListingVersion(admin, context.request, createdExamId, examCode, "SCORE_AND_ANSWERS");
+
+      const student = await createVerifiedAccount(`fs6.img.${RUN_ID}`);
+      await context.addCookies(student.cookies);
+
+      await buyExamViaCheckout(browser, student.cookies, examCode);
+      const ent1 = await findEntitlementId(context.request, examCode);
+      const { attemptId: saAttemptId, sessionId: saSessionId } = await startAttemptToInProgress(
+        context.request,
+        student.cookies,
+        ent1.entitlementId,
+      );
+      await submitAndWaitScored(context.request, student.cookies, saAttemptId, saSessionId);
+
+      const solutionRequestsWhenLocked: string[] = [];
+      const reqListener = (req: { url(): string }) => {
+        const reqUrl = req.url();
+        if (reqUrl.includes("/solution-assets/")) {
+          solutionRequestsWhenLocked.push(reqUrl);
+        }
+      };
+      page.on("request", reqListener);
+      await page.goto(`${WEB_URL}/attempts/${saAttemptId}/review`);
+      await expect(page.getByRole("heading", { level: 1, name: "Xem lại bài làm" })).toBeVisible();
+      await expect(page.getByText("Không hiển thị lời giải cho mức quyền lợi hiện tại.")).toBeVisible();
+      page.off("request", reqListener);
+
+      expect(solutionRequestsWhenLocked).toHaveLength(0);
+      await expect(page.locator('img[src*="/solution-assets/"]')).toHaveCount(0);
+
+      // Phase 2: FULL_SOLUTION — 2nd fresh student buys updated listing and sees loaded solution PNG
+      await publishReviewListingVersion(admin, context.request, createdExamId, examCode, "FULL_SOLUTION");
+
       const fullStudent = await createVerifiedAccount(`fs6.imgfull.${RUN_ID}`);
       const fullCtx = await browser.newContext();
       try {
         await fullCtx.addCookies(fullStudent.cookies);
-        await buyExamViaCheckout(browser, fullStudent.cookies, imgExam.productCode);
-        const fullEnt = await findEntitlementId(fullCtx.request, imgExam.code);
+        await buyExamViaCheckout(browser, fullStudent.cookies, examCode);
+        const fullEnt = await findEntitlementId(fullCtx.request, examCode);
         const { attemptId: fullAttemptId, sessionId: fullSessionId } = await startAttemptToInProgress(
           fullCtx.request,
           fullStudent.cookies,
@@ -499,7 +593,20 @@ test.describe("FS-6 Kết quả, Xem lại & Lịch sử", () => {
         await fullCtx.close();
       }
     } finally {
-      await setExamResultViewAndPublish(imgExam.code, previousResultView);
+      if (createdExamId) {
+        try {
+          const latest = await getExam(admin, createdExamId);
+          if (latest.status === "PUBLISHED") {
+            await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${createdExamId}/discontinue`, {
+              headers: { ...admin.headers, "idempotency-key": randomUUID() },
+              data: { expectedRevision: latest.revision },
+            });
+          }
+        } catch {
+          // Best-effort cleanup of temporary E2E exam
+        }
+      }
+      await admin.api.dispose();
     }
   });
 });

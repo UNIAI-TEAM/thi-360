@@ -1109,13 +1109,13 @@
     "loading": "Loading attempt review",
     "nav": {
       "currentItem": "current",
-      "next": "Next question",
+      "next": "Next",
       "paletteItemAria": "{label}, {outcome}",
       "paletteLegend": "Question status legend",
       "paletteSummary": "Correct {correct} · Partial {partial} · Wrong {wrong} · Blank {blank}",
       "paletteTitle": "Question list",
       "partsLabel": "Exam sections",
-      "prev": "Previous question",
+      "prev": "Previous",
       "skippedPartBadge": "Skipped"
     },
     "notAvailable": {

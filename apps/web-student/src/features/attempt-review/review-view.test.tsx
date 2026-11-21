@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -483,5 +484,44 @@ describe("AttemptReviewView · AC-10..AC-12, AC-17, AC-23", () => {
     expect(screen.getByText("Solutions are not included in your purchased tier.")).toBeInTheDocument();
     expect(screen.getByText("Criterion breakdown")).toBeInTheDocument();
     expect(screen.getByText("2.5 pts")).toBeInTheDocument();
+    const palette = screen.getByRole("complementary", { name: "Question list" });
+    expect(within(palette).getByRole("button", { name: "Previous" })).toBeDisabled();
+    expect(within(palette).getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  it("không đẩy lỗi 403 REVIEW_NOT_INCLUDED ra QueryCache nên QueryProvider không toast hay chuyển /forbidden", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const cacheErrors: unknown[] = [];
+    const unsubscribe = client.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "error") {
+        cacheErrors.push(event.action.error);
+      }
+    });
+    const loadResultSpy = vi.fn();
+
+    try {
+      renderWithProviders(
+        <AttemptReviewView
+          attemptId="att-score-only-guard"
+          loadCurrentSession={async () => STUDENT_SESSION}
+          loadReview={async () => {
+            throw new ApiStatusError(403, "Score only", { code: "REVIEW_NOT_INCLUDED" });
+          }}
+          loadResult={loadResultSpy}
+        />,
+        { client },
+      );
+
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "Bài thi này không có phần xem lại bài làm" }),
+      ).toBeInTheDocument();
+      const backLinks = screen.getAllByRole("link", { name: "Về kết quả" });
+      expect(backLinks.length).toBeGreaterThanOrEqual(1);
+      expect(backLinks[0]).toHaveAttribute("href", "/attempts/att-score-only-guard/result");
+      expect(cacheErrors).toHaveLength(0);
+      expect(loadResultSpy).not.toHaveBeenCalled();
+    } finally {
+      unsubscribe();
+    }
   });
 });

@@ -74,10 +74,12 @@ function StatBuckets({
   stats,
   locale,
   skippedEmptyPartCount,
+  showPendingBucket = false,
 }: {
   stats: AttemptResultUnitStats;
   locale: string;
   skippedEmptyPartCount?: number;
+  showPendingBucket?: boolean;
 }) {
   const t = useTranslations("result.stats");
   const correct = stats.correctCount ?? 0;
@@ -93,8 +95,10 @@ function StatBuckets({
     { key: "partial", label: t("partial"), count: partial, dot: "bg-warning", highlight: false },
     { key: "wrong", label: t("wrong"), count: wrong, dot: "bg-danger", highlight: false },
     { key: "blank", label: t("blank"), count: blank, dot: "border border-border-strong bg-subtle", highlight: false },
-    { key: "pending", label: t("pending"), count: pending, dot: "bg-info", highlight: pending > 0 },
-  ] as const;
+    ...(pending > 0 || showPendingBucket
+      ? [{ key: "pending", label: t("pending"), count: pending, dot: "bg-info", highlight: pending > 0 }]
+      : []),
+  ];
 
   return (
     <div className="flex min-w-0 flex-[2_1_28rem] flex-col gap-3.5">
@@ -871,7 +875,7 @@ function LoadedResultContent({
           <div className="flex flex-wrap items-start gap-6 sm:gap-10">
             <div className="flex min-w-0 flex-1 basis-64 flex-col gap-2">
               <h2 id="result-total-title" className="text-overline font-semibold tracking-[0.08em] text-text-muted uppercase">
-                {isVact && resolvedScore ? t("vact.scoreLabel") : t("total.title")}
+                {t("total.title")}
               </h2>
 
               {resolvedScore ? (
@@ -924,7 +928,13 @@ function LoadedResultContent({
               )}
             </div>
 
-            {result.statistics && <StatBuckets stats={result.statistics} locale={locale} />}
+            {result.statistics && (
+              <StatBuckets
+                stats={result.statistics}
+                locale={locale}
+                showPendingBucket={result.state === "PENDING_REVIEW"}
+              />
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
@@ -967,7 +977,7 @@ function LoadedResultContent({
             <span className="text-caption text-text-muted">{t("vact.componentsCaption")}</span>
           </div>
 
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-3.5">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] items-start gap-3.5">
             {result.vactComponents.map((comp, index) => {
               const code = comp.componentCode ?? "";
               const label = isKnownVactComponentCode(code)
