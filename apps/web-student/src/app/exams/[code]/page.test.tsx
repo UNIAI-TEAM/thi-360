@@ -1,5 +1,10 @@
+import { screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { BundleDetailView } from "@/features/storefront/bundle-detail-view";
+import { BundleUnavailableView } from "@/features/storefront/exam-status-views";
 import viMessages from "@/messages/vi.json";
+import { renderWithProviders } from "@/test/render";
 import { FULL_DETAIL } from "@/test/storefront-fixtures";
 import ExamPage, { generateMetadata } from "./page";
 
@@ -52,6 +57,47 @@ describe("/exams/[code]", () => {
 
     await expect(ExamPage(params("QDA-FULL-01"))).resolves.toBeTruthy();
     expect(mocks.notFound).not.toHaveBeenCalled();
+  });
+
+  it("bộ đề hợp lệ định tuyến sang BundleDetailView và bộ đề unavailable không gọi notFound()", async () => {
+    const callsBefore = mocks.notFound.mock.calls.length;
+    const bundleProduct = { ...FULL_DETAIL, code: "BUNDLE-HSA-01", name: "Bo de HSA", format: "BUNDLE" as const };
+    mocks.lookup.mockResolvedValueOnce({ status: "ok", product: bundleProduct });
+    const okElement = await ExamPage(params("BUNDLE-HSA-01"));
+    expect((okElement as { props: { children: { type: unknown } } }).props.children.type).toBe(BundleDetailView);
+
+    mocks.lookup.mockResolvedValueOnce({ status: "unavailable" });
+    const unavailableEmpty = await ExamPage(params("BUNDLE-UNAVAIL"));
+    const unavailableEmptyChild = (unavailableEmpty as { props: { children: ReactElement } }).props.children;
+    expect(unavailableEmptyChild.type).toBe(BundleUnavailableView);
+    const renderedEmpty = renderWithProviders(unavailableEmptyChild);
+    expect(screen.getByRole("heading", { level: 1, name: "Bộ đề tạm thời chưa bán được." })).toBeInTheDocument();
+    renderedEmpty.unmount();
+    await expect(
+      (async () => {
+        mocks.lookup.mockResolvedValueOnce({ status: "unavailable" });
+        return generateMetadata(params("BUNDLE-UNAVAIL"));
+      })(),
+    ).resolves.toEqual({ title: viMessages.bundle.unavailablePage.title });
+
+    // R1-45 / R1-46: sản phẩm không phải bộ đề ở trạng thái unavailable cũng rơi về BundleUnavailableView, không dựng BundleDetailView
+    mocks.lookup.mockResolvedValueOnce({ status: "unavailable", product: FULL_DETAIL });
+    const unavailableExam = await ExamPage(params("HSA-FULL-01"));
+    expect((unavailableExam as { props: { children: { type: unknown } } }).props.children.type).toBe(
+      BundleUnavailableView,
+    );
+    mocks.lookup.mockResolvedValueOnce({ status: "unavailable", product: FULL_DETAIL });
+    await expect(generateMetadata(params("HSA-FULL-01"))).resolves.toEqual({
+      title: viMessages.bundle.unavailablePage.title,
+    });
+
+    mocks.lookup.mockResolvedValueOnce({ status: "unavailable", product: bundleProduct });
+    const unavailableWithProduct = await ExamPage(params("BUNDLE-HSA-01"));
+    const child = (unavailableWithProduct as { props: { children: { type: unknown; props: { unavailable?: boolean } } } }).props
+      .children;
+    expect(child.type).toBe(BundleDetailView);
+    expect(child.props.unavailable).toBe(true);
+    expect(mocks.notFound).toHaveBeenCalledTimes(callsBefore);
   });
 
   it("mã trên URL được giải mã trước khi tra", async () => {

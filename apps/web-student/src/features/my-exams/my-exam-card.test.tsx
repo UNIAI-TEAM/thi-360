@@ -251,6 +251,8 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
 
     const kindChip = screen.getByText("HNUE SPT");
     expect(kindChip.closest("[data-exam-content]")).toBeNull();
+    expect(kindChip).toHaveClass("min-h-6", "py-0.5");
+    expect(kindChip).not.toHaveClass("h-6");
     const subjectLabel = screen.getByText("Mathematics");
     expect(subjectLabel.closest("[data-exam-content]")).toBeNull();
     expect(screen.getByRole("heading", { name: "Đề thi thử SPT môn Toán" })).toHaveAttribute("data-exam-content");

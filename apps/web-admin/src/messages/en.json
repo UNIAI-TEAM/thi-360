@@ -1375,6 +1375,10 @@
       "REFUND_REQUESTED": "Requested refund",
       "REFUND_SUCCEEDED": "Refund succeeded"
     },
+    "bundle": {
+      "badge": "Bundle",
+      "itemsCount": "{count, plural, one {# exam} other {# exams}}"
+    },
     "buyers": {
       "colAttempts": "Remaining attempts",
       "colLastPaid": "Last paid at",
@@ -1438,6 +1442,22 @@
         "paidUnfulfilledBody": "Payment has settled but entitlement fulfillment did not complete. Continue fulfillment to grant attempts.",
         "paidUnfulfilledTitle": "Paid but unfulfilled",
         "replacedByOrder": "This order has been superseded by order {code}."
+      },
+      "bundleItems": {
+        "attempts": "Attempts granted",
+        "empty": "No included exams recorded for this order.",
+        "exam": "Exam",
+        "position": "Position",
+        "resultView": "Result view",
+        "resultViews": {
+          "FULL": "Full",
+          "FULL_SOLUTION": "Score, answers and solutions",
+          "SCORE": "Score only",
+          "SCORE_AND_ANSWERS": "Score and answers"
+        },
+        "title": "Included exams in bundle",
+        "version": "Version",
+        "versionValue": "v{version}"
       },
       "codeLabel": "Order code",
       "errorDescription": "Could not load the order details.",
@@ -1760,6 +1780,7 @@
     "nav": {
       "backToOrders": "Back to orders",
       "buyers": "Exam buyers",
+      "openBundle": "Open bundle",
       "openExam": "Open exam",
       "orders": "Orders",
       "viewOrder": "View details",
@@ -2324,6 +2345,10 @@
     },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Bulk authorization applied",
+      "BUNDLE_CREATED": "Bundle created",
+      "BUNDLE_DISCONTINUED": "Bundle discontinued",
+      "BUNDLE_PUBLISHED": "Bundle published",
+      "BUNDLE_UPDATED": "Bundle updated",
       "CLASS_MEMBER_ADDED": "Added to class",
       "CLASS_MEMBER_REMOVED": "Removed from class",
       "CLASS_MEMBER_TRANSFERRED": "Transferred class",
@@ -8804,6 +8829,316 @@
       "RUNNING": "Running",
       "STOPPED": "Stopped",
       "UPCOMING": "Upcoming"
+    }
+  },
+  "bundles": {
+    "actions": {
+      "backToList": "Back to bundles",
+      "cancel": "Cancel",
+      "clearFilters": "Clear all filters",
+      "clearSearch": "Clear search",
+      "close": "Close",
+      "create": "Create bundle",
+      "discontinue": "Discontinue",
+      "dismiss": "Dismiss",
+      "edit": "Edit bundle",
+      "editAria": "Edit bundle {code}",
+      "moreAria": "More actions for {code}",
+      "publish": "Publish",
+      "refresh": "Refresh",
+      "republish": "Republish",
+      "retry": "Retry",
+      "saveBeforePublish": "Save changes before publishing",
+      "saveChanges": "Save changes",
+      "saveDraft": "Save draft",
+      "view": "View details",
+      "viewAria": "View bundle {code}"
+    },
+    "badges": {
+      "review": "Review"
+    },
+    "create": {
+      "description": "A bundle contains 2-12 on-sale exams from the same exam kind with dedicated pricing and attempts.",
+      "title": "Create bundle"
+    },
+    "dialogs": {
+      "changeExamKind": {
+        "cancel": "Keep {currentKind}",
+        "confirm": "Change and clear selected exams",
+        "description": "{count, plural, one {# selected exam from {currentKind} will be removed from the bundle. Other fields will be kept.} other {# selected exams from {currentKind} will be removed from the bundle. Other fields will be kept.}}",
+        "title": "Change exam kind to {nextKind}?"
+      },
+      "conflictRefreshFailed": "This bundle was updated by another user, but loading the latest version failed ({reason}).",
+      "discontinue": {
+        "descriptionPrefix": "Discontinue bundle",
+        "descriptionSuffix": "The bundle storefront page will no longer allow new purchases. Existing buyer attempts and standalone exams remain unaffected.",
+        "successToast": "Discontinued bundle {code}.",
+        "title": "Discontinue bundle?"
+      },
+      "publish": {
+        "descriptionPrefix": "Publish bundle",
+        "descriptionSuffix": "Changes to items, price, and attempts per exam will apply to new orders after publishing.",
+        "republishTitle": "Republish bundle?",
+        "successToast": "Published bundle {code}.",
+        "title": "Publish bundle?"
+      },
+      "refreshingConflict": "This bundle was updated by another user. Loading the latest version..."
+    },
+    "edit": {
+      "errorDescription": "Could not load the bundle details.",
+      "errorTitle": "Failed to load bundle",
+      "notFoundDescription": "This bundle does not exist or has been removed.",
+      "notFoundTitle": "Bundle not found",
+      "title": "Bundle details"
+    },
+    "errors": {
+      "BUNDLE_ALREADY_DISCONTINUED": "This bundle is already discontinued and can no longer be edited or republished.",
+      "BUNDLE_ATTEMPTS_INVALID": "Attempts per exam must be between 1 and 100.",
+      "BUNDLE_CODE_TAKEN": "This bundle code is already taken.",
+      "BUNDLE_DESCRIPTION_REQUIRED": "Please enter a bundle description before publishing.",
+      "BUNDLE_EXAM_KIND_INVALID": "The selected exam kind is invalid or inactive.",
+      "BUNDLE_ITEMS_COUNT_INVALID": "A bundle must contain between 2 and 12 exams.",
+      "BUNDLE_ITEM_DUPLICATE": "Cannot select the same exam twice in a bundle.",
+      "BUNDLE_ITEM_FULL_SCOPE_NOT_ALLOWED": "Bundles only accept exams with subject or part scope.",
+      "BUNDLE_ITEM_INVALID_EXAM": "One or more selected exams are invalid or not published.",
+      "BUNDLE_ITEM_KIND_MISMATCH": "All exams in a bundle must belong to the same exam kind.",
+      "BUNDLE_ITEM_NOT_ON_SALE": "One or more exams in this bundle are no longer on sale. Replace them before publishing.",
+      "BUNDLE_LIST_PRICE_NEGATIVE": "List price cannot be negative.",
+      "BUNDLE_NOT_FOUND": "Bundle not found.",
+      "BUNDLE_NOT_PUBLISHED": "Only published bundles can be discontinued.",
+      "BUNDLE_RESULT_VIEW_INVALID": "Invalid result view selection.",
+      "CONFLICT": "Record state changed concurrently. Please review and try again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Something went wrong while processing the bundle. Please try again.",
+      "INTERNAL_ERROR": "Temporary server failure. Please try again shortly.",
+      "LISTING_PRICE_BELOW_MIN": "Bundle price is below the payment gateway minimum.",
+      "LISTING_PRICE_MISSING": "Please enter a bundle price before publishing.",
+      "LISTING_PRICE_ZERO": "Bundle price must be greater than 0 VND to publish.",
+      "NETWORK": "Could not reach the server. Check your connection and try again.",
+      "RATE_LIMITED": "Too many requests. Wait a moment and try again.",
+      "VALIDATION_FAILED": "Please review the bundle fields and try again.",
+      "VERSION_CONFLICT": "This bundle was updated by someone else. The latest version has been loaded."
+    },
+    "form": {
+      "ariaLabel": "Bundle form",
+      "aside": {
+        "attempts": "Attempts per exam",
+        "attemptsValue": "{count} attempts",
+        "checklistTitle": "Required before publishing",
+        "examCount": "Exams",
+        "examCountValue": "{count} exams",
+        "examKind": "Exam kind",
+        "issues": {
+          "attempts": "Enter attempts per exam (1-100).",
+          "description": "Missing bundle description.",
+          "price": "Enter a bundle price greater than 0 VND.",
+          "tooFew": "Select at least {min} exams.",
+          "tooMany": "A bundle can include at most {max} exams.",
+          "unavailableItem": "At least one selected exam is no longer on sale."
+        },
+        "notAvailable": "—",
+        "notSelected": "Not selected",
+        "notSet": "Not set",
+        "price": "Bundle price",
+        "publishNote": "Changes to exams, price, or attempts only take effect when republished and apply only to new orders.",
+        "questionsValue": "{value} questions",
+        "ready": "Ready to publish.",
+        "title": "Summary",
+        "totalQuestions": "Total questions"
+      },
+      "banners": {
+        "conflictDescription": "The latest data from the server has been loaded; your unsaved edits did not overwrite it.",
+        "conflictRefetchFailedDescription": "Your unsaved edits are still preserved. Click Retry to load the latest version ({reason}).",
+        "conflictRefetchFailedTitle": "Bundle was updated by another user, but loading the latest version failed.",
+        "conflictTitle": "Bundle was updated by another user.",
+        "discontinuedReadOnly": "This bundle is discontinued and can no longer be edited.",
+        "readOnly": "You have read-only access to bundles. Exam modification permission is required to make changes.",
+        "unavailableDescription": "At least one member exam is no longer on sale. Replace it with an on-sale exam and republish.",
+        "unavailableTitle": "Bundle is currently unavailable.",
+        "unpublishedDescription": "New orders still use the currently published version until you republish.",
+        "unpublishedTitle": "On sale version {version} · Unpublished changes"
+      },
+      "benefits": {
+        "items": {
+          "benefitAiExplanation": {
+            "description": "Students can ask AI why each answer is right or wrong after grading.",
+            "label": "AI explanations"
+          },
+          "benefitPractice": {
+            "description": "Extra practice questions focused on weak knowledge areas.",
+            "label": "Extra practice"
+          },
+          "benefitStrengthWeakness": {
+            "description": "Summary across parts, subjects, and knowledge areas.",
+            "label": "Strengths and weaknesses review"
+          }
+        },
+        "legend": "Benefits for each exam in the bundle"
+      },
+      "candidates": {
+        "columns": {
+          "duration": "Duration",
+          "exam": "Exam",
+          "points": "Max points",
+          "questions": "Questions",
+          "scope": "Scope",
+          "select": "Select",
+          "subject": "Subject"
+        },
+        "durationValue": "{value} min",
+        "empty": "No eligible on-sale exams found for this exam kind.",
+        "emptyMetric": "—",
+        "loading": "Loading on-sale candidate exams...",
+        "offline": "Your device is offline, so loading candidate exams is paused.",
+        "otherSubject": "Other subject",
+        "pointsValue": "{value} pts",
+        "questionsValue": "{value} questions",
+        "selectAria": "Select {code}",
+        "selectKindFirst": "Select an exam kind in section 1 to browse eligible on-sale exams.",
+        "selectedCountChip": "Selected {count}/{max} · min {min}",
+        "tableAria": "Eligible on-sale exams for this exam kind"
+      },
+      "counter": "{count, number} / {max, number} characters",
+      "currency": "VND",
+      "examKindsError": "Could not load exam kinds.",
+      "examKindsOffline": "Your device is offline, so loading exam kinds is paused.",
+      "fields": {
+        "attemptsPerExam": "Attempts per exam",
+        "benefitNote": "Benefit applicability notes",
+        "benefitNotePlaceholder": "For example: AI explanations apply to multiple-choice and short-answer questions.",
+        "code": "Bundle code",
+        "codePlaceholder": "BO-SP2E-001",
+        "description": "Description",
+        "descriptionPlaceholder": "Detailed bundle description, required when publishing.",
+        "examKind": "Exam kind",
+        "examKindPlaceholder": "Select exam kind",
+        "listPriceVnd": "Bundle price",
+        "name": "Bundle name",
+        "namePlaceholder": "SP2E Bundle Block A00",
+        "summary": "Short card summary",
+        "summaryPlaceholder": "Three practice exams for Math, Physics, and Chemistry."
+      },
+      "hints": {
+        "attemptsPerExam": "From {min, number} to {max, number}. Required when publishing.",
+        "code": "Unique, case-insensitive. Suggested format BO-[KIND]-nnn.",
+        "description": "Required when publishing.",
+        "examKind": "All exams in the bundle must share the same exam kind. Changing it asks to clear selected exams.",
+        "items": "Choose 2 to 12 on-sale exams of the same exam kind with subject or part scope.",
+        "listPriceVnd": "Required when publishing. Taxes and fees included."
+      },
+      "order": {
+        "empty": "No exams selected yet.",
+        "hint": "Students see the exams in this order on the bundle detail page and on My Exams.",
+        "listAria": "Order of exams in bundle",
+        "moveDown": "Move {code} down",
+        "moveDownTooltip": "Move down",
+        "moveUp": "Move {code} up",
+        "moveUpTooltip": "Move up",
+        "movedDown": "Moved {code} down to position {position}.",
+        "movedUp": "Moved {code} up to position {position}.",
+        "remove": "Remove {code} from bundle",
+        "removeTooltip": "Remove",
+        "removed": "Removed {code} from bundle ({count, plural, one {# exam} other {# exams}} remaining).",
+        "title": "Order in bundle"
+      },
+      "resultView": {
+        "legend": "After grading, students can see",
+        "options": {
+          "FULL_SOLUTION": {
+            "description": "Adds detailed solutions for each question.",
+            "label": "Score, answers and solutions"
+          },
+          "SCORE": {
+            "description": "Total score, and scores by part and subject.",
+            "label": "Score only"
+          },
+          "SCORE_AND_ANSWERS": {
+            "description": "Adds the correct answer of each question.",
+            "label": "Score and answers"
+          }
+        }
+      },
+      "sections": {
+        "benefits": "Benefits and result view",
+        "info": "Bundle details",
+        "items": "Exams in bundle",
+        "pricing": "Pricing and attempts"
+      },
+      "toast": {
+        "created": "Created draft bundle.",
+        "updated": "Saved bundle changes."
+      }
+    },
+    "itemSaleStates": {
+      "DISCONTINUED": "Discontinued",
+      "UNAVAILABLE": "Unavailable"
+    },
+    "list": {
+      "columns": {
+        "actions": "Actions",
+        "attempts": "Attempts/exam",
+        "bundle": "Bundle",
+        "examKind": "Exam kind",
+        "itemCount": "Exams",
+        "price": "Price",
+        "status": "Status",
+        "updatedAt": "Updated"
+      },
+      "description": "A bundle combines 2-12 on-sale exams of the same exam kind with shared pricing and attempts.",
+      "emptyDescription": "Publish at least 2 on-sale exams of the same exam kind to create a bundle.",
+      "emptyTitle": "No bundles yet",
+      "errorTitle": "Failed to load bundles",
+      "filteredEmptyDescription": "No bundles match your current search or filter criteria.",
+      "filteredEmptyTitle": "No matching bundles",
+      "filters": {
+        "examKind": "Exam kind",
+        "examKindAll": "All",
+        "examKindsError": "Could not load exam kinds for filtering.",
+        "searchAria": "Search by bundle name or code",
+        "searchPlaceholder": "Search by bundle name or code",
+        "statusGroupAria": "Filter by bundle status",
+        "statusOptions": {
+          "ALL": "All",
+          "DISCONTINUED": "Discontinued",
+          "DRAFT": "Draft",
+          "PUBLISHED": "On sale"
+        }
+      },
+      "notSet": "—",
+      "offlineDescription": "Your device is offline, so loading bundles is paused.",
+      "offlineTitle": "Offline",
+      "summary": {
+        "attempts": "Attempts/exam: {value}",
+        "itemCount": "{count, plural, one {# exam} other {# exams}}",
+        "updatedAt": "Updated: {date}"
+      },
+      "tableAria": "Bundles table",
+      "title": "Bundles",
+      "totalItems": "{total, plural, one {Total # bundle} other {Total # bundles}}"
+    },
+    "scopes": {
+      "PART": "By part",
+      "SUBJECT": "By subject"
+    },
+    "states": {
+      "DISCONTINUED": "Discontinued",
+      "DRAFT": "Draft",
+      "PUBLISHED": "On sale",
+      "UNAVAILABLE": "Unavailable",
+      "UNPUBLISHED_CHANGES": "Unpublished changes"
+    },
+    "validation": {
+      "attemptsRange": "Attempts per exam must be between {min, number} and {max, number}.",
+      "benefitNoteMax": "Benefit notes can have at most {max, number} characters.",
+      "codeMax": "Bundle code can have at most {max, number} characters.",
+      "codeRequired": "Please enter a bundle code.",
+      "descriptionMax": "Description can have at most {max, number} characters.",
+      "examKindRequired": "Please select an exam kind.",
+      "itemsRange": "Select between {min, number} and {max, number} exams.",
+      "nameMax": "Bundle name can have at most {max, number} characters.",
+      "nameRequired": "Please enter a bundle name.",
+      "priceInvalid": "Bundle price must be a whole number of 0 VND or more.",
+      "summaryMax": "Short summary can have at most {max, number} characters."
     }
   }
 }

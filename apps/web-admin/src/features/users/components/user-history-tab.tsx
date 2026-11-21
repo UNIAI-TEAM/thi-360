@@ -21,6 +21,10 @@ import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 
 const KNOWN_AUDIT_ACTIONS: Record<string, true> = {
   AUTHZ_BULK_APPLIED: true,
+  BUNDLE_CREATED: true,
+  BUNDLE_DISCONTINUED: true,
+  BUNDLE_PUBLISHED: true,
+  BUNDLE_UPDATED: true,
   CLASS_MEMBER_ADDED: true,
   CLASS_MEMBER_REMOVED: true,
   CLASS_MEMBER_TRANSFERRED: true,

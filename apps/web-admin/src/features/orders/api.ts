@@ -277,6 +277,15 @@ export async function listOrderDerivedExamsForFilter(
         name: item.productName,
       });
     }
+    for (const sub of item.items ?? []) {
+      if (sub.examId && !byId.has(sub.examId)) {
+        byId.set(sub.examId, {
+          id: sub.examId,
+          code: sub.examCode,
+          name: sub.examName,
+        });
+      }
+    }
   }
   return Array.from(byId.values());
 }
