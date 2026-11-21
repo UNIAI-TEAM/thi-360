@@ -72,6 +72,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         UUID uA = createStudent("race-submit-first");
         GrantOrderResult.Line lineA = grant(uA, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt aA = startAndAwaitOpen(uA, "race-a", lineA.entitlementId(), null);
+        UUID sidA = claimSession(uA, aA.getId());
         Instant deadlineA =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(aA.getId()).getFirst().getDeadlineAt();
         clearInvocations(entitlementPort, overdueCloser, finalAnswerWriter);
@@ -90,7 +91,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             Future<MvcResult> submitFuture =
-                    pool.submit(() -> performSubmit(uA, aA.getId(), "race-a-sub", null, null));
+                    pool.submit(() -> performSubmit(uA, aA.getId(), "race-a-sub", sidA, null));
             assertThat(submitInConfirmUse.await(15, TimeUnit.SECONDS)).isTrue();
 
             mutableClock.setAt(deadlineA.plusSeconds(30));
@@ -113,6 +114,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             UUID uB = createStudent("race-worker-first");
             GrantOrderResult.Line lineB = grant(uB, "DS-HSA-PART-MATH-MINI", 2, List.of());
             Attempt aB = startAndAwaitOpen(uB, "race-b", lineB.entitlementId(), null);
+            UUID sidB = claimSession(uB, aB.getId());
             Instant deadlineB =
                     attemptPartRepository.findByAttemptIdOrderByOrdAsc(aB.getId()).getFirst().getDeadlineAt();
             clearInvocations(entitlementPort, overdueCloser, finalAnswerWriter);
@@ -143,7 +145,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             assertThat(workerInConfirmUse.await(15, TimeUnit.SECONDS)).isTrue();
 
             Future<MvcResult> submitFutureB =
-                    pool.submit(() -> performSubmit(uB, aB.getId(), "race-b-sub", null, null));
+                    pool.submit(() -> performSubmit(uB, aB.getId(), "race-b-sub", sidB, null));
             assertThat(submitEnteredCloser.await(15, TimeUnit.SECONDS)).isTrue();
             awaitAttemptRowLockWait();
             releaseWorker.countDown();
@@ -172,6 +174,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("race-two-submits");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "two-sub", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         clearInvocations(entitlementPort, overdueCloser, finalAnswerWriter);
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -182,13 +185,13 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
                     () -> {
                         ready.countDown();
                         assertThat(fire.await(10, TimeUnit.SECONDS)).isTrue();
-                        return performSubmit(userId, attempt.getId(), "conc-sub-key-1", null, null);
+                        return performSubmit(userId, attempt.getId(), "conc-sub-key-1", sid, null);
                     };
             Callable<MvcResult> task2 =
                     () -> {
                         ready.countDown();
                         assertThat(fire.await(10, TimeUnit.SECONDS)).isTrue();
-                        return performSubmit(userId, attempt.getId(), "conc-sub-key-2", null, null);
+                        return performSubmit(userId, attempt.getId(), "conc-sub-key-2", sid, null);
                     };
             Future<MvcResult> f1 = pool.submit(task1);
             Future<MvcResult> f2 = pool.submit(task2);
@@ -218,6 +221,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "fin-race", line.entitlementId(), null);
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        UUID sid = claimSession(userId, attempt.getId());
         AttemptPart p0 = parts.get(0);
         AttemptPart p1 = parts.get(1);
         Instant p0Deadline = p0.getDeadlineAt();
@@ -239,7 +243,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             mutableClock.setAt(p0Deadline.minusSeconds(1));
             Future<MvcResult> finFuture =
                     pool.submit(
-                            () -> performFinishPart(userId, attempt.getId(), p0.getId(), null, null));
+                            () -> performFinishPart(userId, attempt.getId(), p0.getId(), sid, null));
             assertThat(finishInWriter.await(15, TimeUnit.SECONDS)).isTrue();
 
             mutableClock.setAt(p0Deadline.plus(Duration.ofMinutes(1)));
@@ -289,6 +293,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
 
         // 1. Submit blocked on FOR UPDATE while clock advances past deadline -> re-sampled lockNow rejects late submit as TIME_UP
         Attempt a1 = startAndAwaitOpen(userId, "stale-sub", line.entitlementId(), null);
+        UUID sid1 = claimSession(userId, a1.getId());
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).getFirst();
         UUID item1 = attemptItemRepository.findByPartIdOrderByOrdAsc(p1.getId()).getFirst().getId();
         Instant deadline1 = p1.getDeadlineAt();
@@ -326,7 +331,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
                                             userId,
                                             a1.getId(),
                                             "stale-sub-k",
-                                            null,
+                                            sid1,
                                             new SubmitAttemptRequest(
                                                     List.of(
                                                             new FinalAnswerChange(
@@ -354,6 +359,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             // 2. Finish throwing 409 ATTEMPT_PART_IS_LAST after clock crosses deadline during FOR UPDATE still commits overdue close
             mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
             Attempt a2 = startAndAwaitOpen(userId, "stale-fin-409", line.entitlementId(), null);
+            UUID sid2 = claimSession(userId, a2.getId());
             AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).getFirst();
             Instant deadline2 = p2.getDeadlineAt();
 
@@ -381,7 +387,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
             assertThat(lockHeld2.await(15, TimeUnit.SECONDS)).isTrue();
 
             Future<MvcResult> finishFuture =
-                    pool.submit(() -> performFinishPart(userId, a2.getId(), p2.getId(), null, null));
+                    pool.submit(() -> performFinishPart(userId, a2.getId(), p2.getId(), sid2, null));
             awaitAttemptRowLockWait();
             mutableClock.setAt(deadline2.plusSeconds(5));
             releaseLock2.countDown();
@@ -404,6 +410,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("stale-nonlast-fin");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "stale-nl-fin", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptPart p0 = parts.get(0);
         UUID itemId = attemptItemRepository.findByPartIdOrderByOrdAsc(p0.getId()).getFirst().getId();
@@ -442,7 +449,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
                                             itemId, 1L, new AnswerValue.SingleChoice("late"))));
             Future<MvcResult> finishFuture =
                     pool.submit(
-                            () -> performFinishPart(userId, attempt.getId(), p0.getId(), null, request));
+                            () -> performFinishPart(userId, attempt.getId(), p0.getId(), sid, request));
             awaitAttemptRowLockWait();
 
             mutableClock.setAt(p0Deadline.plusSeconds(5));
@@ -480,6 +487,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("stale-sub-notlast");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "stale-sub-nl", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptPart p0 = parts.get(0);
         Instant p0Deadline = p0.getDeadlineAt();
@@ -514,7 +522,7 @@ class AttemptCloseConcurrencyIT extends AbstractAttemptDsIT {
                     pool.submit(
                             () ->
                                     performSubmit(
-                                            userId, attempt.getId(), "stale-sub-nl-k", null, null));
+                                            userId, attempt.getId(), "stale-sub-nl-k", sid, null));
             awaitAttemptRowLockWait();
 
             mutableClock.setAt(p0Deadline.plusSeconds(5));

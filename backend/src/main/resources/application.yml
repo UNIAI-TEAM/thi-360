@@ -217,6 +217,18 @@ thi360:
       interval: PT1M
     order:
       expire-duration: PT15M
+    querydr:
+      interval: PT5M
+      min-age: PT15M
+      max-age: PT24H
+      cooldown: PT5M
+      not-found-grace: PT15M
+      batch-size: 20
+      cycle-budget: PT4M
+      max-consecutive-transport-failures: 5
+    order-expiry:
+      interval: PT1M
+      batch-size: 20
     voucher:
       quote-per-user-minute-limit: ${THI360_VOUCHER_QUOTE_MINUTE_LIMIT:10}
       quote-per-user-minute-window: PT1M
@@ -229,6 +241,15 @@ thi360:
     pay-url: ${THI360_VNPAY_PAY_URL:}
     api-url: ${THI360_VNPAY_API_URL:}
     ipn-allowed-ips: ${THI360_VNPAY_IPN_ALLOWED_IPS:}
+    signing:
+      pay-encoding: ${THI360_VNPAY_PAY_ENCODING:JAVA_URL_ENCODER}
+      pay-hash-algorithm: ${THI360_VNPAY_PAY_HASH_ALGORITHM:HMAC_SHA512}
+      query-dr-hash-algorithm: ${THI360_VNPAY_QUERYDR_HASH_ALGORITHM:HMAC_SHA512}
+      refund-hash-algorithm: ${THI360_VNPAY_REFUND_HASH_ALGORITHM:HMAC_SHA512}
+    client:
+      connect-timeout: ${THI360_VNPAY_CONNECT_TIMEOUT:PT5S}
+      read-timeout: ${THI360_VNPAY_READ_TIMEOUT:PT10S}
+      server-ip: ${THI360_VNPAY_SERVER_IP:127.0.0.1}
 ---
 spring:
   config:
@@ -390,3 +411,7 @@ spring:
 thi360:
   vnpay:
     mode: ${THI360_VNPAY_MODE:PRODUCTION}
+    tmn-code: ${THI360_VNPAY_TMN_CODE:dev-only-test-tmn}
+    hash-secret: ${THI360_VNPAY_HASH_SECRET:dev-only-test-vnpay-secret}
+    pay-url: ${THI360_VNPAY_PAY_URL:https://127.0.0.1:19999/pay}
+    api-url: ${THI360_VNPAY_API_URL:https://127.0.0.1:19999/api}

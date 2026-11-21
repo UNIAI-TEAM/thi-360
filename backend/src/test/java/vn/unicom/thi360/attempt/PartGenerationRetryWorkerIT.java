@@ -79,11 +79,15 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         reset(paperSolverPort, publishedExamPortSpy);
     }
 
+    private record AttemptSession(Attempt attempt, UUID sessionId) {}
+
     @Test
     void stuckPartFailsAfterTwoMinutes() throws Exception {
         UUID userId = createStudent("stuck-part-2m");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToAwaitingChoice(userId, "stk", line.entitlementId());
+        AttemptSession session = advanceToAwaitingChoice(userId, "stk", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
         CountDownLatch entered = new CountDownLatch(1);
@@ -107,7 +111,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             attempt.getId(),
                                             p2.getId(),
                                             "stk-ch",
-                                            null,
+                                            sid,
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -148,7 +152,8 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
     void retriesAtScheduledDelays() throws Exception {
         UUID userId = createStudent("retry-delays");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToAwaitingChoice(userId, "rdel", line.entitlementId());
+        AttemptSession session = advanceToAwaitingChoice(userId, "rdel", line.entitlementId());
+        Attempt attempt = session.attempt();
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
         doAnswer(
@@ -171,7 +176,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "rdel-ch",
-                                        null,
+                                        session.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -223,7 +228,8 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         try {
             UUID userId = createStudent("ops-alert-3rd");
             GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-            Attempt attempt = advanceToAwaitingChoice(userId, "ops3", line.entitlementId());
+            AttemptSession session = advanceToAwaitingChoice(userId, "ops3", line.entitlementId());
+            Attempt attempt = session.attempt();
             AttemptPart p2 =
                     attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -247,7 +253,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             attempt.getId(),
                                             p2.getId(),
                                             "ops-ch",
-                                            null,
+                                            session.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -322,7 +328,9 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
     void attemptStaysOpenAfterFailures() throws Exception {
         UUID userId = createStudent("stay-open-fail");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToAwaitingChoice(userId, "so-fail", line.entitlementId());
+        AttemptSession session = advanceToAwaitingChoice(userId, "so-fail", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         AttemptPart p2 =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -345,7 +353,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "so-ch",
-                                        null,
+                                        sid,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -382,7 +390,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "so-recover",
-                                        null,
+                                        sid,
                                         new RetryPartRequest("recovered"))
                                 .getResponse()
                                 .getStatus())
@@ -403,9 +411,12 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
         GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
 
-        Attempt a1 = advanceToAwaitingChoice(u1, "st1", l1.entitlementId());
-        Attempt a2 = advanceToAwaitingChoice(u2, "st2", l2.entitlementId());
-        Attempt a3 = advanceToAwaitingChoice(u3, "st3", l3.entitlementId());
+        AttemptSession s1 = advanceToAwaitingChoice(u1, "st1", l1.entitlementId());
+        AttemptSession s2 = advanceToAwaitingChoice(u2, "st2", l2.entitlementId());
+        AttemptSession s3 = advanceToAwaitingChoice(u3, "st3", l3.entitlementId());
+        Attempt a1 = s1.attempt();
+        Attempt a2 = s2.attempt();
+        Attempt a3 = s3.attempt();
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
@@ -431,7 +442,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         a1.getId(),
                                         p1.getId(),
                                         "st1-ch",
-                                        null,
+                                        s1.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -443,7 +454,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         p2.getId(),
                                         "st2-ch",
-                                        null,
+                                        s2.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -468,7 +479,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         a3.getId(),
                                         p3.getId(),
                                         "st3-ch",
-                                        null,
+                                        s3.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -499,21 +510,24 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         UUID u1 = createStudent("ord-p1");
         UUID u2 = createStudent("ord-p2");
         UUID u3 = createStudent("ord-p3");
-        Attempt a1 =
+        AttemptSession s1 =
                 advanceToAwaitingChoice(
                         u1,
                         "ord1",
                         grant(u1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt a2 =
+        AttemptSession s2 =
                 advanceToAwaitingChoice(
                         u2,
                         "ord2",
                         grant(u2, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt a3 =
+        AttemptSession s3 =
                 advanceToAwaitingChoice(
                         u3,
                         "ord3",
                         grant(u3, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt a1 = s1.attempt();
+        Attempt a2 = s2.attempt();
+        Attempt a3 = s3.attempt();
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
@@ -539,7 +553,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         a1.getId(),
                                         p1.getId(),
                                         "ord1-ch",
-                                        null,
+                                        s1.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -553,7 +567,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         p2.getId(),
                                         "ord2-ch",
-                                        null,
+                                        s2.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -567,7 +581,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         a3.getId(),
                                         p3.getId(),
                                         "ord3-ch",
-                                        null,
+                                        s3.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -608,9 +622,12 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         GrantOrderResult.Line l2 = grant(u2, "DS-HSA-FULL-MINI", 2, List.of());
         GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
 
-        Attempt a1 = advanceToAwaitingChoice(u1, "cp1", l1.entitlementId());
-        Attempt a2 = advanceToAwaitingChoice(u2, "cp2", l2.entitlementId());
-        Attempt a3 = advanceToAwaitingChoice(u3, "cp3", l3.entitlementId());
+        AttemptSession s1 = advanceToAwaitingChoice(u1, "cp1", l1.entitlementId());
+        AttemptSession s2 = advanceToAwaitingChoice(u2, "cp2", l2.entitlementId());
+        AttemptSession s3 = advanceToAwaitingChoice(u3, "cp3", l3.entitlementId());
+        Attempt a1 = s1.attempt();
+        Attempt a2 = s2.attempt();
+        Attempt a3 = s3.attempt();
         AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
         AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
@@ -631,16 +648,16 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
 
         for (Object[] row :
                 List.of(
-                        new Object[] {u1, a1.getId(), p1.getId(), "cp1-ch"},
-                        new Object[] {u2, a2.getId(), p2.getId(), "cp2-ch"},
-                        new Object[] {u3, a3.getId(), p3.getId(), "cp3-ch"})) {
+                        new Object[] {u1, a1.getId(), p1.getId(), "cp1-ch", s1.sessionId()},
+                        new Object[] {u2, a2.getId(), p2.getId(), "cp2-ch", s2.sessionId()},
+                        new Object[] {u3, a3.getId(), p3.getId(), "cp3-ch", s3.sessionId()})) {
             assertThat(
                             performChoice(
                                             (UUID) row[0],
                                             (UUID) row[1],
                                             (UUID) row[2],
                                             (String) row[3],
-                                            null,
+                                            (UUID) row[4],
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -671,10 +688,14 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         UUID bu2 = createStudent("busy-blk2");
         UUID du1 = createStudent("busy-due1");
         UUID du2 = createStudent("busy-due2");
-        Attempt ba1 = advanceToAwaitingChoice(bu1, "bb1", grant(bu1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt ba2 = advanceToAwaitingChoice(bu2, "bb2", grant(bu2, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt da1 = advanceToAwaitingChoice(du1, "bd1", grant(du1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt da2 = advanceToAwaitingChoice(du2, "bd2", grant(du2, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        AttemptSession bs1 = advanceToAwaitingChoice(bu1, "bb1", grant(bu1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        AttemptSession bs2 = advanceToAwaitingChoice(bu2, "bb2", grant(bu2, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        AttemptSession ds1 = advanceToAwaitingChoice(du1, "bd1", grant(du1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        AttemptSession ds2 = advanceToAwaitingChoice(du2, "bd2", grant(du2, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt ba1 = bs1.attempt();
+        Attempt ba2 = bs2.attempt();
+        Attempt da1 = ds1.attempt();
+        Attempt da2 = ds2.attempt();
         AttemptPart bp1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(ba1.getId()).get(2);
         AttemptPart bp2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(ba2.getId()).get(2);
         AttemptPart dp1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(da1.getId()).get(2);
@@ -707,7 +728,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             da1.getId(),
                                             dp1.getId(),
                                             "bd1-ch",
-                                            null,
+                                            ds1.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -719,7 +740,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             da2.getId(),
                                             dp2.getId(),
                                             "bd2-ch",
-                                            null,
+                                            ds2.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -736,7 +757,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             ba1.getId(),
                                             bp1.getId(),
                                             "bb1-ch",
-                                            null,
+                                            bs1.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -748,7 +769,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             ba2.getId(),
                                             bp2.getId(),
                                             "bb2-ch",
-                                            null,
+                                            bs2.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -777,16 +798,18 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         // 1. worker.sweep() processes 1 stuck GENERATING (>2m) + 1 due GENERATION_FAILED -> returns 2
         UUID uStuck = createStudent("swp-stuck");
         UUID uDue = createStudent("swp-due");
-        Attempt aStuck =
+        AttemptSession sStuck =
                 advanceToAwaitingChoice(
                         uStuck,
                         "swp-s",
                         grant(uStuck, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt aDue =
+        AttemptSession sDue =
                 advanceToAwaitingChoice(
                         uDue,
                         "swp-d",
                         grant(uDue, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt aStuck = sStuck.attempt();
+        Attempt aDue = sDue.attempt();
         AttemptPart pStuck =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(aStuck.getId()).get(2);
         AttemptPart pDue =
@@ -821,7 +844,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             aDue.getId(),
                                             pDue.getId(),
                                             "swp-d-ch",
-                                            null,
+                                            sDue.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -834,7 +857,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                             aStuck.getId(),
                                             pStuck.getId(),
                                             "swp-s-ch",
-                                            null,
+                                            sStuck.sessionId(),
                                             new ConfirmPartChoiceRequest("ANH", null))
                                     .getResponse()
                                     .getStatus())
@@ -871,16 +894,18 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         UUID isoU1 = createStudent("iso-1");
         UUID isoU2 = createStudent("iso-2");
-        Attempt isoA1 =
+        AttemptSession isoS1 =
                 advanceToAwaitingChoice(
                         isoU1,
                         "iso1",
                         grant(isoU1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
-        Attempt isoA2 =
+        AttemptSession isoS2 =
                 advanceToAwaitingChoice(
                         isoU2,
                         "iso2",
                         grant(isoU2, "DS-QDA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt isoA1 = isoS1.attempt();
+        Attempt isoA2 = isoS2.attempt();
         AttemptPart isoP1 =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(isoA1.getId()).get(2);
         AttemptPart isoP2 =
@@ -908,7 +933,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         isoA1.getId(),
                                         isoP1.getId(),
                                         "iso1-ch",
-                                        null,
+                                        isoS1.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -920,7 +945,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         isoA2.getId(),
                                         isoP2.getId(),
                                         "iso2-ch",
-                                        null,
+                                        isoS2.sessionId(),
                                         new ConfirmPartChoiceRequest("QD02", null))
                                 .getResponse()
                                 .getStatus())
@@ -940,11 +965,12 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
         // 3. FOR UPDATE SKIP LOCKED: holding FOR UPDATE on isoA1 does not block worker.sweep() on unlocked attempts
         reset(publishedExamPortSpy);
         UUID freeU = createStudent("skip-free");
-        Attempt freeA =
+        AttemptSession freeS =
                 advanceToAwaitingChoice(
                         freeU,
                         "skfr",
                         grant(freeU, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt freeA = freeS.attempt();
         AttemptPart freeP =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(freeA.getId()).get(2);
         AtomicBoolean failFree = new AtomicBoolean(true);
@@ -967,7 +993,7 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                                         freeA.getId(),
                                         freeP.getId(),
                                         "skfr-ch",
-                                        null,
+                                        freeS.sessionId(),
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -1088,19 +1114,20 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
                 .isEqualTo("${thi360.attempt.scheduling.part-retry-interval-ms:30000}");
     }
 
-    private Attempt advanceToAwaitingChoice(UUID userId, String keyPrefix, UUID entitlementId)
-            throws Exception {
+    private AttemptSession advanceToAwaitingChoice(
+            UUID userId, String keyPrefix, UUID entitlementId) throws Exception {
         Attempt attempt = startAndAwaitOpen(userId, keyPrefix, entitlementId, null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        return attempt;
+        return new AttemptSession(attempt, sid);
     }
 
     private Instant lastFailedEventAt(UUID attemptId, UUID partId) {

@@ -49,11 +49,16 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         reset(paperSolverPort);
     }
 
+    private record AttemptSession(Attempt attempt, UUID sessionId) {}
+
     @Test
     void hsaEnglishBranch() throws Exception {
         UUID userId = createStudent("hsa-eng");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL", 2, List.of());
-        Attempt attempt = advanceToPartThreeAwaitingChoice(userId, "hsa-eng", line.entitlementId());
+        AttemptSession session =
+                advanceToPartThreeAwaitingChoice(userId, "hsa-eng", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptPart p2 = parts.get(2);
         assertThat(p2.getState()).isEqualTo(PartState.AWAITING_CHOICE);
@@ -64,7 +69,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "hsa-eng-choice",
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("ANH", null));
         assertThat(choiceRes.getResponse().getStatus()).isEqualTo(202);
         JsonNode choiceJson = json(choiceRes);
@@ -125,8 +130,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
             List<String> triple = triples.get(i);
             UUID userId = createStudent("hsa-sci-" + i);
             GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL", 2, List.of());
-            Attempt attempt =
+            AttemptSession session =
                     advanceToPartThreeAwaitingChoice(userId, "sci-" + i, line.entitlementId());
+            Attempt attempt = session.attempt();
+            UUID sid = session.sessionId();
             AttemptPart p2 =
                     attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -136,7 +143,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                             attempt.getId(),
                             p2.getId(),
                             "sci-choice-" + i,
-                            null,
+                            sid,
                             new ConfirmPartChoiceRequest("SCIENCE", triple));
             assertThat(choiceRes.getResponse().getStatus()).isEqualTo(202);
             JsonNode choiceResJson = json(choiceRes);
@@ -230,8 +237,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         for (int lowIdx = 0; lowIdx < 3; lowIdx++) {
             UUID userId = createStudent("hsa-3nat-seed-" + lowIdx);
             GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL", 2, List.of());
-            Attempt attempt =
+            AttemptSession session =
                     advanceToPartThreeAwaitingChoice(userId, "3nat-" + lowIdx, line.entitlementId());
+            Attempt attempt = session.attempt();
+            UUID sid = session.sessionId();
             AttemptPart p2 =
                     attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
             jdbc.update(
@@ -245,7 +254,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                             attempt.getId(),
                             p2.getId(),
                             "3nat-choice-" + lowIdx,
-                            null,
+                            sid,
                             new ConfirmPartChoiceRequest("SCIENCE", List.of("SINH", "LY", "HOA")));
             assertThat(res.getResponse().getStatus()).isEqualTo(202);
             JsonNode resJson = json(res);
@@ -269,7 +278,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
     void reloadKeepsSameFiftyQuestions() throws Exception {
         UUID userId = createStudent("reload-50");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL", 2, List.of());
-        Attempt attempt = advanceToPartThreeAwaitingChoice(userId, "reload", line.entitlementId());
+        AttemptSession session =
+                advanceToPartThreeAwaitingChoice(userId, "reload", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         AttemptPart p2 =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -279,7 +291,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "reload-ch",
-                                        null,
+                                        sid,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -301,7 +313,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
     void qdaQd02SubjectOrder() throws Exception {
         UUID userId = createStudent("qda-qd02");
         GrantOrderResult.Line line = grant(userId, "DS-QDA-FULL", 2, List.of());
-        Attempt attempt = advanceToPartThreeAwaitingChoice(userId, "qda-02", line.entitlementId());
+        AttemptSession session =
+                advanceToPartThreeAwaitingChoice(userId, "qda-02", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         AttemptPart p2 =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -327,7 +342,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                         attempt.getId(),
                         p2.getId(),
                         "qda-qd02-ch",
-                        null,
+                        sid,
                         new ConfirmPartChoiceRequest("QD02", null));
         assertThat(res.getResponse().getStatus()).isEqualTo(202);
         awaitPartState(p2.getId(), PartState.OPEN);
@@ -362,7 +377,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
     void partThreeExcludesIssuedQuestions() throws Exception {
         UUID userId = createStudent("exclude-issued");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToPartThreeAwaitingChoice(userId, "excl", line.entitlementId());
+        AttemptSession session =
+                advanceToPartThreeAwaitingChoice(userId, "excl", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         AttemptPart p2 =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -393,7 +411,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "excl-ch",
-                                        null,
+                                        sid,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -413,7 +431,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         // 1. Single granted option ["ANH"] on DS-HSA-FULL-MINI
         UUID u1 = createStudent("single-opt-hsa");
         GrantOrderResult.Line hsaLine = grant(u1, "DS-HSA-FULL-MINI", 2, List.of("ANH"));
-        Attempt a1 = advanceToPartThreeAwaitingChoice(u1, "so-hsa", hsaLine.entitlementId());
+        AttemptSession s1 =
+                advanceToPartThreeAwaitingChoice(u1, "so-hsa", hsaLine.entitlementId());
+        Attempt a1 = s1.attempt();
+        UUID sid1 = s1.sessionId();
         AttemptPart hsaP2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
         assertThat(hsaP2.getState()).isEqualTo(PartState.AWAITING_CHOICE);
         assertThat(attemptItemRepository.findByPartIdOrderByOrdAsc(hsaP2.getId())).isEmpty();
@@ -431,7 +452,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                         a1.getId(),
                         hsaP2.getId(),
                         "so-hsa-bad",
-                        null,
+                        sid1,
                         new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SINH")));
         assertThat(badHsaChoice.getResponse().getStatus()).isEqualTo(422);
         assertThat(json(badHsaChoice).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
@@ -442,7 +463,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                                         a1.getId(),
                                         hsaP2.getId(),
                                         "so-hsa-ok",
-                                        null,
+                                        sid1,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -453,7 +474,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         // 2. Single granted combination ["QD02"] on DS-QDA-FULL-MINI
         UUID u2 = createStudent("single-opt-qda");
         GrantOrderResult.Line qdaLine = grant(u2, "DS-QDA-FULL-MINI", 2, List.of("QD02"));
-        Attempt a2 = advanceToPartThreeAwaitingChoice(u2, "so-qda", qdaLine.entitlementId());
+        AttemptSession s2 =
+                advanceToPartThreeAwaitingChoice(u2, "so-qda", qdaLine.entitlementId());
+        Attempt a2 = s2.attempt();
+        UUID sid2 = s2.sessionId();
         AttemptPart qdaP2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
         assertThat(qdaP2.getState()).isEqualTo(PartState.AWAITING_CHOICE);
         assertThat(attemptItemRepository.findByPartIdOrderByOrdAsc(qdaP2.getId())).isEmpty();
@@ -464,7 +488,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                         a2.getId(),
                         qdaP2.getId(),
                         "so-qda-bad",
-                        null,
+                        sid2,
                         new ConfirmPartChoiceRequest("QD01", null));
         assertThat(badQdaChoice.getResponse().getStatus()).isEqualTo(422);
         assertThat(json(badQdaChoice).path("code").asText()).isEqualTo("CHOICE_NOT_ALLOWED");
@@ -475,7 +499,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                                         a2.getId(),
                                         qdaP2.getId(),
                                         "so-qda-ok",
-                                        null,
+                                        sid2,
                                         new ConfirmPartChoiceRequest("QD02", null))
                                 .getResponse()
                                 .getStatus())
@@ -488,7 +512,10 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
     void partThreeRecordedInUsageLedger() throws Exception {
         UUID userId = createStudent("usage-ledger-p3");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = advanceToPartThreeAwaitingChoice(userId, "ledger", line.entitlementId());
+        AttemptSession session =
+                advanceToPartThreeAwaitingChoice(userId, "ledger", line.entitlementId());
+        Attempt attempt = session.attempt();
+        UUID sid = session.sessionId();
         AttemptPart p2 =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
 
@@ -498,7 +525,7 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
                                         attempt.getId(),
                                         p2.getId(),
                                         "ledger-ch",
-                                        null,
+                                        sid,
                                         new ConfirmPartChoiceRequest("ANH", null))
                                 .getResponse()
                                 .getStatus())
@@ -525,19 +552,20 @@ class AttemptChoiceFlowIT extends AbstractAttemptDsIT {
         }
     }
 
-    private Attempt advanceToPartThreeAwaitingChoice(
+    private AttemptSession advanceToPartThreeAwaitingChoice(
             UUID userId, String keyPrefix, UUID entitlementId) throws Exception {
         Attempt attempt = startAndAwaitOpen(userId, keyPrefix, entitlementId, null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), null, null)
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
-        return attempt;
+        return new AttemptSession(attempt, sid);
     }
 
     private static long[] findSeedsForThreeIndexes() {

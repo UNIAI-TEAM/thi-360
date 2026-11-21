@@ -238,9 +238,10 @@ class AttemptDeadlineWorkerIT extends AbstractAttemptDsIT {
         assertThat(d1).isNotNull();
 
         List<AttemptPart> a1Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId());
+        UUID sid1 = claimSession(u1, a1.getId());
         mutableClock.advance(Duration.ofMinutes(1));
         assertThat(
-                        performFinishPart(u1, a1.getId(), a1Parts.get(0).getId(), null, null)
+                        performFinishPart(u1, a1.getId(), a1Parts.get(0).getId(), sid1, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
@@ -276,9 +277,10 @@ class AttemptDeadlineWorkerIT extends AbstractAttemptDsIT {
         assertThat(d2).isNotNull();
 
         List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
+        UUID sid2 = claimSession(u2, a2.getId());
         mutableClock.advance(Duration.ofMinutes(1));
         assertThat(
-                        performFinishPart(u2, a2.getId(), a2Parts.get(0).getId(), null, null)
+                        performFinishPart(u2, a2.getId(), a2Parts.get(0).getId(), sid2, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
@@ -306,11 +308,12 @@ class AttemptDeadlineWorkerIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("worker-awaiting-choice");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "wrk-ac", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
 
         mutableClock.advance(Duration.ofMinutes(1));
         assertThat(
-                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);

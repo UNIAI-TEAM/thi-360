@@ -163,7 +163,7 @@ public final class ForbiddenKeysAssert {
 
     /** Kiểm theo danh sách lượt thi (LT 7.3) trên nút JSON đã phân tích. */
     public static void assertNoAttemptForbiddenKeys(JsonNode node) {
-        assertNoForbiddenKeys(node, ATTEMPT_FORBIDDEN_KEYS, ATTEMPT_FORBIDDEN_SCOPED_KEYS, "attempt");
+        assertNoForbiddenKeys(node, ATTEMPT_FORBIDDEN_KEYS, ATTEMPT_FORBIDDEN_SCOPED_KEYS, "attempt", true);
     }
 
     /** Phân tích chuỗi JSON rồi kiểm theo danh sách bảng chiếu (TM 10.1). */
@@ -173,7 +173,7 @@ public final class ForbiddenKeysAssert {
 
     /** Kiểm theo danh sách bảng chiếu (TM 10.1) trên nút JSON đã phân tích. */
     public static void assertNoStorefrontForbiddenKeys(JsonNode node) {
-        assertNoForbiddenKeys(node, STOREFRONT_FORBIDDEN_KEYS, STOREFRONT_FORBIDDEN_SCOPED_KEYS, "storefront");
+        assertNoForbiddenKeys(node, STOREFRONT_FORBIDDEN_KEYS, STOREFRONT_FORBIDDEN_SCOPED_KEYS, "storefront", false);
     }
 
     /**
@@ -181,15 +181,24 @@ public final class ForbiddenKeysAssert {
      * sách hoặc một danh sách mở rộng mà task vẫn khai ở đây.
      */
     public static void assertNoForbiddenKeys(JsonNode node, Set<String> forbiddenKeys, String listName) {
-        assertNoForbiddenKeys(node, forbiddenKeys, Set.of(), listName);
+        assertNoForbiddenKeys(node, forbiddenKeys, Set.of(), listName, false);
     }
 
     /** Như trên, kèm khóa cấm theo vị trí (dạng {@code mảng[].khóa}). */
     public static void assertNoForbiddenKeys(
             JsonNode node, Set<String> forbiddenKeys, Set<String> forbiddenScopedKeys, String listName) {
+        assertNoForbiddenKeys(node, forbiddenKeys, forbiddenScopedKeys, listName, false);
+    }
+
+    private static void assertNoForbiddenKeys(
+            JsonNode node,
+            Set<String> forbiddenKeys,
+            Set<String> forbiddenScopedKeys,
+            String listName,
+            boolean allowAnswerPairs) {
         requireContainer(node);
         Set<String> violations = new TreeSet<>();
-        collect(node, "$", null, forbiddenKeys, forbiddenScopedKeys, violations);
+        collect(node, "$", null, null, forbiddenKeys, forbiddenScopedKeys, allowAnswerPairs, violations);
         assertThat(violations)
                 .as("forbidden keys under the '%s' list (JSON paths only, values withheld)", listName)
                 .isEmpty();
@@ -198,32 +207,70 @@ public final class ForbiddenKeysAssert {
     /**
      * {@code owningArrayKey}: tên khóa của mảng chứa trực tiếp nút này (nút là phần tử của mảng đó),
      * hoặc null nếu nút không phải phần tử của mảng có tên.
+     * {@code parentObjectField}: tên khóa cha trực tiếp có giá trị là chính đối tượng này (dùng để
+     * chỉ cho phép {@code answer.pairs} của đáp án Ghép đôi học viên trong danh sách lượt thi).
      */
     private static void collect(
-            JsonNode node, String path, String owningArrayKey,
-            Set<String> forbiddenKeys, Set<String> forbiddenScopedKeys, Set<String> violations) {
+            JsonNode node,
+            String path,
+            String owningArrayKey,
+            String parentObjectField,
+            Set<String> forbiddenKeys,
+            Set<String> forbiddenScopedKeys,
+            boolean allowAnswerPairs,
+            Set<String> violations) {
         if (node.isObject()) {
             for (Map.Entry<String, JsonNode> field : node.properties()) {
                 String key = field.getKey();
                 String childPath = path + "." + key;
-                if (forbiddenKeys.contains(key)
-                        || (owningArrayKey != null && forbiddenScopedKeys.contains(owningArrayKey + "[]." + key))) {
+                boolean permittedAnswerPairs =
+                        allowAnswerPairs
+                                && "pairs".equals(key)
+                                && "answer".equals(parentObjectField)
+                                && field.getValue().isObject();
+                if (!permittedAnswerPairs
+                        && (forbiddenKeys.contains(key)
+                                || (owningArrayKey != null
+                                        && forbiddenScopedKeys.contains(owningArrayKey + "[]." + key)))) {
                     violations.add(childPath);
                 }
                 JsonNode value = field.getValue();
                 if (value.isArray()) {
                     for (int i = 0; i < value.size(); i++) {
-                        collect(value.get(i), childPath + "[" + i + "]", key, forbiddenKeys,
-                                forbiddenScopedKeys, violations);
+                        collect(
+                                value.get(i),
+                                childPath + "[" + i + "]",
+                                key,
+                                null,
+                                forbiddenKeys,
+                                forbiddenScopedKeys,
+                                allowAnswerPairs,
+                                violations);
                     }
                 } else {
-                    collect(value, childPath, null, forbiddenKeys, forbiddenScopedKeys, violations);
+                    collect(
+                            value,
+                            childPath,
+                            null,
+                            value.isObject() ? key : null,
+                            forbiddenKeys,
+                            forbiddenScopedKeys,
+                            allowAnswerPairs,
+                            violations);
                 }
             }
         } else if (node.isArray()) {
             // Mảng gốc hoặc mảng lồng mảng: phần tử không thuộc mảng có tên.
             for (int i = 0; i < node.size(); i++) {
-                collect(node.get(i), path + "[" + i + "]", null, forbiddenKeys, forbiddenScopedKeys, violations);
+                collect(
+                        node.get(i),
+                        path + "[" + i + "]",
+                        null,
+                        null,
+                        forbiddenKeys,
+                        forbiddenScopedKeys,
+                        allowAnswerPairs,
+                        violations);
             }
         }
     }

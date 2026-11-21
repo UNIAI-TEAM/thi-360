@@ -38,6 +38,7 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         Attempt attempt =
                 startAndAwaitOpen(
                         userId, "bca-skip", line.entitlementId(), new PreChoiceInput("CA2", null));
+        UUID sid = claimSession(userId, attempt.getId());
         Instant sharedDeadline = attempt.getDeadlineAt();
         assertThat(sharedDeadline).isNotNull();
 
@@ -47,7 +48,7 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         // Finish Part 0 so Part 1 is OPEN and Part 2 is PENDING
         mutableClock.advance(Duration.ofMinutes(1));
         assertThat(
-                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
@@ -140,13 +141,14 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         UUID u1b = createStudent("lazy-fin-perpart");
         GrantOrderResult.Line hsaLine2 = grant(u1b, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt hsa2 = startAndAwaitOpen(u1b, "lazy-fin-pp", hsaLine2.entitlementId(), null);
+        UUID hsa2Sid = claimSession(u1b, hsa2.getId());
         List<AttemptPart> hsa2Parts =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(hsa2.getId());
         Instant hsa2P0Deadline = hsa2Parts.get(0).getDeadlineAt();
 
         mutableClock.setAt(hsa2P0Deadline.plus(Duration.ofMinutes(3)));
         MvcResult finOverdueRes =
-                performFinishPart(u1b, hsa2.getId(), hsa2Parts.get(0).getId(), null, null);
+                performFinishPart(u1b, hsa2.getId(), hsa2Parts.get(0).getId(), hsa2Sid, null);
         assertThat(finOverdueRes.getResponse().getStatus()).isEqualTo(200);
         JsonNode finJson = json(finOverdueRes);
         assertThat(finJson.path("closedPart").path("state").asText()).isEqualTo("CLOSED");
@@ -160,11 +162,12 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         // 2b. Even when finish on last part throws 409 ATTEMPT_PART_IS_LAST, lazy close REQUIRES_NEW still commits!
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt single2 = startAndAwaitOpen(u2, "lazy-fin-last", singleLine.entitlementId(), null);
+        UUID single2Sid = claimSession(u2, single2.getId());
         AttemptPart single2Part =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(single2.getId()).getFirst();
         mutableClock.setAt(single2Part.getDeadlineAt().plus(Duration.ofMinutes(5)));
         MvcResult finLastRes =
-                performFinishPart(u2, single2.getId(), single2Part.getId(), null, null);
+                performFinishPart(u2, single2.getId(), single2Part.getId(), single2Sid, null);
         assertThat(finLastRes.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(finLastRes).path("code").asText()).isEqualTo("ATTEMPT_PART_IS_LAST");
         Attempt single2Closed = attemptRepository.findById(single2.getId()).orElseThrow();
@@ -175,10 +178,11 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         // 3. POST .../submit lazily closes overdue attempt with finished_at = deadline_at, TIME_UP
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt single3 = startAndAwaitOpen(u2, "lazy-sub", singleLine.entitlementId(), null);
+        UUID single3Sid = claimSession(u2, single3.getId());
         Instant single3Deadline =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(single3.getId()).getFirst().getDeadlineAt();
         mutableClock.setAt(single3Deadline.plus(Duration.ofMinutes(5)));
-        MvcResult subRes = performSubmit(u2, single3.getId(), "lazy-sub-key", null, null);
+        MvcResult subRes = performSubmit(u2, single3.getId(), "lazy-sub-key", single3Sid, null);
         assertThat(subRes.getResponse().getStatus()).isEqualTo(200);
         JsonNode subJson = json(subRes);
         assertThat(subJson.path("state").asText()).isEqualTo("GRADING");
@@ -194,11 +198,12 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
 
         // 1. At deadline - 1s -> accepted as SUBMITTED
         Attempt aBefore = startAndAwaitOpen(userId, "bnd-before", line.entitlementId(), null);
+        UUID sidBefore = claimSession(userId, aBefore.getId());
         assertThat(aBefore.getTiming()).isEqualTo(AttemptTiming.PER_PART);
         Instant dBefore =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(aBefore.getId()).getFirst().getDeadlineAt();
         mutableClock.setAt(dBefore.minusSeconds(1));
-        MvcResult resBefore = performSubmit(userId, aBefore.getId(), "bnd-k-1", null, null);
+        MvcResult resBefore = performSubmit(userId, aBefore.getId(), "bnd-k-1", sidBefore, null);
         assertThat(resBefore.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(resBefore).path("endReason").asText()).isEqualTo("SUBMITTED");
         assertThat(Instant.parse(json(resBefore).path("finishedAt").asText()))
@@ -207,10 +212,11 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         // 2. At exact deadline -> already closed as TIME_UP at deadline_at
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt aExact = startAndAwaitOpen(userId, "bnd-exact", line.entitlementId(), null);
+        UUID sidExact = claimSession(userId, aExact.getId());
         Instant dExact =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(aExact.getId()).getFirst().getDeadlineAt();
         mutableClock.setAt(dExact);
-        MvcResult resExact = performSubmit(userId, aExact.getId(), "bnd-k-2", null, null);
+        MvcResult resExact = performSubmit(userId, aExact.getId(), "bnd-k-2", sidExact, null);
         assertThat(resExact.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(resExact).path("endReason").asText()).isEqualTo("TIME_UP");
         assertThat(Instant.parse(json(resExact).path("finishedAt").asText())).isEqualTo(dExact);
@@ -218,10 +224,11 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         // 3. At deadline + 1s -> closed as TIME_UP at deadline_at
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt aAfter = startAndAwaitOpen(userId, "bnd-after", line.entitlementId(), null);
+        UUID sidAfter = claimSession(userId, aAfter.getId());
         Instant dAfter =
                 attemptPartRepository.findByAttemptIdOrderByOrdAsc(aAfter.getId()).getFirst().getDeadlineAt();
         mutableClock.setAt(dAfter.plusSeconds(1));
-        MvcResult resAfter = performSubmit(userId, aAfter.getId(), "bnd-k-3", null, null);
+        MvcResult resAfter = performSubmit(userId, aAfter.getId(), "bnd-k-3", sidAfter, null);
         assertThat(resAfter.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(resAfter).path("endReason").asText()).isEqualTo("TIME_UP");
         assertThat(Instant.parse(json(resAfter).path("finishedAt").asText())).isEqualTo(dAfter);
@@ -232,11 +239,12 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         GrantOrderResult.Line sharedLine = grant(sharedUser, "DS-VACT-PART-LANGUAGE-MINI", 3, List.of());
 
         Attempt sBefore = startAndAwaitOpen(sharedUser, "sh-bnd-before", sharedLine.entitlementId(), null);
+        UUID sSidBefore = claimSession(sharedUser, sBefore.getId());
         assertThat(sBefore.getTiming()).isEqualTo(AttemptTiming.SHARED);
         assertThat(sBefore.getDeadlineAt()).isNotNull();
         Instant sdBefore = sBefore.getDeadlineAt();
         mutableClock.setAt(sdBefore.minusSeconds(1));
-        MvcResult sResBefore = performSubmit(sharedUser, sBefore.getId(), "sh-bnd-1", null, null);
+        MvcResult sResBefore = performSubmit(sharedUser, sBefore.getId(), "sh-bnd-1", sSidBefore, null);
         assertThat(sResBefore.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(sResBefore).path("endReason").asText()).isEqualTo("SUBMITTED");
         assertThat(Instant.parse(json(sResBefore).path("finishedAt").asText()))
@@ -244,22 +252,24 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
 
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt sExact = startAndAwaitOpen(sharedUser, "sh-bnd-exact", sharedLine.entitlementId(), null);
+        UUID sSidExact = claimSession(sharedUser, sExact.getId());
         assertThat(sExact.getTiming()).isEqualTo(AttemptTiming.SHARED);
         assertThat(sExact.getDeadlineAt()).isNotNull();
         Instant sdExact = sExact.getDeadlineAt();
         mutableClock.setAt(sdExact);
-        MvcResult sResExact = performSubmit(sharedUser, sExact.getId(), "sh-bnd-2", null, null);
+        MvcResult sResExact = performSubmit(sharedUser, sExact.getId(), "sh-bnd-2", sSidExact, null);
         assertThat(sResExact.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(sResExact).path("endReason").asText()).isEqualTo("TIME_UP");
         assertThat(Instant.parse(json(sResExact).path("finishedAt").asText())).isEqualTo(sdExact);
 
         mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
         Attempt sAfter = startAndAwaitOpen(sharedUser, "sh-bnd-after", sharedLine.entitlementId(), null);
+        UUID sSidAfter = claimSession(sharedUser, sAfter.getId());
         assertThat(sAfter.getTiming()).isEqualTo(AttemptTiming.SHARED);
         assertThat(sAfter.getDeadlineAt()).isNotNull();
         Instant sdAfter = sAfter.getDeadlineAt();
         mutableClock.setAt(sdAfter.plusSeconds(1));
-        MvcResult sResAfter = performSubmit(sharedUser, sAfter.getId(), "sh-bnd-3", null, null);
+        MvcResult sResAfter = performSubmit(sharedUser, sAfter.getId(), "sh-bnd-3", sSidAfter, null);
         assertThat(sResAfter.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(sResAfter).path("endReason").asText()).isEqualTo("TIME_UP");
         assertThat(Instant.parse(json(sResAfter).path("finishedAt").asText())).isEqualTo(sdAfter);
@@ -389,11 +399,12 @@ class AttemptTimingIT extends AbstractAttemptDsIT {
         UUID userId = createStudent("lazy-awaiting-choice");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "lazy-ac", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
 
         mutableClock.advance(Duration.ofMinutes(1));
         assertThat(
-                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), null, null)
+                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(200);
