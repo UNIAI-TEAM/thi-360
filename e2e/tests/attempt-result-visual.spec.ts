@@ -261,11 +261,15 @@ function makeReviewFixture(attemptId: string, resultView: "SCORE_AND_ANSWERS" | 
         body: { wordLimit: 150 },
         studentAnswer: { type: "ESSAY", html: "<p>Khóa vòi nước khi không dùng.</p>", wordCount: 6 },
         gradingDetail: { wordCount: 6 },
-        essayFeedback: {
-          points: 4,
-          comment: "Ý chính rõ ràng",
-          criteria: [{ id: "Nội dung", points: 2.5, comment: "Đúng trọng tâm" }],
-        },
+        ...(resultView === "FULL_SOLUTION"
+          ? {
+              essayFeedback: {
+                points: 4,
+                comment: "Ý chính rõ ràng",
+                criteria: [{ id: "Nội dung", points: 2.5, comment: "Đúng trọng tâm" }],
+              },
+            }
+          : {}),
       },
     ],
   };
@@ -468,9 +472,10 @@ for (const cell of matrixCells()) {
         await settle(page);
         await expectMatrixClean(page, "result-regrading-fault", cell);
 
-        // 5. review-answers (with visible StudentHeader)
+        // 5. review-answers (with visible StudentHeader, no essayFeedback under SCORE_AND_ANSWERS per R1-7)
         await page.goto(`${WEB_URL}/attempts/${ATTEMPT_ANSWERS}/review`);
         await expect(page.locator("#review-item-ri-1")).toBeVisible();
+        await expect(page.locator("main")).not.toContainText(/Điểm từng tiêu chí|Criterion breakdown/);
         await settle(page);
         await expect(page.locator("header nav")).toBeVisible();
         await expectMatrixClean(page, "review-answers", cell);

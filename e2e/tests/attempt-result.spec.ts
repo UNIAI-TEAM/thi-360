@@ -445,7 +445,7 @@ test.describe("FS-6 Kết quả, Xem lại & Lịch sử", () => {
       await strangerCtx.close();
     }
 
-    // 4. Buy & complete a second FULL attempt (DS-HSA-FULL-MINI) -> 2 separate rows in /history (AC-13)
+    // 4. Buy & complete a second FULL attempt (DS-HSA-FULL-MINI) -> check live 409 on /review while IN_PROGRESS, then submit & check Back across review part tabs (R1-1, R1-2, R1-35, AC-13)
     await buyExamViaCheckout(browser, owner.cookies, fullMini.productCode);
     const fullMiniEnt = await findEntitlementId(context.request, fullMini.code);
     const { attemptId: fullMiniAttemptId, sessionId: fullMiniSessionId } = await startAttemptToInProgress(
@@ -453,9 +453,28 @@ test.describe("FS-6 Kết quả, Xem lại & Lịch sử", () => {
       owner.cookies,
       fullMiniEnt.entitlementId,
     );
+
+    await page.goto(`${WEB_URL}/attempts/${fullMiniAttemptId}/review`);
+    await expect(page.getByRole("heading", { level: 1, name: "Chưa thể xem lại bài làm" })).toBeVisible();
+
     await submitAndWaitScored(context.request, owner.cookies, fullMiniAttemptId, fullMiniSessionId);
 
-    // 5. /history verifies 2 rows (FULL + PART), scope & q URL filters, Back preserves query, ?examId=<uuid> filters strictly (AC-13, AC-16)
+    // Browser Back across part tabs on multi-part review (R1-1, R1-2)
+    await page.goto(`${WEB_URL}/attempts/${fullMiniAttemptId}/review`);
+    const partsNav = page.getByRole("navigation", { name: "Các phần của đề" });
+    await expect(partsNav).toBeVisible();
+    const partLinks = partsNav.getByRole("link");
+    expect(await partLinks.count()).toBeGreaterThanOrEqual(2);
+    await expect(partLinks.first()).toHaveAttribute("aria-current", "page");
+    await partLinks.nth(1).click();
+    await expect(page).toHaveURL(/\/review\?part=/);
+    await expect(partLinks.nth(1)).toHaveAttribute("aria-current", "page");
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/attempts/${fullMiniAttemptId}/review$`));
+    await expect(partLinks.first()).toHaveAttribute("aria-current", "page");
+    await expect(partLinks.nth(1)).not.toHaveAttribute("aria-current", "page");
+
+    // 5. /history verifies 2 rows (FULL + PART), scope & q & kind & from/to URL filters, Back preserves query, ?examId=<uuid> filters strictly (AC-13, AC-16, R1-31)
     await page.goto(`${WEB_URL}/history`);
     await expect(page.getByRole("heading", { level: 1, name: "Lịch sử luyện thi" })).toBeVisible();
     const rows = page.locator("tbody tr");
@@ -492,6 +511,31 @@ test.describe("FS-6 Kết quả, Xem lại & Lịch sử", () => {
     await expect(page).toHaveURL(filteredUrl);
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText(scoreOnly.name);
+
+    // Clear filters, then filter by kind + from/to date range matching today vs excluding today (R1-31)
+    await page.getByRole("button", { name: "Xóa bộ lọc" }).click();
+    await expect(page).toHaveURL(`${WEB_URL}/history`);
+    await expect(rows).toHaveCount(2);
+
+    await page.getByRole("combobox", { name: "Kỳ thi" }).click();
+    await page.getByRole("option", { name: /HSA/ }).first().click();
+    await expect(page).toHaveURL(/\/history\?.*kind=HSA/);
+    await expect(rows).toHaveCount(2);
+
+    const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+    await page.locator("#history-from").fill(todayIso);
+    await page.locator("#history-to").fill(todayIso);
+    await expect(page).toHaveURL(new RegExp(`from=${todayIso}.*to=${todayIso}`));
+    await expect(rows).toHaveCount(2);
+
+    await page.locator("#history-from").fill("2000-01-01");
+    await page.locator("#history-to").fill("2000-01-01");
+    await expect(page).toHaveURL(/from=2000-01-01.*to=2000-01-01/);
+    await expect(rows).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: "Chưa có lượt thi phù hợp" })).toBeVisible();
+    await page.getByRole("button", { name: "Xóa bộ lọc" }).last().click();
+    await expect(page).toHaveURL(`${WEB_URL}/history`);
+    await expect(rows).toHaveCount(2);
 
     // /history?examId=<uuid> filters strictly to scoreOnlyExamId
     await page.goto(`${WEB_URL}/history?examId=${encodeURIComponent(scoreOnlyExamId)}`);
