@@ -21,6 +21,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.AttemptChoiceSummary;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.PartResultView;
+import vn.unicom.thi360.attempt.api.AttemptResultResponse.SegmentResultView;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.SubjectResultView;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.UnitStatsView;
 import vn.unicom.thi360.attempt.api.AttemptResultResponse.VactComponentView;
@@ -109,10 +111,12 @@ public class AttemptResultService {
     private final AttemptQuestionSanitizer sanitizer;
     private final MessageSource messageSource;
     private final TransactionTemplate readOnlyTx;
+    private final AttemptSegmentResultBuilder segmentResultBuilder;
 
     private record SubjectCatalog(
             Map<String, String> namesByCode, Map<UUID, CatalogItemView> itemsById) {}
 
+    @Autowired
     public AttemptResultService(
             AttemptAccessGate accessGate,
             AttemptGuard attemptGuard,
@@ -126,7 +130,8 @@ public class AttemptResultService {
             CatalogLookup catalogLookup,
             AttemptQuestionSanitizer sanitizer,
             MessageSource messageSource,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            AttemptSegmentResultBuilder segmentResultBuilder) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptGuard = Objects.requireNonNull(attemptGuard);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
@@ -141,6 +146,7 @@ public class AttemptResultService {
         this.messageSource = Objects.requireNonNull(messageSource);
         this.readOnlyTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.readOnlyTx.setReadOnly(true);
+        this.segmentResultBuilder = Objects.requireNonNull(segmentResultBuilder);
     }
 
     public AttemptResultResponse getResult(UUID attemptId) {
@@ -219,11 +225,15 @@ public class AttemptResultService {
                     null,
                     List.of(),
                     List.of(),
+                    null,
                     null);
         }
 
         List<AttemptItem> items = loadItemsInPaperOrder(attemptId, parts);
-        List<SectionInput> sections = loadSectionMetadata(attempt);
+        Optional<PublishedVersion> rawPublished =
+                publishedExamPort.loadVersion(attempt.getExamId(), attempt.getExamVersionNo());
+        Optional<PublishedVersion> publishedVersion = rawPublished != null ? rawPublished : Optional.empty();
+        List<SectionInput> sections = extractVactSections(attempt, publishedVersion);
 
         AggregatedScore aggregated = ScoreAggregator.aggregate(toScoreInput(attempt, parts, items, sections));
         boolean pendingReview = attempt.getState() == AttemptState.PENDING_REVIEW;
@@ -280,6 +290,8 @@ public class AttemptResultService {
                     .toList();
         }
 
+        List<SegmentResultView> segmentViews = segmentResultBuilder.build(publishedVersion, parts, items);
+
         return new AttemptResultResponse(
                 attempt.getId(),
                 attempt.getExamId(),
@@ -316,7 +328,8 @@ public class AttemptResultService {
                 toStatsView(aggregated.statistics()),
                 partViews,
                 subjectViews,
-                vactViews);
+                vactViews,
+                segmentViews);
     }
 
     public AttemptReviewResponse getReview(UUID attemptId, String partFilter) {
@@ -933,12 +946,10 @@ public class AttemptResultService {
         return items;
     }
 
-    private List<SectionInput> loadSectionMetadata(Attempt attempt) {
+    private List<SectionInput> extractVactSections(Attempt attempt, Optional<PublishedVersion> published) {
         if (!"VACT".equals(attempt.getExamKindCode())) {
             return List.of();
         }
-        Optional<PublishedVersion> published =
-                publishedExamPort.loadVersion(attempt.getExamId(), attempt.getExamVersionNo());
         if (published.isEmpty() || published.get().parts() == null) {
             return List.of();
         }

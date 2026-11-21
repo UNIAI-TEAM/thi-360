@@ -215,9 +215,10 @@ public final class ItemGrader {
                 earned = ExactRational.of(effectiveMax);
                 outcome = ItemOutcome.CORRECT;
             } else {
-                // Standard proportional policy: P * correctChosen / totalCorrect
                 ExactRational fraction = switch (policy.multipleChoicePartialMode()) {
                     case PROPORTIONAL -> ExactRational.of(correctChosen, correctIds.size());
+                    case HALF_CREDIT -> HalfCreditMultipleChoice.partialFraction(
+                            correctChosen, correctIds.size(), wrongChosen);
                 };
                 earned = ExactRational.of(effectiveMax).multiply(fraction);
                 outcome = ItemOutcome.PARTIAL;

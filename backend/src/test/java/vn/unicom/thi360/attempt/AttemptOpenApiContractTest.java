@@ -378,6 +378,7 @@ class AttemptOpenApiContractTest {
                 "AttemptResultResponse",
                 "AttemptResultUnitStats",
                 "AttemptResultPart",
+                "AttemptResultSegment",
                 "AttemptResultSubject",
                 "AttemptResultVactComponent",
                 "AttemptResultVactSubsection",
@@ -409,14 +410,30 @@ class AttemptOpenApiContractTest {
                     .isTrue();
         }
 
-        // Result response schema must declare practiceScoreNote and choices, and never leak gradingError or secrets
+        // Result response schema must declare practiceScoreNote, choices, and segments, and never leak gradingError or secrets
         JsonNode resultProps = schemas.path("AttemptResultResponse").path("properties");
         assertThat(resultProps.has("practiceScoreNote")).isTrue();
         assertThat(resultProps.has("choices")).isTrue();
+        assertThat(resultProps.has("segments")).isTrue();
+        JsonNode segmentsProp = resultProps.path("segments");
+        assertThat(segmentsProp.path("type").asText()).isEqualTo("array");
+        assertThat(segmentsProp.path("items").path("$ref").asText())
+                .isEqualTo("#/components/schemas/AttemptResultSegment");
         assertThat(resultProps.has("gradingError")).isFalse();
         assertThat(resultProps.has("solution")).isFalse();
         assertThat(resultProps.has("gradingGuide")).isFalse();
         assertThat(resultProps.has("rubric")).isFalse();
+
+        JsonNode segmentProps = schemas.path("AttemptResultSegment").path("properties");
+        assertThat(segmentProps.has("code")).isTrue();
+        assertThat(segmentProps.has("partCode")).isTrue();
+        assertThat(segmentProps.has("name")).isTrue();
+        assertThat(segmentProps.has("fromPosition")).isTrue();
+        assertThat(segmentProps.has("toPosition")).isTrue();
+        assertThat(segmentProps.has("pendingReview")).isTrue();
+        assertThat(segmentProps.has("score")).isTrue();
+        assertThat(segmentProps.has("maxPoints")).isTrue();
+        assertThat(segmentProps.has("stats")).isTrue();
 
         JsonNode vactComponentProps = schemas.path("AttemptResultVactComponent").path("properties");
         assertThat(vactComponentProps.has("correctRate")).isTrue();
@@ -449,7 +466,20 @@ class AttemptOpenApiContractTest {
         assertThat(extractComponentSchemaBlock(schemaDts, "AttemptResultResponse"))
                 .contains("practiceScoreNote?:")
                 .contains("choices?:")
+                .contains("segments?:")
+                .contains("AttemptResultSegment")
                 .doesNotContain("gradingError");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AttemptResultSegment"))
+                .contains("code?:")
+                .contains("name?:")
+                .contains("partCode?:")
+                .contains("fromPosition?:")
+                .contains("toPosition?:")
+                .contains("pendingReview?:")
+                .contains("score?:")
+                .contains("maxPoints?:")
+                .contains("stats?:")
+                .contains("AttemptResultUnitStats");
         assertThat(extractComponentSchemaBlock(schemaDts, "AttemptHistoryItem"))
                 .contains("choices?:")
                 .contains("AttemptChoiceSummary");

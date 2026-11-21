@@ -51,7 +51,8 @@ public record AttemptResultResponse(
         UnitStatsView statistics,
         List<PartResultView> parts,
         List<SubjectResultView> subjects,
-        List<VactComponentView> vactComponents) {
+        List<VactComponentView> vactComponents,
+        List<SegmentResultView> segments) {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "AttemptResultUnitStats")
@@ -113,4 +114,19 @@ public record AttemptResultResponse(
             @Schema(description = "Tỷ lệ đúng (0–100%)")
                     BigDecimal correctRate,
             List<VactSubsectionView> subsections) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(
+            name = "AttemptResultSegment",
+            description = "Kết quả theo phân đoạn hiển thị của bài thi (BS §17.3, AT-7)")
+    public record SegmentResultView(
+            String code,
+            String name,
+            String partCode,
+            int fromPosition,
+            int toPosition,
+            boolean pendingReview,
+            BigDecimal score,
+            BigDecimal maxPoints,
+            UnitStatsView stats) {}
 }
