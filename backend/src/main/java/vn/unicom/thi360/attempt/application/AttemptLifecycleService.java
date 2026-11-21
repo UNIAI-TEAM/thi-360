@@ -89,7 +89,7 @@ public class AttemptLifecycleService {
             AttemptSessionChecker attemptSessionChecker,
             FinalAnswerWriter finalAnswerWriter,
             ObjectProvider<PartTransitionHook> partTransitionHookProvider,
-            ObjectProvider<AttemptAudioPlayRepository> attemptAudioPlayRepositoryProvider,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
             PlatformTransactionManager transactionManager,
             Clock clock) {
         this(
@@ -105,10 +105,14 @@ public class AttemptLifecycleService {
                 overdueAttemptCloser,
                 attemptSessionChecker,
                 finalAnswerWriter,
-                partTransitionHookProvider.getIfAvailable(() -> PartTransitionHook.NOOP),
-                attemptAudioPlayRepositoryProvider.getIfAvailable(),
+                Objects.requireNonNull(partTransitionHookProvider)
+                        .getIfAvailable(() -> PartTransitionHook.NOOP),
+                Objects.requireNonNull(
+                        attemptAudioPlayRepository,
+                        "attemptAudioPlayRepository must not be null"),
                 transactionManager,
-                clock);
+                clock,
+                true);
     }
 
     public AttemptLifecycleService(
@@ -143,7 +147,8 @@ public class AttemptLifecycleService {
                 partTransitionHook,
                 null,
                 transactionManager,
-                clock);
+                clock,
+                false);
     }
 
     public AttemptLifecycleService(
@@ -163,6 +168,44 @@ public class AttemptLifecycleService {
             AttemptAudioPlayRepository attemptAudioPlayRepository,
             PlatformTransactionManager transactionManager,
             Clock clock) {
+        this(
+                accessGate,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptEventRepository,
+                publishedExamPort,
+                entitlementPort,
+                outboxPublisher,
+                idempotentCommand,
+                overdueAttemptCloser,
+                attemptSessionChecker,
+                finalAnswerWriter,
+                partTransitionHook,
+                attemptAudioPlayRepository,
+                transactionManager,
+                clock,
+                true);
+    }
+
+    private AttemptLifecycleService(
+            AttemptAccessGate accessGate,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptEventRepository attemptEventRepository,
+            PublishedExamPort publishedExamPort,
+            EntitlementPort entitlementPort,
+            OutboxPublisher outboxPublisher,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            AttemptSessionChecker attemptSessionChecker,
+            FinalAnswerWriter finalAnswerWriter,
+            PartTransitionHook partTransitionHook,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            PlatformTransactionManager transactionManager,
+            Clock clock,
+            boolean requireAudioPlayRepository) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
@@ -177,7 +220,12 @@ public class AttemptLifecycleService {
         this.finalAnswerWriter = Objects.requireNonNull(finalAnswerWriter);
         this.partTransitionHook =
                 partTransitionHook == null ? PartTransitionHook.NOOP : partTransitionHook;
-        this.attemptAudioPlayRepository = attemptAudioPlayRepository;
+        this.attemptAudioPlayRepository =
+                requireAudioPlayRepository
+                        ? Objects.requireNonNull(
+                                attemptAudioPlayRepository,
+                                "attemptAudioPlayRepository must not be null")
+                        : attemptAudioPlayRepository;
         this.txTemplate = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.clock = Objects.requireNonNull(clock);
     }

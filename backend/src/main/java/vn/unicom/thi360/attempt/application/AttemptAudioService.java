@@ -107,6 +107,12 @@ public class AttemptAudioService {
                                 new ConflictException(ctx.closeCode()), ctx.deadlineReached());
                     }
                     if (requestId.equals(play.getLastRequestId())) {
+                        if (play.getState() == AudioPlayState.PLAYING
+                                && (play.getLeaseUntil() == null
+                                        || !ctx.now().isBefore(play.getLeaseUntil()))) {
+                            play.resume(ctx.now(), ctx.now().plus(properties.leaseDuration()));
+                            attemptAudioPlayRepository.saveAndFlush(play);
+                        }
                         return TxOutcome.success(toResponse(play), false);
                     }
                     if (play.getState() == AudioPlayState.PLAYING) {
@@ -260,6 +266,11 @@ public class AttemptAudioService {
                                                     () -> new NotFoundException("NOT_FOUND", null));
 
                             attemptSessionChecker.requireEditSession(attempt, sessionId);
+
+                            PartState partState = part.getState();
+                            if (partState != PartState.OPEN && partState != PartState.CLOSED) {
+                                throw new NotFoundException("NOT_FOUND", null);
+                            }
 
                             Instant now = clock.instant();
                             boolean liveOpen =

@@ -165,7 +165,8 @@ public class AttemptStartService {
                 entityManager,
                 jdbcTemplate,
                 transactionManager,
-                clock);
+                clock,
+                false);
     }
 
     @Autowired
@@ -190,27 +191,82 @@ public class AttemptStartService {
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
             Clock clock) {
-        this.accessGate = accessGate;
-        this.entitlementPort = entitlementPort;
-        this.publishedExamPort = publishedExamPort;
-        this.paperSolverPort = paperSolverPort;
-        this.questionSourcePort = questionSourcePort;
-        this.pathResolver = pathResolver;
-        this.paperAssembler = paperAssembler;
-        this.attemptRepository = attemptRepository;
-        this.attemptPartRepository = attemptPartRepository;
-        this.attemptItemRepository = attemptItemRepository;
-        this.attemptAudioPlayRepository = attemptAudioPlayRepository;
-        this.attemptEventRepository = attemptEventRepository;
-        this.attemptAudioFileCheck = attemptAudioFileCheck;
-        this.generationExecutor = generationExecutor;
-        this.idempotentCommand = idempotentCommand;
-        this.overdueAttemptCloser = overdueAttemptCloser;
-        this.entityManager = entityManager;
-        this.jdbcTemplate = jdbcTemplate;
-        this.requiresNewTx = new TransactionTemplate(transactionManager);
+        this(
+                accessGate,
+                entitlementPort,
+                publishedExamPort,
+                paperSolverPort,
+                questionSourcePort,
+                pathResolver,
+                paperAssembler,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptAudioPlayRepository,
+                attemptEventRepository,
+                attemptAudioFileCheck,
+                generationExecutor,
+                idempotentCommand,
+                overdueAttemptCloser,
+                entityManager,
+                jdbcTemplate,
+                transactionManager,
+                clock,
+                true);
+    }
+
+    private AttemptStartService(
+            AttemptAccessGate accessGate,
+            EntitlementPort entitlementPort,
+            PublishedExamPort publishedExamPort,
+            PaperSolverPort paperSolverPort,
+            QuestionSourcePort questionSourcePort,
+            AttemptPathResolver pathResolver,
+            AttemptPaperAssembler paperAssembler,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptEventRepository attemptEventRepository,
+            AttemptAudioFileCheck attemptAudioFileCheck,
+            GenerationExecutor generationExecutor,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            EntityManager entityManager,
+            JdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            Clock clock,
+            boolean requireAudioDeps) {
+        this.accessGate = Objects.requireNonNull(accessGate);
+        this.entitlementPort = Objects.requireNonNull(entitlementPort);
+        this.publishedExamPort = Objects.requireNonNull(publishedExamPort);
+        this.paperSolverPort = Objects.requireNonNull(paperSolverPort);
+        this.questionSourcePort = Objects.requireNonNull(questionSourcePort);
+        this.pathResolver = Objects.requireNonNull(pathResolver);
+        this.paperAssembler = Objects.requireNonNull(paperAssembler);
+        this.attemptRepository = Objects.requireNonNull(attemptRepository);
+        this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
+        this.attemptItemRepository = Objects.requireNonNull(attemptItemRepository);
+        this.attemptAudioPlayRepository =
+                requireAudioDeps
+                        ? Objects.requireNonNull(
+                                attemptAudioPlayRepository,
+                                "attemptAudioPlayRepository must not be null")
+                        : attemptAudioPlayRepository;
+        this.attemptEventRepository = Objects.requireNonNull(attemptEventRepository);
+        this.attemptAudioFileCheck =
+                requireAudioDeps
+                        ? Objects.requireNonNull(
+                                attemptAudioFileCheck, "attemptAudioFileCheck must not be null")
+                        : attemptAudioFileCheck;
+        this.generationExecutor = Objects.requireNonNull(generationExecutor);
+        this.idempotentCommand = Objects.requireNonNull(idempotentCommand);
+        this.overdueAttemptCloser = Objects.requireNonNull(overdueAttemptCloser);
+        this.entityManager = Objects.requireNonNull(entityManager);
+        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
+        this.requiresNewTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.clock = clock;
+        this.clock = Objects.requireNonNull(clock);
     }
 
     public ResponseEntity<StartAttemptResponse> startAttempt(

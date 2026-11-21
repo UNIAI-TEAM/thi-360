@@ -2,8 +2,11 @@ package vn.unicom.thi360.attempt.audio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,6 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -22,13 +26,23 @@ import vn.unicom.thi360.attempt.AttemptTestFixtures;
 import vn.unicom.thi360.attempt.api.AttemptAudioController.AudioProgressRequest;
 import vn.unicom.thi360.attempt.api.AttemptAudioController.StartAudioPlayRequest;
 import vn.unicom.thi360.attempt.application.AttemptDeadlineWorker;
+import vn.unicom.thi360.attempt.application.AttemptLifecycleService;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.AudioEndReason;
 import vn.unicom.thi360.attempt.domain.AudioPlayState;
+import vn.unicom.thi360.attempt.domain.EndReason;
+import vn.unicom.thi360.attempt.domain.PartCloseReason;
+import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedGroup;
+import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedPaper;
+import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedPart;
+import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedQuestion;
+import vn.unicom.thi360.exam.spi.PaperSolverPort.GeneratedSection;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
 /**
@@ -39,6 +53,7 @@ import vn.unicom.thi360.support.ForbiddenKeysAssert;
 class AttemptAudioIT extends AbstractAttemptAudioIT {
 
     @Autowired private AttemptDeadlineWorker deadlineWorker;
+    @Autowired private AttemptLifecycleService lifecycleService;
 
     private record SingleAudioSession(
             UUID userId,
@@ -1777,6 +1792,218 @@ class AttemptAudioIT extends AbstractAttemptAudioIT {
                                     .getPlayCount())
                     .isZero();
         }
+    }
+
+    @Test
+    void unopenedPartAudioIsHiddenInStateAndReturns404() throws Exception {
+        UUID userId = createStudent("aud-unopened");
+        var audioPart1 = assetFixture.createFromAudioResource("silence-30s-cbr.mp3");
+        UUID qPart1 = createReadyListeningQuestion(audioPart1.assetId(), "UNOPENED-P1");
+        stubPartIndexWithQuestions(1, List.of(qPart1));
+
+        // DS-HSA-FULL-MINI: Part 0 (Toán, OPEN, no audio), Part 1 (Văn, PENDING, has audioPart1), Part 2 (PENDING)
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 3);
+        Attempt attempt = startAndAwaitOpen(userId, "unopen-1", line.entitlementId());
+        UUID sid = claimSession(userId, attempt.getId());
+        List<AttemptPart> parts =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        assertThat(parts.get(0).getState()).isEqualTo(PartState.OPEN);
+        assertThat(parts.get(1).getState()).isEqualTo(PartState.PENDING);
+
+        // 1. While Part 1 is PENDING: GET AttemptState hides Part 1's audio and audioPolicy,
+        // and audio control routes return 404 NOT_FOUND (not 409 PART_CLOSED).
+        MvcResult hiddenState = performGetState(userId, attempt.getId());
+        assertThat(hiddenState.getResponse().getStatus()).isEqualTo(200);
+        JsonNode hiddenJson = json(hiddenState);
+        assertThat(hiddenJson.has("audioPolicy")).isFalse();
+        assertThat(hiddenJson.path("audioPlays")).isEmpty();
+
+        for (MvcResult probe :
+                List.of(
+                        performOpenPlay(
+                                userId, attempt.getId(), audioPart1.assetId(), sid, "unop-open"),
+                        performResumePlay(
+                                userId,
+                                attempt.getId(),
+                                audioPart1.assetId(),
+                                UUID.randomUUID(),
+                                sid),
+                        performProgress(
+                                userId,
+                                attempt.getId(),
+                                audioPart1.assetId(),
+                                UUID.randomUUID(),
+                                sid,
+                                1_000L),
+                        performEndPlay(
+                                userId,
+                                attempt.getId(),
+                                audioPart1.assetId(),
+                                UUID.randomUUID(),
+                                sid))) {
+            assertThat(probe.getResponse().getStatus()).isEqualTo(404);
+            assertThat(json(probe).path("code").asText()).isEqualTo("NOT_FOUND");
+        }
+
+        // 2. Finish Part 0 -> Part 1 opens -> audioPlays & audioPolicy appear and openPlay returns 200
+        assertThat(
+                        performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+        MvcResult openedState = performGetState(userId, attempt.getId());
+        assertThat(openedState.getResponse().getStatus()).isEqualTo(200);
+        JsonNode openedJson = json(openedState);
+        assertThat(openedJson.path("audioPolicy").path("maxPlays").asInt()).isEqualTo(2);
+        assertThat(openedJson.path("audioPlays")).hasSize(1);
+        assertThat(openedJson.path("audioPlays").get(0).path("assetId").asText())
+                .isEqualTo(audioPart1.assetId().toString());
+        assertThat(openedJson.path("audioPlays").get(0).path("partId").asText())
+                .isEqualTo(parts.get(1).getId().toString());
+
+        MvcResult openOnPart1 =
+                performOpenPlay(
+                        userId, attempt.getId(), audioPart1.assetId(), sid, "part1-open-ok");
+        assertThat(openOnPart1.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(openOnPart1).path("playsUsed").asInt()).isEqualTo(1);
+
+        // 3. Also verify SKIPPED (never opened) part remains hidden and returns 404
+        UUID userIdSkipped = createStudent("aud-unopened-skip");
+        GrantOrderResult.Line lineSkipped = grant(userIdSkipped, "DS-HSA-FULL-MINI", 2);
+        Attempt attemptSkipped =
+                startAndAwaitOpen(userIdSkipped, "unopen-skip", lineSkipped.entitlementId());
+        UUID sidSkip = claimSession(userIdSkipped, attemptSkipped.getId());
+        lifecycleService.closeAttempt(
+                attemptSkipped.getId(), EndReason.FAULT_CLOSED, mutableClock.instant());
+        AttemptPart skippedPart1 =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptSkipped.getId()).get(1);
+        assertThat(skippedPart1.getState()).isEqualTo(PartState.SKIPPED);
+
+        MvcResult skippedState = performGetState(userIdSkipped, attemptSkipped.getId());
+        assertThat(skippedState.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(skippedState).path("audioPlays")).isEmpty();
+        assertThat(json(skippedState).has("audioPolicy")).isFalse();
+
+        MvcResult skippedProbe =
+                performOpenPlay(
+                        userIdSkipped,
+                        attemptSkipped.getId(),
+                        audioPart1.assetId(),
+                        sidSkip,
+                        "skip-probe");
+        assertThat(skippedProbe.getResponse().getStatus()).isEqualTo(404);
+        assertThat(json(skippedProbe).path("code").asText()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void perPartDeadlineClosesPartAudioWhileAttemptContinues() throws Exception {
+        UUID userId = createStudent("aud-perpart-dl");
+        var cbr = assetFixture.createFromAudioResource("silence-30s-cbr.mp3");
+        UUID qPart0 = createReadyListeningQuestion(cbr.assetId(), "PERPART-P0");
+        stubPartIndexWithQuestions(0, List.of(qPart0));
+
+        // DS-HSA-FULL-MINI is PER_PART (attempt.deadline_at == null, part0.deadline_at != null)
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2);
+        Attempt attempt = startAndAwaitOpen(userId, "pp-dl", line.entitlementId());
+        assertThat(attempt.getTiming()).isEqualTo(AttemptTiming.PER_PART);
+        assertThat(attempt.getDeadlineAt()).isNull();
+
+        UUID sid = claimSession(userId, attempt.getId());
+        List<AttemptPart> parts =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        Instant part0Deadline = parts.get(0).getDeadlineAt();
+        assertThat(part0Deadline).isNotNull();
+
+        UUID playId =
+                UUID.fromString(
+                        json(
+                                        performOpenPlay(
+                                                userId,
+                                                attempt.getId(),
+                                                cbr.assetId(),
+                                                sid,
+                                                "pp-open"))
+                                .path("playId")
+                                .asText());
+        mutableClock.advance(Duration.ofSeconds(5));
+        assertThat(
+                        performProgress(
+                                        userId,
+                                        attempt.getId(),
+                                        cbr.assetId(),
+                                        playId,
+                                        sid,
+                                        5_000L)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        // Advance to exact Part 0 deadline while attempt remains IN_PROGRESS and Part 1 opens
+        mutableClock.setAt(part0Deadline);
+
+        MvcResult openAtDeadline =
+                performOpenPlay(userId, attempt.getId(), cbr.assetId(), sid, "pp-after-dl");
+        assertThat(openAtDeadline.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(openAtDeadline).path("code").asText()).isEqualTo("TIME_UP");
+
+        MvcResult resumeAtDeadline =
+                performResumePlay(userId, attempt.getId(), cbr.assetId(), playId, sid);
+        assertThat(resumeAtDeadline.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(resumeAtDeadline).path("code").asText()).isEqualTo("TIME_UP");
+
+        MvcResult progAtDeadline =
+                performProgress(userId, attempt.getId(), cbr.assetId(), playId, sid, 6_000L);
+        assertThat(progAtDeadline.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(progAtDeadline).path("code").asText()).isEqualTo("TIME_UP");
+
+        Attempt refreshedAttempt = attemptRepository.findById(attempt.getId()).orElseThrow();
+        assertThat(refreshedAttempt.getState()).isEqualTo(AttemptState.IN_PROGRESS);
+        List<AttemptPart> updatedParts =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        assertThat(updatedParts.get(0).getState()).isEqualTo(PartState.CLOSED);
+        assertThat(updatedParts.get(0).getCloseReason()).isEqualTo(PartCloseReason.TIME_UP);
+        assertThat(updatedParts.get(1).getState()).isEqualTo(PartState.OPEN);
+
+        AttemptAudioPlay closedPlay =
+                attemptAudioPlayRepository
+                        .findByAttemptIdAndAssetId(attempt.getId(), cbr.assetId())
+                        .orElseThrow();
+        assertThat(closedPlay.getState()).isEqualTo(AudioPlayState.ENDED);
+        assertThat(closedPlay.getEndReason()).isEqualTo(AudioEndReason.CLOSED);
+        assertThat(closedPlay.getLeaseUntil()).isNull();
+        assertThat(closedPlay.getPlayCount()).isEqualTo(1);
+    }
+
+    private void stubPartIndexWithQuestions(int partIndex, List<UUID> replacementQuestionIds) {
+        doAnswer(
+                        inv -> {
+                            GeneratedPaper real = (GeneratedPaper) inv.callRealMethod();
+                            List<GeneratedPart> parts = new ArrayList<>(real.parts());
+                            GeneratedPart target = parts.get(partIndex);
+                            GeneratedSection firstSec = target.sections().getFirst();
+                            GeneratedGroup firstGroup = firstSec.groups().getFirst();
+                            List<GeneratedQuestion> customQuestions =
+                                    replacementQuestionIds.stream()
+                                            .map(id -> new GeneratedQuestion(id, 1))
+                                            .toList();
+                            List<GeneratedGroup> updatedGroups =
+                                    List.of(
+                                            new GeneratedGroup(
+                                                    firstGroup.groupId(),
+                                                    customQuestions,
+                                                    firstGroup.shuffleUnits()));
+                            List<GeneratedSection> updatedSecs =
+                                    List.of(
+                                            new GeneratedSection(
+                                                    firstSec.sectionId(),
+                                                    firstSec.subjectCode(),
+                                                    customQuestions.size(),
+                                                    updatedGroups));
+                            parts.set(partIndex, new GeneratedPart(target.partCode(), updatedSecs));
+                            return new GeneratedPaper(parts, real.dropped());
+                        })
+                .when(paperSolverPort)
+                .generate(any(), anyInt(), any(), any(), anyLong(), any());
     }
 
     private static JsonNode findAudioView(JsonNode stateJson, UUID assetId) {

@@ -86,7 +86,8 @@ public class AttemptAssetService {
                 questionSourcePort,
                 questionAssetContentPort,
                 transactionManager,
-                Clock.systemUTC());
+                Clock.systemUTC(),
+                false);
     }
 
     @Autowired
@@ -100,11 +101,40 @@ public class AttemptAssetService {
             QuestionAssetContentPort questionAssetContentPort,
             PlatformTransactionManager transactionManager,
             Clock clock) {
+        this(
+                accessGate,
+                attemptGuard,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptAudioPlayRepository,
+                questionSourcePort,
+                questionAssetContentPort,
+                transactionManager,
+                clock,
+                true);
+    }
+
+    private AttemptAssetService(
+            AttemptAccessGate accessGate,
+            AttemptGuard attemptGuard,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            QuestionSourcePort questionSourcePort,
+            QuestionAssetContentPort questionAssetContentPort,
+            PlatformTransactionManager transactionManager,
+            Clock clock,
+            boolean requireAudioPlayRepository) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptGuard = Objects.requireNonNull(attemptGuard);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.attemptItemRepository = Objects.requireNonNull(attemptItemRepository);
-        this.attemptAudioPlayRepository = attemptAudioPlayRepository;
+        this.attemptAudioPlayRepository =
+                requireAudioPlayRepository
+                        ? Objects.requireNonNull(
+                                attemptAudioPlayRepository,
+                                "attemptAudioPlayRepository must not be null")
+                        : attemptAudioPlayRepository;
         this.questionSourcePort = Objects.requireNonNull(questionSourcePort);
         this.questionAssetContentPort = Objects.requireNonNull(questionAssetContentPort);
         this.readOnlyTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));

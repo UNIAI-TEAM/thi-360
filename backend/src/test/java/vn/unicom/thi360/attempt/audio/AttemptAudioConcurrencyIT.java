@@ -19,7 +19,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.application.AttemptDeadlineWorker;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
+import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.AudioEndReason;
 import vn.unicom.thi360.attempt.domain.AudioPlayState;
 import vn.unicom.thi360.attempt.domain.EndReason;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
@@ -391,6 +393,395 @@ class AttemptAudioConcurrencyIT extends AbstractAttemptAudioIT {
             assertThat(saved.getEndReason()).isNull();
         } finally {
             releaseLock.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void getStateReconcilesConcurrentlyWithoutOptimisticLock412() throws Exception {
+        // Case A: Concurrent DB update (ENDED/FINISHED) commits between GET's initial plain load and FOR UPDATE lock.
+        var ctxA = startSingleAudio("aud-conc-state-a");
+        UUID playAId =
+                UUID.fromString(
+                        json(
+                                        performOpenPlay(
+                                                ctxA.userId(),
+                                                ctxA.attempt().getId(),
+                                                ctxA.assetId(),
+                                                ctxA.sessionId(),
+                                                "gs-a1"))
+                                .path("playId")
+                                .asText());
+        AttemptPart partA =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(ctxA.attempt().getId()).getFirst();
+        assertThat(
+                        performFinishPart(
+                                        ctxA.userId(),
+                                        ctxA.attempt().getId(),
+                                        partA.getId(),
+                                        ctxA.sessionId())
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+        // Reset audio row to stale PLAYING on CLOSED part so AttemptStateService enters locked reconciliation.
+        jdbc.update(
+                "UPDATE attempt.attempt_audio_play SET state = 'PLAYING', end_reason = NULL WHERE attempt_id = ? AND asset_id = ?",
+                ctxA.attempt().getId(),
+                ctxA.assetId());
+
+        CountDownLatch lockHeldA = new CountDownLatch(1);
+        CountDownLatch waiterReadyA = new CountDownLatch(1);
+        CountDownLatch commitUpdateA = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        try {
+            Future<Void> holderA =
+                    pool.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                status -> {
+                                                    attemptAudioPlayRepository
+                                                            .findByAttemptIdAndAssetIdForUpdate(
+                                                                    ctxA.attempt().getId(),
+                                                                    ctxA.assetId())
+                                                            .orElseThrow();
+                                                    lockHeldA.countDown();
+                                                    try {
+                                                        assertThat(
+                                                                        commitUpdateA.await(
+                                                                                15,
+                                                                                TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException ex) {
+                                                        Thread.currentThread().interrupt();
+                                                        throw new IllegalStateException(ex);
+                                                    }
+                                                    jdbc.update(
+                                                            "UPDATE attempt.attempt_audio_play "
+                                                                    + "SET state = 'ENDED', end_reason = 'FINISHED', lease_until = NULL, version = version + 1 "
+                                                                    + "WHERE attempt_id = ? AND asset_id = ?",
+                                                            ctxA.attempt().getId(),
+                                                            ctxA.assetId());
+                                                });
+                                return null;
+                            });
+            assertThat(lockHeldA.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> getFutureA =
+                    pool.submit(
+                            () -> {
+                                waiterReadyA.countDown();
+                                return performGetState(ctxA.userId(), ctxA.attempt().getId());
+                            });
+            assertThat(waiterReadyA.await(15, TimeUnit.SECONDS)).isTrue();
+            awaitAudioRowLockWaiters(1);
+            commitUpdateA.countDown();
+            holderA.get(15, TimeUnit.SECONDS);
+
+            MvcResult getResA = getFutureA.get(15, TimeUnit.SECONDS);
+            assertThat(getResA.getResponse().getStatus()).isEqualTo(200);
+            JsonNode apA = json(getResA).path("audioPlays").get(0);
+            assertThat(apA.path("state").asText()).isEqualTo("ENDED");
+            assertThat(apA.path("endReason").asText()).isEqualTo("FINISHED");
+            assertThat(apA.path("playId").asText()).isEqualTo(playAId.toString());
+
+            // Case B: Two parallel GET calls both reconcile a stale PLAYING row on a closed part -> both 200.
+            var ctxB = startSingleAudio("aud-conc-state-b");
+            performOpenPlay(
+                    ctxB.userId(),
+                    ctxB.attempt().getId(),
+                    ctxB.assetId(),
+                    ctxB.sessionId(),
+                    "gs-b1");
+            AttemptPart partB =
+                    attemptPartRepository
+                            .findByAttemptIdOrderByOrdAsc(ctxB.attempt().getId())
+                            .getFirst();
+            assertThat(
+                            performFinishPart(
+                                            ctxB.userId(),
+                                            ctxB.attempt().getId(),
+                                            partB.getId(),
+                                            ctxB.sessionId())
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(200);
+            jdbc.update(
+                    "UPDATE attempt.attempt_audio_play SET state = 'PLAYING', end_reason = NULL WHERE attempt_id = ? AND asset_id = ?",
+                    ctxB.attempt().getId(),
+                    ctxB.assetId());
+
+            CountDownLatch lockHeldB = new CountDownLatch(1);
+            CountDownLatch releaseLockB = new CountDownLatch(1);
+            Future<Void> holderB =
+                    holdAudioRowLock(
+                            pool, ctxB.attempt().getId(), ctxB.assetId(), lockHeldB, releaseLockB);
+            assertThat(lockHeldB.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> g1 =
+                    pool.submit(() -> performGetState(ctxB.userId(), ctxB.attempt().getId()));
+            Future<MvcResult> g2 =
+                    pool.submit(() -> performGetState(ctxB.userId(), ctxB.attempt().getId()));
+            awaitAudioRowLockWaiters(2);
+            releaseLockB.countDown();
+            holderB.get(15, TimeUnit.SECONDS);
+
+            MvcResult gr1 = g1.get(15, TimeUnit.SECONDS);
+            MvcResult gr2 = g2.get(15, TimeUnit.SECONDS);
+            assertThat(gr1.getResponse().getStatus()).isEqualTo(200);
+            assertThat(gr2.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json(gr1).path("audioPlays").get(0).path("state").asText())
+                    .isEqualTo("ENDED");
+            assertThat(json(gr1).path("audioPlays").get(0).path("endReason").asText())
+                    .isEqualTo("CLOSED");
+            assertThat(json(gr2).path("audioPlays").get(0).path("state").asText())
+                    .isEqualTo("ENDED");
+            assertThat(json(gr2).path("audioPlays").get(0).path("endReason").asText())
+                    .isEqualTo("CLOSED");
+            AttemptAudioPlay finalB =
+                    attemptAudioPlayRepository
+                            .findByAttemptIdAndAssetId(ctxB.attempt().getId(), ctxB.assetId())
+                            .orElseThrow();
+            assertThat(finalB.getState()).isEqualTo(AudioPlayState.ENDED);
+            assertThat(finalB.getEndReason()).isEqualTo(AudioEndReason.CLOSED);
+            assertThat(finalB.getLeaseUntil()).isNull();
+        } finally {
+            commitUpdateA.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void playingPlayClosedAndCommittedInLockBefore409() throws Exception {
+        // Case A: Deadline race with active PLAYING row -> commits ENDED/CLOSED + lease_until=NULL before 409 TIME_UP.
+        var ctxA = startSingleAudio("aud-conc-inlock-dl");
+        UUID playAId =
+                UUID.fromString(
+                        json(
+                                        performOpenPlay(
+                                                ctxA.userId(),
+                                                ctxA.attempt().getId(),
+                                                ctxA.assetId(),
+                                                ctxA.sessionId(),
+                                                "il-dl"))
+                                .path("playId")
+                                .asText());
+        mutableClock.advance(Duration.ofSeconds(4));
+        assertThat(
+                        performProgress(
+                                        ctxA.userId(),
+                                        ctxA.attempt().getId(),
+                                        ctxA.assetId(),
+                                        playAId,
+                                        ctxA.sessionId(),
+                                        4_000L)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        mutableClock.setAt(ctxA.attempt().getDeadlineAt().minusSeconds(1));
+        CountDownLatch lockHeldA = new CountDownLatch(1);
+        CountDownLatch releaseLockA = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        try {
+            Future<Void> holderA =
+                    holdAudioRowLock(
+                            pool, ctxA.attempt().getId(), ctxA.assetId(), lockHeldA, releaseLockA);
+            assertThat(lockHeldA.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> resumeFutureA =
+                    pool.submit(
+                            () ->
+                                    performResumePlay(
+                                            ctxA.userId(),
+                                            ctxA.attempt().getId(),
+                                            ctxA.assetId(),
+                                            playAId,
+                                            ctxA.sessionId()));
+            awaitAudioRowLockWaiters(1);
+
+            mutableClock.setAt(ctxA.attempt().getDeadlineAt().plusSeconds(1));
+            releaseLockA.countDown();
+            holderA.get(15, TimeUnit.SECONDS);
+
+            MvcResult resumeResA = resumeFutureA.get(15, TimeUnit.SECONDS);
+            assertThat(resumeResA.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(resumeResA).path("code").asText()).isEqualTo("TIME_UP");
+
+            AttemptAudioPlay savedA =
+                    attemptAudioPlayRepository
+                            .findByAttemptIdAndAssetId(ctxA.attempt().getId(), ctxA.assetId())
+                            .orElseThrow();
+            assertThat(savedA.getState()).isEqualTo(AudioPlayState.ENDED);
+            assertThat(savedA.getEndReason()).isEqualTo(AudioEndReason.CLOSED);
+            assertThat(savedA.getLeaseUntil()).isNull();
+            assertThat(savedA.getPositionMs()).isEqualTo(4_000L);
+
+            // Case B: Closed part without overdue closer (deadline not reached, triggerOverdueClose=false):
+            // proves AttemptAudioService itself commits PLAYING -> ENDED/CLOSED before throwing 409 PART_CLOSED.
+            mutableClock.setAt(
+                    vn.unicom.thi360.attempt.AttemptTestFixtures.DEFAULT_CLOCK_START);
+            var ctxB = startSingleAudio("aud-conc-inlock-cp");
+            UUID playBId =
+                    UUID.fromString(
+                            json(
+                                            performOpenPlay(
+                                                    ctxB.userId(),
+                                                    ctxB.attempt().getId(),
+                                                    ctxB.assetId(),
+                                                    ctxB.sessionId(),
+                                                    "il-cp"))
+                                    .path("playId")
+                                    .asText());
+            AttemptPart partB =
+                    attemptPartRepository
+                            .findByAttemptIdOrderByOrdAsc(ctxB.attempt().getId())
+                            .getFirst();
+
+            CountDownLatch lockHeldB = new CountDownLatch(1);
+            CountDownLatch releaseLockB = new CountDownLatch(1);
+            Future<Void> holderB =
+                    holdAudioRowLock(
+                            pool, ctxB.attempt().getId(), ctxB.assetId(), lockHeldB, releaseLockB);
+            assertThat(lockHeldB.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> progFutureB =
+                    pool.submit(
+                            () ->
+                                    performProgress(
+                                            ctxB.userId(),
+                                            ctxB.attempt().getId(),
+                                            ctxB.assetId(),
+                                            playBId,
+                                            ctxB.sessionId(),
+                                            1_000L));
+            awaitAudioRowLockWaiters(1);
+
+            // Close part B in DB while caller is blocked on attempt_audio_play FOR UPDATE (play is still PLAYING).
+            jdbc.update(
+                    "UPDATE attempt.attempt_part SET state = 'CLOSED', close_reason = 'FINISHED', closed_at = now() WHERE id = ?",
+                    partB.getId());
+            releaseLockB.countDown();
+            holderB.get(15, TimeUnit.SECONDS);
+
+            MvcResult progResB = progFutureB.get(15, TimeUnit.SECONDS);
+            assertThat(progResB.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(progResB).path("code").asText()).isEqualTo("PART_CLOSED");
+
+            AttemptAudioPlay savedB =
+                    attemptAudioPlayRepository
+                            .findByAttemptIdAndAssetId(ctxB.attempt().getId(), ctxB.assetId())
+                            .orElseThrow();
+            assertThat(savedB.getState()).isEqualTo(AudioPlayState.ENDED);
+            assertThat(savedB.getEndReason()).isEqualTo(AudioEndReason.CLOSED);
+            assertThat(savedB.getLeaseUntil()).isNull();
+            assertThat(savedB.getPositionMs()).isZero();
+        } finally {
+            releaseLockA.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void twoDevicesTakeoverRaceRevokesOldSessionWithoutAudioMutation() throws Exception {
+        var ctx = startSingleAudio("aud-conc-takeover");
+
+        // 1. Device A (S1) starts openPlay and blocks on attempt_audio_play FOR UPDATE while Device B takes over (S2).
+        CountDownLatch lockHeld1 = new CountDownLatch(1);
+        CountDownLatch releaseLock1 = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> holder1 =
+                    holdAudioRowLock(
+                            pool, ctx.attempt().getId(), ctx.assetId(), lockHeld1, releaseLock1);
+            assertThat(lockHeld1.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> devAOpen =
+                    pool.submit(
+                            () ->
+                                    performOpenPlay(
+                                            ctx.userId(),
+                                            ctx.attempt().getId(),
+                                            ctx.assetId(),
+                                            ctx.sessionId(),
+                                            "dev-a-open"));
+            awaitAudioRowLockWaiters(1);
+
+            UUID s2 = takeoverSession(ctx.userId(), ctx.attempt().getId());
+            releaseLock1.countDown();
+            holder1.get(15, TimeUnit.SECONDS);
+
+            MvcResult devARes = devAOpen.get(15, TimeUnit.SECONDS);
+            assertThat(devARes.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(devARes).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
+
+            AttemptAudioPlay afterRace1 =
+                    attemptAudioPlayRepository
+                            .findByAttemptIdAndAssetId(ctx.attempt().getId(), ctx.assetId())
+                            .orElseThrow();
+            assertThat(afterRace1.getState()).isEqualTo(AudioPlayState.IDLE);
+            assertThat(afterRace1.getPlayCount()).isZero();
+            assertThat(afterRace1.getPlayId()).isNull();
+
+            // Device B (S2) opens cleanly
+            MvcResult devBOpen =
+                    performOpenPlay(
+                            ctx.userId(),
+                            ctx.attempt().getId(),
+                            ctx.assetId(),
+                            s2,
+                            "dev-b-open");
+            assertThat(devBOpen.getResponse().getStatus()).isEqualTo(200);
+            UUID playId = UUID.fromString(json(devBOpen).path("playId").asText());
+
+            // 2. Device B (S2) starts progress while Device A re-takes over (S3) -> S2 rejected 409 without mutating position
+            CountDownLatch lockHeld2 = new CountDownLatch(1);
+            CountDownLatch releaseLock2 = new CountDownLatch(1);
+            Future<Void> holder2 =
+                    holdAudioRowLock(
+                            pool, ctx.attempt().getId(), ctx.assetId(), lockHeld2, releaseLock2);
+            assertThat(lockHeld2.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> devBProg =
+                    pool.submit(
+                            () ->
+                                    performProgress(
+                                            ctx.userId(),
+                                            ctx.attempt().getId(),
+                                            ctx.assetId(),
+                                            playId,
+                                            s2,
+                                            2_000L));
+            awaitAudioRowLockWaiters(1);
+
+            UUID s3 = takeoverSession(ctx.userId(), ctx.attempt().getId());
+            releaseLock2.countDown();
+            holder2.get(15, TimeUnit.SECONDS);
+
+            MvcResult devBProgRes = devBProg.get(15, TimeUnit.SECONDS);
+            assertThat(devBProgRes.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(devBProgRes).path("code").asText())
+                    .isEqualTo("ATTEMPT_SESSION_REVOKED");
+            assertThat(
+                            attemptAudioPlayRepository
+                                    .findByAttemptIdAndAssetId(
+                                            ctx.attempt().getId(), ctx.assetId())
+                                    .orElseThrow()
+                                    .getPositionMs())
+                    .isZero();
+
+            MvcResult devAProgS3 =
+                    performProgress(
+                            ctx.userId(),
+                            ctx.attempt().getId(),
+                            ctx.assetId(),
+                            playId,
+                            s3,
+                            2_000L);
+            assertThat(devAProgS3.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json(devAProgS3).path("positionMs").asLong()).isEqualTo(2_000L);
+        } finally {
+            releaseLock1.countDown();
             pool.shutdownNow();
         }
     }

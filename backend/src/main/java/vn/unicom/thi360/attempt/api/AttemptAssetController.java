@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.unicom.thi360.attempt.application.AttemptAssetService;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort.AssetContent;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort.AssetKind;
+import vn.unicom.thi360.shared.api.NotFoundException;
 
 @RestController
 @RequestMapping("/api/v1/me/attempts")
@@ -47,7 +49,12 @@ public class AttemptAssetController {
     public ResponseEntity<Resource> downloadAttemptAsset(
             @PathVariable UUID attemptId,
             @PathVariable UUID assetId,
-            @RequestParam(value = "playId", required = false) UUID playId) {
+            @Parameter(
+                            description = "Id lần nghe (bắt buộc với tệp audio)",
+                            schema = @Schema(type = "string", format = "uuid"))
+                    @RequestParam(value = "playId", required = false)
+                    String rawPlayId) {
+        UUID playId = parsePlayIdOrThrowNotFound(rawPlayId);
         AssetContent asset = attemptAssetService.loadAttemptAsset(attemptId, assetId, playId);
         MediaType mediaType;
         try {
@@ -69,6 +76,17 @@ public class AttemptAssetController {
                 .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(new ByteArrayResource(asset.content()));
+    }
+
+    private static UUID parsePlayIdOrThrowNotFound(String rawPlayId) {
+        if (rawPlayId == null || rawPlayId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(rawPlayId.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new NotFoundException("NOT_FOUND", null);
+        }
     }
 
     private static boolean isAudioMime(String mime) {

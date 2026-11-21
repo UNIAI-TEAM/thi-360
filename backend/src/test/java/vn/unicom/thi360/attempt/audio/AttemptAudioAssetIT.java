@@ -410,6 +410,19 @@ class AttemptAudioAssetIT extends AbstractAttemptAudioIT {
                                 .getStatus())
                 .isEqualTo(404);
 
+        // Non-UUID ?playId= must return 404 NOT_FOUND rather than 400 VALIDATION_FAILED (R1-22)
+        MvcResult invalidSyntax =
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+                                                ctx.attempt().getId(),
+                                                ctx.cbr().assetId())
+                                        .param("playId", "not-a-uuid")
+                                        .with(AttemptTestFixtures.asExamUser(ctx.userId(), "learner")))
+                        .andReturn();
+        assertThat(invalidSyntax.getResponse().getStatus()).isEqualTo(404);
+        assertThat(json(invalidSyntax).path("code").asText()).isEqualTo("NOT_FOUND");
+
         performEndPlay(
                 ctx.userId(), ctx.attempt().getId(), ctx.cbr().assetId(), p1, ctx.sessionId());
         UUID p2 =
@@ -466,6 +479,19 @@ class AttemptAudioAssetIT extends AbstractAttemptAudioIT {
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(404);
+
+        // Non-UUID ?playId= must return 404 NOT_FOUND rather than 400 VALIDATION_FAILED (R1-22)
+        MvcResult invalidSyntax =
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+                                                ctx.attempt().getId(),
+                                                ctx.cbr().assetId())
+                                        .param("playId", "not-a-uuid")
+                                        .with(AttemptTestFixtures.asExamUser(ctx.userId(), "learner")))
+                        .andReturn();
+        assertThat(invalidSyntax.getResponse().getStatus()).isEqualTo(404);
+        assertThat(json(invalidSyntax).path("code").asText()).isEqualTo("NOT_FOUND");
 
         // After ENDED/FINISHED
         UUID p1 =
@@ -604,5 +630,115 @@ class AttemptAudioAssetIT extends AbstractAttemptAudioIT {
                                 .getResponse()
                                 .getStatus())
                 .isEqualTo(404);
+    }
+
+    @Test
+    void perPartDeadlineGets404EvenWhenLeaseExceedsPartDeadline() throws Exception {
+        UUID userId = createStudent("aud-ast-perpart-dl");
+        var cbr = assetFixture.createFromAudioResource("silence-30s-cbr.mp3");
+        UUID qId = createReadyListeningQuestion(cbr.assetId(), "AST-PERPART");
+        stubListeningPaperWithQuestions(List.of(qId));
+
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2);
+        Attempt attempt = startAndAwaitOpen(userId, "ast-pp", line.entitlementId());
+        assertThat(attempt.getDeadlineAt()).isNull();
+        UUID sid = claimSession(userId, attempt.getId());
+        Instant part0Deadline =
+                attemptPartRepository
+                        .findByAttemptIdOrderByOrdAsc(attempt.getId())
+                        .getFirst()
+                        .getDeadlineAt();
+        assertThat(part0Deadline).isNotNull();
+
+        UUID p1 =
+                UUID.fromString(
+                        json(
+                                        performOpenPlay(
+                                                userId,
+                                                attempt.getId(),
+                                                cbr.assetId(),
+                                                sid,
+                                                "pp-ast-1"))
+                                .path("playId")
+                                .asText());
+
+        // Renew lease 10s before Part 0 deadline so leaseUntil > part0Deadline
+        mutableClock.setAt(part0Deadline.minusSeconds(10));
+        assertThat(
+                        performResumePlay(userId, attempt.getId(), cbr.assetId(), p1, sid)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+        Instant leaseUntil =
+                attemptAudioPlayRepository
+                        .findByAttemptIdAndAssetId(attempt.getId(), cbr.assetId())
+                        .orElseThrow()
+                        .getLeaseUntil();
+        assertThat(leaseUntil).isAfter(part0Deadline);
+
+        mutableClock.setAt(part0Deadline.minusMillis(1));
+        assertThat(
+                        performGetAudioAsset(userId, attempt.getId(), cbr.assetId(), p1)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(200);
+
+        // At exact part0Deadline -> 404 even though leaseUntil is still in the future
+        mutableClock.setAt(part0Deadline);
+        assertThat(
+                        performGetAudioAsset(userId, attempt.getId(), cbr.assetId(), p1)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(404);
+    }
+
+    @Test
+    void delayedIdempotentOpenPlayRenewsExpiredLeaseWithoutUsingExtraPlay() throws Exception {
+        var ctx = startWith30sAudio("aud-ast-delayed-idem");
+
+        MvcResult initial =
+                performOpenPlay(
+                        ctx.userId(),
+                        ctx.attempt().getId(),
+                        ctx.cbr().assetId(),
+                        ctx.sessionId(),
+                        "delayed-idem-req");
+        assertThat(initial.getResponse().getStatus()).isEqualTo(200);
+        UUID playId = UUID.fromString(json(initial).path("playId").asText());
+
+        // Advance past 45s lease (60s) -> asset download rejects with 404
+        mutableClock.advance(Duration.ofSeconds(60));
+        assertThat(
+                        performGetAudioAsset(
+                                        ctx.userId(),
+                                        ctx.attempt().getId(),
+                                        ctx.cbr().assetId(),
+                                        playId)
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(404);
+
+        // Retry with same requestId -> renews lease without incrementing playCount
+        MvcResult retry =
+                performOpenPlay(
+                        ctx.userId(),
+                        ctx.attempt().getId(),
+                        ctx.cbr().assetId(),
+                        ctx.sessionId(),
+                        "delayed-idem-req");
+        assertThat(retry.getResponse().getStatus()).isEqualTo(200);
+        var retryJson = objectMapper.readTree(retry.getResponse().getContentAsString());
+        assertThat(retryJson.path("playId").asText()).isEqualTo(playId.toString());
+        assertThat(retryJson.path("playsUsed").asInt()).isEqualTo(1);
+        assertThat(retryJson.path("playsLeft").asInt()).isEqualTo(1);
+        assertThat(retryJson.path("state").asText()).isEqualTo("PLAYING");
+
+        // Immediate asset download succeeds with 200
+        MvcResult afterRetryGet =
+                performGetAudioAsset(
+                        ctx.userId(), ctx.attempt().getId(), ctx.cbr().assetId(), playId);
+        assertThat(afterRetryGet.getResponse().getStatus()).isEqualTo(200);
+        assertThat(afterRetryGet.getResponse().getContentAsByteArray())
+                .isEqualTo(ctx.cbr().bytes());
     }
 }
