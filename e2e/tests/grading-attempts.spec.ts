@@ -22,7 +22,6 @@ import {
 } from "./helpers/mail";
 import {
   applyMatrixCookies,
-  cellLabel,
   expectMatrixClean,
   launchMatrixBrowser,
   matrixCells,
@@ -44,17 +43,23 @@ interface CustomAdminUser {
 interface GradingQueueItem {
   itemId: string;
   attemptId: string;
-  shortAttemptCode: string;
   examId: string;
   examName: string;
   examKindCode: string;
-  questionDisplayNo: number;
-  maxPoints: number;
-  status: string;
+  partCode: string;
+  partName: string;
+  displayNo: number | null;
+  pointsMax: number;
+  submittedAt: string | null;
+  state: string;
   regrading: boolean;
-  claimedByUserId: string | null;
-  claimedByFullName: string | null;
-  claimExpiresAt: string | null;
+  graderId: string | null;
+  graderName: string | null;
+  claimExpired: boolean;
+  claimedAt: string | null;
+  lastActivityAt: string | null;
+  finalizedAt: string | null;
+  earnedPoints: number | null;
 }
 
 interface GradingQueueResponse {
@@ -68,21 +73,34 @@ interface GradingQueueResponse {
 interface GradingDetailResponse {
   itemId: string;
   attemptId: string;
-  shortAttemptCode: string;
+  examId: string;
   examName: string;
-  questionDisplayNo: number;
-  questionContent: string;
-  studentAnswerHtml: string | null;
-  maxPoints: number;
-  status: string;
+  examKindCode: string | null;
+  partCode: string | null;
+  partName: string | null;
+  displayNo: number | null;
+  submittedAt: string | null;
   regrading: boolean;
-  claimedByMe: boolean;
-  claimedByFullName: string | null;
-  claimExpiresAt: string | null;
-  draftPoints: number | null;
-  finalPoints: number | null;
-  comment: string | null;
-  rubric: Array<{ criterion: string; maxPoints: number; points: number | null }>;
+  questionId: string;
+  questionVersionNo: number;
+  pointsMax: number;
+  state: string;
+  content: string;
+  passage: string | null;
+  answerHtml: string | null;
+  wordCount: number;
+  wordLimit: number | null;
+  gradingGuide: string | null;
+  rubric: Array<{ id: string; description: string; points: number }>;
+  sampleAnswer: string | null;
+  activeGrade: {
+    gradeId: string;
+    graderId: string | null;
+    graderName: string | null;
+    points: number | null;
+    comment: string | null;
+    criteria?: Array<{ id: string; points: number; comment?: string | null }>;
+  } | null;
 }
 
 interface OrderListResponse {
@@ -209,21 +227,24 @@ async function loginStaffContext(
   locale: "vi" | "en" = "vi",
 ): Promise<void> {
   const res = await context.request.post(`${WEB_URL}/api/v1/auth/login`, {
-    data: { login: username, password },
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", origin: WEB_URL },
+    data: { identifier: username, password },
   });
   expect(res.ok(), `Staff login (${username}): ${res.status()} ${await res.text()}`).toBe(true);
   await context.addCookies([
-    { name: "NEXT_LOCALE", value: locale, url: WEB_URL },
-    { name: "NEXT_LOCALE", value: locale, url: ADMIN_URL },
+    { name: "thi360_locale", value: locale, url: WEB_URL },
+    { name: "thi360_locale", value: locale, url: ADMIN_URL },
   ]);
 }
 
 async function staffApiFromContext(context: BrowserContext): Promise<{ headers: Record<string, string> }> {
-  const cookies = await context.cookies(WEB_URL);
-  const xsrf = cookies.find((c) => c.name === "XSRF-TOKEN")?.value ?? "";
+  const cookies = await context.cookies();
+  const xsrf = cookies.find((c) => c.name === "thi360_xsrf")?.value ?? "";
   return {
-    headers: xsrf ? { "X-XSRF-TOKEN": xsrf } : {},
+    headers: {
+      origin: ADMIN_URL,
+      ...(xsrf ? { "x-xsrf-token": xsrf } : {}),
+    },
   };
 }
 
@@ -239,43 +260,57 @@ async function submitBcaMiniEssayAttempt(
   let entitlementId = "";
   try {
     await studentCtx.addCookies(cookies);
-    await studentCtx.addCookies([{ name: "NEXT_LOCALE", value: "vi", url: WEB_URL }]);
+    await studentCtx.addCookies([{ name: "thi360_locale", value: "vi", url: WEB_URL }]);
     const page = await studentCtx.newPage();
 
     const purchased = await purchaseExamViaUi(page, "DS-BCA-FULL-MINI");
     entitlementId = purchased.entitlementId;
     attemptId = await startAttemptFromPrepare(page, entitlementId, { preChoiceCode: "CA1" });
 
+    const finishPartBtn = page.getByRole("button", { name: "Hoàn thành phần" });
+    const submitBtn = page.getByRole("button", { name: "Nộp bài" });
+
     // Phần 1 (ESSAY)
     await answerCurrentUnit(page, essayText);
     await waitForSavedStatus(page);
-    await page.getByRole("button", { name: "Hoàn thành phần" }).click();
+    await finishPartBtn.click();
     const finishDialog1 = page.getByRole("dialog", { name: "Hoàn thành phần?" });
     await expect(finishDialog1).toBeVisible();
     await finishDialog1.getByRole("button", { name: "Hoàn thành phần" }).click();
+    await expect(finishDialog1).toBeHidden({ timeout: 20_000 });
 
-    // Phần 2 (SHORT_ANSWER)
-    await expect(page.locator('main input[type="text"], main input:not([type])').first()).toBeVisible({
-      timeout: 30_000,
-    });
+    // Các phần tiếp theo cho tới khi chuyển sang bước Nộp bài
+    await expect(finishPartBtn.or(submitBtn)).toBeVisible({ timeout: 30_000 });
+    while (await finishPartBtn.isVisible()) {
+      const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
+      await expect(fieldset).toBeVisible({ timeout: 30_000 });
+      await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 30_000 });
+      await answerCurrentUnit(page, "1");
+      await waitForSavedStatus(page);
+      await finishPartBtn.click();
+      const finishDialog = page.getByRole("dialog", { name: "Hoàn thành phần?" });
+      await expect(finishDialog).toBeVisible();
+      await finishDialog.getByRole("button", { name: "Hoàn thành phần" }).click();
+      await expect(finishDialog).toBeHidden({ timeout: 20_000 });
+      await expect(finishPartBtn.or(submitBtn)).toBeVisible({ timeout: 30_000 });
+    }
+
+    // Phần cuối (SINGLE_CHOICE CA1) -> Nộp bài -> Lượt thi đã đóng -> Xem kết quả
+    const lastFieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
+    await expect(lastFieldset).toBeVisible({ timeout: 30_000 });
+    await expect(lastFieldset).not.toHaveAttribute("disabled", "", { timeout: 30_000 });
     await answerCurrentUnit(page, "1");
     await waitForSavedStatus(page);
-    await page.getByRole("button", { name: "Hoàn thành phần" }).click();
-    const finishDialog2 = page.getByRole("dialog", { name: "Hoàn thành phần?" });
-    await expect(finishDialog2).toBeVisible();
-    await finishDialog2.getByRole("button", { name: "Hoàn thành phần" }).click();
-
-    // Phần 3 (SINGLE_CHOICE CA1) -> Nộp bài
-    await expect(page.locator('main [data-question-options] input[type="radio"]').first()).toBeVisible({
-      timeout: 30_000,
-    });
-    await answerCurrentUnit(page);
-    await waitForSavedStatus(page);
-    await page.getByRole("button", { name: "Nộp bài" }).click();
+    await submitBtn.click();
     const submitDialog = page.getByRole("dialog", { name: "Nộp bài?" });
     await expect(submitDialog).toBeVisible();
     await submitDialog.getByRole("button", { name: "Nộp bài" }).click();
+    await expect(submitDialog).toBeHidden({ timeout: 20_000 });
 
+    await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.getByRole("link", { name: "Xem kết quả" }).click();
     await expect(page).toHaveURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 30_000 });
 
     await expect
@@ -297,7 +332,7 @@ async function submitBcaMiniEssayAttempt(
   await expect
     .poll(
       async () => {
-        const res = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items?status=WAITING&size=50`);
+        const res = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items?state=WAITING&size=50`);
         if (!res.ok()) return undefined;
         const queue = (await res.json()) as GradingQueueResponse;
         matched = queue.items.find((item) => item.attemptId === attemptId);
@@ -322,6 +357,7 @@ async function submitBcaMiniEssayAttempt(
 
 async function waitAdminSettled(page: Page): Promise<void> {
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator(".animate-pulse")).toHaveCount(0, { timeout: 20_000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -342,7 +378,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
     const markerEssay = `Bai lam tu luan an danh FA4 ${RUN_ID} lap luan mach lac va dan chung ro rang.`;
     const submitted = await submitBcaMiniEssayAttempt(browser, admin, "anon", markerEssay);
 
-    const queueApiRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items?status=WAITING&size=50`);
+    const queueApiRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items?state=WAITING&size=50`);
     expect(queueApiRes.status()).toBe(200);
     const queueRaw = await queueApiRes.text();
     expect(queueRaw).not.toContain(submitted.student.username);
@@ -368,15 +404,17 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       await expect(page.locator("main")).not.toContainText(submitted.student.fullName);
 
       // Lọc theo trạng thái "Đã chấm" -> ẩn item WAITING; "Chờ chấm" -> hiện lại
-      const statusGroup = page.getByRole("radiogroup", { name: "Trạng thái" });
-      await statusGroup.getByRole("radio", { name: /^Đã chấm/ }).click();
+      const statusGroup = page.getByRole("group", { name: "Trạng thái" });
+      await statusGroup.locator("label").filter({ hasText: /^Đã chấm/ }).click();
+      await expect(statusGroup.getByRole("radio", { name: /^Đã chấm/ })).toBeChecked();
       await expect(targetRow).toHaveCount(0);
 
-      await page.getByRole("button", { name: "Xóa tất cả bộ lọc" }).click();
+      await page.getByRole("button", { name: "Xóa tất cả bộ lọc" }).first().click();
       await expect(targetRow).toBeVisible();
 
       const today = await testClockDayIso();
-      await statusGroup.getByRole("radio", { name: /^Chờ chấm/ }).click();
+      await statusGroup.locator("label").filter({ hasText: /^Chờ chấm/ }).click();
+      await expect(statusGroup.getByRole("radio", { name: /^Chờ chấm/ })).toBeChecked();
       await page.getByLabel("Bài thi").fill("BCA");
       await page.getByLabel("Từ ngày").fill(today);
       await page.getByLabel("Đến ngày").fill(today);
@@ -420,7 +458,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       // Người chấm A nhận câu thành công
       await pageA.goto(`${ADMIN_URL}/grading/${submitted.itemId}`);
       await pageA.getByRole("button", { name: "Nhận câu để chấm" }).click();
-      await expect(pageA.getByText("Đã nhận câu để chấm.")).toBeVisible();
+      await expect(pageA.getByText("Đã nhận câu để chấm.").first()).toBeVisible();
       await expect(pageA.getByLabel("Tổng điểm câu")).toBeVisible();
 
       // Người chấm B mở cùng câu -> bị khóa bởi người chấm A, không có nút chấm/lưu/hoàn tất
@@ -475,7 +513,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
     try {
       await loginStaffContext(graderCtx, grader.username, grader.password, "vi");
       await studentCtx.addCookies(submitted.cookies);
-      await studentCtx.addCookies([{ name: "NEXT_LOCALE", value: "vi", url: WEB_URL }]);
+      await studentCtx.addCookies([{ name: "thi360_locale", value: "vi", url: WEB_URL }]);
 
       const graderPage = await graderCtx.newPage();
       const studentPage = await studentCtx.newPage();
@@ -492,18 +530,33 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       const detailRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items/${submitted.itemId}`);
       expect(detailRes.status()).toBe(200);
       const detail = (await detailRes.json()) as GradingDetailResponse;
-      const firstScore = Number((detail.maxPoints / 2).toFixed(2));
-      const secondScore = detail.maxPoints;
+      const toViInput = (value: number): string => String(Number(value.toFixed(2))).replace(".", ",");
+      const rubric = detail.rubric ?? [];
+      let firstScore: number;
+      let secondScore: number;
 
       const pointsInput = graderPage.getByLabel("Tổng điểm câu");
       const commentInput = graderPage.getByLabel("Nhận xét");
-      await pointsInput.fill(String(firstScore));
+      if (rubric.length > 0) {
+        const halfValues = rubric.map((c) => Number(((c.points ?? 0) / 2).toFixed(2)));
+        firstScore = Number(halfValues.reduce((sum, val) => sum + val, 0).toFixed(2));
+        secondScore = Number(rubric.reduce((sum, c) => sum + (c.points ?? 0), 0).toFixed(2));
+        for (let i = 0; i < rubric.length; i += 1) {
+          await graderPage.getByLabel(new RegExp(`^Tiêu chí ${i + 1}\\.`)).fill(toViInput(halfValues[i]!));
+        }
+        await pointsInput.fill(toViInput(firstScore));
+      } else {
+        firstScore = Number((detail.pointsMax / 2).toFixed(2));
+        secondScore = detail.pointsMax;
+        await pointsInput.fill(toViInput(firstScore));
+      }
+
       await commentInput.fill("Nhan xet lan cham 1 FA4");
       await graderPage.getByRole("button", { name: "Lưu nháp" }).click();
-      await expect(graderPage.getByText("Đã lưu nháp điểm chấm.")).toBeVisible();
+      await expect(graderPage.getByText("Đã lưu nháp điểm chấm.").first()).toBeVisible();
 
       await graderPage.reload();
-      await expect(graderPage.getByLabel("Tổng điểm câu")).toHaveValue(String(firstScore));
+      await expect(graderPage.getByLabel("Tổng điểm câu")).toHaveValue(toViInput(firstScore));
       await expect(graderPage.getByLabel("Nhận xét")).toHaveValue("Nhan xet lan cham 1 FA4");
 
       // Hoàn tất chấm
@@ -556,7 +609,14 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       await expect(studentPage.getByText("Điểm trước khi chấm lại").first()).toBeVisible();
 
       // Người chấm đổi điểm lên mức mới rồi chốt lại
-      await graderPage.getByLabel("Tổng điểm câu").fill(String(secondScore));
+      if (rubric.length > 0) {
+        for (let i = 0; i < rubric.length; i += 1) {
+          await graderPage
+            .getByLabel(new RegExp(`^Tiêu chí ${i + 1}\\.`))
+            .fill(toViInput(rubric[i]!.points ?? 0));
+        }
+      }
+      await graderPage.getByLabel("Tổng điểm câu").fill(toViInput(secondScore));
       await graderPage.getByLabel("Nhận xét").fill("Da cham lai va nang diem FA4");
       await graderPage.getByRole("button", { name: "Hoàn tất chấm" }).click();
       await graderPage
@@ -592,7 +652,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
     let attemptA = "";
     try {
       await ctxStuA.addCookies(stuA.cookies);
-      await ctxStuA.addCookies([{ name: "NEXT_LOCALE", value: "vi", url: WEB_URL }]);
+      await ctxStuA.addCookies([{ name: "thi360_locale", value: "vi", url: WEB_URL }]);
       const pageStuA = await ctxStuA.newPage();
 
       const purchasedA = await purchaseExamViaUi(pageStuA, "DS-BCA-FULL-MINI");
@@ -622,7 +682,9 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
 
         await faultDialog.getByLabel(/Lý do/).fill("Loi ket noi may chu khi thi FA4");
         await faultDialog.getByRole("button", { name: /Đánh dấu hỏng/ }).click();
-        await expect(opsPage.getByText("Lượt đã được đánh dấu hỏng do lỗi hệ thống.")).toBeVisible();
+        await expect(
+          opsPage.getByRole("alert").filter({ hasText: "Lượt đã được đánh dấu hỏng do lỗi hệ thống." }),
+        ).toBeVisible();
         await expect(opsPage.getByRole("button", { name: "Cấp bù 1 lượt" })).toBeVisible();
 
         // Cấp bù 1 lượt (bắt Idempotency-Key + kiểm tra lý do rỗng)
@@ -641,8 +703,10 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
 
         await compDialog.getByLabel(/Lý do/).fill("Cap bu 1 luot do loi he thong FA4");
         await compDialog.getByRole("button", { name: "Cấp bù 1 lượt" }).click();
-        await expect(opsPage.getByText("Lượt đã đánh dấu hỏng và đã cấp bù 1 lượt.")).toBeVisible();
-        await expect(opsPage.getByText("Đã cấp bù 1 lượt")).toBeVisible();
+        await expect(
+          opsPage.getByRole("alert").filter({ hasText: "Lượt đã đánh dấu hỏng và đã cấp bù 1 lượt." }),
+        ).toBeVisible();
+        await expect(opsPage.getByRole("complementary").getByText("Đã cấp bù 1 lượt").first()).toBeVisible();
         await expect(opsPage.getByRole("button", { name: "Cấp bù 1 lượt" })).toHaveCount(0);
         expect(compensateHeaders[0]).toBeTruthy();
 
@@ -681,6 +745,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
     let attemptB = "";
     try {
       await ctxStuB.addCookies(stuB.cookies);
+      await ctxStuB.addCookies([{ name: "thi360_locale", value: "vi", url: WEB_URL }]);
       const pageStuB = await ctxStuB.newPage();
       const purchasedB = await purchaseExamViaUi(pageStuB, "DS-BCA-FULL-MINI");
       attemptB = await startAttemptFromPrepare(pageStuB, purchasedB.entitlementId, { preChoiceCode: "CA1" });
@@ -906,32 +971,47 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
           await ctx.addCookies(adminCookies);
           await applyMatrixCookies(ctx, cell, ADMIN_URL);
           const page = await ctx.newPage();
-          const label = cellLabel(cell);
 
           await page.goto(`${ADMIN_URL}/grading`);
+          await expect(
+            page.getByRole("link", { name: new RegExp(`#${submitted.shortCode}`) }).first(),
+          ).toBeVisible({ timeout: 20_000 });
           await waitAdminSettled(page);
-          await expectMatrixClean(page, `fa4-grading-list-${label}`, cell, {
+          await expectMatrixClean(page, "fa4-grading-list", cell, {
             allowLanguage,
             elementOverflow: overflowOpts,
           });
 
           await page.goto(`${ADMIN_URL}/grading/${submitted.itemId}`);
+          await expect(page.getByTestId("essay-word-count")).toBeVisible({ timeout: 20_000 });
           await waitAdminSettled(page);
-          await expectMatrixClean(page, `fa4-grading-item-${label}`, cell, {
+          await expectMatrixClean(page, "fa4-grading-item", cell, {
             allowLanguage,
             elementOverflow: overflowOpts,
           });
 
           await page.goto(`${ADMIN_URL}/attempts`);
+          await expect(
+            page.getByRole("link", { name: new RegExp(`#${submitted.shortCode}`) }).first(),
+          ).toBeVisible({ timeout: 20_000 });
           await waitAdminSettled(page);
-          await expectMatrixClean(page, `fa4-attempts-list-${label}`, cell, {
+          await expectMatrixClean(page, "fa4-attempts-list", cell, {
             allowLanguage,
             elementOverflow: overflowOpts,
           });
 
           await page.goto(`${ADMIN_URL}/attempts/${submitted.attemptId}`);
+          await expect(
+            page.getByRole("heading", {
+              level: 1,
+              name: new RegExp(`(?:Lượt|Attempt) ${submitted.shortCode}`),
+            }),
+          ).toBeVisible({ timeout: 20_000 });
+          await expect(
+            page.getByRole("heading", { name: /Dòng sự kiện|Event timeline/ }),
+          ).toBeVisible({ timeout: 20_000 });
           await waitAdminSettled(page);
-          await expectMatrixClean(page, `fa4-attempt-detail-${label}`, cell, {
+          await expectMatrixClean(page, "fa4-attempt-detail", cell, {
             allowLanguage,
             elementOverflow: overflowOpts,
           });

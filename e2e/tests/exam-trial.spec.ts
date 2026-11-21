@@ -5,7 +5,6 @@ import { ADMIN_URL, adminApi, createKnowledgeTree, loginAdmin, RUN_ID, WEB_URL, 
 import { ACCOUNT_PASSWORD } from "./helpers/mail";
 import {
   applyMatrixCookies,
-  cellLabel,
   expectMatrixClean,
   launchMatrixBrowser,
   matrixCells,
@@ -78,16 +77,19 @@ interface PreviewTrialPaper {
 }
 
 interface PreviewGradeResponse {
+  examId: string;
   previewId: string;
-  totalEarned: number;
-  totalMax: number;
-  hasPendingEssay: boolean;
-  parts: Array<{
-    partId: string;
-    name: string;
-    earned: number;
-    max: number;
-  }>;
+  kindCode: string;
+  rawScore: number;
+  maxScore: number;
+  hasPendingManualGrading: boolean;
+  statistics: {
+    correctCount: number;
+    partialCount: number;
+    wrongCount: number;
+    blankCount: number;
+    pendingReviewCount: number;
+  };
   items: Array<{
     questionId: string;
     number: number;
@@ -95,6 +97,14 @@ interface PreviewGradeResponse {
     outcome: string;
     earnedPoints: number;
     maxPoints: number;
+    pendingReview: boolean;
+    gradingDetail?: {
+      statementResults?: Array<{
+        id?: string;
+        answered?: boolean;
+        matched?: boolean;
+      }>;
+    } | null;
   }>;
 }
 
@@ -165,6 +175,7 @@ async function generateAndOpenTrial(
   trialExpiresAt: string;
   trialPage: Page;
   paper: PreviewTrialPaper;
+  trialUrl: string;
 }> {
   await page.goto(`${ADMIN_URL}/exams/${examId}/review`);
   const previewPanel = await openPreviewTab(page);
@@ -219,12 +230,13 @@ async function generateAndOpenTrial(
   }
 
   await expect(trialPage).toHaveURL(new RegExp(`/exams/${examId}/preview/${previewId}/try`));
+  const trialUrl = trialPage.url();
   const paper = capturedPaper ?? (await paperPromise);
   await expect(trialPage.getByRole("heading", { level: 1, name: "Làm thử như học viên" })).toBeVisible({
     timeout: 30_000,
   });
 
-  return { previewId, previewResult: result, trialExpiresAt, trialPage, paper };
+  return { previewId, previewResult: result, trialExpiresAt, trialPage, paper, trialUrl };
 }
 
 async function createNoExamStaff(admin: AdminApi): Promise<{ username: string; password: string }> {
@@ -262,6 +274,7 @@ async function createNoExamStaff(admin: AdminApi): Promise<{ username: string; p
 
 async function waitTrialSettled(page: Page): Promise<void> {
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator(".animate-pulse")).toHaveCount(0, { timeout: 20_000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -373,15 +386,21 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       expect(gradeResp.status()).toBe(200);
       const gradeJson = (await gradeResp.json()) as PreviewGradeResponse;
       expect("attemptId" in gradeJson).toBe(false);
-      expect(gradeJson.parts.length).toBeGreaterThanOrEqual(3);
+      expect(gradeJson.items.length).toBeGreaterThanOrEqual(22);
+      expect(gradeJson.maxScore).toBeGreaterThan(0);
+      expect(typeof gradeJson.rawScore).toBe("number");
+      const tfItem = gradeJson.items.find((it) => it.type === "TRUE_FALSE");
+      expect(tfItem?.gradingDetail?.statementResults).toHaveLength(4);
+
+      const viNum = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 });
 
       // Kiểm tra giao diện Kết quả làm thử: tổng điểm, điểm theo phần và bảng chi tiết từng câu
       await expect(trialPage.getByRole("heading", { level: 1, name: "Kết quả làm thử" })).toBeVisible();
       await expect(trialPage.locator("main")).toContainText(
-        `${gradeJson.totalEarned} / ${gradeJson.totalMax}`,
+        `${viNum.format(gradeJson.rawScore)} / ${viNum.format(gradeJson.maxScore)}`,
       );
       await expect(trialPage.getByRole("heading", { name: "Điểm theo phần" })).toBeVisible();
-      for (const p of gradeJson.parts) {
+      for (const p of paper.parts) {
         await expect(trialPage.locator("main")).toContainText(p.name);
       }
 
@@ -402,8 +421,8 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       const afterAttempts = ((await afterRes.json()) as AttemptCountResponse).totalItems;
       expect(afterAttempts).toBe(beforeAttempts);
 
-      // "Làm thử lại" quay lại tờ đề mới sạch đáp án trên cùng previewId
-      await trialPage.getByRole("button", { name: "Làm thử lại" }).click();
+      // "Làm lại đề này" quay lại tờ đề mới sạch đáp án trên cùng previewId
+      await trialPage.getByRole("button", { name: "Làm lại đề này" }).click();
       await expect(trialPage.getByRole("heading", { level: 1, name: "Làm thử như học viên" })).toBeVisible();
       await expect(trialPage.locator('[role="timer"]')).toHaveCount(0);
       await expect(
@@ -600,7 +619,8 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       const first = await generateAndOpenTrial(page, ctx, examId);
       const allItems1 = first.paper.parts.flatMap((p) => p.blocks.flatMap((b) => b.items));
       const sc1 = allItems1.find((it) => it.kind === "QUESTION" && it.question?.type === "SINGLE_CHOICE")!.question!;
-      const qsChildren1 = allItems1.find((it) => it.kind === "SET")!.set!.children;
+      const qsSet1 = allItems1.find((it) => it.kind === "SET")!.set!;
+      const qsChildren1 = qsSet1.children;
       const qs1ChildSc = qsChildren1[0]!;
       const qs1ChildMc = qsChildren1[1]!;
       const mt1 = allItems1.find((it) => it.kind === "QUESTION" && it.question?.type === "MATCHING")!.question!;
@@ -611,12 +631,16 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       expect(scDomTexts1.map((t) => t.trim())).toEqual(fixedScTexts);
 
       const childScDomTexts1 = await first.trialPage
-        .locator(`#trial-question-${qs1ChildSc.questionId} [data-question-options] [data-exam-content]`)
+        .locator(
+          `#trial-question-${qsSet1.questionId} [aria-labelledby="${qs1ChildSc.questionId}-title"] [data-question-options] [data-exam-content]`,
+        )
         .allInnerTexts();
       expect(childScDomTexts1.map((t) => t.trim())).toEqual(fixedChildScTexts);
 
       const childMcDomTexts1 = await first.trialPage
-        .locator(`#trial-question-${qs1ChildMc.questionId} [data-question-options] [data-exam-content]`)
+        .locator(
+          `#trial-question-${qsSet1.questionId} [aria-labelledby="${qs1ChildMc.questionId}-title"] [data-question-options] [data-exam-content]`,
+        )
         .allInnerTexts();
       expect(childMcDomTexts1.map((t) => t.trim())).toEqual(fixedChildMcTexts);
 
@@ -716,13 +740,13 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
     const noCtx = await browser.newContext();
     try {
       const loginRes = await noCtx.request.post(`${WEB_URL}/api/v1/auth/login`, {
-        data: { login: noExamUser.username, password: noExamUser.password },
-        headers: { "Content-Type": "application/json" },
+        data: { identifier: noExamUser.username, password: noExamUser.password },
+        headers: { "Content-Type": "application/json", origin: WEB_URL },
       });
       expect(loginRes.ok(), await loginRes.text()).toBe(true);
       await noCtx.addCookies([
-        { name: "NEXT_LOCALE", value: "vi", url: WEB_URL },
-        { name: "NEXT_LOCALE", value: "vi", url: ADMIN_URL },
+        { name: "thi360_locale", value: "vi", url: WEB_URL },
+        { name: "thi360_locale", value: "vi", url: ADMIN_URL },
       ]);
 
       const page = await noCtx.newPage();
@@ -733,9 +757,12 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       await page.goto(`${ADMIN_URL}/exams/${sp2e.id}/review`);
       await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
 
-      const cookies = await noCtx.cookies(WEB_URL);
-      const xsrf = cookies.find((c) => c.name === "XSRF-TOKEN")?.value ?? "";
-      const apiHeaders: Record<string, string> = xsrf ? { "X-XSRF-TOKEN": xsrf } : {};
+      const cookies = await noCtx.cookies();
+      const xsrf = cookies.find((c) => c.name === "thi360_xsrf")?.value ?? "";
+      const apiHeaders: Record<string, string> = {
+        origin: ADMIN_URL,
+        ...(xsrf ? { "x-xsrf-token": xsrf } : {}),
+      };
 
       const trialApi = await noCtx.request.post(
         `${ADMIN_URL}/api/v1/admin/exams/${sp2e.id}/preview/${previewId}/trial`,
@@ -751,7 +778,7 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
 
       const gradeApi = await noCtx.request.post(
         `${ADMIN_URL}/api/v1/admin/exams/${sp2e.id}/preview/${previewId}/grade`,
-        { headers: apiHeaders, data: { answers: [] } },
+        { headers: apiHeaders, data: { answers: {} } },
       );
       expect(gradeApi.status()).toBe(403);
     } finally {
@@ -766,7 +793,7 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
     const seedCtx = await browser.newContext();
     await loginAdmin(seedCtx, "vi");
     const seedPage = await seedCtx.newPage();
-    const { previewId, trialPage } = await generateAndOpenTrial(seedPage, seedCtx, sp2e.id);
+    const { trialUrl, trialPage } = await generateAndOpenTrial(seedPage, seedCtx, sp2e.id);
     await trialPage.close();
     const adminCookies = await seedCtx.cookies();
     await seedCtx.close();
@@ -783,24 +810,23 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
           await ctx.addCookies(adminCookies);
           await applyMatrixCookies(ctx, cell, ADMIN_URL);
           const page = await ctx.newPage();
-          const label = cellLabel(cell);
 
-          await page.goto(`${ADMIN_URL}/exams/${sp2e.id}/preview/${previewId}/try`);
+          await page.goto(trialUrl);
+          const submitBtn = page.getByRole("button", { name: /Nộp bài & Chấm thử|Submit & Grade/ });
+          await expect(submitBtn).toBeVisible({ timeout: 20_000 });
           await waitTrialSettled(page);
-          await expectMatrixClean(page, `fa4-trial-paper-${label}`, cell, {
+          await expectMatrixClean(page, "fa4-trial-paper", cell, {
             allowLanguage,
             elementOverflow: overflowOpts,
           });
 
-          const submitBtn = page.getByRole("button", { name: /Nộp bài & Chấm thử|Submit & Grade/ });
-          await expect(submitBtn).toBeVisible();
           await submitBtn.click();
 
           await expect(
             page.getByRole("heading", { level: 1, name: /Kết quả làm thử|Trial results/ }),
           ).toBeVisible({ timeout: 20_000 });
           await waitTrialSettled(page);
-          await expectMatrixClean(page, `fa4-trial-result-${label}`, cell, {
+          await expectMatrixClean(page, "fa4-trial-result", cell, {
             allowLanguage,
             elementOverflow: overflowOpts,
           });
