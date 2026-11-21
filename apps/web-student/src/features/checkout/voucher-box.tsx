@@ -11,6 +11,7 @@ import {
   type PriceQuote,
   type PriceQuoteAction,
   ProductGoneError,
+  ProductUnavailableError,
 } from "./api";
 
 export type VoucherErrorKey =
@@ -53,22 +54,26 @@ type VoucherFeedback =
 
 export function VoucherBox({
   productCode,
+  isBundle = false,
   seenPrice,
   seenVersionNo,
   quote,
   requestQuote = fetchPriceQuote,
   onQuoteApplied,
   onProductGone,
+  onProductUnavailable,
   onUnauthorized,
   disabled = false,
 }: {
   productCode: string;
+  isBundle?: boolean;
   seenPrice?: number;
   seenVersionNo?: number;
   quote: PriceQuote;
   requestQuote?: PriceQuoteAction;
   onQuoteApplied: (nextQuote: PriceQuote, meta: { action: "apply" | "remove"; submittedCode?: string }) => void;
   onProductGone?: (product: { code: string; name: string }) => void;
+  onProductUnavailable?: () => void;
   onUnauthorized?: () => Promise<boolean | void> | void;
   disabled?: boolean;
 }) {
@@ -136,6 +141,13 @@ export function VoucherBox({
         onProductGone?.(error.product);
         return;
       }
+      if (
+        error instanceof ProductUnavailableError ||
+        (error instanceof ApiStatusError && error.status === 409 && error.code === "PRODUCT_UNAVAILABLE")
+      ) {
+        onProductUnavailable?.();
+        return;
+      }
       if (error instanceof ApiStatusError && error.status === 401) {
         const sessionStillActive = await onUnauthorized?.();
         if (sessionStillActive) {
@@ -169,6 +181,13 @@ export function VoucherBox({
         onProductGone?.(error.product);
         return;
       }
+      if (
+        error instanceof ProductUnavailableError ||
+        (error instanceof ApiStatusError && error.status === 409 && error.code === "PRODUCT_UNAVAILABLE")
+      ) {
+        onProductUnavailable?.();
+        return;
+      }
       if (error instanceof ApiStatusError && error.status === 401) {
         const sessionStillActive = await onUnauthorized?.();
         if (sessionStillActive) {
@@ -182,6 +201,13 @@ export function VoucherBox({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function renderErrorText(errorKey: VoucherErrorKey): string {
+    if (errorKey === "VOUCHER_NOT_APPLICABLE" && isBundle) {
+      return t("errors.VOUCHER_NOT_APPLICABLE_BUNDLE");
+    }
+    return t(`errors.${errorKey}`);
   }
 
   return (
@@ -250,7 +276,7 @@ export function VoucherBox({
       {feedback?.kind === "error" && (
         <p id="voucher-error-msg" role="alert" className="flex items-start gap-2 text-caption font-medium text-danger">
           <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>{t(`errors.${feedback.errorKey}`)}</span>
+          <span>{renderErrorText(feedback.errorKey)}</span>
         </p>
       )}
 

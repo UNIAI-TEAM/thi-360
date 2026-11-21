@@ -75,6 +75,24 @@ describe("đọc danh mục công khai ở máy chủ web", () => {
     });
   });
 
+  it("chi tiết: 409 PRODUCT_UNAVAILABLE và 200 saleState UNAVAILABLE trả về status unavailable", async () => {
+    fetchMock.mockImplementationOnce(async () =>
+      json(409, { code: "PRODUCT_UNAVAILABLE", product: { code: "BO-1", name: "Bo 1" } }),
+    );
+    await expect(loadProductOnServer("BO-1")).resolves.toMatchObject({
+      status: "unavailable",
+      product: { code: "BO-1", name: "Bo 1" },
+    });
+
+    fetchMock.mockImplementationOnce(async () =>
+      json(200, { code: "BO-2", name: "Bo 2", saleState: "UNAVAILABLE" }),
+    );
+    await expect(loadProductOnServer("BO-2")).resolves.toMatchObject({
+      status: "unavailable",
+      product: { code: "BO-2", name: "Bo 2" },
+    });
+  });
+
   it("chi tiết: lỗi máy chủ ném ra để trang lỗi chung xử lý, không giả làm 404", async () => {
     fetchMock.mockImplementationOnce(async () => json(500, { code: "INTERNAL_ERROR" }));
 

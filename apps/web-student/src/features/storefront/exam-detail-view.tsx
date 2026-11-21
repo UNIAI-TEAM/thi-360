@@ -13,7 +13,7 @@ import type { AnswerTypeGroup, DetailChoiceOption, ProductDetail } from "./types
 const ESSAY_TYPE = "ESSAY";
 const cardClass = "flex flex-col gap-4 rounded-xl border border-border bg-surface p-6";
 
-function SectionHeading({ id, children }: { id: string; children: ReactNode }) {
+export function SectionHeading({ id, children }: { id: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
       <span aria-hidden className="h-6 w-1 rounded-sm bg-primary-fill" />
@@ -24,7 +24,7 @@ function SectionHeading({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
-function YesNo({ value }: { value: boolean }) {
+export function YesNo({ value }: { value: boolean }) {
   const t = useTranslations("storefront.detail.rights");
   const Icon = value ? Check : X;
   return (
@@ -116,7 +116,7 @@ function ChoiceOption({ option }: { option: DetailChoiceOption }) {
   );
 }
 
-function SupportLine() {
+export function SupportLine() {
   const t = useTranslations("storefront.detail.policy");
   const contact = readSupportContact();
   const channels = [contact.phone, contact.email].filter(Boolean).join(" · ");

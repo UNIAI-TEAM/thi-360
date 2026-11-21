@@ -1,16 +1,17 @@
 "use client";
 
 import { pickName } from "@thi360/web-kit/i18n";
+import { Package } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { REVIEW_BUILD_MODE, rangeText } from "./format";
+import { isBundleProduct, REVIEW_BUILD_MODE, rangeText } from "./format";
 import { ProductPrice } from "./product-price";
 import type { ProductCard as ProductCardData } from "./types";
 
 const chipBase = "rounded-full px-2.5 py-0.5 text-caption leading-[1.1875rem]";
 
-/** Chip hình thức của một sản phẩm: "Bài thi FULL", "Bài thi theo phần · <phần>", "Bài thi theo môn · <môn>". */
+/** Chip hình thức của một sản phẩm: "Bài thi FULL", "Bài thi theo phần · <phần>", "Bài thi theo môn · <môn>", "Bộ đề". */
 export function FormatChip({
   format,
   scopeLabel,
@@ -20,7 +21,7 @@ export function FormatChip({
 }) {
   const t = useTranslations("storefront.format");
   const locale = useLocale();
-  const known = format === "FULL" || format === "PART" || format === "SUBJECT";
+  const known = format === "FULL" || format === "PART" || format === "SUBJECT" || format === "BUNDLE";
   return (
     <span className={`${chipBase} bg-subtle font-medium text-text-secondary`}>
       {known ? t(format) : format}
@@ -43,19 +44,33 @@ export function FormatChip({
 export function ProductCard({ product, action }: { product: ProductCardData; action: ReactNode }) {
   const t = useTranslations("storefront");
   const common = useTranslations("common");
+  const locale = useLocale();
   const href = `/exams/${encodeURIComponent(product.code)}`;
-  const questions = rangeText(product.questionCount);
-  const minutes = rangeText(product.durationMinutes);
+  const isBundle = isBundleProduct(product);
+  const questions = rangeText(product.questionCount, locale);
+  const minutes = rangeText(product.durationMinutes, locale);
   const meta = [
     questions !== null && t("units.questions", { value: questions, count: product.questionCount?.max ?? 0 }),
     minutes !== null && t("units.minutes", { value: minutes, count: product.durationMinutes?.max ?? 0 }),
-    t("units.attempts", { count: product.attemptsGranted }),
+    isBundle
+      ? t("units.attemptsPerExam", { count: product.attemptsGranted })
+      : t("units.attempts", { count: product.attemptsGranted }),
   ].filter(Boolean);
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
       <Link href={href} tabIndex={-1} aria-hidden className="block">
-        {product.coverUrl ? (
+        {isBundle ? (
+          <div className="flex aspect-video flex-col justify-between bg-[#065F46] bg-[linear-gradient(115deg,#065F46,#047857)] p-4 text-white forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
+            <span className="self-start rounded-full border border-white/30 bg-black/20 px-2.5 py-0.5 text-caption font-semibold text-white forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
+              {product.examKind.code}
+            </span>
+            <div className="flex items-center gap-2">
+              <Package aria-hidden className="size-6 shrink-0" />
+              <span className="text-title font-bold">{t("format.BUNDLE")}</span>
+            </div>
+          </div>
+        ) : product.coverUrl ? (
           // Ảnh bìa do máy chủ phát qua proxy cùng nguồn (TM 10.2); tên bài đã có ở tiêu đề thẻ nên ảnh chỉ để trang trí.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.coverUrl} alt="" loading="lazy" className="aspect-video w-full object-cover" />

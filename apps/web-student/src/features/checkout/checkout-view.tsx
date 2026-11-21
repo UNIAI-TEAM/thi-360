@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, cn, EmptyState, focusRing, Skeleton, StatusChip } from "@thi360/ui";
+import { Badge, Button, cn, EmptyState, focusRing, Skeleton, StatusChip } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
 import {
   ArrowLeft,
   Check,
   Clock,
+  Info,
   ShieldCheck,
   TriangleAlert,
   UserCheck,
@@ -26,8 +27,9 @@ import {
   type StudentSession,
 } from "@/features/session/api";
 import { type ExamAccessLoader, loadExamAccess } from "@/features/storefront/exam-access";
-import { rangeText, REVIEW_BUILD_MODE } from "@/features/storefront/format";
+import { isBundleProduct, rangeText, REVIEW_BUILD_MODE } from "@/features/storefront/format";
 import { FormatChip } from "@/features/storefront/product-card";
+import type { BundleDetailItem } from "@/features/storefront/types";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl } from "@/lib/env";
 import { coarseTextHitArea } from "@/lib/styles";
@@ -44,6 +46,7 @@ import {
   type PriceQuoteAction,
   type ProductCheckoutLookup,
   ProductGoneError,
+  ProductUnavailableError,
 } from "./api";
 import { mapVoucherErrorKey, VoucherBox, type VoucherErrorKey } from "./voucher-box";
 
@@ -79,10 +82,13 @@ export function CheckoutView({
   navigate?: (url: string) => void;
 }) {
   const t = useTranslations("checkout");
+  const bundleT = useTranslations("bundle");
   const ordersT = useTranslations("orders");
   const common = useTranslations("common");
   const storefront = useTranslations("storefront");
   const detailRights = useTranslations("storefront.detail.rights");
+  const detailCols = useTranslations("storefront.detail.columns");
+  const detailHow = useTranslations("storefront.detail.how");
   const support = useTranslations("landing.support");
   const locale = useLocale();
   const searchParams = useSearchParams();
@@ -103,6 +109,7 @@ export function CheckoutView({
   } | null>(null);
   const [overrideQuote, setOverrideQuote] = useState<PriceQuote | null>(null);
   const [goneProduct, setGoneProduct] = useState<{ code: string; name: string } | null>(null);
+  const [bundleUnavailable, setBundleUnavailable] = useState(false);
   const [priceChangedSeen, setPriceChangedSeen] = useState<{ seenPrice?: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<SubmitErrorState | null>(null);
@@ -119,6 +126,7 @@ export function CheckoutView({
     prevCodeRef.current = code;
     setOverrideQuote(null);
     setGoneProduct(null);
+    setBundleUnavailable(false);
     setPriceChangedSeen(null);
     setSubmitError(null);
     setVoucherResetVersion((v) => v + 1);
@@ -168,7 +176,12 @@ export function CheckoutView({
   const preQuoteLookup: ProductCheckoutLookup | undefined = goneProduct
     ? { status: "gone", product: goneProduct }
     : (productQuery.data ?? initialProduct);
-  const preQuoteProduct = preQuoteLookup?.status === "ok" ? preQuoteLookup.product : undefined;
+  const preQuoteProduct =
+    preQuoteLookup?.status === "ok"
+      ? preQuoteLookup.product
+      : preQuoteLookup?.status === "unavailable"
+        ? preQuoteLookup.product
+        : undefined;
 
   const baseQuoteQuery = useQuery({
     queryKey: baseQuoteQueryKey,
@@ -178,18 +191,35 @@ export function CheckoutView({
         ...(seenPrice !== undefined ? { seenPrice } : {}),
         ...(seenVersionNo !== undefined ? { seenVersionNo } : {}),
       }),
-    enabled: isStudent && Boolean(preQuoteProduct) && !goneProduct,
+    enabled:
+      isStudent &&
+      Boolean(preQuoteProduct) &&
+      !goneProduct &&
+      !bundleUnavailable &&
+      preQuoteLookup?.status !== "unavailable",
     retry: false,
   });
 
   const quoteGoneProduct =
     baseQuoteQuery.error instanceof ProductGoneError ? baseQuoteQuery.error.product : null;
   const resolvedGoneProduct = goneProduct ?? quoteGoneProduct;
+  const quoteUnavailable =
+    baseQuoteQuery.error instanceof ProductUnavailableError ||
+    (baseQuoteQuery.error instanceof ApiStatusError &&
+      baseQuoteQuery.error.status === 409 &&
+      baseQuoteQuery.error.code === "PRODUCT_UNAVAILABLE");
 
   const effectiveLookup: ProductCheckoutLookup | undefined = resolvedGoneProduct
     ? { status: "gone", product: resolvedGoneProduct }
     : (productQuery.data ?? initialProduct);
-  const product = effectiveLookup?.status === "ok" ? effectiveLookup.product : undefined;
+  const product =
+    effectiveLookup?.status === "ok" || effectiveLookup?.status === "unavailable"
+      ? effectiveLookup.product
+      : undefined;
+  const isProductUnavailable =
+    effectiveLookup?.status === "unavailable" || bundleUnavailable || quoteUnavailable;
+  const isBundle = product ? isBundleProduct(product) : false;
+  const bundleItems: BundleDetailItem[] = isBundle ? (product?.items ?? []) : [];
 
   const accessQuery = useQuery({
     queryKey: ["checkout", "access", code, acknowledgedSession?.id ?? null],
@@ -236,6 +266,15 @@ export function CheckoutView({
     return accessQuery.data.rows.find((row) => row.code === code);
   }, [accessQuery.data, code]);
 
+  const bundleAccessItems = useMemo(
+    () => (isBundle && accessRow?.items ? accessRow.items : []),
+    [accessRow, isBundle],
+  );
+  const accessByExamCode = useMemo(
+    () => new Map(bundleAccessItems.map((item) => [item.code, item])),
+    [bundleAccessItems],
+  );
+
   const pendingOrderCode = accessRow?.pendingOrderCode ?? null;
   const isBlockedByChecking = Boolean(accessRow && (accessRow.state === "CHECKING" || accessRow.hasPendingFulfillment));
   const hasExistingAccess = Boolean(accessRow && (accessRow.state === "CAN_START" || accessRow.state === "IN_PROGRESS"));
@@ -271,6 +310,7 @@ export function CheckoutView({
       submitting ||
       accessUnavailable ||
       isBlockedByChecking ||
+      isProductUnavailable ||
       Boolean(accountChanged) ||
       !activeQuote ||
       !acknowledgedSession
@@ -319,6 +359,15 @@ export function CheckoutView({
 
       if (error instanceof ProductGoneError) {
         setGoneProduct(error.product);
+        return;
+      }
+
+      if (
+        error instanceof ProductUnavailableError ||
+        (error instanceof OrderConflictError && error.code === "PRODUCT_UNAVAILABLE") ||
+        (error instanceof ApiStatusError && error.status === 409 && error.code === "PRODUCT_UNAVAILABLE")
+      ) {
+        setBundleUnavailable(true);
         return;
       }
 
@@ -383,7 +432,12 @@ export function CheckoutView({
   function renderSubmitErrorText(err: SubmitErrorState): string {
     if (err.kind === "rateLimited") return t("summary.errorRateLimited");
     if (err.kind === "paymentAttemptsExceeded") return ordersT("errors.PAYMENT_ATTEMPTS_EXCEEDED");
-    if (err.kind === "voucher") return t(`voucher.errors.${err.key}`);
+    if (err.kind === "voucher") {
+      if (err.key === "VOUCHER_NOT_APPLICABLE" && isBundle) {
+        return t("voucher.errors.VOUCHER_NOT_APPLICABLE_BUNDLE");
+      }
+      return t(`voucher.errors.${err.key}`);
+    }
     return t("summary.errorGeneric");
   }
 
@@ -418,6 +472,77 @@ export function CheckoutView({
     }
 
     if (!accessRow) return null;
+
+    if (isBundle && bundleAccessItems.length > 0) {
+      const ownedBundleItems = bundleAccessItems.filter(
+        (item) => item.attemptsLeft > 0 || item.state === "CAN_START" || item.state === "IN_PROGRESS",
+      );
+      const pendingBundleItems = bundleAccessItems.filter(
+        (item) => item.hasPendingFulfillment || item.state === "CHECKING",
+      );
+      if (ownedBundleItems.length === 0 && pendingBundleItems.length === 0 && !isBlockedByChecking) {
+        return null;
+      }
+      return (
+        <div className="flex flex-col gap-3">
+          {ownedBundleItems.length > 0 && (
+            <section
+              role="status"
+              className="flex flex-col gap-2 rounded-xl border border-border-primary bg-info-bg p-5 text-body text-text"
+            >
+              {ownedBundleItems.map((item) => (
+                <p key={item.examId || item.code} className="flex items-start gap-2.5">
+                  <Info aria-hidden className="mt-0.5 size-4.5 shrink-0 text-info" />
+                  <span>
+                    {bundleT.rich("detail.existingEntitlement", {
+                      count: item.attemptsLeft,
+                      name: item.name,
+                      examContent: (chunks) => (
+                        <span data-exam-content className="font-semibold">
+                          {chunks}
+                        </span>
+                      ),
+                    })}
+                  </span>
+                </p>
+              ))}
+            </section>
+          )}
+          {pendingBundleItems.length > 0 && (
+            <section
+              role="status"
+              className="flex flex-col gap-2 rounded-xl border border-warning bg-warning-bg p-5 text-body text-text"
+            >
+              {pendingBundleItems.map((item) => (
+                <p key={item.examId || item.code} className="flex items-start gap-2.5">
+                  <Clock aria-hidden className="mt-0.5 size-4.5 shrink-0 text-warning" />
+                  <span>
+                    {item.pendingOrderCode
+                      ? bundleT.rich("checkout.pendingExamOrder", {
+                          orderCode: item.pendingOrderCode,
+                          name: item.name,
+                          examContent: (chunks) => (
+                            <span data-exam-content className="font-semibold">
+                              {chunks}
+                            </span>
+                          ),
+                        })
+                      : bundleT.rich("checkout.pendingExamOrderNoCode", {
+                          name: item.name,
+                          examContent: (chunks) => (
+                            <span data-exam-content className="font-semibold">
+                              {chunks}
+                            </span>
+                          ),
+                        })}
+                  </span>
+                </p>
+              ))}
+            </section>
+          )}
+        </div>
+      );
+    }
 
     if (isBlockedByChecking) {
       const resultHref = pendingOrderCode
@@ -512,7 +637,7 @@ export function CheckoutView({
             )}
           >
             <ArrowLeft aria-hidden className="size-4" />
-            {t("backToExam")}
+            {isBundle ? bundleT("checkout.backToBundle") : t("backToExam")}
           </Link>
         </div>
 
@@ -577,6 +702,28 @@ export function CheckoutView({
               <Link href="/#exams">{t("backToCatalog")}</Link>
             </Button>
           </div>
+        ) : effectiveLookup?.status === "unavailable" && !product ? (
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-4 rounded-xl border border-warning bg-warning-bg px-6 py-10 text-center"
+          >
+            <span
+              aria-hidden
+              className="grid size-12 place-items-center rounded-full bg-surface text-warning [&_svg]:size-6"
+            >
+              <TriangleAlert />
+            </span>
+            <h1 className="text-title font-semibold text-warning">{bundleT("checkout.unavailableTitle")}</h1>
+            <p className="max-w-md text-body text-text">{bundleT("detail.unavailableBody")}</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button asChild variant="secondary">
+                <Link href={`/exams/${encodeURIComponent(code)}`}>{bundleT("checkout.unavailableActionBack")}</Link>
+              </Button>
+              <Button asChild variant="primary">
+                <Link href="/#exams">{t("backToCatalog")}</Link>
+              </Button>
+            </div>
+          </div>
         ) : !product ? (
           <EmptyState
             headingLevel={1}
@@ -593,8 +740,28 @@ export function CheckoutView({
           <>
             <header className="flex flex-col gap-1.5">
               <h1 className="text-h2 font-bold tracking-tight text-text">{t("heading")}</h1>
-              <p className="text-body text-text-secondary">{t("subtitle")}</p>
+              <p className="text-body text-text-secondary">
+                {isBundle ? bundleT("checkout.subtitle") : t("subtitle")}
+              </p>
             </header>
+
+            {isProductUnavailable && (
+              <section
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-warning bg-warning-bg p-5 text-body text-text"
+              >
+                <div className="flex min-w-0 flex-1 basis-72 items-start gap-3">
+                  <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-title font-semibold text-warning">{bundleT("checkout.unavailableTitle")}</h2>
+                    <p className="text-body text-text">{bundleT("checkout.unavailableBody")}</p>
+                  </div>
+                </div>
+                <Button asChild variant="secondary" className="shrink-0">
+                  <Link href={`/exams/${encodeURIComponent(code)}`}>{bundleT("checkout.unavailableActionBack")}</Link>
+                </Button>
+              </section>
+            )}
 
             {accountChanged && (
               <section
@@ -681,7 +848,12 @@ export function CheckoutView({
                       <span className="text-caption text-text-secondary">{displaySession.username}</span>
                     </div>
                     <p className="text-body text-text-secondary">
-                      {t("account.grantNotice", { username: displaySession.username })}
+                      {isBundle
+                        ? bundleT("checkout.grantNotice", {
+                            count: bundleItems.length,
+                            username: displaySession.username,
+                          })
+                        : t("account.grantNotice", { username: displaySession.username })}
                     </p>
                   </section>
                 )}
@@ -695,6 +867,7 @@ export function CheckoutView({
                       {pickName(product.examKind, locale) || product.examKind.code}
                     </span>
                     <FormatChip format={product.format} scopeLabel={product.scopeLabel} />
+                    {isBundle && <Badge>{bundleT("detail.examCountValue", { count: bundleItems.length })}</Badge>}
                     {product.buildMode === REVIEW_BUILD_MODE && (
                       <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
                         {storefront("review")}
@@ -706,33 +879,144 @@ export function CheckoutView({
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <span className="text-caption font-medium text-text-muted">{t("product.sectionTitle")}</span>
+                    <span className="text-caption font-medium text-text-muted">
+                      {isBundle ? bundleT("checkout.sectionTitle") : t("product.sectionTitle")}
+                    </span>
                     <h2 id="checkout-product-heading" data-exam-content className="text-h3 font-bold text-text">
                       {product.name}
                     </h2>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-text-secondary">
-                    <span>
-                      {t("product.attemptsGranted", { count: activeQuote?.attemptsGranted ?? product.attemptsGranted })}
-                    </span>
-                    {rangeText(product.questionCount) && (
+                  {isBundle ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-text-secondary">
+                        <span>
+                          {bundleT("detail.attemptsPerExam", {
+                            count: activeQuote?.attemptsGranted ?? product.attemptsGranted,
+                          })}
+                        </span>
+                        {rangeText(product.questionCount, locale) && (
+                          <span>
+                            {storefront("units.questions", {
+                              value: rangeText(product.questionCount, locale)!,
+                              count: product.questionCount?.max ?? 0,
+                            })}
+                          </span>
+                        )}
+                        {rangeText(product.durationMinutes, locale) && (
+                          <span>
+                            {storefront("units.minutes", {
+                              value: rangeText(product.durationMinutes, locale)!,
+                              count: product.durationMinutes?.max ?? 0,
+                            })}
+                          </span>
+                        )}
+                      </div>
+
+                      {bundleItems.length > 0 && (
+                        <div
+                          role="region"
+                          aria-label={bundleT("checkout.tableCaption")}
+                          tabIndex={0}
+                          className={cn("overflow-x-auto rounded-lg border border-border", focusRing)}
+                        >
+                          <table className="w-full min-w-[30rem] border-collapse text-left tabular-nums">
+                            <caption className="sr-only">{bundleT("checkout.tableCaption")}</caption>
+                            <thead>
+                              <tr className="bg-table-head text-caption font-semibold text-text-muted">
+                                <th scope="col" className="px-3.5 py-2.5">
+                                  {ordersT("columns.product")}
+                                </th>
+                                <th scope="col" className="px-3 py-2.5 text-right">
+                                  {detailCols("questions")}
+                                </th>
+                                <th scope="col" className="px-3 py-2.5 text-right">
+                                  {detailCols("duration")}
+                                </th>
+                                <th scope="col" className="px-3 py-2.5 text-right">
+                                  {detailCols("maxPoints")}
+                                </th>
+                                <th scope="col" className="px-3.5 py-2.5 text-right">
+                                  {detailRights("attempts")}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bundleItems.map((item) => {
+                                const subjectLabel = item.subjectName ? pickName(item.subjectName, locale) : "";
+                                const q = rangeText(item.questionCount, locale);
+                                const d = rangeText(item.durationMinutes, locale);
+                                const p = rangeText(item.maxPoints, locale);
+                                const existing = accessByExamCode.get(item.code);
+                                return (
+                                  <tr key={item.examId || item.code} className="border-t border-border">
+                                    <th scope="row" className="px-3.5 py-3 text-left font-semibold text-text">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span data-exam-content>{item.name}</span>
+                                        {item.buildMode === REVIEW_BUILD_MODE && (
+                                          <span className="rounded-full bg-info-bg px-2 py-0.5 text-caption font-semibold text-info">
+                                            {storefront("review")}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {subjectLabel && (
+                                        <div className="mt-0.5 text-caption font-normal text-text-muted">
+                                          {subjectLabel}
+                                        </div>
+                                      )}
+                                    </th>
+                                    <td className="px-3 py-3 text-right">{q ?? "—"}</td>
+                                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                                      {d !== null
+                                        ? storefront("units.minutes", {
+                                            value: d,
+                                            count: item.durationMinutes?.max ?? 0,
+                                          })
+                                        : "—"}
+                                    </td>
+                                    <td className="px-3 py-3 text-right">
+                                      {p !== null ? detailHow("maxScore", { score: p }) : "—"}
+                                    </td>
+                                    <td className="px-3.5 py-3 text-right whitespace-nowrap">
+                                      <div>{storefront("units.attempts", { count: item.attemptsGranted })}</div>
+                                      {existing && existing.attemptsLeft > 0 && (
+                                        <div className="text-caption text-text-muted">
+                                          {storefront("access.attemptsLeft", { count: existing.attemptsLeft })}
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      <p className="text-caption text-text-muted">{bundleT("checkout.existingNote")}</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-text-secondary">
                       <span>
-                        {storefront("units.questions", {
-                          value: rangeText(product.questionCount)!,
-                          count: product.questionCount?.max ?? 0,
-                        })}
+                        {t("product.attemptsGranted", { count: activeQuote?.attemptsGranted ?? product.attemptsGranted })}
                       </span>
-                    )}
-                    {rangeText(product.durationMinutes) && (
-                      <span>
-                        {storefront("units.minutes", {
-                          value: rangeText(product.durationMinutes)!,
-                          count: product.durationMinutes?.max ?? 0,
-                        })}
-                      </span>
-                    )}
-                  </div>
+                      {rangeText(product.questionCount) && (
+                        <span>
+                          {storefront("units.questions", {
+                            value: rangeText(product.questionCount)!,
+                            count: product.questionCount?.max ?? 0,
+                          })}
+                        </span>
+                      )}
+                      {rangeText(product.durationMinutes) && (
+                        <span>
+                          {storefront("units.minutes", {
+                            value: rangeText(product.durationMinutes)!,
+                            count: product.durationMinutes?.max ?? 0,
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-x-5 gap-y-1.5 border-t border-border pt-3 text-caption text-text-secondary">
                     {product.resultView && (
@@ -783,7 +1067,7 @@ export function CheckoutView({
                     <ShieldCheck aria-hidden className="size-4 text-primary-text" />
                     {t("refund.title")}
                   </h2>
-                  <p>{t("refund.body")}</p>
+                  <p>{isBundle ? bundleT("checkout.refundBody") : t("refund.body")}</p>
                   <p className="text-caption text-text-muted">
                     {t("refund.supportLabel")} {supportSummary || support("pending")}
                   </p>
@@ -795,12 +1079,14 @@ export function CheckoutView({
                   <VoucherBox
                     key={`${code}:${acknowledgedSession?.id ?? ""}:${voucherResetVersion}`}
                     productCode={code}
+                    isBundle={isBundle}
                     seenPrice={seenPrice}
                     seenVersionNo={seenVersionNo}
                     quote={activeQuote}
                     requestQuote={requestQuote}
-                    disabled={isBlockedByChecking || Boolean(accountChanged) || submitting}
+                    disabled={isBlockedByChecking || isProductUnavailable || Boolean(accountChanged) || submitting}
                     onProductGone={(gone) => setGoneProduct(gone)}
+                    onProductUnavailable={() => setBundleUnavailable(true)}
                     onUnauthorized={async () => {
                       const res = await sessionQuery.refetch();
                       return res.isSuccess;
@@ -821,7 +1107,35 @@ export function CheckoutView({
                     {t("summary.title")}
                   </h2>
 
-                  {baseQuoteQuery.isLoading && !activeQuote ? (
+                  {isProductUnavailable && !activeQuote ? (
+                    <>
+                      <dl className="flex flex-col gap-2.5 text-body">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <dt className="text-text-secondary">{t("summary.listPrice")}</dt>
+                          <dd className="font-medium text-text">
+                            {storefront("price", { amount: product.listPrice })}
+                          </dd>
+                        </div>
+                        <div className="mt-1 flex items-baseline justify-between gap-2 border-t border-border pt-3">
+                          <dt className="font-semibold text-text">{t("summary.totalDue")}</dt>
+                          <dd className="text-h3 font-bold text-primary-text">
+                            {storefront("price", { amount: product.price })}
+                          </dd>
+                        </div>
+                      </dl>
+                      <Button
+                        id="checkout-buy-button"
+                        ref={payButtonRef}
+                        type="button"
+                        variant="primary"
+                        size="lg"
+                        disabled
+                        className="w-full"
+                      >
+                        {t("summary.ctaVnpay")}
+                      </Button>
+                    </>
+                  ) : baseQuoteQuery.isLoading && !activeQuote ? (
                     <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-3">
                       <Skeleton className="h-5 w-full" />
                       <Skeleton className="h-5 w-3/4" />
@@ -898,6 +1212,7 @@ export function CheckoutView({
                         disabled={
                           accessUnavailable ||
                           isBlockedByChecking ||
+                          isProductUnavailable ||
                           Boolean(accountChanged) ||
                           !acknowledgedSession
                         }

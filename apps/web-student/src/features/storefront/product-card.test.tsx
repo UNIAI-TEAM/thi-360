@@ -3,7 +3,25 @@ import { describe, expect, it } from "vitest";
 import enMessages from "@/messages/en.json";
 import { FULL_CARD, PART_CARD, REVIEW_CARD, VI_ONLY_CARD } from "@/test/storefront-fixtures";
 import { renderWithProviders } from "@/test/render";
+import { AccessAction } from "./access-action";
 import { ProductCard } from "./product-card";
+import type { ProductCard as ProductCardData } from "./types";
+
+const BUNDLE_CARD: ProductCardData = {
+  code: "BO-SP2E-001",
+  name: "Bộ đề SP2E khối A00",
+  summary: "Luyện ba môn Toán, Vật lí, Hóa học",
+  versionNo: 1,
+  attemptsGranted: 2,
+  buildMode: "STANDARD",
+  productType: "BUNDLE",
+  format: "BUNDLE",
+  examKind: { code: "SP2E", nameVi: "ĐHSP Hà Nội 2", nameEn: "HNUE2" },
+  listPrice: 349000,
+  price: 349000,
+  questionCount: { min: 96, max: 96 },
+  durationMinutes: { min: 210, max: 210 },
+};
 
 const action = <button type="button">Hanh dong</button>;
 
@@ -113,5 +131,46 @@ describe("ProductCard", () => {
     expect(within(article).getByText(/Subject exam/)).toHaveTextContent("Subject exam · Math");
     expect(within(article).getByText("48–50 questions · 75 minutes · 3 attempts")).toBeInTheDocument();
     expect(within(article).getByText("79,000 VND")).toBeInTheDocument();
+  });
+
+  it("thẻ bộ đề: hiện dải hero-dark chữ trắng (không dùng text-on-primary), nhãn Bộ đề, lượt mỗi bài và nút Mua bộ đề (AC-10)", () => {
+    const { container } = renderWithProviders(
+      <ProductCard
+        product={BUNDLE_CARD}
+        action={
+          <AccessAction
+            variant="card"
+            product={{ code: BUNDLE_CARD.code, versionNo: BUNDLE_CARD.versionNo, price: BUNDLE_CARD.price, isBundle: true }}
+            view={{
+              kind: "ready",
+              row: {
+                code: BUNDLE_CARD.code,
+                state: "NONE",
+                attemptsLeft: 0,
+                entitlementId: null,
+                activeAttemptId: null,
+                hasPendingFulfillment: false,
+                pendingOrderCode: null,
+              },
+            }}
+            onReload={() => {}}
+          />
+        }
+      />,
+    );
+
+    const article = card(BUNDLE_CARD.name);
+    const banner = article.querySelector(".text-white");
+    expect(banner).not.toBeNull();
+    expect(banner).not.toHaveClass("text-on-primary");
+    expect(container.querySelector("img")).toBeNull();
+    expect(within(article).getAllByText("Bộ đề").length).toBeGreaterThanOrEqual(1);
+    expect(within(article).getByText("96 câu · 210 phút · 2 lượt mỗi bài")).toBeInTheDocument();
+    expect(within(article).getByRole("link", { name: BUNDLE_CARD.name })).toHaveAttribute("data-exam-content");
+    expect(within(article).getByRole("link", { name: "Mua bộ đề" })).toHaveAttribute(
+      "href",
+      "/checkout/BO-SP2E-001?v=1&p=349000",
+    );
+    expect(within(article).getByRole("link", { name: "Xem chi tiết" })).toHaveAttribute("href", "/exams/BO-SP2E-001");
   });
 });

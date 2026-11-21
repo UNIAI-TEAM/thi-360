@@ -228,6 +228,62 @@
       "verifiedContinue": "Your email is verified. You can continue."
     }
   },
+  "bundle": {
+    "badgeWithCount": "Exam bundle · {count, plural, one {# exam} other {# exams}}",
+    "buyLabel": "Buy bundle",
+    "buyNote": "The bundle detail page always keeps Buy bundle available, even when you already own some exams in it.",
+    "checkout": {
+      "backToBundle": "Back to bundle",
+      "existingNote": "For exams you already own, newly purchased attempts are added to your remaining balance. Benefits apply per grant.",
+      "grantNotice": "Once completed, all {count, plural, one {# exam in the bundle} other {# exams in the bundle}} will be granted to account {username}.",
+      "itemsTitle": "Included exams ({count})",
+      "pendingExamOrder": "Order {orderCode} for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "pendingExamOrderNoCode": "An order for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "refundBody": "Exams in the bundle are granted immediately after completion and cannot be refunded once any attempt is activated.",
+      "sectionTitle": "Selected bundle",
+      "subtitle": "Review the included exams, access rights, and receiving account before paying.",
+      "summaryLabel": "Bundle summary",
+      "tableCaption": "Exams in this bundle and granted attempts",
+      "unavailableActionBack": "Back to bundle",
+      "unavailableBody": "One exam in this bundle has just been discontinued. No amount has been charged.",
+      "unavailableTitle": "This bundle is temporarily unavailable."
+    },
+    "detail": {
+      "attemptsPerExam": "{count, plural, one {# attempt per exam} other {# attempts per exam}}",
+      "attemptsPerExamLabel": "Attempts per exam",
+      "examCountLabel": "Exams",
+      "examCountValue": "{count, plural, one {# exam} other {# exams}}",
+      "examRightsPrefix": "Benefits for this exam:",
+      "existingEntitlement": "{count, plural, one {You already have # attempt for <examContent>{name}</examContent>; buying this bundle adds more attempts} other {You already have # attempts for <examContent>{name}</examContent>; buying this bundle adds more attempts}}",
+      "how1": "After purchase, all exams appear in My exams grouped under the bundle name.",
+      "how2": "Each exam keeps its own Start, Continue, result, and history actions. Submitting one exam only ends that exam's attempt.",
+      "how3": "Each exam opens section by section under its own exam structure.",
+      "howTitle": "How this bundle works",
+      "itemsNote": "Question counts, durations, and max points reflect the currently on-sale version of each exam. Bundle price and attempts per exam remain fixed.",
+      "itemsTitle": "Exams in this bundle",
+      "partScope": "Section exam",
+      "pendingOrder": "Order {orderCode} for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "pendingOrderNoCode": "An order for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "priceLabel": "Bundle price",
+      "subjectScope": "Subject exam",
+      "totalDurationLabel": "Total duration",
+      "totalQuestionsLabel": "Total questions",
+      "unavailableBody": "An exam in this bundle is currently being updated. You can still purchase individual exams.",
+      "unavailableTitle": "This bundle is temporarily unavailable."
+    },
+    "home": {
+      "crossReference": "<examContent>{examName}</examContent> is shown under <examContent>{bundleName}</examContent>",
+      "groupFootnote": "Submitting one exam only ends that exam's attempt; other exams in the bundle stay unchanged. Remaining attempts include standalone purchases of the same exam.",
+      "standaloneHeading": "Individual exams",
+      "viewBundle": "View bundle"
+    },
+    "unavailablePage": {
+      "description": "An exam in this bundle is currently being updated. You can still purchase individual exams.",
+      "eyebrow": "UNAVAILABLE",
+      "title": "This bundle is temporarily unavailable.",
+      "toCatalog": "Back to the exam catalog"
+    }
+  },
   "changePassword": {
     "back": "Back",
     "confirmPasswordLabel": "Confirm new password",
@@ -392,6 +448,7 @@
         "VOUCHER_EXPIRED": "This voucher code has expired.",
         "VOUCHER_INVALID": "This voucher code does not exist or is invalid.",
         "VOUCHER_NOT_APPLICABLE": "This voucher code is not applicable to this exam.",
+        "VOUCHER_NOT_APPLICABLE_BUNDLE": "This voucher code only applies to selected exams, not to exam bundles.",
         "VOUCHER_NOT_ELIGIBLE": "Your account is not eligible for this voucher.",
         "VOUCHER_USER_LIMIT": "You have reached your personal usage limit for this voucher.",
         "generic": "Unable to apply voucher code. Please try again."
@@ -838,6 +895,7 @@
       "attemptsLeft": "{count, plural, one {# attempt left} other {# attempts left}}",
       "buy": "Buy exam",
       "buyAgain": "Buy again",
+      "buyBundle": "Buy bundle",
       "buyMore": "Buy more attempts",
       "checking": "Checking",
       "checkingNote": "Order {orderCode}. You do not need to pay again. If the exam still does not show up, contact support and include this order code.",
@@ -965,6 +1023,7 @@
     },
     "discount": "{percent}% off",
     "format": {
+      "BUNDLE": "Exam bundle",
       "FULL": "FULL exam",
       "PART": "Section exam",
       "SUBJECT": "Subject exam"
@@ -989,6 +1048,7 @@
     "review": "Review exam",
     "units": {
       "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+      "attemptsPerExam": "{count, plural, one {# attempt per exam} other {# attempts per exam}}",
       "minutes": "{value} minutes",
       "questions": "{value} questions"
     }

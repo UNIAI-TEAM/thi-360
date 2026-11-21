@@ -2,7 +2,7 @@
  * Điều kiện của danh mục nằm trên URL (TM 11.2): `/?q=&kind=&format=&subject=&part=&sort=&page=#exams`. Giá trị
  * mặc định không ghi lên URL. `page` trên URL tính từ 1 (API tính từ 0).
  */
-export const CATALOG_FORMATS = ["FULL", "PART", "SUBJECT"] as const;
+export const CATALOG_FORMATS = ["FULL", "PART", "SUBJECT", "BUNDLE"] as const;
 export const CATALOG_SORTS = ["NEWEST", "PRICE_ASC", "PRICE_DESC"] as const;
 export const CATALOG_PAGE_SIZE = 12;
 /** Neo của khối danh mục trên trang giới thiệu (`/#exams`). */

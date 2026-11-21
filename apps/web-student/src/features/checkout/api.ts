@@ -15,6 +15,7 @@ export type VnpayReturnResponse = components["schemas"]["VnpayReturnResponse"];
 export type ProductCheckoutLookup =
   | { status: "ok"; product: ProductDetail }
   | { status: "gone"; product: { code: string; name: string } }
+  | { status: "unavailable"; product?: ProductDetail }
   | { status: "notFound" };
 
 export type CheckoutProductLoader = (code: string) => Promise<ProductCheckoutLookup>;
@@ -30,6 +31,16 @@ export class ProductGoneError extends Error {
     super(message ?? "Product is discontinued");
     this.name = "ProductGoneError";
     this.product = product;
+  }
+}
+
+export class ProductUnavailableError extends Error {
+  readonly status = 409;
+  readonly code = "PRODUCT_UNAVAILABLE";
+
+  constructor(message?: string) {
+    super(message ?? "Product is unavailable");
+    this.name = "ProductUnavailableError";
   }
 }
 
@@ -69,11 +80,20 @@ export async function loadProductForCheckout(code: string): Promise<ProductCheck
       product: gone?.product ?? { code, name: code },
     };
   }
+  if (response.status === 409) {
+    const unavailable = error as { code?: string; product?: ProductDetail } | undefined;
+    if (!unavailable?.code || unavailable.code === "PRODUCT_UNAVAILABLE") {
+      return { status: "unavailable", product: unavailable?.product };
+    }
+  }
   if (response.status === 404) {
     return { status: "notFound" };
   }
   if (!response.ok || !data) {
     throw toApiStatusError(response.status, error as never);
+  }
+  if ((data as ProductDetail & { saleState?: string }).saleState === "UNAVAILABLE") {
+    return { status: "unavailable", product: data };
   }
   return { status: "ok", product: data };
 }
@@ -86,6 +106,12 @@ export async function fetchPriceQuote(request: PriceQuoteRequest): Promise<Price
   if (response.status === 410) {
     const gone = error as ProductGoneResponse | undefined;
     throw new ProductGoneError(gone?.product ?? { code: request.code, name: request.code }, gone?.message);
+  }
+  if (response.status === 409) {
+    const conflict = error as { code?: string; message?: string } | undefined;
+    if (!conflict?.code || conflict.code === "PRODUCT_UNAVAILABLE") {
+      throw new ProductUnavailableError(conflict?.message);
+    }
   }
   if (!response.ok || !data) {
     throw toApiStatusError(response.status, error as never);

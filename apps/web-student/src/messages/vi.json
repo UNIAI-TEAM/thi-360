@@ -228,6 +228,62 @@
       "verifiedContinue": "Email đã được xác minh. Bạn có thể tiếp tục."
     }
   },
+  "bundle": {
+    "badgeWithCount": "Bộ đề · {count, plural, other {# bài}}",
+    "buyLabel": "Mua bộ đề",
+    "buyNote": "Trang chi tiết bộ luôn có nút Mua bộ đề, kể cả khi bạn đã có vài bài trong bộ.",
+    "checkout": {
+      "backToBundle": "Quay lại chi tiết bộ đề",
+      "existingNote": "Bài đã có quyền thì lượt mua thêm cộng vào lượt đang có. Quyền lợi theo từng lần cấp.",
+      "grantNotice": "Sau khi hoàn tất, toàn bộ {count, plural, other {# bài thi trong bộ}} sẽ được cấp cho tài khoản {username}.",
+      "itemsTitle": "Các bài thi trong bộ ({count})",
+      "pendingExamOrder": "Đơn {orderCode} cho bài <examContent>{name}</examContent> đang được kiểm tra. Bạn không cần thanh toán lại.",
+      "pendingExamOrderNoCode": "Có đơn đang được kiểm tra cho bài <examContent>{name}</examContent>. Bạn không cần thanh toán lại.",
+      "refundBody": "Các bài thi trong bộ được cấp ngay sau khi giao dịch hoàn tất và không hỗ trợ hoàn tiền sau khi đã kích hoạt lượt thi.",
+      "sectionTitle": "Bộ đề đã chọn",
+      "subtitle": "Kiểm tra danh sách bài thi trong bộ, quyền lợi nhận được và tài khoản nhận bài trước khi thanh toán.",
+      "summaryLabel": "Tóm tắt bộ đề",
+      "tableCaption": "Các bài trong bộ và quyền nhận được",
+      "unavailableActionBack": "Về chi tiết bộ đề",
+      "unavailableBody": "Một bài trong bộ vừa ngừng bán. Chưa có khoản nào bị trừ.",
+      "unavailableTitle": "Bộ đề tạm thời chưa bán được."
+    },
+    "detail": {
+      "attemptsPerExam": "{count, plural, other {# lượt mỗi bài}}",
+      "attemptsPerExamLabel": "Lượt mỗi bài",
+      "examCountLabel": "Số bài",
+      "examCountValue": "{count, plural, other {# bài}}",
+      "examRightsPrefix": "Quyền lợi bài này:",
+      "existingEntitlement": "{count, plural, other {Bạn đã có # lượt bài <examContent>{name}</examContent>; mua bộ sẽ cộng thêm lượt}}",
+      "how1": "Sau khi mua, các bài xuất hiện ở Bài thi của tôi, nhóm dưới tên bộ.",
+      "how2": "Mỗi bài có nút Bắt đầu, Tiếp tục, kết quả và lịch sử riêng. Nộp bài một môn chỉ kết thúc lượt của bài đó.",
+      "how3": "Mỗi bài làm tuần tự từng phần trong một đồng hồ chung của bài.",
+      "howTitle": "Cách dùng bộ đề",
+      "itemsNote": "Số câu, thời lượng, điểm tối đa theo phiên bản đang bán của từng bài. Bài được cập nhật thì số ở đây cập nhật theo; giá và số lượt của bộ không đổi.",
+      "itemsTitle": "Các bài trong bộ",
+      "partScope": "Bài thi theo phần",
+      "pendingOrder": "Đơn {orderCode} cho bài <examContent>{name}</examContent> đang được kiểm tra. Bạn không cần thanh toán lại.",
+      "pendingOrderNoCode": "Có đơn đang được kiểm tra cho bài <examContent>{name}</examContent>. Bạn không cần thanh toán lại.",
+      "priceLabel": "Giá bộ",
+      "subjectScope": "Bài thi theo môn",
+      "totalDurationLabel": "Tổng thời lượng",
+      "totalQuestionsLabel": "Tổng số câu",
+      "unavailableBody": "Một bài trong bộ đang được cập nhật. Bạn vẫn mua được từng bài lẻ.",
+      "unavailableTitle": "Bộ đề tạm thời chưa bán được."
+    },
+    "home": {
+      "crossReference": "Bài <examContent>{examName}</examContent> đang hiện ở nhóm <examContent>{bundleName}</examContent>",
+      "groupFootnote": "Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.",
+      "standaloneHeading": "Bài mua lẻ",
+      "viewBundle": "Xem bộ đề"
+    },
+    "unavailablePage": {
+      "description": "Một bài trong bộ đang được cập nhật. Bạn vẫn mua được từng bài lẻ.",
+      "eyebrow": "TẠM NGỪNG BÁN",
+      "title": "Bộ đề tạm thời chưa bán được.",
+      "toCatalog": "Về danh mục bài thi"
+    }
+  },
   "changePassword": {
     "back": "Quay lại",
     "confirmPasswordLabel": "Nhập lại mật khẩu mới",
@@ -392,6 +448,7 @@
         "VOUCHER_EXPIRED": "Mã giảm giá đã hết hạn sử dụng.",
         "VOUCHER_INVALID": "Mã giảm giá không tồn tại hoặc không hợp lệ.",
         "VOUCHER_NOT_APPLICABLE": "Mã giảm giá không áp dụng cho bài thi này.",
+        "VOUCHER_NOT_APPLICABLE_BUNDLE": "Mã này chỉ áp cho một số bài thi, không áp cho bộ đề.",
         "VOUCHER_NOT_ELIGIBLE": "Tài khoản của bạn chưa đủ điều kiện sử dụng mã này.",
         "VOUCHER_USER_LIMIT": "Bạn đã dùng hết số lượt cho phép của mã giảm giá này.",
         "generic": "Không thể áp dụng mã giảm giá. Vui lòng thử lại."
@@ -838,6 +895,7 @@
       "attemptsLeft": "{count, plural, other {Còn # lượt}}",
       "buy": "Mua bài thi",
       "buyAgain": "Mua lại",
+      "buyBundle": "Mua bộ đề",
       "buyMore": "Mua thêm lượt",
       "checking": "Đang kiểm tra",
       "checkingNote": "Mã đơn {orderCode}. Bạn không cần thanh toán lại. Nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ và gửi kèm mã đơn này.",
@@ -965,6 +1023,7 @@
     },
     "discount": "Giảm {percent}%",
     "format": {
+      "BUNDLE": "Bộ đề",
       "FULL": "Bài thi FULL",
       "PART": "Bài thi theo phần",
       "SUBJECT": "Bài thi theo môn"
@@ -989,6 +1048,7 @@
     "review": "Bài ôn",
     "units": {
       "attempts": "{count, plural, other {# lượt}}",
+      "attemptsPerExam": "{count, plural, other {# lượt mỗi bài}}",
       "minutes": "{value} phút",
       "questions": "{value} câu"
     }

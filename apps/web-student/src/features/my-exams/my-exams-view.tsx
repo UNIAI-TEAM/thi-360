@@ -1,13 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, EmptyState, SectionTitle, Skeleton } from "@thi360/ui";
+import { Badge, Button, EmptyState, SectionTitle, Skeleton } from "@thi360/ui";
 import { APP_TIME_ZONE } from "@thi360/web-kit/preferences";
-import { Compass, FileText, TriangleAlert } from "lucide-react";
+import { Compass, FileText, Package, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { StudentSession } from "@/features/session/api";
 import { loadMyExams, MY_EXAMS_QUERY_KEY, type MyExamsLoader } from "./api";
+import { groupMyExams } from "./group-my-exams";
 import { CheckingExamCard, MyExamCard } from "./my-exam-card";
 
 function formatTimeHm(timestampMs: number, locale: string): string {
@@ -28,6 +29,7 @@ export function MyExamsView({
   loadExams?: MyExamsLoader;
 }) {
   const t = useTranslations("home");
+  const bundleT = useTranslations("bundle");
   const common = useTranslations("common");
   const locale = useLocale();
 
@@ -40,6 +42,7 @@ export function MyExamsView({
   const items = examsQuery.data?.items;
   const checkingCards = items?.filter((item) => item.state === "CHECKING") ?? [];
   const ownedCards = items?.filter((item) => item.state !== "CHECKING") ?? [];
+  const { bundleGroups, standaloneCards } = groupMyExams(ownedCards);
 
   return (
     <div className="flex flex-col gap-7">
@@ -168,11 +171,85 @@ export function MyExamsView({
             </div>
           )}
 
-          {ownedCards.length > 0 && (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
-              {ownedCards.map((card) => (
-                <MyExamCard key={card.entitlementId ?? card.code} card={card} />
-              ))}
+          {bundleGroups.length > 0 && (
+            <div className="flex flex-col gap-5">
+              {bundleGroups.map((group) => {
+                const headingId = `bundle-group-${group.bundle.bundleId}`;
+                const totalInBundle = group.cards.length + group.crossReferences.length;
+                return (
+                  <section
+                    key={group.bundle.bundleId}
+                    aria-labelledby={headingId}
+                    className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          aria-hidden
+                          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-text"
+                        >
+                          <Package className="size-5" />
+                        </span>
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 id={headingId} data-exam-content className="text-h3 font-bold text-text">
+                              {group.bundle.name}
+                            </h3>
+                            <Badge>{t("examCount", { count: totalInBundle })}</Badge>
+                          </div>
+                          <span className="text-caption text-text-muted">{group.bundle.code}</span>
+                        </div>
+                      </div>
+                      <Button asChild variant="link" className="min-h-11 px-1">
+                        <Link href={`/exams/${encodeURIComponent(group.bundle.code)}`}>
+                          {bundleT("home.viewBundle")}
+                        </Link>
+                      </Button>
+                    </div>
+
+                    {group.cards.length > 0 && (
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
+                        {group.cards.map((card) => (
+                          <MyExamCard key={card.entitlementId ?? card.code} card={card} />
+                        ))}
+                      </div>
+                    )}
+
+                    {group.crossReferences.length > 0 && (
+                      <ul className="flex flex-col gap-1.5 rounded-lg border border-border bg-page px-4 py-3 text-field-label text-text-secondary">
+                        {group.crossReferences.map((ref) => (
+                          <li key={ref.examCode}>
+                            {bundleT.rich("home.crossReference", {
+                              examName: ref.examName,
+                              bundleName: ref.primaryBundle.name,
+                              examContent: (chunks) => (
+                                <span data-exam-content className="font-semibold text-text">
+                                  {chunks}
+                                </span>
+                              ),
+                            })}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <p className="text-caption text-text-muted">{bundleT("home.groupFootnote")}</p>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+
+          {standaloneCards.length > 0 && (
+            <div className="flex flex-col gap-4">
+              {bundleGroups.length > 0 && (
+                <h3 className="text-h3 font-bold text-text">{bundleT("home.standaloneHeading")}</h3>
+              )}
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
+                {standaloneCards.map((card) => (
+                  <MyExamCard key={card.entitlementId ?? card.code} card={card} />
+                ))}
+              </div>
             </div>
           )}
         </section>
