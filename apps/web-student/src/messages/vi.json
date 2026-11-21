@@ -311,16 +311,59 @@
     "register": "Đăng ký"
   },
   "home": {
-    "emptyDescription": "Danh mục bài thi, mua bài và làm bài sẽ có ở các đợt phát triển tiếp theo. Đợt này trang học viên chỉ có đăng nhập, đổi mật khẩu và đăng xuất.",
-    "emptyTitle": "Chưa có bài thi nào",
-    "errorDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
-    "errorTitle": "Không tải được trang",
-    "greeting": "Chào {name}",
-    "intro": "Bạn đã đăng nhập vào trang học viên.",
-    "pageTitle": "Trang học viên",
+    "actions": {
+      "buyMore": "Mua thêm lượt",
+      "continue": "Tiếp tục",
+      "history": "Lịch sử",
+      "rebuy": "Mua lại",
+      "start": "Bắt đầu",
+      "viewResult": "Xem kết quả"
+    },
+    "adminNotice": {
+      "cta": "Mở trang quản trị",
+      "description": "Tài khoản quản trị không mua hoặc làm bài thi ở trang học viên.",
+      "title": "Tài khoản quản trị"
+    },
+    "card": {
+      "attemptsLeft": "Lượt còn lại",
+      "minutesPerAttempt": "{value} phút mỗi lượt",
+      "purchased": "Đã mua"
+    },
+    "checking": {
+      "message": "Đã nhận thanh toán cho đơn {orderCode}. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại trang sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua {contact} và gửi kèm mã đơn.",
+      "messageNoContact": "Đã nhận thanh toán cho đơn {orderCode}. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại trang sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ kèm mã đơn. {pending}",
+      "reload": "Tải lại",
+      "sectionTitle": "Đang kiểm tra",
+      "status": "Đang kiểm tra"
+    },
+    "emptyDescription": "Chọn bài thi phù hợp trong danh mục để bắt đầu luyện tập.",
+    "emptyTitle": "Bạn chưa có bài thi nào",
+    "errorDescription": "Kiểm tra kết nối mạng rồi thử lại.",
+    "errorLoadAccountDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
+    "errorLoadAccountTitle": "Không tải được trang",
+    "errorTitle": "Không tải được danh sách bài thi",
+    "examCount": "{count, plural, other {# bài}}",
+    "exploreExams": "Khám phá bài thi",
+    "notes": {
+      "discontinuedCanStart": "Bài thi đã ngừng bán. Bạn vẫn dùng được các lượt còn lại.",
+      "discontinuedExhausted": "Bài thi đã ngừng bán, không mua thêm được.",
+      "discontinuedExhaustedWithHistory": "Bài thi đã ngừng bán, không mua thêm được. Kết quả và lịch sử vẫn xem được.",
+      "lastAttempt": "Bạn đang làm lượt cuối cùng của bài này.",
+      "pendingTopUp": "Đơn mua thêm lượt {orderCode} đang được kiểm tra. Bạn không cần thanh toán lại."
+    },
+    "pageTitle": "Bài thi của tôi",
     "roleAdmin": "Vai trò: Quản trị",
     "roleStudent": "Vai trò: Học viên",
-    "sectionTitle": "Bài thi của tôi"
+    "sectionTitle": "Bài đã mua",
+    "staleDescription": "Không tải lại được danh sách; đang hiện bản đã tải lúc {time}.",
+    "staleDescriptionNoTime": "Không tải lại được danh sách; đang hiện bản đã tải trước đó.",
+    "staleTitle": "Dữ liệu chưa được cập nhật.",
+    "status": {
+      "CAN_START": "Có thể bắt đầu",
+      "EXHAUSTED": "Hết lượt",
+      "IN_PROGRESS": "Đang làm"
+    },
+    "subtitle": "Chào {name}. Đây là các bài thi bạn đã mua và số lượt còn lại."
   },
   "landing": {
     "faq": {

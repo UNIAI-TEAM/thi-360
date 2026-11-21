@@ -29,8 +29,8 @@ const NAV_ITEMS = [
 
 type NavKey = (typeof NAV_ITEMS)[number]["key"];
 
-/** Mục trỏ tới trang chưa có thì ẩn ở đây: FS-3 bỏ "orders" khi làm `/account/orders`, FS-6 bỏ "history" khi làm `/history`. */
-const HIDDEN_NAV_KEYS: readonly NavKey[] = ["history", "orders"];
+/** Mục trỏ tới trang chưa có thì ẩn ở đây: FS-6 bỏ "history" khi làm `/history`. */
+const HIDDEN_NAV_KEYS: readonly NavKey[] = ["history"];
 
 const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) => !HIDDEN_NAV_KEYS.includes(item.key));
 

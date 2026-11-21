@@ -25,7 +25,7 @@ describe("web-student tiêu đề trang", () => {
 
     expect((await (await import("./login/page")).generateMetadata()).title).toBe("Đăng nhập");
     expect((await (await import("./change-password/page")).generateMetadata()).title).toBe("Đặt mật khẩu mới");
-    expect((await (await import("./home/page")).generateMetadata()).title).toBe("Trang học viên");
+    expect((await (await import("./home/page")).generateMetadata()).title).toBe("Bài thi của tôi");
     expect((await (await import("./forbidden/page")).generateMetadata()).title).toBe(
       "Bạn không có quyền vào trang này",
     );
@@ -37,6 +37,7 @@ describe("web-student tiêu đề trang", () => {
     try {
       const layout = await (await import("./layout")).generateMetadata();
       expect(layout.title).toMatchObject({ template: "%s · Thi 360" });
+      expect((await (await import("./home/page")).generateMetadata()).title).toBe("My exams");
       expect((await (await import("./not-found")).generateMetadata()).title).toBe(
         `${enMessages.notFound.title} · Thi 360`,
       );

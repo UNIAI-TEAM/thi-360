@@ -311,16 +311,59 @@
     "register": "Register"
   },
   "home": {
-    "emptyDescription": "Exam catalog, purchases, and test taking will arrive in upcoming waves. This release includes sign-in, password change, and sign-out.",
-    "emptyTitle": "No exams yet",
-    "errorDescription": "An error occurred while loading your account. Please try again.",
-    "errorTitle": "Unable to load page",
-    "greeting": "Hello {name}",
-    "intro": "You are signed in to the student portal.",
-    "pageTitle": "Student portal",
+    "actions": {
+      "buyMore": "Buy more attempts",
+      "continue": "Continue",
+      "history": "History",
+      "rebuy": "Buy again",
+      "start": "Start",
+      "viewResult": "View result"
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts do not buy or take exams in the student portal.",
+      "title": "Administrator account"
+    },
+    "card": {
+      "attemptsLeft": "Remaining attempts",
+      "minutesPerAttempt": "{value} minutes per attempt",
+      "purchased": "Purchased"
+    },
+    "checking": {
+      "message": "Payment received for order {orderCode}. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support via {contact} and include your order code.",
+      "messageNoContact": "Payment received for order {orderCode}. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support with your order code. {pending}",
+      "reload": "Reload",
+      "sectionTitle": "Checking",
+      "status": "Checking"
+    },
+    "emptyDescription": "Choose an exam from the catalog to start practicing.",
+    "emptyTitle": "You have no exams yet",
+    "errorDescription": "Check your internet connection and try again.",
+    "errorLoadAccountDescription": "An error occurred while loading your account. Please try again.",
+    "errorLoadAccountTitle": "Unable to load page",
+    "errorTitle": "Unable to load exam list",
+    "examCount": "{count, plural, one {# exam} other {# exams}}",
+    "exploreExams": "Explore exams",
+    "notes": {
+      "discontinuedCanStart": "This exam is no longer on sale. You can still use your remaining attempts.",
+      "discontinuedExhausted": "This exam is no longer on sale and cannot be bought again.",
+      "discontinuedExhaustedWithHistory": "This exam is no longer on sale and cannot be bought again. Results and history are still available.",
+      "lastAttempt": "You are taking your last attempt of this exam.",
+      "pendingTopUp": "Your top-up order {orderCode} is being checked. You do not need to pay again."
+    },
+    "pageTitle": "My exams",
     "roleAdmin": "Role: Admin",
     "roleStudent": "Role: Student",
-    "sectionTitle": "My exams"
+    "sectionTitle": "Purchased exams",
+    "staleDescription": "Could not refresh the list; showing the version loaded at {time}.",
+    "staleDescriptionNoTime": "Could not refresh the list; showing the previously loaded version.",
+    "staleTitle": "Data may be out of date.",
+    "status": {
+      "CAN_START": "Ready to start",
+      "EXHAUSTED": "No attempts left",
+      "IN_PROGRESS": "In progress"
+    },
+    "subtitle": "Hello {name}. Here are the exams you have bought and your remaining attempts."
   },
   "landing": {
     "faq": {
