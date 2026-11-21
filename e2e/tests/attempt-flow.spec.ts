@@ -119,7 +119,7 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await page.getByRole("button", { name: "Xác nhận chọn phần 3" }).click();
 
     await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toHaveCount(0);
-    await expect(page.locator("main fieldset")).toBeVisible({ timeout: 45_000 });
+    await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole("button", { name: "Hoàn thành phần" })).toHaveCount(0);
 
     await answerCurrentUnit(page);
@@ -161,15 +161,15 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
       await expect(page.locator('nav[aria-label="Các phần của bài thi"]')).toContainText("Đã hoàn thành", {
         timeout: 20_000,
       });
-      await expect(page.locator("main fieldset")).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
 
       const state2 = await getAttemptStateApi(page.request, attemptId);
       const activeDeadlineIso = resolveActiveDeadlineIso(state2);
       expect(activeDeadlineIso).toBeTruthy();
-      const clockNow = Date.parse(await getTestClockNow(page.request));
+      const clockNow = Date.parse(await getTestClockNow());
       const deadlineMs = Date.parse(activeDeadlineIso!);
       const stepSeconds = Math.max(60, Math.ceil((deadlineMs - clockNow) / 1000) + 60);
-      await advanceTestClock(page.request, stepSeconds);
+      await advanceTestClock(stepSeconds);
 
       await page.reload();
       await expect(page.getByRole("heading", { name: "Đã hết giờ làm bài" })).toBeVisible({ timeout: 20_000 });
@@ -180,7 +180,7 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
       await viewResultLink.click();
       await expect(page).toHaveURL(/\/attempts\/[0-9a-f-]+\/result/i);
     } finally {
-      await resetTestClock(page.request);
+      await resetTestClock();
     }
   });
 
@@ -227,15 +227,21 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await expect(tabs).toHaveCount(3);
 
     await tabs.nth(2).click();
-    const p3Input = page.locator('main fieldset input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"])').first();
+    const p3Input = page
+      .locator('main fieldset[data-attempt-question-fieldset] input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"])')
+      .first();
     await expect(p3Input).toHaveValue("12.5");
 
     await tabs.nth(1).click();
-    const p2Checked = page.locator('main fieldset input[type="radio"]:checked, main fieldset [role="radio"][aria-checked="true"]');
+    const p2Checked = page.locator(
+      'main fieldset[data-attempt-question-fieldset] input[type="radio"]:checked, main fieldset[data-attempt-question-fieldset] [role="radio"][aria-checked="true"]',
+    );
     expect(await p2Checked.count()).toBeGreaterThan(0);
 
     await tabs.nth(0).click();
-    const p1Checked = page.locator('main fieldset input[type="radio"]:checked, main fieldset [role="radio"][aria-checked="true"]');
+    const p1Checked = page.locator(
+      'main fieldset[data-attempt-question-fieldset] input[type="radio"]:checked, main fieldset[data-attempt-question-fieldset] [role="radio"][aria-checked="true"]',
+    );
     expect(await p1Checked.count()).toBeGreaterThan(0);
 
     await page.getByRole("button", { name: "Nộp bài" }).click();

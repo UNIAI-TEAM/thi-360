@@ -60,7 +60,7 @@ test.describe("Hiệu năng soạn tự luận & tách gói lazy chunk (AC-26, A
 
       await measurePage1.goto(`${WEB_URL}/attempts/${encodeURIComponent(mathAttemptId)}`);
       await expect(measurePage1.getByRole("button", { name: "Nộp bài" })).toBeVisible({ timeout: 25_000 });
-      await expect(measurePage1.locator("main fieldset")).toBeVisible();
+      await expect(measurePage1.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible();
 
       expect(nonEssayChunks.length).toBeGreaterThan(0);
       for (const chunk of nonEssayChunks) {
@@ -94,7 +94,7 @@ test.describe("Hiệu năng soạn tự luận & tách gói lazy chunk (AC-26, A
       });
 
       await measurePage2.goto(`${WEB_URL}/attempts/${encodeURIComponent(bcaAttemptId)}`);
-      await expect(measurePage2.locator('main fieldset [contenteditable="true"]').first()).toBeVisible({
+      await expect(measurePage2.locator('main fieldset[data-attempt-question-fieldset] [contenteditable="true"]').first()).toBeVisible({
         timeout: 30_000,
       });
 
@@ -121,12 +121,12 @@ test.describe("Hiệu năng soạn tự luận & tách gói lazy chunk (AC-26, A
     const { entitlementId } = await purchaseExamViaUi(page, "DS-BCA-FULL-MINI");
     await startAttemptFromPrepare(page, entitlementId, { preChoiceCode: "CA1" });
 
-    const editor = page.locator('main fieldset [contenteditable="true"]').first();
+    const editor = page.locator('main fieldset[data-attempt-question-fieldset] [contenteditable="true"]').first();
     await expect(editor).toBeVisible({ timeout: 30_000 });
     await editor.click();
 
     await page.evaluate(() => {
-      const target = document.querySelector('main fieldset [contenteditable="true"]');
+      const target = document.querySelector('main fieldset[data-attempt-question-fieldset] [contenteditable="true"]');
       if (!target) {
         throw new Error("Không tìm thấy trình soạn tự luận");
       }

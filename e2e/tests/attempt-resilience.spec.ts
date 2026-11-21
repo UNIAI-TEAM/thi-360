@@ -158,10 +158,10 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     );
     await navButtons.nth(2).click();
     const checkedBeforeSync = page2.locator(
-      'main fieldset input[type="radio"]:checked, main fieldset [role="radio"][aria-checked="true"]',
+      'main fieldset[data-attempt-question-fieldset] input[type="radio"]:checked, main fieldset[data-attempt-question-fieldset] [role="radio"][aria-checked="true"]',
     );
     const textBeforeSync = page2.locator(
-      'main fieldset input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"])',
+      'main fieldset[data-attempt-question-fieldset] input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"])',
     );
     const restoredViaRadio = (await checkedBeforeSync.count()) > 0;
     const restoredViaInput =
@@ -308,13 +308,15 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     const readonlyNotice = page2
       .locator('[role="status"]')
       .filter({ hasText: "Tab này chỉ để xem. Đóng tab kia thì tab này tự động làm bài tiếp được." });
+    const tab2Fieldset = page2.locator("main fieldset[data-attempt-question-fieldset]");
     await expect(readonlyNotice).toBeVisible({ timeout: 20_000 });
-    await expect(page2.locator("main fieldset[disabled]")).toBeVisible();
+    await expect(tab2Fieldset).toBeVisible();
+    await expect(tab2Fieldset).toBeDisabled();
 
     await page.close({ runBeforeUnload: true });
 
     await expect(readonlyNotice).toBeHidden({ timeout: 15_000 });
-    await expect(page2.locator("main fieldset")).not.toHaveAttribute("disabled", "", { timeout: 15_000 });
+    await expect(tab2Fieldset).toBeEnabled({ timeout: 15_000 });
 
     await page2.getByRole("button", { name: "Câu sau" }).click();
     await answerCurrentUnit(page2);
@@ -329,7 +331,24 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     await context.addCookies(cookies);
 
     const { entitlementId } = await purchaseExamViaUi(page, "DS-HSA-PART-MATH-MINI");
+    const sessionClaimedPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/v1/me/attempts/") &&
+        res.url().endsWith("/session") &&
+        res.request().method() === "POST" &&
+        res.status() === 200,
+      { timeout: 30_000 },
+    );
     const attemptId = await startAttemptFromPrepare(page, entitlementId);
+    await sessionClaimedPromise;
+    await page.waitForFunction(
+      (id) =>
+        Object.entries(window.localStorage).some(
+          ([key, value]) => key.startsWith("thi360:attempt-session:") && key.endsWith(`:${id}`) && Boolean(value),
+        ),
+      attemptId,
+      { timeout: 10_000 },
+    );
     await waitForSavedStatus(page);
 
     const cleanPrevented = await page.evaluate(() => {
@@ -398,7 +417,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     const attemptB = await startAttemptFromPrepare(page, entB);
     await page.route(`**/api/v1/me/attempts/${attemptB}/answers`, (route) => route.abort("failed"));
     const radiosCheckedInitial = page.locator(
-      'main fieldset input[type="radio"]:checked, main fieldset [role="radio"][aria-checked="true"]',
+      'main fieldset[data-attempt-question-fieldset] input[type="radio"]:checked, main fieldset[data-attempt-question-fieldset] [role="radio"][aria-checked="true"]',
     );
     await expect(radiosCheckedInitial).toHaveCount(0);
 
@@ -454,7 +473,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     await waitForSavedStatus(page);
 
     const checkedRestored = page.locator(
-      'main fieldset input[type="radio"]:checked, main fieldset [role="radio"][aria-checked="true"]',
+      'main fieldset[data-attempt-question-fieldset] input[type="radio"]:checked, main fieldset[data-attempt-question-fieldset] [role="radio"][aria-checked="true"]',
     );
     expect(await checkedRestored.count()).toBeGreaterThan(0);
 

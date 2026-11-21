@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { expect, type APIRequestContext, type Browser, type Locator, type Page } from "@playwright/test";
+import { expect, request as playwrightRequest, type APIRequestContext, type Browser, type Locator, type Page } from "@playwright/test";
 import { ADMIN_URL, loginAdmin, RUN_ID } from "./editor-qa";
 import { WEB_URL } from "./mail";
 import { createPlatformApiContext } from "./platform";
@@ -93,27 +93,55 @@ export async function ensureDsReady(browser: Browser): Promise<void> {
   }
 }
 
-export async function getTestClockNow(request: APIRequestContext): Promise<string> {
-  const response = await request.get(`${API_URL}/api/v1/test/clock`);
-  expect(response.status(), `GET /api/v1/test/clock: ${await response.text()}`).toBe(200);
-  const body = (await response.json()) as { serverNow: string };
-  return body.serverNow;
+export async function getTestClockNow(): Promise<string>;
+export async function getTestClockNow(request: APIRequestContext): Promise<string>;
+export async function getTestClockNow(request?: APIRequestContext): Promise<string> {
+  void request;
+  const api = await playwrightRequest.newContext({ baseURL: API_URL });
+  try {
+    const response = await api.get("/api/v1/test/clock");
+    expect(response.status(), `GET /api/v1/test/clock: ${await response.text()}`).toBe(200);
+    const body = (await response.json()) as { serverNow: string };
+    return body.serverNow;
+  } finally {
+    await api.dispose();
+  }
 }
 
-export async function advanceTestClock(request: APIRequestContext, advanceSeconds: number): Promise<string> {
-  const response = await request.post(`${API_URL}/api/v1/test/clock`, {
-    data: { advanceSeconds },
-  });
-  expect(response.status(), `POST /api/v1/test/clock advance: ${await response.text()}`).toBe(200);
-  const body = (await response.json()) as { serverNow: string };
-  return body.serverNow;
+export async function advanceTestClock(advanceSeconds: number): Promise<string>;
+export async function advanceTestClock(request: APIRequestContext, advanceSeconds: number): Promise<string>;
+export async function advanceTestClock(
+  requestOrAdvanceSeconds: APIRequestContext | number,
+  maybeAdvanceSeconds?: number,
+): Promise<string> {
+  const advanceSeconds =
+    typeof requestOrAdvanceSeconds === "number" ? requestOrAdvanceSeconds : (maybeAdvanceSeconds ?? 0);
+  const api = await playwrightRequest.newContext({ baseURL: API_URL });
+  try {
+    const response = await api.post("/api/v1/test/clock", {
+      data: { advanceSeconds },
+    });
+    expect(response.status(), `POST /api/v1/test/clock advance: ${await response.text()}`).toBe(200);
+    const body = (await response.json()) as { serverNow: string };
+    return body.serverNow;
+  } finally {
+    await api.dispose();
+  }
 }
 
-export async function resetTestClock(request: APIRequestContext): Promise<void> {
-  const response = await request.post(`${API_URL}/api/v1/test/clock`, {
-    data: { reset: true },
-  });
-  expect(response.status(), `POST /api/v1/test/clock reset: ${await response.text()}`).toBe(200);
+export async function resetTestClock(): Promise<void>;
+export async function resetTestClock(request: APIRequestContext): Promise<void>;
+export async function resetTestClock(request?: APIRequestContext): Promise<void> {
+  void request;
+  const api = await playwrightRequest.newContext({ baseURL: API_URL });
+  try {
+    const response = await api.post("/api/v1/test/clock", {
+      data: { reset: true },
+    });
+    expect(response.status(), `POST /api/v1/test/clock reset: ${await response.text()}`).toBe(200);
+  } finally {
+    await api.dispose();
+  }
 }
 
 export async function getMyExams(page: Page): Promise<MyExamItem[]> {
@@ -161,7 +189,8 @@ export async function publishThptqgMath3PartExam(
   label: string,
 ): Promise<{ id: string; code: string; name: string }> {
   const suffix = crypto.randomUUID().slice(0, 6).toUpperCase();
-  const code = `AC33-TOAN-${RUN_ID}-${label}-${suffix}`.toUpperCase();
+  const shortLabel = label.replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase() || "T";
+  const code = `AC33-${RUN_ID.slice(-6)}-${shortLabel}-${suffix}`.toUpperCase().slice(0, 30);
   const name = `Đề Toán THPTQG 3 phần (${label}-${suffix})`;
   const { api, xsrf } = await createPlatformApiContext();
 
@@ -363,7 +392,7 @@ async function waitForEssayEditorIfPresent(fieldset: Locator): Promise<void> {
 }
 
 export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<number> {
-  const fieldset = page.locator("main fieldset").first();
+  const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
   await expect(fieldset).toBeVisible({ timeout: 15_000 });
   await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 15_000 });
   await waitForEssayEditorIfPresent(fieldset);

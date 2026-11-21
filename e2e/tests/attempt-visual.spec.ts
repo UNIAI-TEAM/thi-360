@@ -179,7 +179,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
 
           await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(playerAttemptId)}`);
           await ensureActivePlayerSession(page, cell.lang);
-          await expect(page.locator("main fieldset")).toBeVisible({ timeout: 20_000 });
+          await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
           await expectMatrixClean(page, "player", cell);
 
           await page.getByRole("button", { name: cell.lang === "en" ? "Finish section" : "Hoàn thành phần" }).click();
@@ -192,7 +192,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
 
           await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(submitAttemptId)}`);
           await ensureActivePlayerSession(page, cell.lang);
-          await expect(page.locator("main fieldset")).toBeVisible({ timeout: 20_000 });
+          await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
           await page.getByRole("button", { name: cell.lang === "en" ? "Submit exam" : "Nộp bài" }).click();
           await expect(page.getByRole("dialog")).toBeVisible();
           await expectMatrixClean(page, "submit-confirm-dialog", cell);
