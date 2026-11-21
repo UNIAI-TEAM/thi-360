@@ -7,5 +7,5 @@ public record BundleBenefitsView(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean aiExplanation,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean strengthWeakness,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean practice,
-        @Schema(nullable = true) String note) {
+        @Schema(types = {"string", "null"}) String note) {
 }

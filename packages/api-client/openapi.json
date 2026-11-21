@@ -285,7 +285,7 @@
           },
           "bundleId" : {
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "buyerFullName" : {
             "type" : "string"
@@ -2097,7 +2097,7 @@
             "type" : "boolean"
           },
           "note" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "practice" : {
             "type" : "boolean"
@@ -2120,7 +2120,11 @@
             "type" : "string"
           },
           "durationMinutes" : {
-            "$ref" : "#/components/schemas/IntRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "examId" : {
             "format" : "uuid",
@@ -2128,33 +2132,45 @@
           },
           "listPriceVnd" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "maxPoints" : {
-            "$ref" : "#/components/schemas/DecimalRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DecimalRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "name" : {
             "type" : "string"
           },
           "partCode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "questionCount" : {
-            "$ref" : "#/components/schemas/IntRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "scope" : {
             "description" : "PART hoặc SUBJECT",
             "type" : "string"
           },
           "subjectCode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "subjectItemId" : {
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "subjectName" : {
-            "$ref" : "#/components/schemas/LocalizedName"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ]
           },
           "versionNo" : {
             "format" : "int32",
@@ -2182,34 +2198,50 @@
             "type" : "string"
           },
           "durationMinutes" : {
-            "$ref" : "#/components/schemas/IntRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "examId" : {
             "format" : "uuid",
             "type" : "string"
           },
           "maxPoints" : {
-            "$ref" : "#/components/schemas/DecimalRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DecimalRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "name" : {
             "type" : "string"
           },
           "partCode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "questionCount" : {
-            "$ref" : "#/components/schemas/IntRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "resultView" : {
             "description" : "SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "scope" : {
             "description" : "PART hoặc SUBJECT",
             "type" : "string"
           },
           "subjectName" : {
-            "$ref" : "#/components/schemas/LocalizedName"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ]
           },
           "versionNo" : {
             "format" : "int32",
@@ -2224,7 +2256,7 @@
         "properties" : {
           "attemptsPerExam" : {
             "format" : "int32",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "benefits" : {
             "$ref" : "#/components/schemas/BundleBenefitsView"
@@ -2238,21 +2270,21 @@
           },
           "createdBy" : {
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "createdByUsername" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "description" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "discontinuedAt" : {
             "format" : "date-time",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "discontinuedBy" : {
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "examKindCode" : {
             "type" : "string"
@@ -2282,7 +2314,7 @@
           },
           "listPriceVnd" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "name" : {
             "type" : "string"
@@ -2296,19 +2328,19 @@
             "type" : "integer"
           },
           "saleState" : {
-            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE" ],
-            "type" : "string"
+            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE", null ],
+            "type" : [ "string", "null" ]
           },
           "servingVersion" : {
             "format" : "int32",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "status" : {
             "enum" : [ "DRAFT", "PUBLISHED", "DISCONTINUED" ],
             "type" : "string"
           },
           "summary" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "updatedAt" : {
             "format" : "date-time",
@@ -2316,10 +2348,10 @@
           },
           "updatedBy" : {
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "updatedByUsername" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           }
         },
         "required" : [ "benefits", "code", "createdAt", "examKindCode", "examKindItemId", "examKindNameEn", "examKindNameVi", "hasUnpublishedChanges", "id", "items", "name", "resultView", "revision", "status", "updatedAt" ],
@@ -2329,54 +2361,70 @@
         "description" : "Thông tin một bài thi thành phần trong chi tiết bộ đề quản trị",
         "properties" : {
           "buildMode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "code" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "durationMinutes" : {
-            "$ref" : "#/components/schemas/IntRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "examId" : {
             "format" : "uuid",
             "type" : "string"
           },
           "maxPoints" : {
-            "$ref" : "#/components/schemas/DecimalRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DecimalRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "name" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "partCode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "position" : {
             "format" : "int32",
             "type" : "integer"
           },
           "questionCount" : {
-            "$ref" : "#/components/schemas/IntRange"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
           },
           "saleState" : {
             "description" : "ON_SALE, DISCONTINUED hoặc UNAVAILABLE",
             "type" : "string"
           },
           "scope" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "subjectCode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "subjectItemId" : {
             "format" : "uuid",
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "subjectName" : {
-            "$ref" : "#/components/schemas/LocalizedName"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ]
           },
           "versionNo" : {
             "format" : "int32",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           }
         },
         "required" : [ "examId", "position", "saleState" ],
@@ -2398,7 +2446,7 @@
         "properties" : {
           "attemptsPerExam" : {
             "format" : "int32",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "code" : {
             "type" : "string"
@@ -2429,7 +2477,7 @@
           },
           "listPriceVnd" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "name" : {
             "type" : "string"
@@ -2439,19 +2487,19 @@
             "type" : "integer"
           },
           "saleState" : {
-            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE" ],
-            "type" : "string"
+            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE", null ],
+            "type" : [ "string", "null" ]
           },
           "servingVersion" : {
             "format" : "int32",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           },
           "status" : {
             "enum" : [ "DRAFT", "PUBLISHED", "DISCONTINUED" ],
             "type" : "string"
           },
           "summary" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "updatedAt" : {
             "format" : "date-time",
@@ -17220,7 +17268,8 @@
                 "$ref" : "#/components/schemas/BundleRevisionRequest"
               }
             }
-          }
+          },
+          "required" : true
         },
         "responses" : {
           "200" : {
@@ -17377,7 +17426,8 @@
                 "$ref" : "#/components/schemas/BundleRevisionRequest"
               }
             }
-          }
+          },
+          "required" : true
         },
         "responses" : {
           "200" : {

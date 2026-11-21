@@ -3148,7 +3148,7 @@ export interface components {
             amountDueVnd: number;
             attentionTypes: ("LATE_SUCCESS_PENDING" | "PAID_UNFULFILLED" | "PAYMENT_UNKNOWN_OVER_24H" | "DUPLICATE_UNREFUNDED" | "NEEDS_REVIEW" | "REFUND_UNKNOWN")[];
             /** Format: uuid */
-            bundleId?: string;
+            bundleId?: string | null;
             buyerFullName: string;
             /** Format: uuid */
             buyerUserId: string;
@@ -4023,7 +4023,7 @@ export interface components {
         /** @description Quyền lợi áp dụng cho từng bài thi trong bộ đề */
         BundleBenefitsView: {
             aiExplanation: boolean;
-            note?: string;
+            note?: string | null;
             practice: boolean;
             strengthWeakness: boolean;
         };
@@ -4032,21 +4032,21 @@ export interface components {
             /** @description STANDARD hoặc REVIEW */
             buildMode: string;
             code: string;
-            durationMinutes?: components["schemas"]["IntRange"];
+            durationMinutes?: components["schemas"]["IntRange"] | null;
             /** Format: uuid */
             examId: string;
             /** Format: int64 */
-            listPriceVnd?: number;
-            maxPoints?: components["schemas"]["DecimalRange"];
+            listPriceVnd?: number | null;
+            maxPoints?: components["schemas"]["DecimalRange"] | null;
             name: string;
-            partCode?: string;
-            questionCount?: components["schemas"]["IntRange"];
+            partCode?: string | null;
+            questionCount?: components["schemas"]["IntRange"] | null;
             /** @description PART hoặc SUBJECT */
             scope: string;
-            subjectCode?: string;
+            subjectCode?: string | null;
             /** Format: uuid */
-            subjectItemId?: string;
-            subjectName?: components["schemas"]["LocalizedName"];
+            subjectItemId?: string | null;
+            subjectName?: components["schemas"]["LocalizedName"] | null;
             /** Format: int32 */
             versionNo: number;
         };
@@ -4058,37 +4058,37 @@ export interface components {
             /** @description STANDARD hoặc REVIEW */
             buildMode: string;
             code: string;
-            durationMinutes?: components["schemas"]["IntRange"];
+            durationMinutes?: components["schemas"]["IntRange"] | null;
             /** Format: uuid */
             examId: string;
-            maxPoints?: components["schemas"]["DecimalRange"];
+            maxPoints?: components["schemas"]["DecimalRange"] | null;
             name: string;
-            partCode?: string;
-            questionCount?: components["schemas"]["IntRange"];
+            partCode?: string | null;
+            questionCount?: components["schemas"]["IntRange"] | null;
             /** @description SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION */
-            resultView?: string;
+            resultView?: string | null;
             /** @description PART hoặc SUBJECT */
             scope: string;
-            subjectName?: components["schemas"]["LocalizedName"];
+            subjectName?: components["schemas"]["LocalizedName"] | null;
             /** Format: int32 */
             versionNo?: number;
         };
         /** @description Chi tiết bộ đề quản trị (TM 16.4) */
         BundleDetailResponse: {
             /** Format: int32 */
-            attemptsPerExam?: number;
+            attemptsPerExam?: number | null;
             benefits: components["schemas"]["BundleBenefitsView"];
             code: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: uuid */
-            createdBy?: string;
-            createdByUsername?: string;
-            description?: string;
+            createdBy?: string | null;
+            createdByUsername?: string | null;
+            description?: string | null;
             /** Format: date-time */
-            discontinuedAt?: string;
+            discontinuedAt?: string | null;
             /** Format: uuid */
-            discontinuedBy?: string;
+            discontinuedBy?: string | null;
             examKindCode: string;
             /** Format: uuid */
             examKindItemId: string;
@@ -4099,47 +4099,47 @@ export interface components {
             id: string;
             items: components["schemas"]["BundleItemView"][];
             /** Format: int64 */
-            listPriceVnd?: number;
+            listPriceVnd?: number | null;
             name: string;
             /** @enum {string} */
             resultView: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
             /** Format: int64 */
             revision: number;
-            /** @enum {string} */
-            saleState?: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE";
+            /** @enum {string|null} */
+            saleState?: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE" | null;
             /** Format: int32 */
-            servingVersion?: number;
+            servingVersion?: number | null;
             /** @enum {string} */
             status: "DRAFT" | "PUBLISHED" | "DISCONTINUED";
-            summary?: string;
+            summary?: string | null;
             /** Format: date-time */
             updatedAt: string;
             /** Format: uuid */
-            updatedBy?: string;
-            updatedByUsername?: string;
+            updatedBy?: string | null;
+            updatedByUsername?: string | null;
         };
         /** @description Thông tin một bài thi thành phần trong chi tiết bộ đề quản trị */
         BundleItemView: {
-            buildMode?: string;
-            code?: string;
-            durationMinutes?: components["schemas"]["IntRange"];
+            buildMode?: string | null;
+            code?: string | null;
+            durationMinutes?: components["schemas"]["IntRange"] | null;
             /** Format: uuid */
             examId: string;
-            maxPoints?: components["schemas"]["DecimalRange"];
-            name?: string;
-            partCode?: string;
+            maxPoints?: components["schemas"]["DecimalRange"] | null;
+            name?: string | null;
+            partCode?: string | null;
             /** Format: int32 */
             position: number;
-            questionCount?: components["schemas"]["IntRange"];
+            questionCount?: components["schemas"]["IntRange"] | null;
             /** @description ON_SALE, DISCONTINUED hoặc UNAVAILABLE */
             saleState: string;
-            scope?: string;
-            subjectCode?: string;
+            scope?: string | null;
+            subjectCode?: string | null;
             /** Format: uuid */
-            subjectItemId?: string;
-            subjectName?: components["schemas"]["LocalizedName"];
+            subjectItemId?: string | null;
+            subjectName?: components["schemas"]["LocalizedName"] | null;
             /** Format: int32 */
-            versionNo?: number;
+            versionNo?: number | null;
         };
         /** @description Yêu cầu khóa lạc quan cho thao tác công bố hoặc ngừng bán bộ đề */
         BundleRevisionRequest: {
@@ -4149,7 +4149,7 @@ export interface components {
         /** @description Tóm tắt bộ đề trong danh sách quản trị (TM 16.4) */
         BundleSummaryResponse: {
             /** Format: int32 */
-            attemptsPerExam?: number;
+            attemptsPerExam?: number | null;
             code: string;
             examKindCode: string;
             /** Format: uuid */
@@ -4162,17 +4162,17 @@ export interface components {
             /** Format: int32 */
             itemCount: number;
             /** Format: int64 */
-            listPriceVnd?: number;
+            listPriceVnd?: number | null;
             name: string;
             /** Format: int64 */
             revision: number;
-            /** @enum {string} */
-            saleState?: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE";
+            /** @enum {string|null} */
+            saleState?: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE" | null;
             /** Format: int32 */
-            servingVersion?: number;
+            servingVersion?: number | null;
             /** @enum {string} */
             status: "DRAFT" | "PUBLISHED" | "DISCONTINUED";
-            summary?: string;
+            summary?: string | null;
             /** Format: date-time */
             updatedAt: string;
         };
@@ -12064,7 +12064,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["BundleRevisionRequest"];
             };
@@ -12198,7 +12198,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["BundleRevisionRequest"];
             };

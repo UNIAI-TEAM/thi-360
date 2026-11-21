@@ -12,14 +12,14 @@ public record BundleCandidateResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(description = "PART hoặc SUBJECT", requiredMode = Schema.RequiredMode.REQUIRED) String scope,
-        @Schema(nullable = true) String partCode,
-        @Schema(nullable = true) UUID subjectItemId,
-        @Schema(nullable = true) String subjectCode,
+        @Schema(types = {"string", "null"}) String partCode,
+        @Schema(types = {"string", "null"}) UUID subjectItemId,
+        @Schema(types = {"string", "null"}) String subjectCode,
         @Schema(nullable = true) LocalizedName subjectName,
         @Schema(description = "STANDARD hoặc REVIEW", requiredMode = Schema.RequiredMode.REQUIRED) String buildMode,
         @Schema(nullable = true) IntRange questionCount,
         @Schema(nullable = true) IntRange durationMinutes,
         @Schema(nullable = true) DecimalRange maxPoints,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int versionNo,
-        @Schema(nullable = true) Long listPriceVnd) {
+        @Schema(types = {"integer", "null"}) Long listPriceVnd) {
 }

@@ -20,7 +20,7 @@ public record AdminOrderSummary(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String buyerFullName,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ProductType productType,
         UUID examId,
-        @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED) UUID bundleId,
+        @Schema(types = {"string", "null"}, requiredMode = Schema.RequiredMode.NOT_REQUIRED) UUID bundleId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String productCode,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String productName,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long listPriceVnd,
