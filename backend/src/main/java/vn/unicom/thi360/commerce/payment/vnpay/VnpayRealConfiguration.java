@@ -5,7 +5,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({VnpaySigningProperties.class, VnpayClientProperties.class})
+@EnableConfigurationProperties({
+    VnpaySigningProperties.class,
+    VnpayClientProperties.class,
+    QueryDrProperties.class
+})
 public class VnpayRealConfiguration {
 
     @Bean
