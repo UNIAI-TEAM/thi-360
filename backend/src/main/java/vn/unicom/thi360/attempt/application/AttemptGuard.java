@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
@@ -30,6 +31,7 @@ public class AttemptGuard {
     private final AttemptPartRepository attemptPartRepository;
     private final OverdueAttemptCloser overdueAttemptCloser;
     private final AttemptSessionChecker attemptSessionChecker;
+    private final AttemptNavigationPolicy navigationPolicy;
     private final Clock clock;
 
     public AttemptGuard(
@@ -38,10 +40,28 @@ public class AttemptGuard {
             OverdueAttemptCloser overdueAttemptCloser,
             AttemptSessionChecker attemptSessionChecker,
             Clock clock) {
+        this(
+                attemptRepository,
+                attemptPartRepository,
+                overdueAttemptCloser,
+                attemptSessionChecker,
+                AttemptNavigationPolicy.defaultPolicy(),
+                clock);
+    }
+
+    @Autowired
+    public AttemptGuard(
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            OverdueAttemptCloser overdueAttemptCloser,
+            AttemptSessionChecker attemptSessionChecker,
+            AttemptNavigationPolicy navigationPolicy,
+            Clock clock) {
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.overdueAttemptCloser = Objects.requireNonNull(overdueAttemptCloser);
         this.attemptSessionChecker = Objects.requireNonNull(attemptSessionChecker);
+        this.navigationPolicy = Objects.requireNonNull(navigationPolicy, "navigationPolicy must not be null");
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -53,6 +73,14 @@ public class AttemptGuard {
         requireOwnership(attemptId, userId);
         overdueAttemptCloser.closeIfOverdue(attemptId, clock.instant());
         return loadOwnedAttempt(attemptId, userId);
+    }
+
+    /** Rejects manual part-finish requests when the attempt navigation mode forbids them (BS §4). */
+    public void requirePartFinishAllowed(Attempt attempt) {
+        Objects.requireNonNull(attempt, "attempt must not be null");
+        if (!navigationPolicy.allowsPartFinish(attempt.getNavigationMode())) {
+            throw new ConflictException("PART_FINISH_NOT_ALLOWED");
+        }
     }
 
     /**

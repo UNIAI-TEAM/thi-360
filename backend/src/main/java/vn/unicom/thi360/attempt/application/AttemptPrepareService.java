@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.attempt.api.AttemptPrepareResponse;
@@ -57,6 +58,7 @@ public class AttemptPrepareService {
     private final AttemptPathResolver pathResolver;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final AttemptNavigationPolicy navigationPolicy;
 
     public AttemptPrepareService(
             AttemptAccessGate accessGate,
@@ -68,6 +70,31 @@ public class AttemptPrepareService {
             AttemptPathResolver pathResolver,
             EntityManager entityManager,
             Clock clock) {
+        this(
+                accessGate,
+                entitlementPort,
+                publishedExamPort,
+                attemptRepository,
+                overdueAttemptCloser,
+                catalogLookup,
+                pathResolver,
+                entityManager,
+                clock,
+                AttemptNavigationPolicy.defaultPolicy());
+    }
+
+    @Autowired
+    public AttemptPrepareService(
+            AttemptAccessGate accessGate,
+            EntitlementPort entitlementPort,
+            PublishedExamPort publishedExamPort,
+            AttemptRepository attemptRepository,
+            OverdueAttemptCloser overdueAttemptCloser,
+            CatalogLookup catalogLookup,
+            AttemptPathResolver pathResolver,
+            EntityManager entityManager,
+            Clock clock,
+            AttemptNavigationPolicy navigationPolicy) {
         this.accessGate = accessGate;
         this.entitlementPort = entitlementPort;
         this.publishedExamPort = publishedExamPort;
@@ -77,6 +104,7 @@ public class AttemptPrepareService {
         this.pathResolver = pathResolver;
         this.entityManager = entityManager;
         this.clock = clock;
+        this.navigationPolicy = Objects.requireNonNull(navigationPolicy);
     }
 
     @Transactional
@@ -118,6 +146,14 @@ public class AttemptPrepareService {
                         .toList();
 
         AttemptTiming timing = AttemptTiming.valueOf(version.timing());
+        NavigationMode navigationMode =
+                open.map(Attempt::getNavigationMode)
+                        .orElseGet(
+                                () ->
+                                        navigationPolicy.resolve(
+                                                version.kindCode(),
+                                                timing,
+                                                structure.parts().size()));
         AllowedOptions allowedOptions =
                 resolveAllowedOptions(serving.servingPaths(), desc.optionCodes());
         List<String> answerFormats = deriveAnswerFormats(version, allowedOptions);
@@ -136,7 +172,7 @@ public class AttemptPrepareService {
                 version.instructions(),
                 timing,
                 structure.durationMinutes(),
-                NavigationMode.SEQUENTIAL,
+                navigationMode,
                 desc.attemptsLeft(),
                 serving.status(),
                 openView,
