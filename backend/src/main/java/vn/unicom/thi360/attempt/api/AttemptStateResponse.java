@@ -126,6 +126,17 @@ public record AttemptStateResponse(
     public record AttemptAttachmentView(
             UUID assetId, String fileName, String mime, String url) {}
 
+    @Schema(
+            name = "AttemptDisplaySegmentView",
+            description = "Phân đoạn hiển thị của phần thi đọc từ bản chụp phiên bản đã công bố (BS §17.3)")
+    public record AttemptDisplaySegmentView(
+            String code,
+            String name,
+            Integer fromPosition,
+            Integer toPosition,
+            Integer commandCount,
+            BigDecimal maxPoints) {}
+
     public record AttemptPartStateView(
             UUID partId,
             String partCode,
@@ -140,9 +151,45 @@ public record AttemptStateResponse(
             Instant closedAt,
             Map<String, Object> choice,
             Instant choiceDeadlineAt,
-            List<AttemptItemView> items) {
+            List<AttemptItemView> items,
+            @JsonInclude(JsonInclude.Include.NON_EMPTY)
+                    List<AttemptDisplaySegmentView> displaySegments) {
         public AttemptPartStateView {
             items = items == null ? List.of() : List.copyOf(items);
+            displaySegments = displaySegments == null ? List.of() : List.copyOf(displaySegments);
+        }
+
+        public AttemptPartStateView(
+                UUID partId,
+                String partCode,
+                String partName,
+                int ord,
+                PartState state,
+                Integer durationMinutes,
+                Integer questionCount,
+                BigDecimal maxPoints,
+                Instant startedAt,
+                Instant deadlineAt,
+                Instant closedAt,
+                Map<String, Object> choice,
+                Instant choiceDeadlineAt,
+                List<AttemptItemView> items) {
+            this(
+                    partId,
+                    partCode,
+                    partName,
+                    ord,
+                    state,
+                    durationMinutes,
+                    questionCount,
+                    maxPoints,
+                    startedAt,
+                    deadlineAt,
+                    closedAt,
+                    choice,
+                    choiceDeadlineAt,
+                    items,
+                    List.of());
         }
     }
 

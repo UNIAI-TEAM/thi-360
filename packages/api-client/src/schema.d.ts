@@ -3872,6 +3872,18 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** @description Phân đoạn hiển thị của phần thi đọc từ bản chụp phiên bản đã công bố (BS §17.3) */
+        AttemptDisplaySegmentView: {
+            code?: string;
+            /** Format: int32 */
+            commandCount?: number;
+            /** Format: int32 */
+            fromPosition?: number;
+            maxPoints?: number;
+            name?: string;
+            /** Format: int32 */
+            toPosition?: number;
+        };
         /** @description Một dòng trong lịch sử luyện thi của học viên (LT §11) */
         AttemptHistoryItem: {
             /** @enum {string} */
@@ -3946,6 +3958,7 @@ export interface components {
             closedAt?: string;
             /** Format: date-time */
             deadlineAt?: string;
+            displaySegments?: components["schemas"]["AttemptDisplaySegmentView"][];
             /** Format: int32 */
             durationMinutes?: number;
             items?: components["schemas"]["AttemptItemView"][];
