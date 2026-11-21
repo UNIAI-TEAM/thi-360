@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { loginAdmin } from "./helpers/editor-qa";
 import { createVerifiedAccount, WEB_URL, type SessionCookies } from "./helpers/mail";
 import { allExams, publishedExamSet, waitForPublishedExamSet } from "./helpers/published-exam-set";
 import {
@@ -30,11 +31,19 @@ let guestResultUrl = "";
 
 function pickSaleExamCode(): string {
   const discontinued = publishedExamSet().discontinuedExam;
-  return (allExams().find((exam) => exam.code !== discontinued) ?? allExams()[0]!).code;
+  return (allExams().find((exam) => exam.code !== discontinued) ?? allExams()[0]!).productCode;
 }
 
 test.beforeAll(async () => {
   browser = await launchMatrixBrowser();
+
+  const adminCtx = await browser.newContext();
+  try {
+    await loginAdmin(adminCtx, "vi");
+    await waitForPublishedExamSet(adminCtx.request, { timeoutMs: 240_000 });
+  } finally {
+    await adminCtx.close();
+  }
 
   const emptyUser = await createVerifiedAccount("vis.empty");
   emptyCookies = emptyUser.cookies;
@@ -43,44 +52,49 @@ test.beforeAll(async () => {
   richCookies = richUser.cookies;
 
   const setupCtx = await browser.newContext();
-  await waitForPublishedExamSet(setupCtx.request, { timeoutMs: 120_000 });
-  examCode = pickSaleExamCode();
-  await setupCtx.addCookies(richCookies);
+  try {
+    examCode = pickSaleExamCode();
+    await setupCtx.addCookies(richCookies);
 
-  const setupPage = await setupCtx.newPage();
+    const setupPage = await setupCtx.newPage();
 
-  // 1. Don thanh cong (FULFILLED -> cho /home populated, result success, guest result & order detail)
-  await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
-  await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
-  await setupPage.waitForURL(/\/mock-vnpay/);
-  await setupPage.locator('a[data-mock-action="success"]').click();
-  await setupPage.waitForURL(/\/checkout\/result/);
-  await expect(setupPage.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
-  guestResultUrl = setupPage.url();
-  const successDetailHref = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
-  fulfilledOrderCode = (successDetailHref ?? "").split("/").pop() ?? "";
+    // 1. Don thanh cong (FULFILLED -> cho /home populated, result success, guest result & order detail)
+    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
+    await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
+    await setupPage.waitForURL(/\/mock-vnpay/);
+    await setupPage.locator('a[data-mock-action="success"]').click();
+    await setupPage.waitForURL(/\/checkout\/result/);
+    await expect(setupPage.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
+    guestResultUrl = setupPage.url();
+    const successDetailHref = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
+    fulfilledOrderCode = (successDetailHref ?? "").split("/").pop() ?? "";
 
-  // 2. Don that bai (FAILED)
-  await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
-  await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
-  await setupPage.waitForURL(/\/mock-vnpay/);
-  await setupPage.locator('a[data-mock-action="failed"]').click();
-  await setupPage.waitForURL(/\/checkout\/result/);
-  await expect(setupPage.getByRole("heading", { level: 1, name: "Thanh toán chưa thành công" })).toBeVisible();
-  const failedDetailHref = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
-  failedOrderCode = (failedDetailHref ?? "").split("/").pop() ?? "";
+    // 2. Don that bai (FAILED)
+    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
+    await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
+    await setupPage.waitForURL(/\/mock-vnpay/);
+    await setupPage.locator('a[data-mock-action="failed"]').click();
+    await setupPage.waitForURL(/\/checkout\/result/);
+    await expect(setupPage.getByRole("heading", { level: 1, name: "Thanh toán chưa thành công" })).toBeVisible();
+    const failedDetailHref = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
+    failedOrderCode = (failedDetailHref ?? "").split("/").pop() ?? "";
 
-  // 3. Don cho / dang kiem tra (CHECKING)
-  await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
-  await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
-  await setupPage.waitForURL(/\/mock-vnpay/);
-  await setupPage.locator('a[data-mock-action="no_response"]').click();
-  await setupPage.waitForURL(/\/checkout\/result/);
-  await expect(setupPage.getByRole("heading", { level: 1, name: "Đang kiểm tra thanh toán" })).toBeVisible();
-  const chkLink = await setupPage.getByRole("link", { name: "Xem đơn của tôi" }).getAttribute("href");
-  checkingOrderCode = (chkLink ?? "").split("/").pop() ?? "";
+    // 3. Don cho / dang kiem tra (CHECKING)
+    await setupPage.goto(`${WEB_URL}/checkout/${encodeURIComponent(examCode)}`);
+    await setupPage.getByRole("button", { name: "Thanh toán qua VNPAY" }).click();
+    await setupPage.waitForURL(/\/mock-vnpay/);
+    await setupPage.locator('a[data-mock-action="no_response"]').click();
+    await setupPage.waitForURL(/\/checkout\/result/);
+    await expect(setupPage.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeVisible();
+    const chkLink = await setupPage.getByRole("link", { name: "Xem chi tiết đơn" }).getAttribute("href");
+    checkingOrderCode = (chkLink ?? "").split("/").pop() ?? "";
 
-  await setupCtx.close();
+    expect(fulfilledOrderCode).toMatch(/^DH/i);
+    expect(failedOrderCode).toMatch(/^DH/i);
+    expect(checkingOrderCode).toMatch(/^DH/i);
+  } finally {
+    await setupCtx.close();
+  }
 });
 
 test.afterAll(async () => {
@@ -131,7 +145,7 @@ for (const cell of matrixCells()) {
           ).toBeVisible();
           await expectMatrixClean(page, "my-exams-empty", cell);
 
-          await page.route("**/api/v1/me/my-exams", (route) =>
+          await page.route("**/api/v1/me/exams", (route) =>
             route.fulfill({
               status: 500,
               contentType: "application/json",
@@ -141,23 +155,27 @@ for (const cell of matrixCells()) {
           await page.reload();
           await expect(
             page.getByRole("heading", {
-              name: cell.lang === "vi" ? "Chưa tải được danh sách bài thi" : "Unable to load exam list",
+              name: cell.lang === "vi" ? "Không tải được danh sách bài thi" : "Unable to load exam list",
             }),
           ).toBeVisible();
           await expectMatrixClean(page, "my-exams-error", cell);
 
-          await page.unroute("**/api/v1/me/my-exams");
-          await page.route("**/api/v1/me/my-exams", (route) =>
+          await page.unroute("**/api/v1/me/exams");
+          await page.route("**/api/v1/me/exams", (route) =>
             route.fulfill({
               status: 200,
               contentType: "application/json",
               body: JSON.stringify({
-                cards: [],
-                checking: [
+                items: [
                   {
                     code: examCode,
                     name: "Đề thi thử HSA tổng hợp",
-                    examKind: { code: "HSA", nameVi: "Đánh giá năng lực HSA", nameEn: "HSA Aptitude Exam" },
+                    examKind: {
+                      id: "kind-hsa",
+                      code: "HSA",
+                      nameVi: "Đánh giá năng lực HSA",
+                      nameEn: "HSA Aptitude Exam",
+                    },
                     format: "FULL",
                     buildMode: "STANDARD",
                     saleState: "ON_SALE",
@@ -206,7 +224,7 @@ for (const cell of matrixCells()) {
           await expect(
             page.getByRole("heading", {
               level: 1,
-              name: cell.lang === "vi" ? "Đang kiểm tra thanh toán" : "Checking payment",
+              name: cell.lang === "vi" ? "Đang chờ xác nhận thanh toán" : "Awaiting payment confirmation",
             }),
           ).toBeVisible();
           await expectMatrixClean(page, "checkout-result-checking", cell);
