@@ -10044,16 +10044,111 @@ export interface components {
             partId?: string;
             subjectCodes?: string[];
         };
-        /** @description Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối) */
+        /** @description Một dòng lịch sử lượt thi của học viên */
+        StudentLearningAttempt: {
+            /**
+             * Format: uuid
+             * @description ID lượt thi
+             */
+            attemptId: string;
+            /**
+             * Format: int32
+             * @description Số thứ tự lượt thi
+             */
+            attemptNo?: number | null;
+            /**
+             * Format: uuid
+             * @description ID bài thi
+             */
+            examId: string;
+            /** @description Mã kỳ thi */
+            examKindCode: string;
+            /** @description Tên bài thi */
+            examName: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm kết thúc lượt thi
+             */
+            finishedAt?: string | null;
+            /** @description Thang điểm tối đa (chỉ có khi trạng thái là SCORED) */
+            maxScore?: number | null;
+            /** @description Phạm vi bài thi */
+            scope: string;
+            /** @description Điểm hiển thị (chỉ có khi trạng thái là SCORED) */
+            score?: number | null;
+            /**
+             * Format: date-time
+             * @description Thời điểm bắt đầu lượt thi
+             */
+            startedAt?: string | null;
+            /**
+             * @description Trạng thái lượt thi
+             * @enum {string}
+             */
+            status: "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR";
+        };
+        /** @description Một dòng quyền sử dụng bài thi của học viên */
+        StudentLearningEntitlement: {
+            /**
+             * Format: int32
+             * @description Số lượt còn lại
+             */
+            attemptsLeft: number;
+            /**
+             * Format: int32
+             * @description Số lượt đang giữ cho lượt thi mở
+             */
+            attemptsReserved: number;
+            /**
+             * Format: int32
+             * @description Số lượt đã thu hồi
+             */
+            attemptsRevoked: number;
+            /**
+             * Format: int32
+             * @description Tổng số lượt được cấp
+             */
+            attemptsTotal: number;
+            /**
+             * Format: int32
+             * @description Số lượt đã sử dụng
+             */
+            attemptsUsed: number;
+            /**
+             * Format: uuid
+             * @description ID quyền sử dụng
+             */
+            entitlementId: string;
+            /** @description Mã bài thi */
+            examCode?: string | null;
+            /**
+             * Format: uuid
+             * @description ID bài thi
+             */
+            examId: string;
+            /** @description Tên bài thi */
+            examName?: string | null;
+            /**
+             * @description Nguồn cấp quyền
+             * @enum {string}
+             */
+            source: "PURCHASE" | "CLASS";
+            /**
+             * @description Trạng thái quyền sử dụng
+             * @enum {string}
+             */
+            status: "ACTIVE" | "IN_USE" | "EXHAUSTED" | "REVOKED";
+        };
+        /** @description Dữ liệu hồ sơ học tập của học viên (quyền sử dụng và lịch sử lượt thi) */
         StudentLearningResponse: {
             /** @description Kết quả đánh giá năng lực */
             assessments: Record<string, never>[];
             /** @description Lịch sử lượt thi */
-            attempts: Record<string, never>[];
+            attempts: components["schemas"]["StudentLearningAttempt"][];
             /** @description Cho biết dữ liệu học tập đã sẵn sàng từ module thi hay chưa */
             dataAvailable: boolean;
             /** @description Quyền sử dụng và gói bài thi */
-            entitlements: Record<string, never>[];
+            entitlements: components["schemas"]["StudentLearningEntitlement"][];
             /** @description Lịch sử ôn luyện */
             practice: Record<string, never>[];
             /** @description Yêu cầu hỗ trợ */

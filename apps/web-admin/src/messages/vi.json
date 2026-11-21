@@ -2585,17 +2585,35 @@
       "title": "Lịch sử thay đổi"
     },
     "learning": {
+      "attemptNumber": "Lượt #{number}",
+      "attemptStatuses": {
+        "GRADING": "Đang chấm",
+        "GRADING_ERROR": "Lỗi chấm",
+        "IN_PROGRESS": "Đang làm",
+        "PENDING_REVIEW": "Chờ chấm",
+        "SCORED": "Đã chấm"
+      },
+      "attemptsTable": {
+        "ariaLabel": "Lịch sử lượt thi của học viên",
+        "columns": {
+          "attempt": "Lượt thi",
+          "exam": "Bài thi",
+          "score": "Điểm",
+          "startedAt": "Thời điểm bắt đầu",
+          "status": "Trạng thái"
+        }
+      },
       "blocks": {
         "assessments": {
           "description": "Kết quả đánh giá năng lực của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
           "title": "Đánh giá năng lực"
         },
         "attempts": {
-          "description": "Lịch sử lượt thi và bài làm của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
+          "description": "Học viên chưa có lượt thi nào.",
           "title": "Lịch sử lượt thi"
         },
         "entitlements": {
-          "description": "Quyền sử dụng và gói bài thi của học viên sẽ hiển thị tại đây khi module thi được kết nối.",
+          "description": "Học viên chưa có quyền sử dụng bài thi nào.",
           "title": "Quyền sử dụng & gói bài thi"
         },
         "practice": {
@@ -2608,6 +2626,24 @@
         }
       },
       "emptyTitle": "Chưa có dữ liệu",
+      "entitlementStatuses": {
+        "ACTIVE": "Còn lượt",
+        "EXHAUSTED": "Hết lượt",
+        "IN_USE": "Đang làm bài",
+        "REVOKED": "Đã thu hồi"
+      },
+      "entitlementsTable": {
+        "ariaLabel": "Quyền sử dụng bài thi của học viên",
+        "columns": {
+          "attemptsLeft": "Còn lại",
+          "attemptsTotal": "Đã cấp",
+          "attemptsUsed": "Đã dùng",
+          "exam": "Bài thi",
+          "status": "Trạng thái"
+        },
+        "reservedLabel": "Đang giữ",
+        "revokedLabel": "Đã thu hồi"
+      },
       "errorDescription": "Không tải được hồ sơ học tập. Hãy thử lại.",
       "errorTitle": "Không tải được hồ sơ học tập",
       "tabLabel": "Hồ sơ học tập"

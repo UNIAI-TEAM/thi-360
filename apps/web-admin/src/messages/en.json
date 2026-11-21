@@ -2585,17 +2585,35 @@
       "title": "Change history"
     },
     "learning": {
+      "attemptNumber": "Attempt #{number}",
+      "attemptStatuses": {
+        "GRADING": "Grading",
+        "GRADING_ERROR": "Grading error",
+        "IN_PROGRESS": "In progress",
+        "PENDING_REVIEW": "Awaiting grading",
+        "SCORED": "Scored"
+      },
+      "attemptsTable": {
+        "ariaLabel": "Student exam attempt history",
+        "columns": {
+          "attempt": "Attempt",
+          "exam": "Exam",
+          "score": "Score",
+          "startedAt": "Started at",
+          "status": "Status"
+        }
+      },
       "blocks": {
         "assessments": {
           "description": "Student competency assessment results will appear here once the exam module is connected.",
           "title": "Competency assessments"
         },
         "attempts": {
-          "description": "Student exam attempts and submissions will appear here once the exam module is connected.",
+          "description": "This student has no exam attempts yet.",
           "title": "Exam attempt history"
         },
         "entitlements": {
-          "description": "Student exam entitlements and packages will appear here once the exam module is connected.",
+          "description": "This student has no exam entitlements yet.",
           "title": "Entitlements & exam packages"
         },
         "practice": {
@@ -2608,6 +2626,24 @@
         }
       },
       "emptyTitle": "No data yet",
+      "entitlementStatuses": {
+        "ACTIVE": "Active",
+        "EXHAUSTED": "Exhausted",
+        "IN_USE": "In use",
+        "REVOKED": "Revoked"
+      },
+      "entitlementsTable": {
+        "ariaLabel": "Student exam entitlements",
+        "columns": {
+          "attemptsLeft": "Remaining",
+          "attemptsTotal": "Granted",
+          "attemptsUsed": "Used",
+          "exam": "Exam",
+          "status": "Status"
+        },
+        "reservedLabel": "Reserved",
+        "revokedLabel": "Revoked"
+      },
       "errorDescription": "Could not load learning profile. Please try again.",
       "errorTitle": "Could not load learning profile",
       "tabLabel": "Learning profile"

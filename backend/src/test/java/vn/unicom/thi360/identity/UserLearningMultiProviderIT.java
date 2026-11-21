@@ -1,10 +1,10 @@
 package vn.unicom.thi360.identity;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -18,8 +18,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
-import vn.unicom.thi360.identity.spi.StudentLearningProvider;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.AttemptItem;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.AttemptLearningStatus;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.EntitlementItem;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.EntitlementLearningSource;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.EntitlementLearningStatus;
 import vn.unicom.thi360.shared.ids.Ids;
 
 /**
@@ -37,7 +42,18 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
         StudentLearningProvider commerceLearningProvider() {
             return userId -> new StudentLearningProvider.StudentLearningData(
                     true,
-                    List.of(Map.of("entitlementId", "E-" + userId)),
+                    List.of(new EntitlementItem(
+                            deterministicId("E-", userId),
+                            deterministicId("EX-", userId),
+                            "EX-MULTI",
+                            "Multi Provider Exam",
+                            EntitlementLearningSource.PURCHASE,
+                            3,
+                            1,
+                            0,
+                            0,
+                            2,
+                            EntitlementLearningStatus.ACTIVE)),
                     List.of(),
                     List.of(),
                     List.of(),
@@ -51,7 +67,18 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
             return userId -> new StudentLearningProvider.StudentLearningData(
                     false,
                     List.of(),
-                    List.of(Map.of("attemptId", "A-" + userId)),
+                    List.of(new AttemptItem(
+                            deterministicId("A-", userId),
+                            deterministicId("EX-", userId),
+                            "Multi Provider Exam",
+                            "HSA",
+                            "FULL",
+                            1,
+                            AttemptLearningStatus.IN_PROGRESS,
+                            Instant.parse("2026-11-20T10:00:00Z"),
+                            null,
+                            null,
+                            null)),
                     List.of(),
                     List.of(),
                     List.of(Map.of("ticket", "S-attempt-" + userId)));
@@ -94,13 +121,19 @@ class UserLearningMultiProviderIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.dataAvailable").value(true))
                 .andExpect(jsonPath("$.entitlements").isArray())
                 .andExpect(jsonPath("$.entitlements.length()").value(1))
-                .andExpect(jsonPath("$.entitlements[0].entitlementId").value("E-" + userId))
+                .andExpect(jsonPath("$.entitlements[0].entitlementId").value(deterministicId("E-", userId).toString()))
+                .andExpect(jsonPath("$.entitlements[0].examCode").value("EX-MULTI"))
+                .andExpect(jsonPath("$.entitlements[0].status").value("ACTIVE"))
                 .andExpect(jsonPath("$.attempts.length()").value(1))
-                .andExpect(jsonPath("$.attempts[0].attemptId").value("A-" + userId))
+                .andExpect(jsonPath("$.attempts[0].attemptId").value(deterministicId("A-", userId).toString()))
+                .andExpect(jsonPath("$.attempts[0].status").value("IN_PROGRESS"))
                 // Both providers fill supportRequests: the response keeps both entries, in provider order.
                 .andExpect(jsonPath("$.supportRequests.length()").value(2))
                 .andExpect(jsonPath("$.supportRequests[0].ticket").value("S-commerce-" + userId))
                 .andExpect(jsonPath("$.supportRequests[1].ticket").value("S-attempt-" + userId));
+    }
 
+    private static UUID deterministicId(String prefix, UUID userId) {
+        return UUID.nameUUIDFromBytes((prefix + userId).getBytes(StandardCharsets.UTF_8));
     }
 }

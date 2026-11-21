@@ -14589,8 +14589,125 @@
         },
         "type" : "object"
       },
+      "StudentLearningAttempt" : {
+        "description" : "Một dòng lịch sử lượt thi của học viên",
+        "properties" : {
+          "attemptId" : {
+            "description" : "ID lượt thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptNo" : {
+            "description" : "Số thứ tự lượt thi",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "examId" : {
+            "description" : "ID bài thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "description" : "Mã kỳ thi",
+            "type" : "string"
+          },
+          "examName" : {
+            "description" : "Tên bài thi",
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "description" : "Thời điểm kết thúc lượt thi",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "maxScore" : {
+            "description" : "Thang điểm tối đa (chỉ có khi trạng thái là SCORED)",
+            "type" : [ "number", "null" ]
+          },
+          "scope" : {
+            "description" : "Phạm vi bài thi",
+            "type" : "string"
+          },
+          "score" : {
+            "description" : "Điểm hiển thị (chỉ có khi trạng thái là SCORED)",
+            "type" : [ "number", "null" ]
+          },
+          "startedAt" : {
+            "description" : "Thời điểm bắt đầu lượt thi",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "description" : "Trạng thái lượt thi",
+            "enum" : [ "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptId", "examId", "examKindCode", "examName", "scope", "status" ],
+        "type" : "object"
+      },
+      "StudentLearningEntitlement" : {
+        "description" : "Một dòng quyền sử dụng bài thi của học viên",
+        "properties" : {
+          "attemptsLeft" : {
+            "description" : "Số lượt còn lại",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsReserved" : {
+            "description" : "Số lượt đang giữ cho lượt thi mở",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsRevoked" : {
+            "description" : "Số lượt đã thu hồi",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsTotal" : {
+            "description" : "Tổng số lượt được cấp",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsUsed" : {
+            "description" : "Số lượt đã sử dụng",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "entitlementId" : {
+            "description" : "ID quyền sử dụng",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examCode" : {
+            "description" : "Mã bài thi",
+            "type" : [ "string", "null" ]
+          },
+          "examId" : {
+            "description" : "ID bài thi",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examName" : {
+            "description" : "Tên bài thi",
+            "type" : [ "string", "null" ]
+          },
+          "source" : {
+            "description" : "Nguồn cấp quyền",
+            "enum" : [ "PURCHASE", "CLASS" ],
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "Trạng thái quyền sử dụng",
+            "enum" : [ "ACTIVE", "IN_USE", "EXHAUSTED", "REVOKED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptsLeft", "attemptsReserved", "attemptsRevoked", "attemptsTotal", "attemptsUsed", "entitlementId", "examId", "source", "status" ],
+        "type" : "object"
+      },
       "StudentLearningResponse" : {
-        "description" : "Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối)",
+        "description" : "Dữ liệu hồ sơ học tập của học viên (quyền sử dụng và lịch sử lượt thi)",
         "properties" : {
           "assessments" : {
             "description" : "Kết quả đánh giá năng lực",
@@ -14602,7 +14719,7 @@
           "attempts" : {
             "description" : "Lịch sử lượt thi",
             "items" : {
-              "type" : "object"
+              "$ref" : "#/components/schemas/StudentLearningAttempt"
             },
             "type" : "array"
           },
@@ -14613,7 +14730,7 @@
           "entitlements" : {
             "description" : "Quyền sử dụng và gói bài thi",
             "items" : {
-              "type" : "object"
+              "$ref" : "#/components/schemas/StudentLearningEntitlement"
             },
             "type" : "array"
           },
