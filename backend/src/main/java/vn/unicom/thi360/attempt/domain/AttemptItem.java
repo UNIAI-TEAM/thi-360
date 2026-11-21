@@ -180,6 +180,21 @@ public class AttemptItem {
         this.flagged = flagged;
     }
 
+    public void recordGrading(BigDecimal earnedPoints, ItemOutcome outcome, Map<String, Object> gradingDetail) {
+        this.earnedPoints = earnedPoints;
+        this.outcome = Objects.requireNonNull(outcome, "outcome must not be null");
+        this.gradingDetail = gradingDetail;
+    }
+
+    /** Returns true when this essay item has already received a finalized manual score. */
+    public boolean isFinalizedManualEssay() {
+        return this.questionType == QuestionType.ESSAY
+                && this.outcome != null
+                && this.outcome != ItemOutcome.BLANK
+                && this.outcome != ItemOutcome.PENDING_REVIEW
+                && this.earnedPoints != null;
+    }
+
     public UUID getId() {
         return id;
     }
