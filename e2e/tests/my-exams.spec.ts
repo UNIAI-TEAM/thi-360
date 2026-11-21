@@ -74,6 +74,9 @@ test.describe("Bài thi của tôi & Đơn của tôi", () => {
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Hủy đơn" }).click();
 
+    await expect(dialog).toBeHidden();
+    await page.waitForTimeout(300);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
     await expect(page.getByText("Đã hủy").first()).toBeVisible();
 
     await page.getByRole("link", { name: "Xem chi tiết" }).first().click();
