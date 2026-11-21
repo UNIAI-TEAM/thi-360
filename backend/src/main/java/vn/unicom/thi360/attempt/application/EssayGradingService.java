@@ -499,14 +499,7 @@ public class EssayGradingService {
         active.finalizeGrade(effectiveCriteria, effectivePoints, effectiveComment, now);
         EssayGrade savedGrade = essayGradeRepository.saveAndFlush(active);
 
-        ItemOutcome itemOutcome;
-        if (effectivePoints.compareTo(item.getPointsMax()) == 0) {
-            itemOutcome = ItemOutcome.CORRECT;
-        } else if (effectivePoints.compareTo(BigDecimal.ZERO) == 0) {
-            itemOutcome = ItemOutcome.WRONG;
-        } else {
-            itemOutcome = ItemOutcome.PARTIAL;
-        }
+        ItemOutcome itemOutcome = resolveEssayOutcome(effectivePoints, item.getPointsMax());
 
         Map<String, Object> gradingDetail = buildFinalizedGradingDetail(
                 item, savedGrade.getId(), effectivePoints, effectiveComment, effectiveCriteria);
@@ -726,7 +719,17 @@ public class EssayGradingService {
         }
     }
 
-    private Map<String, Object> buildFinalizedGradingDetail(
+    static ItemOutcome resolveEssayOutcome(BigDecimal points, BigDecimal pointsMax) {
+        if (points.compareTo(pointsMax) == 0) {
+            return ItemOutcome.CORRECT;
+        }
+        if (points.compareTo(BigDecimal.ZERO) == 0) {
+            return ItemOutcome.WRONG;
+        }
+        return ItemOutcome.PARTIAL;
+    }
+
+    static Map<String, Object> buildFinalizedGradingDetail(
             AttemptItem item,
             UUID essayGradeId,
             BigDecimal points,

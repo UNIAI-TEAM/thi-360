@@ -29,7 +29,7 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
  * - {@link PreviewGoneException} -> 410 {@code PREVIEW_EXPIRED}
  * - Malformed polymorphic {@link AnswerValue} JSON -> 422 {@code INVALID_ANSWER_FORMAT} (AC-19)
  */
-@RestControllerAdvice(assignableTypes = {AdminGradingController.class})
+@RestControllerAdvice(assignableTypes = {AdminGradingController.class, AdminAttemptController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AdminAttemptExceptionAdvice {
 
