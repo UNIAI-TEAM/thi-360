@@ -5,7 +5,7 @@ import enMessages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { AttemptPlayer, type AttemptPlayerDeps } from "../attempt-player";
 import type { AttemptItemView, AttemptStateResponse } from "../mappers";
-import { type AttemptDisplaySegmentView, buildSegmentedQuestionUnits } from "./segment-units";
+import { type AttemptDisplaySegmentView, buildSegmentedQuestionUnits, groupNavItemsBySegment } from "./segment-units";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -351,5 +351,179 @@ describe("phân đoạn hiển thị và chùm cắt ngang ranh giới (AC-9, BS
     const navAside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
     expect(within(navAside).queryByText("Phần I")).not.toBeInTheDocument();
     expect(within(navAside).queryByText("Phần II")).not.toBeInTheDocument();
+  });
+
+  it("tính đúng offset 1-based cho Phần 2 của đề nhiều phần (displayNo 11..35, minDisplayNo <= maxSegTo)", async () => {
+    const part2Items: AttemptItemView[] = [];
+    for (let i = 11; i <= 35; i++) {
+      part2Items.push(makeMcqItem(`p2-q-${i}`, i, `Câu Phần 2 số ${i}`));
+    }
+
+    const units = buildSegmentedQuestionUnits(part2Items, "att-multi-1", VSAT_SEGMENTS);
+    expect(units).toHaveLength(25);
+    expect(units[0]!.segment?.code).toBe("I");
+    expect(units[0]!.positionOffset).toBe(10);
+    expect(units[8]!.segment?.code).toBe("I");
+    expect(units[9]!.segment?.code).toBe("II");
+    expect(units[9]!.isSegmentStart).toBe(true);
+    expect(units[15]!.segment?.code).toBe("III");
+    expect(units[20]!.segment?.code).toBe("IV");
+
+    const navItems = part2Items.map((item, idx) => ({
+      itemId: item.itemId!,
+      displayNo: item.displayNo!,
+      unitIndex: idx,
+      completion: "blank" as const,
+      flagged: false,
+      unsaved: false,
+      isCurrent: idx === 0,
+    }));
+    const groups = groupNavItemsBySegment(navItems, VSAT_SEGMENTS);
+    expect(groups).toHaveLength(4);
+    expect(groups.map((g) => g.segment?.code)).toEqual(["I", "II", "III", "IV"]);
+    expect(groups[0]!.items.map((i) => i.displayNo)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(groups[1]!.items.map((i) => i.displayNo)).toEqual([20, 21, 22, 23, 24, 25]);
+    expect(groups[2]!.items.map((i) => i.displayNo)).toEqual([26, 27, 28, 29, 30]);
+    expect(groups[3]!.items.map((i) => i.displayNo)).toEqual([31, 32, 33, 34, 35]);
+
+    const multiState: AttemptStateResponse = {
+      attemptId: "att-multi-1",
+      state: "IN_PROGRESS",
+      navigationMode: "FREE",
+      timing: "SHARED",
+      deadlineAt: "2026-11-22T03:00:00Z",
+      examName: "Đề nhiều phần",
+      serverNow: "2026-11-22T02:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "part-1",
+          partCode: "P1",
+          partName: "Phần mở đầu",
+          state: "CLOSED",
+          items: [makeMcqItem("p1-q-1", 1, "Câu Phần 1")],
+        },
+        {
+          ord: 2,
+          partId: "part-2",
+          partCode: "P2",
+          partName: "Phần thi chính",
+          state: "OPEN",
+          displaySegments: VSAT_SEGMENTS,
+          items: part2Items,
+        },
+      ],
+    };
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-multi-1"
+        userId="user-1"
+        deps={makeDeps({ loadAttemptStateFn: vi.fn(async () => multiState) })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu Phần 2 số 11")).toBeInTheDocument();
+    const segHeader = document.querySelector("[data-segment-header]") as HTMLElement;
+    expect(segHeader).toHaveAttribute("data-segment-code", "I");
+    expect(within(segHeader).getByText("Câu 11–19")).toBeInTheDocument();
+  });
+
+  it("gán role=group + aria-labelledby cho nhóm phân đoạn trong QuestionNav, ẩn nhóm rỗng khi lọc và render nhóm trong hộp thoại di động", async () => {
+    const user = userEvent.setup();
+    const state = makeVsatEnglish25State();
+    // Mark Q10 (Phần II) as flagged and mark all items in Phần IV as answered so both filters can be checked.
+    for (const item of state.parts![0]!.items!) {
+      if (item.itemId === "q-10") {
+        item.flagged = true;
+      }
+      if ((item.displayNo ?? 0) >= 21) {
+        item.answer = { type: "SINGLE_CHOICE", optionId: `${item.itemId}-a` };
+      }
+    }
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vsat-1"
+        userId="user-1"
+        deps={makeDeps({ loadAttemptStateFn: vi.fn(async () => state) })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu lẻ Phần I số 1")).toBeInTheDocument();
+    const navAside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+
+    for (const name of ["Phần I", "Phần II", "Phần III", "Phần IV"]) {
+      const group = within(navAside).getByRole("group", { name });
+      const labelledBy = group.getAttribute("aria-labelledby");
+      expect(labelledBy).toBeTruthy();
+      expect(document.getElementById(labelledBy!)).toHaveAttribute("data-exam-content");
+    }
+
+    // Flagged filter hides empty Phần I, Phần III, Phần IV groups.
+    await user.click(within(navAside).getByRole("button", { name: "Đánh dấu" }));
+    expect(within(navAside).queryByRole("group", { name: "Phần I" })).not.toBeInTheDocument();
+    expect(within(navAside).getByRole("group", { name: "Phần II" })).toBeInTheDocument();
+    expect(within(navAside).queryByRole("group", { name: "Phần III" })).not.toBeInTheDocument();
+    expect(within(navAside).queryByRole("group", { name: "Phần IV" })).not.toBeInTheDocument();
+
+    // Unanswered filter hides empty Phần IV (all answered 21..25) while keeping Phần I..III.
+    await user.click(within(navAside).getByRole("button", { name: "Chưa làm" }));
+    expect(within(navAside).getByRole("group", { name: "Phần I" })).toBeInTheDocument();
+    expect(within(navAside).getByRole("group", { name: "Phần II" })).toBeInTheDocument();
+    expect(within(navAside).getByRole("group", { name: "Phần III" })).toBeInTheDocument();
+    expect(within(navAside).queryByRole("group", { name: "Phần IV" })).not.toBeInTheDocument();
+
+    await user.click(within(navAside).getByRole("button", { name: "Tất cả" }));
+
+    // Mobile dialog renders grouped segments with role="group" + aria-labelledby.
+    await user.click(screen.getByRole("button", { name: /^Danh sách câu / }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("group", { name: "Phần I" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("group", { name: "Phần II" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("group", { name: "Phần III" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("group", { name: "Phần IV" })).toBeInTheDocument();
+  });
+
+  it("khôi phục lastPosition trực tiếp vào lát cắt Phần II (Q10–15) và hỗ trợ parentItemId của chùm", async () => {
+    const childPosState = makeVsatEnglish25State();
+    childPosState.lastPosition = {
+      partId: "part-vsat",
+      itemId: "q-10",
+    } as unknown as AttemptStateResponse["lastPosition"];
+
+    const childView = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vsat-1"
+        userId="user-1"
+        deps={makeDeps({ loadAttemptStateFn: vi.fn(async () => childPosState) })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu 10 trắc nghiệm trong chùm chung")).toBeInTheDocument();
+    expect(screen.getByText("V-SAT English shared reading passage")).toBeInTheDocument();
+    expect(screen.queryByText("Câu 8 Đúng/Sai trong chùm chung")).not.toBeInTheDocument();
+    const seg2Header = document.querySelector("[data-segment-header]") as HTMLElement;
+    expect(seg2Header).toHaveAttribute("data-segment-code", "II");
+    expect(within(seg2Header).getByText("Câu 10–15")).toBeInTheDocument();
+    childView.unmount();
+
+    const parentPosState = makeVsatEnglish25State();
+    parentPosState.lastPosition = {
+      partId: "part-vsat",
+      itemId: "shared-reading-set",
+    } as unknown as AttemptStateResponse["lastPosition"];
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vsat-1"
+        userId="user-1"
+        deps={makeDeps({ loadAttemptStateFn: vi.fn(async () => parentPosState) })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu 8 Đúng/Sai trong chùm chung")).toBeInTheDocument();
+    expect(screen.getByText("V-SAT English shared reading passage")).toBeInTheDocument();
+    expect(document.querySelector("[data-segment-header]")).toHaveAttribute("data-segment-code", "I");
   });
 });

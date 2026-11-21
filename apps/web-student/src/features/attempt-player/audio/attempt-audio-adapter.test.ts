@@ -2,6 +2,7 @@ import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ApiStatusError } from "@/lib/api/client";
 import { renderWithProviders } from "@/test/render";
 import { AttemptPlayer, type AttemptPlayerDeps } from "../attempt-player";
 import type { TabLockChannel } from "../edit-session";
@@ -522,9 +523,10 @@ describe("attempt-audio-adapter & AttemptPlayer audio wiring (AC-5, AC-7)", () =
       expect(el).not.toHaveAttribute("controls");
     }
 
-    // While claimEditSession is pending, player is disabled and MUST NOT fire doomed resumePlay
+    // While claimEditSession is pending, player is disabled without flashing disabledReason banner and MUST NOT fire doomed resumePlay
     expect(resumePlay).not.toHaveBeenCalled();
     expect(openPlay).not.toHaveBeenCalled();
+    expect(screen.queryByText("Trình phát audio đang tạm khóa.")).not.toBeInTheDocument();
 
     // Resolve claimEditSession -> React remounts with live sessionId -> auto-resumes with X-Attempt-Session without openPlay
     await act(async () => {
@@ -697,12 +699,8 @@ describe("attempt-audio-adapter & AttemptPlayer audio wiring (AC-5, AC-7)", () =
     );
     timeUpView.unmount();
 
-    // 4. Immediate stop on takeover / eviction (ATTEMPT_SESSION_REVOKED from heartbeat)
+    // 4a. Immediate stop on BroadcastChannel FORCE_CLAIM + takeover_required from claimEditSessionFn
     const evictedApi = makePlayingAudioApi();
-    const sendHeartbeatFn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("ignored"))
-      .mockResolvedValue({ serverNow: "2026-11-22T01:00:30Z", state: "IN_PROGRESS" as const });
     const bus = createInMemoryTabLockBus();
 
     const tab1View = renderWithProviders(
@@ -713,7 +711,6 @@ describe("attempt-audio-adapter & AttemptPlayer audio wiring (AC-5, AC-7)", () =
           loadAttemptStateFn: vi.fn(async () => makeAudioAttemptState({ attemptId: "att-audio-bus" })),
           audioApi: evictedApi,
           createTabLockChannelFn: bus,
-          sendHeartbeatFn,
         }),
       }),
     );
@@ -723,7 +720,6 @@ describe("attempt-audio-adapter & AttemptPlayer audio wiring (AC-5, AC-7)", () =
     await user.click(screen.getByRole("button", { name: "Nghe" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Đang phát…" })).toBeInTheDocument());
 
-    // Opening a second tab triggers secondary_readonly on tab2 and when tab2 claims active tab, tab1 stops immediately
     pauseSpy.mockClear();
     const tab2View = renderWithProviders(
       createElement(AttemptPlayer, {
@@ -733,6 +729,12 @@ describe("attempt-audio-adapter & AttemptPlayer audio wiring (AC-5, AC-7)", () =
           loadAttemptStateFn: vi.fn(async () => makeAudioAttemptState({ attemptId: "att-audio-bus" })),
           audioApi: makePlayingAudioApi(),
           createTabLockChannelFn: bus,
+          claimEditSessionFn: vi.fn(async () => ({
+            conflict: true as const,
+            code: "ATTEMPT_OPEN_ELSEWHERE",
+            message: "Open elsewhere",
+            lastSeenAt: "2026-11-22T01:00:10Z",
+          })),
         }),
       }),
     );
@@ -741,8 +743,169 @@ describe("attempt-audio-adapter & AttemptPlayer audio wiring (AC-5, AC-7)", () =
     );
     await user.click(screen.getByRole("button", { name: "Chuyển sang làm bài ở tab này" }));
     await waitFor(() => expect(pauseSpy).toHaveBeenCalled());
+    expect(await screen.findByText("Bài thi đang mở ở một phiên khác")).toBeInTheDocument();
 
     tab2View.unmount();
     tab1View.unmount();
+
+    // 4b. Immediate stop & eviction on ATTEMPT_SESSION_REVOKED from audioApi.reportProgress
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fakeUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const revokedAudioApi: AttemptAudioApi = {
+      ...makePlayingAudioApi(),
+      reportProgress: vi.fn().mockRejectedValueOnce(
+        new ApiStatusError(409, "Session revoked", { code: "ATTEMPT_SESSION_REVOKED" }),
+      ),
+    };
+    const audioRevokeView = renderWithProviders(
+      createElement(AttemptPlayer, {
+        attemptId: "att-audio-revoke",
+        userId: "user-1",
+        deps: makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => makeAudioAttemptState({ attemptId: "att-audio-revoke" })),
+          audioApi: revokedAudioApi,
+        }),
+      }),
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nghe" })).toBeEnabled());
+    await fakeUser.click(screen.getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Đang phát…" })).toBeInTheDocument());
+
+    const audioEl1 = audioRevokeView.container.querySelector("audio")!;
+    expect(audioEl1.getAttribute("src")).toContain("play-active");
+    pauseSpy.mockClear();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_500);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Lượt thi đã được tiếp tục ở thiết bị khác.")).toBeInTheDocument(),
+    );
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(audioEl1.getAttribute("src")).toBeNull();
+    audioRevokeView.unmount();
+
+    // 4c. Immediate stop & eviction on ATTEMPT_SESSION_REVOKED from sendHeartbeatFn
+    const hbRevokeFn = vi.fn().mockRejectedValueOnce(
+      new ApiStatusError(409, "Heartbeat revoked", { code: "ATTEMPT_SESSION_REVOKED" }),
+    );
+    const hbRevokeView = renderWithProviders(
+      createElement(AttemptPlayer, {
+        attemptId: "att-hb-revoke",
+        userId: "user-1",
+        deps: makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => makeAudioAttemptState({ attemptId: "att-hb-revoke" })),
+          audioApi: makePlayingAudioApi(),
+          sendHeartbeatFn: hbRevokeFn,
+        }),
+      }),
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nghe" })).toBeEnabled());
+    await fakeUser.click(screen.getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Đang phát…" })).toBeInTheDocument());
+
+    const audioEl2 = hbRevokeView.container.querySelector("audio")!;
+    expect(audioEl2.getAttribute("src")).toContain("play-active");
+    pauseSpy.mockClear();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_500);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Lượt thi đã được tiếp tục ở thiết bị khác.")).toBeInTheDocument(),
+    );
+    expect(hbRevokeFn).toHaveBeenCalled();
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(audioEl2.getAttribute("src")).toBeNull();
+    hbRevokeView.unmount();
+  });
+
+  it("FE-R1-03 & FE-R1-10: đối chiếu STALE khi đang nghe giữ nguyên phát audio đang chạy và hỗ trợ MIME chữ hoa", async () => {
+    const user = userEvent.setup();
+    const { pauseSpy } = mockAudioMediaPrototype();
+
+    const initial = makeAudioAttemptState();
+    // Uppercase MIME must still render AttemptAudioPlayer (FE-R1-10)
+    initial.parts![0]!.items![0]!.attachments![0]!.mime = "Audio/Mpeg";
+
+    const staleReconcileState = makeAudioAttemptState({
+      audioPlays: [
+        {
+          assetId: "asset-1",
+          partId: "p1",
+          playId: undefined,
+          playsUsed: 0,
+          playsLeft: 2,
+          durationMs: 45_000,
+          positionMs: 0,
+          state: "IDLE",
+        },
+      ],
+    });
+    staleReconcileState.parts![0]!.items![1]!.answerSeq = 2;
+    staleReconcileState.parts![0]!.items![1]!.answer = { type: "SINGLE_CHOICE", optionId: "opt-b" };
+
+    const loadAttemptStateFn = vi
+      .fn()
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(staleReconcileState);
+
+    const saveAnswersFn = vi.fn(async () => ({
+      results: [{ itemId: "q-audio-1", seq: 1, status: "STALE" as const }],
+      serverNow: "2026-11-22T01:00:05Z",
+    }));
+
+    const audioApi: AttemptAudioApi = {
+      openPlay: vi.fn(async () => ({
+        playId: "play-live-1",
+        playsUsed: 1,
+        playsLeft: 1,
+        positionMs: 0,
+        durationMs: 45_000,
+        state: "PLAYING" as const,
+      })),
+      resumePlay: vi.fn(),
+      reportProgress: vi.fn(async () => ({
+        playId: "play-live-1",
+        playsUsed: 1,
+        playsLeft: 1,
+        positionMs: 5_000,
+        durationMs: 45_000,
+        state: "PLAYING" as const,
+      })),
+      endPlay: vi.fn(),
+    };
+
+    const view = renderWithProviders(
+      createElement(AttemptPlayer, {
+        attemptId: "att-audio-1",
+        userId: "user-1",
+        deps: makeBaseDeps({
+          loadAttemptStateFn,
+          saveAnswersFn,
+          audioApi,
+        }),
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nghe" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Đang phát…" })).toBeInTheDocument());
+
+    const audio = view.container.querySelector("audio")!;
+    expect(audio.getAttribute("src")).toContain("play-live-1");
+    pauseSpy.mockClear();
+
+    // Trigger STALE answer reconciliation while audio is playing
+    await user.click(screen.getByRole("radio", { name: /Weather/ }));
+    await waitFor(() => expect(loadAttemptStateFn).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("radio", { name: /Travel/ })).toBeChecked());
+
+    expect(pauseSpy).not.toHaveBeenCalled();
+    expect(audio.getAttribute("src")).toContain("play-live-1");
+    expect(screen.getByRole("button", { name: "Đang phát…" })).toBeDisabled();
+    expect(screen.getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
   });
 });

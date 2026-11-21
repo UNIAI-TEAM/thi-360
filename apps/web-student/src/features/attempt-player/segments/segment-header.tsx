@@ -9,6 +9,7 @@ import type { AttemptDisplaySegmentView } from "./segment-units";
 export interface SegmentHeaderProps {
   segment: AttemptDisplaySegmentView;
   isSegmentStart?: boolean;
+  positionOffset?: number;
   className?: string;
 }
 
@@ -19,6 +20,7 @@ export interface SegmentHeaderProps {
 export function SegmentHeader({
   segment,
   isSegmentStart = false,
+  positionOffset = 0,
   className,
 }: SegmentHeaderProps) {
   const t = useTranslations("attempt.segments");
@@ -27,6 +29,8 @@ export function SegmentHeader({
 
   const title = segment.name || segment.code || "";
   const hasRange = segment.fromPosition != null && segment.toPosition != null;
+  const displayFrom = hasRange ? segment.fromPosition! + positionOffset : null;
+  const displayTo = hasRange ? segment.toPosition! + positionOffset : null;
   const formattedMaxPoints =
     segment.maxPoints != null ? formatScore(segment.maxPoints, uiLocale) : null;
 
@@ -50,7 +54,7 @@ export function SegmentHeader({
       <div className="flex flex-wrap items-center gap-2 text-caption font-medium text-text-secondary tabular-nums">
         {hasRange && (
           <span className="inline-flex h-6 items-center rounded-full border border-border bg-subtle px-2.5">
-            {t("range", { from: segment.fromPosition!, to: segment.toPosition! })}
+            {t("range", { from: displayFrom!, to: displayTo! })}
           </span>
         )}
         {segment.commandCount != null && (

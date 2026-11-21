@@ -147,4 +147,76 @@ describe("chèn ký hiệu", () => {
       expect(btn).toHaveAttribute("data-symbol-insert", sym.insert);
     }
   });
+
+  it("khóa nút khi disabled, ẩn thanh ký hiệu ở chế độ review và truyền showSymbolBar xuống câu con của QUESTION_SET", async () => {
+    const user = userEvent.setup();
+    const onBarChange = vi.fn();
+
+    function DisabledHarness() {
+      const ref = useRef<HTMLInputElement | null>(null);
+      return (
+        <div>
+          <input ref={ref} aria-label="disabled-answer" value="Fe" readOnly />
+          <SymbolInputBar targetRef={ref} value="Fe" onChange={onBarChange} disabled />
+        </div>
+      );
+    }
+
+    const { unmount } = render(<DisabledHarness />);
+    const disabledBtns = screen
+      .getAllByRole("button")
+      .filter((el) => el.hasAttribute("data-symbol-insert"));
+    expect(disabledBtns.length).toBeGreaterThan(0);
+    for (const btn of disabledBtns) {
+      expect(btn).toBeDisabled();
+    }
+    await user.click(disabledBtns[0]!);
+    expect(onBarChange).not.toHaveBeenCalled();
+    unmount();
+
+    const reviewView = render(
+      <Live
+        question={chemQuestion}
+        mode="review"
+        initial={{ text: "Fe3+" }}
+        review={{ outcome: "CORRECT", earned: 1, max: 1 }}
+      />,
+    );
+    expect(screen.queryByRole("group", { name: UI_STRINGS_VI.question.symbolInput.groupLabel })).toBeNull();
+    reviewView.unmount();
+
+    const parentSet: KitQuestion = {
+      id: "set-chem",
+      displayNo: 1,
+      points: 2,
+      body: {
+        type: "QUESTION_SET",
+        passage: "<p>Thí nghiệm hóa học.</p>",
+        childIds: ["q-hsca-hoa"],
+      },
+    };
+    const { rerender } = render(
+      <Live question={parentSet} showSymbolBar={false}>
+        {[chemQuestion]}
+      </Live>,
+    );
+    expect(screen.queryByRole("group", { name: UI_STRINGS_VI.question.symbolInput.groupLabel })).toBeNull();
+
+    const decimalSet: KitQuestion = {
+      id: "set-num",
+      displayNo: 1,
+      points: 2,
+      body: {
+        type: "QUESTION_SET",
+        passage: "<p>Tính toán.</p>",
+        childIds: ["q-num"],
+      },
+    };
+    rerender(
+      <Live question={decimalSet} showSymbolBar={true}>
+        {[numericQuestion]}
+      </Live>,
+    );
+    expect(screen.getByRole("group", { name: UI_STRINGS_VI.question.symbolInput.groupLabel })).toBeInTheDocument();
+  });
 });

@@ -404,7 +404,6 @@
     "segments": {
       "commands": "{count, plural, one {# item} other {# items}}",
       "maxPoints": "{points} pts",
-      "navGroupLabel": "Segment {name}",
       "range": "Questions {from}–{to}",
       "ungrouped": "Other questions"
     },

@@ -3,7 +3,7 @@
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, cn, focusRing } from "@thi360/ui";
 import { ChevronLeft, ChevronRight, Flag, LayoutGrid } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import type { ItemCompletionStatus } from "./mappers";
 import { type AttemptDisplaySegmentView, groupNavItemsBySegment } from "./segments/segment-units";
 
@@ -52,6 +52,7 @@ function QuestionNavGrid({
 }: QuestionNavGridProps) {
   const t = useTranslations("attempt.nav");
   const segT = useTranslations("attempt.segments");
+  const groupIdPrefix = useId();
 
   const answeredCount = useMemo(
     () => items.filter((item) => item.completion === "complete").length,
@@ -181,25 +182,37 @@ function QuestionNavGrid({
         </p>
       ) : segmentGroups ? (
         <div aria-label={t("gridLabel")} className="flex flex-col gap-3">
-          {segmentGroups.map((group, groupIdx) => (
-            <div
-              key={group.segment?.code ?? `seg-${groupIdx}`}
-              className="flex flex-col gap-1.5"
-            >
-              {group.segment ? (
-                <div data-exam-content className="text-caption font-semibold text-text-secondary">
-                  {group.segment.name || group.segment.code}
+          {segmentGroups.map((group, groupIdx) => {
+            const headingId = `${groupIdPrefix}-seg-${groupIdx}`;
+            return (
+              <div
+                key={group.segment?.code ?? `seg-${groupIdx}`}
+                role="group"
+                aria-labelledby={headingId}
+                className="flex flex-col gap-1.5"
+              >
+                {group.segment ? (
+                  <div
+                    id={headingId}
+                    data-exam-content
+                    className="text-caption font-semibold text-text-secondary"
+                  >
+                    {group.segment.name || group.segment.code}
+                  </div>
+                ) : (
+                  <div
+                    id={headingId}
+                    className="text-caption font-semibold text-text-secondary"
+                  >
+                    {segT("ungrouped")}
+                  </div>
+                )}
+                <div className="grid grid-cols-5 gap-2">
+                  {group.items.map(renderNavItemButton)}
                 </div>
-              ) : (
-                <div className="text-caption font-semibold text-text-secondary">
-                  {segT("ungrouped")}
-                </div>
-              )}
-              <div className="grid grid-cols-5 gap-2">
-                {group.items.map(renderNavItemButton)}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div

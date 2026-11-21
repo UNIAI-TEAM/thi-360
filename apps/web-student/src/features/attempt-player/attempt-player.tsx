@@ -132,6 +132,10 @@ function extractAttemptAssetId(url: string | undefined): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function isAudioMime(mime: string | undefined | null): boolean {
+  return Boolean(mime?.trim().toLowerCase().startsWith("audio/"));
+}
+
 export interface AttemptPlayerProps {
   attemptId: string;
   userId: string;
@@ -424,14 +428,43 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       );
 
       if (Array.isArray(nextState.audioPlays)) {
-        const maxPlays = nextState.audioPolicy?.maxPlays ?? 2;
-        const nextSnapshots: Record<string, AudioPlaybackSnapshot> = {};
-        for (const entry of nextState.audioPlays) {
-          if (entry.assetId) {
-            nextSnapshots[entry.assetId] = toAudioPlaybackSnapshot(entry, maxPlays);
+        setAudioSnapshotsByAsset((prev) => {
+          const maxPlays = nextState.audioPolicy?.maxPlays ?? 2;
+          const attemptClosed = nextState.state !== "IN_PROGRESS";
+          const partStateById = new Map<string, string | undefined>();
+          for (const part of nextState.parts ?? []) {
+            if (part.partId) {
+              partStateById.set(part.partId, part.state);
+            }
           }
-        }
-        setAudioSnapshotsByAsset(nextSnapshots);
+          const nextSnapshots: Record<string, AudioPlaybackSnapshot> = attemptClosed
+            ? {}
+            : { ...prev };
+          for (const entry of nextState.audioPlays ?? []) {
+            if (!entry.assetId) continue;
+            const incoming = toAudioPlaybackSnapshot(entry, maxPlays);
+            const prevSnap = prev[entry.assetId];
+            const owningPartClosed = entry.partId
+              ? partStateById.get(entry.partId) !== "OPEN"
+              : false;
+            const shouldReplace =
+              !prevSnap ||
+              attemptClosed ||
+              owningPartClosed ||
+              incoming.playsUsed > prevSnap.playsUsed ||
+              (incoming.playsUsed >= prevSnap.playsUsed &&
+                incoming.playId != null &&
+                incoming.playId !== prevSnap.playId) ||
+              (incoming.playsUsed === prevSnap.playsUsed &&
+                incoming.playId === prevSnap.playId &&
+                (incoming.state === "ENDED" ||
+                  (prevSnap.state !== "ENDED" && incoming.positionMs > prevSnap.positionMs)));
+            if (shouldReplace) {
+              nextSnapshots[entry.assetId] = incoming;
+            }
+          }
+          return nextSnapshots;
+        });
       }
 
       if (nextState.state === "IN_PROGRESS") {
@@ -681,7 +714,10 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             targetPart.displaySegments,
           );
           const matchedUnitIdx = units.findIndex(
-            (u) => u.id === preferredItemId || u.leafItems.some((c) => c.itemId === preferredItemId),
+            (u) =>
+              u.id === preferredItemId ||
+              u.parentItem.itemId === preferredItemId ||
+              u.leafItems.some((c) => c.itemId === preferredItemId),
           );
           if (matchedUnitIdx >= 0) {
             setUnitIndex(matchedUnitIdx);
@@ -970,7 +1006,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     pushList(activeUnit.attachments);
     for (const child of activeUnit.childItems) {
       const childAudio = sanitizeItemAttachments(child.attachments, attemptId).filter((att) =>
-        att.mime?.startsWith("audio/"),
+        isAudioMime(att.mime),
       );
       pushList(childAudio);
     }
@@ -981,7 +1017,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   const audioAdaptersByAsset = useMemo(() => {
     const map: Record<string, AudioPlayAdapter> = {};
     for (const att of unitAttachments) {
-      if (!att.mime?.startsWith("audio/")) continue;
+      if (!isAudioMime(att.mime)) continue;
       const assetId = att.assetId || extractAttemptAssetId(att.url);
       if (assetId && !map[assetId]) {
         map[assetId] = createAttemptAudioAdapter({
@@ -1861,6 +1897,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
               <SegmentHeader
                 segment={activeUnit.segment}
                 isSegmentStart={activeUnit.isSegmentStart}
+                positionOffset={activeUnit.positionOffset}
               />
             ) : null}
 
@@ -1873,7 +1910,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                   {unitAttachments.map((att, idx) => {
                     const safeUrl = att.url;
                     if (!safeUrl) return null;
-                    if (att.mime?.startsWith("audio/")) {
+                    if (isAudioMime(att.mime)) {
                       const resolvedAssetId = att.assetId || extractAttemptAssetId(safeUrl);
                       const adapter = resolvedAssetId
                         ? audioAdaptersByAsset[resolvedAssetId]
@@ -1893,6 +1930,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                           disabled={
                             isReadOnly || isSessionClaimPending || !sessionSnap.sessionId
                           }
+                          initializing={isSessionClaimPending}
                           closedReason={activeAudioClosedReason}
                           stopSignal={audioStopSignal}
                           isOnline={saveStatus.isOnline}

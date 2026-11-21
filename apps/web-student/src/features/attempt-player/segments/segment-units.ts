@@ -12,6 +12,7 @@ export type AttemptDisplaySegmentView = components["schemas"]["AttemptDisplaySeg
 export interface SegmentedQuestionUnit extends QuestionDisplayUnit {
   segment: AttemptDisplaySegmentView | null;
   isSegmentStart: boolean;
+  positionOffset: number;
 }
 
 export interface NavSegmentGroup {
@@ -41,13 +42,7 @@ function resolvePartPositionOffset(
   if (displayNos.length === 0 || sortedSegments.length === 0) return 0;
   const minDisplayNo = Math.min(...displayNos);
   const minSegFrom = sortedSegments[0]?.fromPosition ?? 1;
-  let maxSegTo = 0;
-  for (const seg of sortedSegments) {
-    if (typeof seg.toPosition === "number" && seg.toPosition > maxSegTo) {
-      maxSegTo = seg.toPosition;
-    }
-  }
-  if (minSegFrom === 1 && minDisplayNo > maxSegTo) {
+  if (minSegFrom === 1 && minDisplayNo > 1) {
     return minDisplayNo - 1;
   }
   return 0;
@@ -86,6 +81,7 @@ export function buildSegmentedQuestionUnits(
       ...unit,
       segment: null,
       isSegmentStart: false,
+      positionOffset: 0,
     }));
   }
 
@@ -103,6 +99,7 @@ export function buildSegmentedQuestionUnits(
       rawUnits.push({
         ...unit,
         segment: findSegmentForPosition(pos, sortedSegments),
+        positionOffset: offset,
       });
       continue;
     }
@@ -128,6 +125,7 @@ export function buildSegmentedQuestionUnits(
       rawUnits.push({
         ...unit,
         segment: only?.segment ?? null,
+        positionOffset: offset,
       });
       continue;
     }
@@ -151,6 +149,7 @@ export function buildSegmentedQuestionUnits(
         displayStart,
         displayEnd,
         segment: seg,
+        positionOffset: offset,
       });
       sliceIdx += 1;
     }

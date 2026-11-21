@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UiStringsProvider } from "../../components/ui-strings";
 import { UI_STRINGS_EN, UI_STRINGS_VI } from "../../messages/ui-strings";
@@ -847,5 +848,380 @@ describe("chế độ làm thử và ca biên", () => {
       fireEvent.click(screen.getByRole("button", { name: tVi.play }));
     });
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("hardening review-fe-r1 (FE-R1-01..06, FE-R1-11)", () => {
+  it("FE-R1-01: React StrictMode tự động resumePlay ở epoch sống sót và chỉ gọi audio.play() một lần", async () => {
+    const { playSpy } = mockAudioMethods();
+    const adapter = makeAdapter({
+      resumePlay: vi.fn(async (playId: string) =>
+        makeSnapshot({
+          playId,
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 12_000,
+          durationMs: 60_000,
+          state: "PLAYING",
+        }),
+      ),
+    });
+
+    const { container } = render(
+      <StrictMode>
+        <AttemptAudioPlayer
+          assetId="asset-strict"
+          initialState={makeSnapshot({
+            playId: "play-strict",
+            playsUsed: 1,
+            playsLeft: 1,
+            positionMs: 12_000,
+            durationMs: 60_000,
+            state: "PLAYING",
+          })}
+          adapter={adapter}
+        />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+    expect(adapter.openPlay).not.toHaveBeenCalled();
+    expect(container.querySelector("audio")!.getAttribute("src")).toContain("play-strict");
+  });
+
+  it("FE-R1-01: mạng chập chờn offline -> online khi resumePlay cũ còn treo vẫn khôi phục ở epoch mới", async () => {
+    const { playSpy } = mockAudioMethods();
+    let resolveSlowResume!: (snap: AudioPlaybackSnapshot) => void;
+    const resumePlay = vi
+      .fn<AudioPlayAdapter["resumePlay"]>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<AudioPlaybackSnapshot>((resolve) => {
+            resolveSlowResume = resolve;
+          }),
+      )
+      .mockImplementationOnce(async (playId: string) =>
+        makeSnapshot({
+          playId,
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 14_000,
+          state: "PLAYING",
+        }),
+      );
+    const adapter = makeAdapter({ resumePlay });
+
+    const { rerender } = render(
+      <AttemptAudioPlayer
+        assetId="asset-flap"
+        initialState={makeSnapshot({
+          playId: "play-flap",
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 14_000,
+          state: "PLAYING",
+        })}
+        adapter={adapter}
+        isOnline={true}
+      />,
+    );
+
+    await waitFor(() => expect(resumePlay).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <AttemptAudioPlayer
+        assetId="asset-flap"
+        initialState={makeSnapshot({
+          playId: "play-flap",
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 14_000,
+          state: "PLAYING",
+        })}
+        adapter={adapter}
+        isOnline={false}
+      />,
+    );
+
+    rerender(
+      <AttemptAudioPlayer
+        assetId="asset-flap"
+        initialState={makeSnapshot({
+          playId: "play-flap",
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 14_000,
+          state: "PLAYING",
+        })}
+        adapter={adapter}
+        isOnline={true}
+      />,
+    );
+
+    await waitFor(() => expect(resumePlay).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+
+    // Resolving the stale epoch 1 promise later must NOT clobber active playback or call play() again.
+    await act(async () => {
+      resolveSlowResume(
+        makeSnapshot({
+          playId: "play-flap",
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 14_000,
+          state: "PLAYING",
+        }),
+      );
+    });
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled();
+  });
+
+  it("FE-R1-02: sự kiện error trên <audio> chuyển sang Phát lại, dừng progress timer và gọi resumePlay không gọi openPlay; phân biệt NotSupportedError với NotAllowedError", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockAudioMethods();
+    const adapter = makeAdapter();
+
+    const { container, unmount } = render(
+      <AttemptAudioPlayer
+        assetId="asset-media-err"
+        initialState={makeSnapshot()}
+        adapter={adapter}
+        progressIntervalMs={5_000}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+
+    const audio = container.querySelector("audio")!;
+    await act(async () => {
+      fireEvent(audio, new Event("error"));
+    });
+
+    expect(screen.getByRole("button", { name: tVi.resume })).toBeEnabled();
+    expect(screen.getByText(tVi.playErrorRetry)).toBeInTheDocument();
+
+    // Progress timer stopped on media error.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(adapter.reportProgress).not.toHaveBeenCalled();
+
+    // Clicking Phát lại resumes the existing playId without consuming another play.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.resume }));
+    });
+    await waitFor(() => expect(adapter.resumePlay).toHaveBeenCalledWith("play-1"));
+    expect(adapter.openPlay).toHaveBeenCalledTimes(1);
+    unmount();
+
+    // NotSupportedError on audio.play() must show playErrorRetry, NOT autoplayBlocked.
+    mockAudioMethods({
+      playImpl: async () => {
+        throw new DOMException("unsupported source", "NotSupportedError");
+      },
+    });
+    const secondAdapter = makeAdapter();
+    render(
+      <AttemptAudioPlayer
+        assetId="asset-unsupported"
+        initialState={makeSnapshot()}
+        adapter={secondAdapter}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.resume })).toBeEnabled());
+    expect(screen.getByText(tVi.playErrorRetry)).toBeInTheDocument();
+    expect(screen.queryByText(tVi.autoplayBlocked)).not.toBeInTheDocument();
+  });
+
+  it("FE-R1-03: bỏ qua initialState cũ (IDLE hoặc positionMs lùi) khi đang phát", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { pauseSpy } = mockAudioMethods();
+    const adapter = makeAdapter();
+
+    const { container, rerender } = render(
+      <AttemptAudioPlayer
+        assetId="asset-mono"
+        initialState={makeSnapshot()}
+        adapter={adapter}
+        progressIntervalMs={5_000}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+
+    const audio = container.querySelector("audio")!;
+    audio.currentTime = 10;
+    fireEvent(audio, new Event("timeupdate"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    await waitFor(() => expect(adapter.reportProgress).toHaveBeenCalledWith("play-1", 10_000));
+
+    audio.currentTime = 18;
+    fireEvent(audio, new Event("timeupdate"));
+    expect(screen.getByText(/00:18 \/ 01:00/)).toBeInTheDocument();
+
+    // Stale IDLE snapshot must NOT interrupt playback or reset elapsedMs.
+    rerender(
+      <AttemptAudioPlayer
+        assetId="asset-mono"
+        initialState={makeSnapshot({ playId: null, playsUsed: 0, playsLeft: 2, positionMs: 0, state: "IDLE" })}
+        adapter={adapter}
+        progressIntervalMs={5_000}
+      />,
+    );
+    expect(pauseSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled();
+    expect(screen.getByText(/00:18 \/ 01:00/)).toBeInTheDocument();
+
+    // Regressed positionMs for the same playId must NOT jump elapsedMs backwards.
+    rerender(
+      <AttemptAudioPlayer
+        assetId="asset-mono"
+        initialState={makeSnapshot({
+          playId: "play-1",
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 4_000,
+          state: "PLAYING",
+        })}
+        adapter={adapter}
+        progressIntervalMs={5_000}
+      />,
+    );
+    expect(pauseSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled();
+    expect(screen.getByText(/00:18 \/ 01:00/)).toBeInTheDocument();
+  });
+
+  it("FE-R1-05: endPlay trả endReason CLOSED khóa trình phát + gọi onClosed; reportProgress trả ENDED dừng audio ngay", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { pauseSpy } = mockAudioMethods();
+    const onClosed1 = vi.fn();
+    const closedEndAdapter = makeAdapter({
+      endPlay: vi.fn(async (playId: string) =>
+        makeSnapshot({
+          playId,
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 60_000,
+          state: "ENDED",
+          endReason: "CLOSED",
+        }),
+      ),
+    });
+
+    const view1 = render(
+      <AttemptAudioPlayer
+        assetId="asset-end-closed"
+        initialState={makeSnapshot()}
+        adapter={closedEndAdapter}
+        onClosed={onClosed1}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+
+    pauseSpy.mockClear();
+    await act(async () => {
+      fireEvent(view1.container.querySelector("audio")!, new Event("ended"));
+    });
+
+    await waitFor(() => expect(onClosed1).toHaveBeenCalledWith("PART_CLOSED"));
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: tVi.play })).toBeDisabled();
+    expect(screen.getByText(tVi.partClosedReason)).toBeInTheDocument();
+    view1.unmount();
+
+    const onClosed2 = vi.fn();
+    const endedProgressAdapter = makeAdapter({
+      reportProgress: vi.fn(async (playId: string) =>
+        makeSnapshot({
+          playId,
+          playsUsed: 1,
+          playsLeft: 1,
+          positionMs: 60_000,
+          state: "ENDED",
+          endReason: "FINISHED",
+        }),
+      ),
+    });
+
+    const view2 = render(
+      <AttemptAudioPlayer
+        assetId="asset-prog-ended"
+        initialState={makeSnapshot()}
+        adapter={endedProgressAdapter}
+        progressIntervalMs={5_000}
+        onClosed={onClosed2}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: tVi.play }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: tVi.playing })).toBeDisabled());
+
+    pauseSpy.mockClear();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    await waitFor(() => expect(pauseSpy).toHaveBeenCalled());
+    expect(view2.container.querySelector("audio")!.getAttribute("src")).toBeNull();
+    expect(screen.getByRole("button", { name: tVi.play })).toBeEnabled();
+    expect(onClosed2).not.toHaveBeenCalled();
+  });
+
+  it("FE-R1-06 & FE-R1-11: fileName xuống tối đa 2 dòng không truncate, và initializing ẩn banner tạm khóa trong lúc claim session", () => {
+    mockAudioMethods();
+    const adapter = makeAdapter();
+    const { rerender } = render(
+      <AttemptAudioPlayer
+        assetId="asset-ui"
+        fileName="very-long-listening-file-name-for-hsca-audio-exam.mp3"
+        initialState={makeSnapshot()}
+        adapter={adapter}
+        disabled={true}
+        initializing={true}
+      />,
+    );
+
+    const fileEl = screen.getByText("very-long-listening-file-name-for-hsca-audio-exam.mp3");
+    expect(fileEl).toHaveClass("line-clamp-2", "wrap-anywhere");
+    expect(fileEl).not.toHaveClass("truncate");
+
+    expect(screen.getByRole("button", { name: tVi.play })).toBeDisabled();
+    expect(screen.queryByText(tVi.disabledReason)).not.toBeInTheDocument();
+
+    rerender(
+      <AttemptAudioPlayer
+        assetId="asset-ui"
+        fileName="very-long-listening-file-name-for-hsca-audio-exam.mp3"
+        initialState={makeSnapshot()}
+        adapter={adapter}
+        disabled={true}
+        initializing={false}
+      />,
+    );
+    expect(screen.getByText(tVi.disabledReason)).toBeInTheDocument();
   });
 });

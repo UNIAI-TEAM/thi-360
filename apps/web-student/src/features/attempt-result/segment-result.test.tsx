@@ -239,4 +239,80 @@ describe("kết quả phân đoạn và trạng thái Đúng một phần (AC-12
     await screen.findByRole("heading", { level: 1, name: "Đề V-SAT Tiếng Anh 25 câu" });
     expect(screen.queryByRole("region", { name: "Điểm theo phân đoạn" })).not.toBeInTheDocument();
   });
+
+  it("hiển thị phân đoạn đang chờ chấm (pendingReview) với chip Chấm tay, cột Chờ chấm và pendingDescription trên cả desktop và 390px", async () => {
+    const pendingResult = makeVsatResult({
+      state: "PENDING_REVIEW",
+      rawScore: undefined,
+      displayScore: undefined,
+      segments: [
+        {
+          code: "I",
+          name: "Phần Đọc hiểu",
+          partCode: "P1",
+          fromPosition: 1,
+          toPosition: 4,
+          pendingReview: false,
+          score: 30,
+          maxPoints: 40,
+          stats: { correctCount: 3, partialCount: 0, wrongCount: 1, blankCount: 0, pendingReviewCount: 0, totalCount: 4 },
+        },
+        {
+          code: "II",
+          name: "Phần Viết",
+          partCode: "P1",
+          fromPosition: 5,
+          toPosition: 6,
+          pendingReview: true,
+          score: undefined,
+          maxPoints: 60,
+          stats: { correctCount: 0, partialCount: 0, wrongCount: 0, blankCount: 0, pendingReviewCount: 2, totalCount: 2 },
+        },
+      ],
+    });
+
+    const desktopView = renderWithProviders(
+      <AttemptResultView
+        attemptId={ATTEMPT_UUID_VSAT}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadResult={async () => pendingResult}
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+    );
+
+    const segSection = await screen.findByRole("region", { name: "Điểm theo phân đoạn" });
+    expect(
+      within(segSection).getByText("Điểm của phân đoạn đã chấm xong là điểm riêng của phân đoạn đó, chưa phải điểm tổng."),
+    ).toBeInTheDocument();
+
+    const segTable = within(segSection).getByRole("table", { name: "Điểm theo phân đoạn" });
+    expect(within(segTable).getByRole("columnheader", { name: "Chờ chấm" })).toBeInTheDocument();
+    const rows = within(segTable).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("30/40");
+    expect(rows[2]).toHaveTextContent("Phần Viết");
+    expect(rows[2]).toHaveTextContent("Chấm tay");
+    expect(rows[2]).toHaveTextContent("Chờ chấm");
+    expect(rows[2]).toHaveTextContent("2");
+    desktopView.unmount();
+
+    installContainerWidth(PHONE_CONTENT_WIDTH);
+    renderWithProviders(
+      <AttemptResultView
+        attemptId={ATTEMPT_UUID_VSAT}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadResult={async () => pendingResult}
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+    );
+
+    const phoneSection = await screen.findByRole("region", { name: "Điểm theo phân đoạn" });
+    expect(within(phoneSection).queryByRole("table")).not.toBeInTheDocument();
+    const phoneList = within(phoneSection).getByRole("list", { name: "Điểm theo phân đoạn" });
+    expect(within(phoneList).getByText("Phần Viết")).toHaveAttribute("data-exam-content");
+    expect(within(phoneList).getByText("Chấm tay")).toBeInTheDocument();
+    expect(within(phoneList).getByText("Chờ chấm")).toBeInTheDocument();
+    expect(within(phoneList).getByText(/Chờ chấm:/)).toHaveTextContent("Chờ chấm: 2");
+  });
 });

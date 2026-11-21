@@ -404,7 +404,6 @@
     "segments": {
       "commands": "{count, plural, other {# lệnh hỏi}}",
       "maxPoints": "{points} điểm",
-      "navGroupLabel": "Nhóm phân đoạn {name}",
       "range": "Câu {from}–{to}",
       "ungrouped": "Câu hỏi khác"
     },

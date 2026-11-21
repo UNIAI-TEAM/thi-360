@@ -19,6 +19,7 @@ export interface AttemptAudioPlayerProps {
   maxPlays?: number;
   adapter: AudioPlayAdapter;
   disabled?: boolean;
+  initializing?: boolean;
   closedReason?: AudioClosedReason | null;
   stopSignal?: number;
   isOnline?: boolean;
@@ -92,6 +93,7 @@ export function AttemptAudioPlayer({
   maxPlays = 2,
   adapter,
   disabled = false,
+  initializing = false,
   closedReason = null,
   stopSignal = 0,
   isOnline,
@@ -120,17 +122,26 @@ export function AttemptAudioPlayer({
   const effectiveOnline = (isOnline ?? true) && browserOnline;
   const effectiveClosedReason: AudioClosedReason | null = closedReason ?? apiClosedReason;
   const isClosed = effectiveClosedReason !== null;
-  const isLockedOut = isClosed || disabled;
+  const isLockedOut = isClosed || disabled || initializing;
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastAudioElRef = useRef<HTMLAudioElement | null>(null);
+  const setAudioRef = useCallback((node: HTMLAudioElement | null) => {
+    audioRef.current = node;
+    if (node) {
+      lastAudioElRef.current = node;
+    }
+  }, []);
   const mountedRef = useRef(true);
   const epochRef = useRef(0);
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
+  const isPlayingMediaRef = useRef(isPlayingMedia);
+  isPlayingMediaRef.current = isPlayingMedia;
   const activePlayIdRef = useRef<string | null>(initialState.playId);
   const pendingRequestIdRef = useRef<string | null>(null);
-  const openInFlightRef = useRef(false);
-  const resumeInFlightRef = useRef(false);
+  const openInFlightEpochRef = useRef<number | null>(null);
+  const resumeInFlightEpochRef = useRef<number | null>(null);
   const endSentForPlayIdRef = useRef<string | null>(null);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastConfirmedMsRef = useRef<number>(initialState.positionMs);
@@ -176,7 +187,7 @@ export function AttemptAudioPlayer({
     epochRef.current += 1;
     clearProgressTimer();
     pendingSeekSecRef.current = null;
-    const audio = audioRef.current;
+    const audio = audioRef.current ?? lastAudioElRef.current;
     if (audio) {
       try {
         audio.pause();
@@ -184,6 +195,9 @@ export function AttemptAudioPlayer({
         audio.load();
       } catch {
         // Ignore jsdom or detached media teardown edge errors.
+      }
+      if (!audioRef.current) {
+        lastAudioElRef.current = null;
       }
     }
   }, [clearProgressTimer]);
@@ -327,7 +341,10 @@ export function AttemptAudioPlayer({
           return;
         }
         const audio = audioRef.current;
-        const currentMs = audio ? Math.round(audio.currentTime * 1000) : lastConfirmedMsRef.current;
+        const currentMs =
+          audio && Number.isFinite(audio.currentTime)
+            ? Math.round(audio.currentTime * 1000)
+            : lastConfirmedMsRef.current;
         let boundedMs = Math.max(lastConfirmedMsRef.current, currentMs);
         if (snapshotRef.current.durationMs > 0) {
           boundedMs = Math.min(boundedMs, snapshotRef.current.durationMs);
@@ -346,9 +363,17 @@ export function AttemptAudioPlayer({
             lastConfirmedMsRef.current = Math.max(lastConfirmedMsRef.current, nextSnap.positionMs);
             commitSnapshot(nextSnap);
             if (nextSnap.state === "ENDED") {
-              clearProgressTimer();
+              activePlayIdRef.current = nextSnap.playId;
+              lastConfirmedMsRef.current = nextSnap.positionMs;
+              expectedTimeSecRef.current = nextSnap.positionMs / 1000;
+              stopMediaAndTimers();
               setIsPlayingMedia(false);
+              setNeedsUserResume(false);
               setElapsedMs(nextSnap.positionMs);
+              if (nextSnap.endReason === "CLOSED") {
+                setApiClosedReason("PART_CLOSED");
+                onClosedRef.current?.("PART_CLOSED");
+              }
             }
           })
           .catch((err) => {
@@ -356,7 +381,7 @@ export function AttemptAudioPlayer({
           });
       }, interval);
     },
-    [clearProgressTimer, commitSnapshot, handleAdapterError],
+    [clearProgressTimer, commitSnapshot, handleAdapterError, stopMediaAndTimers],
   );
 
   const startPlaybackFromSnapshot = useCallback(
@@ -406,12 +431,19 @@ export function AttemptAudioPlayer({
         setIsPlayingMedia(true);
         setStatusNotice(null);
         startProgressTimer(snap.playId, myEpoch);
-      } catch {
+      } catch (err) {
         if (!mountedRef.current || epochRef.current !== myEpoch || isLockedOutRef.current) return;
         clearProgressTimer();
         setIsPlayingMedia(false);
         setNeedsUserResume(true);
-        setStatusNotice({ tone: "info", message: stringsRef.current.autoplayBlocked });
+        const isAutoplayBlocked =
+          (err instanceof DOMException || err instanceof Error) && err.name === "NotAllowedError";
+        setStatusNotice({
+          tone: isAutoplayBlocked ? "info" : "danger",
+          message: isAutoplayBlocked
+            ? stringsRef.current.autoplayBlocked
+            : stringsRef.current.playErrorRetry,
+        });
       }
     },
     [clearProgressTimer, commitSnapshot, seekAudioInternal, startProgressTimer],
@@ -419,8 +451,15 @@ export function AttemptAudioPlayer({
 
   const resumeActivePlay = useCallback(
     async (playId: string, myEpoch: number) => {
-      if (resumeInFlightRef.current || isLockedOutRef.current || !effectiveOnlineRef.current) return;
-      resumeInFlightRef.current = true;
+      if (
+        epochRef.current !== myEpoch ||
+        resumeInFlightEpochRef.current === myEpoch ||
+        isLockedOutRef.current ||
+        !effectiveOnlineRef.current
+      ) {
+        return;
+      }
+      resumeInFlightEpochRef.current = myEpoch;
       setIsBusy(true);
       try {
         const resumed = await adapterRef.current.resumePlay(playId);
@@ -429,8 +468,10 @@ export function AttemptAudioPlayer({
       } catch (err) {
         handleAdapterError(err, myEpoch, { playId });
       } finally {
-        resumeInFlightRef.current = false;
-        if (mountedRef.current) setIsBusy(false);
+        if (resumeInFlightEpochRef.current === myEpoch) {
+          resumeInFlightEpochRef.current = null;
+          if (mountedRef.current) setIsBusy(false);
+        }
       }
     },
     [handleAdapterError, startPlaybackFromSnapshot],
@@ -503,6 +544,42 @@ export function AttemptAudioPlayer({
     if (snapshotsMatch(initialState, prevInitialStateRef.current)) return;
     prevInitialStateRef.current = initialState;
     if (snapshotsMatch(initialState, snapshotRef.current)) return;
+
+    const current = snapshotRef.current;
+    if (
+      initialState.playsUsed < current.playsUsed ||
+      (initialState.playsUsed === current.playsUsed &&
+        current.state === "PLAYING" &&
+        initialState.state === "IDLE") ||
+      (initialState.playId === current.playId &&
+        current.state === "PLAYING" &&
+        initialState.state === "PLAYING" &&
+        initialState.positionMs < lastConfirmedMsRef.current) ||
+      (initialState.playsUsed === current.playsUsed &&
+        initialState.playId === current.playId &&
+        current.state === "ENDED" &&
+        initialState.state !== "ENDED")
+    ) {
+      return;
+    }
+
+    if (
+      initialState.playId === current.playId &&
+      current.state === "PLAYING" &&
+      initialState.state === "PLAYING"
+    ) {
+      lastConfirmedMsRef.current = Math.max(lastConfirmedMsRef.current, initialState.positionMs);
+      snapshotRef.current = initialState;
+      setSnapshot(initialState);
+      const audio = audioRef.current;
+      const liveAudioMs =
+        audio && Number.isFinite(audio.currentTime) ? Math.round(audio.currentTime * 1000) : 0;
+      if (!isPlayingMediaRef.current || initialState.positionMs > liveAudioMs) {
+        expectedTimeSecRef.current = initialState.positionMs / 1000;
+        setElapsedMs((prev) => Math.max(prev, initialState.positionMs));
+      }
+      return;
+    }
 
     activePlayIdRef.current = initialState.playId;
     lastConfirmedMsRef.current = initialState.positionMs;
@@ -579,38 +656,61 @@ export function AttemptAudioPlayer({
 
     const current = snapshotRef.current;
     if (current.state === "PLAYING" && current.playId) {
-      if (openInFlightRef.current || resumeInFlightRef.current) return;
+      if (
+        openInFlightEpochRef.current === epochRef.current ||
+        resumeInFlightEpochRef.current === epochRef.current
+      ) {
+        return;
+      }
       const myEpoch = (epochRef.current += 1);
       await resumeActivePlay(current.playId, myEpoch);
       return;
     }
 
     if (current.playsLeft <= 0) return;
-    if (openInFlightRef.current || resumeInFlightRef.current) return;
+    if (
+      openInFlightEpochRef.current === epochRef.current ||
+      resumeInFlightEpochRef.current === epochRef.current
+    ) {
+      return;
+    }
 
-    openInFlightRef.current = true;
+    const myEpoch = (epochRef.current += 1);
+    openInFlightEpochRef.current = myEpoch;
     setIsBusy(true);
     const requestId = pendingRequestIdRef.current ?? createRequestId();
     pendingRequestIdRef.current = requestId;
-    const myEpoch = (epochRef.current += 1);
 
     try {
       const opened = await adapterRef.current.openPlay(requestId);
-      pendingRequestIdRef.current = null;
       if (!mountedRef.current || epochRef.current !== myEpoch || isLockedOutRef.current) return;
+      pendingRequestIdRef.current = null;
       await startPlaybackFromSnapshot(opened, myEpoch);
     } catch (err) {
       const adapterErr = asAudioAdapterError(err);
       if (adapterErr?.code === "AUDIO_PLAY_IN_PROGRESS" && adapterErr.playId) {
-        pendingRequestIdRef.current = null;
-        openInFlightRef.current = false;
+        if (epochRef.current === myEpoch) {
+          pendingRequestIdRef.current = null;
+        }
+        if (openInFlightEpochRef.current === myEpoch) {
+          openInFlightEpochRef.current = null;
+        }
         await resumeActivePlay(adapterErr.playId, myEpoch);
+        if (
+          mountedRef.current &&
+          openInFlightEpochRef.current === null &&
+          resumeInFlightEpochRef.current === null
+        ) {
+          setIsBusy(false);
+        }
         return;
       }
       handleAdapterError(err, myEpoch, { fromOpenPlay: true });
     } finally {
-      openInFlightRef.current = false;
-      if (mountedRef.current) setIsBusy(false);
+      if (openInFlightEpochRef.current === myEpoch) {
+        openInFlightEpochRef.current = null;
+        if (mountedRef.current) setIsBusy(false);
+      }
     }
   }
 
@@ -636,6 +736,11 @@ export function AttemptAudioPlayer({
         expectedTimeSecRef.current = ended.positionMs / 1000;
         setElapsedMs(ended.positionMs);
         commitSnapshot(ended);
+        if (ended.endReason === "CLOSED") {
+          stopMediaAndTimers();
+          setApiClosedReason("PART_CLOSED");
+          onClosedRef.current?.("PART_CLOSED");
+        }
       })
       .catch((err) => {
         const adapterErr = asAudioAdapterError(err);
@@ -662,7 +767,7 @@ export function AttemptAudioPlayer({
 
   function handleTimeUpdate() {
     const audio = audioRef.current;
-    if (!audio || audio.seeking) return;
+    if (!audio || audio.seeking || !Number.isFinite(audio.currentTime)) return;
     expectedTimeSecRef.current = audio.currentTime;
     const rawMs = Math.max(0, Math.round(audio.currentTime * 1000));
     const totalMs = snapshotRef.current.durationMs;
@@ -694,6 +799,22 @@ export function AttemptAudioPlayer({
     }
   }
 
+  function handleAudioError() {
+    const audio = audioRef.current;
+    if (
+      !audio ||
+      !audio.getAttribute("src") ||
+      isLockedOutRef.current ||
+      snapshotRef.current.state !== "PLAYING"
+    ) {
+      return;
+    }
+    clearProgressTimer();
+    setIsPlayingMedia(false);
+    setNeedsUserResume(true);
+    setStatusNotice({ tone: "danger", message: stringsRef.current.playErrorRetry });
+  }
+
   const effectiveMaxPlays = Math.max(maxPlays, snapshot.playsUsed + snapshot.playsLeft);
   const displayDurationMs = snapshot.durationMs > 0 ? snapshot.durationMs : mediaDurationMs;
   const clampedElapsedMs =
@@ -705,10 +826,11 @@ export function AttemptAudioPlayer({
   const isWaitingResume =
     !isClosed &&
     !disabled &&
+    !initializing &&
     snapshot.state === "PLAYING" &&
     (needsUserResume || (!isPlayingMedia && !isBusy));
   const isActivelyPlaying =
-    !isClosed && !disabled && effectiveOnline && snapshot.state === "PLAYING" && !isWaitingResume;
+    !isClosed && !disabled && !initializing && effectiveOnline && snapshot.state === "PLAYING" && !isWaitingResume;
 
   let closedReasonText: string | null = null;
   if (effectiveClosedReason === "PART_CLOSED") closedReasonText = strings.partClosedReason;
@@ -718,7 +840,7 @@ export function AttemptAudioPlayer({
 
   let disabledReasonText: string | null = null;
   if (closedReasonText) disabledReasonText = closedReasonText;
-  else if (disabled) disabledReasonText = strings.disabledReason;
+  else if (disabled && !initializing) disabledReasonText = strings.disabledReason;
   else if (isExhausted) disabledReasonText = strings.exhaustedReason;
 
   let activeBanner: StatusNotice | null = null;
@@ -771,9 +893,10 @@ export function AttemptAudioPlayer({
       )}
     >
       <audio
-        ref={audioRef}
+        ref={setAudioRef}
         preload="none"
         onEnded={handleAudioEnded}
+        onError={handleAudioError}
         onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
         onSeeking={handleSeeking}
@@ -783,7 +906,7 @@ export function AttemptAudioPlayer({
       {fileName != null && fileName !== "" && (
         <div className="flex items-center gap-2 text-caption font-medium text-text-secondary">
           <Volume2 aria-hidden className="size-4 shrink-0 text-primary-text" />
-          <p data-exam-content className="min-w-0 truncate">
+          <p data-exam-content className="min-w-0 line-clamp-2 wrap-anywhere">
             {fileName}
           </p>
         </div>
@@ -804,8 +927,8 @@ export function AttemptAudioPlayer({
           {buttonLabel}
         </Button>
 
-        <div className="flex min-w-44 flex-1 flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-[min(11rem,100%)] flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span
               className={cn(
                 "inline-flex items-center rounded-full border px-2.5 py-0.5 text-caption font-semibold whitespace-nowrap",
@@ -816,7 +939,7 @@ export function AttemptAudioPlayer({
             >
               {badgeText}
             </span>
-            <span className="text-caption font-medium text-text-secondary tabular-nums">
+            <span className="text-caption font-medium whitespace-nowrap text-text-secondary tabular-nums">
               {formatAudioTime(clampedElapsedMs)} / {formatAudioTime(displayDurationMs)}
             </span>
           </div>
