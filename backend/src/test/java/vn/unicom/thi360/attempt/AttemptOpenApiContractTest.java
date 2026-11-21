@@ -356,6 +356,107 @@ class AttemptOpenApiContractTest {
                 .contains("maxPoints?: number | null;");
     }
 
+    @Test
+    void at4ResultReviewHistoryAndSolutionAssetContractsPresentWithoutNeverIntersections() throws Exception {
+        Path openApiPath = resolveWorkspaceFile(Path.of("packages", "api-client", "openapi.json"));
+        JsonNode root = objectMapper.readTree(Files.readString(openApiPath, StandardCharsets.UTF_8));
+        JsonNode paths = root.path("paths");
+        JsonNode schemas = root.path("components").path("schemas");
+
+        assertThat(paths.path("/api/v1/me/attempts").path("get").path("operationId").asText())
+                .isEqualTo("listHistory");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/result").path("get").path("operationId").asText())
+                .isEqualTo("getResult");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/review").path("get").path("operationId").asText())
+                .isEqualTo("getReview");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}").path("get").path("operationId").asText())
+                .isEqualTo("downloadSolutionAsset");
+
+        List<String> at4Schemas = List.of(
+                "AttemptChoiceSummary",
+                "AttemptResultResponse",
+                "AttemptResultUnitStats",
+                "AttemptResultPart",
+                "AttemptResultSubject",
+                "AttemptResultVactComponent",
+                "AttemptResultVactSubsection",
+                "AttemptReviewResponse",
+                "AttemptReviewPart",
+                "AttemptReviewItem",
+                "AttemptReviewAttachment",
+                "AttemptReviewQuestionBody",
+                "AttemptReviewOption",
+                "AttemptReviewClozeBlank",
+                "AttemptReviewStatement",
+                "AttemptReviewMatchingSide",
+                "AttemptReviewExpectedAnswer",
+                "AttemptReviewClozeKey",
+                "AttemptReviewTrueFalseKey",
+                "AttemptReviewMatchingKey",
+                "AttemptReviewEssayFeedback",
+                "AttemptReviewEssayCriterionScore",
+                "ReviewGradingDetail",
+                "ReviewClozeBlankResult",
+                "ReviewStatementResult",
+                "ReviewMatchingPairResult",
+                "AttemptHistoryItem",
+                "PageResponseAttemptHistoryItem");
+
+        for (String schemaName : at4Schemas) {
+            assertThat(schemas.has(schemaName))
+                    .as("Expected schema %s in openapi.json", schemaName)
+                    .isTrue();
+        }
+
+        // Result response schema must declare practiceScoreNote and choices, and never leak gradingError or secrets
+        JsonNode resultProps = schemas.path("AttemptResultResponse").path("properties");
+        assertThat(resultProps.has("practiceScoreNote")).isTrue();
+        assertThat(resultProps.has("choices")).isTrue();
+        assertThat(resultProps.has("gradingError")).isFalse();
+        assertThat(resultProps.has("solution")).isFalse();
+        assertThat(resultProps.has("gradingGuide")).isFalse();
+        assertThat(resultProps.has("rubric")).isFalse();
+
+        JsonNode vactComponentProps = schemas.path("AttemptResultVactComponent").path("properties");
+        assertThat(vactComponentProps.has("correctRate")).isTrue();
+        JsonNode vactSubsectionProps = schemas.path("AttemptResultVactSubsection").path("properties");
+        assertThat(vactSubsectionProps.has("correctRate")).isTrue();
+
+        String openApiRaw = Files.readString(openApiPath, StandardCharsets.UTF_8);
+        assertThat(openApiRaw).doesNotContain("RIGHT_WRONG");
+
+        String schemaDts = Files.readString(
+                resolveWorkspaceFile(Path.of("packages", "api-client", "src", "schema.d.ts")),
+                StandardCharsets.UTF_8);
+        assertThat(schemaDts).doesNotContain("RIGHT_WRONG");
+
+        assertThat(extractOperationBlock(schemaDts, "listHistory"))
+                .contains("PageResponseAttemptHistoryItem");
+        assertThat(extractOperationBlock(schemaDts, "getResult"))
+                .contains("AttemptResultResponse");
+        assertThat(extractOperationBlock(schemaDts, "getReview"))
+                .contains("AttemptReviewResponse");
+        extractOperationBlock(schemaDts, "downloadSolutionAsset");
+
+        for (String schemaName : at4Schemas) {
+            String schemaBlock = extractComponentSchemaBlock(schemaDts, schemaName);
+            assertThat(schemaBlock)
+                    .as("Schema %s must not degenerate to never", schemaName)
+                    .doesNotContain(": never")
+                    .doesNotContain("Record<string, never>");
+        }
+        assertThat(extractComponentSchemaBlock(schemaDts, "AttemptResultResponse"))
+                .contains("practiceScoreNote?:")
+                .contains("choices?:")
+                .doesNotContain("gradingError");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AttemptHistoryItem"))
+                .contains("choices?:")
+                .contains("AttemptChoiceSummary");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AttemptReviewItem"))
+                .contains("gradingDetail?:")
+                .contains("ReviewGradingDetail");
+    }
+
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {
         Pattern pattern =
                 Pattern.compile(

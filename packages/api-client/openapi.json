@@ -283,6 +283,10 @@
             },
             "type" : "array"
           },
+          "bundleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
           "buyerFullName" : {
             "type" : "string"
           },
@@ -307,6 +311,12 @@
           "fulfilledAt" : {
             "format" : "date-time",
             "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AdminOrderSummaryItem"
+            },
+            "type" : "array"
           },
           "listPriceVnd" : {
             "format" : "int64",
@@ -351,6 +361,26 @@
           }
         },
         "required" : [ "amountDueVnd", "attentionTypes", "buyerFullName", "buyerUserId", "buyerUsername", "code", "createdAt", "listPriceVnd", "needsReview", "orderId", "orderState", "paymentMethod", "paymentStatus", "productCode", "productName", "productType", "refundStatus" ],
+        "type" : "object"
+      },
+      "AdminOrderSummaryItem" : {
+        "properties" : {
+          "examCode" : {
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "position" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "examCode", "examId", "examName", "position" ],
         "type" : "object"
       },
       "AfterStartChoiceView" : {
@@ -669,6 +699,128 @@
         },
         "type" : "object"
       },
+      "AttemptChoiceSummary" : {
+        "description" : "Thông tin lựa chọn đã khóa của lượt thi hoặc phần thi",
+        "properties" : {
+          "optionCode" : {
+            "description" : "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "description" : "Danh sách mã môn đã chọn (nếu có)",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "subjectCounts" : {
+            "additionalProperties" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "description" : "Số câu theo từng môn đã chọn (nếu có)",
+            "type" : "object"
+          }
+        },
+        "required" : [ "optionCode" ],
+        "type" : "object"
+      },
+      "AttemptHistoryItem" : {
+        "description" : "Một dòng trong lịch sử luyện thi của học viên (LT §11)",
+        "properties" : {
+          "action" : {
+            "enum" : [ "CONTINUE", "VIEW_RESULT" ],
+            "type" : "string"
+          },
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "choices" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/AttemptChoiceSummary"
+            },
+            "type" : "object"
+          },
+          "compensated" : {
+            "type" : "boolean"
+          },
+          "displayScore" : {
+            "type" : "number"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "faultFlag" : {
+            "type" : "string"
+          },
+          "faultReason" : {
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "gradedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "maxScore" : {
+            "type" : "number"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "practiceScoring" : {
+            "type" : "string"
+          },
+          "rawScore" : {
+            "type" : "number"
+          },
+          "regrading" : {
+            "type" : "boolean"
+          },
+          "regradingLabel" : {
+            "type" : "string"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "scaleMax" : {
+            "type" : "number"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AttemptItemView" : {
         "properties" : {
           "answer" : {
@@ -962,6 +1114,692 @@
         }, {
           "$ref" : "#/components/schemas/Essay"
         } ],
+        "type" : "object"
+      },
+      "AttemptResultPart" : {
+        "properties" : {
+          "maxScore" : {
+            "type" : "number"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "skipped" : {
+            "type" : "boolean"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultResponse" : {
+        "description" : "Kết quả lượt thi của học viên (LT §10.1, F14–F16, F20; không chứa đáp án hay hướng dẫn chấm)",
+        "properties" : {
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "choices" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/AttemptChoiceSummary"
+            },
+            "type" : "object"
+          },
+          "compensated" : {
+            "type" : "boolean"
+          },
+          "displayScore" : {
+            "type" : "number"
+          },
+          "endReason" : {
+            "enum" : [ "SUBMITTED", "TIME_UP", "CHOICE_TIMEOUT", "FAULT_CLOSED" ],
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "faultFlag" : {
+            "type" : "string"
+          },
+          "faultMessage" : {
+            "type" : "string"
+          },
+          "faultReason" : {
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "gradedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultPart"
+            },
+            "type" : "array"
+          },
+          "pendingReviewLabel" : {
+            "type" : "string"
+          },
+          "practiceScoreNote" : {
+            "description" : "Ghi chú cố định dưới điểm luyện tập V-ACT (BS §3)",
+            "type" : "string"
+          },
+          "practiceScoring" : {
+            "type" : "string"
+          },
+          "rawMaxScore" : {
+            "type" : "number"
+          },
+          "rawScore" : {
+            "type" : "number"
+          },
+          "regrading" : {
+            "type" : "boolean"
+          },
+          "regradingLabel" : {
+            "type" : "string"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "reviewAvailable" : {
+            "type" : "boolean"
+          },
+          "scaleMax" : {
+            "type" : "number"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "scoreLabel" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          },
+          "statistics" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          },
+          "statusMessage" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "subjects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultSubject"
+            },
+            "type" : "array"
+          },
+          "vactComponents" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultVactComponent"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultSubject" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "maxScore" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultUnitStats" : {
+        "properties" : {
+          "blankCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partialCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pendingReviewCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultVactComponent" : {
+        "properties" : {
+          "blankCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "componentCode" : {
+            "type" : "string"
+          },
+          "correctCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctRate" : {
+            "description" : "Tỷ lệ đúng (0–100%)",
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partialCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subsections" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultVactSubsection"
+            },
+            "type" : "array"
+          },
+          "totalCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultVactSubsection" : {
+        "properties" : {
+          "blankCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctRate" : {
+            "description" : "Tỷ lệ đúng (0–100%)",
+            "type" : "number"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "partialCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "totalCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewAttachment" : {
+        "properties" : {
+          "downloadUrl" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "mime" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewClozeBlank" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewClozeKey" : {
+        "properties" : {
+          "acceptedTexts" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "blankId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewEssayCriterionScore" : {
+        "properties" : {
+          "comment" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewEssayFeedback" : {
+        "properties" : {
+          "comment" : {
+            "type" : "string"
+          },
+          "criteria" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewEssayCriterionScore"
+            },
+            "type" : "array"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewExpectedAnswer" : {
+        "properties" : {
+          "acceptedTexts" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "clozeKeys" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewClozeKey"
+            },
+            "type" : "array"
+          },
+          "expectedOptionIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "matchingKeys" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewMatchingKey"
+            },
+            "type" : "array"
+          },
+          "trueFalseKeys" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewTrueFalseKey"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewItem" : {
+        "properties" : {
+          "attachments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewAttachment"
+            },
+            "type" : "array"
+          },
+          "body" : {
+            "$ref" : "#/components/schemas/AttemptReviewQuestionBody"
+          },
+          "componentCode" : {
+            "type" : "string"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "displayNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "earnedPoints" : {
+            "type" : "number"
+          },
+          "essayFeedback" : {
+            "$ref" : "#/components/schemas/AttemptReviewEssayFeedback"
+          },
+          "expectedAnswer" : {
+            "$ref" : "#/components/schemas/AttemptReviewExpectedAnswer"
+          },
+          "flagged" : {
+            "type" : "boolean"
+          },
+          "gradingDetail" : {
+            "$ref" : "#/components/schemas/ReviewGradingDetail"
+          },
+          "itemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "optionOrder" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "outcome" : {
+            "enum" : [ "CORRECT", "PARTIAL", "WRONG", "BLANK", "PENDING_REVIEW" ],
+            "type" : "string"
+          },
+          "parentItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "pointsMax" : {
+            "type" : "number"
+          },
+          "questionType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "solution" : {
+            "type" : "string"
+          },
+          "studentAnswer" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ClozeAnswer"
+            }, {
+              "$ref" : "#/components/schemas/EssayAnswer"
+            }, {
+              "$ref" : "#/components/schemas/MatchingAnswer"
+            }, {
+              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
+            }, {
+              "$ref" : "#/components/schemas/ShortAnswerValue"
+            }, {
+              "$ref" : "#/components/schemas/SingleChoiceAnswer"
+            }, {
+              "$ref" : "#/components/schemas/TrueFalseAnswer"
+            } ]
+          },
+          "unitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewMatchingKey" : {
+        "properties" : {
+          "leftId" : {
+            "type" : "string"
+          },
+          "rightId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewMatchingSide" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewOption" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewPart" : {
+        "properties" : {
+          "maxScore" : {
+            "type" : "number"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewQuestionBody" : {
+        "properties" : {
+          "answerFormat" : {
+            "type" : "string"
+          },
+          "blankNumberStart" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "blanks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewClozeBlank"
+            },
+            "type" : "array"
+          },
+          "inputHint" : {
+            "type" : "string"
+          },
+          "left" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewMatchingSide"
+            },
+            "type" : "array"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewOption"
+            },
+            "type" : "array"
+          },
+          "passage" : {
+            "type" : "string"
+          },
+          "reuseRight" : {
+            "type" : "boolean"
+          },
+          "right" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewMatchingSide"
+            },
+            "type" : "array"
+          },
+          "scoringRule" : {
+            "type" : "string"
+          },
+          "statements" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewStatement"
+            },
+            "type" : "array"
+          },
+          "wordLimit" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewResponse" : {
+        "description" : "Xem lại bài làm theo mức result_view (SCORE_AND_ANSWERS hoặc FULL_SOLUTION, LT §10.2)",
+        "properties" : {
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewItem"
+            },
+            "type" : "array"
+          },
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewPart"
+            },
+            "type" : "array"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "selectedPartCode" : {
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewStatement" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewTrueFalseKey" : {
+        "properties" : {
+          "expected" : {
+            "type" : "boolean"
+          },
+          "statementId" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "AttemptSessionConflictResponse" : {
@@ -2019,6 +2857,464 @@
           }
         },
         "required" : [ "id", "reason", "reasonCode" ],
+        "type" : "object"
+      },
+      "BundleAccessExamItem" : {
+        "description" : "Trạng thái quyền dùng của một bài thi thành phần khi hỏi theo mã bộ đề (TM 16.4)",
+        "properties" : {
+          "activeAttemptId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "attemptsLeft" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "entitlementId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "hasPendingFulfillment" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "pendingOrderCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "state" : {
+            "enum" : [ "IN_PROGRESS", "CAN_START", "CHECKING", "EXHAUSTED", "NONE" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptsLeft", "code", "examId", "hasPendingFulfillment", "name", "state" ],
+        "type" : "object"
+      },
+      "BundleBenefitsView" : {
+        "description" : "Quyền lợi áp dụng cho từng bài thi trong bộ đề",
+        "properties" : {
+          "aiExplanation" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "type" : [ "string", "null" ]
+          },
+          "practice" : {
+            "type" : "boolean"
+          },
+          "strengthWeakness" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "aiExplanation", "practice", "strengthWeakness" ],
+        "type" : "object"
+      },
+      "BundleCandidateResponse" : {
+        "description" : "Bài thi đang bán đủ điều kiện đưa vào bộ đề (TM 16.4, BS 2)",
+        "properties" : {
+          "buildMode" : {
+            "description" : "STANDARD hoặc REVIEW",
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "durationMinutes" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "maxPoints" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DecimalRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "questionCount" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "scope" : {
+            "description" : "PART hoặc SUBJECT",
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "subjectItemId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "subjectName" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "versionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "buildMode", "code", "examId", "name", "scope", "versionNo" ],
+        "type" : "object"
+      },
+      "BundleDetailItem" : {
+        "description" : "Thông tin một bài thi thành phần trong chi tiết bộ đề (TM 16.4, BS 2)",
+        "properties" : {
+          "attemptsGranted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "benefits" : {
+            "$ref" : "#/components/schemas/DetailBenefits"
+          },
+          "buildMode" : {
+            "description" : "STANDARD hoặc REVIEW",
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "durationMinutes" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "maxPoints" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DecimalRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "questionCount" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "resultView" : {
+            "description" : "SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION",
+            "type" : [ "string", "null" ]
+          },
+          "scope" : {
+            "description" : "PART hoặc SUBJECT",
+            "type" : "string"
+          },
+          "subjectName" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "versionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "attemptsGranted", "benefits", "buildMode", "code", "examId", "name", "scope" ],
+        "type" : "object"
+      },
+      "BundleDetailResponse" : {
+        "description" : "Chi tiết bộ đề quản trị (TM 16.4)",
+        "properties" : {
+          "attemptsPerExam" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "benefits" : {
+            "$ref" : "#/components/schemas/BundleBenefitsView"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "createdByUsername" : {
+            "type" : [ "string", "null" ]
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "discontinuedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "discontinuedBy" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examKindItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindNameEn" : {
+            "type" : "string"
+          },
+          "examKindNameVi" : {
+            "type" : "string"
+          },
+          "hasUnpublishedChanges" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BundleItemView"
+            },
+            "type" : "array"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "resultView" : {
+            "enum" : [ "SCORE", "SCORE_AND_ANSWERS", "FULL_SOLUTION" ],
+            "type" : "string"
+          },
+          "revision" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "saleState" : {
+            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE", null ],
+            "type" : [ "string", "null" ]
+          },
+          "servingVersion" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "status" : {
+            "enum" : [ "DRAFT", "PUBLISHED", "DISCONTINUED" ],
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : [ "string", "null" ]
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "updatedBy" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "updatedByUsername" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "benefits", "code", "createdAt", "examKindCode", "examKindItemId", "examKindNameEn", "examKindNameVi", "hasUnpublishedChanges", "id", "items", "name", "resultView", "revision", "status", "updatedAt" ],
+        "type" : "object"
+      },
+      "BundleItemView" : {
+        "description" : "Thông tin một bài thi thành phần trong chi tiết bộ đề quản trị",
+        "properties" : {
+          "buildMode" : {
+            "type" : [ "string", "null" ]
+          },
+          "code" : {
+            "type" : [ "string", "null" ]
+          },
+          "durationMinutes" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "maxPoints" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/DecimalRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "partCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "position" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionCount" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IntRange"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "saleState" : {
+            "description" : "ON_SALE, DISCONTINUED hoặc UNAVAILABLE",
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : [ "string", "null" ]
+          },
+          "subjectCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "subjectItemId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "subjectName" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LocalizedName"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "versionNo" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          }
+        },
+        "required" : [ "examId", "position", "saleState" ],
+        "type" : "object"
+      },
+      "BundleRevisionRequest" : {
+        "description" : "Yêu cầu khóa lạc quan cho thao tác công bố hoặc ngừng bán bộ đề",
+        "properties" : {
+          "expectedRevision" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "expectedRevision" ],
+        "type" : "object"
+      },
+      "BundleSummaryResponse" : {
+        "description" : "Tóm tắt bộ đề trong danh sách quản trị (TM 16.4)",
+        "properties" : {
+          "attemptsPerExam" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examKindItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindNameEn" : {
+            "type" : "string"
+          },
+          "examKindNameVi" : {
+            "type" : "string"
+          },
+          "hasUnpublishedChanges" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "itemCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "saleState" : {
+            "enum" : [ "ON_SALE", "DISCONTINUED", "UNAVAILABLE", null ],
+            "type" : [ "string", "null" ]
+          },
+          "servingVersion" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "status" : {
+            "enum" : [ "DRAFT", "PUBLISHED", "DISCONTINUED" ],
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : [ "string", "null" ]
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "examKindCode", "examKindItemId", "examKindNameEn", "examKindNameVi", "hasUnpublishedChanges", "id", "itemCount", "name", "revision", "status", "updatedAt" ],
         "type" : "object"
       },
       "BuyerInfo" : {
@@ -3521,6 +4817,71 @@
         "required" : [ "combinations", "competencies", "difficulties", "examKinds", "grades", "knowledgeTree", "questionTypes", "subjects", "tags", "taskTypes" ],
         "type" : "object"
       },
+      "CreateBundleRequest" : {
+        "description" : "Yêu cầu tạo mới bộ đề ở trạng thái nháp (TM 16.4)",
+        "properties" : {
+          "attemptsPerExam" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "benefitAiExplanation" : {
+            "type" : "boolean"
+          },
+          "benefitNote" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "benefitPractice" : {
+            "type" : "boolean"
+          },
+          "benefitStrengthWeakness" : {
+            "type" : "boolean"
+          },
+          "code" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 4000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "examIds" : {
+            "description" : "Danh sách 2–12 bài thi trong bộ theo thứ tự",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "examKindItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "resultView" : {
+            "description" : "SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION; mặc định SCORE_AND_ANSWERS",
+            "type" : "string"
+          },
+          "summary" : {
+            "maxLength" : 300,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "examIds", "examKindItemId", "name" ],
+        "type" : "object"
+      },
       "CreateCatalogGroupRequest" : {
         "description" : "Yêu cầu tạo nhóm danh mục tùy chỉnh mới",
         "properties" : {
@@ -3835,6 +5196,13 @@
             "type" : "array"
           },
           "audienceUserIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "bundleIds" : {
             "items" : {
               "format" : "uuid",
               "type" : "string"
@@ -4630,7 +5998,7 @@
         "type" : "object"
       },
       "ExamAccessItem" : {
-        "description" : "Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2)",
+        "description" : "Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2, 16.4)",
         "properties" : {
           "activeAttemptId" : {
             "description" : "Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS",
@@ -4654,6 +6022,13 @@
           "hasPendingFulfillment" : {
             "description" : "Có đơn đã thu tiền chưa cấp xong cho bài này (kể cả khi vẫn còn lượt dùng)",
             "type" : "boolean"
+          },
+          "items" : {
+            "description" : "Trạng thái quyền từng bài khi mã là bộ đề (TM 16.4); null với bài lẻ",
+            "items" : {
+              "$ref" : "#/components/schemas/BundleAccessExamItem"
+            },
+            "type" : [ "array", "null" ]
           },
           "pendingOrderCode" : {
             "description" : "Mã đơn đã thu tiền chưa cấp xong; trống khi không có",
@@ -8731,8 +10106,25 @@
           "type" : "object"
         } ]
       },
+      "MyExamBundleRef" : {
+        "description" : "Bộ đề đã mua chứa bài thi này (TM 16.4)",
+        "properties" : {
+          "bundleId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "bundleId", "code", "name" ],
+        "type" : "object"
+      },
       "MyExamCard" : {
-        "description" : "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId)",
+        "description" : "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12, 16.4): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId)",
         "properties" : {
           "actions" : {
             "description" : "Nút của thẻ theo TM 12, nút chính đứng đầu",
@@ -8765,6 +10157,13 @@
           "buildMode" : {
             "description" : "STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2)",
             "type" : "string"
+          },
+          "bundles" : {
+            "description" : "Các bộ đề đã mua chứa bài thi này (TM 16.4)",
+            "items" : {
+              "$ref" : "#/components/schemas/MyExamBundleRef"
+            },
+            "type" : [ "array", "null" ]
           },
           "code" : {
             "description" : "Mã sản phẩm, cũng là mã bài thi",
@@ -9326,6 +10725,44 @@
         "required" : [ "amountDueVnd", "attemptsGranted", "code", "createdAt", "discountApplied", "id", "listPriceVnd", "paymentMethod", "productCode", "productName", "productType", "promotionDiscountVnd", "state", "voucherDiscountVnd" ],
         "type" : "object"
       },
+      "PageResponseAttemptHistoryItem" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptHistoryItem"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
       "PageResponseAuditEventResponse" : {
         "description" : "Kết quả phân trang",
         "properties" : {
@@ -9333,6 +10770,44 @@
             "description" : "Danh sách phần tử của trang hiện tại",
             "items" : {
               "$ref" : "#/components/schemas/AuditEventResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "PageResponseBundleSummaryResponse" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/BundleSummaryResponse"
             },
             "type" : "array"
           },
@@ -10647,7 +12122,7 @@
             "type" : "string"
           },
           "code" : {
-            "description" : "Mã sản phẩm, cũng là mã bài thi",
+            "description" : "Mã sản phẩm, cũng là mã bài thi hoặc mã bộ đề",
             "type" : "string"
           },
           "coverUrl" : {
@@ -10662,7 +12137,7 @@
             "$ref" : "#/components/schemas/ExamKindRef"
           },
           "format" : {
-            "description" : "Hình thức (E4): FULL, PART hay SUBJECT",
+            "description" : "Hình thức (E4): FULL, PART, SUBJECT hay BUNDLE",
             "type" : "string"
           },
           "listPrice" : {
@@ -10678,6 +12153,10 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "productType" : {
+            "description" : "EXAM hoặc BUNDLE",
+            "type" : "string"
+          },
           "promotion" : {
             "$ref" : "#/components/schemas/PromotionBadge",
             "description" : "Khuyến mãi tự động đang áp; null nếu không có"
@@ -10688,7 +12167,7 @@
           },
           "scopeLabel" : {
             "$ref" : "#/components/schemas/LocalizedName",
-            "description" : "Tên phần (PART) hoặc môn (SUBJECT) ghi trên thẻ; null với FULL"
+            "description" : "Tên phần (PART) hoặc môn (SUBJECT) ghi trên thẻ; null với FULL và BUNDLE"
           },
           "summary" : {
             "description" : "Tóm tắt; trống nếu quản trị viên chưa nhập",
@@ -10703,7 +12182,7 @@
         "type" : "object"
       },
       "ProductDetail" : {
-        "description" : "Chi tiết sản phẩm (TM 10.1, 10.2). Không có id hay nội dung câu hỏi, đáp án, lời giải.",
+        "description" : "Chi tiết sản phẩm (TM 10.1, 10.2, 16.4). Không có id hay nội dung câu hỏi, đáp án, lời giải.",
         "properties" : {
           "attemptsGranted" : {
             "format" : "int32",
@@ -10734,7 +12213,7 @@
             "type" : "string"
           },
           "description" : {
-            "description" : "Mô tả bài thi",
+            "description" : "Mô tả sản phẩm",
             "type" : "string"
           },
           "durationMinutes" : {
@@ -10744,8 +12223,15 @@
             "$ref" : "#/components/schemas/ExamKindRef"
           },
           "format" : {
-            "description" : "FULL, PART hoặc SUBJECT",
+            "description" : "FULL, PART, SUBJECT hoặc BUNDLE",
             "type" : "string"
+          },
+          "items" : {
+            "description" : "Danh sách bài thi trong bộ đề; rỗng với bài thi đơn",
+            "items" : {
+              "$ref" : "#/components/schemas/BundleDetailItem"
+            },
+            "type" : "array"
           },
           "listPrice" : {
             "description" : "Giá gốc, đồng",
@@ -10780,6 +12266,10 @@
             "description" : "Giá phải trả sau khuyến mãi tự động, đồng",
             "format" : "int64",
             "type" : "integer"
+          },
+          "productType" : {
+            "description" : "EXAM hoặc BUNDLE",
+            "type" : "string"
           },
           "promotion" : {
             "$ref" : "#/components/schemas/PromotionBadge"
@@ -11139,8 +12629,12 @@
         "type" : "object"
       },
       "PromotionPricePreviewRequest" : {
-        "description" : "Yêu cầu thử giá khuyến mãi trên một bài thi (TM 7.3)",
+        "description" : "Yêu cầu thử giá khuyến mãi trên một bài thi hoặc bộ đề (TM 7.3, 16.4)",
         "properties" : {
+          "bundleId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
           "examId" : {
             "format" : "uuid",
             "type" : "string"
@@ -11150,7 +12644,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "examId", "promotionId" ],
+        "required" : [ "promotionId" ],
         "type" : "object"
       },
       "PromotionRedemptionView" : {
@@ -12354,6 +13848,145 @@
         },
         "type" : "object"
       },
+      "ReviewClozeBlankResult" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "enum" : [ "CORRECT", "PARTIAL", "WRONG", "BLANK", "PENDING_REVIEW" ],
+            "type" : "string"
+          },
+          "pointsEarned" : {
+            "type" : "number"
+          },
+          "pointsMax" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewGradingDetail" : {
+        "description" : "Chi tiết chấm điểm theo từng ý/ô/cặp của câu hỏi (không chứa nhận xét hay tiêu chí tự luận)",
+        "properties" : {
+          "blankEssay" : {
+            "type" : "boolean"
+          },
+          "blankResults" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewClozeBlankResult"
+            },
+            "type" : "array"
+          },
+          "blankUnitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "childCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctSelectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctUnitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "itemType" : {
+            "type" : "string"
+          },
+          "matchedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "normalizedMatch" : {
+            "type" : "boolean"
+          },
+          "pairCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pairResults" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewMatchingPairResult"
+            },
+            "type" : "array"
+          },
+          "reuseRight" : {
+            "type" : "boolean"
+          },
+          "scoringMethod" : {
+            "type" : "string"
+          },
+          "scoringRule" : {
+            "type" : "string"
+          },
+          "selectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "selectedOptionId" : {
+            "type" : "string"
+          },
+          "statementCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "statementResults" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewStatementResult"
+            },
+            "type" : "array"
+          },
+          "totalExpectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wordCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongSelectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongUnitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewMatchingPairResult" : {
+        "properties" : {
+          "leftId" : {
+            "type" : "string"
+          },
+          "matched" : {
+            "type" : "boolean"
+          },
+          "pointsEarned" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewStatementResult" : {
+        "properties" : {
+          "answered" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "matched" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
       "RoleDetailResponse" : {
         "description" : "Chi tiết vai trò kèm danh sách quyền",
         "properties" : {
@@ -13372,6 +15005,75 @@
         "required" : [ "mode", "palette", "version" ],
         "type" : "object"
       },
+      "UpdateBundleRequest" : {
+        "description" : "Yêu cầu cập nhật bản nháp/bản làm việc của bộ đề (TM 16.4)",
+        "properties" : {
+          "attemptsPerExam" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "benefitAiExplanation" : {
+            "type" : "boolean"
+          },
+          "benefitNote" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "benefitPractice" : {
+            "type" : "boolean"
+          },
+          "benefitStrengthWeakness" : {
+            "type" : "boolean"
+          },
+          "code" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 4000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "examIds" : {
+            "description" : "Danh sách 2–12 bài thi trong bộ theo thứ tự",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "examKindItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "expectedRevision" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "resultView" : {
+            "description" : "SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION",
+            "type" : "string"
+          },
+          "summary" : {
+            "maxLength" : 300,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "examIds", "expectedRevision", "name" ],
+        "type" : "object"
+      },
       "UpdateCatalogGroupRequest" : {
         "description" : "Yêu cầu cập nhật nhóm danh mục",
         "properties" : {
@@ -13840,6 +15542,13 @@
             "type" : "array"
           },
           "audienceUserIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "bundleIds" : {
             "items" : {
               "format" : "uuid",
               "type" : "string"
@@ -15748,6 +17457,1111 @@
         },
         "summary" : "Xem trước kết quả gán/gỡ quyền hàng loạt",
         "tags" : [ "Admin Bulk Authz" ]
+      }
+    },
+    "/api/v1/admin/bundles" : {
+      "get" : {
+        "operationId" : "listBundles",
+        "parameters" : [ {
+          "description" : "Tìm theo tên hoặc mã bộ đề",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Mã hoặc UUID kỳ thi",
+          "in" : "query",
+          "name" : "examKind",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "DRAFT", "PUBLISHED", "DISCONTINUED" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseBundleSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách bộ đề phân trang",
+        "tags" : [ "Bundles" ]
+      },
+      "post" : {
+        "operationId" : "createBundle",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateBundleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BundleDetailResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tạo bộ đề mới ở trạng thái nháp",
+        "tags" : [ "Bundles" ]
+      }
+    },
+    "/api/v1/admin/bundles/candidates" : {
+      "get" : {
+        "operationId" : "listBundleCandidates",
+        "parameters" : [ {
+          "description" : "Mã kỳ thi (ví dụ SP2E) hoặc UUID danh mục kỳ thi",
+          "in" : "query",
+          "name" : "examKind",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/BundleCandidateResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách bài thi đang bán (PART hoặc SUBJECT, gồm cả bài ôn) có thể đưa vào bộ đề",
+        "tags" : [ "Bundles" ]
+      }
+    },
+    "/api/v1/admin/bundles/{id}" : {
+      "get" : {
+        "operationId" : "getBundle",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BundleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chi tiết bộ đề và danh sách bài thi thành phần",
+        "tags" : [ "Bundles" ]
+      },
+      "put" : {
+        "operationId" : "updateBundle",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateBundleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BundleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật bộ đề (khóa lạc quan expectedRevision)",
+        "tags" : [ "Bundles" ]
+      }
+    },
+    "/api/v1/admin/bundles/{id}/discontinue" : {
+      "post" : {
+        "operationId" : "discontinueBundle",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BundleRevisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BundleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Ngừng bán bộ đề đang công bố",
+        "tags" : [ "Bundles" ]
+      }
+    },
+    "/api/v1/admin/bundles/{id}/publish" : {
+      "post" : {
+        "operationId" : "publishBundle",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BundleRevisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BundleDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Công bố hoặc công bố lại bộ đề",
+        "tags" : [ "Bundles" ]
       }
     },
     "/api/v1/admin/catalog/combination-versions/{versionId}" : {
@@ -41194,6 +44008,205 @@
       }
     },
     "/api/v1/me/attempts" : {
+      "get" : {
+        "operationId" : "listHistory",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "kind",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "scope",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "examId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseAttemptHistoryItem"
+                }
+              }
+            },
+            "description" : "Danh sách lượt thi phân trang"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lịch sử luyện thi của học viên",
+        "tags" : [ "My Attempts Results" ]
+      },
       "post" : {
         "operationId" : "start",
         "parameters" : [ {
@@ -43250,6 +46263,309 @@
         "tags" : [ "Attempts" ]
       }
     },
+    "/api/v1/me/attempts/{attemptId}/result" : {
+      "get" : {
+        "operationId" : "getResult",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptResultResponse"
+                }
+              }
+            },
+            "description" : "Kết quả tổng hợp, thống kê và breakdown"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt không tồn tại hoặc không thuộc người dùng"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt chưa kết thúc"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem kết quả tổng hợp của lượt thi",
+        "tags" : [ "My Attempts Results" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/review" : {
+      "get" : {
+        "operationId" : "getReview",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "part",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptReviewResponse"
+                }
+              }
+            },
+            "description" : "Chi tiết từng câu và đáp án / lời giải"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Gói lượt thi chỉ cho xem điểm (SCORE)"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt hoặc phần không tồn tại"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt chưa ở trạng thái xem lại được"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem lại bài làm theo quyền result_view",
+        "tags" : [ "My Attempts Results" ]
+      }
+    },
     "/api/v1/me/attempts/{attemptId}/session" : {
       "post" : {
         "operationId" : "claimSession",
@@ -43405,6 +46721,163 @@
         },
         "summary" : "Nhận, khôi phục hoặc tiếp quản phiên sửa bài của lượt thi",
         "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}" : {
+      "get" : {
+        "operationId" : "downloadSolutionAsset",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Nội dung tệp lời giải"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải ảnh hoặc tệp thuộc lời giải câu hỏi trong lượt đã chấm (FULL_SOLUTION)",
+        "tags" : [ "My Attempts Solution Assets" ]
       }
     },
     "/api/v1/me/attempts/{attemptId}/submit" : {
@@ -45119,7 +48592,7 @@
                 }
               }
             },
-            "description" : "ACCOUNT_CHANGED, IDEMPOTENCY_KEY_REUSED hoặc PRICE_CHANGED"
+            "description" : "ACCOUNT_CHANGED, IDEMPOTENCY_KEY_REUSED, PRICE_CHANGED hoặc PRODUCT_UNAVAILABLE"
           },
           "410" : {
             "content" : {
@@ -45604,7 +49077,7 @@
                 }
               }
             },
-            "description" : "ORDER_NOT_PENDING hoặc ORDER_EXPIRED"
+            "description" : "ORDER_NOT_PENDING, ORDER_EXPIRED hoặc PRODUCT_UNAVAILABLE"
           },
           "410" : {
             "content" : {
@@ -46889,7 +50362,7 @@
           "name" : "format",
           "required" : false,
           "schema" : {
-            "enum" : [ "FULL", "PART", "SUBJECT" ],
+            "enum" : [ "FULL", "PART", "SUBJECT", "BUNDLE" ],
             "type" : "string"
           }
         }, {
@@ -47254,6 +50727,9 @@
     "description" : "Danh mục bài thi cho khách, không cần đăng nhập",
     "name" : "Storefront (public)"
   }, {
+    "description" : "Quản trị bộ đề thi",
+    "name" : "Bundles"
+  }, {
     "description" : "Chuẩn bị, bắt đầu và đọc trạng thái lượt thi",
     "name" : "Attempts"
   }, {
@@ -47271,6 +50747,9 @@
   }, {
     "description" : "Nhập câu hỏi từ Excel hoặc CSV",
     "name" : "Question imports"
+  }, {
+    "description" : "Tải ảnh/tệp trong lời giải câu hỏi khi xem lại FULL_SOLUTION (BS §15)",
+    "name" : "My Attempts Solution Assets"
   }, {
     "description" : "Báo cáo đối soát cuối ngày",
     "name" : "Admin Reconciliation"
@@ -47337,6 +50816,9 @@
   }, {
     "description" : "Quản lý vai trò và tập quyền của vai trò",
     "name" : "Admin Roles"
+  }, {
+    "description" : "Kết quả, xem lại bài làm và lịch sử luyện thi của học viên (LT §10–11)",
+    "name" : "My Attempts Results"
   }, {
     "description" : "Ảnh đại diện của tài khoản",
     "name" : "Avatar"

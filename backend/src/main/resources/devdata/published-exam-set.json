@@ -917,8 +917,59 @@
         "attemptsGranted": 3,
         "resultView": "SCORE"
       }
+    },
+    {
+      "code": "DS-SP2E-VAN-OLD",
+      "productCode": "DS-SP2E-VAN-OLD",
+      "name": "SP2E Ngữ văn đọc hiểu (bộ dữ liệu)",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "VAN",
+      "template": "SP2E_VAN_OLD",
+      "buildMode": "STANDARD",
+      "durationMinutes": 60,
+      "size": "FULL",
+      "purpose": "BUNDLE_MEMBER",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 39000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
+    },
+    {
+      "code": "DS-SP2E-ANH-2026",
+      "productCode": "DS-SP2E-ANH-2026",
+      "name": "SP2E Tiếng Anh 2026 (bộ dữ liệu)",
+      "kind": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": "ANH",
+      "template": "SP2E_ANH_2026",
+      "buildMode": "STANDARD",
+      "durationMinutes": 60,
+      "size": "FULL",
+      "purpose": "BUNDLE_MEMBER",
+      "miniCode": null,
+      "listing": {
+        "priceVnd": 39000,
+        "attemptsGranted": 3,
+        "resultView": "SCORE_AND_ANSWERS"
+      }
     }
   ],
+  "sp2eBundle": {
+    "code": "DS-BO-SP2E-3MON",
+    "name": "Bộ đề SP2E 3 môn Toán - Văn - Anh (bộ dữ liệu)",
+    "summary": "Bộ 3 đề theo môn SP2E (Toán 2026, Ngữ văn đọc hiểu, Tiếng Anh 2026)",
+    "description": "Bộ đề mẫu SP2E gồm 3 bài thi theo môn: Toán 2026, Ngữ văn đọc hiểu và Tiếng Anh 2026.",
+    "kind": "SP2E",
+    "examCodes": ["DS-SP2E-MATH-2026", "DS-SP2E-VAN-OLD", "DS-SP2E-ANH-2026"],
+    "priceVnd": 99000,
+    "attemptsPerExam": 3,
+    "resultView": "SCORE_AND_ANSWERS"
+  },
   "hscaChemistry": {
     "examCode": "DS-HSCA-HOA",
     "familyCode": "HSCA-HOA-SA",
