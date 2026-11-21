@@ -3,6 +3,8 @@ import { loadAttemptStartContext } from "@/features/attempt-draft";
 import {
   type AfterStartChoiceView,
   type AttemptPrepareLoader,
+  type ChoiceOptionView,
+  type ChoiceSubjectView,
   loadAttemptPrepare,
   loadAttemptState,
 } from "@/features/attempt-prepare/api";
@@ -24,7 +26,7 @@ export type PartChoiceResponse = components["schemas"]["PartChoiceResponse"];
 export type RetryPartRequest = components["schemas"]["RetryPartRequest"];
 export type FinalAnswerChange = components["schemas"]["FinalAnswerChange"];
 
-export { loadAttemptState };
+export { loadAttemptState, type AfterStartChoiceView, type ChoiceOptionView, type ChoiceSubjectView };
 
 export class AttemptApiError extends ApiStatusError {
   readonly retryAfterSeconds?: number;
