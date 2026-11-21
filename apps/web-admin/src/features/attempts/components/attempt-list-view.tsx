@@ -53,7 +53,7 @@ const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
   "@max-[74rem]:[&_:is(th,td):has([data-col=attemptNo])]:hidden",
   "@max-[66rem]:[&_:is(th,td):has([data-col=finishedAt])]:hidden",
-  "@max-[58rem]:[&_:is(th,td):has([data-col=startedAt])]:hidden",
+  "@max-[62rem]:[&_:is(th,td):has([data-col=startedAt])]:hidden",
 ].join(" ");
 
 export interface AttemptListViewProps {
@@ -169,7 +169,7 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
           const item = row.original;
           const primary = item.username?.trim() || shortAttemptCode(item.userId);
           return (
-            <div className="flex min-w-32 max-w-52 flex-col gap-0.5">
+            <div className="flex min-w-28 max-w-36 flex-col gap-0.5">
               <span className="truncate font-medium text-text">{primary}</span>
               {item.userFullName && (
                 <span className="line-clamp-1 text-caption text-text-muted">{item.userFullName}</span>
@@ -187,7 +187,7 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
           const scope = scopeLabel(item.scope);
           const metaParts = [kind, scope, item.partCode].filter(Boolean);
           return (
-            <div className="flex min-w-44 max-w-68 flex-col gap-0.5">
+            <div className="flex min-w-36 max-w-48 flex-col gap-0.5">
               {item.examName ? (
                 <span data-exam-content className="line-clamp-2 font-medium wrap-anywhere text-text">
                   {item.examName}
@@ -219,7 +219,7 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
         id: "startedAt",
         header: () => <span data-col="startedAt">{t("list.table.startedAt")}</span>,
         cell: ({ row }) => (
-          <span data-col="startedAt" className="whitespace-nowrap text-text tabular-nums">
+          <span data-col="startedAt" className="text-caption whitespace-nowrap text-text tabular-nums">
             {row.original.startedAt
               ? format.dateTime(new Date(row.original.startedAt), "dateTime")
               : "—"}
@@ -249,7 +249,7 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
           const item = row.original;
           const state: AttemptState = item.state ?? "STARTING";
           return (
-            <div className="flex max-w-60 flex-wrap items-center gap-1.5">
+            <div className="flex max-w-48 flex-wrap items-center gap-1.5">
               <StatusChip tone={ATTEMPT_STATE_TONE[state]}>{t(`status.${state}`)}</StatusChip>
               {item.faultFlag && (
                 <StatusChip tone="warning">
@@ -323,7 +323,11 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
             status={<StatusChip tone={ATTEMPT_STATE_TONE[state]}>{t(`status.${state}`)}</StatusChip>}
             tags={
               <>
-                {kind && <ListCardTag>{kind}</ListCardTag>}
+                {kind && (
+                  <span className="inline-flex min-h-6 max-w-full items-center rounded-full border border-border bg-surface px-2.5 py-0.5 text-caption leading-snug whitespace-normal wrap-break-word text-text-secondary">
+                    {kind}
+                  </span>
+                )}
                 {scope && <ListCardTag>{scope}</ListCardTag>}
                 {item.faultFlag && (
                   <StatusChip tone="warning">

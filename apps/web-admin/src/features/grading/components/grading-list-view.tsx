@@ -9,7 +9,6 @@ import {
   focusRing,
   IconButton,
   ListCard,
-  ListCardTag,
   ListCardTitleLink,
   LiveStatus,
   PageHeader,
@@ -115,7 +114,7 @@ export function GradingListView({ deps }: GradingListViewProps) {
           const itemId = item.itemId ?? "";
           const attemptCode = shortAttemptCode(item.attemptId);
           return (
-            <div className="flex min-w-48 max-w-80 flex-col gap-0.5">
+            <div className="flex min-w-36 max-w-52 flex-col gap-0.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <Link
                   href={gradingItemHref(itemId)}
@@ -148,7 +147,10 @@ export function GradingListView({ deps }: GradingListViewProps) {
         id: "kind",
         header: () => <span data-col="kind">{t("list.table.kind")}</span>,
         cell: ({ row }) => (
-          <span data-col="kind" className="block whitespace-nowrap text-body text-text-secondary">
+          <span
+            data-col="kind"
+            className="line-clamp-2 max-w-40 text-caption leading-snug wrap-break-word text-text-secondary"
+          >
             {kindLabel(row.original.examKindCode) || "—"}
           </span>
         ),
@@ -157,7 +159,7 @@ export function GradingListView({ deps }: GradingListViewProps) {
         id: "submittedAt",
         header: t("list.table.submittedAt"),
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-text tabular-nums">
+          <span className="text-caption whitespace-nowrap text-text tabular-nums">
             {row.original.submittedAt
               ? format.dateTime(new Date(row.original.submittedAt), "dateTime")
               : "—"}
@@ -168,7 +170,7 @@ export function GradingListView({ deps }: GradingListViewProps) {
         id: "score",
         header: () => <span className="block text-end">{t("list.table.score")}</span>,
         cell: ({ row }) => (
-          <div className="flex min-w-24 justify-end text-end">
+          <div className="flex min-w-16 justify-end text-end">
             <ScoreText item={row.original} />
           </div>
         ),
@@ -239,7 +241,11 @@ export function GradingListView({ deps }: GradingListViewProps) {
             status={<StatusChip tone={GRADING_STATUS_TONE[state]}>{t(`status.${state}`)}</StatusChip>}
             tags={
               <>
-                {item.examKindCode && <ListCardTag>{kindLabel(item.examKindCode)}</ListCardTag>}
+                {item.examKindCode && (
+                  <span className="inline-flex min-h-6 max-w-full items-center rounded-full border border-border bg-surface px-2.5 py-0.5 text-caption leading-snug whitespace-normal wrap-break-word text-text-secondary">
+                    {kindLabel(item.examKindCode)}
+                  </span>
+                )}
                 {item.regrading && (
                   <StatusChip tone="warning">{t("list.regrading")}</StatusChip>
                 )}

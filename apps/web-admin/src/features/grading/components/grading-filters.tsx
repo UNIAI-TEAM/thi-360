@@ -181,8 +181,7 @@ export function GradingFiltersBar({
         >
           <fieldset className="m-0 min-w-0 border-0 p-0">
             <legend className="sr-only">{t("statusLegend")}</legend>
-            <div className="-m-1 flex max-w-[calc(100%+0.5rem)] overflow-x-auto p-1 [scrollbar-width:thin]">
-              <div className="flex w-fit gap-1 rounded-lg bg-subtle p-1">
+            <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg bg-subtle p-1">
                 {statusOptions.map((option) => (
                   <label key={option.value ?? "all"} className="relative shrink-0 cursor-pointer">
                     <input
@@ -195,10 +194,10 @@ export function GradingFiltersBar({
                     />
                     <span
                       className={cn(
-                        "relative flex h-10 items-center gap-2 rounded-md px-3.5 text-label font-medium whitespace-nowrap text-text-muted",
+                        "relative flex h-10 items-center gap-2 rounded-md px-3 text-label font-medium whitespace-nowrap text-text-muted sm:px-3.5",
                         "transition-colors duration-150 motion-reduce:transition-none hover:text-text",
                         "peer-checked:bg-surface peer-checked:text-primary-text peer-checked:shadow-sm",
-                        "after:pointer-events-none after:absolute after:inset-x-3 after:bottom-1 peer-checked:after:border-b-2 peer-checked:after:border-current",
+                        "after:pointer-events-none after:absolute after:inset-x-2.5 after:bottom-1 peer-checked:after:border-b-2 peer-checked:after:border-current sm:after:inset-x-3",
                         "peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-text",
                       )}
                     >
@@ -211,7 +210,6 @@ export function GradingFiltersBar({
                     </span>
                   </label>
                 ))}
-              </div>
             </div>
           </fieldset>
 
