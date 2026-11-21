@@ -54,6 +54,305 @@
         "required" : [ "addedCount", "addedUserIds", "classId", "skippedCount", "skippedUserIds" ],
         "type" : "object"
       },
+      "AdminOrderDetailResponse" : {
+        "properties" : {
+          "amountDueVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "attemptsGranted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attentionTypes" : {
+            "items" : {
+              "enum" : [ "LATE_SUCCESS_PENDING", "PAID_UNFULFILLED", "PAYMENT_UNKNOWN_OVER_24H", "DUPLICATE_UNREFUNDED", "NEEDS_REVIEW", "REFUND_UNKNOWN" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "auditEvents" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AuditEventItem"
+            },
+            "type" : "array"
+          },
+          "benefits" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "bundleId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "bundleVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "buyer" : {
+            "$ref" : "#/components/schemas/BuyerInfo"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "discountApplied" : {
+            "enum" : [ "NONE", "PROMOTION_ONLY", "VOUCHER_ONLY", "COMBINED" ],
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fulfilledAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fulfillmentError" : {
+            "type" : "string"
+          },
+          "fulfillmentTries" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "grants" : {
+            "items" : {
+              "$ref" : "#/components/schemas/GrantView"
+            },
+            "type" : "array"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OrderItemView"
+            },
+            "type" : "array"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "needsReview" : {
+            "type" : "boolean"
+          },
+          "optionCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "orderHistory" : {
+            "items" : {
+              "$ref" : "#/components/schemas/HistoryView"
+            },
+            "type" : "array"
+          },
+          "orderId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "paidAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "paymentMethod" : {
+            "enum" : [ "VNPAY", "FREE" ],
+            "type" : "string"
+          },
+          "paymentStatus" : {
+            "enum" : [ "SUCCEEDED", "PENDING", "FAILED", "FREE" ],
+            "type" : "string"
+          },
+          "payments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PaymentDetailView"
+            },
+            "type" : "array"
+          },
+          "productCode" : {
+            "type" : "string"
+          },
+          "productName" : {
+            "type" : "string"
+          },
+          "productType" : {
+            "enum" : [ "EXAM", "BUNDLE" ],
+            "type" : "string"
+          },
+          "promotionDiscountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "promotionId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "refundStatus" : {
+            "enum" : [ "NONE", "IN_PROGRESS", "PARTIAL", "FULL" ],
+            "type" : "string"
+          },
+          "replacedByOrderCode" : {
+            "type" : "string"
+          },
+          "replacedByOrderId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "reviewReason" : {
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "PENDING_PAYMENT", "PAID", "FULFILLED", "EXPIRED", "REPLACED", "CANCELLED", "REFUNDED" ],
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "voucherCode" : {
+            "type" : "string"
+          },
+          "voucherDiscountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "voucherId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "amountDueVnd", "attemptsGranted", "attentionTypes", "auditEvents", "benefits", "buyer", "code", "createdAt", "discountApplied", "fulfillmentTries", "grants", "items", "listPriceVnd", "needsReview", "optionCodes", "orderHistory", "orderId", "paymentMethod", "paymentStatus", "payments", "productCode", "productName", "productType", "promotionDiscountVnd", "refundStatus", "resultView", "state", "updatedAt", "voucherDiscountVnd" ],
+        "type" : "object"
+      },
+      "AdminOrderListResponse" : {
+        "properties" : {
+          "attention" : {
+            "$ref" : "#/components/schemas/OrderAttentionSummary"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AdminOrderSummary"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "attention", "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
+      "AdminOrderSummary" : {
+        "properties" : {
+          "amountDueVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "attentionTypes" : {
+            "items" : {
+              "enum" : [ "LATE_SUCCESS_PENDING", "PAID_UNFULFILLED", "PAYMENT_UNKNOWN_OVER_24H", "DUPLICATE_UNREFUNDED", "NEEDS_REVIEW", "REFUND_UNKNOWN" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "buyerFullName" : {
+            "type" : "string"
+          },
+          "buyerUserId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "buyerUsername" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "fulfilledAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "listPriceVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "needsReview" : {
+            "type" : "boolean"
+          },
+          "orderId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "orderState" : {
+            "enum" : [ "PENDING_PAYMENT", "PAID", "FULFILLED", "EXPIRED", "REPLACED", "CANCELLED", "REFUNDED" ],
+            "type" : "string"
+          },
+          "paidAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "paymentMethod" : {
+            "enum" : [ "VNPAY", "FREE" ],
+            "type" : "string"
+          },
+          "paymentStatus" : {
+            "enum" : [ "SUCCEEDED", "PENDING", "FAILED", "FREE" ],
+            "type" : "string"
+          },
+          "productCode" : {
+            "type" : "string"
+          },
+          "productName" : {
+            "type" : "string"
+          },
+          "productType" : {
+            "enum" : [ "EXAM", "BUNDLE" ],
+            "type" : "string"
+          },
+          "refundStatus" : {
+            "enum" : [ "NONE", "IN_PROGRESS", "PARTIAL", "FULL" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "amountDueVnd", "attentionTypes", "buyerFullName", "buyerUserId", "buyerUsername", "code", "createdAt", "listPriceVnd", "needsReview", "orderId", "orderState", "paymentMethod", "paymentStatus", "productCode", "productName", "productType", "refundStatus" ],
+        "type" : "object"
+      },
       "AfterStartChoiceView" : {
         "properties" : {
           "kind" : {
@@ -587,6 +886,80 @@
           }
         },
         "required" : [ "attemptId", "serverNow", "state" ],
+        "type" : "object"
+      },
+      "AuditEventItem" : {
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "actorId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "actorRoles" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "actorType" : {
+            "enum" : [ "USER", "PLATFORM", "SYSTEM" ],
+            "type" : "string"
+          },
+          "actorUsername" : {
+            "type" : "string"
+          },
+          "after" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "before" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "ip" : {
+            "type" : "string"
+          },
+          "module" : {
+            "type" : "string"
+          },
+          "occurredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "outcome" : {
+            "enum" : [ "SUCCESS", "FAILURE" ],
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "targetId" : {
+            "type" : "string"
+          },
+          "targetLabel" : {
+            "type" : "string"
+          },
+          "targetType" : {
+            "type" : "string"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "actorRoles", "actorType", "id", "module", "occurredAt", "outcome" ],
         "type" : "object"
       },
       "AuditEventResponse" : {
@@ -1358,6 +1731,22 @@
           }
         },
         "required" : [ "id", "reason", "reasonCode" ],
+        "type" : "object"
+      },
+      "BuyerInfo" : {
+        "properties" : {
+          "fullName" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "fullName", "userId", "username" ],
         "type" : "object"
       },
       "CapWarning" : {
@@ -3171,6 +3560,34 @@
         "required" : [ "discountType", "discountValue", "endsAt", "kind", "name", "scope", "startsAt" ],
         "type" : "object"
       },
+      "CreateRefundRequest" : {
+        "properties" : {
+          "amountVnd" : {
+            "format" : "int64",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "externalRef" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "API", "MANUAL" ],
+            "type" : "string"
+          },
+          "reason" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "verifiedSystemError" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "amountVnd", "reason" ],
+        "type" : "object"
+      },
       "CreateRoleRequest" : {
         "description" : "Yêu cầu tạo vai trò mới",
         "properties" : {
@@ -3921,6 +4338,117 @@
           }
         },
         "required" : [ "items" ],
+        "type" : "object"
+      },
+      "ExamBuyerOrderRef" : {
+        "properties" : {
+          "amountDueVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "orderCode" : {
+            "type" : "string"
+          },
+          "orderId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "paidAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "PENDING_PAYMENT", "PAID", "FULFILLED", "EXPIRED", "REPLACED", "CANCELLED", "REFUNDED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "amountDueVnd", "createdAt", "orderCode", "orderId", "state" ],
+        "type" : "object"
+      },
+      "ExamBuyerRow" : {
+        "properties" : {
+          "attemptsRemaining" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsReserved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsRevoked" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsUsed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "lastPaidAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "orders" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamBuyerOrderRef"
+            },
+            "type" : "array"
+          },
+          "purchaseCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "userId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptsRemaining", "attemptsReserved", "attemptsRevoked", "attemptsTotal", "attemptsUsed", "fullName", "orders", "purchaseCount", "userId", "username" ],
+        "type" : "object"
+      },
+      "ExamBuyersResponse" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExamBuyerRow"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalBuyers" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalBuyers", "totalItems", "totalPages" ],
         "type" : "object"
       },
       "ExamCheckAnswerQuota" : {
@@ -6882,6 +7410,81 @@
         },
         "type" : "object"
       },
+      "GrantView" : {
+        "properties" : {
+          "attempts" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsLeft" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsReserved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsRevoked" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attemptsUsed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "entitlementId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "grantId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "grantedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "grantedBy" : {
+            "type" : "string"
+          },
+          "revokedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "attempts", "attemptsLeft", "attemptsReserved", "attemptsRevoked", "attemptsUsed", "entitlementId", "examId", "grantId", "grantedAt", "grantedBy" ],
+        "type" : "object"
+      },
+      "HistoryView" : {
+        "properties" : {
+          "actor" : {
+            "type" : "string"
+          },
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fromState" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "toState" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "actor", "at", "id", "toState" ],
+        "type" : "object"
+      },
       "ImportBatchResponse" : {
         "description" : "Thông tin đợt cấp tài khoản hàng loạt",
         "properties" : {
@@ -7298,6 +7901,38 @@
         },
         "type" : "object"
       },
+      "LateSuccessReviewRequest" : {
+        "properties" : {
+          "decision" : {
+            "enum" : [ "ACCEPT", "REFUND" ],
+            "type" : "string"
+          },
+          "evidenceRef" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "reason" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "decision", "evidenceRef", "reason" ],
+        "type" : "object"
+      },
+      "LatestReconciliationReportResponse" : {
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "report" : {
+            "$ref" : "#/components/schemas/ReconciliationReportResponse"
+          }
+        },
+        "required" : [ "available" ],
+        "type" : "object"
+      },
       "LedgerRef" : {
         "description" : "Một dòng sổ đã dùng",
         "properties" : {
@@ -7426,6 +8061,22 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "MarkRefundFailedRequest" : {
+        "properties" : {
+          "evidenceRef" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "reason" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "evidenceRef", "reason" ],
         "type" : "object"
       },
       "Matching" : {
@@ -7861,6 +8512,40 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "OrderAttentionSummary" : {
+        "properties" : {
+          "duplicateUnrefunded" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lateSuccessPending" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "needsReview" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "paidUnfulfilled" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "paymentUnknownOver24h" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "refundUnknown" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalAttentionOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "duplicateUnrefunded", "lateSuccessPending", "needsReview", "paidUnfulfilled", "paymentUnknownOver24h", "refundUnknown", "totalAttentionOrders" ],
         "type" : "object"
       },
       "OrderDetail" : {
@@ -8959,6 +9644,86 @@
           }
         },
         "required" : [ "next", "order", "paymentUrl", "txnRef" ],
+        "type" : "object"
+      },
+      "PaymentDetailView" : {
+        "properties" : {
+          "amountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "attemptSeq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "bankCode" : {
+            "type" : "string"
+          },
+          "cardType" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "duplicate" : {
+            "type" : "boolean"
+          },
+          "excessReason" : {
+            "enum" : [ "AFTER_COUNTED", "REJECTED_AFTER_RECONCILE" ],
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "inProgressRefundAmountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lateSuccessAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "lateSuccessReview" : {
+            "enum" : [ "PENDING", "ACCEPTED", "REJECTED", "AUTO_EXCESS" ],
+            "type" : "string"
+          },
+          "payDate" : {
+            "type" : "string"
+          },
+          "refundableAmountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "refundedAmountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "refunds" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RefundResponse"
+            },
+            "type" : "array"
+          },
+          "responseCode" : {
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "CREATED", "SUCCEEDED", "FAILED", "UNKNOWN" ],
+            "type" : "string"
+          },
+          "transactionStatus" : {
+            "type" : "string"
+          },
+          "txnRef" : {
+            "type" : "string"
+          },
+          "vnpTransactionNo" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "amountVnd", "attemptSeq", "createdAt", "duplicate", "id", "inProgressRefundAmountVnd", "refundableAmountVnd", "refundedAmountVnd", "refunds", "state", "txnRef" ],
         "type" : "object"
       },
       "PermissionResponse" : {
@@ -10786,6 +11551,150 @@
           }
         },
         "required" : [ "sourceBlocks", "usedIn" ],
+        "type" : "object"
+      },
+      "ReconciliationReportResponse" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "details" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "generatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "paidUnfulfilledCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pendingLateSuccessCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reportDate" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "unknownPaymentCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "unrefundedExcessCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "createdAt", "details", "generatedAt", "id", "paidUnfulfilledCount", "pendingLateSuccessCount", "reportDate", "unknownPaymentCount", "unrefundedExcessCount" ],
+        "type" : "object"
+      },
+      "RecoverOrderRequest" : {
+        "properties" : {
+          "reason" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "reason" ],
+        "type" : "object"
+      },
+      "RefundResponse" : {
+        "properties" : {
+          "amountVnd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "externalRef" : {
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "gatewayMessage" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "API", "MANUAL" ],
+            "type" : "string"
+          },
+          "markFailedEvidence" : {
+            "type" : "string"
+          },
+          "markFailedReason" : {
+            "type" : "string"
+          },
+          "orderCode" : {
+            "type" : "string"
+          },
+          "orderId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "paymentId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "paymentTxnRef" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "requestedBy" : {
+            "type" : "string"
+          },
+          "requestedById" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "PROCESSING", "SUCCEEDED", "FAILED", "UNKNOWN" ],
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "verifiedSystemError" : {
+            "type" : "boolean"
+          },
+          "vnpRequestId" : {
+            "type" : "string"
+          },
+          "vnpResponseCode" : {
+            "type" : "string"
+          },
+          "vnpTransactionNo" : {
+            "type" : "string"
+          },
+          "vnpTransactionStatus" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "amountVnd", "createdAt", "id", "kind", "orderCode", "orderId", "paymentId", "paymentTxnRef", "reason", "requestedAt", "requestedBy", "state", "updatedAt", "verifiedSystemError" ],
         "type" : "object"
       },
       "RegisterRequest" : {
@@ -23287,6 +24196,177 @@
         "tags" : [ "Exam" ]
       }
     },
+    "/api/v1/admin/exams/{id}/buyers" : {
+      "get" : {
+        "operationId" : "listExamBuyers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExamBuyersResponse"
+                }
+              }
+            },
+            "description" : "Danh sách người mua phân trang theo tài khoản"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách tài khoản đã mua theo bài thi",
+        "tags" : [ "Admin Orders" ]
+      }
+    },
     "/api/v1/admin/exams/{id}/duplicate" : {
       "post" : {
         "operationId" : "duplicate_1",
@@ -25603,6 +26683,1034 @@
         },
         "summary" : "Danh sách dòng dữ liệu và lỗi của đợt cấp tài khoản",
         "tags" : [ "Admin Import Batches" ]
+      }
+    },
+    "/api/v1/admin/orders" : {
+      "get" : {
+        "operationId" : "listAdminOrders",
+        "parameters" : [ {
+          "description" : "Tìm theo mã đơn, tên đăng nhập, txnRef hoặc mã giao dịch VNPAY",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo bài thi",
+          "in" : "query",
+          "name" : "examId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Từ thời điểm tạo (ISO-8601 UTC)",
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Đến thời điểm tạo (ISO-8601 UTC)",
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo trạng thái thanh toán",
+          "in" : "query",
+          "name" : "paymentStatus",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "SUCCEEDED", "PENDING", "FAILED", "FREE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo trạng thái hoàn tiền",
+          "in" : "query",
+          "name" : "refundStatus",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "NONE", "IN_PROGRESS", "PARTIAL", "FULL" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo hình thức thanh toán",
+          "in" : "query",
+          "name" : "paymentMethod",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "VNPAY", "FREE" ],
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lọc theo nhóm Cần xử lý",
+          "in" : "query",
+          "name" : "attention",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "LATE_SUCCESS_PENDING", "PAID_UNFULFILLED", "PAYMENT_UNKNOWN_OVER_24H", "DUPLICATE_UNREFUNDED", "NEEDS_REVIEW", "REFUND_UNKNOWN" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminOrderListResponse"
+                }
+              }
+            },
+            "description" : "Danh sách đơn hàng phân trang"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách đơn hàng quản trị và số đếm dải Cần xử lý",
+        "tags" : [ "Admin Orders" ]
+      }
+    },
+    "/api/v1/admin/orders/attention" : {
+      "get" : {
+        "operationId" : "getAdminOrderAttentionSummary",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderAttentionSummary"
+                }
+              }
+            },
+            "description" : "Số đếm dải Cần xử lý"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Số lượng đơn theo 6 nhóm Cần xử lý",
+        "tags" : [ "Admin Orders" ]
+      }
+    },
+    "/api/v1/admin/orders/{code}" : {
+      "get" : {
+        "operationId" : "getAdminOrderDetail",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminOrderDetailResponse"
+                }
+              }
+            },
+            "description" : "Chi tiết đơn hàng"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Không tìm thấy đơn hàng trong tài khoản đang đăng nhập"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Chi tiết đơn hàng cho quản trị viên",
+        "tags" : [ "Admin Orders" ]
+      }
+    },
+    "/api/v1/admin/orders/{code}/fulfill" : {
+      "post" : {
+        "operationId" : "recoverOrderFulfillment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RecoverOrderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminOrderDetailResponse"
+                }
+              }
+            },
+            "description" : "Đã cấp quyền thành công"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Không tìm thấy đơn hàng trong tài khoản đang đăng nhập"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "ORDER_RECOVERY_NOT_ALLOWED hoặc IDEMPOTENCY_KEY_REUSED"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tiếp tục cấp quyền thủ công cho đơn đã thanh toán",
+        "tags" : [ "Admin Orders" ]
+      }
+    },
+    "/api/v1/admin/orders/{code}/payments/{paymentId}/late-success" : {
+      "post" : {
+        "operationId" : "reviewLateSuccessPayment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "paymentId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LateSuccessReviewRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminOrderDetailResponse"
+                }
+              }
+            },
+            "description" : "Đã xử lý quyết định đối soát"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "ORDER_NOT_FOUND hoặc ORDER_PAYMENT_NOT_FOUND"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "LATE_SUCCESS_ALREADY_RESOLVED hoặc IDEMPOTENCY_KEY_REUSED"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đối soát tiền về muộn trên lần thanh toán đã ghi thất bại",
+        "tags" : [ "Admin Orders" ]
+      }
+    },
+    "/api/v1/admin/orders/{code}/payments/{paymentId}/refunds" : {
+      "post" : {
+        "operationId" : "createOrderPaymentRefund",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "paymentId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRefundRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RefundResponse"
+                }
+              }
+            },
+            "description" : "Đã tạo hoặc phát lại yêu cầu hoàn tiền"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "ORDER_NOT_FOUND hoặc ORDER_PAYMENT_NOT_FOUND"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "REFUND_PAYMENT_NOT_SUCCEEDED, REFUND_ACTIVE_EXISTS, REFUND_AMOUNT_EXCEEDED, REFUND_MANUAL_REQUIRES_FAILED_API hoặc IDEMPOTENCY_KEY_REUSED"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "REFUND_SYSTEM_ERROR_NOT_VERIFIED hoặc REFUND_EXTERNAL_REF_REQUIRED"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tạo yêu cầu hoàn tiền qua API VNPAY hoặc ghi nhận thủ công",
+        "tags" : [ "Admin Refunds" ]
       }
     },
     "/api/v1/admin/permissions" : {
@@ -31468,6 +33576,599 @@
         },
         "summary" : "Khôi phục một phiên bản cũ vào bản làm việc (xử lý như một lần lưu)",
         "tags" : [ "Admin Question Bank" ]
+      }
+    },
+    "/api/v1/admin/reconciliation-reports/latest" : {
+      "get" : {
+        "operationId" : "getLatestReconciliationReport",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LatestReconciliationReportResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái có sẵn và nội dung báo cáo mới nhất"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lấy báo cáo đối soát mới nhất",
+        "tags" : [ "Admin Reconciliation" ]
+      }
+    },
+    "/api/v1/admin/refunds/{id}" : {
+      "get" : {
+        "operationId" : "getRefund",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RefundResponse"
+                }
+              }
+            },
+            "description" : "Chi tiết yêu cầu hoàn tiền"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Không tìm thấy yêu cầu hoàn tiền"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem chi tiết một yêu cầu hoàn tiền",
+        "tags" : [ "Admin Refunds" ]
+      }
+    },
+    "/api/v1/admin/refunds/{id}/mark-failed" : {
+      "post" : {
+        "operationId" : "markRefundFailed",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MarkRefundFailedRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RefundResponse"
+                }
+              }
+            },
+            "description" : "Đã cập nhật trạng thái FAILED"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Không tìm thấy yêu cầu hoàn tiền"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Chỉ được đánh dấu thất bại cho yêu cầu hoàn đang ở trạng thái chưa rõ kết quả"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đánh dấu giao dịch hoàn tiền UNKNOWN là FAILED kèm chứng từ",
+        "tags" : [ "Admin Refunds" ]
+      }
+    },
+    "/api/v1/admin/refunds/{id}/query" : {
+      "post" : {
+        "operationId" : "queryRefund",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RefundResponse"
+                }
+              }
+            },
+            "description" : "Trạng thái hoàn tiền sau tra cứu"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Không tìm thấy yêu cầu hoàn tiền"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Không thể tra cứu giao dịch hoàn thủ công hoặc đã thất bại"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tra cứu kết quả hoàn tiền từ cổng VNPAY (querydr)",
+        "tags" : [ "Admin Refunds" ]
       }
     },
     "/api/v1/admin/roles" : {
@@ -42239,6 +44940,9 @@
     "description" : "Quản lý tài khoản người dùng",
     "name" : "Admin Users"
   }, {
+    "description" : "Quản trị đơn hàng, người mua, tiếp tục cấp quyền và đối soát tiền về muộn",
+    "name" : "Admin Orders"
+  }, {
     "description" : "Danh mục bài thi cho khách, không cần đăng nhập",
     "name" : "Storefront (public)"
   }, {
@@ -42260,8 +44964,14 @@
     "description" : "Nhập câu hỏi từ Excel hoặc CSV",
     "name" : "Question imports"
   }, {
+    "description" : "Báo cáo đối soát cuối ngày",
+    "name" : "Admin Reconciliation"
+  }, {
     "description" : "Gán hoặc gỡ vai trò, quyền trực tiếp hàng loạt",
     "name" : "Admin Bulk Authz"
+  }, {
+    "description" : "Quản trị hoàn tiền đơn hàng",
+    "name" : "Admin Refunds"
   }, {
     "description" : "Cấu hình giao diện toàn hệ thống",
     "name" : "Appearance"
