@@ -24,6 +24,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
+import vn.unicom.thi360.attempt.api.AttemptChoiceController.RetryPartRequest;
 import vn.unicom.thi360.attempt.api.ClaimSessionRequest;
 import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.SaveAnswersRequest;
@@ -32,7 +34,9 @@ import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
+import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
@@ -229,6 +233,78 @@ abstract class AbstractAttemptDsIT extends AbstractIntegrationTest {
                             .content(objectMapper.writeValueAsString(request));
         }
         return mockMvc.perform(req).andReturn();
+    }
+
+    protected MvcResult performChoice(
+            UUID userId,
+            UUID attemptId,
+            UUID partId,
+            String idempotencyKey,
+            UUID sessionId,
+            ConfirmPartChoiceRequest request)
+            throws Exception {
+        var req =
+                post("/api/v1/me/attempts/{attemptId}/parts/{partId}/choice", attemptId, partId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (idempotencyKey != null) {
+            req = req.header("Idempotency-Key", idempotencyKey);
+        }
+        if (sessionId != null) {
+            req = req.header("X-Attempt-Session", sessionId.toString());
+        }
+        if (request != null) {
+            req =
+                    req.contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request));
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
+    protected MvcResult performRetry(
+            UUID userId,
+            UUID attemptId,
+            UUID partId,
+            String idempotencyKey,
+            UUID sessionId,
+            RetryPartRequest request)
+            throws Exception {
+        var req =
+                post("/api/v1/me/attempts/{attemptId}/parts/{partId}/retry", attemptId, partId)
+                        .with(AttemptTestFixtures.asExamUser(userId, "learner"));
+        if (idempotencyKey != null) {
+            req = req.header("Idempotency-Key", idempotencyKey);
+        }
+        if (sessionId != null) {
+            req = req.header("X-Attempt-Session", sessionId.toString());
+        }
+        if (request != null) {
+            req =
+                    req.contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request));
+        }
+        return mockMvc.perform(req).andReturn();
+    }
+
+    protected AttemptPart awaitPartState(UUID partId, PartState... targets)
+            throws InterruptedException {
+        Set<PartState> targetSet = EnumSet.noneOf(PartState.class);
+        targetSet.addAll(List.of(targets));
+        long deadlineNanos = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            AttemptPart current = attemptPartRepository.findById(partId).orElse(null);
+            if (current != null && targetSet.contains(current.getState())) {
+                return current;
+            }
+            Thread.sleep(25);
+        }
+        AttemptPart latest = attemptPartRepository.findById(partId).orElse(null);
+        throw new AssertionError(
+                "Timed out waiting for part "
+                        + partId
+                        + " to reach "
+                        + targetSet
+                        + ", actual="
+                        + (latest == null ? "MISSING" : latest.getState()));
     }
 
     protected Attempt startAndAwaitOpen(

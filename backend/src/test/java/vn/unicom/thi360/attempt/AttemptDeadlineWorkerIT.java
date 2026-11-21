@@ -134,8 +134,10 @@ class AttemptDeadlineWorkerIT extends AbstractAttemptDsIT {
         assertThat(a2After.get(1).getCloseReason()).isEqualTo(PartCloseReason.TIME_UP);
         assertThat(a2After.get(1).getStartedAt()).isEqualTo(a2P0Deadline);
         assertThat(a2After.get(1).getClosedAt()).isEqualTo(a2P1Deadline);
-        // AT-2a PartTransitionHook.NOOP leaves Part 2 PENDING and attempt IN_PROGRESS (AT-2b adds AWAITING_CHOICE)
-        assertThat(a2After.get(2).getState()).isEqualTo(PartState.PENDING);
+        // AT-2b AwaitingChoicePartTransitionHook moves Part 2 to AWAITING_CHOICE with 15m window from closedAt
+        assertThat(a2After.get(2).getState()).isEqualTo(PartState.AWAITING_CHOICE);
+        assertThat(a2After.get(2).getChoiceDeadlineAt())
+                .isEqualTo(a2P1Deadline.plus(Duration.ofMinutes(15)));
         assertThat(attemptRepository.findById(a2.getId()).orElseThrow().getState())
                 .isEqualTo(AttemptState.IN_PROGRESS);
     }

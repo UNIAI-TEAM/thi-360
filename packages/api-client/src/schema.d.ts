@@ -2238,6 +2238,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác nhận lựa chọn phần tự chọn (phần 3 HSA, QDA) và sinh đề ở nền */
+        post: operations["confirmPartChoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish": {
         parameters: {
             query?: never;
@@ -2249,6 +2266,23 @@ export interface paths {
         put?: never;
         /** Hoàn thành phần hiện tại và mở phần kế tiếp của lượt thi */
         post: operations["finishPart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Thử lại sinh đề cho phần thi đang ở trạng thái GENERATION_FAILED */
+        post: operations["retryPartGeneration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4224,6 +4258,13 @@ export interface components {
             name: string;
             /** @description Mã môn của năng lực; null khi chưa gắn */
             subjectCode?: string;
+        };
+        /** @description Yêu cầu xác nhận lựa chọn phần tự chọn sau khi bắt đầu (LT §6.1) */
+        ConfirmPartChoiceRequest: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học) */
+            subjectCodes?: string[];
         };
         /** @description Dữ liệu tham chiếu gộp cho màn Ngân hàng câu hỏi và Bài thi (spec mục 5.3, 9.2) */
         ContentReferenceResponse: {
@@ -7129,6 +7170,76 @@ export interface components {
              */
             totalPages: number;
         };
+        /** @description Trạng thái phần tự chọn sau khi xác nhận lựa chọn hoặc thử lại sinh đề */
+        PartChoiceResponse: {
+            /**
+             * Format: uuid
+             * @description Id lượt thi
+             */
+            attemptId: string;
+            /**
+             * @description Trạng thái lượt thi
+             * @enum {string}
+             */
+            attemptState: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            /** @description Lựa chọn đã khóa của phần */
+            choice?: components["schemas"]["PartChoiceSummary"];
+            /**
+             * Format: date-time
+             * @description Thời điểm khóa lựa chọn
+             */
+            choiceConfirmedAt?: string;
+            /**
+             * Format: date-time
+             * @description Hạn chờ chọn phần
+             */
+            choiceDeadlineAt?: string;
+            /**
+             * Format: date-time
+             * @description Hạn kết thúc phần
+             */
+            deadlineAt?: string;
+            /** @description Mã lỗi sinh đề gần nhất nếu có */
+            generationError?: string;
+            /**
+             * Format: int32
+             * @description Số lần sinh lỗi liên tiếp
+             */
+            generationTries: number;
+            /** @description Mã phần thi */
+            partCode: string;
+            /**
+             * Format: uuid
+             * @description Id phần thi
+             */
+            partId: string;
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm bắt đầu làm phần
+             */
+            startedAt?: string;
+            /**
+             * @description Trạng thái phần thi
+             * @enum {string}
+             */
+            state: "PENDING" | "AWAITING_CHOICE" | "GENERATING" | "GENERATION_FAILED" | "OPEN" | "CLOSED" | "SKIPPED";
+        };
+        /** @description Thông tin lựa chọn đã khóa của phần thi */
+        PartChoiceSummary: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn đã chọn (nếu có) */
+            subjectCodes?: string[];
+            /** @description Số câu theo từng môn đã chọn (nếu có) */
+            subjectCounts?: {
+                [key: string]: number;
+            };
+        };
         /** @description Phần của bài thi theo phần (PART); mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. Chỉ bài thi theo phần mới có mã phần: bài thi FULL tìm theo hình thức FULL, không theo phần. Tham số part của danh sách là code, đi kèm kind, và chỉ khớp bài thi theo phần */
         PartFilter: {
             code: string;
@@ -8110,6 +8221,11 @@ export interface components {
         RestoreQuestionVersionRequest: {
             /** Format: int64 */
             expectedRevision: number;
+        };
+        /** @description Yêu cầu thử lại sinh đề cho phần bị lỗi (LT §6.1) */
+        RetryPartRequest: {
+            /** @description Lý do thử lại tùy chọn */
+            reason?: string;
         };
         /** @description Chi tiết vai trò kèm danh sách quyền */
         RoleDetailResponse: {
@@ -30737,6 +30853,154 @@ export interface operations {
             };
         };
     };
+    confirmPartChoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác chọn phần 3 */
+                "Idempotency-Key": string;
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                partId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfirmPartChoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái hiện tại khi gửi lại cùng khóa idempotency hoặc lựa chọn đã khóa giống hệt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Đã khóa lựa chọn và đưa việc sinh phần vào hàng chờ */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     finishPart: {
         parameters: {
             query?: never;
@@ -30762,6 +31026,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FinishPartResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    retryPartGeneration: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác thử lại sinh phần */
+                "Idempotency-Key": string;
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                partId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RetryPartRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái hiện tại khi gửi lại cùng khóa idempotency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Đã đưa yêu cầu sinh lại phần vào hàng chờ */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
                 };
             };
             /** @description Bad Request */
