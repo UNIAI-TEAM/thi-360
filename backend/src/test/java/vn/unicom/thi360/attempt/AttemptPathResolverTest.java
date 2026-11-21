@@ -425,9 +425,9 @@ class AttemptPathResolverTest {
         Part p2 = new Part("p2", 2, "Part 2", null, null, null, null, "ALL", null, null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         PublishedVersion v = version(examId, 1, "Null Metric Fail-Closed", "PER_PART", null,
-                null, null, List.of(), List.of(p1, p2), List.of("pm-1", "pm-2", "inc-1"));
+                new BigDecimal("100"), null, List.of(), List.of(p1, p2), List.of("pm-1", "pm-2", "inc-1"));
 
-        // PARTIAL matches 2 paths: pm-1 has (50, 90, 100); pm-2 has null questionCount and null maxPoints -> both fail closed to null, duration stays 90
+        // PARTIAL matches 2 paths: pm-1 has (50, 90, 100); pm-2 has null questionCount and null maxPoints -> both fail closed to null even with version.maxScore=100, duration stays 90
         ServingPath pm1 = new ServingPath("pm-1", 1, List.of(new PathChoice("p1", "o-pm", "BRANCH", "PARTIAL", "Partial")),
                 50, new BigDecimal("100"), 90, List.of(), List.of());
         ServingPath pm2 = new ServingPath("pm-2", 1, List.of(new PathChoice("p1", "o-pm", "BRANCH", "PARTIAL", "Partial")),
@@ -457,6 +457,107 @@ class AttemptPathResolverTest {
         assertThat(incompleteView.questionCount()).isNull();
         assertThat(incompleteView.durationMinutes()).isNull();
         assertThat(incompleteView.maxPoints()).isEqualByComparingTo("100");
+
+        // BE-R1-5: Reverse path order (leading null path pm2 before non-null pm1) also fails closed without NPE
+        ServingExam reversedServing = new ServingExam(examId, "PUBLISHED", v, List.of(pm2, pm1));
+        PrepareStructure reversedPrepare = resolver.buildPrepareStructure(reversedServing, List.of());
+        ChoiceOptionView reversedView = reversedPrepare.preChoice().options().getFirst();
+        assertThat(reversedView.code()).isEqualTo("PARTIAL");
+        assertThat(reversedView.questionCount()).isNull();
+        assertThat(reversedView.durationMinutes()).isEqualTo(90);
+        assertThat(reversedView.maxPoints()).isNull();
+    }
+
+    @Test
+    void incompletePathOmittingVersionPartAndOmittedGroupsFailClosedToNull() {
+        UUID examId = UUID.randomUUID();
+        Option missingPartOpt = new Option("o-miss", "BRANCH", "MISSING_PART", "Missing Part", null, null, List.of());
+        Option emptyWithOmittedOpt = new Option("o-omit", "BRANCH", "OMIT_EMPTY", "Omit Empty", null, null, List.of());
+        Part p1 = new Part("p1", 1, "Part 1", 30, 20, 20, 20, "CHOICE", 1, new BigDecimal("50"),
+                List.of(), List.of(), List.of(), List.of(missingPartOpt, emptyWithOmittedOpt), List.of(), List.of());
+        Part p2 = new Part("p2", 2, "Part 2", 45, 30, 30, 30, "ALL", null, new BigDecimal("50"),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+
+        // BE-R1-1: PublishedExamReader !complete path omits p2 from path.parts() -> must NOT return partial sum for p1 or version.maxScore
+        PublishedVersion v = version(examId, 1, "Incomplete Part Sum", "PER_PART", null,
+                new BigDecimal("100"), null, List.of(), List.of(p1, p2), List.of("miss-1"));
+        ServingPath missingP2 = new ServingPath("miss-1", 1,
+                List.of(new PathChoice("p1", "o-miss", "BRANCH", "MISSING_PART", "Missing Part")),
+                null, null, null,
+                List.of(new ServingPathPart("p1", "Part 1", 20, new BigDecimal("50"), 30)),
+                List.of());
+        PrepareStructure missPrepare = resolver.buildPrepareStructure(
+                new ServingExam(examId, "PUBLISHED", v, List.of(missingP2)), List.of());
+        ChoiceOptionView missView = missPrepare.preChoice().options().getFirst();
+        assertThat(missView.questionCount()).isNull();
+        assertThat(missView.durationMinutes()).isNull();
+        assertThat(missView.maxPoints()).isNull();
+
+        // BE-R1-2: Empty path.parts() with omittedGroups non-empty does NOT fall back to version.maxScore (100)
+        PublishedVersion omittedVersion = version(examId, 1, "Omitted Groups Exam", "SHARED", 90,
+                new BigDecimal("100"), null, List.of(new OmittedGroup("Essay", new BigDecimal("20"))),
+                List.of(p1, p2), List.of("omit-1"));
+        ServingPath emptyWithOmitted = new ServingPath("omit-1", 1,
+                List.of(new PathChoice("p1", "o-omit", "BRANCH", "OMIT_EMPTY", "Omit Empty")),
+                50, null, null, List.of(), List.of());
+        PrepareStructure omitPrepare = resolver.buildPrepareStructure(
+                new ServingExam(examId, "PUBLISHED", omittedVersion, List.of(emptyWithOmitted)), List.of());
+        ChoiceOptionView omitView = omitPrepare.preChoice().options().getFirst();
+        assertThat(omitView.questionCount()).isEqualTo(50);
+        assertThat(omitView.durationMinutes()).isEqualTo(90);
+        assertThat(omitView.maxPoints()).isNull();
+    }
+
+    @Test
+    void sameOptionCodeAcrossVersionsUsesPerPathVersionFallbackAndConsensus() {
+        UUID examId = UUID.randomUUID();
+        Option sharedOptV1 = new Option("o-shared", "BRANCH", "SHARED_OPT", "Shared Option", null, null, List.of());
+        Option diffOptV1 = new Option("o-diff", "BRANCH", "DIFF_OPT", "Diff Option", null, null, List.of());
+        Part p1v1 = new Part("p1", 1, "Part 1 V1", null, 25, 25, 25, "CHOICE", 1, null,
+                List.of(), List.of(), List.of(), List.of(sharedOptV1, diffOptV1), List.of(), List.of());
+        PublishedVersion v1 = version(examId, 1, "Multi-Version V1", "SHARED", 60,
+                new BigDecimal("10"), null, List.of(), List.of(p1v1), List.of("s-v1", "d-v1"));
+
+        Option sharedOptV2 = new Option("o-shared", "BRANCH", "SHARED_OPT", "Shared Option", null, null, List.of());
+        Option diffOptV2 = new Option("o-diff", "BRANCH", "DIFF_OPT", "Diff Option", null, null, List.of());
+        Part p1v2 = new Part("p1", 1, "Part 1 V2", null, 25, 25, 25, "CHOICE", 1, null,
+                List.of(), List.of(), List.of(), List.of(sharedOptV2, diffOptV2), List.of(), List.of());
+        PublishedVersion v2 = version(examId, 2, "Multi-Version V2", "SHARED", 90,
+                new BigDecimal("12"), null, List.of(), List.of(p1v2), List.of("s-v2", "d-v2"));
+
+        // SHARED_OPT agrees across v2 and v1 (questionCount=25, explicit duration=75, maxPoints=10.0 vs 10)
+        ServingPath sharedV2 = new ServingPath("s-v2", 2,
+                List.of(new PathChoice("p1", "o-shared", "BRANCH", "SHARED_OPT", "Shared Option")),
+                25, new BigDecimal("10.0"), 75, List.of(), List.of());
+        ServingPath sharedV1 = new ServingPath("s-v1", 1,
+                List.of(new PathChoice("p1", "o-shared", "BRANCH", "SHARED_OPT", "Shared Option")),
+                25, new BigDecimal("10"), 75, List.of(), List.of());
+
+        // DIFF_OPT uses empty path.parts() + null path duration/maxPoints -> must fall back to v2 (90, 12) vs v1 (60, 10) and fail closed to null
+        ServingPath diffV2 = new ServingPath("d-v2", 2,
+                List.of(new PathChoice("p1", "o-diff", "BRANCH", "DIFF_OPT", "Diff Option")),
+                25, null, null, List.of(), List.of());
+        ServingPath diffV1 = new ServingPath("d-v1", 1,
+                List.of(new PathChoice("p1", "o-diff", "BRANCH", "DIFF_OPT", "Diff Option")),
+                25, null, null, List.of(), List.of());
+
+        ServingExam serving = new ServingExam(examId, "PUBLISHED", v2, List.of(sharedV2, sharedV1, diffV2, diffV1));
+        when(publishedExamPort.loadVersion(examId, 1)).thenReturn(Optional.of(v1));
+
+        PrepareStructure prepare = resolver.buildPrepareStructure(serving, List.of());
+        assertThat(prepare.preChoice().options()).hasSize(2);
+
+        ChoiceOptionView sharedView = prepare.preChoice().options().get(0);
+        assertThat(sharedView.code()).isEqualTo("SHARED_OPT");
+        assertThat(sharedView.questionCount()).isEqualTo(25);
+        assertThat(sharedView.durationMinutes()).isEqualTo(75);
+        assertThat(sharedView.maxPoints()).isEqualByComparingTo("10");
+
+        ChoiceOptionView diffView = prepare.preChoice().options().get(1);
+        assertThat(diffView.code()).isEqualTo("DIFF_OPT");
+        assertThat(diffView.questionCount()).isEqualTo(25);
+        assertThat(diffView.durationMinutes()).isNull();
+        assertThat(diffView.maxPoints()).isNull();
     }
 
     private ServingExam branchServingExam(UUID examId) {

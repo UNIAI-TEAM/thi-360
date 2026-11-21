@@ -579,7 +579,7 @@ public class AttemptPathResolver {
             PublishedVersion version =
                     versionsByNo == null ? null : versionsByNo.get(path.versionNo());
 
-            Integer qCount = resolvePathQuestionCount(path);
+            Integer qCount = resolvePathQuestionCount(path, version);
             if (qCount == null) {
                 qCountConsistent = false;
             } else if (i == 0) {
@@ -617,11 +617,11 @@ public class AttemptPathResolver {
                 pointsConsistent ? consensusPoints : null);
     }
 
-    private static Integer resolvePathQuestionCount(ServingPath path) {
+    private static Integer resolvePathQuestionCount(ServingPath path, PublishedVersion version) {
         if (path.questionCount() != null) {
             return path.questionCount();
         }
-        if (path.parts() == null || path.parts().isEmpty()) {
+        if (!coversAllVersionParts(path, version)) {
             return null;
         }
         int sum = 0;
@@ -634,6 +634,10 @@ public class AttemptPathResolver {
         return sum;
     }
 
+    /**
+     * Resolves option duration from {@code path.durationMinutes()} before {@code version.durationMinutes()}
+     * so per-path duration snapshots take precedence over version defaults (agreeing on {@code PublishedExamReader}).
+     */
     private static Integer resolvePathDurationMinutes(ServingPath path, PublishedVersion version) {
         if (path.durationMinutes() != null) {
             return path.durationMinutes();
@@ -641,7 +645,7 @@ public class AttemptPathResolver {
         if (version != null && version.durationMinutes() != null) {
             return version.durationMinutes();
         }
-        if (path.parts() == null || path.parts().isEmpty()) {
+        if (!coversAllVersionParts(path, version)) {
             return null;
         }
         int sum = 0;
@@ -659,20 +663,38 @@ public class AttemptPathResolver {
             return path.maxPoints();
         }
         if (path.parts() != null && !path.parts().isEmpty()) {
+            if (!coversAllVersionParts(path, version)) {
+                return null;
+            }
             BigDecimal sum = BigDecimal.ZERO;
-            boolean allPartsHaveMax = true;
             for (ServingPathPart part : path.parts()) {
                 if (part.maxPoints() == null) {
-                    allPartsHaveMax = false;
-                    break;
+                    return null;
                 }
                 sum = sum.add(part.maxPoints());
             }
-            if (allPartsHaveMax) {
-                return sum;
+            return sum;
+        }
+        return (version != null && (version.omittedGroups() == null || version.omittedGroups().isEmpty()))
+                ? version.maxScore()
+                : null;
+    }
+
+    private static boolean coversAllVersionParts(ServingPath path, PublishedVersion version) {
+        if (path.parts() == null || path.parts().isEmpty()) {
+            return false;
+        }
+        if (version == null || version.parts() == null || version.parts().isEmpty()) {
+            return true;
+        }
+        Set<String> present = new LinkedHashSet<>();
+        for (ServingPathPart spp : path.parts()) {
+            if (spp.partId() != null) {
+                present.add(spp.partId());
             }
         }
-        return version != null ? version.maxScore() : null;
+        return version.parts().stream()
+                .allMatch(p -> p.id() != null && present.contains(p.id()));
     }
 
     private static ChoiceSubjectView toSubjectView(
