@@ -597,7 +597,11 @@ export function BundleForm({
     } catch (err) {
       if (isBundleRevisionConflict(err)) {
         if (onConflict) {
-          await onConflict();
+          try {
+            await onConflict();
+          } catch {
+            // Parent owns conflict refetch error state/banner; keep unsaved edits without unhandled rejection.
+          }
         } else {
           setSubmitError(err);
         }

@@ -10,9 +10,11 @@ import { SessionProvider } from "@/features/session/session-provider";
 import en from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
-import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
+import { fail, fakeApi, type FakeResult, ok, withRealApi } from "@/test/fake-api";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { APP_TIME_ZONE, INTL_FORMATS } from "@thi360/web-kit/preferences";
+
+import { bundleKeys } from "./keys";
 
 import {
   BUNDLE_ID_1,
@@ -849,5 +851,143 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
     expect(
       await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }),
     ).toBeInTheDocument();
+  });
+
+  it("R3-3 & R3-7: khi banner refetch lỗi sau 412 đang mở, nút Thử lại khóa khi đang refetch và nền refetch/invalidate lên revision mới tự chuyển sang banner đã nạp lại và mở khóa nút Công bố", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    let getCalls = 0;
+    let resolvePendingRefetch: ((res: FakeResult) => void) | null = null;
+    let returnFreshRevision = false;
+
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      getCalls += 1;
+      if (getCalls === 1) {
+        return ok(
+          makeBundleDetail({
+            id: BUNDLE_ID_1,
+            name: "Bộ đề gốc",
+            revision: 3,
+            status: "DRAFT",
+          }),
+        );
+      }
+      if (getCalls === 2) {
+        return fail(500, { code: "INTERNAL_ERROR" });
+      }
+      if (getCalls === 3) {
+        return new Promise<FakeResult>((resolve) => {
+          resolvePendingRefetch = resolve;
+        });
+      }
+      if (returnFreshRevision) {
+        return ok(
+          makeBundleDetail({
+            id: BUNDLE_ID_1,
+            name: "Bộ đề cập nhật nền",
+            revision: 4,
+            status: "DRAFT",
+          }),
+        );
+      }
+      return fail(500, { code: "INTERNAL_ERROR" });
+    });
+    fakeApi.get("/api/v1/admin/bundles/candidates", () => ok([makeCandidate()]));
+    fakeApi.put("/api/v1/admin/bundles/{id}", () => fail(412, { code: "BUNDLE_REVISION_CONFLICT" }));
+
+    const user = userEvent.setup();
+    const { client } = renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+
+    const nameInput = await screen.findByLabelText(/Tên bộ/);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Tên sửa chưa lưu");
+    expect(screen.getByRole("button", { name: "Công bố" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    const failedTitle = await screen.findByText(
+      "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất.",
+    );
+    const failedBanner = failedTitle.closest('[role="alert"]') as HTMLElement;
+    expect(failedBanner).toBeTruthy();
+
+    // R3-7: clicking Retry passes loading={query.isRefetching}
+    const retryBtn = within(failedBanner).getByRole("button", { name: "Thử lại" });
+    await user.click(retryBtn);
+    await waitFor(() => {
+      expect(retryBtn).toHaveAttribute("aria-busy", "true");
+    });
+
+    await act(async () => {
+      resolvePendingRefetch?.(fail(500, { code: "INTERNAL_ERROR" }));
+    });
+    await waitFor(() => {
+      expect(retryBtn).not.toHaveAttribute("aria-busy");
+    });
+
+    // R3-3: background invalidateQueries/reconnect resolves with revision 4 -> banner transitions to reloaded and Publish unlocks
+    returnFreshRevision = true;
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: bundleKeys.detail(BUNDLE_ID_1) });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Bộ đề cập nhật nền");
+    });
+    expect(
+      screen.queryByText(
+        "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất.",
+      ),
+    ).toBeNull();
+    expect(screen.getByText("Bộ đề vừa được người khác cập nhật.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Công bố" })).not.toBeDisabled();
+    expect(screen.queryByText("Lưu thay đổi trước khi công bố")).toBeNull();
+  });
+
+  it("R3-7: banner lỗi inline (query.isError && query.data) hiển thị loading={query.isRefetching} trên nút Thử lại", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    let getCalls = 0;
+    let resolveRetry!: (res: FakeResult) => void;
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      getCalls += 1;
+      if (getCalls === 1) {
+        return ok(makeBundleDetail({ id: BUNDLE_ID_1, name: "Bộ đề gốc", revision: 3 }));
+      }
+      if (getCalls === 2) {
+        return fail(500, { code: "INTERNAL_ERROR" });
+      }
+      return new Promise<FakeResult>((resolve) => {
+        resolveRetry = resolve;
+      });
+    });
+    fakeApi.get("/api/v1/admin/bundles/candidates", () => ok([makeCandidate()]));
+
+    const user = userEvent.setup();
+    const { client } = renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+    await screen.findByRole("heading", { name: "Bộ đề gốc" });
+
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: bundleKeys.detail(BUNDLE_ID_1) });
+    });
+
+    const inlineTitle = await screen.findByText("Không tải được bộ đề");
+    const inlineAlert = inlineTitle.closest('[role="alert"]') as HTMLElement;
+    const retryBtn = within(inlineAlert).getByRole("button", { name: "Thử lại" });
+    await user.click(retryBtn);
+
+    await waitFor(() => {
+      expect(retryBtn).toHaveAttribute("aria-busy", "true");
+    });
+
+    await act(async () => {
+      resolveRetry(ok(makeBundleDetail({ id: BUNDLE_ID_1, name: "Bộ đề gốc", revision: 3 })));
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Không tải được bộ đề")).toBeNull();
+    });
   });
 });

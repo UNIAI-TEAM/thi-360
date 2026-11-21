@@ -58,6 +58,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
 
   const query = useBundleDetailQuery(bundleId);
   const [conflictState, setConflictState] = useState<"none" | "reloaded" | "refetch_failed">("none");
+  const [conflictFailedRevision, setConflictFailedRevision] = useState<number | null>(null);
   const [reloadSeq, setReloadSeq] = useState(0);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -67,14 +68,38 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
 
   useSetBreadcrumbLeaf(query.data ? query.data.code : t("edit.title"));
 
-  const handleConflict = async () => {
-    const refetchResult = await query.refetch();
+  // Recover cleanly if a background refetch (e.g. reconnect or cache invalidation) updates revision while failed banner is shown.
+  if (
+    conflictState === "refetch_failed" &&
+    !query.isError &&
+    query.data &&
+    conflictFailedRevision !== null &&
+    query.data.revision !== conflictFailedRevision
+  ) {
+    setConflictState("reloaded");
+    setConflictFailedRevision(null);
+    setIsFormDirty(false);
+  }
+
+  const handleConflict = async (options?: { throwOnError?: boolean }) => {
+    const refetchResult = await query.refetch({
+      cancelRefetch: !options?.throwOnError,
+    });
     if (!refetchResult.isError) {
       setIsFormDirty(false);
       setReloadSeq((seq) => seq + 1);
+      setConflictFailedRevision(null);
       setConflictState("reloaded");
-    } else {
-      setConflictState("refetch_failed");
+      if (refetchResult.data?.status === "DISCONTINUED") {
+        setPublishOpen(false);
+        setDiscontinueOpen(false);
+      }
+      return;
+    }
+    setConflictFailedRevision(query.data?.revision ?? null);
+    setConflictState("refetch_failed");
+    if (options?.throwOnError) {
+      throw refetchResult.error ?? new Error("refetch_failed");
     }
   };
 
@@ -121,7 +146,11 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
               <Link href="/bundles">{t("actions.backToList")}</Link>
             </Button>
           ) : (
-            <Button variant="secondary" onClick={() => void query.refetch()}>
+            <Button
+              variant="secondary"
+              loading={query.isRefetching}
+              onClick={() => void query.refetch()}
+            >
               {t("actions.retry")}
             </Button>
           )
@@ -224,7 +253,10 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => setConflictState("none")}
+            onClick={() => {
+              setConflictState("none");
+              setConflictFailedRevision(null);
+            }}
           >
             {t("actions.dismiss")}
           </Button>
@@ -255,6 +287,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
             type="button"
             variant="secondary"
             size="sm"
+            loading={query.isRefetching}
             onClick={() => void handleConflict()}
           >
             {t("actions.retry")}
@@ -282,6 +315,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
             type="button"
             variant="secondary"
             size="sm"
+            loading={query.isRefetching}
             onClick={() => void query.refetch()}
           >
             {t("actions.retry")}
@@ -296,9 +330,10 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         initialDetail={detail}
         canModify={canModify}
         onDirtyChange={setIsFormDirty}
-        onConflict={handleConflict}
+        onConflict={() => handleConflict()}
         onSaved={() => {
           setConflictState("none");
+          setConflictFailedRevision(null);
           setIsFormDirty(false);
           setReloadSeq((seq) => seq + 1);
         }}
@@ -308,16 +343,22 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         bundle={actionTarget}
         open={publishOpen}
         onOpenChange={setPublishOpen}
-        onConflict={handleConflict}
-        onCompleted={() => setConflictState("none")}
+        onConflict={() => handleConflict({ throwOnError: true })}
+        onCompleted={() => {
+          setConflictState("none");
+          setConflictFailedRevision(null);
+        }}
       />
 
       <BundleDiscontinueDialog
         bundle={actionTarget}
         open={discontinueOpen}
         onOpenChange={setDiscontinueOpen}
-        onConflict={handleConflict}
-        onCompleted={() => setConflictState("none")}
+        onConflict={() => handleConflict({ throwOnError: true })}
+        onCompleted={() => {
+          setConflictState("none");
+          setConflictFailedRevision(null);
+        }}
       />
     </div>
   );

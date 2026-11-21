@@ -8868,6 +8868,7 @@
         "description": "{count, plural, one {# selected exam from {currentKind} will be removed from the bundle. Other fields will be kept.} other {# selected exams from {currentKind} will be removed from the bundle. Other fields will be kept.}}",
         "title": "Change exam kind to {nextKind}?"
       },
+      "conflictRefreshFailed": "This bundle was updated by another user, but loading the latest version failed ({reason}).",
       "discontinue": {
         "descriptionPrefix": "Discontinue bundle",
         "descriptionSuffix": "The bundle storefront page will no longer allow new purchases. Existing buyer attempts and standalone exams remain unaffected.",
@@ -8880,7 +8881,8 @@
         "republishTitle": "Republish bundle?",
         "successToast": "Published bundle {code}.",
         "title": "Publish bundle?"
-      }
+      },
+      "refreshingConflict": "This bundle was updated by another user. Loading the latest version..."
     },
     "edit": {
       "errorDescription": "Could not load the bundle details.",

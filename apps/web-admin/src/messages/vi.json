@@ -8868,6 +8868,7 @@
         "description": "{count, plural, other {# bài thi đã chọn từ {currentKind} sẽ bị bỏ khỏi bộ. Các trường khác giữ nguyên.}}",
         "title": "Đổi kỳ thi sang {nextKind}?"
       },
+      "conflictRefreshFailed": "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất ({reason}).",
       "discontinue": {
         "descriptionPrefix": "Ngừng bán bộ đề",
         "descriptionSuffix": "Trang bán của bộ sẽ không cho mua mới. Học viên đã mua giữ nguyên lượt của từng bài.",
@@ -8880,7 +8881,8 @@
         "republishTitle": "Công bố lại bộ đề?",
         "successToast": "Đã công bố bộ đề {code}.",
         "title": "Công bố bộ đề?"
-      }
+      },
+      "refreshingConflict": "Bộ đề vừa được người khác cập nhật. Đang nạp lại bản mới nhất..."
     },
     "edit": {
       "errorDescription": "Không thể tải thông tin chi tiết của bộ đề.",

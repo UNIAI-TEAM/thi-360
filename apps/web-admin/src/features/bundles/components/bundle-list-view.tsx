@@ -155,6 +155,7 @@ export function BundleListView() {
   const [pendingClampQs, setPendingClampQs] = useState<string | null>(null);
   const lastSyncedSearchRef = useRef<string | null>(null);
   const searchTimerRef = useRef<number | null>(null);
+  const refreshSeqRef = useRef(0);
   const searchInputId = useId();
   const examKindSelectId = useId();
 
@@ -672,29 +673,69 @@ export function BundleListView() {
       : target;
   };
 
+  const refetchList = listQuery.refetch;
+
+  const applyRefreshedTarget = useCallback(
+    (
+      candidate: BundleActionTarget,
+      setTarget: Dispatch<SetStateAction<BundleActionTarget | null>>,
+    ) => {
+      if (candidate.status === "DISCONTINUED") {
+        setTarget((prev) => (prev && prev.id === candidate.id ? null : prev));
+        setLiveMessage(t("form.banners.discontinuedReadOnly"));
+        return;
+      }
+      setTarget((prev) =>
+        prev && prev.id === candidate.id && candidate.revision >= prev.revision ? candidate : prev,
+      );
+    },
+    [t],
+  );
+
   const refreshActionTarget = useCallback(
     async (
       targetId: string,
+      expectedMinRevision: number,
       setTarget: Dispatch<SetStateAction<BundleActionTarget | null>>,
     ) => {
+      const seq = ++refreshSeqRef.current;
       try {
         const latest = await getBundle(targetId);
-        setTarget((prev) =>
-          prev && prev.id === targetId
-            ? {
-                id: latest.id,
-                code: latest.code,
-                name: latest.name,
-                revision: latest.revision,
-                status: latest.status,
-              }
-            : prev,
+        if (seq !== refreshSeqRef.current) return;
+        applyRefreshedTarget(
+          {
+            id: latest.id,
+            code: latest.code,
+            name: latest.name,
+            revision: latest.revision,
+            status: latest.status,
+          },
+          setTarget,
         );
-      } catch {
-        // Keep current dialog target on refresh error; list invalidation or retry handles it gracefully.
+      } catch (err) {
+        if (seq !== refreshSeqRef.current) return;
+        const listResult = await refetchList();
+        if (seq !== refreshSeqRef.current) return;
+        const fresh = !listResult.isError
+          ? listResult.data?.items.find((item) => item.id === targetId)
+          : undefined;
+        if (fresh && fresh.revision > expectedMinRevision) {
+          applyRefreshedTarget(
+            {
+              id: fresh.id,
+              code: fresh.code,
+              name: fresh.name,
+              revision: fresh.revision,
+              status: fresh.status,
+            },
+            setTarget,
+          );
+          return;
+        }
+        throw err;
       }
     },
-    [],
+    [applyRefreshedTarget, refetchList],
   );
 
   const livePublishTarget = resolveLiveTarget(publishTarget);
@@ -942,12 +983,11 @@ export function BundleListView() {
         onOpenChange={(open) => {
           if (!open) setPublishTarget(null);
         }}
-        onConflict={() => {
-          if (publishTarget) {
-            return refreshActionTarget(publishTarget.id, setPublishTarget);
-          }
-          return undefined;
-        }}
+        onConflict={
+          publishTarget
+            ? () => refreshActionTarget(publishTarget.id, publishTarget.revision, setPublishTarget)
+            : undefined
+        }
         onCompleted={(updated) => {
           setLiveMessage(t("dialogs.publish.successToast", { code: updated.code }));
         }}
@@ -959,12 +999,16 @@ export function BundleListView() {
         onOpenChange={(open) => {
           if (!open) setDiscontinueTarget(null);
         }}
-        onConflict={() => {
-          if (discontinueTarget) {
-            return refreshActionTarget(discontinueTarget.id, setDiscontinueTarget);
-          }
-          return undefined;
-        }}
+        onConflict={
+          discontinueTarget
+            ? () =>
+                refreshActionTarget(
+                  discontinueTarget.id,
+                  discontinueTarget.revision,
+                  setDiscontinueTarget,
+                )
+            : undefined
+        }
         onCompleted={(updated) => {
           setLiveMessage(t("dialogs.discontinue.successToast", { code: updated.code }));
         }}
