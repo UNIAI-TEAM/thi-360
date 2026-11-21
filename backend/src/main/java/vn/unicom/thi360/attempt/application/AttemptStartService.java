@@ -28,6 +28,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.attempt.api.ChoiceTiming;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptResponse;
 import vn.unicom.thi360.attempt.application.AttemptAudioFileCheck.AudioFileCheckException;
@@ -102,6 +103,7 @@ public class AttemptStartService {
     private final GenerationExecutor generationExecutor;
     private final IdempotentCommand idempotentCommand;
     private final OverdueAttemptCloser overdueAttemptCloser;
+    private final AttemptNavigationPolicy navigationPolicy;
     private final EntityManager entityManager;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate requiresNewTx;
@@ -162,6 +164,7 @@ public class AttemptStartService {
                 generationExecutor,
                 idempotentCommand,
                 overdueAttemptCloser,
+                AttemptNavigationPolicy.defaultPolicy(),
                 entityManager,
                 jdbcTemplate,
                 transactionManager,
@@ -169,7 +172,6 @@ public class AttemptStartService {
                 false);
     }
 
-    @Autowired
     public AttemptStartService(
             AttemptAccessGate accessGate,
             EntitlementPort entitlementPort,
@@ -208,6 +210,55 @@ public class AttemptStartService {
                 generationExecutor,
                 idempotentCommand,
                 overdueAttemptCloser,
+                AttemptNavigationPolicy.defaultPolicy(),
+                entityManager,
+                jdbcTemplate,
+                transactionManager,
+                clock,
+                true);
+    }
+
+    @Autowired
+    public AttemptStartService(
+            AttemptAccessGate accessGate,
+            EntitlementPort entitlementPort,
+            PublishedExamPort publishedExamPort,
+            PaperSolverPort paperSolverPort,
+            QuestionSourcePort questionSourcePort,
+            AttemptPathResolver pathResolver,
+            AttemptPaperAssembler paperAssembler,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptEventRepository attemptEventRepository,
+            AttemptAudioFileCheck attemptAudioFileCheck,
+            GenerationExecutor generationExecutor,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            AttemptNavigationPolicy navigationPolicy,
+            EntityManager entityManager,
+            JdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
+        this(
+                accessGate,
+                entitlementPort,
+                publishedExamPort,
+                paperSolverPort,
+                questionSourcePort,
+                pathResolver,
+                paperAssembler,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptAudioPlayRepository,
+                attemptEventRepository,
+                attemptAudioFileCheck,
+                generationExecutor,
+                idempotentCommand,
+                overdueAttemptCloser,
+                Objects.requireNonNull(navigationPolicy, "navigationPolicy must not be null"),
                 entityManager,
                 jdbcTemplate,
                 transactionManager,
@@ -232,6 +283,7 @@ public class AttemptStartService {
             GenerationExecutor generationExecutor,
             IdempotentCommand idempotentCommand,
             OverdueAttemptCloser overdueAttemptCloser,
+            AttemptNavigationPolicy navigationPolicy,
             EntityManager entityManager,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
@@ -262,6 +314,8 @@ public class AttemptStartService {
         this.generationExecutor = Objects.requireNonNull(generationExecutor);
         this.idempotentCommand = Objects.requireNonNull(idempotentCommand);
         this.overdueAttemptCloser = Objects.requireNonNull(overdueAttemptCloser);
+        this.navigationPolicy =
+                navigationPolicy == null ? AttemptNavigationPolicy.defaultPolicy() : navigationPolicy;
         this.entityManager = Objects.requireNonNull(entityManager);
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
         this.requiresNewTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
@@ -392,7 +446,8 @@ public class AttemptStartService {
                         version.partCode(),
                         version.subjectItemId(),
                         timing,
-                        NavigationMode.SEQUENTIAL,
+                        navigationPolicy.resolve(
+                                version.kindCode(), timing, plan.plannedParts().size()),
                         plan.choices(),
                         seed,
                         generationToken,
@@ -534,11 +589,15 @@ public class AttemptStartService {
                     attempt.open(attemptNo, now, attemptDeadline);
                     attemptRepository.save(attempt);
 
+                    boolean openAllParts =
+                            navigationPolicy.opensAllPartsOnStart(attempt.getNavigationMode())
+                                    && (job.timing() == AttemptTiming.SHARED
+                                            || job.plannedParts().size() <= 1);
                     List<AttemptPart> partEntities = new ArrayList<>(job.plannedParts().size());
                     Map<String, UUID> partIdByCode = new LinkedHashMap<>();
                     List<AttemptItem> rootItems = new ArrayList<>();
                     List<AttemptItem> childItems = new ArrayList<>();
-                    UUID openedPartId = null;
+                    List<AttemptPart> openedParts = new ArrayList<>();
 
                     for (PlannedPart pp : job.plannedParts()) {
                         UUID partId = Ids.newId();
@@ -555,7 +614,8 @@ public class AttemptStartService {
                                         pp.questionCount(),
                                         pp.maxPoints(),
                                         partSeed);
-                        if (pp.ord() == 0) {
+                        if (pp.ord() == 0
+                                || (openAllParts && pp.choiceTiming() != ChoiceTiming.AFTER_START)) {
                             Instant partDeadline =
                                     job.timing() == AttemptTiming.SHARED
                                             ? attemptDeadline
@@ -563,7 +623,7 @@ public class AttemptStartService {
                                                     ? now.plus(Duration.ofMinutes(pp.durationMinutes()))
                                                     : null);
                             part.open(now, partDeadline);
-                            openedPartId = partId;
+                            openedParts.add(part);
                         }
                         partEntities.add(part);
 
@@ -605,7 +665,7 @@ public class AttemptStartService {
                         attemptAudioPlayRepository.saveAll(audioPlays);
                     }
 
-                    List<AttemptEvent> events = new ArrayList<>(2);
+                    List<AttemptEvent> events = new ArrayList<>(1 + openedParts.size());
                     events.add(
                             new AttemptEvent(
                                     Ids.newId(),
@@ -618,16 +678,20 @@ public class AttemptStartService {
                                             "examCode", safe(job.examCode()),
                                             "versionNo", job.examVersionNo(),
                                             "attemptNo", attemptNo)));
-                    if (openedPartId != null) {
+                    for (AttemptPart openedPart : openedParts) {
                         events.add(
                                 new AttemptEvent(
                                         Ids.newId(),
                                         job.attemptId(),
                                         AttemptEventType.PART_OPENED,
                                         null,
-                                        openedPartId,
+                                        openedPart.getId(),
                                         now,
-                                        Map.of("ord", 0)));
+                                        Map.of(
+                                                "ord",
+                                                openedPart.getOrd(),
+                                                "partCode",
+                                                openedPart.getPartCode())));
                     }
                     attemptEventRepository.saveAll(events);
                 });
