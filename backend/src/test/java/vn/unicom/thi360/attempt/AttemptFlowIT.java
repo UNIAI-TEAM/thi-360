@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,25 +30,11 @@ import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
-import vn.unicom.thi360.attempt.domain.EndReason;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
-import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
-import vn.unicom.thi360.exam.api.CreateExamRequest;
-import vn.unicom.thi360.exam.api.ExamDetailResponse;
-import vn.unicom.thi360.exam.api.ExamPublishRequest;
-import vn.unicom.thi360.exam.api.LoadExamTemplateRequest;
-import vn.unicom.thi360.exam.api.UpdateExamListingRequest;
-import vn.unicom.thi360.exam.application.ExamCheckCompletion;
-import vn.unicom.thi360.exam.application.ExamCheckOrchestrator;
-import vn.unicom.thi360.exam.application.ExamCheckScope;
-import vn.unicom.thi360.exam.application.ExamListingService;
-import vn.unicom.thi360.exam.application.ExamPublishService;
-import vn.unicom.thi360.exam.application.ExamService;
-import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
@@ -73,12 +58,6 @@ class AttemptFlowIT extends AbstractAttemptDsIT {
     @Autowired private AttemptSessionChecker attemptSessionChecker;
     @Autowired private FinalAnswerWriter finalAnswerWriter;
     @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
-
-    @Autowired private ExamService examService;
-    @Autowired private ExamListingService examListingService;
-    @Autowired private ExamCheckOrchestrator examCheckOrchestrator;
-    @Autowired private ExamPublishService examPublishService;
-    @Autowired private UserDirectory userDirectory;
 
     private record HookInvocation(UUID attemptId, UUID closedPartId, UUID nextPartId, Instant closedAt) {}
 
@@ -303,69 +282,59 @@ class AttemptFlowIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void thptqgThreePartsSequential() throws Exception {
-        UUID examId = publishThptqgMath2025Exam();
-        UUID userId = createStudent("flow-thptqg-seq");
-        try {
-            int versionNo = publishedExamPort.findServing(examId).orElseThrow().version().versionNo();
-            GrantOrderResult.Line line =
-                    AttemptTestFixtures.grantExam(
-                            grantService, userId, examId, 2, List.of(), "SCORE_AND_ANSWERS", versionNo);
-            Attempt attempt = startAndAwaitOpen(userId, "thptqg-3p", line.entitlementId(), null);
-            UUID sid = claimSession(userId, attempt.getId());
+    void hscaThreePartsSharedSequential() throws Exception {
+        UUID userId = createStudent("flow-hsca-seq");
+        GrantOrderResult.Line line = grant(userId, "DS-HSCA-TOAN", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "hsca-3p", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
 
-            assertThat(attempt.getNavigationMode()).isEqualTo(NavigationMode.SEQUENTIAL);
-            assertThat(attempt.getTiming()).isEqualTo(AttemptTiming.SHARED);
-            Instant sharedDeadline = attempt.getStartedAt().plus(Duration.ofMinutes(90));
-            assertThat(attempt.getDeadlineAt()).isEqualTo(sharedDeadline);
+        assertThat(attempt.getNavigationMode()).isEqualTo(NavigationMode.SEQUENTIAL);
+        assertThat(attempt.getTiming()).isEqualTo(AttemptTiming.SHARED);
+        Instant sharedDeadline = attempt.getStartedAt().plus(Duration.ofMinutes(90));
+        assertThat(attempt.getDeadlineAt()).isEqualTo(sharedDeadline);
 
-            List<AttemptPart> parts =
-                    attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
-            assertThat(parts).hasSize(3);
-            assertThat(parts.get(0).getState()).isEqualTo(PartState.OPEN);
-            assertThat(parts.get(1).getState()).isEqualTo(PartState.PENDING);
-            assertThat(parts.get(2).getState()).isEqualTo(PartState.PENDING);
+        List<AttemptPart> parts =
+                attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        assertThat(parts).hasSize(3);
+        assertThat(parts.get(0).getState()).isEqualTo(PartState.OPEN);
+        assertThat(parts.get(1).getState()).isEqualTo(PartState.PENDING);
+        assertThat(parts.get(2).getState()).isEqualTo(PartState.PENDING);
 
-            // Finish Part 0 -> Part 1 opens with unchanged shared deadline.
-            mutableClock.advance(Duration.ofMinutes(10));
-            Instant t1 = mutableClock.instant();
-            MvcResult f0 = performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null);
-            assertThat(f0.getResponse().getStatus()).isEqualTo(200);
-            assertThat(Instant.parse(json(f0).path("nextPart").path("deadlineAt").asText()))
-                    .isEqualTo(sharedDeadline);
+        // Finish Part 0 -> Part 1 opens with unchanged shared deadline.
+        mutableClock.advance(Duration.ofMinutes(10));
+        Instant t1 = mutableClock.instant();
+        MvcResult f0 = performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null);
+        assertThat(f0.getResponse().getStatus()).isEqualTo(200);
+        assertThat(Instant.parse(json(f0).path("nextPart").path("deadlineAt").asText()))
+                .isEqualTo(sharedDeadline);
 
-            // Calling finish on already-closed Part 0 never reopens it or alters Part 1.
-            mutableClock.advance(Duration.ofMinutes(5));
-            MvcResult f0Replay =
-                    performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null);
-            assertThat(f0Replay.getResponse().getStatus()).isEqualTo(200);
-            assertThat(json(f0Replay).path("closedPart").path("state").asText()).isEqualTo("CLOSED");
-            assertThat(Instant.parse(json(f0Replay).path("closedPart").path("closedAt").asText()))
-                    .isEqualTo(t1);
-            assertThat(json(f0Replay).path("nextPart").path("state").asText()).isEqualTo("OPEN");
-            assertThat(Instant.parse(json(f0Replay).path("nextPart").path("startedAt").asText()))
-                    .isEqualTo(t1);
+        // Calling finish on already-closed Part 0 never reopens it or alters Part 1.
+        mutableClock.advance(Duration.ofMinutes(5));
+        MvcResult f0Replay =
+                performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null);
+        assertThat(f0Replay.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(f0Replay).path("closedPart").path("state").asText()).isEqualTo("CLOSED");
+        assertThat(Instant.parse(json(f0Replay).path("closedPart").path("closedAt").asText()))
+                .isEqualTo(t1);
+        assertThat(json(f0Replay).path("nextPart").path("state").asText()).isEqualTo("OPEN");
+        assertThat(Instant.parse(json(f0Replay).path("nextPart").path("startedAt").asText()))
+                .isEqualTo(t1);
 
-            // Finish Part 1 -> Part 2 opens with unchanged shared deadline.
-            MvcResult f1 = performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null);
-            assertThat(f1.getResponse().getStatus()).isEqualTo(200);
-            assertThat(json(f1).path("nextPart").path("partId").asText())
-                    .isEqualTo(parts.get(2).getId().toString());
-            assertThat(Instant.parse(json(f1).path("nextPart").path("deadlineAt").asText()))
-                    .isEqualTo(sharedDeadline);
+        // Finish Part 1 -> Part 2 opens with unchanged shared deadline.
+        MvcResult f1 = performFinishPart(userId, attempt.getId(), parts.get(1).getId(), sid, null);
+        assertThat(f1.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(f1).path("nextPart").path("partId").asText())
+                .isEqualTo(parts.get(2).getId().toString());
+        assertThat(Instant.parse(json(f1).path("nextPart").path("deadlineAt").asText()))
+                .isEqualTo(sharedDeadline);
 
-            // Submit -> GRADING.
-            MvcResult sub = performSubmit(userId, attempt.getId(), "thptqg-sub", sid, null);
-            assertThat(sub.getResponse().getStatus()).isEqualTo(200);
-            assertThat(json(sub).path("state").asText()).isEqualTo("GRADING");
-            assertThat(json(sub).path("endReason").asText()).isEqualTo("SUBMITTED");
-            assertThat(countEntitlementUsage(attempt.getId(), "USED")).isEqualTo(1);
-            assertThat(countOutboxEvents(attempt.getId(), "attempt.finished")).isEqualTo(1);
-        } finally {
-            AttemptTestFixtures.cleanupUser(jdbc, userId);
-            createdUserIds.remove(userId);
-            cleanupSyntheticExam(examId);
-        }
+        // Submit -> GRADING.
+        MvcResult sub = performSubmit(userId, attempt.getId(), "hsca-sub", sid, null);
+        assertThat(sub.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(sub).path("state").asText()).isEqualTo("GRADING");
+        assertThat(json(sub).path("endReason").asText()).isEqualTo("SUBMITTED");
+        assertThat(countEntitlementUsage(attempt.getId(), "USED")).isEqualTo(1);
+        assertThat(countOutboxEvents(attempt.getId(), "attempt.finished")).isEqualTo(1);
     }
 
     @Test
@@ -637,106 +606,6 @@ class AttemptFlowIT extends AbstractAttemptDsIT {
             assertThat(abortedSub.getResponse().getStatus()).isEqualTo(409);
             assertThat(json(abortedSub).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
         }
-    }
-
-    private UUID publishThptqgMath2025Exam() {
-        UserDirectory.UserSummary actor = userDirectory.findActiveByUsername("sys.admin").orElseThrow();
-        SecurityContext previous = SecurityContextHolder.getContext();
-        SecurityContext ctx = SecurityContextHolder.createEmptyContext();
-        ctx.setAuthentication(
-                new CurrentUserAuthenticationToken(
-                        new CurrentUser(
-                                actor.id(),
-                                actor.username(),
-                                Realm.APP,
-                                Access.MANAGE,
-                                PermissionSet.all()),
-                        null));
-        SecurityContextHolder.setContext(ctx);
-        try {
-            String code = "IT-THPTQG-" + UUID.randomUUID().toString().substring(0, 6);
-            ExamDetailResponse created =
-                    examService.createExam(
-                            "create-" + code,
-                            new CreateExamRequest(
-                                    "THPTQG",
-                                    "SUBJECT",
-                                    null,
-                                    "TOAN",
-                                    code,
-                                    "THPTQG Toan 3 parts IT",
-                                    90,
-                                    null,
-                                    "THPTQG Math 2025 IT",
-                                    null,
-                                    "STANDARD",
-                                    null));
-            if (!"THPTQG_MATH_2025".equals(created.templateCode())) {
-                examService.loadTemplate(
-                        created.id(),
-                        new LoadExamTemplateRequest(
-                                "THPTQG_MATH_2025", Boolean.TRUE, "USE_TEMPLATE", created.revision()));
-            }
-            long revForListing =
-                    jdbc.queryForObject(
-                            "SELECT revision FROM exam.exam WHERE id = ?", Long.class, created.id());
-            examListingService.update(
-                    created.id(),
-                    new UpdateExamListingRequest(
-                            "Summary",
-                            "Objectives",
-                            "Students",
-                            50000L,
-                            3,
-                            true,
-                            true,
-                            true,
-                            null,
-                            "SCORE_AND_ANSWERS",
-                            "Description",
-                            null,
-                            revForListing));
-
-            ObjectNode checkResult =
-                    examCheckOrchestrator.check(
-                            created.id(),
-                            ExamCheckScope.from(null, null, null),
-                            new ExamCheckCompletion.Actor(
-                                    actor.id(), actor.username(), AuditActorType.USER),
-                            null);
-            assertThat(checkResult.path("status").asText()).isEqualTo("VALID");
-            List<String> validPathIds = new ArrayList<>();
-            for (JsonNode path : checkResult.path("paths")) {
-                if ("VALID".equals(path.path("result").asText())) {
-                    validPathIds.add(path.path("pathId").asText());
-                }
-            }
-            assertThat(validPathIds).isNotEmpty();
-
-            long revForPublish =
-                    jdbc.queryForObject(
-                            "SELECT revision FROM exam.exam WHERE id = ?", Long.class, created.id());
-            examPublishService.publish(
-                    created.id(),
-                    "pub-" + code,
-                    new ExamPublishRequest(validPathIds, "AT-2a AC-5", revForPublish));
-            return created.id();
-        } finally {
-            SecurityContextHolder.setContext(previous);
-        }
-    }
-
-    private void cleanupSyntheticExam(UUID examId) {
-        jdbc.update("DELETE FROM questionbank.question_usage_ledger WHERE exam_id = ?", examId);
-        jdbc.update(
-                "DELETE FROM shared.outbox_event WHERE payload->>'examId' = ? OR payload->>'targetId' = ?",
-                examId.toString(),
-                examId.toString());
-        jdbc.update("DELETE FROM exam.exam_version WHERE exam_id = ?", examId);
-        jdbc.update("DELETE FROM exam.exam_block_ref WHERE exam_id = ?", examId);
-        jdbc.update("DELETE FROM exam.exam_listing WHERE exam_id = ?", examId);
-        jdbc.update("DELETE FROM exam.exam_cover_asset WHERE exam_id = ?", examId);
-        jdbc.update("DELETE FROM exam.exam WHERE id = ?", examId);
     }
 
     private <T> T runAsStudent(UUID userId, java.util.function.Supplier<T> work) {
