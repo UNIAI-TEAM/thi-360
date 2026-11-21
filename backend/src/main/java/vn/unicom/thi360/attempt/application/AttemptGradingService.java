@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
@@ -122,6 +123,20 @@ public class AttemptGradingService {
         });
     }
 
+    /** Re-grades an already {@code FOR UPDATE}-locked {@link Attempt} in the caller's transaction (AT-5, AC-12). */
+    public AggregatedScore regradeLockedAttempt(Attempt attempt) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("regradeLockedAttempt requires an active transaction");
+        }
+        Objects.requireNonNull(attempt, "attempt must not be null");
+        if (attempt.getState() == AttemptState.STARTING
+                || attempt.getState() == AttemptState.IN_PROGRESS
+                || attempt.getState() == AttemptState.ABORTED) {
+            throw new ConflictException("ATTEMPT_NOT_FINISHED", null);
+        }
+        return gradeAndAggregateLocked(attempt, true);
+    }
+
     /** Marks the attempt {@code GRADING_ERROR} in a dedicated {@code REQUIRES_NEW} transaction when retries exhaust. */
     public void markGradingError(UUID attemptId, String errorMessage) {
         requiresNewTx.executeWithoutResult(status -> {
@@ -213,7 +228,7 @@ public class AttemptGradingService {
         return a.compareTo(b) == 0;
     }
 
-    private void gradeAndAggregateLocked(Attempt attempt, boolean regrade) {
+    private AggregatedScore gradeAndAggregateLocked(Attempt attempt, boolean regrade) {
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         List<AttemptItem> items = loadItemsInPaperOrder(attempt.getId(), parts);
 
@@ -281,6 +296,7 @@ public class AttemptGradingService {
                 Map.of(
                         "state", attempt.getState().name(),
                         "pendingReview", aggregated.pendingReview())));
+        return aggregated;
     }
 
     private List<AttemptItem> loadItemsInPaperOrder(UUID attemptId, List<AttemptPart> parts) {
