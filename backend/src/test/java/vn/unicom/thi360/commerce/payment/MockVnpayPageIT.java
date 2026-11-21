@@ -233,6 +233,10 @@ class MockVnpayPageIT extends AbstractIntegrationTest {
     @ActiveProfiles(profiles = {"api", "dev"}, inheritProfiles = false)
     @TestPropertySource(properties = {
         "thi360.vnpay.mode=SANDBOX",
+        "thi360.vnpay.tmn-code=dev-only-sandbox-tmn",
+        "thi360.vnpay.hash-secret=dev-only-sandbox-vnpay-key",
+        "thi360.vnpay.pay-url=http://127.0.0.1:19999/pay",
+        "thi360.vnpay.api-url=http://127.0.0.1:19999/api",
         "thi360.devdata.published-exams.enabled=false",
         "thi360.s3.mode=memory",
         "spring.datasource.hikari.maximum-pool-size=4"
