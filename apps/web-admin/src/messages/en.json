@@ -1341,7 +1341,7 @@
     "attention": {
       "activeFilter": "Filtering by attention bucket",
       "clearFilter": "Clear attention filter",
-      "countLabel": "{count} orders",
+      "countLabel": "{count, plural, one {# order} other {# orders}}",
       "emptyCalm": "No orders need attention. Payment and entitlement fulfillment are healthy.",
       "kinds": {
         "DUPLICATE_UNREFUNDED": "Unrefunded excess payment",
@@ -1391,7 +1391,7 @@
       "examPlaceholder": "Select an exam to view buyers",
       "latestOrderLink": "View order",
       "openExamLink": "Open exam page",
-      "paidCount": "{count} paid orders",
+      "paidCount": "{count, plural, one {# paid order} other {# paid orders}}",
       "retry": "Retry",
       "selectExamDescription": "Choose an exam above to see distinct paying accounts, total paid amount, and remaining attempts.",
       "selectExamTitle": "Select an exam",
@@ -1410,7 +1410,8 @@
       "paidAt": "Paid at",
       "paymentStatus": "Payment",
       "refundStatus": "Refund",
-      "state": "Order state"
+      "state": "Order state",
+      "timestamps": "Timestamps"
     },
     "description": "Monitor orders, review late-success payments, recover fulfillment, and issue refunds",
     "detail": {
@@ -1424,7 +1425,7 @@
         "viewBuyerOrders": "View buyer orders"
       },
       "banners": {
-        "lateSuccessPendingBody": "{count} payment settled after order expiration. Please decide whether to grant attempts or refund the buyer.",
+        "lateSuccessPendingBody": "{count, plural, one {# payment} other {# payments}} settled after order expiration. Please decide whether to grant attempts or refund the buyer.",
         "lateSuccessPendingTitle": "Late success payment pending review",
         "needsReviewBody": "This order is flagged for manual review: {reason}.",
         "needsReviewTitle": "Order needs review",
@@ -1447,8 +1448,12 @@
         "title": "Granted entitlements"
       },
       "history": {
+        "actorLearner": "Learner",
+        "actorPlatform": "Platform admin",
         "actorSystem": "System",
         "actorUnknown": "Unknown",
+        "actorVnpayIpn": "VNPAY IPN",
+        "actorVnpayQueryDr": "VNPAY QueryDR",
         "amountPrefix": "Amount: {amount}",
         "colActor": "Actor",
         "colDetail": "Details",
@@ -1536,7 +1541,7 @@
       "continueFulfill": {
         "confirm": "Confirm fulfillment",
         "conflictError": "Cannot continue fulfillment for this order in its current state.",
-        "descriptionPrefix": "Order {code} will grant {attempts} attempts for",
+        "descriptionPrefix": "Order {code} will grant {attempts, plural, one {# attempt} other {# attempts}} for",
         "reasonLabel": "Reason for manual fulfillment",
         "reasonPlaceholder": "For example: Verified VNPAY settlement succeeded, granting remaining attempts...",
         "reasonRequired": "Please enter a reason to continue fulfillment.",
@@ -1568,7 +1573,7 @@
         "amountHint": "Maximum refundable: {remaining}",
         "amountInvalid": "Refund amount must be a positive integer of at least 1 VND.",
         "amountLabel": "Refund amount (VND)",
-        "excessNoticeBody": "This is an excess or duplicate payment on the same order. It did not grant extra attempts and should be refunded to the buyer.",
+        "excessNoticeBody": "This is an excess or duplicate payment on the same order. It did not grant extra attempts; refunding this excess amount keeps the buyer's exam access active and existing granted attempts are not revoked.",
         "excessNoticeTitle": "Excess payment requiring refund",
         "externalRefLabel": "External transfer / receipt reference",
         "externalRefPlaceholder": "For example: VNPAY-TRANSFER-20261121-01",
@@ -1666,16 +1671,42 @@
       "REVOKED": "Revoked"
     },
     "historyReasons": {
-      "AUTO_EXCESS_AFTER_COUNTED": "Automatically classified excess payment ({detail})",
-      "DOUBLE_CHARGE_REPLACED_ORDER": "Duplicate payment on superseded order ({detail})",
-      "FULFILLED": "Entitlements granted ({detail})",
-      "LATE_SUCCESS_ACCEPTED": "Accepted late-success payment ({detail})",
-      "LATE_SUCCESS_REJECTED": "Rejected late-success payment for refund ({detail})",
-      "REFUNDED": "Order refunded ({detail})",
-      "REFUND_LATE_SUCCESS_AFTER_FAILED": "Refund initiated after late-success retry failure ({detail})",
-      "REFUND_QUERY_SUCCEEDED_AFTER_FAILED": "VNPAY query confirmed refund succeeded ({detail})",
-      "REFUND_REJECTED_09": "VNPAY rejected refund request (code 09: {detail})",
-      "REFUND_SUCCEEDED_QUERY_MISMATCH": "VNPAY query surfaced refund status mismatch ({detail})"
+      "AFTER_COUNTED": "{hasDetail, select, yes {Duplicate payment after counted settlement ({detail})} other {Duplicate payment after counted settlement}}",
+      "AUTO_EXCESS": "{hasDetail, select, yes {Automatically classified excess payment ({detail})} other {Automatically classified excess payment}}",
+      "AUTO_EXCESS_AFTER_COUNTED": "{hasDetail, select, yes {Automatically classified excess payment ({detail})} other {Automatically classified excess payment}}",
+      "CANCELLED_BY_USER": "{hasDetail, select, yes {Cancelled by learner ({detail})} other {Cancelled by learner}}",
+      "DOUBLE_CHARGE_REPLACED_ORDER": "{hasDetail, select, yes {Duplicate payment on superseded order ({detail})} other {Duplicate payment on superseded order}}",
+      "EXCESS_AFTER_COUNTED": "{hasDetail, select, yes {Excess payment received after counted settlement ({detail})} other {Excess payment received after counted settlement}}",
+      "FREE_ORDER_PAID": "{hasDetail, select, yes {Free order, payment confirmed automatically ({detail})} other {Free order, payment confirmed automatically}}",
+      "FULFILLED": "{hasDetail, select, yes {Entitlements granted ({detail})} other {Entitlements granted}}",
+      "LATE_PAYMENT_RECLAIMED": "{hasDetail, select, yes {Payment settled after order expiry or cancellation ({detail})} other {Payment settled after order expiry or cancellation}}",
+      "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": "{hasDetail, select, yes {Late payment caused duplicate charge on superseded order ({detail})} other {Late payment caused duplicate charge on superseded order}}",
+      "LATE_PAYMENT_REPLACED_RECLAIMED": "{hasDetail, select, yes {Settled late payment on superseded order as additional purchase ({detail})} other {Settled late payment on superseded order as additional purchase}}",
+      "LATE_SUCCESS_ACCEPTED": "{hasDetail, select, yes {Accepted late-success payment ({detail})} other {Accepted late-success payment}}",
+      "LATE_SUCCESS_ON_FAILED_PAYMENT": "{hasDetail, select, yes {Late-success signal on failed payment ({detail})} other {Late-success signal on failed payment}}",
+      "LATE_SUCCESS_PENDING_REVIEW": "{hasDetail, select, yes {Late-success payment on failed attempt, pending review ({detail})} other {Late-success payment on failed attempt, pending review}}",
+      "LATE_SUCCESS_REJECTED": "{hasDetail, select, yes {Rejected late-success payment for refund ({detail})} other {Rejected late-success payment for refund}}",
+      "MANUAL_RECOVERY": "{hasDetail, select, yes {Manual fulfillment recovery ({detail})} other {Manual fulfillment recovery}}",
+      "ORDER_CANCELLED": "{hasDetail, select, yes {Order cancelled ({detail})} other {Order cancelled}}",
+      "ORDER_CREATED": "{hasDetail, select, yes {Order created ({detail})} other {Order created}}",
+      "ORDER_EXPIRED": "{hasDetail, select, yes {Order expired ({detail})} other {Order expired}}",
+      "ORDER_FULFILLED": "{hasDetail, select, yes {Order fulfilled ({detail})} other {Order fulfilled}}",
+      "ORDER_REFUNDED": "{hasDetail, select, yes {Order refunded ({detail})} other {Order refunded}}",
+      "ORDER_REPLACED": "{hasDetail, select, yes {Order superseded ({detail})} other {Order superseded}}",
+      "PAYMENT_ATTEMPT_CREATED": "{hasDetail, select, yes {Created payment attempt ({detail})} other {Created payment attempt}}",
+      "PAYMENT_FAILED": "{hasDetail, select, yes {Payment attempt failed ({detail})} other {Payment attempt failed}}",
+      "PAYMENT_SUCCEEDED": "{hasDetail, select, yes {Payment succeeded ({detail})} other {Payment succeeded}}",
+      "REFUNDED": "{hasDetail, select, yes {Order refunded ({detail})} other {Order refunded}}",
+      "REFUNDED_BEFORE_FULFILLMENT": "{hasDetail, select, yes {Refunded before entitlement fulfillment ({detail})} other {Refunded before entitlement fulfillment}}",
+      "REFUND_LATE_SUCCESS_AFTER_FAILED": "{hasDetail, select, yes {Refund initiated after late-success retry failure ({detail})} other {Refund initiated after late-success retry failure}}",
+      "REFUND_QUERY_SUCCEEDED_AFTER_FAILED": "{hasDetail, select, yes {VNPAY query confirmed refund succeeded ({detail})} other {VNPAY query confirmed refund succeeded}}",
+      "REFUND_REJECTED_09": "{hasDetail, select, yes {VNPAY rejected refund request (code 09: {detail})} other {VNPAY rejected refund request (code 09)}}",
+      "REFUND_SUCCEEDED_QUERY_MISMATCH": "{hasDetail, select, yes {VNPAY query surfaced refund status mismatch ({detail})} other {VNPAY query surfaced refund status mismatch}}",
+      "REPLACED_BY": "{hasDetail, select, yes {Superseded by new order ({detail})} other {Superseded by new order}}",
+      "REUSE_PENDING_PAYMENT": "{hasDetail, select, yes {Created retry payment attempt on pending order ({detail})} other {Created retry payment attempt on pending order}}",
+      "VNPAY_QUERYDR_AMOUNT_MISMATCH": "{hasDetail, select, yes {VNPAY QueryDR amount mismatch ({detail})} other {VNPAY QueryDR amount mismatch}}",
+      "VNPAY_QUERYDR_STATUS": "{hasDetail, select, yes {VNPAY QueryDR status requires review ({detail})} other {VNPAY QueryDR status requires review}}",
+      "VNPAY_QUERYDR_TXN_REF_MISMATCH": "{hasDetail, select, yes {VNPAY QueryDR txn ref mismatch ({detail})} other {VNPAY QueryDR txn ref mismatch}}"
     },
     "lateSuccessResolutions": {
       "ACCEPTED": "Accepted & fulfilled",
@@ -1684,7 +1715,7 @@
       "REJECTED": "Rejected & refunded"
     },
     "list": {
-      "attentionCountTag": "{count} attention flags",
+      "attentionCountTag": "{count, plural, one {# attention flag} other {# attention flags}}",
       "cardAccount": "Account: {username}",
       "cardCreated": "Created: {date}",
       "cardNotPaid": "Unpaid",
@@ -1701,7 +1732,7 @@
       "offlineTitle": "Offline",
       "retry": "Retry",
       "tableLabel": "Orders list table",
-      "totalItems": "Total {total} orders"
+      "totalItems": "{total, plural, one {Total # order} other {Total # orders}}"
     },
     "meta": {
       "buyersTitle": "Exam buyers · Thi 360",
@@ -1713,7 +1744,8 @@
       "buyers": "Exam buyers",
       "openExam": "Open exam",
       "orders": "Orders",
-      "viewOrder": "View details"
+      "viewOrder": "View details",
+      "viewOrderTransactions": "View order {code} transactions"
     },
     "paymentClassifications": {
       "COUNTED": "Counted for order",
@@ -1762,7 +1794,8 @@
       "FULL": "Full refund",
       "IN_PROGRESS": "In progress",
       "NONE": "None",
-      "PARTIAL": "Partial refund"
+      "PARTIAL": "Partial refund",
+      "UNKNOWN": "Unknown"
     },
     "reviewReasons": {
       "DUPLICATE_UNREFUNDED": "Duplicate unrefunded payment detected",
@@ -1779,6 +1812,9 @@
       "PENDING_PAYMENT": "Pending payment",
       "REFUNDED": "Refunded",
       "REPLACED": "Replaced"
+    },
+    "statusFallback": {
+      "unknown": "Unknown"
     },
     "title": "Orders"
   },

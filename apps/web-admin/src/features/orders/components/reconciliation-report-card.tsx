@@ -3,7 +3,7 @@
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { Button, Card, Skeleton } from "@thi360/ui";
+import { Button, Card, Skeleton, cn } from "@thi360/ui";
 
 import { formatNumber, formatOrderDate, formatOrderDateTime } from "../format";
 import { useLatestReconciliationReportQuery } from "../queries";
@@ -120,7 +120,12 @@ export function ReconciliationReportCard() {
           {counters.map((counter) => (
             <div
               key={counter.key}
-              className="rounded-lg border border-border bg-subtle px-3 py-2.5"
+              className={cn(
+                "rounded-lg border px-3 py-2.5",
+                counter.value > 0
+                  ? "border-warning/30 bg-warning-bg"
+                  : "border-border bg-subtle",
+              )}
             >
               <dt className="text-xs text-text-secondary">{counter.label}</dt>
               <dd

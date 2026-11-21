@@ -35,6 +35,27 @@ describe("ReconciliationReportCard (AC-22)", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("Tiền về muộn chờ xử lý")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
+
+    const firstCounterTile = screen.getByText("Đã thu tiền chưa cấp quyền").closest("div");
+    expect(firstCounterTile?.className).toContain("bg-warning-bg");
+    expect(firstCounterTile?.className).not.toContain("bg-subtle");
+    expect(screen.getByText("1").className).toContain("text-warning");
+  });
+
+  it("dùng nền trung tính bg-subtle khi số đếm bằng 0", async () => {
+    const zeroLatest = makeReconciliationLatest();
+    if (zeroLatest.available && zeroLatest.report) {
+      zeroLatest.report.paidUnfulfilledCount = 0;
+      zeroLatest.report.unknownPaymentCount = 0;
+      zeroLatest.report.unrefundedExcessCount = 0;
+      zeroLatest.report.pendingLateSuccessCount = 0;
+    }
+    fakeApi.get("/api/v1/admin/reconciliation-reports/latest", () => ok(zeroLatest));
+
+    renderOrdersUi(<ReconciliationReportCard />);
+
+    const zeroLabel = await screen.findByText("Đã thu tiền chưa cấp quyền");
+    expect(zeroLabel.closest("div")?.className).toContain("bg-subtle");
   });
 
   it("hiện trạng thái bình tĩnh khi chưa có báo cáo (available = false)", async () => {

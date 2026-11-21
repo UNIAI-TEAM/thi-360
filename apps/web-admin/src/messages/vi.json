@@ -1341,7 +1341,7 @@
     "attention": {
       "activeFilter": "Đang lọc theo nhóm cần chú ý",
       "clearFilter": "Bỏ lọc nhóm chú ý",
-      "countLabel": "{count} đơn",
+      "countLabel": "{count, plural, other {# đơn}}",
       "emptyCalm": "Không có đơn cần xử lý. Hệ thống thanh toán và cấp quyền đang ổn định.",
       "kinds": {
         "DUPLICATE_UNREFUNDED": "Thanh toán dư chưa hoàn",
@@ -1391,7 +1391,7 @@
       "examPlaceholder": "Chọn bài thi để xem người mua",
       "latestOrderLink": "Xem đơn",
       "openExamLink": "Mở trang bài thi",
-      "paidCount": "{count} đơn đã trả",
+      "paidCount": "{count, plural, other {# đơn đã trả}}",
       "retry": "Thử lại",
       "selectExamDescription": "Chọn một bài thi từ danh sách phía trên để xem các tài khoản đã thanh toán và số lượt còn lại.",
       "selectExamTitle": "Chọn bài thi cần xem",
@@ -1410,7 +1410,8 @@
       "paidAt": "Thanh toán lúc",
       "paymentStatus": "Thanh toán",
       "refundStatus": "Hoàn tiền",
-      "state": "Trạng thái đơn"
+      "state": "Trạng thái đơn",
+      "timestamps": "Thời gian"
     },
     "description": "Theo dõi đơn hàng, xử lý tiền về muộn, cấp quyền bổ sung và hoàn tiền",
     "detail": {
@@ -1424,7 +1425,7 @@
         "viewBuyerOrders": "Xem đơn của người mua"
       },
       "banners": {
-        "lateSuccessPendingBody": "Có {count} giao dịch nhận tiền sau khi đơn đã hết hạn. Vui lòng xem xét chấp nhận cấp quyền hoặc hoàn tiền cho khách.",
+        "lateSuccessPendingBody": "Có {count, plural, other {# giao dịch}} nhận tiền sau khi đơn đã hết hạn. Vui lòng xem xét chấp nhận cấp quyền hoặc hoàn tiền cho khách.",
         "lateSuccessPendingTitle": "Có tiền về muộn cần xử lý",
         "needsReviewBody": "Đơn hàng này đang được đánh dấu cần kiểm tra thủ công: {reason}.",
         "needsReviewTitle": "Đơn hàng cần rà soát",
@@ -1447,8 +1448,12 @@
         "title": "Quyền thi được cấp"
       },
       "history": {
+        "actorLearner": "Học viên",
+        "actorPlatform": "Quản trị nền tảng",
         "actorSystem": "Hệ thống",
         "actorUnknown": "Không rõ",
+        "actorVnpayIpn": "VNPAY IPN",
+        "actorVnpayQueryDr": "VNPAY QueryDR",
         "amountPrefix": "Số tiền: {amount}",
         "colActor": "Người thực hiện",
         "colDetail": "Chi tiết",
@@ -1536,7 +1541,7 @@
       "continueFulfill": {
         "confirm": "Xác nhận tiếp tục cấp quyền",
         "conflictError": "Không thể tiếp tục cấp quyền cho đơn hàng ở trạng thái hiện tại.",
-        "descriptionPrefix": "Đơn {code} sẽ cộng {attempts} lượt thi cho",
+        "descriptionPrefix": "Đơn {code} sẽ cộng {attempts, plural, other {# lượt thi}} cho",
         "reasonLabel": "Lý do tiếp tục cấp quyền",
         "reasonPlaceholder": "Ví dụ: Đã kiểm tra tiền về VNPAY thành công, cấp bù quyền cho người mua...",
         "reasonRequired": "Vui lòng nhập lý do tiếp tục cấp quyền.",
@@ -1568,7 +1573,7 @@
         "amountHint": "Tối đa có thể hoàn: {remaining}",
         "amountInvalid": "Số tiền hoàn phải là số nguyên dương lớn hơn hoặc bằng 1.",
         "amountLabel": "Số tiền hoàn (VNĐ)",
-        "excessNoticeBody": "Đây là giao dịch thu thừa hoặc trùng lặp trên cùng một đơn hàng. Khách hàng không nhận thêm lượt thi từ giao dịch này và cần được hoàn trả.",
+        "excessNoticeBody": "Đây là giao dịch thu thừa hoặc trùng lặp trên cùng một đơn hàng. Giao dịch này không cộng thêm lượt thi; khi hoàn khoản dư, người mua vẫn giữ quyền truy cập bài thi và không bị thu hồi các lượt thi hiện có.",
         "excessNoticeTitle": "Khoản thu thừa cần hoàn trả",
         "externalRefLabel": "Mã tham chiếu giao dịch hoàn ngoài hệ thống",
         "externalRefPlaceholder": "Ví dụ: VNPAY-CHUYENKHOAN-20261121-01",
@@ -1666,16 +1671,42 @@
       "REVOKED": "Đã thu hồi"
     },
     "historyReasons": {
-      "AUTO_EXCESS_AFTER_COUNTED": "Tự động phân loại khoản thu thừa ({detail})",
-      "DOUBLE_CHARGE_REPLACED_ORDER": "Thu tiền trùng trên đơn đã thay thế ({detail})",
-      "FULFILLED": "Đã hoàn tất cấp lượt thi ({detail})",
-      "LATE_SUCCESS_ACCEPTED": "Chấp nhận giao dịch tiền về muộn ({detail})",
-      "LATE_SUCCESS_REJECTED": "Từ chối tiền về muộn và chuyển hoàn ({detail})",
-      "REFUNDED": "Đơn hàng đã hoàn tiền ({detail})",
-      "REFUND_LATE_SUCCESS_AFTER_FAILED": "Tạo hoàn tiền cho tiền về muộn sau lỗi ({detail})",
-      "REFUND_QUERY_SUCCEEDED_AFTER_FAILED": "Tra cứu VNPAY xác nhận hoàn tiền thành công ({detail})",
-      "REFUND_REJECTED_09": "VNPAY từ chối yêu cầu hoàn tiền (mã 09: {detail})",
-      "REFUND_SUCCEEDED_QUERY_MISMATCH": "Tra cứu phát hiện chênh lệch trạng thái hoàn ({detail})"
+      "AFTER_COUNTED": "{hasDetail, select, yes {Thanh toán thu thừa sau khi đơn đã ghi nhận đủ ({detail})} other {Thanh toán thu thừa sau khi đơn đã ghi nhận đủ}}",
+      "AUTO_EXCESS": "{hasDetail, select, yes {Tự động phân loại khoản thu thừa ({detail})} other {Tự động phân loại khoản thu thừa}}",
+      "AUTO_EXCESS_AFTER_COUNTED": "{hasDetail, select, yes {Tự động phân loại khoản thu thừa ({detail})} other {Tự động phân loại khoản thu thừa}}",
+      "CANCELLED_BY_USER": "{hasDetail, select, yes {Học viên đã hủy đơn ({detail})} other {Học viên đã hủy đơn}}",
+      "DOUBLE_CHARGE_REPLACED_ORDER": "{hasDetail, select, yes {Thu tiền trùng trên đơn đã thay thế ({detail})} other {Thu tiền trùng trên đơn đã thay thế}}",
+      "EXCESS_AFTER_COUNTED": "{hasDetail, select, yes {Thu thừa sau khi đơn đã ghi nhận đủ ({detail})} other {Thu thừa sau khi đơn đã ghi nhận đủ}}",
+      "FREE_ORDER_PAID": "{hasDetail, select, yes {Đơn miễn phí, tự động xác nhận thanh toán ({detail})} other {Đơn miễn phí, tự động xác nhận thanh toán}}",
+      "FULFILLED": "{hasDetail, select, yes {Đã hoàn tất cấp lượt thi ({detail})} other {Đã hoàn tất cấp lượt thi}}",
+      "LATE_PAYMENT_RECLAIMED": "{hasDetail, select, yes {Nhận thanh toán sau khi đơn hết hạn hoặc hủy ({detail})} other {Nhận thanh toán sau khi đơn hết hạn hoặc hủy}}",
+      "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": "{hasDetail, select, yes {Thanh toán muộn gây thu tiền trùng trên đơn đã thay thế ({detail})} other {Thanh toán muộn gây thu tiền trùng trên đơn đã thay thế}}",
+      "LATE_PAYMENT_REPLACED_RECLAIMED": "{hasDetail, select, yes {Thanh toán muộn trên đơn đã thay thế, cấp quyền bổ sung ({detail})} other {Thanh toán muộn trên đơn đã thay thế, cấp quyền bổ sung}}",
+      "LATE_SUCCESS_ACCEPTED": "{hasDetail, select, yes {Chấp nhận giao dịch tiền về muộn ({detail})} other {Chấp nhận giao dịch tiền về muộn}}",
+      "LATE_SUCCESS_ON_FAILED_PAYMENT": "{hasDetail, select, yes {Phát hiện thanh toán về muộn trên giao dịch đã thất bại ({detail})} other {Phát hiện thanh toán về muộn trên giao dịch đã thất bại}}",
+      "LATE_SUCCESS_PENDING_REVIEW": "{hasDetail, select, yes {Tiền về muộn trên giao dịch đã thất bại, chờ đối soát ({detail})} other {Tiền về muộn trên giao dịch đã thất bại, chờ đối soát}}",
+      "LATE_SUCCESS_REJECTED": "{hasDetail, select, yes {Từ chối tiền về muộn và chuyển hoàn ({detail})} other {Từ chối tiền về muộn và chuyển hoàn}}",
+      "MANUAL_RECOVERY": "{hasDetail, select, yes {Tiếp tục cấp quyền thủ công ({detail})} other {Tiếp tục cấp quyền thủ công}}",
+      "ORDER_CANCELLED": "{hasDetail, select, yes {Đơn hàng đã hủy ({detail})} other {Đơn hàng đã hủy}}",
+      "ORDER_CREATED": "{hasDetail, select, yes {Tạo đơn hàng mới ({detail})} other {Tạo đơn hàng mới}}",
+      "ORDER_EXPIRED": "{hasDetail, select, yes {Đơn hàng hết hạn thanh toán ({detail})} other {Đơn hàng hết hạn thanh toán}}",
+      "ORDER_FULFILLED": "{hasDetail, select, yes {Đơn hàng đã cấp quyền thi ({detail})} other {Đơn hàng đã cấp quyền thi}}",
+      "ORDER_REFUNDED": "{hasDetail, select, yes {Đơn hàng đã hoàn tiền ({detail})} other {Đơn hàng đã hoàn tiền}}",
+      "ORDER_REPLACED": "{hasDetail, select, yes {Đơn hàng đã được thay thế ({detail})} other {Đơn hàng đã được thay thế}}",
+      "PAYMENT_ATTEMPT_CREATED": "{hasDetail, select, yes {Khởi tạo giao dịch thanh toán ({detail})} other {Khởi tạo giao dịch thanh toán}}",
+      "PAYMENT_FAILED": "{hasDetail, select, yes {Giao dịch thanh toán thất bại ({detail})} other {Giao dịch thanh toán thất bại}}",
+      "PAYMENT_SUCCEEDED": "{hasDetail, select, yes {Thanh toán thành công ({detail})} other {Thanh toán thành công}}",
+      "REFUNDED": "{hasDetail, select, yes {Đơn hàng đã hoàn tiền ({detail})} other {Đơn hàng đã hoàn tiền}}",
+      "REFUNDED_BEFORE_FULFILLMENT": "{hasDetail, select, yes {Hoàn tiền trước khi cấp lượt thi ({detail})} other {Hoàn tiền trước khi cấp lượt thi}}",
+      "REFUND_LATE_SUCCESS_AFTER_FAILED": "{hasDetail, select, yes {Tạo hoàn tiền cho tiền về muộn sau lỗi ({detail})} other {Tạo hoàn tiền cho tiền về muộn sau lỗi}}",
+      "REFUND_QUERY_SUCCEEDED_AFTER_FAILED": "{hasDetail, select, yes {Tra cứu VNPAY xác nhận hoàn tiền thành công ({detail})} other {Tra cứu VNPAY xác nhận hoàn tiền thành công}}",
+      "REFUND_REJECTED_09": "{hasDetail, select, yes {VNPAY từ chối yêu cầu hoàn tiền (mã 09: {detail})} other {VNPAY từ chối yêu cầu hoàn tiền (mã 09)}}",
+      "REFUND_SUCCEEDED_QUERY_MISMATCH": "{hasDetail, select, yes {Tra cứu phát hiện chênh lệch trạng thái hoàn ({detail})} other {Tra cứu phát hiện chênh lệch trạng thái hoàn}}",
+      "REPLACED_BY": "{hasDetail, select, yes {Đơn được thay thế bởi đơn mới ({detail})} other {Đơn được thay thế bởi đơn mới}}",
+      "REUSE_PENDING_PAYMENT": "{hasDetail, select, yes {Tạo lại giao dịch thanh toán trên đơn chờ ({detail})} other {Tạo lại giao dịch thanh toán trên đơn chờ}}",
+      "VNPAY_QUERYDR_AMOUNT_MISMATCH": "{hasDetail, select, yes {Tra cứu VNPAY phát hiện lệch số tiền ({detail})} other {Tra cứu VNPAY phát hiện lệch số tiền}}",
+      "VNPAY_QUERYDR_STATUS": "{hasDetail, select, yes {Tra cứu VNPAY ghi nhận trạng thái cần rà soát ({detail})} other {Tra cứu VNPAY ghi nhận trạng thái cần rà soát}}",
+      "VNPAY_QUERYDR_TXN_REF_MISMATCH": "{hasDetail, select, yes {Tra cứu VNPAY phát hiện lệch mã tham chiếu ({detail})} other {Tra cứu VNPAY phát hiện lệch mã tham chiếu}}"
     },
     "lateSuccessResolutions": {
       "ACCEPTED": "Đã chấp nhận cấp quyền",
@@ -1684,7 +1715,7 @@
       "REJECTED": "Đã từ chối và hoàn tiền"
     },
     "list": {
-      "attentionCountTag": "{count} mục chú ý",
+      "attentionCountTag": "{count, plural, other {# mục chú ý}}",
       "cardAccount": "Tài khoản: {username}",
       "cardCreated": "Tạo lúc: {date}",
       "cardNotPaid": "Chưa thanh toán",
@@ -1701,7 +1732,7 @@
       "offlineTitle": "Đang ngoại tuyến",
       "retry": "Thử lại",
       "tableLabel": "Bảng danh sách đơn hàng",
-      "totalItems": "Tổng {total} đơn hàng"
+      "totalItems": "{total, plural, other {Tổng # đơn hàng}}"
     },
     "meta": {
       "buyersTitle": "Người mua theo bài thi · Thi 360",
@@ -1713,7 +1744,8 @@
       "buyers": "Người mua theo bài thi",
       "openExam": "Mở bài thi",
       "orders": "Đơn hàng",
-      "viewOrder": "Xem chi tiết"
+      "viewOrder": "Xem chi tiết",
+      "viewOrderTransactions": "Xem giao dịch đơn {code}"
     },
     "paymentClassifications": {
       "COUNTED": "Giao dịch ghi nhận đơn",
@@ -1762,7 +1794,8 @@
       "FULL": "Đã hoàn toàn bộ",
       "IN_PROGRESS": "Đang hoàn tiền",
       "NONE": "Chưa hoàn",
-      "PARTIAL": "Đã hoàn một phần"
+      "PARTIAL": "Đã hoàn một phần",
+      "UNKNOWN": "Chưa rõ"
     },
     "reviewReasons": {
       "DUPLICATE_UNREFUNDED": "Phát hiện thanh toán trùng lặp chưa hoàn",
@@ -1779,6 +1812,9 @@
       "PENDING_PAYMENT": "Chờ thanh toán",
       "REFUNDED": "Đã hoàn tiền",
       "REPLACED": "Đã thay thế"
+    },
+    "statusFallback": {
+      "unknown": "Chưa rõ"
     },
     "title": "Đơn hàng"
   },

@@ -40,11 +40,12 @@ const PAYMENT_ATTEMPT_TONE: Record<PaymentState, ChipTone> = {
   FAILED: "danger",
 };
 
-const ORDER_REFUND_TONE: Record<AdminRefundStatus, ChipTone> = {
+const ORDER_REFUND_TONE: Record<AdminRefundStatus | "UNKNOWN", ChipTone> = {
   FULL: "success",
   PARTIAL: "info",
   IN_PROGRESS: "info",
   NONE: "neutral",
+  UNKNOWN: "warning",
 };
 
 const REFUND_ROW_TONE: Record<RefundState, ChipTone> = {
@@ -54,38 +55,68 @@ const REFUND_ROW_TONE: Record<RefundState, ChipTone> = {
   FAILED: "danger",
 };
 
-export function OrderStateChip({ state }: { state: OrderState }) {
+export const KNOWN_ORDER_STATES = new Set<string>(Object.keys(ORDER_STATE_TONE));
+
+export function OrderStateChip({ state }: { state: OrderState | string }) {
   const t = useTranslations("orders.states");
-  return <StatusChip tone={ORDER_STATE_TONE[state]}>{t(state)}</StatusChip>;
+  const tFallback = useTranslations("orders.statusFallback");
+  if (Object.hasOwn(ORDER_STATE_TONE, state)) {
+    return <StatusChip tone={ORDER_STATE_TONE[state as OrderState]}>{t(state)}</StatusChip>;
+  }
+  return <StatusChip tone="neutral">{tFallback("unknown")}</StatusChip>;
 }
 
-export function OrderPaymentStatusChip({ status }: { status: AdminPaymentStatus }) {
+export function OrderPaymentStatusChip({ status }: { status: AdminPaymentStatus | string }) {
   const t = useTranslations("orders.paymentStatuses");
-  return <StatusChip tone={ORDER_PAYMENT_TONE[status]}>{t(status)}</StatusChip>;
+  const tFallback = useTranslations("orders.statusFallback");
+  if (Object.hasOwn(ORDER_PAYMENT_TONE, status)) {
+    return (
+      <StatusChip tone={ORDER_PAYMENT_TONE[status as AdminPaymentStatus]}>{t(status)}</StatusChip>
+    );
+  }
+  return <StatusChip tone="neutral">{tFallback("unknown")}</StatusChip>;
 }
 
 export function PaymentAttemptStateChip({
   state,
   lateSuccessAt,
 }: {
-  state: PaymentState;
+  state: PaymentState | string;
   lateSuccessAt?: string | null;
 }) {
   const t = useTranslations("orders.paymentStatuses");
+  const tFallback = useTranslations("orders.statusFallback");
   if (state === "SUCCEEDED" && lateSuccessAt) {
     return <StatusChip tone="warning">{t("LATE_SUCCESS")}</StatusChip>;
   }
-  return <StatusChip tone={PAYMENT_ATTEMPT_TONE[state]}>{t(state)}</StatusChip>;
+  if (Object.hasOwn(PAYMENT_ATTEMPT_TONE, state)) {
+    return (
+      <StatusChip tone={PAYMENT_ATTEMPT_TONE[state as PaymentState]}>{t(state)}</StatusChip>
+    );
+  }
+  return <StatusChip tone="neutral">{tFallback("unknown")}</StatusChip>;
 }
 
-export function OrderRefundStatusChip({ status }: { status: AdminRefundStatus }) {
+export function OrderRefundStatusChip({ status }: { status: AdminRefundStatus | string }) {
   const t = useTranslations("orders.refundStatuses");
-  return <StatusChip tone={ORDER_REFUND_TONE[status]}>{t(status)}</StatusChip>;
+  const tFallback = useTranslations("orders.statusFallback");
+  if (Object.hasOwn(ORDER_REFUND_TONE, status)) {
+    return (
+      <StatusChip tone={ORDER_REFUND_TONE[status as AdminRefundStatus | "UNKNOWN"]}>
+        {t(status)}
+      </StatusChip>
+    );
+  }
+  return <StatusChip tone="neutral">{tFallback("unknown")}</StatusChip>;
 }
 
-export function RefundRowStateChip({ state }: { state: RefundState }) {
+export function RefundRowStateChip({ state }: { state: RefundState | string }) {
   const t = useTranslations("orders.refundRowStatuses");
-  return <StatusChip tone={REFUND_ROW_TONE[state]}>{t(state)}</StatusChip>;
+  const tFallback = useTranslations("orders.statusFallback");
+  if (Object.hasOwn(REFUND_ROW_TONE, state)) {
+    return <StatusChip tone={REFUND_ROW_TONE[state as RefundState]}>{t(state)}</StatusChip>;
+  }
+  return <StatusChip tone="neutral">{tFallback("unknown")}</StatusChip>;
 }
 
 export function PaymentClassificationChip({ payment }: { payment: PaymentDetailView }) {
