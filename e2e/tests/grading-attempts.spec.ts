@@ -896,7 +896,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       await expect(nav.getByRole("link", { name: "Lượt thi" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Chấm tự luận" })).toHaveCount(0);
 
-      await page.getByLabel("Học viên").fill(submitted.student.username);
+      await page.getByRole("searchbox", { name: "Học viên" }).fill(submitted.student.username);
       const table = page.getByRole("table", { name: "Danh sách lượt thi" });
       const rowLink = table.getByRole("link", { name: submitted.shortCode });
       await expect(rowLink).toBeVisible();
@@ -992,7 +992,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
 
           await page.goto(`${ADMIN_URL}/attempts`);
           await expect(
-            page.getByRole("link", { name: new RegExp(`#${submitted.shortCode}`) }).first(),
+            page.getByRole("link", { name: new RegExp(submitted.shortCode) }).first(),
           ).toBeVisible({ timeout: 20_000 });
           await waitAdminSettled(page);
           await expectMatrixClean(page, "fa4-attempts-list", cell, {
