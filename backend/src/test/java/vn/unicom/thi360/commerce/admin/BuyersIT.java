@@ -104,6 +104,7 @@ class BuyersIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[0].orders.length()").value(2))
                 .andExpect(jsonPath("$.items[0].orders[0].orderCode").value(aliceOrder2.code()))
                 .andExpect(jsonPath("$.items[0].orders[1].orderCode").value(aliceOrder1.code()))
+                .andExpect(jsonPath("$.items[0].lastPaidAt").value(t0.plusSeconds(1200).toString()))
                 .andExpect(jsonPath("$.items[0].attemptsTotal").value(2))
                 .andExpect(jsonPath("$.items[0].attemptsUsed").value(1))
                 .andExpect(jsonPath("$.items[0].attemptsReserved").value(0))
@@ -114,8 +115,35 @@ class BuyersIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.items[1].purchaseCount").value(1))
                 .andExpect(jsonPath("$.items[1].orders.length()").value(1))
                 .andExpect(jsonPath("$.items[1].orders[0].orderCode").value(bobOrder.code()))
+                .andExpect(jsonPath("$.items[1].lastPaidAt").value(t0.minusSeconds(600).toString()))
                 .andExpect(jsonPath("$.items[1].attemptsTotal").value(2))
                 .andExpect(jsonPath("$.items[1].attemptsUsed").value(0))
                 .andExpect(jsonPath("$.items[1].attemptsRemaining").value(2));
+
+        // Trang vượt quá giới hạn (page=5) vẫn giữ totalItems, totalPages, totalBuyers.
+        mockMvc.perform(get("/api/v1/admin/exams/" + exam.examId() + "/buyers")
+                        .with(asUser(adminId, "viewer", Permissions.ORDER_VIEW))
+                        .param("page", "5")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.page").value(5))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.totalBuyers").value(2));
+
+        // Kiểm tra sort theo username,asc và userId,desc hoạt động bình thường.
+        mockMvc.perform(get("/api/v1/admin/exams/" + exam.examId() + "/buyers")
+                        .with(asUser(adminId, "viewer", Permissions.ORDER_VIEW))
+                        .param("sort", "username,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2));
+
+        mockMvc.perform(get("/api/v1/admin/exams/" + exam.examId() + "/buyers")
+                        .with(asUser(adminId, "viewer", Permissions.ORDER_VIEW))
+                        .param("sort", "userId,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2));
     }
 }

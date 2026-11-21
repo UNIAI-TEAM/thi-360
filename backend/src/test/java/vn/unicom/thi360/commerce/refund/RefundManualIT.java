@@ -83,12 +83,20 @@ class RefundManualIT extends AbstractIntegrationTest {
         doThrow(new RuntimeException("Read timed out")).when(vnpayGateway).refund(any());
         String unknownId = createRefund(adminId, orderUnknown.code(), pUnknown.id(), 200_000L, "API", "Timeout", null, "UNKNOWN");
 
-        // Thiếu lý do hoặc chứng từ -> 400 VALIDATION_FAILED.
+        // Thiếu lý do hoặc chứng từ (kể cả khoảng trắng) -> 400 VALIDATION_FAILED.
         mockMvc.perform(post("/api/v1/admin/refunds/" + unknownId + "/mark-failed")
                         .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
                         .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of("reason", "", "evidenceRef", "TICKET-1"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mockMvc.perform(post("/api/v1/admin/refunds/" + unknownId + "/mark-failed")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("reason", "Xac nhan", "evidenceRef", "   "))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
@@ -157,6 +165,36 @@ class RefundManualIT extends AbstractIntegrationTest {
         // Ghi nhận 1 lần API FAILED (mã 91).
         doReturn(refundResult("91", "09", payment.txnRef(), 200_000L, "90040021")).when(vnpayGateway).refund(any());
         createRefund(adminId, order.code(), payment.id(), 200_000L, "API", "API bi 91", null, "FAILED");
+
+        // Ghi nhận MANUAL với reason trống/null hoặc externalRef > 200 ký tự -> 400 VALIDATION_FAILED bản địa hóa.
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code() + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "man-blank-rsn-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(200_000L, "MANUAL", "   ", true, "VCB-001")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code() + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "man-null-rsn-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(200_000L, "MANUAL", null, true, "VCB-001")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code() + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "man-long-ref-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(200_000L, "MANUAL", "Chung tu qua dai", true, "X".repeat(201))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("externalRef"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Mã chứng từ bên ngoài tối đa 200 ký tự"));
 
         // Ghi nhận MANUAL thiếu externalRef -> 422 REFUND_EXTERNAL_REF_REQUIRED.
         mockMvc.perform(post("/api/v1/admin/orders/" + order.code() + "/payments/" + payment.id() + "/refunds")

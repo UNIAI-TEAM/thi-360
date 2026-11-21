@@ -149,6 +149,10 @@ class RefundApiIT extends AbstractIntegrationTest {
             // Đẩy sự kiện audit.
         }
         assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'REFUND_REQUESTED' AND target_id = ?",
+                Integer.class, refundId.toString()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'REFUND_SUCCEEDED' AND target_id = ?",
                 Integer.class, refundId.toString()))
                 .isEqualTo(1);
@@ -222,7 +226,58 @@ class RefundApiIT extends AbstractIntegrationTest {
                 "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, order.id()))
                 .isEqualTo("FULFILLED");
 
-        // Còn lại 70_000 VND nên yêu cầu 80_000 VND bị từ chối 409 REFUND_AMOUNT_EXCEEDED.
+        // Còn lại 70_000 VND: biên 0, âm -> 400 VALIDATION_FAILED; 70_001 & 80_000 -> 409 REFUND_AMOUNT_EXCEEDED; đúng 70_000 -> 201 SUCCEEDED.
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
+                        + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "amt-zero-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(0L, "API", "So tien 0", true, null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
+                        + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "amt-neg-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(-1_000L, "API", "So tien am", true, null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        // Thiếu hoặc rỗng reason -> 400 VALIDATION_FAILED (AC-12).
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
+                        + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "blank-rsn-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(10_000L, "API", "   ", true, null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
+                        + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "null-rsn-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(10_000L, "API", null, true, null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
+                        + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "over-1-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(70_001L, "API", "Vuot 1 dong", true, null)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REFUND_AMOUNT_EXCEEDED"));
+
         mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
                         + "/payments/" + payment.id() + "/refunds")
                         .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
@@ -242,6 +297,21 @@ class RefundApiIT extends AbstractIntegrationTest {
                         .content(refundBody(20_000L, "API", "Thieu khoa", true, null)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REQUIRED"));
+
+        // Hoàn đúng phần còn lại 70_000 VND -> 201 SUCCEEDED, hoàn tất đơn REFUNDED.
+        mockMvc.perform(post("/api/v1/admin/orders/" + order.code()
+                        + "/payments/" + payment.id() + "/refunds")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "exact-rem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refundBody(70_000L, "API", "Hoan not so con lai", true, null)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.state").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.amountVnd").value(70_000L));
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, order.id()))
+                .isEqualTo("REFUNDED");
     }
 
     @Test
@@ -348,7 +418,7 @@ class RefundApiIT extends AbstractIntegrationTest {
         StubPayment p4 = insertSucceededPayment(o4, 1, 200_000L, "90010034");
         doReturn(refundResult(true, "91", "09", p4.txnRef(), 200_000L, "90010034", "02"))
                 .when(vnpayGateway).refund(any());
-        mockMvc.perform(post("/api/v1/admin/orders/" + o4.code() + "/payments/" + p4.id() + "/refunds")
+        String o4Raw = mockMvc.perform(post("/api/v1/admin/orders/" + o4.code() + "/payments/" + p4.id() + "/refunds")
                         .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
                         .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
                         .header("Idempotency-Key", "code91-" + UUID.randomUUID())
@@ -356,7 +426,19 @@ class RefundApiIT extends AbstractIntegrationTest {
                         .content(refundBody(200_000L, "API", "Giao dich khong tim thay 91", true, null)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.state").value("FAILED"))
-                .andExpect(jsonPath("$.vnpResponseCode").value("91"));
+                .andExpect(jsonPath("$.vnpResponseCode").value("91"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String o4RefundId = mapper.readTree(o4Raw).path("id").asText();
+
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy sự kiện audit.
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'REFUND_FAILED' AND target_id = ?",
+                Integer.class, o4RefundId))
+                .isEqualTo(1);
     }
 
     private StubPayment insertSucceededPayment(StubOrder order, int seq, long amountVnd, String txnNo) {

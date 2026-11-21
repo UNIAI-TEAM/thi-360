@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -241,6 +242,148 @@ class RefundQueryIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("REFUND_QUERY_NOT_ALLOWED"));
     }
 
+    @Test
+    void queryOnSucceededKeepsSucceededOnNon09FailuresFlagsReviewAndSupports0009DowngradeWithoutRegrant()
+            throws Exception {
+        var buyer = fixtures.createLearner(true, "vi");
+        var product1 = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        var product2 = fixtures.insertOnSaleProduct("QDA", 200_000L, 2);
+        UUID adminId = UUID.randomUUID();
+
+        // (a) SUCCEEDED + /query trả 91, 95, 00/02 -> giữ nguyên SUCCEEDED, bật needs_review=true, refundableAmountVnd=0.
+        for (String[] pair : new String[][] {{"91", ""}, {"95", ""}, {"00", "02"}}) {
+            var order = fixtures.insertStubOrder(
+                    buyer, product1, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+            var payment = insertSucceededPayment(order, 1, 200_000L, "900310" + pair[0] + pair[1]);
+            assertThat(fulfillmentService.fulfill(order.id())).isTrue();
+            Mockito.reset(vnpayGateway);
+            String refundId = createApiRefundExpectState(adminId, order.code(), payment.id(), 200_000L, "SUCCEEDED");
+
+            doReturn(queryDrResult(true, pair[0], pair[1], payment.txnRef(), 200_000L, "900310" + pair[0] + pair[1]))
+                    .when(vnpayGateway).queryDr(any());
+            mockMvc.perform(post("/api/v1/admin/refunds/" + refundId + "/query")
+                            .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                            .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.state").value("SUCCEEDED"));
+
+            Map<String, Object> orderRow = jdbc.queryForMap(
+                    "SELECT state, needs_review, review_reason FROM commerce.purchase_order WHERE id = ?", order.id());
+            assertThat(orderRow.get("state")).isEqualTo("REFUNDED");
+            assertThat(orderRow.get("needs_review")).isEqualTo(true);
+            assertThat(orderRow.get("review_reason"))
+                    .isEqualTo("REFUND_SUCCEEDED_QUERY_MISMATCH:" + refundId + ":" + pair[0]);
+            assertThat(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM commerce.order_history WHERE order_id = ? AND reason = ?",
+                    Integer.class, order.id(), "REFUND_SUCCEEDED_QUERY_MISMATCH:" + refundId + ":" + pair[0]))
+                    .isEqualTo(1);
+
+            mockMvc.perform(get("/api/v1/admin/orders/" + order.code())
+                            .with(asUser(adminId, "viewer", Permissions.ORDER_VIEW)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.payments[0].refundableAmountVnd").value(0L));
+        }
+
+        // (b) SUCCEEDED full refund -> /query trả 00/09 -> chuyển FAILED, bật needs_review, ghi REFUND_FAILED audit, không tự cấp lại lượt.
+        var order09 = fixtures.insertStubOrder(
+                buyer, product2, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        var payment09 = insertSucceededPayment(order09, 1, 200_000L, "90031099");
+        assertThat(fulfillmentService.fulfill(order09.id())).isTrue();
+        Mockito.reset(vnpayGateway);
+        String refund09Id = createApiRefundExpectState(adminId, order09.code(), payment09.id(), 200_000L, "SUCCEEDED");
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts_revoked FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, buyer.id(), product2.examId())).isEqualTo(2);
+
+        doReturn(queryDrResult(true, "00", "09", payment09.txnRef(), 200_000L, "90031099"))
+                .when(vnpayGateway).queryDr(any());
+        mockMvc.perform(post("/api/v1/admin/refunds/" + refund09Id + "/query")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("FAILED"))
+                .andExpect(jsonPath("$.vnpTransactionStatus").value("09"));
+
+        Map<String, Object> order09Row = jdbc.queryForMap(
+                "SELECT state, needs_review, review_reason FROM commerce.purchase_order WHERE id = ?", order09.id());
+        assertThat(order09Row.get("state")).isEqualTo("REFUNDED");
+        assertThat(order09Row.get("needs_review")).isEqualTo(true);
+        assertThat(order09Row.get("review_reason")).isEqualTo("REFUND_REJECTED_09:" + refund09Id);
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts_revoked FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, buyer.id(), product2.examId())).isEqualTo(2);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
+                Integer.class, order09.id())).isEqualTo(1);
+
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy audit.
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'REFUND_FAILED' AND target_id = ?",
+                Integer.class, refund09Id)).isEqualTo(1);
+    }
+
+    @Test
+    void queryOnUnknownHandles91FailedWithAudit99KeepAndGatewayTimeoutOutcome() throws Exception {
+        var buyer = fixtures.createLearner(true, "vi");
+        var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+        UUID adminId = UUID.randomUUID();
+
+        // 1. UNKNOWN -> 91 -> FAILED + ghi audit REFUND_FAILED.
+        var o91 = fixtures.insertStubOrder(
+                buyer, product, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        var p91 = insertSucceededPayment(o91, 1, 200_000L, "90032001");
+        doThrow(new RuntimeException("Initial timeout")).when(vnpayGateway).refund(any());
+        String r91Id = createApiRefundExpectState(adminId, o91.code(), p91.id(), 200_000L, "UNKNOWN");
+
+        doReturn(queryDrResult(true, "91", null, p91.txnRef(), 200_000L, "90032001"))
+                .when(vnpayGateway).queryDr(any());
+        mockMvc.perform(post("/api/v1/admin/refunds/" + r91Id + "/query")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("FAILED"))
+                .andExpect(jsonPath("$.vnpResponseCode").value("91"));
+
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy audit.
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'REFUND_FAILED' AND target_id = ?",
+                Integer.class, r91Id)).isEqualTo(1);
+
+        // 2. UNKNOWN -> 99 và timeout gateway -> giữ UNKNOWN (200) và ghi QUERYDR payment_event đúng outcome.
+        var oKeep = fixtures.insertStubOrder(
+                buyer, product, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        var pKeep = insertSucceededPayment(oKeep, 1, 200_000L, "90032002");
+        String rKeepId = createApiRefundExpectState(adminId, oKeep.code(), pKeep.id(), 200_000L, "UNKNOWN");
+
+        doReturn(queryDrResult(true, "99", null, pKeep.txnRef(), 200_000L, "90032002"))
+                .when(vnpayGateway).queryDr(any());
+        mockMvc.perform(post("/api/v1/admin/refunds/" + rKeepId + "/query")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("UNKNOWN"));
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = 'QUERYDR' AND outcome = 'REFUND_QUERY_KEEP_99'",
+                Integer.class, pKeep.id())).isEqualTo(1);
+
+        doThrow(new RuntimeException("QueryDr socket timeout")).when(vnpayGateway).queryDr(any());
+        mockMvc.perform(post("/api/v1/admin/refunds/" + rKeepId + "/query")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("UNKNOWN"));
+
+        Map<String, Object> timeoutEvent = jdbc.queryForMap(
+                "SELECT signature_valid, outcome FROM commerce.payment_event WHERE payment_id = ? AND source = 'QUERYDR' ORDER BY received_at DESC LIMIT 1",
+                pKeep.id());
+        assertThat(timeoutEvent.get("signature_valid")).isEqualTo(false);
+        assertThat(timeoutEvent.get("outcome")).isEqualTo("REFUND_QUERY_GATEWAY_ERROR");
+    }
+
     private CommerceTestFixtures.StubPayment insertSucceededPayment(
             CommerceTestFixtures.StubOrder order, int seq, long amountVnd, String txnNo) {
         var payment = fixtures.insertStubPayment(order, seq, amountVnd, PaymentState.SUCCEEDED);
@@ -277,8 +420,12 @@ class RefundQueryIT extends AbstractIntegrationTest {
     private static RefundResult refundResult(
             boolean signatureValid, String responseCode, String txStatus, String txnRef, long amountVnd, String txnNo) {
         Map<String, Object> raw = new LinkedHashMap<>();
-        raw.put("vnp_ResponseCode", responseCode);
-        raw.put("vnp_TransactionStatus", txStatus);
+        if (responseCode != null) {
+            raw.put("vnp_ResponseCode", responseCode);
+        }
+        if (txStatus != null) {
+            raw.put("vnp_TransactionStatus", txStatus);
+        }
         raw.put("vnp_TmnCode", MockVnpayGateway.DEFAULT_MOCK_TMN_CODE);
         return new RefundResult(
                 signatureValid, "req-" + UUID.randomUUID(), responseCode, "Refund " + responseCode,
@@ -288,8 +435,12 @@ class RefundQueryIT extends AbstractIntegrationTest {
     private static QueryDrResult queryDrResult(
             boolean signatureValid, String responseCode, String txStatus, String txnRef, long amountVnd, String txnNo) {
         Map<String, Object> raw = new LinkedHashMap<>();
-        raw.put("vnp_ResponseCode", responseCode);
-        raw.put("vnp_TransactionStatus", txStatus);
+        if (responseCode != null) {
+            raw.put("vnp_ResponseCode", responseCode);
+        }
+        if (txStatus != null) {
+            raw.put("vnp_TransactionStatus", txStatus);
+        }
         raw.put("vnp_TmnCode", MockVnpayGateway.DEFAULT_MOCK_TMN_CODE);
         return new QueryDrResult(
                 signatureValid, "qreq-" + UUID.randomUUID(), responseCode, "QueryDr " + responseCode,

@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -148,8 +150,16 @@ class AdminOrderDetailIT extends AbstractIntegrationTest {
                 .getContentAsString();
 
         JsonNode root = mapper.readTree(raw);
-        assertThat(root.path("auditEvents").size()).isGreaterThanOrEqualTo(1);
-        assertThat(root.path("auditEvents").get(0).path("action").asText()).isEqualTo("ENTITLEMENT_GRANTED");
+        JsonNode auditEvents = root.path("auditEvents");
+        List<String> actions = new ArrayList<>();
+        Instant prevAt = Instant.MIN;
+        for (JsonNode ev : auditEvents) {
+            actions.add(ev.path("action").asText());
+            Instant occurredAt = Instant.parse(ev.path("occurredAt").asText());
+            assertThat(occurredAt).isAfterOrEqualTo(prevAt);
+            prevAt = occurredAt;
+        }
+        assertThat(actions).containsExactly("ENTITLEMENT_GRANTED", "REFUND_REQUESTED", "REFUND_SUCCEEDED");
 
         // Mã đơn không tồn tại -> 404 ORDER_NOT_FOUND.
         mockMvc.perform(get("/api/v1/admin/orders/DHUNKNOWN999999")

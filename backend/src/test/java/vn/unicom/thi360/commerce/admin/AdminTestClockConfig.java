@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Objects;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -25,7 +26,26 @@ class AdminTestClockConfig {
 
         @Override
         public Clock withZone(ZoneId zone) {
-            return this;
+            Objects.requireNonNull(zone, "zone must not be null");
+            if (zone.equals(ZoneOffset.UTC)) {
+                return this;
+            }
+            return new Clock() {
+                @Override
+                public ZoneId getZone() {
+                    return zone;
+                }
+
+                @Override
+                public Clock withZone(ZoneId nextZone) {
+                    return AdminMutableClock.this.withZone(nextZone);
+                }
+
+                @Override
+                public Instant instant() {
+                    return AdminMutableClock.this.instant();
+                }
+            };
         }
 
         @Override

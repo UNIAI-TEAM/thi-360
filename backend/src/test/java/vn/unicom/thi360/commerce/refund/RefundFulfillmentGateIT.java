@@ -38,6 +38,7 @@ import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.RefundResult;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.outbox.OutboxRelay;
 import vn.unicom.thi360.shared.security.SecurityProperties;
 
 /**
@@ -54,6 +55,7 @@ class RefundFulfillmentGateIT extends AbstractIntegrationTest {
     @Autowired private FulfillmentService fulfillmentService;
     @Autowired private FulfillmentRetryWorker retryWorker;
     @Autowired private SecurityProperties securityProperties;
+    @Autowired private OutboxRelay outboxRelay;
 
     @MockitoSpyBean
     private VnpayGateway vnpayGateway;
@@ -103,6 +105,72 @@ class RefundFulfillmentGateIT extends AbstractIntegrationTest {
                 "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
                 Integer.class, order.id())).isZero();
         assertThat(queryExamAccessState(buyer, product.code())).isEqualTo("NONE");
+    }
+
+    @Test
+    void directSucceededFullRefundOnStillPaidOrderTransitionsToRefundedWithoutGrantingInFulfillAndWorker()
+            throws Exception {
+        var buyer = fixtures.createLearner(true, "vi");
+        var productDirect = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        var paidDirect = fixtures.insertStubOrder(
+                buyer, productDirect, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        var pDirect = insertSucceededPayment(paidDirect, 1, 200_000L, false, "90060091");
+
+        // Chèn thẳng dòng refund SUCCEEDED đủ số tiền trong khi đơn vẫn ở trạng thái PAID -> đi qua nhánh isFullyRefunded() của FulfillmentService.
+        jdbc.update("""
+                INSERT INTO commerce.refund
+                    (id, vnp_request_id, idempotency_key, payment_id, order_id, amount_vnd, kind, state,
+                     reason, verified_system_error, requested_by, requested_by_id, requested_at, finished_at,
+                     created_at, updated_at, version)
+                VALUES (?, ?, ?, ?, ?, 200000, 'API', 'SUCCEEDED', 'Direct seeded full refund', true,
+                        'ops', ?, now(), now(), now(), now(), 0)
+                """,
+                UUID.randomUUID(),
+                UUID.randomUUID().toString().replace("-", ""),
+                "gate-direct-1-" + UUID.randomUUID(),
+                pDirect.id(),
+                paidDirect.id(),
+                UUID.randomUUID());
+
+        assertThat(fulfillmentService.fulfill(paidDirect.id())).isFalse();
+        assertThat(orderState(paidDirect.id())).isEqualTo("REFUNDED");
+        assertThat(grantCount(paidDirect.id())).isZero();
+        assertThat(queryExamAccessState(buyer, productDirect.code())).isEqualTo("NONE");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.order_history WHERE order_id = ? AND from_state = 'PAID' AND to_state = 'REFUNDED' AND reason = 'REFUNDED_BEFORE_FULFILLMENT'",
+                Integer.class, paidDirect.id())).isEqualTo(1);
+
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy audit.
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'ORDER_REFUNDED_BEFORE_FULFILLMENT' AND target_id = ?",
+                Integer.class, paidDirect.id().toString())).isEqualTo(1);
+
+        // Kiểm tra đường worker retryPendingFulfillments() trên đơn PAID có refund SUCCEEDED trực tiếp.
+        var productWorker = fixtures.insertOnSaleProduct("QDA", 200_000L, 2);
+        var paidWorker = fixtures.insertStubOrder(
+                buyer, productWorker, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        var pWorker = insertSucceededPayment(paidWorker, 1, 200_000L, false, "90060092");
+        jdbc.update("""
+                INSERT INTO commerce.refund
+                    (id, vnp_request_id, idempotency_key, payment_id, order_id, amount_vnd, kind, state,
+                     reason, verified_system_error, requested_by, requested_by_id, requested_at, finished_at,
+                     created_at, updated_at, version)
+                VALUES (?, ?, ?, ?, ?, 200000, 'API', 'SUCCEEDED', 'Worker seeded full refund', true,
+                        'ops', ?, now(), now(), now(), now(), 0)
+                """,
+                UUID.randomUUID(),
+                UUID.randomUUID().toString().replace("-", ""),
+                "gate-direct-2-" + UUID.randomUUID(),
+                pWorker.id(),
+                paidWorker.id(),
+                UUID.randomUUID());
+
+        retryWorker.retryPendingFulfillments();
+        assertThat(orderState(paidWorker.id())).isEqualTo("REFUNDED");
+        assertThat(grantCount(paidWorker.id())).isZero();
+        assertThat(queryExamAccessState(buyer, productWorker.code())).isEqualTo("NONE");
     }
 
     @Test
@@ -158,6 +226,24 @@ class RefundFulfillmentGateIT extends AbstractIntegrationTest {
         assertThat(fulfillmentService.fulfill(orderDup.id())).isTrue();
         assertThat(orderState(orderDup.id())).isEqualTo("FULFILLED");
         assertThat(grantCount(orderDup.id())).isEqualTo(1);
+
+        // Chuyển refund UNKNOWN của orderUnknown sang FAILED qua /mark-failed -> worker mở khóa và cấp quyền FULFILLED.
+        UUID unknownRefundId = jdbc.queryForObject(
+                "SELECT id FROM commerce.refund WHERE payment_id = ?", UUID.class, pUnknown.id());
+        mockMvc.perform(post("/api/v1/admin/refunds/" + unknownRefundId + "/mark-failed")
+                        .with(asUser(adminId, "ops-admin", Permissions.ORDER_REFUND))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "reason", "Xac nhan VNPAY chua hoan",
+                                "evidenceRef", "EV-GATE-UNBLOCK"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("FAILED"));
+
+        retryWorker.retryPendingFulfillments();
+        assertThat(orderState(orderUnknown.id())).isEqualTo("FULFILLED");
+        assertThat(grantCount(orderUnknown.id())).isEqualTo(1);
+        assertThat(orderState(orderProc.id())).isEqualTo("PAID");
     }
 
     private String queryExamAccessState(CommerceTestFixtures.LearnerAccount buyer, String productCode) throws Exception {

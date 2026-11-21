@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -161,6 +163,10 @@ class OrderAttentionIT extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         JsonNode dupDetail = mapper.readTree(dupCheckRaw);
         assertThat(dupDetail.path("attentionTypes")).isEmpty();
+
+        Clock vnClock = clock.withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+        assertThat(vnClock.getZone()).isEqualTo(ZoneId.of("Asia/Ho_Chi_Minh"));
+        assertThat(vnClock.instant()).isEqualTo(clock.instant());
     }
 
     private void assertAttentionFilter(UUID adminId, String attentionType, String expectedCode) throws Exception {

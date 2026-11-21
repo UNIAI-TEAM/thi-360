@@ -7,7 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Date;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -31,6 +34,7 @@ import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
+import vn.unicom.thi360.commerce.reconciliation.application.ReconciliationProperties;
 import vn.unicom.thi360.commerce.reconciliation.application.ReconciliationService;
 import vn.unicom.thi360.commerce.reconciliation.application.ReconciliationWorker;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
@@ -49,6 +53,7 @@ class ReconciliationWorkerIT extends AbstractIntegrationTest {
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private ReconciliationWorker worker;
     @Autowired private ReconciliationService reconciliationService;
+    @Autowired private ReconciliationProperties reconciliationProperties;
     @Autowired private PlatformTransactionManager transactionManager;
 
     private CommerceTestFixtures fixtures;
@@ -69,6 +74,9 @@ class ReconciliationWorkerIT extends AbstractIntegrationTest {
 
     @Test
     void generatesDailyReportWithAllFourBucketsExposesLatestEndpointAndIsIdempotentPerDay() throws Exception {
+        assertThat(reconciliationProperties.cron()).isEqualTo("0 0 2 * * *");
+        assertThat(reconciliationProperties.zone()).isEqualTo("Asia/Ho_Chi_Minh");
+
         var buyer = fixtures.createLearner(true, "vi");
         var product = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
 
@@ -78,6 +86,16 @@ class ReconciliationWorkerIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(false))
                 .andExpect(jsonPath("$.report").isEmpty());
+
+        // Chèn sẵn báo cáo ngày hôm qua (today - 1) để xác minh /latest chọn đúng báo cáo ngày mới nhất (today).
+        LocalDate todayVn = LocalDate.now(ZoneId.of(reconciliationProperties.zone()));
+        LocalDate yesterdayVn = todayVn.minusDays(1);
+        jdbc.update("""
+                INSERT INTO commerce.reconciliation_report
+                    (id, report_date, generated_at, paid_unfulfilled_count, unknown_payment_count,
+                     unrefunded_excess_count, pending_late_success_count, details, created_at)
+                VALUES (?, ?, now() - interval '1 day', 99, 99, 99, 99, '{}'::jsonb, now() - interval '1 day')
+                """, UUID.randomUUID(), Date.valueOf(yesterdayVn));
 
         // 1. Đơn PAID chưa cấp quyền.
         var paidOrder = fixtures.insertStubOrder(
@@ -132,12 +150,13 @@ class ReconciliationWorkerIT extends AbstractIntegrationTest {
         worker.runDailyReconciliation();
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM commerce.reconciliation_report", Integer.class))
-                .isEqualTo(1);
+                .isEqualTo(2);
 
         String latestRaw = mockMvc.perform(get("/api/v1/admin/reconciliation-reports/latest")
                         .with(asUser(UUID.randomUUID(), "viewer", Permissions.ORDER_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.report.reportDate").value(todayVn.toString()))
                 .andExpect(jsonPath("$.report.paidUnfulfilledCount").value(1))
                 .andExpect(jsonPath("$.report.unknownPaymentCount").value(1))
                 .andExpect(jsonPath("$.report.unrefundedExcessCount").value(1))
@@ -154,10 +173,10 @@ class ReconciliationWorkerIT extends AbstractIntegrationTest {
         assertThat(details.path("pendingLateSuccessPayments").get(0).path("txnRef").asText())
                 .isEqualTo(latePayment.txnRef());
 
-        // Chạy lặp lại trong cùng ngày: bỏ qua idempotent, vẫn chỉ có 1 dòng báo cáo.
+        // Chạy lặp lại trong cùng ngày: bỏ qua idempotent, vẫn chỉ có 2 dòng báo cáo (hôm qua + hôm nay).
         worker.runDailyReconciliation();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM commerce.reconciliation_report", Integer.class))
-                .isEqualTo(1);
+                .isEqualTo(2);
     }
 
     @Test

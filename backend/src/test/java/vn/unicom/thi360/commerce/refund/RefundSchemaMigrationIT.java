@@ -150,6 +150,41 @@ class RefundSchemaMigrationIT extends AbstractIntegrationTest {
                     """, UUID.randomUUID(), paymentId, orderId, idem2))
                     .isInstanceOf(DataIntegrityViolationException.class);
 
+            // Ràng buộc reason không rỗng và MANUAL chỉ hợp lệ khi state='SUCCEEDED' AND vnp_request_id IS NULL.
+            assertThatThrownBy(() -> isolated.update("""
+                    INSERT INTO commerce.refund
+                        (id, vnp_request_id, payment_id, order_id, amount_vnd, kind, state, reason,
+                         verified_system_error, requested_by, requested_at, idempotency_key, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 10000, 'API', 'FAILED', '   ', true, 'admin', now(), ?, now(), now())
+                    """, UUID.randomUUID(), reqId2, paymentId, orderId, idem2))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+
+            assertThatThrownBy(() -> isolated.update("""
+                    INSERT INTO commerce.refund
+                        (id, vnp_request_id, payment_id, order_id, amount_vnd, kind, state, reason,
+                         verified_system_error, external_ref, requested_by, requested_at, idempotency_key, created_at, updated_at)
+                    VALUES (?, NULL, ?, ?, 10000, 'MANUAL', 'FAILED', 'Invalid manual state', true, 'REF-1', 'admin', now(), ?, now(), now())
+                    """, UUID.randomUUID(), paymentId, orderId, idem2))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+
+            // Ràng buộc các partial index phục vụ dải Cần xử lý tồn tại.
+            List<String> partialIndexes = isolated.queryForList("""
+                    SELECT indexname FROM pg_indexes
+                    WHERE schemaname = 'commerce'
+                      AND indexname IN (
+                          'idx_purchase_order_paid',
+                          'idx_purchase_order_needs_review',
+                          'idx_payment_unknown_created',
+                          'idx_payment_succeeded_duplicate'
+                      )
+                    ORDER BY indexname
+                    """, String.class);
+            assertThat(partialIndexes).containsExactlyInAnyOrder(
+                    "idx_purchase_order_paid",
+                    "idx_purchase_order_needs_review",
+                    "idx_payment_unknown_created",
+                    "idx_payment_succeeded_duplicate");
+
             // Ràng buộc uq_reconciliation_report_date.
             LocalDate reportDate = LocalDate.of(2026, 11, 21);
             isolated.update("""

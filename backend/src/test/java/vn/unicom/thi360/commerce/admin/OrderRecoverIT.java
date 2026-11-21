@@ -178,11 +178,18 @@ class OrderRecoverIT extends AbstractIntegrationTest {
                 200_000L, Instant.now().plusSeconds(900), null);
         assertRecoverConflict(adminId, pendingOrder.code());
 
-        // (c) Đơn VNPAY PAID nhưng không có lần thu được tính (chỉ có FAILED hoặc duplicate)
+        // (c) Đơn VNPAY PAID nhưng không có lần thu được tính (chỉ có FAILED hoặc chỉ có SUCCEEDED + is_duplicate=true)
         var noCountedOrder = fixtures.insertStubOrder(
                 buyer, examVnpay, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
         fixtures.insertStubPayment(noCountedOrder, 1, 200_000L, PaymentState.FAILED);
         assertRecoverConflict(adminId, noCountedOrder.code());
+
+        var duplicateOnlyOrder = fixtures.insertStubOrder(
+                buyer, examVnpay, OrderState.PAID, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        var dupOnlyPay = fixtures.insertStubPayment(duplicateOnlyOrder, 1, 200_000L, PaymentState.SUCCEEDED);
+        jdbc.update("UPDATE commerce.payment SET is_duplicate = true, excess_reason = 'AFTER_COUNTED' WHERE id = ?",
+                dupOnlyPay.id());
+        assertRecoverConflict(adminId, duplicateOnlyOrder.code());
 
         // (d) Đơn VNPAY PAID nhưng có lần hoàn đang PROCESSING/UNKNOWN
         var activeRefundOrder = fixtures.insertStubOrder(

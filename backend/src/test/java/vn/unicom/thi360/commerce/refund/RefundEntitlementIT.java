@@ -24,6 +24,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService;
+import vn.unicom.thi360.commerce.entitlement.application.GrantLine;
+import vn.unicom.thi360.commerce.entitlement.application.GrantOrderCommand;
 import vn.unicom.thi360.commerce.fulfillment.application.FulfillmentService;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
 import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
@@ -38,6 +41,8 @@ import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionAudienceType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
+import vn.unicom.thi360.commerce.refund.infrastructure.RefundGrantLookupRepository;
+import vn.unicom.thi360.commerce.refund.infrastructure.RefundGrantLookupRepository.GrantRef;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures.LearnerAccount;
@@ -58,6 +63,8 @@ class RefundEntitlementIT extends AbstractIntegrationTest {
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private PromotionRedemptionService promotionRedemptionService;
     @Autowired private FulfillmentService fulfillmentService;
+    @Autowired private EntitlementGrantService entitlementGrantService;
+    @Autowired private RefundGrantLookupRepository refundGrantLookupRepository;
     @Autowired private EntitlementPort entitlementPort;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private SecurityProperties securityProperties;
@@ -302,6 +309,33 @@ class RefundEntitlementIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM commerce.order_history WHERE order_id = ? AND to_state = 'REFUNDED'",
                 Integer.class, orderB.orderId())).isEqualTo(1);
+    }
+
+    @Test
+    void multiGrantOrderOrdersGrantRefsByExamIdAscAndRevokesAllGrantsOnFullRefund() throws Exception {
+        LearnerAccount buyer = fixtures.createLearner(true, "vi");
+        StoredTestProduct p1 = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+        StoredTestProduct p2 = fixtures.insertOnSaleProduct("QDA", 200_000L, 3);
+        var order = fixtures.insertStubOrder(
+                buyer, p1, OrderState.PAID, PaymentMethod.VNPAY, 400_000L, null, Instant.now());
+        var payment = insertSucceededPayment(order, 1, 400_000L, false, "90053001");
+
+        // Cấp 2 dòng grant cho 2 bài thi trên cùng 1 đơn (mô phỏng đơn bộ) và kiểm tra thứ tự examId ASC.
+        entitlementGrantService.grantForOrder(new GrantOrderCommand(
+                order.id(),
+                order.code(),
+                buyer.id(),
+                List.of(
+                        new GrantLine(p2.examId(), 1, 3, List.of("OPT-A"), Map.of(), "FULL_SOLUTION"),
+                        new GrantLine(p1.examId(), 1, 2, List.of("OPT-A"), Map.of(), "FULL_SOLUTION"))));
+        List<GrantRef> refs = refundGrantLookupRepository.findGrantRefsByOrderId(order.id());
+        assertThat(refs).hasSize(2);
+        assertThat(refs.get(0).examId().toString()).isLessThan(refs.get(1).examId().toString());
+
+        createApiRefund(UUID.randomUUID(), order.code(), payment.id(), 400_000L);
+
+        assertThat(revokedAttempts(buyer.id(), p1.examId())).isEqualTo(2);
+        assertThat(revokedAttempts(buyer.id(), p2.examId())).isEqualTo(3);
     }
 
     private CommerceTestFixtures.StubPayment insertSucceededPayment(

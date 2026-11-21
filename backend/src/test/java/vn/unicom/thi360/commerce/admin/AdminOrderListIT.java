@@ -165,6 +165,27 @@ class AdminOrderListIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.totalItems").value(1))
                 .andExpect(jsonPath("$.items[0].code").value(o2.code()))
                 .andExpect(jsonPath("$.items[0].paymentStatus").value("FREE"));
+
+        // 4. Trang vượt quá tổng số trang (page=5) vẫn giữ nguyên totalItems & totalPages; q > 200 ký tự -> 400.
+        mockMvc.perform(get("/api/v1/admin/orders")
+                        .with(asUser(adminId, "viewer", Permissions.ORDER_VIEW))
+                        .param("from", tBase.minusSeconds(1).toString())
+                        .param("to", tBase.plusSeconds(7201).toString())
+                        .param("page", "5")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.page").value(5))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalItems").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        mockMvc.perform(get("/api/v1/admin/orders")
+                        .with(asUser(adminId, "viewer", Permissions.ORDER_VIEW))
+                        .param("q", "A".repeat(201)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("q"));
     }
 
     @Test
@@ -209,6 +230,11 @@ class AdminOrderListIT extends AbstractIntegrationTest {
         insertRefund(orderRefundInProgress.id(), pInProg.id(), 40_000L, "SUCCEEDED");
         insertRefund(orderRefundInProgress.id(), pInProg.id(), 60_000L, "UNKNOWN");
 
+        var orderRefundProcessing = fixtures.insertStubOrder(
+                buyer, exam, OrderState.FULFILLED, PaymentMethod.VNPAY, 200_000L, null, base);
+        var pProc = fixtures.insertStubPayment(orderRefundProcessing, 1, 200_000L, PaymentState.SUCCEEDED);
+        insertRefund(orderRefundProcessing.id(), pProc.id(), 50_000L, "PROCESSING");
+
         var orderRefundFull = fixtures.insertStubOrder(
                 buyer, exam, OrderState.REFUNDED, PaymentMethod.VNPAY, 200_000L, null, base);
         var pFull = fixtures.insertStubPayment(orderRefundFull, 1, 200_000L, PaymentState.SUCCEEDED);
@@ -217,14 +243,15 @@ class AdminOrderListIT extends AbstractIntegrationTest {
         // Kiểm tra lọc theo từng paymentStatus & refundStatus.
         assertFilterReturnsCodes(adminId, "paymentStatus", "SUCCEEDED", List.of(
                 orderPaySucceeded.code(), orderRefundPartial.code(),
-                orderRefundInProgress.code(), orderRefundFull.code()));
+                orderRefundInProgress.code(), orderRefundProcessing.code(), orderRefundFull.code()));
         assertFilterReturnsCodes(adminId, "paymentStatus", "PENDING", List.of(orderPayPending.code()));
         assertFilterReturnsCodes(adminId, "paymentStatus", "FAILED", List.of(orderPayFailed.code()));
         assertFilterReturnsCodes(adminId, "paymentStatus", "FREE", List.of(orderPayFree.code()));
 
         assertFilterReturnsCodes(adminId, "refundStatus", "NONE", List.of(
                 orderPaySucceeded.code(), orderPayPending.code(), orderPayFailed.code(), orderPayFree.code()));
-        assertFilterReturnsCodes(adminId, "refundStatus", "IN_PROGRESS", List.of(orderRefundInProgress.code()));
+        assertFilterReturnsCodes(adminId, "refundStatus", "IN_PROGRESS",
+                List.of(orderRefundInProgress.code(), orderRefundProcessing.code()));
         assertFilterReturnsCodes(adminId, "refundStatus", "PARTIAL", List.of(orderRefundPartial.code()));
         assertFilterReturnsCodes(adminId, "refundStatus", "FULL", List.of(orderRefundFull.code()));
     }
@@ -242,6 +269,7 @@ class AdminOrderListIT extends AbstractIntegrationTest {
         JsonNode items = mapper.readTree(raw).path("items");
         List<String> actualCodes = new ArrayList<>();
         for (JsonNode item : items) {
+            assertThat(item.path(paramName).asText()).isEqualTo(paramValue);
             actualCodes.add(item.path("code").asText());
         }
         assertThat(actualCodes).containsExactlyInAnyOrderElementsOf(expectedCodes);

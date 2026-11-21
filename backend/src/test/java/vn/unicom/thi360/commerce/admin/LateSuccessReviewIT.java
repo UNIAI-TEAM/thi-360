@@ -473,6 +473,78 @@ class LateSuccessReviewIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.reviewReason").value("DOUBLE_CHARGE_REPLACED_ORDER"));
     }
 
+    @Test
+    void acceptWithSiblingPendingConvertsSiblingToAutoExcessAndFlagsPaidPredecessorDoubleCharge() throws Exception {
+        var buyer = fixtures.createLearner(true, "vi");
+        var exam = fixtures.insertOnSaleProduct("HSA", 200_000L, 2);
+
+        // 1. Hai payment PENDING trên cùng một đơn -> ACCEPT p1 tự chuyển p2 thành SUCCEEDED + is_duplicate=true + AUTO_EXCESS.
+        var orderSibling = fixtures.insertStubOrder(
+                buyer, exam, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var p1 = fixtures.insertStubPayment(orderSibling, 1, 200_000L, PaymentState.FAILED);
+        var p2 = fixtures.insertStubPayment(orderSibling, 2, 200_000L, PaymentState.FAILED);
+        jdbc.update("UPDATE commerce.payment SET late_success_review = 'PENDING', late_success_at = now() WHERE id IN (?, ?)",
+                p1.id(), p2.id());
+
+        UUID adminId = UUID.randomUUID();
+        mockMvc.perform(post("/api/v1/admin/orders/" + orderSibling.code() + "/payments/" + p1.id() + "/late-success")
+                        .with(asUser(adminId, "ops-recover", Permissions.ORDER_RECOVER))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "ls-sib-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "decision", "ACCEPT",
+                                "reason", "Chon p1 lam khoan duoc tinh",
+                                "evidenceRef", "EV-SIB-1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("FULFILLED"));
+
+        Map<String, Object> p2Row = jdbc.queryForMap(
+                "SELECT state, is_duplicate, excess_reason, late_success_review FROM commerce.payment WHERE id = ?",
+                p2.id());
+        assertThat(p2Row.get("state")).isEqualTo("SUCCEEDED");
+        assertThat(p2Row.get("is_duplicate")).isEqualTo(true);
+        assertThat(p2Row.get("excess_reason")).isEqualTo("AFTER_COUNTED");
+        assertThat(p2Row.get("late_success_review")).isEqualTo("AUTO_EXCESS");
+
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy outbox.
+        }
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'PAYMENT_EXCESS_RECEIVED' AND target_id = ?",
+                Integer.class, orderSibling.id().toString())).isEqualTo(1);
+
+        // 2. O1 (FULFILLED) bị thay thế bởi O2 (REPLACED bởi không ai, nhận tiền về muộn) -> ACCEPT O2 gắn DOUBLE_CHARGE_REPLACED_ORDER lên O1.
+        var o2 = fixtures.insertStubOrder(
+                buyer, exam, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, Instant.now().plusSeconds(900), null);
+        var o1 = fixtures.insertStubOrder(
+                buyer, exam, OrderState.FULFILLED, PaymentMethod.VNPAY, 200_000L, null, Instant.now());
+        jdbc.update("UPDATE commerce.purchase_order SET replaced_by_order_id = ? WHERE id = ?", o2.id(), o1.id());
+        var pO2 = fixtures.insertStubPayment(o2, 1, 200_000L, PaymentState.FAILED);
+        jdbc.update("UPDATE commerce.payment SET late_success_review = 'PENDING', late_success_at = now() WHERE id = ?",
+                pO2.id());
+
+        mockMvc.perform(post("/api/v1/admin/orders/" + o2.code() + "/payments/" + pO2.id() + "/late-success")
+                        .with(asUser(adminId, "ops-recover", Permissions.ORDER_RECOVER))
+                        .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())
+                        .header("Idempotency-Key", "ls-pred-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "decision", "ACCEPT",
+                                "reason", "Don thay the O2 nhan tien sau khi O1 da FULFILLED",
+                                "evidenceRef", "EV-PRED-1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("FULFILLED"))
+                .andExpect(jsonPath("$.needsReview").value(false));
+
+        Map<String, Object> o1Row = jdbc.queryForMap(
+                "SELECT needs_review, review_reason FROM commerce.purchase_order WHERE id = ?", o1.id());
+        assertThat(o1Row.get("needs_review")).isEqualTo(true);
+        assertThat(o1Row.get("review_reason")).isEqualTo("DOUBLE_CHARGE_REPLACED_ORDER");
+    }
+
     private void callIpn(String txnRef, long amountVnd, String responseCode, String txStatus, String txnNo)
             throws Exception {
         Map<String, String> params = new TreeMap<>();
