@@ -699,6 +699,128 @@
         },
         "type" : "object"
       },
+      "AttemptChoiceSummary" : {
+        "description" : "Thông tin lựa chọn đã khóa của lượt thi hoặc phần thi",
+        "properties" : {
+          "optionCode" : {
+            "description" : "Mã nhánh, phương án hoặc tổ hợp môn đã chọn",
+            "type" : "string"
+          },
+          "subjectCodes" : {
+            "description" : "Danh sách mã môn đã chọn (nếu có)",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "subjectCounts" : {
+            "additionalProperties" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "description" : "Số câu theo từng môn đã chọn (nếu có)",
+            "type" : "object"
+          }
+        },
+        "required" : [ "optionCode" ],
+        "type" : "object"
+      },
+      "AttemptHistoryItem" : {
+        "description" : "Một dòng trong lịch sử luyện thi của học viên (LT §11)",
+        "properties" : {
+          "action" : {
+            "enum" : [ "CONTINUE", "VIEW_RESULT" ],
+            "type" : "string"
+          },
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "choices" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/AttemptChoiceSummary"
+            },
+            "type" : "object"
+          },
+          "compensated" : {
+            "type" : "boolean"
+          },
+          "displayScore" : {
+            "type" : "number"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "faultFlag" : {
+            "type" : "string"
+          },
+          "faultReason" : {
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "gradedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "maxScore" : {
+            "type" : "number"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "practiceScoring" : {
+            "type" : "string"
+          },
+          "rawScore" : {
+            "type" : "number"
+          },
+          "regrading" : {
+            "type" : "boolean"
+          },
+          "regradingLabel" : {
+            "type" : "string"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "scaleMax" : {
+            "type" : "number"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AttemptItemView" : {
         "properties" : {
           "answer" : {
@@ -992,6 +1114,692 @@
         }, {
           "$ref" : "#/components/schemas/Essay"
         } ],
+        "type" : "object"
+      },
+      "AttemptResultPart" : {
+        "properties" : {
+          "maxScore" : {
+            "type" : "number"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "skipped" : {
+            "type" : "boolean"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultResponse" : {
+        "description" : "Kết quả lượt thi của học viên (LT §10.1, F14–F16, F20; không chứa đáp án hay hướng dẫn chấm)",
+        "properties" : {
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attemptNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "choices" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/AttemptChoiceSummary"
+            },
+            "type" : "object"
+          },
+          "compensated" : {
+            "type" : "boolean"
+          },
+          "displayScore" : {
+            "type" : "number"
+          },
+          "endReason" : {
+            "enum" : [ "SUBMITTED", "TIME_UP", "CHOICE_TIMEOUT", "FAULT_CLOSED" ],
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKindCode" : {
+            "type" : "string"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "faultFlag" : {
+            "type" : "string"
+          },
+          "faultMessage" : {
+            "type" : "string"
+          },
+          "faultReason" : {
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "gradedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultPart"
+            },
+            "type" : "array"
+          },
+          "pendingReviewLabel" : {
+            "type" : "string"
+          },
+          "practiceScoreNote" : {
+            "description" : "Ghi chú cố định dưới điểm luyện tập V-ACT (BS §3)",
+            "type" : "string"
+          },
+          "practiceScoring" : {
+            "type" : "string"
+          },
+          "rawMaxScore" : {
+            "type" : "number"
+          },
+          "rawScore" : {
+            "type" : "number"
+          },
+          "regrading" : {
+            "type" : "boolean"
+          },
+          "regradingLabel" : {
+            "type" : "string"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "reviewAvailable" : {
+            "type" : "boolean"
+          },
+          "scaleMax" : {
+            "type" : "number"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "scoreLabel" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          },
+          "statistics" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          },
+          "statusMessage" : {
+            "type" : "string"
+          },
+          "subjectCode" : {
+            "type" : "string"
+          },
+          "subjects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultSubject"
+            },
+            "type" : "array"
+          },
+          "vactComponents" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultVactComponent"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultSubject" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "maxScore" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultUnitStats" : {
+        "properties" : {
+          "blankCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partialCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pendingReviewCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultVactComponent" : {
+        "properties" : {
+          "blankCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "componentCode" : {
+            "type" : "string"
+          },
+          "correctCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctRate" : {
+            "description" : "Tỷ lệ đúng (0–100%)",
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partialCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subsections" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultVactSubsection"
+            },
+            "type" : "array"
+          },
+          "totalCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultVactSubsection" : {
+        "properties" : {
+          "blankCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctRate" : {
+            "description" : "Tỷ lệ đúng (0–100%)",
+            "type" : "number"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "partialCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "totalCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewAttachment" : {
+        "properties" : {
+          "downloadUrl" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "mime" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewClozeBlank" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewClozeKey" : {
+        "properties" : {
+          "acceptedTexts" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "blankId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewEssayCriterionScore" : {
+        "properties" : {
+          "comment" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewEssayFeedback" : {
+        "properties" : {
+          "comment" : {
+            "type" : "string"
+          },
+          "criteria" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewEssayCriterionScore"
+            },
+            "type" : "array"
+          },
+          "points" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewExpectedAnswer" : {
+        "properties" : {
+          "acceptedTexts" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "clozeKeys" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewClozeKey"
+            },
+            "type" : "array"
+          },
+          "expectedOptionIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "matchingKeys" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewMatchingKey"
+            },
+            "type" : "array"
+          },
+          "trueFalseKeys" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewTrueFalseKey"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewItem" : {
+        "properties" : {
+          "attachments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewAttachment"
+            },
+            "type" : "array"
+          },
+          "body" : {
+            "$ref" : "#/components/schemas/AttemptReviewQuestionBody"
+          },
+          "componentCode" : {
+            "type" : "string"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "displayNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "earnedPoints" : {
+            "type" : "number"
+          },
+          "essayFeedback" : {
+            "$ref" : "#/components/schemas/AttemptReviewEssayFeedback"
+          },
+          "expectedAnswer" : {
+            "$ref" : "#/components/schemas/AttemptReviewExpectedAnswer"
+          },
+          "flagged" : {
+            "type" : "boolean"
+          },
+          "gradingDetail" : {
+            "$ref" : "#/components/schemas/ReviewGradingDetail"
+          },
+          "itemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "optionOrder" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "outcome" : {
+            "enum" : [ "CORRECT", "PARTIAL", "WRONG", "BLANK", "PENDING_REVIEW" ],
+            "type" : "string"
+          },
+          "parentItemId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "pointsMax" : {
+            "type" : "number"
+          },
+          "questionType" : {
+            "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
+            "type" : "string"
+          },
+          "sectionId" : {
+            "type" : "string"
+          },
+          "solution" : {
+            "type" : "string"
+          },
+          "studentAnswer" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/ClozeAnswer"
+            }, {
+              "$ref" : "#/components/schemas/EssayAnswer"
+            }, {
+              "$ref" : "#/components/schemas/MatchingAnswer"
+            }, {
+              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
+            }, {
+              "$ref" : "#/components/schemas/ShortAnswerValue"
+            }, {
+              "$ref" : "#/components/schemas/SingleChoiceAnswer"
+            }, {
+              "$ref" : "#/components/schemas/TrueFalseAnswer"
+            } ]
+          },
+          "unitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewMatchingKey" : {
+        "properties" : {
+          "leftId" : {
+            "type" : "string"
+          },
+          "rightId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewMatchingSide" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewOption" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewPart" : {
+        "properties" : {
+          "maxScore" : {
+            "type" : "number"
+          },
+          "ord" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "partId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "partName" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewQuestionBody" : {
+        "properties" : {
+          "answerFormat" : {
+            "type" : "string"
+          },
+          "blankNumberStart" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "blanks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewClozeBlank"
+            },
+            "type" : "array"
+          },
+          "inputHint" : {
+            "type" : "string"
+          },
+          "left" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewMatchingSide"
+            },
+            "type" : "array"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewOption"
+            },
+            "type" : "array"
+          },
+          "passage" : {
+            "type" : "string"
+          },
+          "reuseRight" : {
+            "type" : "boolean"
+          },
+          "right" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewMatchingSide"
+            },
+            "type" : "array"
+          },
+          "scoringRule" : {
+            "type" : "string"
+          },
+          "statements" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewStatement"
+            },
+            "type" : "array"
+          },
+          "wordLimit" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewResponse" : {
+        "description" : "Xem lại bài làm theo mức result_view (SCORE_AND_ANSWERS hoặc FULL_SOLUTION, LT §10.2)",
+        "properties" : {
+          "attemptId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewItem"
+            },
+            "type" : "array"
+          },
+          "parts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptReviewPart"
+            },
+            "type" : "array"
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "selectedPartCode" : {
+            "type" : "string"
+          },
+          "state" : {
+            "enum" : [ "STARTING", "IN_PROGRESS", "GRADING", "PENDING_REVIEW", "SCORED", "GRADING_ERROR", "ABORTED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewStatement" : {
+        "properties" : {
+          "content" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptReviewTrueFalseKey" : {
+        "properties" : {
+          "expected" : {
+            "type" : "boolean"
+          },
+          "statementId" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "AttemptSessionConflictResponse" : {
@@ -9903,6 +10711,44 @@
         "required" : [ "amountDueVnd", "attemptsGranted", "code", "createdAt", "discountApplied", "id", "listPriceVnd", "paymentMethod", "productCode", "productName", "productType", "promotionDiscountVnd", "state", "voucherDiscountVnd" ],
         "type" : "object"
       },
+      "PageResponseAttemptHistoryItem" : {
+        "description" : "Kết quả phân trang",
+        "properties" : {
+          "items" : {
+            "description" : "Danh sách phần tử của trang hiện tại",
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptHistoryItem"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "description" : "Chỉ số trang (bắt đầu từ 0)",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "description" : "Kích thước trang",
+            "example" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalItems" : {
+            "description" : "Tổng số phần tử",
+            "example" : 0,
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "description" : "Tổng số trang",
+            "example" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "totalItems", "totalPages" ],
+        "type" : "object"
+      },
       "PageResponseAuditEventResponse" : {
         "description" : "Kết quả phân trang",
         "properties" : {
@@ -12984,6 +13830,145 @@
             "maxLength" : 200,
             "minLength" : 0,
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewClozeBlankResult" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "enum" : [ "CORRECT", "PARTIAL", "WRONG", "BLANK", "PENDING_REVIEW" ],
+            "type" : "string"
+          },
+          "pointsEarned" : {
+            "type" : "number"
+          },
+          "pointsMax" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewGradingDetail" : {
+        "description" : "Chi tiết chấm điểm theo từng ý/ô/cặp của câu hỏi (không chứa nhận xét hay tiêu chí tự luận)",
+        "properties" : {
+          "blankEssay" : {
+            "type" : "boolean"
+          },
+          "blankResults" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewClozeBlankResult"
+            },
+            "type" : "array"
+          },
+          "blankUnitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "childCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctSelectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "correctUnitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "itemType" : {
+            "type" : "string"
+          },
+          "matchedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "normalizedMatch" : {
+            "type" : "boolean"
+          },
+          "pairCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pairResults" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewMatchingPairResult"
+            },
+            "type" : "array"
+          },
+          "reuseRight" : {
+            "type" : "boolean"
+          },
+          "scoringMethod" : {
+            "type" : "string"
+          },
+          "scoringRule" : {
+            "type" : "string"
+          },
+          "selectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "selectedOptionId" : {
+            "type" : "string"
+          },
+          "statementCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "statementResults" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewStatementResult"
+            },
+            "type" : "array"
+          },
+          "totalExpectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wordCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongSelectedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wrongUnitCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewMatchingPairResult" : {
+        "properties" : {
+          "leftId" : {
+            "type" : "string"
+          },
+          "matched" : {
+            "type" : "boolean"
+          },
+          "pointsEarned" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "ReviewStatementResult" : {
+        "properties" : {
+          "answered" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "matched" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -43009,6 +43994,205 @@
       }
     },
     "/api/v1/me/attempts" : {
+      "get" : {
+        "operationId" : "listHistory",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "kind",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "scope",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "examId",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseAttemptHistoryItem"
+                }
+              }
+            },
+            "description" : "Danh sách lượt thi phân trang"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Lịch sử luyện thi của học viên",
+        "tags" : [ "My Attempts Results" ]
+      },
       "post" : {
         "operationId" : "start",
         "parameters" : [ {
@@ -45065,6 +46249,309 @@
         "tags" : [ "Attempts" ]
       }
     },
+    "/api/v1/me/attempts/{attemptId}/result" : {
+      "get" : {
+        "operationId" : "getResult",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptResultResponse"
+                }
+              }
+            },
+            "description" : "Kết quả tổng hợp, thống kê và breakdown"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt không tồn tại hoặc không thuộc người dùng"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt chưa kết thúc"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem kết quả tổng hợp của lượt thi",
+        "tags" : [ "My Attempts Results" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/review" : {
+      "get" : {
+        "operationId" : "getReview",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "part",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AttemptReviewResponse"
+                }
+              }
+            },
+            "description" : "Chi tiết từng câu và đáp án / lời giải"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Gói lượt thi chỉ cho xem điểm (SCORE)"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt hoặc phần không tồn tại"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Lượt chưa ở trạng thái xem lại được"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Xem lại bài làm theo quyền result_view",
+        "tags" : [ "My Attempts Results" ]
+      }
+    },
     "/api/v1/me/attempts/{attemptId}/session" : {
       "post" : {
         "operationId" : "claimSession",
@@ -45220,6 +46707,163 @@
         },
         "summary" : "Nhận, khôi phục hoặc tiếp quản phiên sửa bài của lượt thi",
         "tags" : [ "Attempts" ]
+      }
+    },
+    "/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}" : {
+      "get" : {
+        "operationId" : "downloadSolutionAsset",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "attemptId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assetId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/octet-stream" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Nội dung tệp lời giải"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Tải ảnh hoặc tệp thuộc lời giải câu hỏi trong lượt đã chấm (FULL_SOLUTION)",
+        "tags" : [ "My Attempts Solution Assets" ]
       }
     },
     "/api/v1/me/attempts/{attemptId}/submit" : {
@@ -49090,6 +50734,9 @@
     "description" : "Nhập câu hỏi từ Excel hoặc CSV",
     "name" : "Question imports"
   }, {
+    "description" : "Tải ảnh/tệp trong lời giải câu hỏi khi xem lại FULL_SOLUTION (BS §15)",
+    "name" : "My Attempts Solution Assets"
+  }, {
     "description" : "Báo cáo đối soát cuối ngày",
     "name" : "Admin Reconciliation"
   }, {
@@ -49155,6 +50802,9 @@
   }, {
     "description" : "Quản lý vai trò và tập quyền của vai trò",
     "name" : "Admin Roles"
+  }, {
+    "description" : "Kết quả, xem lại bài làm và lịch sử luyện thi của học viên (LT §10–11)",
+    "name" : "My Attempts Results"
   }, {
     "description" : "Ảnh đại diện của tài khoản",
     "name" : "Avatar"
