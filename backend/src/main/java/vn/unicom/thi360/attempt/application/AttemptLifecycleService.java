@@ -3,6 +3,7 @@ package vn.unicom.thi360.attempt.application;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,15 +23,18 @@ import vn.unicom.thi360.attempt.api.PartSummaryView;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
 import vn.unicom.thi360.attempt.api.SubmitAttemptResponse;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
 import vn.unicom.thi360.attempt.domain.AttemptEvent;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
+import vn.unicom.thi360.attempt.domain.AudioPlayState;
 import vn.unicom.thi360.attempt.domain.EndReason;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
+import vn.unicom.thi360.attempt.infrastructure.AttemptAudioPlayRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptEventRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
@@ -66,6 +70,7 @@ public class AttemptLifecycleService {
     private final AttemptSessionChecker attemptSessionChecker;
     private final FinalAnswerWriter finalAnswerWriter;
     private final PartTransitionHook partTransitionHook;
+    private final AttemptAudioPlayRepository attemptAudioPlayRepository;
     private final TransactionTemplate txTemplate;
     private final Clock clock;
 
@@ -84,6 +89,7 @@ public class AttemptLifecycleService {
             AttemptSessionChecker attemptSessionChecker,
             FinalAnswerWriter finalAnswerWriter,
             ObjectProvider<PartTransitionHook> partTransitionHookProvider,
+            ObjectProvider<AttemptAudioPlayRepository> attemptAudioPlayRepositoryProvider,
             PlatformTransactionManager transactionManager,
             Clock clock) {
         this(
@@ -100,6 +106,7 @@ public class AttemptLifecycleService {
                 attemptSessionChecker,
                 finalAnswerWriter,
                 partTransitionHookProvider.getIfAvailable(() -> PartTransitionHook.NOOP),
+                attemptAudioPlayRepositoryProvider.getIfAvailable(),
                 transactionManager,
                 clock);
     }
@@ -120,6 +127,42 @@ public class AttemptLifecycleService {
             PartTransitionHook partTransitionHook,
             PlatformTransactionManager transactionManager,
             Clock clock) {
+        this(
+                accessGate,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptEventRepository,
+                publishedExamPort,
+                entitlementPort,
+                outboxPublisher,
+                idempotentCommand,
+                overdueAttemptCloser,
+                attemptSessionChecker,
+                finalAnswerWriter,
+                partTransitionHook,
+                null,
+                transactionManager,
+                clock);
+    }
+
+    public AttemptLifecycleService(
+            AttemptAccessGate accessGate,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptEventRepository attemptEventRepository,
+            PublishedExamPort publishedExamPort,
+            EntitlementPort entitlementPort,
+            OutboxPublisher outboxPublisher,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            AttemptSessionChecker attemptSessionChecker,
+            FinalAnswerWriter finalAnswerWriter,
+            PartTransitionHook partTransitionHook,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
@@ -134,6 +177,7 @@ public class AttemptLifecycleService {
         this.finalAnswerWriter = Objects.requireNonNull(finalAnswerWriter);
         this.partTransitionHook =
                 partTransitionHook == null ? PartTransitionHook.NOOP : partTransitionHook;
+        this.attemptAudioPlayRepository = attemptAudioPlayRepository;
         this.txTemplate = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.clock = Objects.requireNonNull(clock);
     }
@@ -248,6 +292,7 @@ public class AttemptLifecycleService {
         }
 
         attemptPartRepository.saveAllAndFlush(parts);
+        closePlayingAudioForParts(attempt.getId(), List.of(part.getId()), lockNow);
         return buildFinishPartResponse(lockNow, attempt, part, nextPart, results);
     }
 
@@ -411,6 +456,7 @@ public class AttemptLifecycleService {
         }
 
         boolean mutated = false;
+        List<UUID> closedPartIds = new ArrayList<>();
         while (attempt.getState() == AttemptState.IN_PROGRESS) {
             AttemptPart awaitingExpired = findOverdueAwaitingChoice(parts, now);
             if (awaitingExpired != null) {
@@ -422,6 +468,7 @@ public class AttemptLifecycleService {
                         null,
                         List.of(),
                         now);
+                closePlayingAudioForParts(attempt.getId(), closedPartIds, now);
                 return true;
             }
 
@@ -434,6 +481,7 @@ public class AttemptLifecycleService {
             // Always record exact deadline_at, never worker/caller wall time (LT F11, AC-10/11).
             Instant partClosedAt = openPart.getDeadlineAt();
             openPart.close(PartCloseReason.TIME_UP, partClosedAt);
+            closedPartIds.add(openPart.getId());
             mutated = true;
             attemptEventRepository.save(
                     new AttemptEvent(
@@ -449,6 +497,7 @@ public class AttemptLifecycleService {
             if (nextIdx >= parts.size()) {
                 closeAttemptInLock(
                         attempt, parts, EndReason.TIME_UP, partClosedAt, null, List.of(), now);
+                closePlayingAudioForParts(attempt.getId(), closedPartIds, now);
                 return true;
             }
 
@@ -477,6 +526,7 @@ public class AttemptLifecycleService {
 
         if (mutated && attempt.getState() == AttemptState.IN_PROGRESS) {
             attemptPartRepository.saveAllAndFlush(parts);
+            closePlayingAudioForParts(attempt.getId(), closedPartIds, now);
         }
         return mutated;
     }
@@ -518,9 +568,11 @@ public class AttemptLifecycleService {
         }
 
         PartCloseReason partCloseReason = mapPartCloseReason(endReason);
+        List<UUID> closedPartIds = new ArrayList<>();
         for (AttemptPart part : parts) {
             if (part.getState() == PartState.OPEN) {
                 part.close(partCloseReason, finishedAt);
+                closedPartIds.add(part.getId());
                 List<FinalAnswerChange> partAuditChanges =
                         endReason == EndReason.SUBMITTED
                                         && targetPart != null
@@ -545,11 +597,34 @@ public class AttemptLifecycleService {
         attempt.close(endReason, finishedAt, now);
         attemptRepository.saveAndFlush(attempt);
         attemptPartRepository.saveAllAndFlush(parts);
+        closePlayingAudioForParts(attempt.getId(), closedPartIds, now);
 
         recordAttemptClosedEvent(attempt, endReason, finishedAt, sessionId, safeChanges, now);
         entitlementPort.confirmUse(attempt.getId());
         outboxPublisher.publish(OUTBOX_TOPIC_FINISHED, new AttemptFinishedEvent(attempt.getId()));
         return new CloseAttemptResult(attempt, parts, results, true);
+    }
+
+    private void closePlayingAudioForParts(
+            UUID attemptId, List<UUID> closedPartIds, Instant now) {
+        if (attemptAudioPlayRepository == null
+                || closedPartIds == null
+                || closedPartIds.isEmpty()) {
+            return;
+        }
+        List<AttemptAudioPlay> plays =
+                attemptAudioPlayRepository.findByAttemptIdAndPartIdInOrderByAssetIdAscForUpdate(
+                        attemptId, closedPartIds);
+        List<AttemptAudioPlay> changed = new ArrayList<>();
+        for (AttemptAudioPlay play : plays) {
+            if (play.getState() == AudioPlayState.PLAYING) {
+                play.markClosed(now);
+                changed.add(play);
+            }
+        }
+        if (!changed.isEmpty()) {
+            attemptAudioPlayRepository.saveAllAndFlush(changed);
+        }
     }
 
     private void recordAttemptClosedEvent(

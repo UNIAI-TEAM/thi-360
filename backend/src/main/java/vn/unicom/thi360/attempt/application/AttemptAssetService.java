@@ -1,6 +1,8 @@
 package vn.unicom.thi360.attempt.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -9,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -17,14 +20,19 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptAudioPlay;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.AttemptTiming;
+import vn.unicom.thi360.attempt.domain.AudioPlayState;
 import vn.unicom.thi360.attempt.domain.PartState;
+import vn.unicom.thi360.attempt.infrastructure.AttemptAudioPlayRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort;
@@ -38,7 +46,8 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 /**
  * Resolves and authorizes question asset downloads scoped to an owned attempt, visible parts
  * ({@code OPEN} or {@code CLOSED}), in-scope items, and strictly student-visible fields (LT §7.3,
- * F12, AC-14, AC-15). Object storage I/O happens outside any DB transaction.
+ * F12, AC-14, AC-15), plus active play-lease gating for audio assets (BS §17.2, AC-5, AC-10).
+ * Object storage I/O happens outside any DB transaction.
  */
 @Service
 public class AttemptAssetService {
@@ -48,13 +57,17 @@ public class AttemptAssetService {
                     "/api/v1/admin/question-assets/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
                     Pattern.CASE_INSENSITIVE);
 
+    private record AssetAuthorization(boolean allowed, boolean audioCandidate) {}
+
     private final AttemptAccessGate accessGate;
     private final AttemptGuard attemptGuard;
     private final AttemptPartRepository attemptPartRepository;
     private final AttemptItemRepository attemptItemRepository;
+    private final AttemptAudioPlayRepository attemptAudioPlayRepository;
     private final QuestionSourcePort questionSourcePort;
     private final QuestionAssetContentPort questionAssetContentPort;
     private final TransactionTemplate readOnlyTx;
+    private final Clock clock;
 
     public AttemptAssetService(
             AttemptAccessGate accessGate,
@@ -64,23 +77,55 @@ public class AttemptAssetService {
             QuestionSourcePort questionSourcePort,
             QuestionAssetContentPort questionAssetContentPort,
             PlatformTransactionManager transactionManager) {
+        this(
+                accessGate,
+                attemptGuard,
+                attemptPartRepository,
+                attemptItemRepository,
+                null,
+                questionSourcePort,
+                questionAssetContentPort,
+                transactionManager,
+                Clock.systemUTC());
+    }
+
+    @Autowired
+    public AttemptAssetService(
+            AttemptAccessGate accessGate,
+            AttemptGuard attemptGuard,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            QuestionSourcePort questionSourcePort,
+            QuestionAssetContentPort questionAssetContentPort,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptGuard = Objects.requireNonNull(attemptGuard);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
         this.attemptItemRepository = Objects.requireNonNull(attemptItemRepository);
+        this.attemptAudioPlayRepository = attemptAudioPlayRepository;
         this.questionSourcePort = Objects.requireNonNull(questionSourcePort);
         this.questionAssetContentPort = Objects.requireNonNull(questionAssetContentPort);
         this.readOnlyTx = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.readOnlyTx.setReadOnly(true);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     /**
-     * Authorizes and loads the requested asset for the authenticated learner's attempt. Throws 404
-     * if the attempt does not exist, belongs to another user, is {@code STARTING}/{@code ABORTED},
-     * or if the asset is not referenced in any student-visible field of an opened/closed in-scope
-     * item.
+     * Authorizes and loads the requested asset for the authenticated learner's attempt without a
+     * {@code playId} (non-audio assets succeed; audio assets return 404).
      */
     public AssetContent loadAttemptAsset(UUID attemptId, UUID assetId) {
+        return loadAttemptAsset(attemptId, assetId, null);
+    }
+
+    /**
+     * Authorizes and loads the requested asset for the authenticated learner's attempt. Audio
+     * assets strictly require an active {@code playId} matching an in-progress play within its
+     * lease and open part deadline; non-audio assets follow student-visible field checks.
+     */
+    public AssetContent loadAttemptAsset(UUID attemptId, UUID assetId, UUID playId) {
         UUID userId = accessGate.requireLearner();
         if (attemptId == null || assetId == null) {
             throw new NotFoundException("NOT_FOUND", null);
@@ -92,17 +137,62 @@ public class AttemptAssetService {
             throw new NotFoundException("NOT_FOUND", null);
         }
 
-        boolean allowed =
-                Boolean.TRUE.equals(
-                        readOnlyTx.execute(status -> isAssetAllowed(attemptId, assetId)));
-        if (!allowed) {
+        Instant now = clock.instant();
+        AssetAuthorization authorization =
+                readOnlyTx.execute(
+                        status -> {
+                            Optional<AttemptAudioPlay> audioPlayOpt =
+                                    attemptAudioPlayRepository == null
+                                            ? Optional.empty()
+                                            : attemptAudioPlayRepository.findByAttemptIdAndAssetId(
+                                                    attemptId, assetId);
+                            if (audioPlayOpt.isPresent()) {
+                                return new AssetAuthorization(
+                                        isAudioAssetAllowed(attempt, audioPlayOpt.get(), playId, now),
+                                        true);
+                            }
+                            return new AssetAuthorization(isAssetAllowed(attemptId, assetId), false);
+                        });
+        if (authorization == null || !authorization.allowed()) {
             throw new NotFoundException("NOT_FOUND", null);
         }
 
         // Load binary bytes from object storage outside any database transaction.
-        return questionAssetContentPort
-                .loadContent(assetId)
-                .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        AssetContent content =
+                questionAssetContentPort
+                        .loadContent(assetId)
+                        .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
+        if (!authorization.audioCandidate() && isAudioMime(content.mime())) {
+            throw new NotFoundException("NOT_FOUND", null);
+        }
+        return content;
+    }
+
+    private boolean isAudioAssetAllowed(
+            Attempt attempt, AttemptAudioPlay play, UUID playId, Instant now) {
+        if (playId == null
+                || attempt.getState() != AttemptState.IN_PROGRESS
+                || play.getState() != AudioPlayState.PLAYING
+                || !playId.equals(play.getPlayId())
+                || play.getLeaseUntil() == null
+                || !now.isBefore(play.getLeaseUntil())) {
+            return false;
+        }
+        AttemptPart part =
+                attemptPartRepository.findByIdAndAttemptId(play.getPartId(), attempt.getId())
+                        .orElse(null);
+        if (part == null || part.getState() != PartState.OPEN) {
+            return false;
+        }
+        Instant effectiveDeadline =
+                attempt.getTiming() == AttemptTiming.PER_PART
+                        ? part.getDeadlineAt()
+                        : attempt.getDeadlineAt();
+        return effectiveDeadline == null || now.isBefore(effectiveDeadline);
+    }
+
+    private static boolean isAudioMime(String mime) {
+        return mime != null && mime.toLowerCase(Locale.ROOT).startsWith("audio/");
     }
 
     private boolean isAssetAllowed(UUID attemptId, UUID assetId) {
