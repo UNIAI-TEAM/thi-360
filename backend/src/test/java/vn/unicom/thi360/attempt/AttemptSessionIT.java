@@ -63,7 +63,7 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void otherSessionAlwaysAsksAndSilentSessionStillAsks() throws Exception {
+    void otherSessionAlwaysAsks() throws Exception {
         UUID userId = createStudent("sess-elsewhere");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
         Attempt attempt = startAndAwaitOpen(userId, "elsewhere", line.entitlementId(), null);
@@ -82,7 +82,22 @@ class AttemptSessionIT extends AbstractAttemptDsIT {
         assertThat(conflictNowJson.path("code").asText()).isEqualTo("ATTEMPT_OPEN_ELSEWHERE");
         assertThat(Instant.parse(conflictNowJson.path("lastSeenAt").asText())).isEqualTo(seenAt);
 
+        assertThat(attemptRepository.findById(attempt.getId()).orElseThrow().getEditSessionId()).isEqualTo(sidA);
+    }
+
+    @Test
+    void silentSessionStillAsks() throws Exception {
+        UUID userId = createStudent("sess-silent");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "silent", line.entitlementId(), null);
+
+        MvcResult claimA = performClaimSession(userId, attempt.getId(), null);
+        assertThat(claimA.getResponse().getStatus()).isEqualTo(200);
+        UUID sidA = UUID.fromString(json(claimA).path("sessionId").asText());
+        Instant seenAt = Instant.parse(json(claimA).path("serverNow").asText());
+
         // Exact 2 minutes later -> STILL asks (LT F10)
+        UUID sidB = UUID.randomUUID();
         mutableClock.setAt(seenAt.plus(Duration.ofMinutes(2)));
         MvcResult conflictExact2m = performClaimSession(userId, attempt.getId(), new ClaimSessionRequest(sidB, null));
         assertThat(conflictExact2m.getResponse().getStatus()).isEqualTo(409);

@@ -312,16 +312,15 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void closedPartRejectedAndAfterDeadlineRejected() throws Exception {
-        UUID userId = createStudent("ans-closed-deadline");
+    void closedPartRejected() throws Exception {
+        UUID userId = createStudent("ans-closed");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
-        Attempt attempt = startAndAwaitOpen(userId, "cls-dl", line.entitlementId(), null);
+        Attempt attempt = startAndAwaitOpen(userId, "cls", line.entitlementId(), null);
         UUID sid = claimSession(userId, attempt.getId());
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         AttemptItem p0Item = singleChoiceItems(parts.get(0).getId()).getFirst();
         AttemptItem p1Item = singleChoiceItems(parts.get(1).getId()).getFirst();
         String p0Opt0 = p0Item.getOptionOrder().get(0);
-        String p1Opt0 = p1Item.getOptionOrder().get(0);
         String p1Opt1 = p1Item.getOptionOrder().get(1);
 
         // Finish Part 0 -> Part 0 CLOSED, Part 1 OPEN
@@ -345,6 +344,22 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
         assertThat(mixedJson.path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
         assertThat(mixedJson.path("results").get(0).path("reason").asText()).isEqualTo("PART_CLOSED");
         assertThat(mixedJson.path("results").get(1).path("status").asText()).isEqualTo("SAVED");
+    }
+
+    @Test
+    void afterDeadlineRejected() throws Exception {
+        UUID userId = createStudent("ans-deadline");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "dl", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
+        List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
+        AttemptItem p1Item = singleChoiceItems(parts.get(1).getId()).getFirst();
+        String p1Opt0 = p1Item.getOptionOrder().get(0);
+        String p1Opt1 = p1Item.getOptionOrder().get(1);
+
+        // Finish Part 0 -> Part 1 OPEN with its deadline set
+        assertThat(performFinishPart(userId, attempt.getId(), parts.get(0).getId(), sid, null)
+                .getResponse().getStatus()).isEqualTo(200);
 
         // Boundary: exact (p1.deadlineAt - 1s) is accepted; exact p1.deadlineAt is TIME_UP
         Instant p1Deadline = attemptPartRepository.findById(parts.get(1).getId()).orElseThrow().getDeadlineAt();
@@ -444,16 +459,16 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void essayHtmlSanitizedAndAnswerOver64KbRejected() throws Exception {
-        UUID userId = createStudent("ans-essay-64kb");
+    void essayHtmlSanitized() throws Exception {
+        UUID userId = createStudent("ans-essay-sanitize");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
-        Attempt attempt = startAndAwaitOpen(userId, "essay64", line.entitlementId(), null);
+        Attempt attempt = startAndAwaitOpen(userId, "essay-san", line.entitlementId(), null);
         UUID sid = claimSession(userId, attempt.getId());
         AttemptPart p0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).getFirst();
         EightTypeBundle bundle = replaceWithAllEightTypes(attempt.getId(), p0.getId());
 
         try {
-            // 1. Essay with <img>, <script>, onerror stripped + BS §6 wordCount persisted
+            // Essay with <img>, <script>, onerror stripped + BS §6 wordCount persisted
             String dirtyHtml =
                     "<p>B\u00e0i l\u00e0m\u00A0c\u1ee7a em</p><script>alert(1)</script>"
                             + "<img src=\"/api/v1/admin/question-assets/11111111-1111-1111-1111-111111111111\" onerror=\"x()\">";
@@ -481,8 +496,22 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                     .doesNotContain("onerror")
                     .contains("Bài làm");
             assertThat(savedEssay.wordCount()).isEqualTo(4);
+        } finally {
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
+        }
+    }
 
-            // 2. Exact 65,536 bytes accepted vs 65,537 bytes rejected (ShortAnswer + Essay)
+    @Test
+    void answerOver64KbRejected() throws Exception {
+        UUID userId = createStudent("ans-64kb");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "ans64", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
+        AttemptPart p0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).getFirst();
+        EightTypeBundle bundle = replaceWithAllEightTypes(attempt.getId(), p0.getId());
+
+        try {
+            // Exact 65,536 bytes accepted vs 65,537 bytes rejected (ShortAnswer + Essay)
             String exact64Kb = "a".repeat(65_536);
             String over64Kb = "a".repeat(65_537);
             assertThat(exact64Kb.getBytes(StandardCharsets.UTF_8)).hasSize(65_536);
@@ -515,9 +544,40 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void changeLimitEnforcedAndRateLimitPerAttempt() throws Exception {
-        UUID userId = createStudent("ans-limits");
-        UUID userIdB = createStudent("ans-limits-b");
+    void changeLimitEnforced() throws Exception {
+        UUID userId = createStudent("ans-change-limit");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        Attempt attemptA = startAndAwaitOpen(userId, "lim-chg", line.entitlementId(), null);
+        UUID sidA = claimSession(userId, attemptA.getId());
+
+        AttemptItem itemA =
+                singleChoiceItems(
+                                attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptA.getId()).getFirst().getId())
+                        .getFirst();
+        String optA0 = itemA.getOptionOrder().get(0);
+        String optA1 = itemA.getOptionOrder().get(1);
+
+        // 50 changes accepted, 51 changes -> 400 VALIDATION_FAILED (changes limit)
+        List<AnswerChange> fifty = new ArrayList<>(50);
+        for (int i = 1; i <= 50; i++) {
+            fifty.add(new AnswerChange(itemA.getId(), i, new AnswerValue.SingleChoice(optA0)));
+        }
+        MvcResult ok50 =
+                performPutAnswers(userId, attemptA.getId(), sidA, new SaveAnswersRequest(fifty, null, null));
+        assertThat(ok50.getResponse().getStatus()).isEqualTo(200);
+
+        List<AnswerChange> fiftyOne = new ArrayList<>(fifty);
+        fiftyOne.add(new AnswerChange(itemA.getId(), 51L, new AnswerValue.SingleChoice(optA1)));
+        MvcResult bad51 =
+                performPutAnswers(userId, attemptA.getId(), sidA, new SaveAnswersRequest(fiftyOne, null, null));
+        assertThat(bad51.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(bad51).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+    }
+
+    @Test
+    void rateLimitPerAttempt() throws Exception {
+        UUID userId = createStudent("ans-rate-limit");
+        UUID userIdB = createStudent("ans-rate-limit-b");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-PART-MATH-MINI", 2, List.of());
         GrantOrderResult.Line lineB = grant(userIdB, "DS-HSA-PART-MATH-MINI", 2, List.of());
         Attempt attemptA = startAndAwaitOpen(userId, "lim-a", line.entitlementId(), null);
@@ -537,25 +597,8 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
         String optA1 = itemA.getOptionOrder().get(1);
         String optB0 = itemB.getOptionOrder().get(0);
 
-        // 1. 50 changes accepted, 51 changes -> 400 VALIDATION_FAILED (changes limit)
-        List<AnswerChange> fifty = new ArrayList<>(50);
-        for (int i = 1; i <= 50; i++) {
-            fifty.add(new AnswerChange(itemA.getId(), i, new AnswerValue.SingleChoice(optA0)));
-        }
-        MvcResult ok50 =
-                performPutAnswers(userId, attemptA.getId(), sidA, new SaveAnswersRequest(fifty, null, null));
-        assertThat(ok50.getResponse().getStatus()).isEqualTo(200);
-
-        List<AnswerChange> fiftyOne = new ArrayList<>(fifty);
-        fiftyOne.add(new AnswerChange(itemA.getId(), 51L, new AnswerValue.SingleChoice(optA1)));
-        MvcResult bad51 =
-                performPutAnswers(userId, attemptA.getId(), sidA, new SaveAnswersRequest(fiftyOne, null, null));
-        assertThat(bad51.getResponse().getStatus()).isEqualTo(400);
-        assertThat(json(bad51).path("code").asText()).isEqualTo("VALIDATION_FAILED");
-
-        // Note: bad51 failed Bean Validation before AnswerService, so only 1 token consumed so far on attemptA!
-        // Consume tokens 2..20 -> all 200; request 21 -> 429 RATE_LIMITED + Retry-After
-        for (int i = 2; i <= 20; i++) {
+        // Consume tokens 1..20 -> all 200; request 21 -> 429 RATE_LIMITED + Retry-After
+        for (int i = 1; i <= 20; i++) {
             MvcResult r =
                     performPutAnswers(
                             userId,
@@ -597,7 +640,7 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
     }
 
     @Test
-    void positionAndFlagsPersistAndForbiddenKeysAbsent() throws Exception {
+    void positionAndFlagsPersist() throws Exception {
         UUID userId = createStudent("ans-pos-flags");
         UUID otherUser = createStudent("ans-pos-other");
         GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
@@ -631,15 +674,11 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                                             new FlagChange(otherItem.getId(), true)),
                                     new AttemptPosition(part0.getId(), bundle.matching().getId())));
             assertThat(putRes.getResponse().getStatus()).isEqualTo(200);
-            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(putRes.getResponse().getContentAsString());
 
-            // Read back via GET /api/v1/me/attempts/{id} and run ForbiddenKeysAssert (AC-10, AC-17)
+            // Read back via GET /api/v1/me/attempts/{id}
             MvcResult stateRes = performGetState(userId, attempt.getId());
             assertThat(stateRes.getResponse().getStatus()).isEqualTo(200);
-            String stateRaw = stateRes.getResponse().getContentAsString();
-            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(stateRaw);
-
-            JsonNode stateJson = objectMapper.readTree(stateRaw);
+            JsonNode stateJson = objectMapper.readTree(stateRes.getResponse().getContentAsString());
             assertThat(stateJson.path("lastPosition").path("partId").asText())
                     .isEqualTo(part0.getId().toString());
             assertThat(stateJson.path("lastPosition").path("itemId").asText())
@@ -682,6 +721,54 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                     sid,
                     new SaveAnswersRequest(null, List.of(new FlagChange(bundle.singleChoice().getId(), false)), null));
             assertThat(attemptItemRepository.findById(bundle.singleChoice().getId()).orElseThrow().isFlagged()).isFalse();
+        } finally {
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
+        }
+    }
+
+    @Test
+    void forbiddenKeysAbsent() throws Exception {
+        UUID userId = createStudent("ans-forbidden");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = startAndAwaitOpen(userId, "forbid", line.entitlementId(), null);
+        UUID sid = claimSession(userId, attempt.getId());
+
+        AttemptPart part0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).getFirst();
+        EightTypeBundle bundle = replaceWithAllEightTypes(attempt.getId(), part0.getId());
+
+        try {
+            // Save MATCHING answer (with pairs), flag=true, and valid position -> verify ForbiddenKeysAssert on PUT
+            MvcResult putRes =
+                    performPutAnswers(
+                            userId,
+                            attempt.getId(),
+                            sid,
+                            new SaveAnswersRequest(
+                                    List.of(
+                                            new AnswerChange(
+                                                    bundle.matching().getId(),
+                                                    1L,
+                                                    new AnswerValue.Matching(Map.of("l1", "r2")))),
+                                    List.of(new FlagChange(bundle.singleChoice().getId(), true)),
+                                    new AttemptPosition(part0.getId(), bundle.matching().getId())));
+            assertThat(putRes.getResponse().getStatus()).isEqualTo(200);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(putRes.getResponse().getContentAsString());
+
+            // Read back via GET /api/v1/me/attempts/{id} and run ForbiddenKeysAssert (AC-10, AC-17)
+            MvcResult stateRes = performGetState(userId, attempt.getId());
+            assertThat(stateRes.getResponse().getStatus()).isEqualTo(200);
+            String stateRaw = stateRes.getResponse().getContentAsString();
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(stateRaw);
+
+            JsonNode stateJson = objectMapper.readTree(stateRaw);
+            boolean foundMatchingPairs = false;
+            for (JsonNode itemNode : stateJson.path("parts").get(0).path("items")) {
+                if (bundle.matching().getId().toString().equals(itemNode.path("itemId").asText())) {
+                    assertThat(itemNode.path("answer").path("pairs").path("l1").asText()).isEqualTo("r2");
+                    foundMatchingPairs = true;
+                }
+            }
+            assertThat(foundMatchingPairs).isTrue();
         } finally {
             AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
         }
