@@ -2,6 +2,8 @@ import type { components } from "@thi360/api-client";
 
 export type ProductCard = components["schemas"]["ProductCard"];
 export type ProductDetail = components["schemas"]["ProductDetail"];
+export type BundleDetailItem = components["schemas"]["BundleDetailItem"];
+export type BundleAccessExamItem = components["schemas"]["BundleAccessExamItem"];
 export type ProductPage = components["schemas"]["PageResponseProductCard"];
 export type StorefrontFilters = components["schemas"]["StorefrontFilters"];
 export type IntRange = components["schemas"]["IntRange"];
@@ -20,4 +22,5 @@ export type Loaded<T> = { status: "ok"; data: T } | { status: "error" };
 export type ProductLookup =
   | { status: "ok"; product: ProductDetail }
   | { status: "gone"; product: { code: string; name: string } }
+  | { status: "unavailable"; product?: ProductDetail }
   | { status: "notFound" };

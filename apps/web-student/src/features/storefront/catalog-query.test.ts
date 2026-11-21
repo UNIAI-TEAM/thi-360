@@ -63,4 +63,11 @@ describe("điều kiện danh mục trên URL", () => {
   it("đổi sắp xếp cũng là điều kiện khác mặc định", () => {
     expect(hasActiveFilters({ ...EMPTY_CATALOG_QUERY, sort: "PRICE_ASC" })).toBe(true);
   });
+
+  it("hỗ trợ lọc hình thức BUNDLE (AC-10)", () => {
+    const query = parseCatalogQuery({ format: "BUNDLE" });
+    expect(query.format).toBe("BUNDLE");
+    expect(catalogSearch(query)).toBe("?format=BUNDLE");
+    expect(toApiQuery(query).format).toBe("BUNDLE");
+  });
 });

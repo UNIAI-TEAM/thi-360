@@ -131,3 +131,28 @@ export function ExamNotFoundView() {
     />
   );
 }
+
+/** Bộ đề tạm thời chưa bán được khi không có dữ liệu chi tiết đi kèm (409 `PRODUCT_UNAVAILABLE`). */
+export function BundleUnavailableView() {
+  const t = useTranslations("bundle.unavailablePage");
+  const buyLabel = useTranslations("bundle")("buyLabel");
+  return (
+    <StatusLayout
+      icon={Ban}
+      tone="warning"
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      description={t("description")}
+      actions={
+        <>
+          <Button type="button" size="lg" disabled>
+            {buyLabel}
+          </Button>
+          <Button asChild size="lg" variant="secondary">
+            <Link href="/#exams">{t("toCatalog")}</Link>
+          </Button>
+        </>
+      }
+    />
+  );
+}

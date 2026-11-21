@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { PriceQuote } from "@/features/checkout/api";
+import { type PriceQuote, ProductUnavailableError } from "@/features/checkout/api";
 import { ApiStatusError } from "@/lib/api/client";
 import enMessages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
@@ -431,5 +431,56 @@ describe("VoucherBox · AC-6", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(expectedEn);
     expect(enInput).toHaveAttribute("aria-invalid", "true");
     await waitFor(() => expect(enInput).toHaveFocus());
+  });
+
+  it("R1-38: gọi onProductUnavailable khi requestQuote trả ProductUnavailableError hoặc 409 PRODUCT_UNAVAILABLE lúc áp dụng và gỡ mã", async () => {
+    const user = userEvent.setup();
+    const onProductUnavailableApply = vi.fn();
+    const applyView = renderWithProviders(
+      <VoucherBox
+        productCode="BO-SP2E-001"
+        isBundle
+        quote={makeQuote({ productCode: "BO-SP2E-001" })}
+        requestQuote={vi.fn().mockRejectedValueOnce(new ProductUnavailableError("Unavailable"))}
+        onQuoteApplied={vi.fn()}
+        onProductUnavailable={onProductUnavailableApply}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nhập mã giảm giá"), "GIAM20");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+
+    await waitFor(() => expect(onProductUnavailableApply).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
+    applyView.unmount();
+
+    const onProductUnavailableRemove = vi.fn();
+    renderWithProviders(
+      <VoucherBox
+        productCode="BO-SP2E-001"
+        isBundle
+        quote={makeQuote({
+          productCode: "BO-SP2E-001",
+          voucher: {
+            id: "v-1",
+            code: "GIAM20",
+            name: "20%",
+            discountType: "PERCENT",
+            discountValue: 20,
+            discountVnd: 60000,
+            combinable: false,
+          },
+        })}
+        requestQuote={vi
+          .fn()
+          .mockRejectedValueOnce(new ApiStatusError(409, "Unavailable", { code: "PRODUCT_UNAVAILABLE" }))}
+        onQuoteApplied={vi.fn()}
+        onProductUnavailable={onProductUnavailableRemove}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Gỡ mã" }));
+    await waitFor(() => expect(onProductUnavailableRemove).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

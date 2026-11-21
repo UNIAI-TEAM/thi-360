@@ -1375,6 +1375,10 @@
       "REFUND_REQUESTED": "Tạo yêu cầu hoàn tiền",
       "REFUND_SUCCEEDED": "Hoàn tiền thành công"
     },
+    "bundle": {
+      "badge": "Bộ đề",
+      "itemsCount": "{count, plural, other {# bài thi}}"
+    },
     "buyers": {
       "colAttempts": "Lượt còn lại",
       "colLastPaid": "Mua gần nhất",
@@ -1438,6 +1442,22 @@
         "paidUnfulfilledBody": "Tiền đã về nhưng hệ thống chưa hoàn tất cấp lượt thi. Bạn có thể bấm Tiếp tục cấp quyền để hoàn tất cho khách.",
         "paidUnfulfilledTitle": "Đã thu tiền nhưng chưa cấp quyền",
         "replacedByOrder": "Đơn này đã được thay thế bởi đơn {code}."
+      },
+      "bundleItems": {
+        "attempts": "Số lượt cấp",
+        "empty": "Đơn hàng chưa có danh sách bài thi thành phần.",
+        "exam": "Bài thi",
+        "position": "Vị trí",
+        "resultView": "Mức xem kết quả",
+        "resultViews": {
+          "FULL": "Đầy đủ",
+          "FULL_SOLUTION": "Điểm, đáp án và lời giải",
+          "SCORE": "Chỉ điểm",
+          "SCORE_AND_ANSWERS": "Điểm và đáp án"
+        },
+        "title": "Bài thi trong bộ đề",
+        "version": "Phiên bản",
+        "versionValue": "v{version}"
       },
       "codeLabel": "Mã đơn hàng",
       "errorDescription": "Không thể tải thông tin chi tiết của đơn hàng.",
@@ -1760,6 +1780,7 @@
     "nav": {
       "backToOrders": "Quay lại danh sách đơn hàng",
       "buyers": "Người mua theo bài thi",
+      "openBundle": "Mở bộ đề",
       "openExam": "Mở bài thi",
       "orders": "Đơn hàng",
       "viewOrder": "Xem chi tiết",
@@ -2324,6 +2345,10 @@
     },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Cập nhật phân quyền hàng loạt",
+      "BUNDLE_CREATED": "Tạo bộ đề",
+      "BUNDLE_DISCONTINUED": "Ngừng bán bộ đề",
+      "BUNDLE_PUBLISHED": "Công bố bộ đề",
+      "BUNDLE_UPDATED": "Cập nhật bộ đề",
       "CLASS_MEMBER_ADDED": "Thêm vào lớp học",
       "CLASS_MEMBER_REMOVED": "Loại khỏi lớp học",
       "CLASS_MEMBER_TRANSFERRED": "Chuyển lớp học",
@@ -8804,6 +8829,316 @@
       "RUNNING": "Đang chạy",
       "STOPPED": "Đã dừng",
       "UPCOMING": "Sắp diễn ra"
+    }
+  },
+  "bundles": {
+    "actions": {
+      "backToList": "Quay lại danh sách",
+      "cancel": "Hủy",
+      "clearFilters": "Xóa tất cả bộ lọc",
+      "clearSearch": "Xóa từ khóa tìm kiếm",
+      "close": "Đóng",
+      "create": "Tạo bộ đề",
+      "discontinue": "Ngừng bán",
+      "dismiss": "Đóng thông báo",
+      "edit": "Sửa bộ đề",
+      "editAria": "Sửa bộ đề {code}",
+      "moreAria": "Thao tác khác với {code}",
+      "publish": "Công bố",
+      "refresh": "Làm mới",
+      "republish": "Công bố lại",
+      "retry": "Thử lại",
+      "saveBeforePublish": "Lưu thay đổi trước khi công bố",
+      "saveChanges": "Lưu thay đổi",
+      "saveDraft": "Lưu nháp",
+      "view": "Xem chi tiết",
+      "viewAria": "Xem bộ đề {code}"
+    },
+    "badges": {
+      "review": "Bài ôn"
+    },
+    "create": {
+      "description": "Một bộ gồm 2–12 bài thi đang bán của cùng kỳ thi, có giá và số lượt mỗi bài riêng.",
+      "title": "Tạo bộ đề"
+    },
+    "dialogs": {
+      "changeExamKind": {
+        "cancel": "Giữ {currentKind}",
+        "confirm": "Đổi và bỏ bài đã chọn",
+        "description": "{count, plural, other {# bài thi đã chọn từ {currentKind} sẽ bị bỏ khỏi bộ. Các trường khác giữ nguyên.}}",
+        "title": "Đổi kỳ thi sang {nextKind}?"
+      },
+      "conflictRefreshFailed": "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất ({reason}).",
+      "discontinue": {
+        "descriptionPrefix": "Ngừng bán bộ đề",
+        "descriptionSuffix": "Trang bán của bộ sẽ không cho mua mới. Học viên đã mua giữ nguyên lượt của từng bài.",
+        "successToast": "Đã ngừng bán bộ đề {code}.",
+        "title": "Ngừng bán bộ đề?"
+      },
+      "publish": {
+        "descriptionPrefix": "Công bố bộ đề",
+        "descriptionSuffix": "Thay đổi về thành phần, giá và số lượt sẽ áp dụng cho đơn hàng mới sau khi công bố.",
+        "republishTitle": "Công bố lại bộ đề?",
+        "successToast": "Đã công bố bộ đề {code}.",
+        "title": "Công bố bộ đề?"
+      },
+      "refreshingConflict": "Bộ đề vừa được người khác cập nhật. Đang nạp lại bản mới nhất..."
+    },
+    "edit": {
+      "errorDescription": "Không thể tải thông tin chi tiết của bộ đề.",
+      "errorTitle": "Không tải được bộ đề",
+      "notFoundDescription": "Bộ đề không tồn tại hoặc đã bị xóa.",
+      "notFoundTitle": "Không tìm thấy bộ đề",
+      "title": "Chi tiết bộ đề"
+    },
+    "errors": {
+      "BUNDLE_ALREADY_DISCONTINUED": "Bộ đề đã ngừng bán, không thể chỉnh sửa hoặc công bố lại.",
+      "BUNDLE_ATTEMPTS_INVALID": "Số lượt mỗi bài phải nằm trong khoảng từ 1 đến 100.",
+      "BUNDLE_CODE_TAKEN": "Mã bộ đề này đã tồn tại trên hệ thống.",
+      "BUNDLE_DESCRIPTION_REQUIRED": "Vui lòng nhập mô tả bộ đề trước khi công bố.",
+      "BUNDLE_EXAM_KIND_INVALID": "Kỳ thi được chọn không hợp lệ hoặc đã ngừng hoạt động.",
+      "BUNDLE_ITEMS_COUNT_INVALID": "Bộ đề phải có từ 2 đến 12 bài thi.",
+      "BUNDLE_ITEM_DUPLICATE": "Không thể chọn trùng bài thi trong cùng một bộ đề.",
+      "BUNDLE_ITEM_FULL_SCOPE_NOT_ALLOWED": "Bộ đề chỉ chấp nhận bài thi phạm vi theo môn hoặc theo phần.",
+      "BUNDLE_ITEM_INVALID_EXAM": "Có bài thi thành phần không hợp lệ hoặc chưa được công bố.",
+      "BUNDLE_ITEM_KIND_MISMATCH": "Mọi bài thi trong bộ đề phải thuộc cùng một kỳ thi.",
+      "BUNDLE_ITEM_NOT_ON_SALE": "Có bài thi trong bộ đề không còn đang bán. Hãy thay bài trước khi công bố.",
+      "BUNDLE_LIST_PRICE_NEGATIVE": "Giá bán bộ đề không được âm.",
+      "BUNDLE_NOT_FOUND": "Không tìm thấy bộ đề.",
+      "BUNDLE_NOT_PUBLISHED": "Chỉ bộ đề đang bán mới có thể ngừng bán.",
+      "BUNDLE_RESULT_VIEW_INVALID": "Mức xem kết quả không hợp lệ.",
+      "CONFLICT": "Dữ liệu đã thay đổi ở phiên bản khác. Vui lòng kiểm tra lại.",
+      "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này.",
+      "GENERIC": "Có lỗi xảy ra khi xử lý bộ đề. Vui lòng thử lại.",
+      "INTERNAL_ERROR": "Hệ thống gặp sự cố tạm thời. Vui lòng thử lại sau.",
+      "LISTING_PRICE_BELOW_MIN": "Giá bộ đề thấp hơn mức tối thiểu cho phép của cổng thanh toán.",
+      "LISTING_PRICE_MISSING": "Vui lòng nhập giá bộ đề trước khi công bố.",
+      "LISTING_PRICE_ZERO": "Giá bộ đề phải lớn hơn 0 đồng để công bố.",
+      "NETWORK": "Không thể kết nối tới máy chủ. Vui lòng kiểm tra mạng và thử lại.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ giây lát rồi thử lại.",
+      "VALIDATION_FAILED": "Dữ liệu bộ đề chưa hợp lệ. Vui lòng kiểm tra lại các trường đã nhập.",
+      "VERSION_CONFLICT": "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại."
+    },
+    "form": {
+      "ariaLabel": "Biểu mẫu bộ đề",
+      "aside": {
+        "attempts": "Lượt mỗi bài",
+        "attemptsValue": "{count} lượt",
+        "checklistTitle": "Cần xử lý trước khi công bố",
+        "examCount": "Số bài",
+        "examCountValue": "{count} bài",
+        "examKind": "Kỳ thi",
+        "issues": {
+          "attempts": "Chưa đặt số lượt mỗi bài (1–100).",
+          "description": "Chưa có mô tả bộ đề.",
+          "price": "Chưa đặt giá bộ đề lớn hơn 0 đồng.",
+          "tooFew": "Chọn ít nhất {min} bài.",
+          "tooMany": "Bộ đề có tối đa {max} bài.",
+          "unavailableItem": "Có bài thi trong bộ không còn đang bán."
+        },
+        "notAvailable": "—",
+        "notSelected": "Chưa chọn",
+        "notSet": "Chưa đặt",
+        "price": "Giá bộ",
+        "publishNote": "Đổi bài, giá hay số lượt chỉ có hiệu lực khi công bố lại và chỉ áp dụng cho đơn hàng mới.",
+        "questionsValue": "{value} câu",
+        "ready": "Không còn mục nào.",
+        "title": "Tóm tắt",
+        "totalQuestions": "Tổng số câu"
+      },
+      "banners": {
+        "conflictDescription": "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
+        "conflictRefetchFailedDescription": "Thay đổi chưa lưu vẫn được giữ nguyên. Bấm Thử lại để nạp bản mới nhất ({reason}).",
+        "conflictRefetchFailedTitle": "Bộ đề vừa được người khác cập nhật nhưng chưa nạp lại được bản mới nhất.",
+        "conflictTitle": "Bộ đề vừa được người khác cập nhật.",
+        "discontinuedReadOnly": "Bộ đề đã ngừng bán nên không thể chỉnh sửa thêm.",
+        "readOnly": "Bạn chỉ có quyền xem bộ đề. Cần quyền sửa bài thi để tạo hoặc cập nhật.",
+        "unavailableDescription": "Có bài thi thành phần không còn đang bán. Hãy thay bằng bài khác đang bán rồi công bố lại.",
+        "unavailableTitle": "Bộ đề đang không bán được.",
+        "unpublishedDescription": "Đơn hàng mới vẫn áp dụng phiên bản đang bán cho tới khi bạn công bố lại.",
+        "unpublishedTitle": "Đang bán phiên bản {version} · Có thay đổi chưa công bố"
+      },
+      "benefits": {
+        "items": {
+          "benefitAiExplanation": {
+            "description": "Học viên hỏi AI vì sao đáp án đúng, sai sau khi có kết quả.",
+            "label": "Giải thích bằng AI"
+          },
+          "benefitPractice": {
+            "description": "Bộ câu ôn theo kiến thức còn yếu.",
+            "label": "Ôn luyện bổ sung"
+          },
+          "benefitStrengthWeakness": {
+            "description": "Tổng hợp theo phần, môn và kiến thức của lượt thi.",
+            "label": "Đánh giá điểm mạnh, điểm yếu"
+          }
+        },
+        "legend": "Quyền lợi của mỗi bài trong bộ"
+      },
+      "candidates": {
+        "columns": {
+          "duration": "Thời lượng",
+          "exam": "Bài thi",
+          "points": "Điểm tối đa",
+          "questions": "Số câu",
+          "scope": "Phạm vi",
+          "select": "Chọn",
+          "subject": "Môn"
+        },
+        "durationValue": "{value} phút",
+        "empty": "Kỳ thi này chưa có bài thi đang bán phù hợp để đưa vào bộ.",
+        "emptyMetric": "—",
+        "loading": "Đang tải danh sách bài thi đang bán...",
+        "offline": "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách bài thi.",
+        "otherSubject": "Môn khác",
+        "pointsValue": "{value} điểm",
+        "questionsValue": "{value} câu",
+        "selectAria": "Chọn {code}",
+        "selectKindFirst": "Chọn kỳ thi ở mục 1 để xem danh sách bài thi đang bán.",
+        "selectedCountChip": "Đã chọn {count}/{max} · tối thiểu {min}",
+        "tableAria": "Danh sách bài thi đang bán cùng kỳ thi"
+      },
+      "counter": "{count, number} / {max, number} ký tự",
+      "currency": "đ",
+      "examKindsError": "Không tải được danh sách kỳ thi.",
+      "examKindsOffline": "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách kỳ thi.",
+      "fields": {
+        "attemptsPerExam": "Số lượt mỗi bài",
+        "benefitNote": "Giới hạn áp dụng của quyền lợi",
+        "benefitNotePlaceholder": "Ví dụ: Giải thích bằng AI áp dụng cho câu trắc nghiệm và câu điền đáp án.",
+        "code": "Mã bộ",
+        "codePlaceholder": "BO-SP2E-001",
+        "description": "Mô tả",
+        "descriptionPlaceholder": "Mô tả chi tiết bộ đề, bắt buộc khi công bố.",
+        "examKind": "Kỳ thi",
+        "examKindPlaceholder": "Chọn kỳ thi",
+        "listPriceVnd": "Giá bộ",
+        "name": "Tên bộ",
+        "namePlaceholder": "Bộ đề SP2E khối A00",
+        "summary": "Mô tả ngắn trên thẻ",
+        "summaryPlaceholder": "Ba đề luyện Toán, Vật lí, Hóa học theo cấu trúc 2026."
+      },
+      "hints": {
+        "attemptsPerExam": "Từ {min, number} đến {max, number}. Bắt buộc khi công bố.",
+        "code": "Duy nhất, không phân biệt hoa thường. Gợi ý theo dạng BO-[KỲ]-nnn.",
+        "description": "Bắt buộc khi công bố.",
+        "examKind": "Mọi bài trong bộ phải cùng kỳ thi. Đổi kỳ thi khi đã chọn bài sẽ hỏi xác nhận.",
+        "items": "Chọn từ 2 đến 12 bài thi đang bán cùng kỳ thi, phạm vi theo môn hoặc theo phần.",
+        "listPriceVnd": "Bắt buộc khi công bố. Đã gồm thuế, phí."
+      },
+      "order": {
+        "empty": "Chưa chọn bài thi nào.",
+        "hint": "Học viên thấy các bài theo thứ tự này ở trang chi tiết bộ và ở Bài thi của tôi.",
+        "listAria": "Thứ tự bài thi trong bộ",
+        "moveDown": "Đưa {code} xuống",
+        "moveDownTooltip": "Đưa xuống",
+        "moveUp": "Đưa {code} lên",
+        "moveUpTooltip": "Đưa lên",
+        "movedDown": "Đã đưa {code} xuống vị trí {position}.",
+        "movedUp": "Đã đưa {code} lên vị trí {position}.",
+        "remove": "Bỏ {code} khỏi bộ",
+        "removeTooltip": "Bỏ bài",
+        "removed": "Đã bỏ {code} khỏi bộ đề (còn {count, plural, other {# bài}}).",
+        "title": "Thứ tự trong bộ"
+      },
+      "resultView": {
+        "legend": "Sau khi chấm, học viên xem được",
+        "options": {
+          "FULL_SOLUTION": {
+            "description": "Thêm lời giải chi tiết của từng câu.",
+            "label": "Điểm, đáp án và lời giải"
+          },
+          "SCORE": {
+            "description": "Điểm tổng, điểm theo phần và theo môn.",
+            "label": "Chỉ điểm"
+          },
+          "SCORE_AND_ANSWERS": {
+            "description": "Thêm đáp án đúng của từng câu.",
+            "label": "Điểm và đáp án"
+          }
+        }
+      },
+      "sections": {
+        "benefits": "Quyền lợi và mức xem kết quả",
+        "info": "Thông tin bộ",
+        "items": "Bài trong bộ",
+        "pricing": "Giá và lượt"
+      },
+      "toast": {
+        "created": "Đã tạo bộ đề nháp.",
+        "updated": "Đã lưu thay đổi bộ đề."
+      }
+    },
+    "itemSaleStates": {
+      "DISCONTINUED": "Ngừng bán",
+      "UNAVAILABLE": "Không bán được"
+    },
+    "list": {
+      "columns": {
+        "actions": "Thao tác",
+        "attempts": "Lượt mỗi bài",
+        "bundle": "Bộ đề",
+        "examKind": "Kỳ thi",
+        "itemCount": "Số bài",
+        "price": "Giá",
+        "status": "Trạng thái",
+        "updatedAt": "Cập nhật"
+      },
+      "description": "Một bộ gồm 2–12 bài thi đang bán của cùng kỳ thi, có giá và số lượt mỗi bài riêng.",
+      "emptyDescription": "Cần ít nhất 2 bài thi đang bán của cùng kỳ thi để tạo bộ đề.",
+      "emptyTitle": "Chưa có bộ đề nào",
+      "errorTitle": "Không tải được danh sách bộ đề",
+      "filteredEmptyDescription": "Không có bộ đề nào khớp với từ khóa hoặc bộ lọc đang chọn.",
+      "filteredEmptyTitle": "Không có bộ đề phù hợp",
+      "filters": {
+        "examKind": "Kỳ thi",
+        "examKindAll": "Tất cả",
+        "examKindsError": "Không tải được danh sách kỳ thi để lọc.",
+        "searchAria": "Tìm theo tên hoặc mã bộ đề",
+        "searchPlaceholder": "Tìm theo tên hoặc mã bộ đề",
+        "statusGroupAria": "Lọc theo trạng thái bộ đề",
+        "statusOptions": {
+          "ALL": "Tất cả",
+          "DISCONTINUED": "Ngừng bán",
+          "DRAFT": "Nháp",
+          "PUBLISHED": "Đang bán"
+        }
+      },
+      "notSet": "—",
+      "offlineDescription": "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách bộ đề.",
+      "offlineTitle": "Đang ngoại tuyến",
+      "summary": {
+        "attempts": "Lượt mỗi bài: {value}",
+        "itemCount": "{count, plural, other {# bài}}",
+        "updatedAt": "Cập nhật: {date}"
+      },
+      "tableAria": "Danh sách bộ đề",
+      "title": "Bộ đề",
+      "totalItems": "{total, plural, other {Tổng # bộ đề}}"
+    },
+    "scopes": {
+      "PART": "Theo phần",
+      "SUBJECT": "Theo môn"
+    },
+    "states": {
+      "DISCONTINUED": "Ngừng bán",
+      "DRAFT": "Nháp",
+      "PUBLISHED": "Đang bán",
+      "UNAVAILABLE": "Không bán được",
+      "UNPUBLISHED_CHANGES": "Có thay đổi chưa công bố"
+    },
+    "validation": {
+      "attemptsRange": "Số lượt mỗi bài phải từ {min, number} đến {max, number}.",
+      "benefitNoteMax": "Giới hạn áp dụng tối đa {max, number} ký tự.",
+      "codeMax": "Mã bộ tối đa {max, number} ký tự.",
+      "codeRequired": "Vui lòng nhập mã bộ đề.",
+      "descriptionMax": "Mô tả tối đa {max, number} ký tự.",
+      "examKindRequired": "Vui lòng chọn kỳ thi cho bộ đề.",
+      "itemsRange": "Bộ đề phải chọn từ {min, number} đến {max, number} bài thi.",
+      "nameMax": "Tên bộ tối đa {max, number} ký tự.",
+      "nameRequired": "Vui lòng nhập tên bộ đề.",
+      "priceInvalid": "Giá bộ phải là số nguyên từ 0 đồng trở lên.",
+      "summaryMax": "Mô tả ngắn tối đa {max, number} ký tự."
     }
   }
 }

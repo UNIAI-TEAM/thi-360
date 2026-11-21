@@ -12,6 +12,8 @@ export interface AccessProduct {
   versionNo: number;
   /** Giá phải trả đang thấy, đồng: đi cùng `versionNo` trên URL xác nhận mua để phát hiện giá đổi (TM 8.2). */
   price: number;
+  /** Bộ đề luôn dùng nhãn CTA "Mua bộ đề" thay vì "Mua bài thi". */
+  isBundle?: boolean;
 }
 
 /** `/checkout/<code>?v=<versionNo>&p=<price>` (TM 11.3). */
@@ -40,6 +42,7 @@ export function AccessAction({
   const primarySize = variant === "detail" ? "xl" : "lg";
   const primaryHeight = variant === "detail" ? "h-13" : "h-11";
   const checkout = checkoutPath(product);
+  const buyLabel = product.isBundle ? t("buyBundle") : t("buy");
 
   const viewDetail =
     variant === "card" ? (
@@ -88,7 +91,7 @@ export function AccessAction({
     return (
       <div className={wrapper}>
         <Button asChild size={primarySize} className={grow}>
-          <Link href={withCallbackUrl("/login", checkout)} prefetch={false}>{t("buy")}</Link>
+          <Link href={withCallbackUrl("/login", checkout)} prefetch={false}>{buyLabel}</Link>
         </Button>
         {viewDetail}
       </div>
@@ -170,7 +173,7 @@ export function AccessAction({
       return (
         <div className={wrapper}>
           <Button asChild size={primarySize} className={grow}>
-            <Link href={checkout} prefetch={false}>{t("buy")}</Link>
+            <Link href={checkout} prefetch={false}>{buyLabel}</Link>
           </Button>
           {viewDetail}
         </div>
