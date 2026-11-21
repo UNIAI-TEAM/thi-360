@@ -317,6 +317,73 @@ class AttemptOpenApiContractTest {
                 .contains("subjectCodes?: string[];");
     }
 
+    @Test
+    void at4ResultReviewHistoryAndSolutionAssetContractsPresentWithoutNeverIntersections() throws Exception {
+        Path openApiPath = resolveWorkspaceFile(Path.of("packages", "api-client", "openapi.json"));
+        JsonNode root = objectMapper.readTree(Files.readString(openApiPath, StandardCharsets.UTF_8));
+        JsonNode paths = root.path("paths");
+        JsonNode schemas = root.path("components").path("schemas");
+
+        assertThat(paths.path("/api/v1/me/attempts").path("get").path("operationId").asText())
+                .isEqualTo("listHistory");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/result").path("get").path("operationId").asText())
+                .isEqualTo("getResult");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/review").path("get").path("operationId").asText())
+                .isEqualTo("getReview");
+        assertThat(paths.path("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}").path("get").path("operationId").asText())
+                .isEqualTo("downloadSolutionAsset");
+
+        for (String schemaName : List.of(
+                "AttemptResultResponse",
+                "AttemptResultUnitStats",
+                "AttemptResultPart",
+                "AttemptResultSubject",
+                "AttemptResultVactComponent",
+                "AttemptResultVactSubsection",
+                "AttemptReviewResponse",
+                "AttemptReviewItem",
+                "AttemptReviewQuestionBody",
+                "AttemptReviewExpectedAnswer",
+                "AttemptReviewEssayFeedback",
+                "AttemptHistoryItem",
+                "PageResponseAttemptHistoryItem")) {
+            assertThat(schemas.has(schemaName))
+                    .as("Expected schema %s in openapi.json", schemaName)
+                    .isTrue();
+        }
+
+        // Result response schema must never declare secret answer or grading-guide fields
+        JsonNode resultProps = schemas.path("AttemptResultResponse").path("properties");
+        assertThat(resultProps.has("solution")).isFalse();
+        assertThat(resultProps.has("gradingGuide")).isFalse();
+        assertThat(resultProps.has("rubric")).isFalse();
+
+        String schemaDts = Files.readString(
+                resolveWorkspaceFile(Path.of("packages", "api-client", "src", "schema.d.ts")),
+                StandardCharsets.UTF_8);
+
+        assertThat(extractOperationBlock(schemaDts, "listHistory"))
+                .contains("PageResponseAttemptHistoryItem");
+        assertThat(extractOperationBlock(schemaDts, "getResult"))
+                .contains("AttemptResultResponse");
+        assertThat(extractOperationBlock(schemaDts, "getReview"))
+                .contains("AttemptReviewResponse");
+        extractOperationBlock(schemaDts, "downloadSolutionAsset");
+
+        for (String schemaName : List.of(
+                "AttemptResultResponse",
+                "AttemptReviewResponse",
+                "AttemptReviewQuestionBody")) {
+            String schemaBlock = extractComponentSchemaBlock(schemaDts, schemaName);
+            assertThat(schemaBlock)
+                    .doesNotContain(": never")
+                    .doesNotContain("Record<string, never>");
+        }
+        assertThat(extractComponentSchemaBlock(schemaDts, "AttemptHistoryItem"))
+                .contains("choices?:")
+                .doesNotContain(": never");
+    }
+
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {
         Pattern pattern =
                 Pattern.compile(

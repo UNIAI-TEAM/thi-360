@@ -49,15 +49,21 @@ class AttemptGradingFailureIT extends AbstractAttemptDsIT {
         UUID failingUser = createStudent("grading-fail-isolated");
         UUID healthyUser = createStudent("grading-healthy");
         GrantOrderResult.Line failingGrant = grant(failingUser, "DS-HSA-PART-MATH-MINI", 2, List.of());
-        GrantOrderResult.Line healthyGrant = grant(healthyUser, "DS-HSA-PART-MATH-MINI", 2, List.of());
+        GrantOrderResult.Line healthyGrant = grant(healthyUser, "DS-VACT-PART-LANGUAGE-MINI", 2, List.of());
 
         Attempt failingAttempt = startOpen(failingUser, failingGrant.entitlementId());
         Attempt healthyAttempt = startOpen(healthyUser, healthyGrant.entitlementId());
 
-        Set<UUID> failingQuestionIds = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(failingAttempt.getId())
+        Set<UUID> healthyQuestionIds = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(healthyAttempt.getId())
                 .stream()
                 .map(i -> i.getQuestionId())
                 .collect(Collectors.toSet());
+        Set<UUID> failingQuestionIds = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(failingAttempt.getId())
+                .stream()
+                .map(i -> i.getQuestionId())
+                .filter(id -> !healthyQuestionIds.contains(id))
+                .collect(Collectors.toSet());
+        assertThat(failingQuestionIds).isNotEmpty();
 
         UUID failSession = claimSession(failingUser, failingAttempt.getId());
         UUID healthySession = claimSession(healthyUser, healthyAttempt.getId());
