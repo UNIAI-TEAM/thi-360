@@ -136,9 +136,71 @@ public class AttemptPart {
         if (this.state != PartState.PENDING && this.state != PartState.GENERATING) {
             throw new IllegalStateException("Cannot open part from state " + this.state);
         }
+        if (this.state == PartState.GENERATING) {
+            this.generationTries = 0;
+            this.generationError = null;
+            this.generatingSince = null;
+            this.generationToken = null;
+        }
         this.state = PartState.OPEN;
         this.startedAt = Objects.requireNonNull(startedAt, "startedAt must not be null");
         this.deadlineAt = deadlineAt;
+    }
+
+    /** Transitions a pending after-start choice part to {@link PartState#AWAITING_CHOICE} (LT §6.1, L4). */
+    public void awaitChoice(Instant choiceDeadlineAt) {
+        if (this.state != PartState.PENDING) {
+            throw new IllegalStateException("Cannot await choice from state " + this.state);
+        }
+        this.state = PartState.AWAITING_CHOICE;
+        this.choiceDeadlineAt =
+                Objects.requireNonNull(choiceDeadlineAt, "choiceDeadlineAt must not be null");
+    }
+
+    /** Locks the student's part choice and starts background generation (LT §6.1, L8). */
+    public void confirmChoiceAndStartGenerating(
+            Map<String, Object> choice,
+            Instant confirmedAt,
+            UUID generationToken,
+            Instant generatingSince) {
+        if (this.state != PartState.AWAITING_CHOICE) {
+            throw new IllegalStateException("Cannot confirm choice from state " + this.state);
+        }
+        Objects.requireNonNull(choice, "choice must not be null");
+        this.choice = Map.copyOf(choice);
+        this.choiceConfirmedAt =
+                Objects.requireNonNull(confirmedAt, "confirmedAt must not be null");
+        this.state = PartState.GENERATING;
+        this.generationToken =
+                Objects.requireNonNull(generationToken, "generationToken must not be null");
+        this.generatingSince =
+                Objects.requireNonNull(generatingSince, "generatingSince must not be null");
+        this.generationError = null;
+    }
+
+    /** Records a generation failure and increments {@code generationTries} (LT §6.1). */
+    public void failGeneration(String error) {
+        if (this.state != PartState.GENERATING) {
+            throw new IllegalStateException("Cannot fail generation from state " + this.state);
+        }
+        this.state = PartState.GENERATION_FAILED;
+        this.generationTries = this.generationTries + 1;
+        this.generationError = error;
+        this.generatingSince = null;
+        this.generationToken = null;
+    }
+
+    /** Moves a failed part back to {@link PartState#GENERATING} for manual or worker retry (LT §6.1). */
+    public void startRetryGenerating(UUID generationToken, Instant generatingSince) {
+        if (this.state != PartState.GENERATION_FAILED) {
+            throw new IllegalStateException("Cannot start retry from state " + this.state);
+        }
+        this.state = PartState.GENERATING;
+        this.generationToken =
+                Objects.requireNonNull(generationToken, "generationToken must not be null");
+        this.generatingSince =
+                Objects.requireNonNull(generatingSince, "generatingSince must not be null");
+        this.generationError = null;
     }
 
     public void close(PartCloseReason reason, Instant closedAt) {

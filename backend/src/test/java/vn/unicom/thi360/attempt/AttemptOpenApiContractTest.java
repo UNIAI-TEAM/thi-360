@@ -135,23 +135,57 @@ class AttemptOpenApiContractTest {
                                 .asInt())
                 .isEqualTo(500);
 
-        JsonNode submitParams =
-                root.path("paths")
-                        .path("/api/v1/me/attempts/{attemptId}/submit")
-                        .path("post")
-                        .path("parameters");
-        assertThat(submitParams.isArray()).isTrue();
-        boolean foundRequiredIdempotencyKey = false;
-        for (JsonNode param : submitParams) {
-            if ("header".equals(param.path("in").asText())
-                    && "Idempotency-Key".equals(param.path("name").asText())) {
-                assertThat(param.path("required").asBoolean()).isTrue();
-                foundRequiredIdempotencyKey = true;
+        JsonNode confirmReq = schemas.path("ConfirmPartChoiceRequest");
+        assertThat(confirmReq.path("required")).extracting(JsonNode::asText).contains("optionCode");
+        assertThat(confirmReq.path("properties").path("optionCode").path("maxLength").asInt())
+                .isEqualTo(64);
+        assertThat(confirmReq.path("properties").path("subjectCodes").path("maxItems").asInt())
+                .isEqualTo(10);
+        assertThat(
+                        confirmReq
+                                .path("properties")
+                                .path("subjectCodes")
+                                .path("items")
+                                .path("maxLength")
+                                .asInt())
+                .isEqualTo(64);
+
+        JsonNode partChoiceRespProps = schemas.path("PartChoiceResponse").path("properties");
+        assertThat(partChoiceRespProps.path("choice").path("$ref").asText())
+                .isEqualTo("#/components/schemas/PartChoiceSummary");
+
+        JsonNode partChoiceSummary = schemas.path("PartChoiceSummary");
+        assertThat(partChoiceSummary.path("required"))
+                .extracting(JsonNode::asText)
+                .contains("optionCode");
+        JsonNode summaryProps = partChoiceSummary.path("properties");
+        assertThat(summaryProps.has("optionCode")).isTrue();
+        assertThat(summaryProps.has("subjectCodes")).isTrue();
+        assertThat(summaryProps.has("subjectCounts")).isTrue();
+        assertThat(summaryProps.has("seed")).isFalse();
+
+        for (String endpointPath :
+                List.of(
+                        "/api/v1/me/attempts/{attemptId}/submit",
+                        "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+                        "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry")) {
+            JsonNode params =
+                    root.path("paths").path(endpointPath).path("post").path("parameters");
+            assertThat(params.isArray()).as("parameters for %s", endpointPath).isTrue();
+            boolean foundRequiredIdempotencyKey = false;
+            for (JsonNode param : params) {
+                if ("header".equals(param.path("in").asText())
+                        && "Idempotency-Key".equals(param.path("name").asText())) {
+                    assertThat(param.path("required").asBoolean())
+                            .as("%s Idempotency-Key required", endpointPath)
+                            .isTrue();
+                    foundRequiredIdempotencyKey = true;
+                }
             }
+            assertThat(foundRequiredIdempotencyKey)
+                    .as("%s requires Idempotency-Key header", endpointPath)
+                    .isTrue();
         }
-        assertThat(foundRequiredIdempotencyKey)
-                .as("/api/v1/me/attempts/{attemptId}/submit requires Idempotency-Key header")
-                .isTrue();
     }
 
     @Test
@@ -182,10 +216,35 @@ class AttemptOpenApiContractTest {
                     .doesNotContain(": never");
         }
 
-        String submitOpBlock = extractOperationBlock(schemaDts, "submit");
-        assertThat(submitOpBlock)
-                .contains("\"Idempotency-Key\": string;")
-                .doesNotContain("\"Idempotency-Key\"?:");
+        for (String opId : List.of("submit", "confirmPartChoice", "retryPartGeneration")) {
+            String opBlock = extractOperationBlock(schemaDts, opId);
+            assertThat(opBlock)
+                    .as("%s requires Idempotency-Key header in schema.d.ts", opId)
+                    .contains("\"Idempotency-Key\": string;")
+                    .doesNotContain("\"Idempotency-Key\"?:");
+        }
+
+        String partChoiceResponseBlock = extractComponentSchemaBlock(schemaDts, "PartChoiceResponse");
+        assertThat(partChoiceResponseBlock)
+                .contains("choice?: components[\"schemas\"][\"PartChoiceSummary\"];")
+                .doesNotContain("Record<string, never>")
+                .doesNotContain(": never")
+                .doesNotContain("seed");
+
+        String partChoiceSummaryBlock = extractComponentSchemaBlock(schemaDts, "PartChoiceSummary");
+        assertThat(partChoiceSummaryBlock)
+                .contains("optionCode: string;")
+                .contains("subjectCodes?: string[];")
+                .contains("subjectCounts?:")
+                .doesNotContain("Record<string, never>")
+                .doesNotContain(": never")
+                .doesNotContain("seed");
+
+        String confirmChoiceBlock = extractComponentSchemaBlock(schemaDts, "ConfirmPartChoiceRequest");
+        assertThat(confirmChoiceBlock)
+                .contains("optionCode: string;")
+                .doesNotContain("optionCode?:")
+                .contains("subjectCodes?: string[];");
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {
