@@ -7,6 +7,7 @@ import {
   parseTimerSeconds,
   purchaseExamViaUi,
   readAttemptDraftsIdb,
+  resolveActiveDeadlineIso,
   startAttemptFromPrepare,
   waitForSavedStatus,
 } from "./helpers/attempt-fixtures";
@@ -19,7 +20,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     await ensureDsReady(browser);
   });
 
-  test("AC-14: page.clock mô phỏng +30 phút trên bài >35 phút, sau reload khớp deadline máy chủ +/-5s", async ({
+  test("AC-14: page.clock setSystemTime +30 phút không làm lệch đồng hồ neo serverNow, sau reload khớp deadline máy chủ +/-5s", async ({
     browser,
     context,
     page,
@@ -31,14 +32,17 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     const attemptId = await startAttemptFromPrepare(page, entitlementId);
 
     const initialState = await getAttemptStateApi(page.request, attemptId);
-    const serverDeadlineMs = Date.parse(initialState.activePartDeadlineAt ?? initialState.examDeadlineAt ?? "");
+    const activeDeadlineIso = resolveActiveDeadlineIso(initialState);
+    expect(activeDeadlineIso).toBeTruthy();
+    const serverDeadlineMs = Date.parse(activeDeadlineIso!);
     const initialServerSec = Math.max(
       0,
       Math.floor((serverDeadlineMs - Date.parse(initialState.serverNow)) / 1000),
     );
-    expect(initialServerSec).toBeGreaterThan(35 * 60);
+    expect(initialServerSec).toBeGreaterThan(200);
+    expect(initialServerSec).toBeLessThanOrEqual(310);
 
-    // Mở context riêng có clock cài trước lần điều hướng đầu tiên để đo chuẩn xác
+    // Mở context riêng có clock cài trước lần điều hướng đầu tiên để kiểm tra miễn nhiễm đổi giờ hệ thống
     await page.close();
     const clockContext = await browser.newContext();
     try {
@@ -56,24 +60,23 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
 
       const timer = clockPage.locator('header [role="timer"]');
       await expect(timer).toBeVisible({ timeout: 20_000 });
-      const beforeFastForwardSec = parseTimerSeconds(await timer.innerText());
+      const beforeClockChangeSec = parseTimerSeconds(await timer.innerText());
 
-      const jumpSeconds = 30 * 60;
-      await clockPage.clock.fastForward(jumpSeconds * 1000);
+      await clockPage.clock.setSystemTime(Date.now() + 30 * 60 * 1000);
       await clockPage.clock.runFor(1_500);
 
-      const afterFastForwardSec = parseTimerSeconds(await timer.innerText());
-      expect(afterFastForwardSec).toBeLessThanOrEqual(beforeFastForwardSec - jumpSeconds + 5);
-      expect(afterFastForwardSec).toBeGreaterThanOrEqual(beforeFastForwardSec - jumpSeconds - 5);
+      const afterClockChangeSec = parseTimerSeconds(await timer.innerText());
+      expect(beforeClockChangeSec - afterClockChangeSec).toBeGreaterThanOrEqual(0);
+      expect(beforeClockChangeSec - afterClockChangeSec).toBeLessThanOrEqual(15);
 
       await clockPage.clock.resume();
       await clockPage.reload();
       await expect(clockPage.locator('header [role="timer"]')).toBeVisible({ timeout: 20_000 });
 
       const syncedState = await getAttemptStateApi(clockPage.request, attemptId);
-      const syncedServerDeadline = Date.parse(
-        syncedState.activePartDeadlineAt ?? syncedState.examDeadlineAt ?? "",
-      );
+      const syncedDeadlineIso = resolveActiveDeadlineIso(syncedState);
+      expect(syncedDeadlineIso).toBeTruthy();
+      const syncedServerDeadline = Date.parse(syncedDeadlineIso!);
       const expectedRemainingAfterReload = Math.max(
         0,
         Math.floor((syncedServerDeadline - Date.parse(syncedState.serverNow)) / 1000),
@@ -179,7 +182,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     }
 
     const sentItemIds = putBodies.flatMap((payload) => {
-      const items = Array.isArray(payload.answers) ? (payload.answers as Array<{ itemId?: string }>) : [];
+      const items = Array.isArray(payload.changes) ? (payload.changes as Array<{ itemId?: string }>) : [];
       return items.map((entry) => entry.itemId).filter((id): id is string => Boolean(id));
     });
     expect(sentItemIds.length).toBeGreaterThanOrEqual(dirtyBeforeClose.length);
@@ -225,7 +228,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toHaveCount(0);
 
     blockSubmit = false;
-    const reconcileButton = dialog.getByRole("button", { name: /Đang kiểm tra trạng thái lượt/ });
+    const reconcileButton = dialog.getByRole("button", { name: "Kiểm tra trạng thái lượt" });
     await expect(reconcileButton).toBeVisible();
 
     const [stateResponse] = await Promise.all([

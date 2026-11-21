@@ -9,6 +9,7 @@ import {
   publishThptqgMath3PartExam,
   purchaseExamViaUi,
   resetTestClock,
+  resolveActiveDeadlineIso,
   startAttemptFromPrepare,
   waitForSavedStatus,
 } from "./helpers/attempt-fixtures";
@@ -21,7 +22,8 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await ensureDsReady(browser);
   });
 
-  test("AC-1: màn chuẩn bị DS-HSA-FULL-MINI -> bắt đầu lượt -> làm Phần 1 -> trạng thái Đã lưu", async ({
+  test("AC-1: màn chuẩn bị DS-HSA-FULL-MINI (và 404 khác tài khoản) -> bắt đầu lượt -> làm Phần 1 -> trạng thái Đã lưu", async ({
+    browser,
     context,
     page,
   }) => {
@@ -29,6 +31,21 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await context.addCookies(cookies);
 
     const { entitlementId } = await purchaseExamViaUi(page, "DS-HSA-FULL-MINI");
+
+    const { cookies: otherCookies } = await createVerifiedAccount("flow.ac1.other");
+    const otherContext = await browser.newContext();
+    try {
+      await otherContext.addCookies(otherCookies);
+      const otherPage = await otherContext.newPage();
+      await otherPage.goto(`${WEB_URL}/prepare/${encodeURIComponent(entitlementId)}`);
+      await expect(
+        otherPage.getByRole("heading", { name: "Không tìm thấy bài thi trong tài khoản đang đăng nhập" }),
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(otherPage.getByRole("button", { name: "Bắt đầu bài thi" })).toHaveCount(0);
+    } finally {
+      await otherContext.close();
+    }
+
     await page.goto(`${WEB_URL}/prepare/${encodeURIComponent(entitlementId)}`);
 
     await expect(page.locator("h1[data-exam-content]")).toBeVisible();
@@ -55,7 +72,7 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await answerCurrentUnit(page);
     await waitForSavedStatus(page);
 
-    await expect(page.locator('aside[aria-label="Danh sách câu hỏi"] button[data-completion="answered"]').first()).toBeVisible();
+    await expect(page.locator('aside[aria-label="Danh sách câu hỏi"] button[data-completion="complete"]').first()).toBeVisible();
   });
 
   test("AC-9: tuần tự 3 phần DS-HSA-FULL-MINI -> chọn 3 môn Khoa học Phần 3 -> Nộp bài -> Lượt thi đã đóng -> Xem kết quả", async ({
@@ -123,45 +140,39 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await expect(page).toHaveURL(/\/attempts\/[0-9a-f-]+\/result/i);
   });
 
-  test("AC-13: hết giờ theo TestClock -> máy chủ tự đóng phần/lượt, không cho sửa sau hạn", async ({
+  test("AC-13: hết giờ theo TestClock trên DS-BCA-FULL-MINI SHARED -> máy chủ tự đóng lượt, không cho sửa sau hạn", async ({
     context,
     page,
   }) => {
     const { cookies } = await createVerifiedAccount("flow.ac13");
     await context.addCookies(cookies);
 
-    const { entitlementId } = await purchaseExamViaUi(page, "DS-HSA-FULL-MINI");
-    const attemptId = await startAttemptFromPrepare(page, entitlementId);
+    const { entitlementId } = await purchaseExamViaUi(page, "DS-BCA-FULL-MINI");
+    const attemptId = await startAttemptFromPrepare(page, entitlementId, { preChoiceCode: "CA1" });
 
     try {
-      const state1 = await getAttemptStateApi(page.request, attemptId);
-      const clockNow1 = Date.parse(await getTestClockNow(page.request));
-      const p1Deadline = Date.parse(state1.activePartDeadlineAt ?? state1.examDeadlineAt ?? state1.serverNow);
-      const step1Seconds = Math.max(60, Math.ceil((p1Deadline - clockNow1) / 1000) + 60);
-      await advanceTestClock(page.request, step1Seconds);
+      await answerCurrentUnit(page);
+      await waitForSavedStatus(page);
 
-      await page.reload();
+      // Hoàn thành Phần 1 (ESSAY) để mở Phần 2 (SINGLE_CHOICE OPEN) trước khi cho hết giờ toàn bài
+      await page.getByRole("button", { name: "Hoàn thành phần" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Hoàn thành phần" }).click();
+
       await expect(page.locator('nav[aria-label="Các phần của bài thi"]')).toContainText("Đã hoàn thành", {
         timeout: 20_000,
       });
+      await expect(page.locator("main fieldset")).toBeVisible({ timeout: 20_000 });
 
-      // Qua phần 2 để sang chọn Phần 3 rồi qua hạn phần 3
-      await page.getByRole("button", { name: "Hoàn thành phần" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Hoàn thành phần" }).click();
-      await expect(page.getByRole("heading", { name: "Chọn phần thi thứ ba" })).toBeVisible({ timeout: 20_000 });
-
-      await page.locator('input[type="radio"][name="attempt-part-choice"][value="ANH"]').check();
-      await page.getByRole("button", { name: "Xác nhận chọn phần 3" }).click();
-      await expect(page.locator("main fieldset")).toBeVisible({ timeout: 45_000 });
-
-      const state3 = await getAttemptStateApi(page.request, attemptId);
-      const clockNow3 = Date.parse(await getTestClockNow(page.request));
-      const p3Deadline = Date.parse(state3.activePartDeadlineAt ?? state3.examDeadlineAt ?? state3.serverNow);
-      const step3Seconds = Math.max(60, Math.ceil((p3Deadline - clockNow3) / 1000) + 60);
-      await advanceTestClock(page.request, step3Seconds);
+      const state2 = await getAttemptStateApi(page.request, attemptId);
+      const activeDeadlineIso = resolveActiveDeadlineIso(state2);
+      expect(activeDeadlineIso).toBeTruthy();
+      const clockNow = Date.parse(await getTestClockNow(page.request));
+      const deadlineMs = Date.parse(activeDeadlineIso!);
+      const stepSeconds = Math.max(60, Math.ceil((deadlineMs - clockNow) / 1000) + 60);
+      await advanceTestClock(page.request, stepSeconds);
 
       await page.reload();
-      await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole("heading", { name: "Đã hết giờ làm bài" })).toBeVisible({ timeout: 20_000 });
       await expect(page.locator("main input:not([disabled]), main [contenteditable='true']")).toHaveCount(0);
 
       const viewResultLink = page.getByRole("link", { name: "Xem kết quả" });

@@ -29,6 +29,7 @@ let takeoverOwnerContext: BrowserContext | null = null;
 
 let hsaEntitlementId = "";
 let playerAttemptId = "";
+let submitAttemptId = "";
 let bcaEntitlementId = "";
 let partChoiceAttemptId = "";
 let takeoverAttemptId = "";
@@ -44,7 +45,9 @@ async function openCell(
 }
 
 async function ensureActivePlayerSession(page: Page, lang: MatrixLang): Promise<void> {
-  const readySubmit = page.getByRole("button", { name: lang === "en" ? "Submit exam" : "Nộp bài" });
+  const readyAction = page.getByRole("button", {
+    name: lang === "en" ? /^(Submit exam|Finish section)$/ : /^(Nộp bài|Hoàn thành phần)$/,
+  });
   const partChoiceHeading = page.getByRole("heading", {
     name: lang === "en" ? "Choose the third section" : "Chọn phần thi thứ ba",
   });
@@ -52,10 +55,10 @@ async function ensureActivePlayerSession(page: Page, lang: MatrixLang): Promise<
     name: lang === "en" ? "Continue here" : "Tiếp tục tại đây",
   });
 
-  await expect(readySubmit.or(partChoiceHeading).or(takeoverBtn)).toBeVisible({ timeout: 25_000 });
+  await expect(readyAction.or(partChoiceHeading).or(takeoverBtn)).toBeVisible({ timeout: 25_000 });
   if (await takeoverBtn.isVisible()) {
     await takeoverBtn.click();
-    await expect(readySubmit.or(partChoiceHeading)).toBeVisible({ timeout: 20_000 });
+    await expect(readyAction.or(partChoiceHeading)).toBeVisible({ timeout: 20_000 });
   }
 }
 
@@ -80,6 +83,9 @@ test.beforeAll(async () => {
     const purchased = await purchaseExamViaUi(p1, "DS-HSA-FULL-MINI");
     hsaEntitlementId = purchased.entitlementId;
     playerAttemptId = await startAttemptFromPrepare(p1, hsaEntitlementId);
+
+    const submitPurchased = await purchaseExamViaUi(p1, "DS-HSA-PART-MATH-MINI");
+    submitAttemptId = await startAttemptFromPrepare(p1, submitPurchased.entitlementId);
   } finally {
     await ctx1.close();
   }
@@ -184,6 +190,9 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
             .getByRole("button", { name: cell.lang === "en" ? "Keep working" : "Quay lại làm tiếp" })
             .click();
 
+          await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(submitAttemptId)}`);
+          await ensureActivePlayerSession(page, cell.lang);
+          await expect(page.locator("main fieldset")).toBeVisible({ timeout: 20_000 });
           await page.getByRole("button", { name: cell.lang === "en" ? "Submit exam" : "Nộp bài" }).click();
           await expect(page.getByRole("dialog")).toBeVisible();
           await expectMatrixClean(page, "submit-confirm-dialog", cell);

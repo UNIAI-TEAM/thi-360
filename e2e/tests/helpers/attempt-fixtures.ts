@@ -19,9 +19,12 @@ export interface MyExamItem {
 export interface AttemptStatePartSummary {
   partId: string;
   ord: number;
-  name: string;
+  partCode?: string;
+  partName?: string;
   state: string;
-  deadlineAt: string | null;
+  deadlineAt?: string | null;
+  closedAt?: string | null;
+  choiceDeadlineAt?: string | null;
 }
 
 export interface AttemptStateApiResponse {
@@ -30,12 +33,22 @@ export interface AttemptStateApiResponse {
   examCode: string;
   examName: string;
   state: string;
-  navigationMode?: string;
+  timing?: "PER_PART" | "SHARED";
+  navigationMode?: "SEQUENTIAL" | "FREE";
   serverNow: string;
-  examDeadlineAt: string | null;
-  activePartOrd: number | null;
-  activePartDeadlineAt?: string | null;
+  deadlineAt?: string | null;
   parts: AttemptStatePartSummary[];
+}
+
+export function resolveActiveDeadlineIso(state: AttemptStateApiResponse): string | null {
+  if (state.timing === "SHARED") {
+    return state.deadlineAt ?? null;
+  }
+  const parts = [...(state.parts ?? [])].sort((a, b) => a.ord - b.ord);
+  const activePart =
+    parts.find((part) => part.state === "OPEN") ??
+    parts.find((part) => part.state === "AWAITING_CHOICE" || part.state === "GENERATING");
+  return activePart?.deadlineAt ?? activePart?.choiceDeadlineAt ?? state.deadlineAt ?? null;
 }
 
 export interface AttemptDraftIdbSnapshot {
@@ -114,7 +127,7 @@ export async function purchaseExamViaUi(page: Page, examCodeOrProduct: string): 
   const { code, productCode } = resolveExamFixture(examCodeOrProduct);
   await page.goto(`${WEB_URL}/checkout/${encodeURIComponent(productCode)}`);
   const payButton = page.getByRole("button", { name: "Thanh toán qua VNPAY" });
-  const createFreeButton = page.getByRole("button", { name: "Nhận bài thi" });
+  const createFreeButton = page.getByRole("button", { name: /Nhận bài thi/ });
 
   await expect(payButton.or(createFreeButton)).toBeVisible({ timeout: 20_000 });
   if (await payButton.isVisible()) {
@@ -298,9 +311,14 @@ export async function startAttemptFromPrepare(
   const attemptId = extractAttemptId(page.url());
 
   const submitButton = page.getByRole("button", { name: "Nộp bài" });
+  const finishPartButton = page.getByRole("button", { name: "Hoàn thành phần" });
   const partChoiceHeading = page.getByRole("heading", { name: "Chọn phần thi thứ ba" });
-  const closedHeading = page.getByRole("heading", { name: "Lượt thi đã đóng" });
-  await expect(submitButton.or(partChoiceHeading).or(closedHeading)).toBeVisible({ timeout: 45_000 });
+  const closedHeading = page.getByRole("heading", {
+    name: /Lượt thi đã đóng|Đã hết giờ làm bài|Đã quá thời gian chọn phần 3/,
+  });
+  await expect(
+    submitButton.or(finishPartButton).or(partChoiceHeading).or(closedHeading),
+  ).toBeVisible({ timeout: 45_000 });
 
   return attemptId;
 }
