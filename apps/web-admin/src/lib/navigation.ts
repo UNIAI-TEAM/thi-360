@@ -163,9 +163,9 @@ export const NAVIGATION: readonly NavGroup[] = [
 
 /**
  * Mục đã có trong menu nhưng trang chưa có: ẩn ở sidebar và lối tắt ở Bảng điều khiển dù người dùng đủ quyền
- * (plan B8). Lane làm trang đó bỏ dòng của mình: Lượt thi (FA-4), Bộ đề (FB).
+ * (plan B8). Lane làm trang đó bỏ dòng của mình: Lượt thi (FA-4).
  */
-export const HIDDEN_NAV_ITEMS: readonly string[] = ["bundles", "attempts"];
+export const HIDDEN_NAV_ITEMS: readonly string[] = ["attempts"];
 
 export interface MockFlags {
   readonly grading: boolean;
