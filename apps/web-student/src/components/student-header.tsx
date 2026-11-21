@@ -27,13 +27,6 @@ const NAV_ITEMS = [
   { key: "orders", href: "/account/orders" },
 ] as const;
 
-type NavKey = (typeof NAV_ITEMS)[number]["key"];
-
-/** Mục trỏ tới trang chưa có thì ẩn ở đây: FS-6 bỏ "history" khi làm `/history`. */
-const HIDDEN_NAV_KEYS: readonly NavKey[] = ["history"];
-
-const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) => !HIDDEN_NAV_KEYS.includes(item.key));
-
 export function StudentHeader({ account }: { account: HeaderAccount }) {
   const common = useTranslations("common");
   const t = useTranslations("header");
@@ -59,7 +52,7 @@ export function StudentHeader({ account }: { account: HeaderAccount }) {
         {account.kind === "user" && account.session.access === "EXAM" && (
           <nav aria-label={t("nav.label")} className="order-last basis-full md:order-none md:basis-auto md:flex-1">
             <ul className="flex flex-wrap gap-1">
-              {VISIBLE_NAV_ITEMS.map((item) => {
+              {NAV_ITEMS.map((item) => {
                 const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
                 return (
                   <li key={item.key}>
