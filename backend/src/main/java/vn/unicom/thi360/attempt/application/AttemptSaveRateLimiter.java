@@ -16,7 +16,6 @@ import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +50,10 @@ public class AttemptSaveRateLimiter {
             @Value("${thi360.attempt.save-rate-limit.window:PT10S}") Duration window) {
         this.lettuceConnectionFactory = Objects.requireNonNull(lettuceConnectionFactory);
         this.limit = Math.max(1, limit);
-        this.window = Objects.requireNonNull(window);
+        this.window = Objects.requireNonNull(window, "window must not be null");
+        if (this.window.isZero() || this.window.isNegative()) {
+            throw new IllegalArgumentException("window must be positive");
+        }
     }
 
     public AttemptSaveRateLimiter(LettuceConnectionFactory lettuceConnectionFactory) {
@@ -87,8 +89,7 @@ public class AttemptSaveRateLimiter {
         if (probe.isConsumed()) {
             return;
         }
-        long retryAfterSeconds =
-                Math.max(1L, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1L);
+        long retryAfterSeconds = toRetryAfterSeconds(probe.getNanosToWaitForRefill());
         securityLog
                 .atWarn()
                 .addKeyValue("event", "rate_limit.attempt_save_exceeded")
@@ -98,22 +99,32 @@ public class AttemptSaveRateLimiter {
         throw new AttemptRateLimitedException(retryAfterSeconds);
     }
 
+    public static long toRetryAfterSeconds(long nanosToWaitForRefill) {
+        if (nanosToWaitForRefill <= 0L) {
+            return 1L;
+        }
+        return (nanosToWaitForRefill - 1L) / 1_000_000_000L + 1L;
+    }
+
     @PreDestroy
     public void close() {
         StatefulRedisConnection<String, byte[]> conn = this.connection;
         this.proxyManager = null;
         this.connection = null;
-        if (conn != null) {
-            conn.close();
-        }
+        closeQuietly(conn);
     }
 
     private ProxyManager<String> getOrCreateProxyManager() {
         ProxyManager<String> current = this.proxyManager;
-        if (current == null) {
+        StatefulRedisConnection<String, byte[]> currentConn = this.connection;
+        if (current == null || currentConn == null || !currentConn.isOpen()) {
             synchronized (this) {
                 current = this.proxyManager;
-                if (current == null) {
+                currentConn = this.connection;
+                if (current == null || currentConn == null || !currentConn.isOpen()) {
+                    closeQuietly(currentConn);
+                    this.proxyManager = null;
+                    this.connection = null;
                     Object nativeClient = lettuceConnectionFactory.getRequiredNativeClient();
                     if (!(nativeClient instanceof RedisClient redisClient)) {
                         throw new IllegalStateException(
@@ -123,18 +134,32 @@ public class AttemptSaveRateLimiter {
                     StatefulRedisConnection<String, byte[]> conn =
                             redisClient.connect(
                                     RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE));
-                    this.connection = conn;
-                    current =
-                            Bucket4jLettuce.casBasedBuilder(conn)
-                                    .expirationAfterWrite(
-                                            ExpirationAfterWriteStrategy
-                                                    .basedOnTimeForRefillingBucketUpToMax(
-                                                            window.multipliedBy(2)))
-                                    .build();
-                    this.proxyManager = current;
+                    try {
+                        current =
+                                Bucket4jLettuce.casBasedBuilder(conn)
+                                        .expirationAfterWrite(
+                                                ExpirationAfterWriteStrategy
+                                                        .basedOnTimeForRefillingBucketUpToMax(
+                                                                window.multipliedBy(2)))
+                                        .build();
+                        this.connection = conn;
+                        this.proxyManager = current;
+                    } catch (RuntimeException ex) {
+                        closeQuietly(conn);
+                        throw ex;
+                    }
                 }
             }
         }
         return current;
+    }
+
+    private static void closeQuietly(StatefulRedisConnection<String, byte[]> conn) {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (RuntimeException ignored) {
+            }
+        }
     }
 }

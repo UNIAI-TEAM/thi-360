@@ -457,6 +457,9 @@ class ForbiddenKeysAssertTests {
         assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"answer\":{\"nested\":{\"pairs\":{\"l1\":\"r1\"}}}}"))
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining("$.answer.nested.pairs");
+        assertThatThrownBy(() -> ForbiddenKeysAssert.assertNoAttemptForbiddenKeys("{\"answer\":{\"pairs\":[{\"leftId\":\"l1\"}]}}"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("$.answer.pairs");
     }
 
     /** Toàn bộ thông báo, nguyên nhân và stack trace như JUnit/CI sẽ in. */

@@ -187,6 +187,16 @@ class AnswerValueValidatorTest {
                                         new AnswerValue.ShortAnswer(multiByteOver))
                                 .valid())
                 .isFalse();
+
+        // NUL byte rejected (R1-11)
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.SHORT_ANSWER,
+                                        snap,
+                                        new AnswerValue.ShortAnswer("abc\u0000def"))
+                                .valid())
+                .isFalse();
     }
 
     @Test
@@ -226,6 +236,26 @@ class AnswerValueValidatorTest {
                                         new AnswerValue.Cloze(Map.of("b9", "x")))
                                 .valid())
                 .isFalse();
+        // NUL byte in Cloze blank value rejected (R1-11)
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.CLOZE,
+                                        clozeSnap,
+                                        new AnswerValue.Cloze(Map.of("b1", "a\u0000b")))
+                                .valid())
+                .isFalse();
+
+        // Cloze serialized JSON 64 KB boundary (R1-21)
+        int clozeOverhead = objectMapper.writeValueAsBytes(new AnswerValue.Cloze(Map.of("b1", ""))).length;
+        AnswerValue.Cloze exactCloze64Kb =
+                new AnswerValue.Cloze(Map.of("b1", "x".repeat(AnswerValueValidator.MAX_ANSWER_BYTES - clozeOverhead)));
+        AnswerValue.Cloze overCloze64Kb =
+                new AnswerValue.Cloze(Map.of("b1", "x".repeat(AnswerValueValidator.MAX_ANSWER_BYTES - clozeOverhead + 1)));
+        assertThat(objectMapper.writeValueAsBytes(exactCloze64Kb)).hasSize(AnswerValueValidator.MAX_ANSWER_BYTES);
+        assertThat(objectMapper.writeValueAsBytes(overCloze64Kb)).hasSize(AnswerValueValidator.MAX_ANSWER_BYTES + 1);
+        assertThat(validator.validate(QuestionType.CLOZE, clozeSnap, exactCloze64Kb).valid()).isTrue();
+        assertThat(validator.validate(QuestionType.CLOZE, clozeSnap, overCloze64Kb).valid()).isFalse();
 
         JsonNode tfSnap =
                 objectMapper.readTree(
@@ -306,6 +336,41 @@ class AnswerValueValidatorTest {
                                         new AnswerValue.Matching(Map.of("l1", "r9")))
                                 .valid())
                 .isFalse();
+        // Duplicate rightId rejected when reuseRight is omitted or false, allowed when reuseRight=true (R1-12)
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.MATCHING,
+                                        matchSnap,
+                                        new AnswerValue.Matching(Map.of("l1", "r1", "l2", "r1")))
+                                .valid())
+                .isFalse();
+        JsonNode matchNoReuseSnap =
+                objectMapper.readTree(
+                        """
+                        {"body":{"type":"MATCHING","reuseRight":false,"left":[{"id":"l1"},{"id":"l2"}],"right":[{"id":"r1"},{"id":"r2"}]}}
+                        """);
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.MATCHING,
+                                        matchNoReuseSnap,
+                                        new AnswerValue.Matching(Map.of("l1", "r1", "l2", "r1")))
+                                .valid())
+                .isFalse();
+        JsonNode matchReuseSnap =
+                objectMapper.readTree(
+                        """
+                        {"body":{"type":"MATCHING","reuseRight":true,"left":[{"id":"l1"},{"id":"l2"}],"right":[{"id":"r1"},{"id":"r2"}]}}
+                        """);
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.MATCHING,
+                                        matchReuseSnap,
+                                        new AnswerValue.Matching(Map.of("l1", "r1", "l2", "r1")))
+                                .valid())
+                .isTrue();
 
         // QUESTION_SET is NEVER answerable (even with null)
         JsonNode setSnap = objectMapper.readTree("""
@@ -378,5 +443,43 @@ class AnswerValueValidatorTest {
                                         new AnswerValue.Essay(over64Kb, 1))
                                 .valid())
                 .isFalse();
+
+        // Post-sanitization Essay > 64 KB rejected (R1-5/R1-6/R1-7)
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.ESSAY,
+                                        essaySnap,
+                                        new AnswerValue.Essay("&".repeat(65_536), 1))
+                                .valid())
+                .isFalse();
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.ESSAY,
+                                        essaySnap,
+                                        new AnswerValue.Essay("<p>".repeat(21_845), 1))
+                                .valid())
+                .isFalse();
+
+        // NUL byte rejected (R1-11)
+        assertThat(
+                        validator
+                                .validate(
+                                        QuestionType.ESSAY,
+                                        essaySnap,
+                                        new AnswerValue.Essay("<p>hi\u0000there</p>", 2))
+                                .valid())
+                .isFalse();
+
+        // Inline math span replaced with space so adjacent words do not merge (R1-19)
+        ValidationResult mathAdjacent =
+                validator.validate(
+                        QuestionType.ESSAY,
+                        essaySnap,
+                        new AnswerValue.Essay(
+                                "<p>giá trị<span class=\"math-inline\">x</span>bằng 5</p>", 0));
+        assertThat(mathAdjacent.valid()).isTrue();
+        assertThat(((AnswerValue.Essay) mathAdjacent.normalized()).wordCount()).isEqualTo(4);
     }
 }

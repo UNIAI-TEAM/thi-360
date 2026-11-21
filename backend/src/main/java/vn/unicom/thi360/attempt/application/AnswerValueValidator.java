@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.TextNode;
 import org.springframework.stereotype.Component;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.questionbank.spi.HtmlContentSanitizer;
@@ -103,7 +104,9 @@ public class AnswerValueValidator {
             return ValidationResult.invalid();
         }
         String text = sa.text();
-        if (text != null && text.getBytes(StandardCharsets.UTF_8).length > MAX_ANSWER_BYTES) {
+        if (text != null
+                && (text.indexOf('\u0000') >= 0
+                        || text.getBytes(StandardCharsets.UTF_8).length > MAX_ANSWER_BYTES)) {
             return ValidationResult.invalid();
         }
         return ValidationResult.valid(sa);
@@ -118,7 +121,10 @@ public class AnswerValueValidator {
         }
         Set<String> validBlankIds = collectIds(body, "blanks");
         for (Map.Entry<String, String> entry : cloze.blanks().entrySet()) {
-            if (entry.getKey() == null || !validBlankIds.contains(entry.getKey())) {
+            String value = entry.getValue();
+            if (entry.getKey() == null
+                    || !validBlankIds.contains(entry.getKey())
+                    || (value != null && value.indexOf('\u0000') >= 0)) {
                 return ValidationResult.invalid();
             }
         }
@@ -148,16 +154,23 @@ public class AnswerValueValidator {
         if (matching.pairs().isEmpty()) {
             return ValidationResult.valid(matching);
         }
+        boolean reuseRight = body != null && body.path("reuseRight").asBoolean(false);
         Set<String> validLeftIds = collectIds(body, "left");
         Set<String> validRightIds = collectIds(body, "right");
+        Set<String> usedRight = new HashSet<>();
         for (Map.Entry<String, String> entry : matching.pairs().entrySet()) {
             String leftId = entry.getKey();
             String rightId = entry.getValue();
             if (leftId == null || !validLeftIds.contains(leftId)) {
                 return ValidationResult.invalid();
             }
-            if (rightId != null && !validRightIds.contains(rightId)) {
-                return ValidationResult.invalid();
+            if (rightId != null) {
+                if (!validRightIds.contains(rightId)) {
+                    return ValidationResult.invalid();
+                }
+                if (!reuseRight && !usedRight.add(rightId)) {
+                    return ValidationResult.invalid();
+                }
             }
         }
         return ValidationResult.valid(matching);
@@ -171,12 +184,16 @@ public class AnswerValueValidator {
         if (rawHtml == null) {
             return ValidationResult.valid(new AnswerValue.Essay("", 0));
         }
-        if (rawHtml.getBytes(StandardCharsets.UTF_8).length > MAX_ANSWER_BYTES) {
+        if (rawHtml.indexOf('\u0000') >= 0
+                || rawHtml.getBytes(StandardCharsets.UTF_8).length > MAX_ANSWER_BYTES) {
             return ValidationResult.invalid();
         }
         HtmlContentSanitizer.Result sanitized =
                 htmlContentSanitizer.sanitize(rawHtml, HtmlContentSanitizer.Options.textOnly());
         String cleanHtml = sanitized.html() == null ? "" : sanitized.html();
+        if (cleanHtml.getBytes(StandardCharsets.UTF_8).length > MAX_ANSWER_BYTES) {
+            return ValidationResult.invalid();
+        }
         int wordCount = countWords(cleanHtml);
         return ValidationResult.valid(new AnswerValue.Essay(cleanHtml, wordCount));
     }
@@ -187,7 +204,8 @@ public class AnswerValueValidator {
             return 0;
         }
         Document doc = Jsoup.parseBodyFragment(sanitizedHtml);
-        doc.select("span.math-inline, span.math-block").remove();
+        doc.select("span.math-inline, span.math-block")
+                .forEach(el -> el.replaceWith(new TextNode(" ")));
         String plain = doc.body().text();
         if (plain.isEmpty()) {
             return 0;

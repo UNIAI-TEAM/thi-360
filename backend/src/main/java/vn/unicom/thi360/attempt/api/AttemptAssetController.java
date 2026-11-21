@@ -1,6 +1,8 @@
 package vn.unicom.thi360.attempt.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +35,13 @@ public class AttemptAssetController {
 
     @GetMapping("/{attemptId}/assets/{assetId}")
     @Operation(summary = "Tải tài nguyên câu hỏi (ảnh, tệp đính kèm) thuộc lượt thi của thí sinh")
-    @ApiResponse(responseCode = "200", description = "Nội dung tệp tài nguyên")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Nội dung tệp tài nguyên",
+            content =
+                    @Content(
+                            mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                            schema = @Schema(type = "string", format = "binary")))
     public ResponseEntity<Resource> downloadAttemptAsset(
             @PathVariable UUID attemptId, @PathVariable UUID assetId) {
         AssetContent asset = attemptAssetService.loadAttemptAsset(attemptId, assetId);

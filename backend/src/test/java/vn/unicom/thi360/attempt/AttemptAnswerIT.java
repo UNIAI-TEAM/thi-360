@@ -21,8 +21,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.attempt.api.AnswerChange;
 import vn.unicom.thi360.attempt.api.AttemptPosition;
 import vn.unicom.thi360.attempt.api.FlagChange;
@@ -34,6 +37,8 @@ import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.EndReason;
+import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.api.BulkQuestionStatusRequest;
@@ -50,6 +55,8 @@ import vn.unicom.thi360.support.ForbiddenKeysAssert;
  * ownership/access, and save concurrency (AC-1..AC-10, AC-17, AC-19).
  */
 class AttemptAnswerIT extends AbstractAttemptDsIT {
+
+    @Autowired private PlatformTransactionManager transactionManager;
 
     private record EightTypeBundle(
             List<UUID> createdQuestionIds,
@@ -273,7 +280,9 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
         Attempt attempt = startAndAwaitOpen(userId, "idem", line.entitlementId(), null);
         UUID sid = claimSession(userId, attempt.getId());
         AttemptPart part0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).getFirst();
-        AttemptItem item = attemptItemRepository.findByPartIdOrderByOrdAsc(part0.getId()).getFirst();
+        AttemptItem item = singleChoiceItems(part0.getId()).getFirst();
+        String opt0 = item.getOptionOrder().get(0);
+        String opt1 = item.getOptionOrder().get(1);
 
         MvcResult first =
                 performPutAnswers(
@@ -283,7 +292,7 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                         new SaveAnswersRequest(
                                 List.of(
                                         new AnswerChange(
-                                                item.getId(), 4L, new AnswerValue.SingleChoice("b"))),
+                                                item.getId(), 4L, new AnswerValue.SingleChoice(opt1))),
                                 null,
                                 null));
         assertThat(first.getResponse().getStatus()).isEqualTo(200);
@@ -300,14 +309,14 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                         new SaveAnswersRequest(
                                 List.of(
                                         new AnswerChange(
-                                                item.getId(), 4L, new AnswerValue.SingleChoice("a"))),
+                                                item.getId(), 4L, new AnswerValue.SingleChoice(opt0))),
                                 null,
                                 null));
         assertThat(resend.getResponse().getStatus()).isEqualTo(200);
         assertThat(json(resend).path("results").get(0).path("status").asText()).isEqualTo("SAVED");
 
         AttemptItem afterResend = attemptItemRepository.findById(item.getId()).orElseThrow();
-        assertThat(((AnswerValue.SingleChoice) afterResend.getAnswer()).optionId()).isEqualTo("b");
+        assertThat(((AnswerValue.SingleChoice) afterResend.getAnswer()).optionId()).isEqualTo(opt1);
         assertThat(afterResend.getAnswerReceivedAt()).isEqualTo(originalReceivedAt);
     }
 
@@ -527,7 +536,8 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                                             new AnswerChange(bundle.shortAnswer().getId(), 1L, new AnswerValue.ShortAnswer(exact64Kb)),
                                             new AnswerChange(bundle.shortAnswer().getId(), 2L, new AnswerValue.ShortAnswer(over64Kb)),
                                             new AnswerChange(bundle.essay().getId(), 2L, new AnswerValue.Essay(exact64Kb, 1)),
-                                            new AnswerChange(bundle.essay().getId(), 3L, new AnswerValue.Essay(over64Kb, 1))),
+                                            new AnswerChange(bundle.essay().getId(), 3L, new AnswerValue.Essay(over64Kb, 1)),
+                                            new AnswerChange(bundle.essay().getId(), 4L, new AnswerValue.Essay("&".repeat(65_536), 1))),
                                     null,
                                     null));
             assertThat(boundaryRes.getResponse().getStatus()).isEqualTo(200);
@@ -538,6 +548,32 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
             assertThat(bResults.get(2).path("status").asText()).isEqualTo("SAVED");
             assertThat(bResults.get(3).path("status").asText()).isEqualTo("REJECTED");
             assertThat(bResults.get(3).path("reason").asText()).isEqualTo("INVALID_ANSWER");
+            assertThat(bResults.get(4).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(bResults.get(4).path("reason").asText()).isEqualTo("INVALID_ANSWER");
+
+            // NUL byte rejected per-change while valid sibling change still saves (R1-11)
+            MvcResult nulRes =
+                    performPutAnswers(
+                            userId,
+                            attempt.getId(),
+                            sid,
+                            new SaveAnswersRequest(
+                                    List.of(
+                                            new AnswerChange(bundle.shortAnswer().getId(), 10L, new AnswerValue.ShortAnswer("a\u0000b")),
+                                            new AnswerChange(bundle.cloze().getId(), 10L, new AnswerValue.Cloze(Map.of("b1", "x\u0000y"))),
+                                            new AnswerChange(bundle.essay().getId(), 10L, new AnswerValue.Essay("<p>a\u0000b</p>", 1)),
+                                            new AnswerChange(bundle.singleChoice().getId(), 10L, new AnswerValue.SingleChoice("o1"))),
+                                    null,
+                                    null));
+            assertThat(nulRes.getResponse().getStatus()).isEqualTo(200);
+            JsonNode nulResults = json(nulRes).path("results");
+            assertThat(nulResults.get(0).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(nulResults.get(0).path("reason").asText()).isEqualTo("INVALID_ANSWER");
+            assertThat(nulResults.get(1).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(nulResults.get(1).path("reason").asText()).isEqualTo("INVALID_ANSWER");
+            assertThat(nulResults.get(2).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(nulResults.get(2).path("reason").asText()).isEqualTo("INVALID_ANSWER");
+            assertThat(nulResults.get(3).path("status").asText()).isEqualTo("SAVED");
         } finally {
             AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
         }
@@ -714,6 +750,65 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
             assertThat(reloaded.getLastPosition()).containsEntry("partId", part0.getId().toString());
             assertThat(reloaded.getLastPosition()).containsEntry("itemId", bundle.matching().getId().toString());
 
+            // Unopened (PENDING) part or partial mismatched {openPartId, foreignItemId} leaves lastPosition completely intact (R1-13/R1-14)
+            AttemptPart pendingPart = parts.get(1);
+            AttemptItem pendingItem = attemptItemRepository.findByPartIdOrderByOrdAsc(pendingPart.getId()).getFirst();
+            for (AttemptPosition badPos :
+                    List.of(
+                            new AttemptPosition(pendingPart.getId(), null),
+                            new AttemptPosition(pendingPart.getId(), pendingItem.getId()),
+                            new AttemptPosition(part0.getId(), otherItem.getId()),
+                            new AttemptPosition(part0.getId(), pendingItem.getId()))) {
+                assertThat(
+                                performPutAnswers(
+                                                userId,
+                                                attempt.getId(),
+                                                sid,
+                                                new SaveAnswersRequest(List.of(), List.of(), badPos))
+                                        .getResponse()
+                                        .getStatus())
+                        .isEqualTo(200);
+                Attempt checkPos = attemptRepository.findById(attempt.getId()).orElseThrow();
+                assertThat(checkPos.getLastPosition())
+                        .containsEntry("partId", part0.getId().toString())
+                        .containsEntry("itemId", bundle.matching().getId().toString());
+            }
+
+            // itemId-only populates partId alongside itemId (R1-13/R1-14)
+            assertThat(
+                            performPutAnswers(
+                                            userId,
+                                            attempt.getId(),
+                                            sid,
+                                            new SaveAnswersRequest(
+                                                    List.of(),
+                                                    List.of(),
+                                                    new AttemptPosition(null, bundle.singleChoice().getId())))
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(200);
+            Attempt itemOnlyPos = attemptRepository.findById(attempt.getId()).orElseThrow();
+            assertThat(itemOnlyPos.getLastPosition())
+                    .containsEntry("partId", part0.getId().toString())
+                    .containsEntry("itemId", bundle.singleChoice().getId().toString());
+
+            // Missing or null `flagged` returns 400 VALIDATION_FAILED (R1-15/R1-16)
+            for (String badFlagsJson :
+                    List.of(
+                            "{\"flags\":[{\"itemId\":\"" + bundle.singleChoice().getId() + "\"}]}",
+                            "{\"flags\":[{\"itemId\":\"" + bundle.singleChoice().getId() + "\",\"flagged\":null}]}")) {
+                MvcResult missingFlaggedRes =
+                        mockMvc.perform(
+                                        put("/api/v1/me/attempts/{attemptId}/answers", attempt.getId())
+                                                .with(AttemptTestFixtures.asExamUser(userId, "learner"))
+                                                .header("X-Attempt-Session", sid.toString())
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(badFlagsJson))
+                                .andReturn();
+                assertThat(missingFlaggedRes.getResponse().getStatus()).isEqualTo(400);
+                assertThat(json(missingFlaggedRes).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+            }
+
             // Unflag works
             performPutAnswers(
                     userId,
@@ -721,6 +816,26 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                     sid,
                     new SaveAnswersRequest(null, List.of(new FlagChange(bundle.singleChoice().getId(), false)), null));
             assertThat(attemptItemRepository.findById(bundle.singleChoice().getId()).orElseThrow().isFlagged()).isFalse();
+
+            // Closed part position is ignored after finishing Part 0 (R1-13/R1-14)
+            assertThat(performFinishPart(userId, attempt.getId(), part0.getId(), sid, null)
+                    .getResponse().getStatus()).isEqualTo(200);
+            assertThat(
+                            performPutAnswers(
+                                            userId,
+                                            attempt.getId(),
+                                            sid,
+                                            new SaveAnswersRequest(
+                                                    List.of(),
+                                                    List.of(),
+                                                    new AttemptPosition(part0.getId(), bundle.matching().getId())))
+                                    .getResponse()
+                                    .getStatus())
+                    .isEqualTo(200);
+            Attempt afterClosedPos = attemptRepository.findById(attempt.getId()).orElseThrow();
+            assertThat(afterClosedPos.getLastPosition())
+                    .containsEntry("partId", part0.getId().toString())
+                    .containsEntry("itemId", bundle.singleChoice().getId().toString());
         } finally {
             AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
         }
@@ -850,51 +965,283 @@ class AttemptAnswerIT extends AbstractAttemptDsIT {
                 assertThat(((AnswerValue.SingleChoice) after.getAnswer()).optionId()).isEqualTo(item1Opt1);
             }
 
-            // 2. PUT /answers racing with POST /finish -> no answer ever written with answer_received_at > closed_at
-            UUID userId2 = createStudent("ans-race-fin");
+            // 2. PUT /answers racing with POST /finish -> deterministically prove BOTH interleavings (R1-20)
+            // 2a. PUT-first interleaving: PUT holds attempt lock first while finish waits on FOR UPDATE -> SAVED with answerReceivedAt <= closedAt
+            UUID userId2 = createStudent("ans-race-fin-putfirst");
             GrantOrderResult.Line line2 = grant(userId2, "DS-HSA-FULL-MINI", 2, List.of());
-            Attempt a2 = startAndAwaitOpen(userId2, "race-fin", line2.entitlementId(), null);
+            Attempt a2 = startAndAwaitOpen(userId2, "race-fin-a", line2.entitlementId(), null);
             UUID sid2 = claimSession(userId2, a2.getId());
             List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());
-            AttemptPart p0 = a2Parts.get(0);
-            AttemptItem p0Item = singleChoiceItems(p0.getId()).getFirst();
-            String p0Opt0 = p0Item.getOptionOrder().get(0);
+            AttemptPart p0A = a2Parts.get(0);
+            AttemptItem p0ItemA = singleChoiceItems(p0A.getId()).getFirst();
+            String p0OptA = p0ItemA.getOptionOrder().get(0);
 
-            CountDownLatch ready2 = new CountDownLatch(2);
-            CountDownLatch go2 = new CountDownLatch(1);
-            Future<MvcResult> putFuture = pool.submit(() -> {
-                ready2.countDown();
-                assertThat(go2.await(10, TimeUnit.SECONDS)).isTrue();
-                return performPutAnswers(
-                        userId2, a2.getId(), sid2,
-                        new SaveAnswersRequest(List.of(new AnswerChange(p0Item.getId(), 1L, new AnswerValue.SingleChoice(p0Opt0))), null, null));
-            });
-            Future<MvcResult> finFuture = pool.submit(() -> {
-                ready2.countDown();
-                assertThat(go2.await(10, TimeUnit.SECONDS)).isTrue();
-                mutableClock.advance(Duration.ofSeconds(1));
-                return performFinishPart(userId2, a2.getId(), p0.getId(), sid2, null);
-            });
-            assertThat(ready2.await(10, TimeUnit.SECONDS)).isTrue();
-            go2.countDown();
+            CountDownLatch partLockedA = new CountDownLatch(1);
+            CountDownLatch releasePartA = new CountDownLatch(1);
+            Future<Void> partHolderA = holdPartRowLock(pool, p0A.getId(), partLockedA, releasePartA);
+            assertThat(partLockedA.await(15, TimeUnit.SECONDS)).isTrue();
 
-            MvcResult putRes = putFuture.get(15, TimeUnit.SECONDS);
-            MvcResult finRes = finFuture.get(15, TimeUnit.SECONDS);
-            assertThat(putRes.getResponse().getStatus()).isEqualTo(200);
-            assertThat(finRes.getResponse().getStatus()).isEqualTo(200);
+            Future<MvcResult> putFutureA =
+                    pool.submit(
+                            () ->
+                                    performPutAnswers(
+                                            userId2,
+                                            a2.getId(),
+                                            sid2,
+                                            new SaveAnswersRequest(
+                                                    List.of(
+                                                            new AnswerChange(
+                                                                    p0ItemA.getId(),
+                                                                    1L,
+                                                                    new AnswerValue.SingleChoice(p0OptA))),
+                                                    null,
+                                                    null)));
+            awaitLockWait("attempt.attempt_part");
 
-            AttemptPart closedP0 = attemptPartRepository.findById(p0.getId()).orElseThrow();
-            AttemptItem p0ItemAfter = attemptItemRepository.findById(p0Item.getId()).orElseThrow();
-            assertThat(closedP0.getClosedAt()).isNotNull();
-            if (p0ItemAfter.getAnswerReceivedAt() != null) {
-                assertThat(p0ItemAfter.getAnswerReceivedAt()).isBeforeOrEqualTo(closedP0.getClosedAt());
-            } else {
-                assertThat(json(putRes).path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
-                assertThat(json(putRes).path("results").get(0).path("reason").asText()).isEqualTo("PART_CLOSED");
-            }
+            Future<MvcResult> finFutureA =
+                    pool.submit(
+                            () -> performFinishPart(userId2, a2.getId(), p0A.getId(), sid2, null));
+            awaitLockWait("attempt.attempt");
+
+            mutableClock.advance(Duration.ofSeconds(1));
+            releasePartA.countDown();
+            partHolderA.get(15, TimeUnit.SECONDS);
+
+            MvcResult putResA = putFutureA.get(15, TimeUnit.SECONDS);
+            MvcResult finResA = finFutureA.get(15, TimeUnit.SECONDS);
+            assertThat(putResA.getResponse().getStatus()).isEqualTo(200);
+            assertThat(finResA.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json(putResA).path("results").get(0).path("status").asText()).isEqualTo("SAVED");
+
+            AttemptPart closedP0A = attemptPartRepository.findById(p0A.getId()).orElseThrow();
+            AttemptItem p0ItemAfterA = attemptItemRepository.findById(p0ItemA.getId()).orElseThrow();
+            assertThat(closedP0A.getClosedAt()).isNotNull();
+            assertThat(p0ItemAfterA.getAnswerReceivedAt()).isNotNull();
+            assertThat(p0ItemAfterA.getAnswerReceivedAt()).isBeforeOrEqualTo(closedP0A.getClosedAt());
+
+            // 2b. Finish-first interleaving: finish holds attempt lock first while PUT waits on FOR UPDATE -> PUT rejected PART_CLOSED
+            mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+            UUID userId3 = createStudent("ans-race-fin-finfirst");
+            GrantOrderResult.Line line3 = grant(userId3, "DS-HSA-FULL-MINI", 2, List.of());
+            Attempt a3 = startAndAwaitOpen(userId3, "race-fin-b", line3.entitlementId(), null);
+            UUID sid3 = claimSession(userId3, a3.getId());
+            List<AttemptPart> a3Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId());
+            AttemptPart p0B = a3Parts.get(0);
+            AttemptItem p0ItemB = singleChoiceItems(p0B.getId()).getFirst();
+            String p0OptB = p0ItemB.getOptionOrder().get(0);
+
+            CountDownLatch partLockedB = new CountDownLatch(1);
+            CountDownLatch releasePartB = new CountDownLatch(1);
+            Future<Void> partHolderB = holdPartRowLock(pool, p0B.getId(), partLockedB, releasePartB);
+            assertThat(partLockedB.await(15, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> finFutureB =
+                    pool.submit(
+                            () -> performFinishPart(userId3, a3.getId(), p0B.getId(), sid3, null));
+            awaitLockWait("attempt.attempt_part");
+
+            Future<MvcResult> putFutureB =
+                    pool.submit(
+                            () ->
+                                    performPutAnswers(
+                                            userId3,
+                                            a3.getId(),
+                                            sid3,
+                                            new SaveAnswersRequest(
+                                                    List.of(
+                                                            new AnswerChange(
+                                                                    p0ItemB.getId(),
+                                                                    1L,
+                                                                    new AnswerValue.SingleChoice(p0OptB))),
+                                                    null,
+                                                    null)));
+            awaitLockWait("attempt.attempt");
+
+            mutableClock.advance(Duration.ofSeconds(1));
+            releasePartB.countDown();
+            partHolderB.get(15, TimeUnit.SECONDS);
+
+            MvcResult finResB = finFutureB.get(15, TimeUnit.SECONDS);
+            MvcResult putResB = putFutureB.get(15, TimeUnit.SECONDS);
+            assertThat(finResB.getResponse().getStatus()).isEqualTo(200);
+            assertThat(putResB.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json(putResB).path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(json(putResB).path("results").get(0).path("reason").asText()).isEqualTo("PART_CLOSED");
+            AttemptItem p0ItemAfterB = attemptItemRepository.findById(p0ItemB.getId()).orElseThrow();
+            assertThat(p0ItemAfterB.getAnswer()).isNull();
+            assertThat(p0ItemAfterB.getAnswerReceivedAt()).isNull();
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    void closedExpiredStartingAbortedAndOutOfScopeFlagsAndParentScope() throws Exception {
+        UUID userId = createStudent("ans-edge-guards");
+
+        // 1. Expired SHARED attempt at exact attempt.deadlineAt -> REJECTED TIME_UP, flagged/lastPosition unchanged (R1-22)
+        GrantOrderResult.Line sharedLine = grant(userId, "DS-VACT-PART-LANGUAGE-MINI", 2, List.of());
+        Attempt shared = startAndAwaitOpen(userId, "ans-shared-dl", sharedLine.entitlementId(), null);
+        UUID sharedSid = claimSession(userId, shared.getId());
+        AttemptPart sharedP0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(shared.getId()).getFirst();
+        AttemptItem sharedItem = singleChoiceItems(sharedP0.getId()).getFirst();
+        String sharedOpt = sharedItem.getOptionOrder().getFirst();
+
+        mutableClock.setAt(shared.getDeadlineAt());
+        MvcResult sharedExpiredPut =
+                performPutAnswers(
+                        userId,
+                        shared.getId(),
+                        sharedSid,
+                        new SaveAnswersRequest(
+                                List.of(new AnswerChange(sharedItem.getId(), 1L, new AnswerValue.SingleChoice(sharedOpt))),
+                                List.of(new FlagChange(sharedItem.getId(), true)),
+                                new AttemptPosition(sharedP0.getId(), sharedItem.getId())));
+        assertThat(sharedExpiredPut.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(sharedExpiredPut).path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
+        assertThat(json(sharedExpiredPut).path("results").get(0).path("reason").asText()).isEqualTo("TIME_UP");
+        Attempt sharedReloaded = attemptRepository.findById(shared.getId()).orElseThrow();
+        assertThat(sharedReloaded.getState()).isEqualTo(AttemptState.GRADING);
+        assertThat(sharedReloaded.getEndReason()).isEqualTo(EndReason.TIME_UP);
+        assertThat(sharedReloaded.getLastPosition()).isNull();
+        assertThat(attemptItemRepository.findById(sharedItem.getId()).orElseThrow().isFlagged()).isFalse();
+
+        // 2. SUBMITTED (GRADING) attempt -> REJECTED PART_CLOSED, flagged/lastPosition unchanged (R1-22)
+        mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+        GrantOrderResult.Line singleLine = grant(userId, "DS-HSA-PART-MATH-MINI", 3, List.of());
+        Attempt submitted = startAndAwaitOpen(userId, "ans-sub-grd", singleLine.entitlementId(), null);
+        UUID subSid = claimSession(userId, submitted.getId());
+        AttemptPart subP0 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(submitted.getId()).getFirst();
+        AttemptItem subItem = singleChoiceItems(subP0.getId()).getFirst();
+        assertThat(performSubmit(userId, submitted.getId(), "ans-sub-k", subSid, null).getResponse().getStatus())
+                .isEqualTo(200);
+        MvcResult afterSubmitPut =
+                performPutAnswers(
+                        userId,
+                        submitted.getId(),
+                        subSid,
+                        new SaveAnswersRequest(
+                                List.of(new AnswerChange(subItem.getId(), 1L, new AnswerValue.SingleChoice(subItem.getOptionOrder().getFirst()))),
+                                List.of(new FlagChange(subItem.getId(), true)),
+                                new AttemptPosition(subP0.getId(), subItem.getId())));
+        assertThat(afterSubmitPut.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(afterSubmitPut).path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
+        assertThat(json(afterSubmitPut).path("results").get(0).path("reason").asText()).isEqualTo("PART_CLOSED");
+        assertThat(attemptRepository.findById(submitted.getId()).orElseThrow().getLastPosition()).isNull();
+        assertThat(attemptItemRepository.findById(subItem.getId()).orElseThrow().isFlagged()).isFalse();
+
+        // 3. FlagChange on closed-part item, in_scope=false item, and child of out-of-scope QUESTION_SET parent (R1-22, R1-25)
+        GrantOrderResult.Line fullLine = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt full = startAndAwaitOpen(userId, "ans-flg-oos", fullLine.entitlementId(), null);
+        UUID fullSid = claimSession(userId, full.getId());
+        List<AttemptPart> fullParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(full.getId());
+        AttemptPart fp0 = fullParts.get(0);
+        AttemptPart fp1 = fullParts.get(1);
+        AttemptItem closedPartItem = singleChoiceItems(fp0.getId()).getFirst();
+        EightTypeBundle bundle = replaceWithAllEightTypes(full.getId(), fp1.getId());
+        try {
+            assertThat(performFinishPart(userId, full.getId(), fp0.getId(), fullSid, null)
+                    .getResponse().getStatus()).isEqualTo(200);
+            assertThat(attemptPartRepository.findById(fp0.getId()).orElseThrow().getState())
+                    .isEqualTo(PartState.CLOSED);
+
+            jdbc.update("UPDATE attempt.attempt_item SET in_scope = false WHERE id = ?", bundle.shortAnswer().getId());
+            jdbc.update("UPDATE attempt.attempt_item SET in_scope = false WHERE id = ?", bundle.questionSet().getId());
+
+            MvcResult guardedPut =
+                    performPutAnswers(
+                            userId,
+                            full.getId(),
+                            fullSid,
+                            new SaveAnswersRequest(
+                                    List.of(
+                                            new AnswerChange(
+                                                    bundle.setChildChoice().getId(),
+                                                    1L,
+                                                    new AnswerValue.SingleChoice("c1a"))),
+                                    List.of(
+                                            new FlagChange(closedPartItem.getId(), true),
+                                            new FlagChange(bundle.shortAnswer().getId(), true),
+                                            new FlagChange(bundle.setChildChoice().getId(), true)),
+                                    new AttemptPosition(fp1.getId(), bundle.setChildChoice().getId())));
+            assertThat(guardedPut.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json(guardedPut).path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
+            assertThat(json(guardedPut).path("results").get(0).path("reason").asText()).isEqualTo("NOT_IN_SCOPE");
+            assertThat(attemptItemRepository.findById(closedPartItem.getId()).orElseThrow().isFlagged()).isFalse();
+            assertThat(attemptItemRepository.findById(bundle.shortAnswer().getId()).orElseThrow().isFlagged()).isFalse();
+            assertThat(attemptItemRepository.findById(bundle.setChildChoice().getId()).orElseThrow().isFlagged()).isFalse();
+            assertThat(attemptRepository.findById(full.getId()).orElseThrow().getLastPosition()).isNull();
+        } finally {
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, bundle.createdQuestionIds());
+        }
+
+        // 4. PUT /answers on STARTING & ABORTED rows (edit_session_id = NULL) -> 409 ATTEMPT_NOT_OPEN (R1-1/R1-2)
+        Attempt nonOpen = startAndAwaitOpen(userId, "ans-start-abort", singleLine.entitlementId(), null);
+        assertThat(nonOpen.getEditSessionId()).isNull();
+        jdbc.update("UPDATE attempt.attempt SET state = 'STARTING' WHERE id = ?", nonOpen.getId());
+        for (UUID sidArg : new UUID[] {null, UUID.randomUUID()}) {
+            MvcResult res = performPutAnswers(userId, nonOpen.getId(), sidArg, new SaveAnswersRequest(null, null, null));
+            assertThat(res.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(res).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        }
+        jdbc.update(
+                "UPDATE attempt.attempt SET state = 'ABORTED', abort_reason = 'GENERATION_FAILED' WHERE id = ?",
+                nonOpen.getId());
+        for (UUID sidArg : new UUID[] {null, UUID.randomUUID()}) {
+            MvcResult res = performPutAnswers(userId, nonOpen.getId(), sidArg, new SaveAnswersRequest(null, null, null));
+            assertThat(res.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(res).path("code").asText()).isEqualTo("ATTEMPT_NOT_OPEN");
+        }
+    }
+
+    private Future<Void> holdPartRowLock(
+            ExecutorService pool,
+            UUID partId,
+            CountDownLatch lockHeld,
+            CountDownLatch releaseLock) {
+        return pool.submit(
+                () -> {
+                    new TransactionTemplate(transactionManager)
+                            .executeWithoutResult(
+                                    status -> {
+                                        jdbc.queryForObject(
+                                                "SELECT id FROM attempt.attempt_part WHERE id = ? FOR UPDATE",
+                                                UUID.class,
+                                                partId);
+                                        lockHeld.countDown();
+                                        try {
+                                            assertThat(releaseLock.await(15, TimeUnit.SECONDS))
+                                                    .isTrue();
+                                        } catch (InterruptedException ex) {
+                                            Thread.currentThread().interrupt();
+                                            throw new IllegalStateException(ex);
+                                        }
+                                    });
+                    return null;
+                });
+    }
+
+    private void awaitLockWait(String tableFragment) throws InterruptedException {
+        long deadlineNanos = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+        while (System.nanoTime() < deadlineNanos) {
+            Integer waiting =
+                    jdbc.queryForObject(
+                            """
+                            SELECT COUNT(*) FROM pg_stat_activity
+                            WHERE datname = current_database()
+                              AND pid <> pg_backend_pid()
+                              AND state = 'active'
+                              AND wait_event_type = 'Lock'
+                              AND query ILIKE ?
+                            """,
+                            Integer.class,
+                            "%" + tableFragment + "%");
+            if (waiting != null && waiting > 0) {
+                return;
+            }
+            Thread.sleep(10);
+        }
+        throw new AssertionError("Timed out waiting for PostgreSQL FOR UPDATE lock contention on " + tableFragment);
     }
 
     private EightTypeBundle replaceWithAllEightTypes(UUID attemptId, UUID partId) throws Exception {

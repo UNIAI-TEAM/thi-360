@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -11,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -54,6 +57,7 @@ import vn.unicom.thi360.shared.ids.Ids;
 @Service
 public class AnswerService implements FinalAnswerWriter {
 
+    private static final Logger log = LoggerFactory.getLogger(AnswerService.class);
     private static final String REASON_NOT_IN_SCOPE = "NOT_IN_SCOPE";
     private static final String REASON_INVALID_ANSWER = "INVALID_ANSWER";
     private static final String REASON_PART_CLOSED = "PART_CLOSED";
@@ -160,6 +164,7 @@ public class AnswerService implements FinalAnswerWriter {
         }
 
         Map<UUID, AttemptItem> itemsById = lockItemsById(attemptId, itemIdsToLock);
+        Map<UUID, AttemptItem> parentsById = loadParentItems(itemsById.values(), itemsById);
         Map<UUID, AttemptPart> partsById = indexPartsById(parts);
         Set<AttemptItem> dirtyItems = new LinkedHashSet<>();
 
@@ -174,26 +179,32 @@ public class AnswerService implements FinalAnswerWriter {
                         sessionId,
                         partsById,
                         itemsById,
+                        parentsById,
                         dirtyItems,
                         changeInputs,
                         lockNow);
 
         if (attempt.getState() == AttemptState.IN_PROGRESS) {
             for (FlagChange flag : request.flags()) {
+                if (flag.itemId() == null || flag.flagged() == null) {
+                    continue;
+                }
                 AttemptItem item = itemsById.get(flag.itemId());
-                if (item == null || !item.isInScope()) {
+                if (!isItemInScope(item, itemsById, parentsById)) {
                     continue;
                 }
                 AttemptPart part = partsById.get(item.getPartId());
+                boolean targetFlagged = flag.flagged();
                 if (resolveClosedReason(attempt, part, lockNow) == null
-                        && item.isFlagged() != flag.flagged()) {
-                    item.setFlagged(flag.flagged());
+                        && item.isFlagged() != targetFlagged) {
+                    item.setFlagged(targetFlagged);
                     dirtyItems.add(item);
                 }
             }
 
             if (request.position() != null) {
-                updatePositionIfValid(attempt, partsById, itemsById, request.position(), lockNow);
+                updatePositionIfValid(
+                        attempt, partsById, itemsById, parentsById, request.position(), lockNow);
             }
         }
 
@@ -225,6 +236,7 @@ public class AnswerService implements FinalAnswerWriter {
         Map<UUID, AttemptPart> partsById =
                 indexPartsById(attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()));
         Map<UUID, AttemptItem> itemsById = lockItemsById(attempt.getId(), itemIdsToLock);
+        Map<UUID, AttemptItem> parentsById = loadParentItems(itemsById.values(), itemsById);
         Set<AttemptItem> dirtyItems = new LinkedHashSet<>();
 
         List<ChangeInput> changeInputs = new ArrayList<>(changes.size());
@@ -241,6 +253,7 @@ public class AnswerService implements FinalAnswerWriter {
                         attempt.getEditSessionId(),
                         partsById,
                         itemsById,
+                        parentsById,
                         dirtyItems,
                         changeInputs,
                         receivedAt);
@@ -257,6 +270,7 @@ public class AnswerService implements FinalAnswerWriter {
             UUID sessionId,
             Map<UUID, AttemptPart> partsById,
             Map<UUID, AttemptItem> itemsById,
+            Map<UUID, AttemptItem> parentsById,
             Set<AttemptItem> dirtyItems,
             List<ChangeInput> changes,
             Instant receivedAt) {
@@ -267,7 +281,7 @@ public class AnswerService implements FinalAnswerWriter {
         List<AttemptItem> itemsNeedingSnapshots = new ArrayList<>();
         for (ChangeInput change : changes) {
             AttemptItem item = itemsById.get(change.itemId());
-            if (item == null || !item.isInScope()) {
+            if (!isItemInScope(item, itemsById, parentsById)) {
                 continue;
             }
             if (targetPart != null && !item.getPartId().equals(targetPart.getId())) {
@@ -279,12 +293,13 @@ public class AnswerService implements FinalAnswerWriter {
             }
             if (change.seq() > item.getAnswerSeq()
                     && change.answer() != null
-                    && item.getQuestionType() != QuestionType.QUESTION_SET) {
+                    && requiresSnapshot(item.getQuestionType())) {
                 itemsNeedingSnapshots.add(item);
             }
         }
 
-        Map<VersionKey, JsonNode> snapshots = loadSnapshotsForValidation(itemsNeedingSnapshots);
+        Map<VersionKey, JsonNode> snapshots =
+                loadSnapshotsForValidation(itemsNeedingSnapshots, itemsById, parentsById);
         List<FinalAnswerResult> results = new ArrayList<>(changes.size());
 
         for (ChangeInput change : changes) {
@@ -292,7 +307,7 @@ public class AnswerService implements FinalAnswerWriter {
             long seq = change.seq();
             AttemptItem item = itemsById.get(itemId);
 
-            if (item == null || !item.isInScope()) {
+            if (!isItemInScope(item, itemsById, parentsById)) {
                 UUID partId = item == null ? null : item.getPartId();
                 recordSaveRejected(
                         attempt.getId(), sessionId, partId, receivedAt, itemId, seq, REASON_NOT_IN_SCOPE);
@@ -359,8 +374,27 @@ public class AnswerService implements FinalAnswerWriter {
                 continue;
             }
 
-            JsonNode snapshot =
-                    snapshots.get(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
+            JsonNode snapshot = null;
+            if (change.answer() != null && requiresSnapshot(item.getQuestionType())) {
+                snapshot =
+                        snapshots.get(
+                                new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
+                if (snapshot == null) {
+                    log.error(
+                            "Missing question snapshot for attemptId={} itemId={} questionId={} versionNo={}",
+                            attempt.getId(),
+                            item.getId(),
+                            item.getQuestionId(),
+                            item.getQuestionVersionNo());
+                    throw new IllegalStateException(
+                            "Missing question snapshot for attempt item "
+                                    + item.getId()
+                                    + " question="
+                                    + item.getQuestionId()
+                                    + " v"
+                                    + item.getQuestionVersionNo());
+                }
+            }
             AnswerValueValidator.ValidationResult validation =
                     answerValueValidator.validate(item.getQuestionType(), snapshot, change.answer());
             if (!validation.valid()) {
@@ -390,16 +424,23 @@ public class AnswerService implements FinalAnswerWriter {
             Attempt attempt,
             Map<UUID, AttemptPart> partsById,
             Map<UUID, AttemptItem> itemsById,
+            Map<UUID, AttemptItem> parentsById,
             AttemptPosition position,
             Instant now) {
         UUID partId = position.partId();
         UUID itemId = position.itemId();
-        Map<String, Object> posMap = new LinkedHashMap<>();
-
-        boolean partValid = partId == null || partsById.containsKey(partId);
-        if (partId != null && partValid) {
-            posMap.put("partId", partId.toString());
+        if (partId == null && itemId == null) {
+            return;
         }
+
+        if (partId != null) {
+            AttemptPart part = partsById.get(partId);
+            if (part == null || resolveClosedReason(attempt, part, now) != null) {
+                return;
+            }
+        }
+
+        UUID resolvedPartId = partId;
         if (itemId != null) {
             AttemptItem posItem = itemsById.get(itemId);
             if (posItem == null) {
@@ -409,11 +450,41 @@ public class AnswerService implements FinalAnswerWriter {
                                 .filter(i -> i.getAttemptId().equals(attempt.getId()))
                                 .orElse(null);
             }
-            if (posItem != null
-                    && posItem.isInScope()
-                    && (partId == null || (partValid && posItem.getPartId().equals(partId)))) {
-                posMap.put("itemId", itemId.toString());
+            if (posItem == null || !posItem.isInScope()) {
+                return;
             }
+            if (posItem.getParentItemId() != null) {
+                AttemptItem parent = itemsById.get(posItem.getParentItemId());
+                if (parent == null) {
+                    parent = parentsById.get(posItem.getParentItemId());
+                }
+                if (parent == null) {
+                    parent =
+                            attemptItemRepository
+                                    .findById(posItem.getParentItemId())
+                                    .filter(p -> p.getAttemptId().equals(attempt.getId()))
+                                    .orElse(null);
+                }
+                if (parent != null && !parent.isInScope()) {
+                    return;
+                }
+            }
+            AttemptPart owningPart = partsById.get(posItem.getPartId());
+            if (owningPart == null || resolveClosedReason(attempt, owningPart, now) != null) {
+                return;
+            }
+            if (resolvedPartId != null && !posItem.getPartId().equals(resolvedPartId)) {
+                return;
+            }
+            resolvedPartId = posItem.getPartId();
+        }
+
+        Map<String, Object> posMap = new LinkedHashMap<>();
+        if (resolvedPartId != null) {
+            posMap.put("partId", resolvedPartId.toString());
+        }
+        if (itemId != null) {
+            posMap.put("itemId", itemId.toString());
         }
         if (!posMap.isEmpty()) {
             attempt.updateLastPosition(posMap, now);
@@ -434,7 +505,54 @@ public class AnswerService implements FinalAnswerWriter {
         return map;
     }
 
-    private Map<VersionKey, JsonNode> loadSnapshotsForValidation(List<AttemptItem> items) {
+    private Map<UUID, AttemptItem> loadParentItems(
+            Collection<AttemptItem> items, Map<UUID, AttemptItem> itemsById) {
+        Set<UUID> parentIds = new LinkedHashSet<>();
+        for (AttemptItem item : items) {
+            UUID parentId = item.getParentItemId();
+            if (parentId != null && !itemsById.containsKey(parentId)) {
+                parentIds.add(parentId);
+            }
+        }
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, AttemptItem> parents = new LinkedHashMap<>();
+        for (AttemptItem parent : attemptItemRepository.findAllById(parentIds)) {
+            parents.put(parent.getId(), parent);
+        }
+        return parents;
+    }
+
+    private static boolean isItemInScope(
+            AttemptItem item,
+            Map<UUID, AttemptItem> itemsById,
+            Map<UUID, AttemptItem> parentsById) {
+        if (item == null || !item.isInScope()) {
+            return false;
+        }
+        UUID parentId = item.getParentItemId();
+        if (parentId == null) {
+            return true;
+        }
+        AttemptItem parent = itemsById.get(parentId);
+        if (parent == null) {
+            parent = parentsById.get(parentId);
+        }
+        return parent == null || parent.isInScope();
+    }
+
+    private static boolean requiresSnapshot(QuestionType type) {
+        return type != null
+                && type != QuestionType.QUESTION_SET
+                && type != QuestionType.SHORT_ANSWER
+                && type != QuestionType.ESSAY;
+    }
+
+    private Map<VersionKey, JsonNode> loadSnapshotsForValidation(
+            List<AttemptItem> items,
+            Map<UUID, AttemptItem> itemsById,
+            Map<UUID, AttemptItem> parentsById) {
         if (items.isEmpty()) {
             return Map.of();
         }
@@ -447,20 +565,31 @@ public class AnswerService implements FinalAnswerWriter {
 
         // Fallback for QUESTION_SET child items whose snapshot is embedded under parent's body.children
         Set<UUID> missingParentItemIds = new LinkedHashSet<>();
+        Set<VersionKey> parentKeys = new LinkedHashSet<>();
         for (AttemptItem item : items) {
             VersionKey key = new VersionKey(item.getQuestionId(), item.getQuestionVersionNo());
-            if (!map.containsKey(key) && item.getParentItemId() != null) {
-                missingParentItemIds.add(item.getParentItemId());
+            UUID parentItemId = item.getParentItemId();
+            if (!map.containsKey(key) && parentItemId != null) {
+                AttemptItem parent = itemsById.get(parentItemId);
+                if (parent == null) {
+                    parent = parentsById.get(parentItemId);
+                }
+                if (parent != null) {
+                    parentKeys.add(
+                            new VersionKey(parent.getQuestionId(), parent.getQuestionVersionNo()));
+                } else {
+                    missingParentItemIds.add(parentItemId);
+                }
             }
         }
         if (!missingParentItemIds.isEmpty()) {
-            Set<VersionKey> parentKeys = new LinkedHashSet<>();
             for (AttemptItem parent : attemptItemRepository.findAllById(missingParentItemIds)) {
-                parentKeys.add(new VersionKey(parent.getQuestionId(), parent.getQuestionVersionNo()));
+                parentKeys.add(
+                        new VersionKey(parent.getQuestionId(), parent.getQuestionVersionNo()));
             }
-            if (!parentKeys.isEmpty()) {
-                loadVersionsInto(parentKeys, map);
-            }
+        }
+        if (!parentKeys.isEmpty()) {
+            loadVersionsInto(parentKeys, map);
         }
         return map;
     }
@@ -473,9 +602,14 @@ public class AnswerService implements FinalAnswerWriter {
                 for (JsonNode child : children) {
                     String idText = child.path("id").asText(null);
                     if (idText != null && !idText.isBlank()) {
-                        map.putIfAbsent(
-                                new VersionKey(UUID.fromString(idText), version.key().versionNo()),
-                                child);
+                        try {
+                            map.putIfAbsent(
+                                    new VersionKey(
+                                            UUID.fromString(idText.trim()),
+                                            version.key().versionNo()),
+                                    child);
+                        } catch (IllegalArgumentException ignored) {
+                        }
                     }
                 }
             }

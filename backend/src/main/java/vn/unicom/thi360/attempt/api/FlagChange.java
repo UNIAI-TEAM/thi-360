@@ -9,5 +9,6 @@ public record FlagChange(
         @NotNull(message = "{validation.attempt.answers.itemId.required}")
         @Schema(description = "Id câu hỏi trong lượt", requiredMode = Schema.RequiredMode.REQUIRED)
         UUID itemId,
+        @NotNull(message = "{validation.attempt.answers.flagged.required}")
         @Schema(description = "Trạng thái cờ đánh dấu xem lại", requiredMode = Schema.RequiredMode.REQUIRED)
-        boolean flagged) {}
+        Boolean flagged) {}

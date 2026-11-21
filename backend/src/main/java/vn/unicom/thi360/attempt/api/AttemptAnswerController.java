@@ -1,12 +1,14 @@
 package vn.unicom.thi360.attempt.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,6 +36,11 @@ public class AttemptAnswerController {
     @ApiResponse(
             responseCode = "429",
             description = "Vượt quá 20 yêu cầu trong 10 giây trên mỗi lượt thi (kèm Retry-After)",
+            headers =
+                    @Header(
+                            name = HttpHeaders.RETRY_AFTER,
+                            description = "Seconds until the rate-limit window refills",
+                            schema = @Schema(type = "integer")),
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public SaveAnswersResponse saveAnswers(
             @PathVariable UUID attemptId,

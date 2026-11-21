@@ -224,7 +224,10 @@ public final class ForbiddenKeysAssert {
                 String key = field.getKey();
                 String childPath = path + "." + key;
                 boolean permittedAnswerPairs =
-                        allowAnswerPairs && "pairs".equals(key) && "answer".equals(parentObjectField);
+                        allowAnswerPairs
+                                && "pairs".equals(key)
+                                && "answer".equals(parentObjectField)
+                                && field.getValue().isObject();
                 if (!permittedAnswerPairs
                         && (forbiddenKeys.contains(key)
                                 || (owningArrayKey != null
