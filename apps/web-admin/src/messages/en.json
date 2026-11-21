@@ -7406,180 +7406,199 @@
     }
   },
   "grading": {
-    "status": {
-      "GRADING": "Awaiting grading",
-      "SCORED": "Scored"
-    },
-    "filters": {
-      "ariaLabel": "Filter attempts to grade",
-      "statusLegend": "Status",
-      "statusAll": "All",
-      "search": "Search",
-      "searchPlaceholder": "Learner name, learner code or exam code",
-      "kind": "Exam type",
-      "exam": "Exam",
-      "grader": "Grader",
-      "all": "All",
-      "graderUnassigned": "No grader yet",
-      "examOption": "{code} · {name}",
-      "chip": "{label}: {value}",
-      "activeLabel": "Active filters",
-      "remove": "Remove filter {label}",
-      "clearAll": "Clear all filters"
-    },
-    "list": {
-      "title": "Essay grading",
-      "description": "Attempts with essay questions, waiting for grading or already scored. Objective questions were scored on submission.",
-      "filteredCount": "{count, plural, one {# attempt matches} other {# attempts match}} the filters",
-      "filteredCountRich": "<strong>{count, number}</strong> {count, plural, one {attempt matches} other {attempts match}} the filters",
-      "loadingCount": "Loading attempts…",
-      "errorCount": "Attempt count unavailable",
-      "hint": "Oldest submissions first",
-      "tableAriaLabel": "Attempts to grade matching the filters",
-      "table": {
-        "learner": "Learner",
-        "exam": "Exam",
-        "submittedAt": "Submitted",
-        "progress": "Essays",
-        "score": "Score",
-        "grader": "Grader",
-        "status": "Status",
-        "actions": "Actions"
-      },
-      "progress": "{graded, number}/{count, number} graded",
-      "noGrader": "None yet",
-      "score": {
-        "total": "{score}/{max}",
-        "parts": "Objective {objective} + essays {essay}",
-        "objective": "Objective {score}/{max}",
-        "essayPending": "Essays not scored yet"
-      },
-      "actions": {
-        "gradeAria": "Grade the attempt of {name}",
-        "gradeTooltip": "Grade",
-        "viewAria": "View the grading result of {name}",
-        "viewTooltip": "View result"
-      },
-      "sortBy": "Sort by",
-      "ascending": "ascending",
-      "descending": "descending",
-      "errorTitle": "Could not load attempts",
-      "errorDescription": "Check your connection and try again.",
-      "retry": "Try again",
-      "emptyTitle": "No attempts to grade",
-      "emptyDescription": "Attempts with essay questions appear here once learners submit them.",
-      "emptyFilteredTitle": "No attempts match the filters",
-      "emptyFilteredDescription": "Change or remove some filters to see more attempts.",
-      "paginationNav": "Attempt list pagination",
-      "paginationPrevious": "Previous",
-      "paginationNext": "Next",
-      "paginationRowsPerPage": "Rows per page",
-      "paginationPage": "Page {page}",
-      "paginationRange": "Showing {from}–{to} of {total}"
-    },
     "detail": {
-      "title": "Grade attempt",
-      "loading": "Loading attempt",
-      "notFoundTitle": "Attempt not found",
-      "notFoundDescription": "The attempt does not exist or has been removed.",
-      "errorTitle": "Could not load the attempt",
-      "errorDescription": "Check your connection and try again.",
-      "retry": "Try again",
       "backToList": "Back to grading list",
-      "emptyTitle": "This attempt has no essay questions",
-      "emptyDescription": "Nothing needs manual grading. The attempt score is the objective score.",
-      "heading": "Attempt of {name}",
-      "subheading": "{code} · {examCode} · {examName}",
-      "formLabel": "Grade the attempt of {name}",
-      "essayLabel": "{part} · Question {number}",
-      "summary": {
-        "kind": "Exam type",
-        "submittedAt": "Submitted",
-        "grader": "Grader",
-        "gradedAt": "Graded",
-        "essays": "Essays"
-      },
-      "navigator": {
-        "label": "Essay questions in this attempt",
-        "score": "{score}/{max}",
-        "state": {
-          "complete": "fully scored",
-          "partial": "partly scored",
-          "empty": "not scored",
-          "error": "has invalid scores"
-        }
-      },
-      "question": {
-        "meta": "{code} · {points} points",
-        "source": {
-          "BANK": "Prompt and rubric from the question bank",
-          "ATTEMPT": "Prompt and rubric saved with the attempt"
-        },
-        "passage": "Reading passage ({code})",
-        "prompt": "Prompt",
-        "answer": "Learner answer",
-        "wordCount": "{count, plural, one {# word} other {# words}}",
-        "wordCountWithLimit": "{count, plural, one {# word} other {# words}} · about {limit, number} suggested",
-        "noAnswer": "The learner left this question blank.",
-        "sampleAnswer": "Suggested answer"
-      },
-      "rubric": {
-        "title": "Rubric",
-        "max": "Up to {max} points",
-        "legend": "Rubric scores for {label}",
-        "criterion": "{index}. {description}",
-        "criterionHint": "Up to {max} points; use a comma or a dot for decimals.",
-        "subtotal": "Question score",
-        "subtotalValue": "{score}/{max}",
-        "comment": "Comment",
-        "commentHint": "Optional. The learner sees it once the attempt is scored.",
-        "noComment": "No comment.",
-        "previous": "Previous question",
-        "next": "Next question"
-      },
-      "validation": {
-        "invalid": "Enter a non-negative number with at most two decimals (for example 1.5).",
-        "tooHigh": "The score cannot exceed {max}.",
-        "required": "Enter a score for this criterion before finishing.",
-        "commentMax": "Comments can be at most {limit} characters.",
-        "summary": "Some fields need fixing. Moved to the first one.",
-        "missing": "{count, plural, one {# criterion has} other {# criteria have}} no score yet. Moved to the first one."
-      },
-      "totals": {
-        "objective": "Objective (scored on submission)",
-        "noObjective": "No objective part",
-        "essayDraft": "Essays (running total)",
-        "totalDraft": "Total (running total)",
-        "value": "{score}/{max}"
+      "claim": {
+        "action": "Claim to grade",
+        "anotherGrader": "another grader",
+        "description": "Claim this item to lock grading for 30 minutes and enter scores.",
+        "done": "Claimed item for grading.",
+        "heldDescription": "This item is currently claimed by {name}.",
+        "heldTitle": "Currently claimed by another grader",
+        "lastActivity": "Last activity: {time}",
+        "rubricPreview": "Grading rubric",
+        "takeoverAction": "Take over grading",
+        "takeoverDescription": "The previous claim by {name} has been inactive for over 30 minutes. You can take over grading.",
+        "takeoverTitle": "Take over grading",
+        "title": "Claim to grade"
       },
       "draft": {
+        "hint": "Save a draft to keep your claim and continue later.",
         "save": "Save draft",
         "saved": "Draft scores saved.",
-        "unsaved": "You have unsaved scores.",
-        "hint": "Save a draft to continue later; the attempt stays in Awaiting grading."
+        "unsaved": "You have unsaved changes."
       },
+      "errorTitle": "Could not load essay item",
       "finish": {
-        "action": "Finish grading",
-        "confirmTitle": "Finish grading the attempt of {name}?",
-        "confirmDescription": "Attempt total: objective {objective} + essays {essay} = {total}/{max}. The attempt moves to Scored.",
-        "confirmDescriptionEssayOnly": "Attempt total: {total}/{max}. The attempt moves to Scored.",
+        "action": "Finalize grade",
         "cancel": "Keep grading",
-        "confirm": "Confirm and finish",
-        "done": "Finished grading the attempt of {name}. Total {score}/{max}."
+        "confirm": "Confirm and finalize",
+        "confirmDescription": "Finalize score {score}/{max} for this essay item and recalculate the attempt score?",
+        "confirmTitle": "Finalize essay grade?",
+        "done": "Finalized grade: {score}/{max}."
+      },
+      "heading": "Grade #{code} · Question {number}",
+      "history": {
+        "finalizedAt": "Finalized at: {time}",
+        "reopenedReason": "Reopen reason: {reason}",
+        "states": {
+          "DRAFT": "Draft",
+          "FINAL": "Finalized"
+        },
+        "title": "Grading history",
+        "unknownGrader": "Grader"
+      },
+      "loading": "Loading essay item",
+      "notFoundDescription": "This essay item does not exist or is not eligible for grading.",
+      "notFoundTitle": "Essay item not found",
+      "question": {
+        "answer": "Learner answer",
+        "belowWordLimit": "Below minimum word count",
+        "gradingGuide": "Grading guide",
+        "maxPoints": "Max {points} points",
+        "noAnswer": "The learner left this question blank.",
+        "passage": "Reading passage",
+        "prompt": "Prompt",
+        "sampleAnswer": "Suggested answer",
+        "title": "Question {number}",
+        "wordCount": "{count, plural, one {# word} other {# words}}",
+        "wordCountWithLimit": "{count, number} / min {limit, plural, one {# word} other {# words}}"
+      },
+      "readOnlyDescription": "Read-only view (GRADING.MODIFY permission is required to claim, grade, or reopen).",
+      "readOnlyTitle": "Read-only mode",
+      "regrading": "Regrading",
+      "reload": "Reload data",
+      "reopen": {
+        "action": "Reopen for regrading",
+        "cancel": "Cancel",
+        "confirm": "Confirm reopen",
+        "description": "Reopen this grade for regrading. The student keeps seeing the previous score with a Regrading badge until you finalize again.",
+        "done": "Reopened grade for regrading.",
+        "reasonLabel": "Reason for reopening",
+        "title": "Reopen grade?"
       },
       "result": {
-        "title": "Scored",
-        "essay": "Essays",
-        "total": "Total"
+        "title": "Finalized score"
       },
-      "errors": {
-        "ATTEMPT_ALREADY_SCORED": "This attempt is already scored and cannot be saved. Reload to see the result.",
-        "GRADING_INCOMPLETE": "Some criteria have no score yet.",
-        "SCORE_OUT_OF_RANGE": "A score is outside the allowed range of its criterion.",
-        "UNKNOWN_QUESTION": "A question or its rubric has changed. Reload and grade again.",
-        "NOT_FOUND": "Attempt not found.",
-        "generic": "Could not save the scores. Try again."
+      "retry": "Try again",
+      "rubric": {
+        "comment": "Comment",
+        "commentHint": "Optional. Visible to the learner once graded.",
+        "criteriaSum": "Criteria sum",
+        "criterionHint": "Up to {max} points; use a comma or dot for decimals.",
+        "criterionPrefix": "Criterion {index}.",
+        "legend": "Criterion scores",
+        "max": "Up to {max} points",
+        "noComment": "No comment.",
+        "subtotalValue": "{score} / {max}",
+        "title": "Grading",
+        "totalPointsHint": "From 0 to {max} points; when rubric criteria exist, must equal their sum.",
+        "totalPointsLabel": "Total question score"
+      },
+      "summary": {
+        "attemptCode": "Attempt code",
+        "gradedAt": "Finalized",
+        "grader": "Grader",
+        "kind": "Exam type",
+        "submittedAt": "Submitted"
+      },
+      "title": "Grade essay item",
+      "validation": {
+        "commentMax": "Comments can be at most {limit} characters.",
+        "criteriaSumMismatch": "Criteria sum ({sum}) does not match the entered question score.",
+        "invalid": "Enter a non-negative number with at most two decimals (for example 1.5).",
+        "required": "Enter a score before finalizing.",
+        "summary": "Some score fields need fixing. Moved to the first one.",
+        "tooHigh": "The score cannot exceed {max}."
       }
+    },
+    "errors": {
+      "CONFLICT": "Action conflicts with current state. Please reload.",
+      "ESSAY_ALREADY_FINALIZED": "This essay item has already been finalized.",
+      "ESSAY_CRITERIA_INVALID": "Criterion scores are invalid or do not match the rubric.",
+      "ESSAY_CRITERIA_SUM_MISMATCH": "Sum of criterion scores must equal the total essay points.",
+      "ESSAY_NOT_FINALIZED": "This essay item has not been finalized and cannot be reopened.",
+      "ESSAY_NOT_GRADABLE": "This item is no longer eligible for manual grading.",
+      "ESSAY_POINTS_OUT_OF_RANGE": "Points must be between 0 and the question maximum points.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Could not complete the request. Please try again.",
+      "GRADING_CLAIMED": "This essay item is currently claimed by another grader.",
+      "GRADING_CLAIMED_BY": "This essay item is currently claimed by {name}.",
+      "GRADING_ITEM_NOT_FOUND": "Essay grading item was not found.",
+      "GRADING_NOT_CLAIMED": "You must claim the item before saving or finalizing.",
+      "INTERNAL_ERROR": "Temporary system error. Please try again later.",
+      "INVALID_DATE_FILTER": "Invalid date filter range.",
+      "NETWORK": "Cannot reach the server. Check your network and try again.",
+      "NOT_FOUND": "The requested resource was not found.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "VALIDATION_FAILED": "Submitted data is invalid. Please review the form.",
+      "VERSION_CONFLICT": "This grade was updated elsewhere. Latest data has been reloaded."
+    },
+    "filters": {
+      "activeLabel": "Active filters",
+      "all": "All",
+      "ariaLabel": "Filter essay grading queue",
+      "chip": "{label}: {value}",
+      "clearAll": "Clear all filters",
+      "examSearch": "Exam",
+      "examSearchPlaceholder": "Exam name or UUID",
+      "from": "From date",
+      "kind": "Exam type",
+      "remove": "Remove filter {label}",
+      "statusAll": "All",
+      "statusLegend": "Status",
+      "to": "To date"
+    },
+    "list": {
+      "actions": {
+        "gradeAria": "Grade #{code} · Question {number}",
+        "gradeTooltip": "Grade",
+        "viewAria": "View grading result #{code} · Question {number}",
+        "viewTooltip": "View result"
+      },
+      "description": "Anonymous queue of essay questions to grade. Learners are identified only by attempt code.",
+      "emptyDescription": "Answered essay questions appear here once learners submit attempts.",
+      "emptyFilteredDescription": "Try changing or clearing some filters to see more items.",
+      "emptyFilteredTitle": "No essay items match the filters",
+      "emptyTitle": "No essay items to grade",
+      "errorCount": "Essay item count unavailable",
+      "errorTitle": "Could not load grading queue",
+      "filteredCount": "{count, plural, one {# essay item matches} other {# essay items match}} the filters",
+      "filteredCountRich": "<strong>{count, number}</strong> {count, plural, one {essay item matches} other {essay items match}} the filters",
+      "graderExpired": "{name} (claim expired)",
+      "hint": "Oldest submissions first",
+      "loadingCount": "Loading grading queue…",
+      "noGrader": "None yet",
+      "offlineDescription": "You are offline, so the list could not be loaded. It will reload automatically when back online, or press Try again.",
+      "offlineTitle": "No network connection",
+      "paginationNav": "Grading queue pagination",
+      "paginationNext": "Next",
+      "paginationPage": "Page {page}",
+      "paginationPrevious": "Previous",
+      "paginationRange": "Showing {from}–{to} of {total}",
+      "paginationRowsPerPage": "Rows per page",
+      "questionNo": "Question {number}",
+      "regrading": "Regrading",
+      "retry": "Try again",
+      "scorePending": "— / {max}",
+      "scoreValue": "{score} / {max}",
+      "table": {
+        "actions": "Actions",
+        "grader": "Grader",
+        "item": "Attempt & Question",
+        "kind": "Exam type",
+        "part": "Part",
+        "score": "Score",
+        "status": "Status",
+        "submittedAt": "Submitted"
+      },
+      "tableAriaLabel": "Essay grading queue",
+      "title": "Essay grading"
+    },
+    "status": {
+      "DONE": "Graded",
+      "IN_PROGRESS": "In progress",
+      "WAITING": "Awaiting grading"
     }
   },
   "richText": {

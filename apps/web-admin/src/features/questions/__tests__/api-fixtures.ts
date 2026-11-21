@@ -8,11 +8,11 @@ import { fakeApi, ok, fail, withRealApi, type ApiCall, type ContentReferenceResp
 import type { QuestionDetail, QuestionSummary } from "../types";
 import type { SaveChildQuestionRequest } from "../editor-types";
 import { asWireBody, fromWireBody, toWireBody, type ApiQuestionBody, type ChildClassificationIds } from "../wire-body";
-import questionsFixture from "@/features/grading/mock/questions.json";
+import questionsFixture from "@/test/fixtures/questions.json";
 
 /**
  * Dữ liệu và "máy chủ giả" cho test của nhánh API thật (plan B7): test đưa vào bộ câu hỏi kiểu web
- * (lấy sẵn từ `grading/mock/questions.json`, JSON thuần), bộ dựng đổi sang đúng hình
+ * (lấy sẵn từ `test/fixtures/questions.json`, JSON thuần), bộ dựng đổi sang đúng hình
  * dạng phản hồi OpenAPI rồi đăng ký với `fakeApi`. Lệnh ghi cập nhật bản đồ nội bộ nên các lần đọc
  * sau nhìn thấy thay đổi như máy chủ thật.
  */

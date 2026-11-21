@@ -7406,180 +7406,199 @@
     }
   },
   "grading": {
-    "status": {
-      "GRADING": "Chờ chấm",
-      "SCORED": "Đã có điểm"
-    },
-    "filters": {
-      "ariaLabel": "Lọc lượt thi cần chấm",
-      "statusLegend": "Trạng thái",
-      "statusAll": "Tất cả",
-      "search": "Tìm kiếm",
-      "searchPlaceholder": "Tên, mã học viên hoặc mã bài thi",
-      "kind": "Kỳ thi",
-      "exam": "Bài thi",
-      "grader": "Người chấm",
-      "all": "Tất cả",
-      "graderUnassigned": "Chưa có người chấm",
-      "examOption": "{code} · {name}",
-      "chip": "{label}: {value}",
-      "activeLabel": "Đang lọc",
-      "remove": "Bỏ lọc {label}",
-      "clearAll": "Xóa tất cả bộ lọc"
-    },
-    "list": {
-      "title": "Chấm tự luận",
-      "description": "Lượt thi có câu tự luận: chờ chấm và đã có điểm. Phần trắc nghiệm đã được chấm khi học viên nộp bài.",
-      "filteredCount": "{count, number} lượt thi khớp bộ lọc",
-      "filteredCountRich": "<strong>{count, number}</strong> lượt thi khớp bộ lọc",
-      "loadingCount": "Đang tải danh sách lượt thi…",
-      "errorCount": "Chưa xác định số lượt thi",
-      "hint": "Nộp trước chấm trước",
-      "tableAriaLabel": "Danh sách lượt thi cần chấm khớp bộ lọc",
-      "table": {
-        "learner": "Học viên",
-        "exam": "Bài thi",
-        "submittedAt": "Nộp lúc",
-        "progress": "Tự luận",
-        "score": "Điểm",
-        "grader": "Người chấm",
-        "status": "Trạng thái",
-        "actions": "Thao tác"
-      },
-      "progress": "{graded, number}/{count, number} câu đã chấm",
-      "noGrader": "Chưa có",
-      "score": {
-        "total": "{score}/{max}",
-        "parts": "Trắc nghiệm {objective} + tự luận {essay}",
-        "objective": "Trắc nghiệm {score}/{max}",
-        "essayPending": "Tự luận chưa có điểm"
-      },
-      "actions": {
-        "gradeAria": "Chấm bài của {name}",
-        "gradeTooltip": "Chấm bài",
-        "viewAria": "Xem kết quả chấm của {name}",
-        "viewTooltip": "Xem kết quả chấm"
-      },
-      "sortBy": "Sắp xếp theo",
-      "ascending": "tăng dần",
-      "descending": "giảm dần",
-      "errorTitle": "Không tải được danh sách lượt thi",
-      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
-      "retry": "Thử lại",
-      "emptyTitle": "Chưa có lượt thi cần chấm",
-      "emptyDescription": "Lượt thi có câu tự luận sẽ hiện ở đây sau khi học viên nộp bài.",
-      "emptyFilteredTitle": "Không có lượt thi khớp bộ lọc",
-      "emptyFilteredDescription": "Đổi hoặc bỏ bớt điều kiện lọc để xem thêm lượt thi.",
-      "paginationNav": "Phân trang danh sách lượt thi",
-      "paginationPrevious": "Trước",
-      "paginationNext": "Sau",
-      "paginationRowsPerPage": "Số dòng mỗi trang",
-      "paginationPage": "Trang {page}",
-      "paginationRange": "Hiển thị {from}–{to} trên {total}"
-    },
     "detail": {
-      "title": "Chấm bài",
-      "loading": "Đang tải lượt thi",
-      "notFoundTitle": "Không tìm thấy lượt thi",
-      "notFoundDescription": "Lượt thi không tồn tại hoặc đã bị xóa.",
-      "errorTitle": "Không tải được lượt thi",
-      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
-      "retry": "Thử lại",
       "backToList": "Quay lại danh sách chấm",
-      "emptyTitle": "Lượt thi không có câu tự luận",
-      "emptyDescription": "Không có câu nào cần chấm tay. Điểm của lượt là điểm phần trắc nghiệm.",
-      "heading": "Bài làm của {name}",
-      "subheading": "{code} · {examCode} · {examName}",
-      "formLabel": "Chấm bài của {name}",
-      "essayLabel": "{part} · Câu {number}",
-      "summary": {
-        "kind": "Kỳ thi",
-        "submittedAt": "Nộp lúc",
-        "grader": "Người chấm",
-        "gradedAt": "Chấm xong lúc",
-        "essays": "Tự luận"
-      },
-      "navigator": {
-        "label": "Các câu tự luận của lượt thi",
-        "score": "{score}/{max}",
-        "state": {
-          "complete": "đã nhập đủ điểm",
-          "partial": "chưa nhập đủ điểm",
-          "empty": "chưa chấm",
-          "error": "có ô điểm sai"
-        }
-      },
-      "question": {
-        "meta": "{code} · {points} điểm",
-        "source": {
-          "BANK": "Đề và tiêu chí từ ngân hàng câu hỏi",
-          "ATTEMPT": "Đề và tiêu chí lưu lúc thi"
-        },
-        "passage": "Đoạn đọc hiểu ({code})",
-        "prompt": "Đề bài",
-        "answer": "Bài làm của học viên",
-        "wordCount": "{count, number} chữ",
-        "wordCountWithLimit": "{count, number} chữ · gợi ý khoảng {limit, number} chữ",
-        "noAnswer": "Học viên bỏ trống câu này.",
-        "sampleAnswer": "Đáp án gợi ý"
-      },
-      "rubric": {
-        "title": "Tiêu chí chấm",
-        "max": "Tối đa {max} điểm",
-        "legend": "Điểm theo tiêu chí của {label}",
-        "criterion": "{index}. {description}",
-        "criterionHint": "Tối đa {max} điểm; số thập phân dùng dấu phẩy hoặc dấu chấm.",
-        "subtotal": "Điểm câu này",
-        "subtotalValue": "{score}/{max}",
-        "comment": "Nhận xét",
-        "commentHint": "Không bắt buộc. Học viên thấy nhận xét khi lượt thi có điểm.",
-        "noComment": "Không có nhận xét.",
-        "previous": "Câu trước",
-        "next": "Câu sau"
-      },
-      "validation": {
-        "invalid": "Nhập số không âm, tối đa hai chữ số thập phân (ví dụ 1,5).",
-        "tooHigh": "Điểm không được vượt quá {max}.",
-        "required": "Nhập điểm cho tiêu chí này trước khi hoàn tất.",
-        "commentMax": "Nhận xét tối đa {limit} ký tự.",
-        "summary": "Có ô cần sửa. Đã chuyển tới ô đầu tiên.",
-        "missing": "Còn {count, number} tiêu chí chưa có điểm. Đã chuyển tới tiêu chí đầu tiên."
-      },
-      "totals": {
-        "objective": "Trắc nghiệm (đã chấm khi nộp)",
-        "noObjective": "Đề không có phần trắc nghiệm",
-        "essayDraft": "Tự luận (tạm tính)",
-        "totalDraft": "Tổng điểm (tạm tính)",
-        "value": "{score}/{max}"
+      "claim": {
+        "action": "Nhận câu để chấm",
+        "anotherGrader": "người chấm khác",
+        "description": "Nhận câu này để nhập điểm và tránh trùng người chấm trong 30 phút.",
+        "done": "Đã nhận câu để chấm.",
+        "heldDescription": "Câu này đang được {name} nhận chấm.",
+        "heldTitle": "Đang có người chấm khác giữ",
+        "lastActivity": "Hoạt động gần nhất: {time}",
+        "rubricPreview": "Tiêu chí chấm",
+        "takeoverAction": "Tiếp quản chấm",
+        "takeoverDescription": "Phiên giữ câu của {name} đã quá 30 phút không hoạt động. Bạn có thể tiếp quản để chấm tiếp.",
+        "takeoverTitle": "Tiếp quản câu chấm",
+        "title": "Nhận câu để chấm"
       },
       "draft": {
+        "hint": "Lưu nháp để giữ phiên nhận câu và chấm tiếp sau.",
         "save": "Lưu nháp",
         "saved": "Đã lưu nháp điểm chấm.",
-        "unsaved": "Có điểm chưa lưu.",
-        "hint": "Lưu nháp để chấm tiếp sau; lượt thi vẫn ở trạng thái Chờ chấm."
+        "unsaved": "Có thay đổi chưa lưu."
       },
+      "errorTitle": "Không tải được câu tự luận",
       "finish": {
         "action": "Hoàn tất chấm",
-        "confirmTitle": "Hoàn tất chấm bài của {name}?",
-        "confirmDescription": "Tổng điểm của lượt: trắc nghiệm {objective} + tự luận {essay} = {total}/{max}. Lượt thi chuyển sang Đã có điểm.",
-        "confirmDescriptionEssayOnly": "Tổng điểm của lượt: {total}/{max}. Lượt thi chuyển sang Đã có điểm.",
         "cancel": "Quay lại chấm",
         "confirm": "Xác nhận hoàn tất",
-        "done": "Đã hoàn tất chấm bài của {name}. Tổng điểm {score}/{max}."
+        "confirmDescription": "Chốt điểm {score}/{max} cho câu tự luận này và cập nhật điểm lượt thi?",
+        "confirmTitle": "Hoàn tất chấm câu tự luận?",
+        "done": "Đã hoàn tất chấm: {score}/{max}."
+      },
+      "heading": "Chấm câu #{code} · Câu {number}",
+      "history": {
+        "finalizedAt": "Chốt lúc: {time}",
+        "reopenedReason": "Lý do mở lại: {reason}",
+        "states": {
+          "DRAFT": "Nháp",
+          "FINAL": "Đã chốt"
+        },
+        "title": "Lịch sử chấm",
+        "unknownGrader": "Người chấm"
+      },
+      "loading": "Đang tải câu tự luận",
+      "notFoundDescription": "Câu tự luận không tồn tại hoặc không thuộc hàng chờ chấm.",
+      "notFoundTitle": "Không tìm thấy câu tự luận",
+      "question": {
+        "answer": "Bài làm của học viên",
+        "belowWordLimit": "Chưa đủ số chữ tối thiểu",
+        "gradingGuide": "Hướng dẫn chấm",
+        "maxPoints": "Tối đa {points} điểm",
+        "noAnswer": "Học viên bỏ trống câu này.",
+        "passage": "Ngữ liệu / Đoạn đọc hiểu",
+        "prompt": "Đề bài",
+        "sampleAnswer": "Đáp án gợi ý",
+        "title": "Câu {number}",
+        "wordCount": "{count, number} chữ",
+        "wordCountWithLimit": "{count, number} / tối thiểu {limit, number} chữ"
+      },
+      "readOnlyDescription": "Bạn chỉ có quyền xem (cần quyền GRADING.MODIFY để nhận câu, chấm điểm hoặc mở lại).",
+      "readOnlyTitle": "Chế độ chỉ xem",
+      "regrading": "Đang chấm lại",
+      "reload": "Tải lại dữ liệu",
+      "reopen": {
+        "action": "Mở lại để chấm lại",
+        "cancel": "Hủy",
+        "confirm": "Xác nhận mở lại",
+        "description": "Mở lại bản chấm này để chấm lại. Học viên vẫn thấy điểm cũ kèm trạng thái Đang chấm lại cho tới khi bạn hoàn tất.",
+        "done": "Đã mở lại bản chấm.",
+        "reasonLabel": "Lý do mở lại",
+        "title": "Mở lại bản chấm?"
       },
       "result": {
-        "title": "Đã có điểm",
-        "essay": "Tự luận",
-        "total": "Tổng điểm"
+        "title": "Đã chốt điểm"
       },
-      "errors": {
-        "ATTEMPT_ALREADY_SCORED": "Lượt thi đã có điểm, không lưu được nữa. Tải lại trang để xem kết quả.",
-        "GRADING_INCOMPLETE": "Còn tiêu chí chưa có điểm.",
-        "SCORE_OUT_OF_RANGE": "Có điểm nằm ngoài khoảng cho phép của tiêu chí.",
-        "UNKNOWN_QUESTION": "Đề hoặc tiêu chí của câu đã thay đổi. Tải lại trang rồi chấm lại.",
-        "NOT_FOUND": "Không tìm thấy lượt thi.",
-        "generic": "Không lưu được điểm. Hãy thử lại."
+      "retry": "Thử lại",
+      "rubric": {
+        "comment": "Nhận xét",
+        "commentHint": "Không bắt buộc. Học viên thấy nhận xét khi có điểm.",
+        "criteriaSum": "Tổng điểm các tiêu chí",
+        "criterionHint": "Tối đa {max} điểm; số thập phân dùng dấu phẩy hoặc dấu chấm.",
+        "criterionPrefix": "Tiêu chí {index}.",
+        "legend": "Điểm theo tiêu chí",
+        "max": "Tối đa {max} điểm",
+        "noComment": "Không có nhận xét.",
+        "subtotalValue": "{score} / {max}",
+        "title": "Chấm điểm",
+        "totalPointsHint": "Từ 0 đến {max} điểm; khi có tiêu chí phải bằng tổng điểm các tiêu chí.",
+        "totalPointsLabel": "Tổng điểm câu"
+      },
+      "summary": {
+        "attemptCode": "Mã lượt",
+        "gradedAt": "Chốt lúc",
+        "grader": "Người chấm",
+        "kind": "Kỳ thi",
+        "submittedAt": "Nộp lúc"
+      },
+      "title": "Chấm câu tự luận",
+      "validation": {
+        "commentMax": "Nhận xét tối đa {limit} ký tự.",
+        "criteriaSumMismatch": "Tổng điểm các tiêu chí ({sum}) không khớp với điểm câu đã nhập.",
+        "invalid": "Nhập số không âm, tối đa hai chữ số thập phân (ví dụ 1,5).",
+        "required": "Vui lòng nhập điểm trước khi hoàn tất.",
+        "summary": "Có ô điểm chưa hợp lệ. Đã chuyển tới ô đầu tiên.",
+        "tooHigh": "Điểm không được vượt quá {max}."
       }
+    },
+    "errors": {
+      "CONFLICT": "Xung đột trạng thái hiện tại. Vui lòng tải lại dữ liệu.",
+      "ESSAY_ALREADY_FINALIZED": "Câu tự luận này đã được hoàn tất chấm.",
+      "ESSAY_CRITERIA_INVALID": "Điểm theo tiêu chí không hợp lệ hoặc không khớp hướng dẫn chấm.",
+      "ESSAY_CRITERIA_SUM_MISMATCH": "Tổng điểm các tiêu chí phải bằng tổng điểm của câu.",
+      "ESSAY_NOT_FINALIZED": "Câu tự luận chưa được hoàn tất nên không thể mở lại.",
+      "ESSAY_NOT_GRADABLE": "Câu này không còn hợp lệ để chấm tự luận.",
+      "ESSAY_POINTS_OUT_OF_RANGE": "Điểm chấm phải nằm trong khoảng từ 0 đến điểm tối đa của câu.",
+      "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này.",
+      "GENERIC": "Không thể xử lý yêu cầu. Vui lòng thử lại.",
+      "GRADING_CLAIMED": "Câu này đang được người chấm khác giữ.",
+      "GRADING_CLAIMED_BY": "Câu này đang được {name} nhận chấm.",
+      "GRADING_ITEM_NOT_FOUND": "Không tìm thấy câu tự luận cần chấm.",
+      "GRADING_NOT_CLAIMED": "Bạn cần nhận câu trước khi lưu hoặc hoàn tất chấm.",
+      "INTERNAL_ERROR": "Lỗi hệ thống tạm thời. Vui lòng thử lại sau.",
+      "INVALID_DATE_FILTER": "Khoảng ngày lọc không hợp lệ.",
+      "NETWORK": "Không thể kết nối máy chủ. Kiểm tra mạng rồi thử lại.",
+      "NOT_FOUND": "Không tìm thấy dữ liệu yêu cầu.",
+      "RATE_LIMITED": "Thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
+      "VALIDATION_FAILED": "Dữ liệu nhập chưa hợp lệ. Vui lòng kiểm tra lại.",
+      "VERSION_CONFLICT": "Dữ liệu đã được cập nhật ở nơi khác. Hệ thống đã tải lại dữ liệu mới nhất."
+    },
+    "filters": {
+      "activeLabel": "Đang lọc",
+      "all": "Tất cả",
+      "ariaLabel": "Lọc hàng chờ chấm tự luận",
+      "chip": "{label}: {value}",
+      "clearAll": "Xóa tất cả bộ lọc",
+      "examSearch": "Bài thi",
+      "examSearchPlaceholder": "Tên bài thi hoặc UUID",
+      "from": "Từ ngày",
+      "kind": "Kỳ thi",
+      "remove": "Bỏ lọc {label}",
+      "statusAll": "Tất cả",
+      "statusLegend": "Trạng thái",
+      "to": "Đến ngày"
+    },
+    "list": {
+      "actions": {
+        "gradeAria": "Chấm bài #{code} · Câu {number}",
+        "gradeTooltip": "Chấm câu",
+        "viewAria": "Xem kết quả chấm #{code} · Câu {number}",
+        "viewTooltip": "Xem kết quả"
+      },
+      "description": "Hàng chờ chấm câu tự luận ẩn danh theo từng câu. Học viên được xác định bằng mã lượt thi.",
+      "emptyDescription": "Các câu tự luận có bài làm sẽ xuất hiện tại đây sau khi học viên nộp bài.",
+      "emptyFilteredDescription": "Thử đổi hoặc xóa bớt bộ lọc để xem các câu khác.",
+      "emptyFilteredTitle": "Không có câu tự luận khớp bộ lọc",
+      "emptyTitle": "Chưa có câu tự luận cần chấm",
+      "errorCount": "Chưa xác định số câu tự luận",
+      "errorTitle": "Không tải được hàng chờ chấm",
+      "filteredCount": "{count, number} câu tự luận khớp bộ lọc",
+      "filteredCountRich": "<strong>{count, number}</strong> câu tự luận khớp bộ lọc",
+      "graderExpired": "{name} (hết hạn nhận)",
+      "hint": "Nộp trước chấm trước",
+      "loadingCount": "Đang tải hàng chờ chấm…",
+      "noGrader": "Chưa có",
+      "offlineDescription": "Máy đang mất kết nối nên chưa tải được danh sách. Danh sách tự tải lại khi có mạng, hoặc bấm Thử lại.",
+      "offlineTitle": "Mất kết nối mạng",
+      "paginationNav": "Phân trang hàng chờ chấm",
+      "paginationNext": "Sau",
+      "paginationPage": "Trang {page}",
+      "paginationPrevious": "Trước",
+      "paginationRange": "Hiển thị {from}–{to} trên {total}",
+      "paginationRowsPerPage": "Số dòng mỗi trang",
+      "questionNo": "Câu {number}",
+      "regrading": "Đang chấm lại",
+      "retry": "Thử lại",
+      "scorePending": "— / {max}",
+      "scoreValue": "{score} / {max}",
+      "table": {
+        "actions": "Thao tác",
+        "grader": "Người chấm",
+        "item": "Lượt & Câu",
+        "kind": "Kỳ thi",
+        "part": "Phần",
+        "score": "Điểm",
+        "status": "Trạng thái",
+        "submittedAt": "Nộp lúc"
+      },
+      "tableAriaLabel": "Danh sách câu tự luận cần chấm",
+      "title": "Chấm tự luận"
+    },
+    "status": {
+      "DONE": "Đã chấm",
+      "IN_PROGRESS": "Đang chấm",
+      "WAITING": "Chờ chấm"
     }
   },
   "richText": {

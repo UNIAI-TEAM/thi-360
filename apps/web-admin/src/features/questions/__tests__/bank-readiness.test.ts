@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference } from "@/features/content/types";
-import questionsFixture from "@/features/grading/mock/questions.json";
+import questionsFixture from "@/test/fixtures/questions.json";
 import {
   evaluateReadiness,
   firstReadinessIssue,

@@ -2,9 +2,16 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
-import { renderWithProviders } from "@/test/render";
+import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import { GradingListView } from "../components/grading-list-view";
-import { attemptStore } from "../mock/store";
+import {
+  ATTEMPT_1_ID,
+  EXAM_KIND_CATALOG_FIXTURES,
+  ITEM_1_ID,
+  makeCounts,
+  makeQueueItem,
+  renderGradingUi,
+} from "./grading-fixtures";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -12,106 +19,229 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/grading",
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
+vi.mock("@/lib/api/client", async () => {
+  const fake = await import("@/test/fake-api");
+  return { createBrowserApiClient: fake.fakeBrowserApiClient };
+});
 
-/** Dai "N luot thi khop bo loc" (LiveStatus cung doc cau nay nen co the co hai phan tu). */
-async function expectCount(text: string) {
-  await waitFor(() =>
-    expect(screen.getAllByText(/lượt thi khớp bộ lọc/).some((element) => element.textContent === text)).toBe(true),
-  );
-}
+withRealApi();
 
 function setUrl(search: string) {
   window.history.replaceState(null, "", `/grading${search}`);
 }
 
-beforeEach(() => setUrl(""));
+beforeEach(() => {
+  setUrl("");
+  routerMock.push.mockReset();
+  fakeApi.get("/api/v1/catalog/options", ok(EXAM_KIND_CATALOG_FIXTURES));
+});
 
 afterEach(() => {
-  attemptStore.reset();
-  routerMock.push.mockReset();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
   setUrl("");
 });
 
 describe("GradingListView", () => {
-  it("hien danh sach, so luot theo trang thai, dai du lieu mau", async () => {
-    renderWithProviders(<GradingListView />);
+  it("hiển thị hàng chờ ẩn danh (không lộ tên/username học viên) và lọc theo state, exam, kind, from, to", async () => {
+    const item1 = {
+      ...makeQueueItem({
+        itemId: ITEM_1_ID,
+        attemptId: ATTEMPT_1_ID,
+        examName: "Đề thi BCA Ngữ văn 2026",
+        examKindCode: "BCA",
+        partName: "Phần Viết",
+        displayNo: 25,
+        state: "WAITING",
+        regrading: true,
+      }),
+      learnerName: "Nguyễn Văn Bí Mật",
+      username: "secret.student01",
+      email: "secret@thi360.test",
+    };
+    const item2 = makeQueueItem({
+      itemId: "item-2",
+      attemptId: "12345678-0000-4000-8000-000000000000",
+      examName: "Đề SPT Toán 2026",
+      examKindCode: "SPT",
+      partName: "Tự luận",
+      displayNo: 12,
+      state: "DONE",
+      earnedPoints: 8.5,
+      pointsMax: 10,
+      graderName: "Giám khảo A",
+    });
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Chấm tự luận" })).toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent("Dữ liệu mẫu.");
+    const listQueries: Array<Record<string, unknown>> = [];
+    fakeApi.get("/api/v1/admin/grading/items", (call) => {
+      const q = ((call.options?.params as { query?: Record<string, unknown> })?.query ?? {});
+      listQueries.push(q);
+      return ok({ items: [item1, item2], page: 0, size: 20, totalItems: 2, totalPages: 1 });
+    });
+    fakeApi.get("/api/v1/admin/grading/items/counts", ok(makeCounts({ waiting: 1, inProgress: 0, done: 1, total: 2 })));
 
-    const table = await screen.findByRole("table", { name: "Danh sách lượt thi cần chấm khớp bộ lọc" });
-    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(12));
-    await expectCount("11 lượt thi khớp bộ lọc");
+    renderGradingUi(<GradingListView />);
 
-    const statusGroup = screen.getByRole("group", { name: "Trạng thái" });
-    await waitFor(() => expect(within(statusGroup).getByRole("radio", { name: /Tất cả\s*11/ })).toBeChecked());
-    expect(within(statusGroup).getByRole("radio", { name: /Chờ chấm\s*7/ })).toBeInTheDocument();
-    expect(within(statusGroup).getByRole("radio", { name: /Đã có điểm\s*4/ })).toBeInTheDocument();
-
-    // Luot da co diem: tong = trac nghiem + tu luan; luot dang cham: chua co diem tu luan.
-    const scoredRow = within(table).getByRole("link", { name: "Vũ Quốc Bảo" }).closest("tr")!;
-    expect(scoredRow).toHaveTextContent("58,25/100");
-    expect(scoredRow).toHaveTextContent("Trắc nghiệm 47,25 + tự luận 11");
-    const gradingRow = within(table).getByRole("link", { name: "Phạm Gia Huy" }).closest("tr")!;
-    expect(gradingRow).toHaveTextContent("Tự luận chưa có điểm");
-    expect(within(gradingRow).getByRole("link", { name: "Phạm Gia Huy" })).toHaveAttribute(
+    const table = await screen.findByRole("table", { name: "Danh sách câu tự luận cần chấm" });
+    expect(await within(table).findByText("Đề thi BCA Ngữ văn 2026")).toBeInTheDocument();
+    expect(within(table).getByRole("link", { name: "#ABCDEF12 · Câu 25" })).toHaveAttribute(
       "href",
-      "/grading/att-bca-001",
+      `/grading/${ITEM_1_ID}`,
     );
+    expect(within(table).getByText("Đang chấm lại")).toBeInTheDocument();
 
-    await userEvent.click(within(gradingRow).getByRole("button", { name: "Chấm bài của Phạm Gia Huy" }));
-    expect(routerMock.push).toHaveBeenCalledWith("/grading/att-bca-001");
+    // Không hiển thị bất kỳ tên học viên/tên đăng nhập/email nào và không có cột Học viên (chấm ẩn danh, AC-2).
+    expect(within(table).queryByRole("columnheader", { name: /Học viên/i })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("Nguyễn Văn Bí Mật");
+    expect(document.body).not.toHaveTextContent("secret.student01");
+    expect(document.body).not.toHaveTextContent("secret@thi360.test");
+
+    // Bấm nút thao tác điều hướng tới /grading/[itemId].
+    await userEvent.click(screen.getByRole("button", { name: "Chấm bài #ABCDEF12 · Câu 25" }));
+    expect(routerMock.push).toHaveBeenCalledWith(`/grading/${ITEM_1_ID}`);
+
+    // Lọc ngày from/to + tìm kiếm bài thi + URL sync.
+    const fromInput = screen.getByLabelText("Từ ngày");
+    const toInput = screen.getByLabelText("Đến ngày");
+    await userEvent.type(fromInput, "2026-11-01");
+    await userEvent.type(toInput, "2026-11-20");
+    await userEvent.type(screen.getByLabelText("Bài thi"), "BCA Ngữ văn");
+
+    await waitFor(() => {
+      expect(window.location.search).toContain("from=2026-11-01");
+      expect(window.location.search).toContain("to=2026-11-20");
+      expect(listQueries.some((q) => q.exam === "BCA Ngữ văn" && q.from === "2026-11-01" && q.to === "2026-11-20")).toBe(
+        true,
+      );
+    });
   });
 
-  it("loc theo trang thai ghi len URL, giu tham so khac va bo duoc bang chip", async () => {
-    setUrl("?mockState=data");
-    renderWithProviders(<GradingListView />);
-    await screen.findByRole("table", { name: "Danh sách lượt thi cần chấm khớp bộ lọc" });
+  it("số đếm theo bộ lọc", async () => {
+    const countsQueries: Array<Record<string, unknown>> = [];
+    fakeApi.get("/api/v1/admin/grading/items", () =>
+      ok({ items: [makeQueueItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 }),
+    );
+    fakeApi.get("/api/v1/admin/grading/items/counts", (call) => {
+      const q = ((call.options?.params as { query?: Record<string, unknown> })?.query ?? {});
+      countsQueries.push(q);
+      if (q.kind === "SPT") {
+        return ok(makeCounts({ waiting: 1, inProgress: 1, done: 2, total: 4 }));
+      }
+      return ok(makeCounts({ waiting: 5, inProgress: 2, done: 3, total: 10 }));
+    });
 
-    await userEvent.click(screen.getByRole("radio", { name: /^Đã có điểm/ }));
-    await waitFor(() => expect(window.location.search).toContain("status=SCORED"));
-    expect(window.location.search).toContain("mockState=data");
-    await expectCount("4 lượt thi khớp bộ lọc");
+    renderGradingUi(<GradingListView />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Bỏ lọc Trạng thái: Đã có điểm" }));
-    await waitFor(() => expect(window.location.search).not.toContain("status="));
+    const statusGroup = await screen.findByRole("group", { name: "Trạng thái" });
+    await waitFor(() => {
+      expect(within(statusGroup).getByRole("radio", { name: /Tất cả\s*10/ })).toBeChecked();
+      expect(within(statusGroup).getByRole("radio", { name: /Chờ chấm\s*5/ })).toBeInTheDocument();
+      expect(within(statusGroup).getByRole("radio", { name: /Đang chấm\s*2/ })).toBeInTheDocument();
+      expect(within(statusGroup).getByRole("radio", { name: /Đã chấm\s*3/ })).toBeInTheDocument();
+    });
+
+    // Đổi state không truyền state vào API counts và giữ nguyên số đếm.
+    await userEvent.click(within(statusGroup).getByRole("radio", { name: /Chờ chấm/ }));
+    await waitFor(() => expect(window.location.search).toContain("state=WAITING"));
+    expect(countsQueries.every((q) => !("state" in q))).toBe(true);
+
+    // Đổi bộ lọc kỳ thi (kind) -> counts cập nhật theo bộ lọc mới (vẫn bỏ qua state).
+    await userEvent.click(screen.getByRole("combobox", { name: "Kỳ thi" }));
+    await userEvent.click(screen.getByRole("option", { name: "Danh gia nang luc DH Su pham (SPT)" }));
+
+    await waitFor(() => {
+      expect(within(statusGroup).getByRole("radio", { name: /Tất cả\s*4/ })).toBeInTheDocument();
+      expect(within(statusGroup).getByRole("radio", { name: /Chờ chấm\s*1/ })).toBeInTheDocument();
+      expect(within(statusGroup).getByRole("radio", { name: /Đang chấm\s*1/ })).toBeInTheDocument();
+      expect(within(statusGroup).getByRole("radio", { name: /Đã chấm\s*2/ })).toBeInTheDocument();
+    });
+    expect(countsQueries.at(-1)).toEqual({ kind: "SPT" });
   });
 
-  it("doc bo loc ky thi va nguoi cham tu URL", async () => {
-    setUrl("?kind=SPT&grader=UNASSIGNED");
-    renderWithProviders(<GradingListView />);
-    await expectCount("1 lượt thi khớp bộ lọc");
-    expect(screen.getByRole("link", { name: "Bùi Khánh Linh" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Đang lọc" })).toHaveTextContent("Người chấm: Chưa có người chấm");
+  it("rỗng, lỗi", async () => {
+    // 1. Loading skeleton
+    fakeApi.pending("/api/v1/admin/grading/items");
+    fakeApi.get("/api/v1/admin/grading/items/counts", ok(makeCounts({ waiting: 0, inProgress: 0, done: 0, total: 0 })));
+    const { unmount } = renderGradingUi(<GradingListView />);
+    const loadingTable = await screen.findByRole("table", { name: "Danh sách câu tự luận cần chấm" });
+    expect(loadingTable).toHaveAttribute("aria-busy", "true");
+    unmount();
+
+    // 2. Empty unfiltered
+    fakeApi.get("/api/v1/admin/grading/items", ok({ items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 }));
+    const { unmount: unmountEmpty } = renderGradingUi(<GradingListView />);
+    expect(await screen.findByText("Chưa có câu tự luận cần chấm")).toBeInTheDocument();
+    unmountEmpty();
+
+    // 3. Empty filtered with clear button
+    setUrl("?kind=BCA");
+    const { unmount: unmountFiltered } = renderGradingUi(<GradingListView />);
+    expect(await screen.findByText("Không có câu tự luận khớp bộ lọc")).toBeInTheDocument();
+    await userEvent.click(within(screen.getByRole("table")).getByRole("button", { name: "Xóa tất cả bộ lọc" }));
+    await waitFor(() => expect(window.location.search).toBe(""));
+    unmountFiltered();
+
+    // 4. Error + Retry recovers
+    let calls = 0;
+    fakeApi.get("/api/v1/admin/grading/items", () => {
+      calls += 1;
+      if (calls === 1) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok({ items: [makeQueueItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 });
+    });
+    renderGradingUi(<GradingListView />);
+    expect(await screen.findByText("Không tải được hàng chờ chấm")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(await screen.findByText("BCA Literature Mock 01")).toBeInTheDocument();
+    expect(calls).toBe(2);
   });
 
-  it("trang thai rong theo ?mockState=empty", async () => {
-    setUrl("?mockState=empty");
-    renderWithProviders(<GradingListView />);
-    expect(await screen.findByText("Chưa có lượt thi cần chấm")).toBeInTheDocument();
+  it("hiển thị song ngữ pickName ở locale en và bọc data-exam-content đúng phạm vi (A7.7)", async () => {
+    const bcaItem = makeQueueItem({
+      itemId: "item-bca",
+      examName: "Đề BCA giữ nguyên tiếng Việt",
+      partName: "Phần Tự luận giữ nguyên",
+      examKindCode: "BCA",
+    });
+    const sptItem = makeQueueItem({
+      itemId: "item-spt",
+      attemptId: "11112222-3333-4444-8555-666677778888",
+      examName: "Đề SPT giữ nguyên tiếng Việt",
+      partName: "Phần Tự luận SPT",
+      examKindCode: "SPT",
+    });
+    fakeApi.get(
+      "/api/v1/admin/grading/items",
+      ok({ items: [bcaItem, sptItem], page: 0, size: 20, totalItems: 2, totalPages: 1 }),
+    );
+    fakeApi.get("/api/v1/admin/grading/items/counts", ok(makeCounts({ waiting: 2, inProgress: 0, done: 0, total: 2 })));
+
+    renderGradingUi(<GradingListView />, { locale: "en" });
+
+    // Item có nameEn -> hiện nameEn; item có nameEn rỗng -> fallback nameVi; không bọc data-exam-content.
+    const table = await screen.findByRole("table", { name: "Essay grading queue" });
+    const bcaKind = await within(table).findByText("Public Security Admission (BCA)");
+    expect(bcaKind.closest("[data-exam-content]")).toBeNull();
+    const sptKind = within(table).getByText("Danh gia nang luc DH Su pham (SPT)");
+    expect(sptKind.closest("[data-exam-content]")).toBeNull();
+
+    // Nội dung bài thi / phần thi nằm trong data-exam-content; nhãn UI nằm ngoài.
+    const examNameEl = screen.getByText("Đề BCA giữ nguyên tiếng Việt");
+    expect(examNameEl.closest("[data-exam-content]")).not.toBeNull();
+    const partNameEl = screen.getByText("Phần Tự luận giữ nguyên");
+    expect(partNameEl.closest("[data-exam-content]")).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Essay grading" }).closest("[data-exam-content]")).toBeNull();
   });
 
-  it("trang thai loi theo ?mockState=error co nut Thu lai", async () => {
-    setUrl("?mockState=error");
-    renderWithProviders(<GradingListView />);
-    expect(await screen.findByText("Không tải được danh sách lượt thi")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
-  });
-
-  it("trang thai dang tai theo ?mockState=loading", async () => {
-    setUrl("?mockState=loading");
-    renderWithProviders(<GradingListView />);
-    expect(await screen.findByText("Đang tải danh sách lượt thi…")).toBeInTheDocument();
-  });
-
-  it("khung hep hien danh sach the", async () => {
+  it("khung hẹp hiển thị ListCard ẩn danh", async () => {
     installContainerWidth(PHONE_CONTENT_WIDTH);
-    setUrl("?q=HV-001047");
-    renderWithProviders(<GradingListView />);
-    const link = await screen.findByRole("link", { name: "Vũ Quốc Bảo" });
-    expect(link).toHaveAttribute("href", "/grading/att-bca-003");
+    fakeApi.get(
+      "/api/v1/admin/grading/items",
+      ok({ items: [makeQueueItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 }),
+    );
+    fakeApi.get("/api/v1/admin/grading/items/counts", ok(makeCounts()));
+
+    renderGradingUi(<GradingListView />);
+
+    const link = await screen.findByRole("link", { name: "#ABCDEF12 · Câu 25" });
+    expect(link).toHaveAttribute("href", `/grading/${ITEM_1_ID}`);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });
