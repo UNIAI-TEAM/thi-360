@@ -493,6 +493,112 @@ class PartGenerationRetryWorkerIT extends AbstractAttemptDsIT {
     }
 
     @Test
+    void retryOrdersByOldestLastFailedAtBeforeChoiceConfirmedAt() throws Exception {
+        // threads=1, queueCapacity=1 -> batchLimit=2. When 3 due failed parts exist and
+        // earliest-confirmed p1 failed MORE recently than p2/p3, p2 & p3 retry first.
+        UUID u1 = createStudent("ord-p1");
+        UUID u2 = createStudent("ord-p2");
+        UUID u3 = createStudent("ord-p3");
+        Attempt a1 =
+                advanceToAwaitingChoice(
+                        u1,
+                        "ord1",
+                        grant(u1, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt a2 =
+                advanceToAwaitingChoice(
+                        u2,
+                        "ord2",
+                        grant(u2, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        Attempt a3 =
+                advanceToAwaitingChoice(
+                        u3,
+                        "ord3",
+                        grant(u3, "DS-HSA-FULL-MINI", 2, List.of()).entitlementId());
+        AttemptPart p1 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a1.getId()).get(2);
+        AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId()).get(2);
+        AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
+
+        AtomicBoolean failAll = new AtomicBoolean(true);
+        doAnswer(
+                        inv -> {
+                            List<String> partCodes = inv.getArgument(2);
+                            if (partCodes.contains(p1.getPartCode()) && failAll.get()) {
+                                throw new PaperGenerationException(
+                                        PaperGenerationException.Reason.GENERATION_FAILED,
+                                        "ord-fail");
+                            }
+                            return inv.callRealMethod();
+                        })
+                .when(paperSolverPort)
+                .generate(any(), anyInt(), any(), any(), anyLong(), any());
+
+        Instant t0 = mutableClock.instant();
+        assertThat(
+                        performChoice(
+                                        u1,
+                                        a1.getId(),
+                                        p1.getId(),
+                                        "ord1-ch",
+                                        null,
+                                        new ConfirmPartChoiceRequest("ANH", null))
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+        awaitPartState(p1.getId(), PartState.GENERATION_FAILED);
+
+        mutableClock.setAt(t0.plusSeconds(10));
+        assertThat(
+                        performChoice(
+                                        u2,
+                                        a2.getId(),
+                                        p2.getId(),
+                                        "ord2-ch",
+                                        null,
+                                        new ConfirmPartChoiceRequest("ANH", null))
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+        awaitPartState(p2.getId(), PartState.GENERATION_FAILED);
+
+        mutableClock.setAt(t0.plusSeconds(15));
+        assertThat(
+                        performChoice(
+                                        u3,
+                                        a3.getId(),
+                                        p3.getId(),
+                                        "ord3-ch",
+                                        null,
+                                        new ConfirmPartChoiceRequest("ANH", null))
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+        awaitPartState(p3.getId(), PartState.GENERATION_FAILED);
+
+        // At t0+30s only p1 is due (try #1 -> try #2), giving p1 earliest choice_confirmed_at
+        // (t0) yet newest last_failed_at (t0+30s vs t0+10s / t0+15s).
+        mutableClock.setAt(t0.plusSeconds(30));
+        assertThat(worker.retryFailedParts()).isEqualTo(1);
+        AttemptPart p1Fail2 = awaitPartState(p1.getId(), PartState.GENERATION_FAILED);
+        assertThat(p1Fail2.getGenerationTries()).isEqualTo(2);
+        assertThat(lastFailedEventAt(a1.getId(), p1.getId())).isEqualTo(t0.plusSeconds(30));
+
+        // At t0+150s all 3 are due; batchLimit=2 must pick oldest last_failed_at (p2 & p3), not p1.
+        failAll.set(false);
+        mutableClock.setAt(t0.plusSeconds(150));
+        assertThat(worker.retryFailedParts()).isEqualTo(2);
+        awaitPartState(p2.getId(), PartState.OPEN);
+        awaitPartState(p3.getId(), PartState.OPEN);
+
+        AttemptPart p1Untouched = attemptPartRepository.findById(p1.getId()).orElseThrow();
+        assertThat(p1Untouched.getState()).isEqualTo(PartState.GENERATION_FAILED);
+        assertThat(p1Untouched.getGenerationTries()).isEqualTo(2);
+
+        // Next sweep picks up p1 cleanly
+        assertThat(worker.retryFailedParts()).isEqualTo(1);
+        awaitPartState(p1.getId(), PartState.OPEN);
+    }
+
+    @Test
     void sweepCapsToExecutorCapacityAndStopsOnBusy() throws Exception {
         // 1. Capacity cap (threads=1 + queueCapacity=1 = 2): 3 due parts -> sweep dispatches 2, 3rd untouched
         UUID u1 = createStudent("cap-1");

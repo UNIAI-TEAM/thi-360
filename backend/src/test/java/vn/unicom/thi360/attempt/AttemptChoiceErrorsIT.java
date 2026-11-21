@@ -623,11 +623,25 @@ class AttemptChoiceErrorsIT extends AbstractAttemptDsIT {
         assertThat(replayRetryRev.getResponse().getStatus()).isEqualTo(409);
         assertThat(json(replayRetryRev).path("code").asText()).isEqualTo("ATTEMPT_SESSION_REVOKED");
 
-        // Close a1, then test revoked session on initial choice and initial retry on a2 without state mutation
+        // Close a1, then verify post-close idempotent replays with revoked session return 200 OK with GRADING
         assertThat(performSubmit(userId, a1.getId(), "sess-sub-a1", activeSessionId, null)
                         .getResponse()
                         .getStatus())
                 .isEqualTo(200);
+
+        MvcResult postCloseChoice =
+                performChoice(
+                        userId, a1.getId(), a1P2.getId(), "sess-ch-1", revokedSessionId, choiceReq);
+        assertThat(postCloseChoice.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(postCloseChoice).path("attemptState").asText()).isEqualTo("GRADING");
+
+        MvcResult postCloseRetry =
+                performRetry(
+                        userId, a1.getId(), a1P2.getId(), "sess-ret-1", revokedSessionId, retryReq);
+        assertThat(postCloseRetry.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(postCloseRetry).path("attemptState").asText()).isEqualTo("GRADING");
+
+        // Test revoked session on initial choice and initial retry on a2 without state mutation
 
         Attempt a2 = startAndAwaitOpen(userId, "sess-a2", line.entitlementId(), null);
         List<AttemptPart> a2Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a2.getId());

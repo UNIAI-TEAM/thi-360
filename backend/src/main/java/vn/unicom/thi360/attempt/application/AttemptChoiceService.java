@@ -406,13 +406,15 @@ public class AttemptChoiceService {
             throw new NotFoundException("NOT_FOUND", null);
         }
 
-        if (part.getState() == PartState.SKIPPED
-                && part.getCloseReason() == PartCloseReason.CHOICE_TIMEOUT) {
-            throw new ConflictException("CHOICE_WINDOW_CLOSED");
-        }
         if (part.getState() == PartState.AWAITING_CHOICE
                 && part.getChoiceDeadlineAt() != null
                 && !lockNow.isBefore(part.getChoiceDeadlineAt())) {
+            if (attempt.getTiming() == AttemptTiming.SHARED
+                    && attempt.getDeadlineAt() != null
+                    && !lockNow.isBefore(attempt.getDeadlineAt())
+                    && !part.getChoiceDeadlineAt().isBefore(attempt.getDeadlineAt())) {
+                throw new ConflictException("PART_NOT_AWAITING");
+            }
             throw new ConflictException("CHOICE_WINDOW_CLOSED");
         }
 

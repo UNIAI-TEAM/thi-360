@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +37,7 @@ import vn.unicom.thi360.attempt.application.AttemptLifecycleService;
 import vn.unicom.thi360.attempt.application.GenerationExecutor;
 import vn.unicom.thi360.attempt.application.PartGenerationRetryWorker;
 import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptEvent;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
@@ -121,6 +123,55 @@ class AttemptChoiceRetryIT extends AbstractAttemptDsIT {
         assertThat(attemptRepository.findById(attempt.getId()).orElseThrow().getState())
                 .isEqualTo(AttemptState.IN_PROGRESS);
         assertThat(countEntitlementUsage(attempt.getId(), "RESERVED")).isEqualTo(1);
+    }
+
+    @Test
+    void unexpectedRuntimeExceptionWithNullMessageRecordsClassNameDetail() throws Exception {
+        UUID userId = createStudent("npe-detail");
+        GrantOrderResult.Line line = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt attempt = advanceToAwaitingChoice(userId, "npe", line.entitlementId());
+        AttemptPart p2 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId()).get(2);
+
+        AtomicBoolean throwOnce = new AtomicBoolean(true);
+        doAnswer(
+                        inv -> {
+                            List<String> partCodes = inv.getArgument(2);
+                            if (partCodes.contains(p2.getPartCode())
+                                    && throwOnce.compareAndSet(true, false)) {
+                                throw new NullPointerException();
+                            }
+                            return inv.callRealMethod();
+                        })
+                .when(paperSolverPort)
+                .generate(any(), anyInt(), any(), any(), anyLong(), any());
+
+        assertThat(
+                        performChoice(
+                                        userId,
+                                        attempt.getId(),
+                                        p2.getId(),
+                                        "npe-ch",
+                                        null,
+                                        new ConfirmPartChoiceRequest("ANH", null))
+                                .getResponse()
+                                .getStatus())
+                .isEqualTo(202);
+
+        AttemptPart failed = awaitPartState(p2.getId(), PartState.GENERATION_FAILED);
+        assertThat(failed.getGenerationError()).isEqualTo("GENERATION_FAILED");
+        assertThat(failed.getGenerationTries()).isEqualTo(1);
+
+        List<AttemptEvent> failedEvents =
+                attemptEventRepository.findByAttemptIdOrderByAtAscIdAsc(attempt.getId()).stream()
+                        .filter(
+                                e ->
+                                        e.getType() == AttemptEventType.GENERATION_FAILED
+                                                && p2.getId().equals(e.getPartId()))
+                        .toList();
+        assertThat(failedEvents).hasSize(1);
+        assertThat(failedEvents.getFirst().getData())
+                .containsEntry("reason", "GENERATION_FAILED")
+                .containsEntry("detail", "NullPointerException");
     }
 
     @Test

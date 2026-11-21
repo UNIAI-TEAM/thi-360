@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -52,6 +53,12 @@ import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
  * close (early finish and delayed worker), and CHOICE_TIMEOUT boundary/race closure (AC-6..AC-8,
  * regression).
  */
+@TestPropertySource(
+        properties = {
+            "thi360.attempt.generation.threads=1",
+            "thi360.attempt.generation.queue-capacity=4",
+            "thi360.attempt.generation.max-queue-wait=60s"
+        })
 class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
 
     @Autowired private AttemptDeadlineWorker deadlineWorker;
@@ -603,6 +610,100 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
             pool2.shutdownNow();
             reset(idempotentCommand);
         }
+
+        // (c) >15m lock-wait cascade: PENDING Part 3 waits on FOR UPDATE while clock jumps to p1Deadline + 15m ->
+        //     advanceOverdueInLock closes Part 2 (TIME_UP) then Part 3 (CHOICE_TIMEOUT) -> post-advanceOverdueInLock throws 409 CHOICE_WINDOW_CLOSED
+        mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+        UUID u3 = createStudent("lkb-cascade-15m");
+        GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt a3 = startAndAwaitOpen(u3, "lkb-cas", l3.entitlementId(), null);
+        List<AttemptPart> a3Parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId());
+        assertThat(performFinishPart(u3, a3.getId(), a3Parts.get(0).getId(), null, null)
+                        .getResponse()
+                        .getStatus())
+                .isEqualTo(200);
+        AttemptPart a3P1 = attemptPartRepository.findById(a3Parts.get(1).getId()).orElseThrow();
+        AttemptPart a3P2 = attemptPartRepository.findById(a3Parts.get(2).getId()).orElseThrow();
+        Instant a3P1Deadline = a3P1.getDeadlineAt();
+        Instant cascadeChoiceDeadline = a3P1Deadline.plus(Duration.ofMinutes(15));
+
+        mutableClock.setAt(a3P1Deadline.minusSeconds(1));
+        CountDownLatch holder3Locked = new CountDownLatch(1);
+        CountDownLatch releaseHolder3 = new CountDownLatch(1);
+        CountDownLatch cascadeEntered = new CountDownLatch(1);
+        doAnswer(
+                        inv -> {
+                            cascadeEntered.countDown();
+                            return inv.callRealMethod();
+                        })
+                .when(idempotentCommand)
+                .execute(any(), eq("attempt.part.choice"), eq(a3.getId()), any(), any(), any());
+
+        ExecutorService pool3 = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> holder3 =
+                    pool3.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                s -> {
+                                                    attemptRepository
+                                                            .findByIdForUpdate(a3.getId())
+                                                            .orElseThrow();
+                                                    holder3Locked.countDown();
+                                                    try {
+                                                        assertThat(
+                                                                        releaseHolder3.await(
+                                                                                15,
+                                                                                TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException e) {
+                                                        Thread.currentThread().interrupt();
+                                                    }
+                                                });
+                                return null;
+                            });
+            assertThat(holder3Locked.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> blockedCascade =
+                    pool3.submit(
+                            () ->
+                                    performChoice(
+                                            u3,
+                                            a3.getId(),
+                                            a3P2.getId(),
+                                            "lkb-cas-ch",
+                                            null,
+                                            new ConfirmPartChoiceRequest("ANH", null)));
+            assertThat(cascadeEntered.await(10, TimeUnit.SECONDS)).isTrue();
+            awaitBlockedOnPostgresLock();
+
+            mutableClock.setAt(cascadeChoiceDeadline);
+            releaseHolder3.countDown();
+            holder3.get(10, TimeUnit.SECONDS);
+
+            MvcResult cascadeRes = blockedCascade.get(15, TimeUnit.SECONDS);
+            assertThat(cascadeRes.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(cascadeRes).path("code").asText()).isEqualTo("CHOICE_WINDOW_CLOSED");
+
+            Attempt a3Closed = attemptRepository.findById(a3.getId()).orElseThrow();
+            assertThat(a3Closed.getState()).isEqualTo(AttemptState.GRADING);
+            assertThat(a3Closed.getEndReason()).isEqualTo(EndReason.CHOICE_TIMEOUT);
+            assertThat(a3Closed.getFinishedAt()).isEqualTo(cascadeChoiceDeadline);
+            AttemptPart a3P1Closed = attemptPartRepository.findById(a3P1.getId()).orElseThrow();
+            assertThat(a3P1Closed.getState()).isEqualTo(PartState.CLOSED);
+            assertThat(a3P1Closed.getCloseReason()).isEqualTo(PartCloseReason.TIME_UP);
+            assertThat(a3P1Closed.getClosedAt()).isEqualTo(a3P1Deadline);
+            AttemptPart a3P2Closed = attemptPartRepository.findById(a3P2.getId()).orElseThrow();
+            assertThat(a3P2Closed.getState()).isEqualTo(PartState.SKIPPED);
+            assertThat(a3P2Closed.getCloseReason()).isEqualTo(PartCloseReason.CHOICE_TIMEOUT);
+            assertThat(countEntitlementUsage(a3.getId(), "USED")).isEqualTo(1);
+            assertThat(countOutboxEvents(a3.getId(), "attempt.finished")).isEqualTo(1);
+        } finally {
+            releaseHolder3.countDown();
+            pool3.shutdownNow();
+            reset(idempotentCommand);
+        }
     }
 
     @Test
@@ -655,8 +756,15 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
             mutableClock.setAt(sharedDeadline1);
             release.countDown();
             CountDownLatch sentinel = new CountDownLatch(1);
-            generationExecutor.submit(sentinel::countDown, sentinel::countDown);
+            AtomicBoolean sentinelBusy = new AtomicBoolean(false);
+            generationExecutor.submit(
+                    sentinel::countDown,
+                    () -> {
+                        sentinelBusy.set(true);
+                        sentinel.countDown();
+                    });
             assertThat(sentinel.await(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(sentinelBusy.get()).isFalse();
 
             assertThat(attemptItemRepository.findByPartIdOrderByOrdAsc(p1.getId())).isEmpty();
             Integer ledgerAfter =
@@ -784,6 +892,90 @@ class AttemptChoiceTimingIT extends AbstractAttemptDsIT {
         } finally {
             releaseHolder.countDown();
             pool.shutdownNow();
+            reset(idempotentCommand);
+        }
+
+        // 3. R2-3: SHARED deadline <= choiceDeadlineAt under FOR UPDATE at lockNow >= choiceDeadlineAt
+        //    throws 409 PART_NOT_AWAITING, commits EndReason.TIME_UP, and invokes confirmUse once
+        mutableClock.setAt(AttemptTestFixtures.DEFAULT_CLOCK_START);
+        UUID u3 = createStudent("sh-prec-choice");
+        GrantOrderResult.Line l3 = grant(u3, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt a3 = advanceToAwaitingChoice(u3, "shg-3", l3.entitlementId());
+        AttemptPart p3 = attemptPartRepository.findByAttemptIdOrderByOrdAsc(a3.getId()).get(2);
+        Instant choiceDeadline3 = p3.getChoiceDeadlineAt();
+        Instant sharedDeadline3 = choiceDeadline3.minus(Duration.ofMinutes(5));
+        jdbc.update(
+                "UPDATE attempt.attempt SET timing = 'SHARED', deadline_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(sharedDeadline3),
+                a3.getId());
+        clearInvocations(entitlementPort);
+
+        mutableClock.setAt(sharedDeadline3.minusSeconds(1));
+        CountDownLatch holder3Locked = new CountDownLatch(1);
+        CountDownLatch releaseHolder3 = new CountDownLatch(1);
+        CountDownLatch choice3Entered = new CountDownLatch(1);
+        doAnswer(
+                        inv -> {
+                            choice3Entered.countDown();
+                            return inv.callRealMethod();
+                        })
+                .when(idempotentCommand)
+                .execute(any(), eq("attempt.part.choice"), eq(a3.getId()), any(), any(), any());
+
+        ExecutorService pool3 = Executors.newFixedThreadPool(2);
+        try {
+            Future<Void> holder3 =
+                    pool3.submit(
+                            () -> {
+                                new TransactionTemplate(transactionManager)
+                                        .executeWithoutResult(
+                                                s -> {
+                                                    attemptRepository
+                                                            .findByIdForUpdate(a3.getId())
+                                                            .orElseThrow();
+                                                    holder3Locked.countDown();
+                                                    try {
+                                                        assertThat(
+                                                                        releaseHolder3.await(
+                                                                                15,
+                                                                                TimeUnit.SECONDS))
+                                                                .isTrue();
+                                                    } catch (InterruptedException e) {
+                                                        Thread.currentThread().interrupt();
+                                                    }
+                                                });
+                                return null;
+                            });
+            assertThat(holder3Locked.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Future<MvcResult> blockedChoice3 =
+                    pool3.submit(
+                            () ->
+                                    performChoice(
+                                            u3,
+                                            a3.getId(),
+                                            p3.getId(),
+                                            "shg-3-ch",
+                                            null,
+                                            new ConfirmPartChoiceRequest("ANH", null)));
+            assertThat(choice3Entered.await(10, TimeUnit.SECONDS)).isTrue();
+            awaitBlockedOnPostgresLock();
+
+            mutableClock.setAt(choiceDeadline3);
+            releaseHolder3.countDown();
+            holder3.get(10, TimeUnit.SECONDS);
+
+            MvcResult sharedPrecRes = blockedChoice3.get(15, TimeUnit.SECONDS);
+            assertThat(sharedPrecRes.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json(sharedPrecRes).path("code").asText()).isEqualTo("PART_NOT_AWAITING");
+            Attempt a3Closed = attemptRepository.findById(a3.getId()).orElseThrow();
+            assertThat(a3Closed.getState()).isEqualTo(AttemptState.GRADING);
+            assertThat(a3Closed.getEndReason()).isEqualTo(EndReason.TIME_UP);
+            assertThat(a3Closed.getFinishedAt()).isEqualTo(sharedDeadline3);
+            verify(entitlementPort, times(1)).confirmUse(a3.getId());
+        } finally {
+            releaseHolder3.countDown();
+            pool3.shutdownNow();
             reset(idempotentCommand);
         }
     }

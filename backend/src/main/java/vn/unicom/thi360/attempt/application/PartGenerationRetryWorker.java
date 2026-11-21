@@ -156,6 +156,7 @@ public class PartGenerationRetryWorker {
                           AND p.state = 'GENERATION_FAILED'
                           AND p.choice_confirmed_at IS NOT NULL
                           AND p.generation_tries BETWEEN 1 AND ?
+                          AND (a.timing <> 'SHARED' OR a.deadline_at IS NULL OR a.deadline_at > ?)
                           AND COALESCE(lf.last_failed_at, p.choice_confirmed_at)
                               + CASE p.generation_tries
                                     WHEN 1 THEN interval '30 seconds'
@@ -170,6 +171,7 @@ public class PartGenerationRetryWorker {
                                         rs.getObject(1, UUID.class),
                                         rs.getObject(2, UUID.class)),
                         RETRY_DELAYS.size(),
+                        Timestamp.from(now),
                         Timestamp.from(now),
                         batchLimit);
 
