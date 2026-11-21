@@ -55,7 +55,7 @@ public class OrderController {
     @ApiResponse(responseCode = "201", description = "Tạo đơn hoặc dùng lại đơn chờ thành công",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateOrderResponse.class)))
     @ApiResponse(responseCode = "400", description = "IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED")
-    @ApiResponse(responseCode = "409", description = "ACCOUNT_CHANGED, IDEMPOTENCY_KEY_REUSED hoặc PRICE_CHANGED")
+    @ApiResponse(responseCode = "409", description = "ACCOUNT_CHANGED, IDEMPOTENCY_KEY_REUSED, PRICE_CHANGED hoặc PRODUCT_UNAVAILABLE")
     @ApiResponse(responseCode = "410", description = "PRODUCT_DISCONTINUED")
     @ApiResponse(responseCode = "422", description = "Lỗi voucher: VOUCHER_*")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -91,7 +91,7 @@ public class OrderController {
     @ApiResponse(responseCode = "200", description = "Tạo lần thanh toán VNPAY mới",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = PayOrderResponse.class)))
     @ApiResponse(responseCode = "404", description = "ORDER_NOT_FOUND hoặc PRODUCT_NOT_FOUND")
-    @ApiResponse(responseCode = "409", description = "ORDER_NOT_PENDING hoặc ORDER_EXPIRED")
+    @ApiResponse(responseCode = "409", description = "ORDER_NOT_PENDING, ORDER_EXPIRED hoặc PRODUCT_UNAVAILABLE")
     @ApiResponse(responseCode = "410", description = "PRODUCT_DISCONTINUED")
     @PostMapping("/{code}/pay")
     public PayOrderResponse pay(

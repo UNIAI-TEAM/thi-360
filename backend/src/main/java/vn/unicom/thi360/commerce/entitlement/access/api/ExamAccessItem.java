@@ -1,10 +1,11 @@
 package vn.unicom.thi360.commerce.entitlement.access.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import java.util.UUID;
 import vn.unicom.thi360.commerce.entitlement.access.domain.ExamAccessState;
 
-@Schema(description = "Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2)")
+@Schema(description = "Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2, 16.4)")
 public record ExamAccessItem(
         @Schema(description = "Mã như học viên gửi (đã bỏ khoảng trắng đầu cuối)",
                 requiredMode = Schema.RequiredMode.REQUIRED)
@@ -23,5 +24,25 @@ public record ExamAccessItem(
                 requiredMode = Schema.RequiredMode.REQUIRED)
         boolean hasPendingFulfillment,
         @Schema(description = "Mã đơn đã thu tiền chưa cấp xong; trống khi không có", types = {"string", "null"})
-        String pendingOrderCode) {
+        String pendingOrderCode,
+        @Schema(description = "Trạng thái quyền từng bài khi mã là bộ đề (TM 16.4); null với bài lẻ",
+                types = {"array", "null"},
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        List<BundleAccessExamItem> items) {
+
+    public ExamAccessItem(
+            String code,
+            ExamAccessState state,
+            int attemptsLeft,
+            UUID entitlementId,
+            UUID activeAttemptId,
+            boolean hasPendingFulfillment,
+            String pendingOrderCode) {
+        this(code, state, attemptsLeft, entitlementId, activeAttemptId, hasPendingFulfillment,
+                pendingOrderCode, null);
+    }
+
+    public ExamAccessItem {
+        items = items == null ? null : List.copyOf(items);
+    }
 }

@@ -11,7 +11,7 @@ import vn.unicom.thi360.commerce.storefront.api.IntRange;
 import vn.unicom.thi360.commerce.storefront.api.LocalizedName;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 
-@Schema(description = "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12): một quyền dùng nguồn mua, hoặc một đơn đã thu "
+@Schema(description = "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12, 16.4): một quyền dùng nguồn mua, hoặc một đơn đã thu "
         + "tiền chưa cấp quyền (state CHECKING, không có entitlementId)")
 public record MyExamCard(
         @Schema(description = "Quyền dùng; trống ở thẻ \"Đang kiểm tra\" của đơn chưa cấp quyền",
@@ -56,5 +56,39 @@ public record MyExamCard(
         boolean hasPendingFulfillment,
         @Schema(description = "Mã đơn đã thu tiền chưa cấp xong", types = {"string", "null"}) String pendingOrderCode,
         @Schema(description = "Nút của thẻ theo TM 12, nút chính đứng đầu", requiredMode = Schema.RequiredMode.REQUIRED)
-        List<MyExamAction> actions) {
+        List<MyExamAction> actions,
+        @Schema(description = "Các bộ đề đã mua chứa bài thi này (TM 16.4)",
+                types = {"array", "null"},
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        List<MyExamBundleRef> bundles) {
+
+    public MyExamCard(
+            UUID entitlementId,
+            String code,
+            String name,
+            ExamKindRef examKind,
+            String format,
+            LocalizedName scopeLabel,
+            String buildMode,
+            String coverUrl,
+            IntRange questionCount,
+            IntRange durationMinutes,
+            int attemptsLeft,
+            int attemptsTotal,
+            SaleState saleState,
+            ExamAccessState state,
+            UUID activeAttemptId,
+            OpenAttemptState activeAttemptState,
+            UUID resultAttemptId,
+            boolean hasPendingFulfillment,
+            String pendingOrderCode,
+            List<MyExamAction> actions) {
+        this(entitlementId, code, name, examKind, format, scopeLabel, buildMode, coverUrl, questionCount,
+                durationMinutes, attemptsLeft, attemptsTotal, saleState, state, activeAttemptId, activeAttemptState,
+                resultAttemptId, hasPendingFulfillment, pendingOrderCode, actions, List.of());
+    }
+
+    public MyExamCard {
+        bundles = bundles == null ? List.of() : List.copyOf(bundles);
+    }
 }
