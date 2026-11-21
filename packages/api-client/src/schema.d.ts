@@ -30437,6 +30437,8 @@ export interface operations {
             /** @description Vượt quá 20 yêu cầu trong 10 giây trên mỗi lượt thi (kèm Retry-After) */
             429: {
                 headers: {
+                    /** @description Seconds until the rate-limit window refills */
+                    "Retry-After"?: unknown;
                     [name: string]: unknown;
                 };
                 content: {
@@ -30490,7 +30492,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": string;
+                    "application/octet-stream": string;
                 };
             };
             /** @description Bad Request */

@@ -38544,7 +38544,14 @@
                 }
               }
             },
-            "description" : "Vượt quá 20 yêu cầu trong 10 giây trên mỗi lượt thi (kèm Retry-After)"
+            "description" : "Vượt quá 20 yêu cầu trong 10 giây trên mỗi lượt thi (kèm Retry-After)",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the rate-limit window refills",
+                "schema" : { },
+                "style" : "simple"
+              }
+            }
           },
           "500" : {
             "content" : {
@@ -38604,7 +38611,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/octet-stream" : {
                 "schema" : {
                   "format" : "binary",
                   "type" : "string"
