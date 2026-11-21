@@ -4099,6 +4099,7 @@ export interface components {
             scaleMax?: number;
             scope?: string;
             scoreLabel?: string;
+            segments?: components["schemas"]["AttemptResultSegment"][];
             /** Format: date-time */
             startedAt?: string;
             /** @enum {string} */
@@ -4108,6 +4109,20 @@ export interface components {
             subjectCode?: string;
             subjects?: components["schemas"]["AttemptResultSubject"][];
             vactComponents?: components["schemas"]["AttemptResultVactComponent"][];
+        };
+        /** @description Kết quả theo phân đoạn hiển thị của bài thi (BS §17.3, AT-7) */
+        AttemptResultSegment: {
+            code?: string;
+            /** Format: int32 */
+            fromPosition?: number;
+            maxPoints?: number;
+            name?: string;
+            partCode?: string;
+            pendingReview?: boolean;
+            score?: number;
+            stats?: components["schemas"]["AttemptResultUnitStats"];
+            /** Format: int32 */
+            toPosition?: number;
         };
         AttemptResultSubject: {
             code?: string;

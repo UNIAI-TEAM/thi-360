@@ -1745,6 +1745,12 @@
           "scoreLabel" : {
             "type" : "string"
           },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptResultSegment"
+            },
+            "type" : "array"
+          },
           "startedAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -1773,6 +1779,41 @@
               "$ref" : "#/components/schemas/AttemptResultVactComponent"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AttemptResultSegment" : {
+        "description" : "Kết quả theo phân đoạn hiển thị của bài thi (BS §17.3, AT-7)",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "fromPosition" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partCode" : {
+            "type" : "string"
+          },
+          "pendingReview" : {
+            "type" : "boolean"
+          },
+          "score" : {
+            "type" : "number"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/AttemptResultUnitStats"
+          },
+          "toPosition" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
