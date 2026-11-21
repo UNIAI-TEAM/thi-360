@@ -304,8 +304,10 @@ public class Attempt {
                 && this.state != AttemptState.SCORED) {
             throw new IllegalStateException("Cannot apply grading result from state " + this.state);
         }
-        this.maxScore = maxScore;
-        this.result = result;
+        if (!pendingReview || !this.regrading) {
+            this.maxScore = maxScore;
+            this.result = result;
+        }
         this.gradingError = null;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
         if (pendingReview) {

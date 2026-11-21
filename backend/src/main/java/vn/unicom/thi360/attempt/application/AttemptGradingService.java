@@ -46,6 +46,7 @@ import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Version;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.ids.Ids;
 
@@ -112,6 +113,11 @@ public class AttemptGradingService {
         requiresNewTx.executeWithoutResult(status -> {
             Attempt attempt = attemptRepository.findByIdForUpdate(attemptId)
                     .orElseThrow(() -> new NotFoundException("ATTEMPT_NOT_FOUND", "Attempt not found: " + attemptId));
+            if (attempt.getState() == AttemptState.STARTING
+                    || attempt.getState() == AttemptState.IN_PROGRESS
+                    || attempt.getState() == AttemptState.ABORTED) {
+                throw new ConflictException("ATTEMPT_NOT_FINISHED", null);
+            }
             gradeAndAggregateLocked(attempt, true);
         });
     }
@@ -147,6 +153,7 @@ public class AttemptGradingService {
     public AggregatedScore reaggregateLockedAttempt(Attempt attempt, Instant now) {
         List<AttemptPart> parts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(attempt.getId());
         List<AttemptItem> items = loadItemsInPaperOrder(attempt.getId(), parts);
+        rollUpAndPersistQuestionSetsIfChanged(items);
         List<SectionInput> sections = loadSectionMetadata(attempt);
 
         AggregatedScore aggregated = ScoreAggregator.aggregate(toScoreInput(attempt, parts, items, sections));
@@ -160,6 +167,50 @@ public class AttemptGradingService {
                 now);
         attemptRepository.save(attempt);
         return aggregated;
+    }
+
+    private void rollUpAndPersistQuestionSetsIfChanged(List<AttemptItem> items) {
+        Map<UUID, List<ItemGradeResult>> childResultsByParentId = new LinkedHashMap<>();
+        List<AttemptItem> setParents = new ArrayList<>();
+        for (AttemptItem item : items) {
+            if (!item.isInScope()) {
+                continue;
+            }
+            if (item.getQuestionType() == QuestionType.QUESTION_SET) {
+                setParents.add(item);
+            } else if (item.getParentItemId() != null) {
+                childResultsByParentId
+                        .computeIfAbsent(item.getParentItemId(), ignored -> new ArrayList<>())
+                        .add(toCurrentItemGradeResult(item));
+            }
+        }
+        if (setParents.isEmpty()) {
+            return;
+        }
+        List<AttemptItem> updatedParents = new ArrayList<>();
+        for (AttemptItem parent : setParents) {
+            List<ItemGradeResult> children = childResultsByParentId.getOrDefault(parent.getId(), List.of());
+            ItemGradeResult rolledUp = ItemGrader.rollUpQuestionSet(children, parent.getPointsMax());
+            if (!decimalEquals(parent.getEarnedPoints(), rolledUp.earnedPoints())
+                    || parent.getOutcome() != rolledUp.outcome()
+                    || !Objects.equals(parent.getGradingDetail(), rolledUp.gradingDetail())) {
+                parent.recordGrading(rolledUp.earnedPoints(), rolledUp.outcome(), rolledUp.gradingDetail());
+                updatedParents.add(parent);
+            }
+        }
+        if (!updatedParents.isEmpty()) {
+            attemptItemRepository.saveAll(updatedParents);
+        }
+    }
+
+    private static boolean decimalEquals(BigDecimal a, BigDecimal b) {
+        if (a == null && b == null) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        return a.compareTo(b) == 0;
     }
 
     private void gradeAndAggregateLocked(Attempt attempt, boolean regrade) {
@@ -181,7 +232,7 @@ public class AttemptGradingService {
 
             ItemGradeResult gradeResult;
             if (item.isFinalizedManualEssay()) {
-                gradeResult = existingManualResult(item);
+                gradeResult = toCurrentItemGradeResult(item);
             } else {
                 JsonNode snapshot = snapshots.get(new VersionKey(item.getQuestionId(), item.getQuestionVersionNo()));
                 if (snapshot == null && item.getQuestionType() != QuestionType.ESSAY) {
@@ -278,12 +329,12 @@ public class AttemptGradingService {
         return map;
     }
 
-    private static ItemGradeResult existingManualResult(AttemptItem item) {
-        BigDecimal earned = item.getEarnedPoints() != null ? item.getEarnedPoints() : BigDecimal.ZERO;
-        ItemOutcome outcome = item.getOutcome() != null ? item.getOutcome() : ItemOutcome.PENDING_REVIEW;
-        if (outcome == ItemOutcome.PENDING_REVIEW) {
+    private static ItemGradeResult toCurrentItemGradeResult(AttemptItem item) {
+        ItemOutcome outcome = item.getOutcome();
+        if (outcome == null || outcome == ItemOutcome.PENDING_REVIEW) {
             return ItemGradeResult.pendingReview(item.getPointsMax(), item.getGradingDetail());
         }
+        BigDecimal earned = item.getEarnedPoints() != null ? item.getEarnedPoints() : BigDecimal.ZERO;
         ExactRational exact = ExactRational.of(earned);
         if (item.getGradingDetail() != null && item.getGradingDetail().get("exactFraction") instanceof String s) {
             try {

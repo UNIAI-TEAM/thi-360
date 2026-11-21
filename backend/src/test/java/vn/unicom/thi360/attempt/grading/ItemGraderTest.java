@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.grading;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -280,6 +281,49 @@ class ItemGraderTest {
                 GradingPolicy.standard());
         assertThat(allCorrect.outcome()).isEqualTo(ItemOutcome.CORRECT);
         assertThat(allCorrect.earnedPoints()).isEqualByComparingTo("1");
+
+        // R1-46: unequal per-blank points + explicit per-blank outcome & pointsEarned assertions
+        JsonNode weightedSnapshot = MAPPER.readTree("""
+                {
+                  "type": "CLOZE",
+                  "points": 4.0,
+                  "body": {
+                    "blanks": [
+                      {"id": "b1", "points": 0.5, "answers": ["one"]},
+                      {"id": "b2", "points": 1.5, "answers": ["two"]},
+                      {"id": "b3", "points": 2.0, "answers": ["three"]}
+                    ]
+                  }
+                }
+                """);
+        ItemGradeResult weightedPartial = ItemGrader.grade(
+                QuestionType.CLOZE,
+                weightedSnapshot,
+                new AnswerValue.Cloze(Map.of("b1", "one", "b2", "wrong")),
+                new BigDecimal("4.0"),
+                GradingPolicy.standard());
+        assertThat(weightedPartial.outcome()).isEqualTo(ItemOutcome.PARTIAL);
+        assertThat(weightedPartial.earnedPoints()).isEqualByComparingTo("0.50");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> blankResults =
+                (List<Map<String, Object>>) weightedPartial.gradingDetail().get("blankResults");
+        assertThat(blankResults).hasSize(3);
+        assertThat(blankResults.get(0)).containsEntry("id", "b1").containsEntry("outcome", "CORRECT");
+        assertThat((BigDecimal) blankResults.get(0).get("pointsEarned")).isEqualByComparingTo("0.5");
+        assertThat(blankResults.get(1)).containsEntry("id", "b2").containsEntry("outcome", "WRONG");
+        assertThat((BigDecimal) blankResults.get(1).get("pointsEarned")).isEqualByComparingTo("0");
+        assertThat(blankResults.get(2)).containsEntry("id", "b3").containsEntry("outcome", "BLANK");
+        assertThat((BigDecimal) blankResults.get(2).get("pointsEarned")).isEqualByComparingTo("0");
+
+        // R1-38: clamp earned to effectiveMax when blank point sum exceeds effectiveMax
+        ItemGradeResult clampedCloze = ItemGrader.grade(
+                QuestionType.CLOZE,
+                weightedSnapshot,
+                new AnswerValue.Cloze(Map.of("b1", "one", "b2", "two", "b3", "three")),
+                new BigDecimal("3.0"),
+                GradingPolicy.standard());
+        assertThat(clampedCloze.outcome()).isEqualTo(ItemOutcome.CORRECT);
+        assertThat(clampedCloze.earnedPoints()).isEqualByComparingTo("3.00");
     }
 
     @Test
@@ -405,6 +449,68 @@ class ItemGraderTest {
                 BigDecimal.ONE, GradingPolicy.standard());
         assertThat(zeroMatched.earnedPoints()).isEqualByComparingTo("0");
         assertThat(zeroMatched.outcome()).isEqualTo(ItemOutcome.WRONG);
+
+        // R1-46: all-blank COUNT_TABLE returns BLANK
+        ItemGradeResult allBlank = ItemGrader.grade(
+                QuestionType.TRUE_FALSE, defaultTableSnapshot,
+                new AnswerValue.TrueFalse(Map.of()),
+                BigDecimal.ONE, GradingPolicy.standard());
+        assertThat(allBlank.earnedPoints()).isEqualByComparingTo("0");
+        assertThat(allBlank.outcome()).isEqualTo(ItemOutcome.BLANK);
+
+        // R1-46: explicit custom scoreTable (e.g. V-SAT [1, 2, 3, 6])
+        JsonNode customTableSnapshot = MAPPER.readTree("""
+                {
+                  "type": "TRUE_FALSE",
+                  "points": 6.0,
+                  "body": {
+                    "scoringMethod": "COUNT_TABLE",
+                    "scoreTable": [1, 2, 3, 6],
+                    "statements": [
+                      {"id": "a", "content": "a", "answer": true},
+                      {"id": "b", "content": "b", "answer": false},
+                      {"id": "c", "content": "c", "answer": true},
+                      {"id": "d", "content": "d", "answer": false}
+                    ]
+                  }
+                }
+                """);
+        ItemGradeResult vsatTwo = ItemGrader.grade(
+                QuestionType.TRUE_FALSE, customTableSnapshot,
+                new AnswerValue.TrueFalse(Map.of("a", true, "b", false)),
+                new BigDecimal("6.0"), GradingPolicy.standard());
+        assertThat(vsatTwo.earnedPoints()).isEqualByComparingTo("2.0");
+        assertThat(vsatTwo.outcome()).isEqualTo(ItemOutcome.PARTIAL);
+
+        // R1-38: effectiveMax clamp classifies matchedCount==count with earned >= effectiveMax as CORRECT
+        ItemGradeResult clampedCountTable = ItemGrader.grade(
+                QuestionType.TRUE_FALSE, customTableSnapshot,
+                new AnswerValue.TrueFalse(Map.of("a", true, "b", false, "c", true, "d", false)),
+                new BigDecimal("4.0"), GradingPolicy.standard());
+        assertThat(clampedCountTable.earnedPoints()).isEqualByComparingTo("4.0");
+        assertThat(clampedCountTable.outcome()).isEqualTo(ItemOutcome.CORRECT);
+
+        // R1-38: missing scoreTable with statementCount != 4 fails fast
+        JsonNode invalidCountTableSnapshot = MAPPER.readTree("""
+                {
+                  "type": "TRUE_FALSE",
+                  "points": 1.0,
+                  "body": {
+                    "scoringMethod": "COUNT_TABLE",
+                    "statements": [
+                      {"id": "a", "content": "a", "answer": true},
+                      {"id": "b", "content": "b", "answer": false},
+                      {"id": "c", "content": "c", "answer": true}
+                    ]
+                  }
+                }
+                """);
+        assertThatThrownBy(() -> ItemGrader.grade(
+                        QuestionType.TRUE_FALSE, invalidCountTableSnapshot,
+                        new AnswerValue.TrueFalse(Map.of("a", true)),
+                        BigDecimal.ONE, GradingPolicy.standard()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("scoreTable");
     }
 
     @Test
@@ -463,11 +569,49 @@ class ItemGraderTest {
                 GradingPolicy.standard());
         assertThat(reuseBoth.outcome()).isEqualTo(ItemOutcome.CORRECT);
         assertThat(reuseBoth.earnedPoints()).isEqualByComparingTo("2.0");
+
+        // R1-53: stray/unknown leftId does not corrupt valid pairs or turn blank into WRONG
+        ItemGradeResult onlyStray = ItemGrader.grade(
+                QuestionType.MATCHING,
+                noReuseSnapshot,
+                new AnswerValue.Matching(Map.of("stray", "r1")),
+                new BigDecimal("2.0"),
+                GradingPolicy.standard());
+        assertThat(onlyStray.outcome()).isEqualTo(ItemOutcome.BLANK);
+        assertThat(onlyStray.earnedPoints()).isEqualByComparingTo("0");
+
+        ItemGradeResult validWithStrayDuplicate = ItemGrader.grade(
+                QuestionType.MATCHING,
+                noReuseSnapshot,
+                new AnswerValue.Matching(Map.of("l1", "r1", "stray", "r1")),
+                new BigDecimal("2.0"),
+                GradingPolicy.standard());
+        assertThat(validWithStrayDuplicate.outcome()).isEqualTo(ItemOutcome.PARTIAL);
+        assertThat(validWithStrayDuplicate.earnedPoints()).isEqualByComparingTo("1.0");
+
+        // R1-38: clamp earned to effectiveMax when pair points sum above effectiveMax
+        ItemGradeResult clampedMatching = ItemGrader.grade(
+                QuestionType.MATCHING,
+                noReuseSnapshot,
+                new AnswerValue.Matching(Map.of("l1", "r1", "l2", "r2")),
+                new BigDecimal("1.5"),
+                GradingPolicy.standard());
+        assertThat(clampedMatching.outcome()).isEqualTo(ItemOutcome.CORRECT);
+        assertThat(clampedMatching.earnedPoints()).isEqualByComparingTo("1.50");
     }
 
     @Test
     void essayRows() {
-        for (String blankHtml : List.of("", "   ", "<p> </p>", "<p>&nbsp;</p>", "<p><br></p>", "<div>\u00A0 </div>")) {
+        for (String blankHtml : List.of(
+                "",
+                "   ",
+                "<p> </p>",
+                "<p>&nbsp;</p>",
+                "<p><br></p>",
+                "<div>\u00A0 </div>",
+                "<p>&#8203;</p>",
+                "<p>\uFEFF</p>",
+                "<p>\u200C\u200D\u2060</p>")) {
             ItemGradeResult blank = ItemGrader.grade(
                     QuestionType.ESSAY,
                     MAPPER.createObjectNode(),

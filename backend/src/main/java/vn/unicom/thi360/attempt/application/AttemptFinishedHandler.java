@@ -51,9 +51,13 @@ public class AttemptFinishedHandler implements OutboxHandler {
             attemptGradingService.gradeFinishedAttempt(payload.attemptId());
         } catch (Exception ex) {
             if (event.getAttempts() + 1 >= OutboxRelay.DEFAULT_MAX_ATTEMPTS) {
-                attemptGradingService.markGradingError(
-                        payload.attemptId(),
-                        ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                try {
+                    attemptGradingService.markGradingError(
+                            payload.attemptId(),
+                            ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                } catch (Exception markEx) {
+                    ex.addSuppressed(markEx);
+                }
             }
             throw ex;
         }

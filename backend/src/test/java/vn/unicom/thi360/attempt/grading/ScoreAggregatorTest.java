@@ -193,13 +193,93 @@ class ScoreAggregatorTest {
         assertThat(sci.componentCode()).isEqualTo("SCIENTIFIC_THINKING");
         assertThat(sci.correctCount()).isEqualTo(20);
         assertThat(sci.totalCount()).isEqualTo(30);
+        assertThat(sci.correctRate()).isEqualByComparingTo("66.67");
         assertThat(sci.subsections()).hasSize(2);
         assertThat(sci.subsections().get(0).sectionId()).isEqualTo("sec-logic");
         assertThat(sci.subsections().get(0).questionCount()).isEqualTo(12);
         assertThat(sci.subsections().get(0).correctCount()).isEqualTo(9);
+        assertThat(sci.subsections().get(0).correctRate()).isEqualByComparingTo("75.00");
         assertThat(sci.subsections().get(1).sectionId()).isEqualTo("sec-reasoning");
         assertThat(sci.subsections().get(1).questionCount()).isEqualTo(18);
         assertThat(sci.subsections().get(1).correctCount()).isEqualTo(11);
+        assertThat(sci.subsections().get(1).correctRate()).isEqualByComparingTo("61.11");
+    }
+
+    @Test
+    void vactSingleSectionOmitsSubsectionsAndComputesCorrectRate() {
+        UUID partId = UUID.randomUUID();
+        PartInput part = new PartInput(partId, "P1", "Toán học", 1, PartState.CLOSED, new BigDecimal("30"), 30);
+        List<ItemInput> items = List.of(
+                new ItemInput(
+                        UUID.randomUUID(), partId, null, null, "sec-math", "TOAN",
+                        QuestionType.SINGLE_CHOICE, 1, true, BigDecimal.ONE,
+                        BigDecimal.ONE, ItemOutcome.CORRECT, Map.of("exactFraction", "1")),
+                new ItemInput(
+                        UUID.randomUUID(), partId, null, null, "sec-math", "TOAN",
+                        QuestionType.SINGLE_CHOICE, 1, true, BigDecimal.ONE,
+                        BigDecimal.ZERO, ItemOutcome.WRONG, Map.of("exactFraction", "0")),
+                new ItemInput(
+                        UUID.randomUUID(), partId, null, null, "sec-sci-single", "SCIENTIFIC_THINKING",
+                        QuestionType.SINGLE_CHOICE, 1, true, BigDecimal.ONE,
+                        BigDecimal.ONE, ItemOutcome.CORRECT, Map.of("exactFraction", "1")));
+        List<SectionInput> sections = List.of(
+                new SectionInput("sec-math", "TOAN", 2),
+                new SectionInput("sec-sci-single", "SCIENTIFIC_THINKING", 1));
+
+        AggregatedScore res = ScoreAggregator.aggregate(
+                new ScoreAggregator.Input("VACT", "LINEAR", new BigDecimal("300"), List.of(part), items, sections));
+        assertThat(res.vactComponents()).hasSize(2);
+        assertThat(res.vactComponents().get(0).componentCode()).isEqualTo("TOAN");
+        assertThat(res.vactComponents().get(0).correctRate()).isEqualByComparingTo("50.00");
+        assertThat(res.vactComponents().get(0).subsections()).isNull();
+        assertThat(res.vactComponents().get(1).componentCode()).isEqualTo("SCIENTIFIC_THINKING");
+        assertThat(res.vactComponents().get(1).correctRate()).isEqualByComparingTo("100.00");
+        assertThat(res.vactComponents().get(1).subsections()).isNull();
+    }
+
+    @Test
+    void outOfScopeItemsEmptySetsAndOutOfScopeParentsExcluded() {
+        UUID partId = UUID.randomUUID();
+        UUID emptySetId = UUID.randomUUID();
+        UUID outOfScopeParentId = UUID.randomUUID();
+
+        PartInput part = new PartInput(partId, "P1", "Khoa học", 1, PartState.CLOSED, new BigDecimal("2.0"), 2);
+        ItemInput emptySet = new ItemInput(
+                emptySetId, partId, null, null, "sec-1", "LY",
+                QuestionType.QUESTION_SET, 0, true, BigDecimal.ZERO,
+                BigDecimal.ZERO, ItemOutcome.BLANK, Map.of("exactFraction", "0"));
+        ItemInput excludedItem = new ItemInput(
+                UUID.randomUUID(), partId, null, null, "sec-1", "SU",
+                QuestionType.SINGLE_CHOICE, 1, false, new BigDecimal("5.0"),
+                new BigDecimal("5.0"), ItemOutcome.CORRECT, Map.of("exactFraction", "5"));
+        ItemInput outOfScopeParent = new ItemInput(
+                outOfScopeParentId, partId, null, null, "sec-1", "DIA",
+                QuestionType.QUESTION_SET, 0, false, new BigDecimal("3.0"),
+                new BigDecimal("3.0"), ItemOutcome.CORRECT, Map.of("exactFraction", "3"));
+        ItemInput childOfOutOfScopeParent = new ItemInput(
+                UUID.randomUUID(), partId, outOfScopeParentId, null, "sec-1", "DIA",
+                QuestionType.SINGLE_CHOICE, 1, true, new BigDecimal("3.0"),
+                new BigDecimal("3.0"), ItemOutcome.CORRECT, Map.of("exactFraction", "3"));
+        ItemInput validItem = item(
+                partId, "TOAN", QuestionType.SINGLE_CHOICE, 1, new BigDecimal("2.0"),
+                new BigDecimal("2.0"), ItemOutcome.CORRECT, "2", null);
+
+        AggregatedScore res = ScoreAggregator.aggregate(
+                new ScoreAggregator.Input(
+                        "HSA",
+                        "RAW",
+                        null,
+                        List.of(part),
+                        List.of(emptySet, excludedItem, outOfScopeParent, childOfOutOfScopeParent, validItem),
+                        List.of()));
+
+        assertThat(res.rawScore()).isEqualByComparingTo("2.00");
+        assertThat(res.rawMaxScore()).isEqualByComparingTo("2.00");
+        assertThat(res.statistics().correctCount()).isEqualTo(1);
+        assertThat(res.statistics().blankCount()).isZero();
+        assertThat(res.statistics().totalCount()).isEqualTo(1);
+        assertThat(res.subjectBreakdowns()).extracting(ScoreAggregator.SubjectBreakdown::code)
+                .containsExactly("TOAN");
     }
 
     private static ItemInput item(

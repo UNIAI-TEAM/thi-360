@@ -1,6 +1,7 @@
 package vn.unicom.thi360.attempt.domain.grading;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -136,7 +137,8 @@ public final class ScoreAggregator {
             int partialCount,
             int wrongCount,
             int blankCount,
-            int totalCount) {}
+            int totalCount,
+            BigDecimal correctRate) {}
 
     public record VactComponentBreakdown(
             String componentCode,
@@ -145,6 +147,7 @@ public final class ScoreAggregator {
             int wrongCount,
             int blankCount,
             int totalCount,
+            BigDecimal correctRate,
             List<VactSubsectionBreakdown> subsections) {}
 
     public record AggregatedScore(
@@ -208,6 +211,7 @@ public final class ScoreAggregator {
                     vm.put("wrongCount", vc.wrongCount());
                     vm.put("blankCount", vc.blankCount());
                     vm.put("totalCount", vc.totalCount());
+                    vm.put("correctRate", vc.correctRate());
                     if (vc.subsections() != null) {
                         List<Map<String, Object>> subList = new ArrayList<>(vc.subsections().size());
                         for (VactSubsectionBreakdown sub : vc.subsections()) {
@@ -219,6 +223,7 @@ public final class ScoreAggregator {
                             subm.put("wrongCount", sub.wrongCount());
                             subm.put("blankCount", sub.blankCount());
                             subm.put("totalCount", sub.totalCount());
+                            subm.put("correctRate", sub.correctRate());
                             subList.add(subm);
                         }
                         vm.put("subsections", subList);
@@ -314,11 +319,11 @@ public final class ScoreAggregator {
         List<PartInput> parts = input.parts() == null ? List.of() : input.parts();
         List<ItemInput> allItems = input.items() == null ? List.of() : input.items();
 
-        // AC-6: exclude parent QUESTION_SET items when their children exist so sets are never double-counted
-        Set<UUID> parentIdsWithChildren = new HashSet<>();
+        // AC-6, R1-54: exclude QUESTION_SET container rows and skip children whose parent is out of scope
+        Set<UUID> outOfScopeParentIds = new HashSet<>();
         for (ItemInput item : allItems) {
-            if (item.parentItemId() != null) {
-                parentIdsWithChildren.add(item.parentItemId());
+            if (!item.inScope() && item.id() != null) {
+                outOfScopeParentIds.add(item.id());
             }
         }
 
@@ -328,8 +333,10 @@ public final class ScoreAggregator {
             if (!item.inScope()) {
                 continue;
             }
-            if (item.questionType() == QuestionType.QUESTION_SET
-                    && parentIdsWithChildren.contains(item.id())) {
+            if (item.parentItemId() != null && outOfScopeParentIds.contains(item.parentItemId())) {
+                continue;
+            }
+            if (item.questionType() == QuestionType.QUESTION_SET) {
                 continue;
             }
             leafInScopeItems.add(item);
@@ -500,7 +507,8 @@ public final class ScoreAggregator {
                             subStats.partialCount(),
                             subStats.wrongCount(),
                             subStats.blankCount(),
-                            subStats.totalCount()));
+                            subStats.totalCount(),
+                            computeCorrectRate(subStats.correctCount(), subStats.totalCount())));
                 }
             }
 
@@ -511,8 +519,19 @@ public final class ScoreAggregator {
                     stats.wrongCount(),
                     stats.blankCount(),
                     stats.totalCount(),
+                    computeCorrectRate(stats.correctCount(), stats.totalCount()),
                     subsections));
         }
         return result;
+    }
+
+    /** Computes accuracy percentage in {@code [0.00, 100.00]} rounded HALF_UP to 2 decimal places. */
+    public static BigDecimal computeCorrectRate(int correctCount, int totalCount) {
+        if (totalCount <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(correctCount)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP);
     }
 }

@@ -318,12 +318,15 @@ public final class ItemGrader {
             blankResults.add(entry);
         }
 
+        ExactRational maxRational = ExactRational.of(effectiveMax);
+        ExactRational clampedEarned = clampEarned(totalEarned, maxRational);
+
         ItemOutcome itemOutcome;
         if (blankUnits == blankCount) {
             itemOutcome = ItemOutcome.BLANK;
         } else if (correctUnits == blankCount) {
             itemOutcome = ItemOutcome.CORRECT;
-        } else if (totalEarned.isZero()) {
+        } else if (clampedEarned.isZero()) {
             itemOutcome = ItemOutcome.WRONG;
         } else {
             itemOutcome = ItemOutcome.PARTIAL;
@@ -334,7 +337,7 @@ public final class ItemGrader {
         extra.put("correctUnitCount", correctUnits);
         extra.put("wrongUnitCount", wrongUnits);
         extra.put("blankUnitCount", blankUnits);
-        return ItemGradeResult.graded(totalEarned, effectiveMax, itemOutcome, detailWithExact(totalEarned, extra));
+        return ItemGradeResult.graded(clampedEarned, effectiveMax, itemOutcome, detailWithExact(clampedEarned, extra));
     }
 
     private static ItemGradeResult gradeTrueFalse(
@@ -400,29 +403,26 @@ public final class ItemGrader {
         String method = body.path("scoringMethod").asText("PER_STATEMENT");
         ExactRational earned;
         if ("COUNT_TABLE".equals(method)) {
+            List<BigDecimal> table = resolveCountTable(body.path("scoreTable"), count);
             if (matchedCount == 0) {
                 earned = ExactRational.ZERO;
+            } else if (matchedCount <= table.size()) {
+                earned = ExactRational.of(table.get(matchedCount - 1));
             } else {
-                List<BigDecimal> table = resolveCountTable(body.path("scoreTable"), count);
-                if (matchedCount <= table.size()) {
-                    earned = ExactRational.of(table.get(matchedCount - 1));
-                } else if (!table.isEmpty()) {
-                    earned = ExactRational.of(table.getLast());
-                } else {
-                    earned = ExactRational.ZERO;
-                }
+                earned = ExactRational.of(table.getLast());
             }
         } else {
             earned = perStatementSum;
         }
 
         ExactRational maxRational = ExactRational.of(effectiveMax);
+        ExactRational clampedEarned = clampEarned(earned, maxRational);
         ItemOutcome outcome;
-        if (matchedCount == count && (maxRational.isZero() || earned.compareTo(maxRational) == 0)) {
+        if (matchedCount == count && (maxRational.isZero() || clampedEarned.compareTo(maxRational) >= 0)) {
             outcome = ItemOutcome.CORRECT;
-        } else if (maxRational.isPositive() && earned.compareTo(maxRational) == 0) {
+        } else if (maxRational.isPositive() && clampedEarned.compareTo(maxRational) >= 0) {
             outcome = ItemOutcome.CORRECT;
-        } else if (earned.isZero()) {
+        } else if (clampedEarned.isZero()) {
             outcome = ItemOutcome.WRONG;
         } else {
             outcome = ItemOutcome.PARTIAL;
@@ -433,7 +433,7 @@ public final class ItemGrader {
         extra.put("statementResults", statementResults);
         extra.put("matchedCount", matchedCount);
         extra.put("statementCount", count);
-        return ItemGradeResult.graded(earned, effectiveMax, outcome, detailWithExact(earned, extra));
+        return ItemGradeResult.graded(clampedEarned, effectiveMax, outcome, detailWithExact(clampedEarned, extra));
     }
 
     private static List<BigDecimal> resolveCountTable(JsonNode scoreTableNode, int statementCount) {
@@ -447,7 +447,8 @@ public final class ItemGrader {
         if (statementCount == 4) {
             return DEFAULT_THPTQG_TF_TABLE;
         }
-        return List.of();
+        throw new IllegalStateException(
+                "Missing scoreTable for COUNT_TABLE TRUE_FALSE question with " + statementCount + " statements");
     }
 
     private static ItemGradeResult gradeMatching(
@@ -459,8 +460,24 @@ public final class ItemGrader {
                         ? matching.pairs()
                         : Map.of();
 
+        Set<String> declaredLeftIds = new HashSet<>();
+        if (expectedPairs != null && expectedPairs.isArray()) {
+            for (JsonNode pair : expectedPairs) {
+                String leftId = pair.path("leftId").asText("");
+                if (!leftId.isBlank()) {
+                    declaredLeftIds.add(leftId);
+                }
+            }
+        }
+        Map<String, String> relevantStudentPairs = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : studentPairs.entrySet()) {
+            if (entry.getKey() != null && declaredLeftIds.contains(entry.getKey())) {
+                relevantStudentPairs.put(entry.getKey(), entry.getValue());
+            }
+        }
+
         boolean anyAnswered = false;
-        for (String val : studentPairs.values()) {
+        for (String val : relevantStudentPairs.values()) {
             if (val != null && !val.isBlank()) {
                 anyAnswered = true;
                 break;
@@ -474,8 +491,8 @@ public final class ItemGrader {
                     detailWithExact(ExactRational.ZERO, Map.of()));
         }
 
-        boolean reuseRight = body.path("reuseRight").asBoolean(false);
-        Set<String> duplicatedRights = findDuplicateRights(studentPairs);
+        boolean reuseRight = body != null && body.path("reuseRight").asBoolean(false);
+        Set<String> duplicatedRights = findDuplicateRights(relevantStudentPairs);
         ExactRational evenSplit = ExactRational.of(effectiveMax).divide(ExactRational.of(pairCount, 1));
         ExactRational totalEarned = ExactRational.ZERO;
         int matchedCount = 0;
@@ -488,7 +505,7 @@ public final class ItemGrader {
                     ? ExactRational.of(decimalOrDefault(pair.get("points"), BigDecimal.ZERO))
                     : evenSplit;
 
-            String givenRightId = studentPairs.get(leftId);
+            String givenRightId = relevantStudentPairs.get(leftId);
             boolean disallowedDuplicate = !reuseRight && givenRightId != null && duplicatedRights.contains(givenRightId);
             boolean matched = !disallowedDuplicate
                     && givenRightId != null
@@ -507,12 +524,13 @@ public final class ItemGrader {
         }
 
         ExactRational maxRational = ExactRational.of(effectiveMax);
+        ExactRational clampedEarned = clampEarned(totalEarned, maxRational);
         ItemOutcome outcome;
-        if (matchedCount == pairCount && (maxRational.isZero() || totalEarned.compareTo(maxRational) == 0)) {
+        if (matchedCount == pairCount && (maxRational.isZero() || clampedEarned.compareTo(maxRational) >= 0)) {
             outcome = ItemOutcome.CORRECT;
-        } else if (maxRational.isPositive() && totalEarned.compareTo(maxRational) == 0) {
+        } else if (maxRational.isPositive() && clampedEarned.compareTo(maxRational) >= 0) {
             outcome = ItemOutcome.CORRECT;
-        } else if (totalEarned.isZero()) {
+        } else if (clampedEarned.isZero()) {
             outcome = ItemOutcome.WRONG;
         } else {
             outcome = ItemOutcome.PARTIAL;
@@ -523,7 +541,18 @@ public final class ItemGrader {
         extra.put("matchedCount", matchedCount);
         extra.put("pairCount", pairCount);
         extra.put("pairResults", pairResults);
-        return ItemGradeResult.graded(totalEarned, effectiveMax, outcome, detailWithExact(totalEarned, extra));
+        return ItemGradeResult.graded(clampedEarned, effectiveMax, outcome, detailWithExact(clampedEarned, extra));
+    }
+
+    private static ExactRational clampEarned(ExactRational earned, ExactRational maxRational) {
+        ExactRational upper = maxRational.compareTo(ExactRational.ZERO) < 0 ? ExactRational.ZERO : maxRational;
+        if (earned.compareTo(ExactRational.ZERO) < 0) {
+            return ExactRational.ZERO;
+        }
+        if (earned.compareTo(upper) > 0) {
+            return upper;
+        }
+        return earned;
     }
 
     private static Set<String> findDuplicateRights(Map<String, String> studentPairs) {
@@ -560,7 +589,16 @@ public final class ItemGrader {
         }
         Document doc = Jsoup.parseBodyFragment(html);
         String text = doc.body().text();
-        return trimAndCollapseUnicodeWhitespace(text).isEmpty();
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            i += Character.charCount(cp);
+            if (!Character.isWhitespace(cp)
+                    && !Character.isSpaceChar(cp)
+                    && Character.getType(cp) != Character.FORMAT) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
