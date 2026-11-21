@@ -19,6 +19,7 @@ import {
   hasActiveFilters,
 } from "./catalog-query";
 import { useExamAccess } from "./exam-access";
+import { isBundleProduct } from "./format";
 import { ProductCard } from "./product-card";
 import type { Loaded, ProductPage, StorefrontFilters } from "./types";
 
@@ -65,7 +66,12 @@ function CatalogGrid({ page }: { page: ProductPage }) {
           action={
             <AccessAction
               variant="card"
-              product={{ code: product.code, versionNo: product.versionNo, price: product.price }}
+              product={{
+                code: product.code,
+                versionNo: product.versionNo,
+                price: product.price,
+                isBundle: isBundleProduct(product),
+              }}
               view={access.view(product.code)}
               onReload={access.reload}
             />

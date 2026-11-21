@@ -241,8 +241,8 @@ describe("menu của đợt 3 (FA-1)", () => {
     expect(resolveBreadcrumb(NAVIGATION, "/attempts/abc")?.group.id).toBe("learners");
   });
 
-  it("danh sách ẩn: bundles, attempts không hiện ở sidebar và lối tắt dù đủ quyền; nhóm hết mục thì bỏ", () => {
-    expect([...HIDDEN_NAV_ITEMS].sort()).toEqual(["attempts", "bundles"]);
+  it("danh sách ẩn: chỉ còn attempts bị ẩn; bundles hiện ở sidebar và lối tắt khi có EXAM.VIEW và ẩn khi thiếu EXAM.VIEW (AC-8)", () => {
+    expect([...HIDDEN_NAV_ITEMS]).toEqual(["attempts"]);
 
     const everything = new Set(["PROMOTION.VIEW", "ORDER.VIEW", "EXAM.VIEW", "ATTEMPT.VIEW", "USER.VIEW"]);
     const groups = filterNavigation(NAVIGATION, everything, none);
@@ -250,7 +250,8 @@ describe("menu của đợt 3 (FA-1)", () => {
     for (const id of HIDDEN_NAV_ITEMS) expect(shown).not.toContain(id);
     expect(shown).toContain("promotions");
     expect(shown).toContain("orders");
-    expect(idsOf(groups, "commerce")).toEqual(["promotions", "orders"]);
+    expect(shown).toContain("bundles");
+    expect(idsOf(groups, "commerce")).toEqual(["promotions", "orders", "bundles"]);
     expect(groups.map((group) => group.id)).not.toContain("learners");
     // Mục khác trong cùng bộ quyền vẫn hiện: Bài thi (EXAM.VIEW) ở nhóm Nội dung.
     expect(idsOf(groups, "content")).toEqual(["exams"]);
@@ -259,7 +260,19 @@ describe("menu của đợt 3 (FA-1)", () => {
     for (const id of HIDDEN_NAV_ITEMS) expect(shortcuts).not.toContain(id);
     expect(shortcuts).toContain("promotions");
     expect(shortcuts).toContain("orders");
+    expect(shortcuts).toContain("bundles");
     expect(shortcuts).toContain("exams");
+
+    // Khi có EXAM.VIEW riêng lẻ: bundles hiện ở cả sidebar và lối tắt.
+    const onlyExamView = new Set(["EXAM.VIEW"]);
+    expect(idsOf(filterNavigation(NAVIGATION, onlyExamView, none), "commerce")).toEqual(["bundles"]);
+    expect(shortcutItems(NAVIGATION, onlyExamView).map((item) => item.id)).toContain("bundles");
+
+    // Khi thiếu EXAM.VIEW (chỉ có quyền thương mại hoặc sửa/công bố khác): bundles ẩn ở cả sidebar và lối tắt.
+    const withoutExamView = new Set(["PROMOTION.VIEW", "ORDER.VIEW", "EXAM.MODIFY", "EXAM.PUBLISH"]);
+    const noBundlesGroups = filterNavigation(NAVIGATION, withoutExamView, none);
+    expect(idsOf(noBundlesGroups, "commerce")).toEqual(["promotions", "orders"]);
+    expect(shortcutItems(NAVIGATION, withoutExamView).map((item) => item.id)).not.toContain("bundles");
   });
 
   it("mục khuyến mãi hiện ở sidebar và lối tắt khi có PROMOTION.VIEW", () => {
@@ -277,9 +290,9 @@ describe("menu của đợt 3 (FA-1)", () => {
   });
 
   it("bỏ một dòng ẩn thì mục đó hiện lại, các mục còn ẩn vẫn ẩn; nhóm hiện khi còn một mục", () => {
-    const granted = new Set(["PROMOTION.VIEW", "ORDER.VIEW", "ATTEMPT.VIEW"]);
-    const groups = filterNavigation(NAVIGATION, granted, none, ["bundles"]);
-    expect(idsOf(groups, "commerce")).toEqual(["promotions", "orders"]);
+    const granted = new Set(["PROMOTION.VIEW", "ORDER.VIEW", "EXAM.VIEW", "ATTEMPT.VIEW"]);
+    const groups = filterNavigation(NAVIGATION, granted, none, []);
+    expect(idsOf(groups, "commerce")).toEqual(["promotions", "orders", "bundles"]);
     expect(idsOf(groups, "learners")).toEqual(["attempts"]);
   });
 });

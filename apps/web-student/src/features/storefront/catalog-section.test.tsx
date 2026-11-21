@@ -112,6 +112,19 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
     expect(router.replace).toHaveBeenCalledWith("/?kind=HSA&format=FULL", { scroll: false });
   });
 
+  it("chọn hình thức Bộ đề đưa format=BUNDLE lên URL (AC-10)", async () => {
+    const withBundle: Loaded<StorefrontFilters> = {
+      status: "ok",
+      data: { ...FILTERS.data, formats: [...FILTERS.data.formats, { code: "BUNDLE", count: 1 }] },
+    };
+    renderWithProviders(<CatalogSection query={EMPTY_CATALOG_QUERY} filters={withBundle} products={page()} />);
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Hình thức" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Bộ đề" }));
+
+    expect(router.replace).toHaveBeenCalledWith("/?format=BUNDLE", { scroll: false });
+  });
+
   it("chọn một phần thì kỳ thi theo phần đó (mã phần chỉ có nghĩa trong một kỳ thi)", async () => {
     renderWithProviders(<CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page()} />);
 

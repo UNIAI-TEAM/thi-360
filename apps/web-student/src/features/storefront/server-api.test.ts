@@ -75,6 +75,56 @@ describe("đọc danh mục công khai ở máy chủ web", () => {
     });
   });
 
+  it("chi tiết: 409 PRODUCT_UNAVAILABLE giữ ProductDetail đầy đủ, bỏ product stub rút gọn, và ném lỗi với 409 khác hoặc thiếu code", async () => {
+    fetchMock.mockImplementationOnce(async () =>
+      json(409, { code: "PRODUCT_UNAVAILABLE", product: { code: "BO-1", name: "Bo 1" } }),
+    );
+    await expect(loadProductOnServer("BO-1")).resolves.toEqual({
+      status: "unavailable",
+      product: undefined,
+    });
+
+    const fullBundle = {
+      code: "BO-FULL",
+      name: "Bo day du",
+      productType: "BUNDLE",
+      format: "BUNDLE",
+      examKind: { code: "SP2E", nameVi: "SP2E", nameEn: "SP2E" },
+      benefits: { aiExplanation: true, strengthWeakness: true, practice: false },
+      listPrice: 300000,
+      price: 250000,
+      versionNo: 1,
+      attemptsGranted: 2,
+      buildMode: "STANDARD",
+      choices: [],
+      omittedEssayGroups: [],
+      parts: [],
+      scoring: {},
+      items: [],
+    };
+    fetchMock.mockImplementationOnce(async () =>
+      json(409, { code: "PRODUCT_UNAVAILABLE", product: fullBundle }),
+    );
+    await expect(loadProductOnServer("BO-FULL")).resolves.toEqual({
+      status: "unavailable",
+      product: fullBundle,
+    });
+
+    fetchMock.mockImplementationOnce(async () =>
+      json(200, { code: "BO-2", name: "Bo 2", saleState: "UNAVAILABLE" }),
+    );
+    await expect(loadProductOnServer("BO-2")).resolves.toMatchObject({
+      status: "unavailable",
+      product: { code: "BO-2", name: "Bo 2" },
+    });
+
+    fetchMock.mockImplementationOnce(async () => json(409, { message: "No code conflict" }));
+    await expect(loadProductOnServer("BO-NOCODE")).rejects.toThrow(/409/);
+
+    fetchMock.mockImplementationOnce(async () => json(409, { code: "OTHER_CONFLICT" }));
+    await expect(loadProductOnServer("BO-OTHER")).rejects.toThrow(/409/);
+  });
+
   it("chi tiết: lỗi máy chủ ném ra để trang lỗi chung xử lý, không giả làm 404", async () => {
     fetchMock.mockImplementationOnce(async () => json(500, { code: "INTERNAL_ERROR" }));
 

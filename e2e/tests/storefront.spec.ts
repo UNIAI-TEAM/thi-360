@@ -185,7 +185,8 @@ test.describe("Chi tiết bài thi và nút theo quyền", () => {
   test("AC-4, AC-6: khách bấm Mua bài thi sang /login kèm callbackUrl; đăng nhập xong về đúng đường dẫn, còn v và p", async ({
     page,
   }) => {
-    const product = (await readCatalog()).items[0]!;
+    const product = (await readCatalog()).items.find((item) => item.format !== "BUNDLE")!;
+    expect(product, "cần ít nhất một bài thi lẻ đang bán").toBeDefined();
     const checkout = `/checkout/${product.code}?v=${product.versionNo}&p=${product.price}`;
 
     await page.goto(`${WEB_URL}/exams/${product.code}`);
@@ -204,7 +205,8 @@ test.describe("Chi tiết bài thi và nút theo quyền", () => {
   });
 
   test("AC-6: học viên chưa có quyền thấy Mua bài thi tới /checkout/<code>?v=&p=", async ({ page }) => {
-    const product = (await readCatalog()).items[0]!;
+    const product = (await readCatalog()).items.find((item) => item.format !== "BUNDLE")!;
+    expect(product, "cần ít nhất một bài thi lẻ đang bán").toBeDefined();
     await page.goto(`${WEB_URL}/login`);
     await signIn(page, "student01");
     await page.waitForURL(`${WEB_URL}/home`);
@@ -219,7 +221,8 @@ test.describe("Chi tiết bài thi và nút theo quyền", () => {
   test("AC-6: quản trị viên mở trang công khai: không có nút chính, không bị đẩy sang /forbidden, không gọi exam-access", async ({
     page,
   }) => {
-    const product = (await readCatalog()).items[0]!;
+    const product = (await readCatalog()).items.find((item) => item.format !== "BUNDLE")!;
+    expect(product, "cần ít nhất một bài thi lẻ đang bán").toBeDefined();
     await page.goto(`${WEB_URL}/login`);
     await signIn(page, "ops.admin");
     await page.waitForURL((url) => !url.pathname.startsWith("/login"));

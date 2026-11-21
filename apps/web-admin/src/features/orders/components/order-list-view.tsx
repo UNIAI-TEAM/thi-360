@@ -4,9 +4,10 @@ import { AlertCircle, Eye, ReceiptText, RefreshCw, RotateCcw, Search, Users } fr
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { type ComponentProps, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type ComponentProps, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
+  Badge,
   Button,
   Card,
   EmptyState,
@@ -372,11 +373,11 @@ export function OrderListView() {
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <div className="flex max-w-[115px] min-w-0 flex-col">
-              <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
+            <div className="flex min-w-[7rem] max-w-[10.5rem] flex-col">
+              <span className="line-clamp-2 text-xs font-medium wrap-break-word text-text" data-exam-content>
                 {item.buyerFullName}
               </span>
-              <span className="font-mono text-caption wrap-anywhere text-text-secondary">
+              <span className="font-mono text-caption wrap-break-word text-text-secondary">
                 {item.buyerUsername}
               </span>
             </div>
@@ -388,14 +389,33 @@ export function OrderListView() {
         header: t("columns.exam"),
         cell: ({ row }) => {
           const item = row.original;
+          const isBundle = item.productType === "BUNDLE";
+          const sortedItems = isBundle
+            ? [...(item.items ?? [])].sort((a, b) => a.position - b.position)
+            : [];
           return (
-            <div className="flex max-w-[130px] min-w-0 flex-col">
-              <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
-                {item.productName}
-              </span>
+            <div className={cn("flex min-w-0 flex-col gap-0.5", isBundle ? "max-w-[180px]" : "max-w-[140px]")}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
+                  {item.productName}
+                </span>
+                {isBundle ? <Badge>{t("bundle.badge")}</Badge> : null}
+              </div>
               <span className="font-mono text-caption wrap-anywhere text-text-secondary">
                 {item.productCode}
               </span>
+              {isBundle && sortedItems.length > 0 ? (
+                <span className="line-clamp-2 text-caption text-text-muted">
+                  <span>{t("bundle.itemsCount", { count: sortedItems.length })}</span>
+                  {": "}
+                  {sortedItems.map((sub, idx) => (
+                    <Fragment key={sub.examId}>
+                      {idx > 0 ? ", " : null}
+                      <span data-exam-content>{sub.examName}</span>
+                    </Fragment>
+                  ))}
+                </span>
+              ) : null}
             </div>
           );
         },
@@ -719,53 +739,72 @@ export function OrderListView() {
               />
             }
             cards={{
-              render: (row) => (
-                <ListCard
-                  title={
-                    <ListCardTitleLink
-                      linkComponent={Link}
-                      href={`/orders/${encodeURIComponent(row.code)}`}
-                    >
-                      {row.code}
-                    </ListCardTitleLink>
-                  }
-                  caption={
-                    <span data-exam-content>
-                      {row.productName} · {row.buyerFullName}
-                    </span>
-                  }
-                  status={<OrderStateChip state={row.orderState} />}
-                  tags={
-                    <>
-                      <OrderPaymentStatusChip status={row.paymentStatus} />
-                      <OrderRefundStatusChip status={row.refundStatus} />
-                      {row.needsReview ? (
-                        <ListCardTag>{t("list.needsReviewTag")}</ListCardTag>
-                      ) : null}
-                    </>
-                  }
-                  meta={[
-                    {
-                      label: t("columns.amount"),
-                      value: (
-                        <span className="font-mono font-semibold text-text">
-                          {formatVnd(row.amountDueVnd, locale)}
-                        </span>
-                      ),
-                    },
-                    {
-                      label: row.paidAt ? t("columns.paidAt") : t("columns.createdAt"),
-                      value: row.paidAt
-                        ? formatOrderDateTime(row.paidAt, locale)
-                        : formatOrderDateTime(row.createdAt, locale),
-                    },
-                  ]}
-                >
-                  <p className="text-xs text-text-secondary">
-                    {t("list.cardAccount", { username: row.buyerUsername })}
-                  </p>
-                </ListCard>
-              ),
+              render: (row) => {
+                const isBundle = row.productType === "BUNDLE";
+                const sortedItems = isBundle
+                  ? [...(row.items ?? [])].sort((a, b) => a.position - b.position)
+                  : [];
+                return (
+                  <ListCard
+                    title={
+                      <ListCardTitleLink
+                        linkComponent={Link}
+                        href={`/orders/${encodeURIComponent(row.code)}`}
+                      >
+                        {row.code}
+                      </ListCardTitleLink>
+                    }
+                    caption={
+                      <span data-exam-content>
+                        {row.productName} · {row.buyerFullName}
+                      </span>
+                    }
+                    status={<OrderStateChip state={row.orderState} />}
+                    tags={
+                      <>
+                        {isBundle ? <ListCardTag>{t("bundle.badge")}</ListCardTag> : null}
+                        <OrderPaymentStatusChip status={row.paymentStatus} />
+                        <OrderRefundStatusChip status={row.refundStatus} />
+                        {row.needsReview ? (
+                          <ListCardTag>{t("list.needsReviewTag")}</ListCardTag>
+                        ) : null}
+                      </>
+                    }
+                    meta={[
+                      {
+                        label: t("columns.amount"),
+                        value: (
+                          <span className="font-mono font-semibold text-text">
+                            {formatVnd(row.amountDueVnd, locale)}
+                          </span>
+                        ),
+                      },
+                      {
+                        label: row.paidAt ? t("columns.paidAt") : t("columns.createdAt"),
+                        value: row.paidAt
+                          ? formatOrderDateTime(row.paidAt, locale)
+                          : formatOrderDateTime(row.createdAt, locale),
+                      },
+                    ]}
+                  >
+                    <p className="text-xs text-text-secondary">
+                      {t("list.cardAccount", { username: row.buyerUsername })}
+                    </p>
+                    {isBundle && sortedItems.length > 0 ? (
+                      <p className="text-xs text-text-muted">
+                        <span>{t("bundle.itemsCount", { count: sortedItems.length })}</span>
+                        {": "}
+                        {sortedItems.map((sub, idx) => (
+                          <Fragment key={sub.examId}>
+                            {idx > 0 ? ", " : null}
+                            <span data-exam-content>{sub.examName}</span>
+                          </Fragment>
+                        ))}
+                      </p>
+                    ) : null}
+                  </ListCard>
+                );
+              },
             }}
           />
 

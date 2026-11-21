@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type ComponentProps, useMemo, useState } from "react";
 
 import {
+  Badge,
   Button,
   Card,
   EmptyState,
@@ -38,6 +39,7 @@ import { useAdminOrderDetailQuery } from "../queries";
 import type {
   AdminOrderDetailResponse,
   GrantView,
+  OrderItemView,
   PaymentDetailView,
   RefundResponse,
 } from "../types";
@@ -70,6 +72,12 @@ const KNOWN_LATE_SUCCESS_RESOLUTIONS = new Set([
   "AUTO_EXCESS",
   "PENDING",
   "REJECTED",
+]);
+const KNOWN_ORDER_RESULT_VIEWS = new Set([
+  "SCORE",
+  "SCORE_AND_ANSWERS",
+  "FULL_SOLUTION",
+  "FULL",
 ]);
 
 type TimelineTone = "success" | "warning" | "danger" | "info" | "neutral";
@@ -208,6 +216,16 @@ export function OrderDetailView({ code }: { code: string }) {
   const canViewExam = !permissions.isLoading && permissions.can("EXAM.VIEW");
 
   const order = detailQuery.data;
+  const isBundleOrder = order?.productType === "BUNDLE";
+
+  const sortedBundleItems = useMemo<OrderItemView[]>(
+    () => (isBundleOrder && order ? [...order.items].sort((a, b) => a.position - b.position) : []),
+    [isBundleOrder, order],
+  );
+  const bundleItemByExamId = useMemo(
+    () => new Map(sortedBundleItems.map((item) => [item.examId, item])),
+    [sortedBundleItems],
+  );
 
   const activeLateSuccessPayment: PaymentDetailView | undefined = useMemo(() => {
     if (!order || !lateSuccessPaymentId) return undefined;
@@ -277,16 +295,87 @@ export function OrderDetailView({ code }: { code: string }) {
     return items;
   }, [order, t, tStates, tFallback, tHistory, tAuditActions, tHistoryReasons]);
 
+  const bundleItemColumns: ComponentProps<typeof Table<OrderItemView>>["columns"] = useMemo(
+    () => [
+      {
+        id: "position",
+        header: t("detail.bundleItems.position"),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-text-secondary tabular-nums">
+            {formatNumber(row.original.position, locale)}
+          </span>
+        ),
+      },
+      {
+        id: "exam",
+        header: t("detail.bundleItems.exam"),
+        cell: ({ row }) => (
+          <div className="flex min-w-44 flex-col gap-0.5">
+            <span className="text-sm font-medium text-text" data-exam-content>
+              {row.original.examName}
+            </span>
+            <span className="font-mono text-xs text-text-secondary" data-exam-content>
+              {row.original.examCode}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: "version",
+        header: t("detail.bundleItems.version"),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs whitespace-nowrap text-text-secondary">
+            {t("detail.bundleItems.versionValue", { version: row.original.examVersionNo })}
+          </span>
+        ),
+      },
+      {
+        id: "attemptsGranted",
+        header: () => <span className="block text-right">{t("detail.bundleItems.attempts")}</span>,
+        cell: ({ row }) => (
+          <span className="block text-right font-mono text-xs text-text tabular-nums">
+            {formatNumber(row.original.attemptsGranted, locale)}
+          </span>
+        ),
+      },
+      {
+        id: "resultView",
+        header: t("detail.bundleItems.resultView"),
+        cell: ({ row }) => (
+          <span className="text-xs text-text-secondary">
+            {KNOWN_ORDER_RESULT_VIEWS.has(row.original.resultView)
+              ? t(`detail.bundleItems.resultViews.${row.original.resultView}`)
+              : row.original.resultView}
+          </span>
+        ),
+      },
+    ],
+    [locale, t],
+  );
+
   const grantColumns: ComponentProps<typeof Table<GrantView>>["columns"] = useMemo(
     () => [
       {
         id: "code",
         header: t("detail.grants.code"),
-        cell: ({ row }) => (
-          <span className="block max-w-[260px] font-mono text-xs wrap-anywhere text-text">
-            {row.original.entitlementId}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const item = bundleItemByExamId.get(row.original.examId);
+          return (
+            <div className="flex flex-col gap-0.5">
+              {item ? (
+                <span className="text-xs font-medium text-text">
+                  <span data-exam-content>{item.examName}</span>{" "}
+                  <span className="font-mono text-text-secondary" data-exam-content>
+                    ({item.examCode})
+                  </span>
+                </span>
+              ) : null}
+              <span className="block max-w-[260px] font-mono text-xs wrap-anywhere text-text">
+                {row.original.entitlementId}
+              </span>
+            </div>
+          );
+        },
       },
       {
         id: "remaining",
@@ -321,7 +410,7 @@ export function OrderDetailView({ code }: { code: string }) {
         },
       },
     ],
-    [locale, t],
+    [bundleItemByExamId, locale, t],
   );
 
   const paymentColumns: ComponentProps<typeof Table<PaymentDetailView>>["columns"] = useMemo(
@@ -669,6 +758,15 @@ export function OrderDetailView({ code }: { code: string }) {
                 </Button>
               ) : null}
 
+              {canViewExam && order.productType === "BUNDLE" && order.bundleId ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/bundles/${encodeURIComponent(order.bundleId)}`}>
+                    <span>{t("nav.openBundle")}</span>
+                    <ExternalLink aria-hidden="true" />
+                  </Link>
+                </Button>
+              ) : null}
+
               {canRecover && showContinueFulfill ? (
                 <Button type="button" variant="primary" size="sm" onClick={() => setFulfillOpen(true)}>
                   {t("detail.actions.continueFulfill")}
@@ -806,10 +904,16 @@ export function OrderDetailView({ code }: { code: string }) {
 
             <div>
               <dt className="text-xs text-text-secondary">{t("detail.snapshot.product")}</dt>
-              <dd className="mt-1 text-sm font-medium text-text" data-exam-content>
-                {order.productName}
+              <dd className="mt-1 flex flex-wrap items-center gap-1.5 text-sm font-medium text-text">
+                <span data-exam-content>{order.productName}</span>
+                {order.productType === "BUNDLE" ? <Badge>{t("bundle.badge")}</Badge> : null}
               </dd>
-              <dd className="font-mono text-xs text-text-secondary">{order.productCode}</dd>
+              <dd className="font-mono text-xs text-text-secondary">
+                {order.productCode}
+                {order.productType === "BUNDLE" && order.bundleVersionNo != null
+                  ? ` · v${order.bundleVersionNo}`
+                  : ""}
+              </dd>
             </div>
 
             <div>
@@ -893,6 +997,68 @@ export function OrderDetailView({ code }: { code: string }) {
         </div>
       </Card>
 
+      {/* Block 1B: Bundle Items */}
+      {isBundleOrder ? (
+        <Card padding="none" className="overflow-hidden">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-base font-semibold text-text">
+              {t("detail.bundleItems.title")}
+            </h2>
+          </div>
+          {sortedBundleItems.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-text-secondary">
+              {t("detail.bundleItems.empty")}
+            </p>
+          ) : (
+            <Table
+              aria-label={t("detail.bundleItems.title")}
+              columns={bundleItemColumns}
+              data={sortedBundleItems}
+              getRowId={(item) => item.id}
+              className="[&_:is(th,td)]:px-3 [&_:is(th,td):first-child]:ps-5 [&_:is(th,td):last-child]:pe-5"
+              empty={
+                <p className="px-5 py-4 text-sm text-text-secondary">
+                  {t("detail.bundleItems.empty")}
+                </p>
+              }
+              cards={{
+                render: (item) => (
+                  <ListCard
+                    title={<span data-exam-content>{item.examName}</span>}
+                    caption={
+                      <span data-exam-content className="font-mono">
+                        {item.examCode}
+                      </span>
+                    }
+                    tags={
+                      <ListCardTag>
+                        {t("detail.bundleItems.versionValue", { version: item.examVersionNo })}
+                      </ListCardTag>
+                    }
+                    meta={[
+                      {
+                        label: t("detail.bundleItems.position"),
+                        value: formatNumber(item.position, locale),
+                      },
+                      {
+                        label: t("detail.bundleItems.attempts"),
+                        value: formatNumber(item.attemptsGranted, locale),
+                      },
+                      {
+                        label: t("detail.bundleItems.resultView"),
+                        value: KNOWN_ORDER_RESULT_VIEWS.has(item.resultView)
+                          ? t(`detail.bundleItems.resultViews.${item.resultView}`)
+                          : item.resultView,
+                      },
+                    ]}
+                  />
+                ),
+              }}
+            />
+          )}
+        </Card>
+      ) : null}
+
       {/* Block 2: Grants */}
       <Card padding="none" className="overflow-hidden">
         <div className="border-b border-border px-5 py-4">
@@ -908,26 +1074,39 @@ export function OrderDetailView({ code }: { code: string }) {
             getRowId={(grant) => grant.grantId}
             empty={<p className="px-5 py-4 text-sm text-text-secondary">{t("detail.grants.empty")}</p>}
             cards={{
-              render: (grant) => (
-                <ListCard
-                  title={<span className="font-mono text-xs wrap-anywhere">{grant.entitlementId}</span>}
-                  status={<GrantStateChip grant={grant} />}
-                  meta={[
-                    {
-                      label: t("detail.grants.remaining"),
-                      value: `${formatNumber(grant.attemptsLeft, locale)} / ${formatNumber(grant.attempts, locale)}`,
-                    },
-                    {
-                      label: t("detail.grants.createdAt"),
-                      value: formatOrderDateTime(grant.grantedAt, locale),
-                    },
-                    Boolean(grant.revokedAt) && {
-                      label: t("detail.grants.revokedAt"),
-                      value: formatOrderDateTime(grant.revokedAt, locale),
-                    },
-                  ]}
-                />
-              ),
+              render: (grant) => {
+                const item = bundleItemByExamId.get(grant.examId);
+                return (
+                  <ListCard
+                    title={<span className="font-mono text-xs wrap-anywhere">{grant.entitlementId}</span>}
+                    caption={
+                      item ? (
+                        <span>
+                          <span data-exam-content>{item.examName}</span>{" "}
+                          <span className="font-mono" data-exam-content>
+                            ({item.examCode})
+                          </span>
+                        </span>
+                      ) : undefined
+                    }
+                    status={<GrantStateChip grant={grant} />}
+                    meta={[
+                      {
+                        label: t("detail.grants.remaining"),
+                        value: `${formatNumber(grant.attemptsLeft, locale)} / ${formatNumber(grant.attempts, locale)}`,
+                      },
+                      {
+                        label: t("detail.grants.createdAt"),
+                        value: formatOrderDateTime(grant.grantedAt, locale),
+                      },
+                      Boolean(grant.revokedAt) && {
+                        label: t("detail.grants.revokedAt"),
+                        value: formatOrderDateTime(grant.revokedAt, locale),
+                      },
+                    ]}
+                  />
+                );
+              },
             }}
           />
         )}

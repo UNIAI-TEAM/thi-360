@@ -43,7 +43,7 @@ export function CheckingExamCard({
     <article className="flex flex-wrap items-center gap-4 rounded-xl border border-warning border-l-4 bg-surface p-5">
       <div className="flex min-w-0 flex-[999_1_28rem] flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex h-6 items-center rounded-full bg-subtle px-2.5 text-caption font-medium text-text-secondary">
+          <span className="inline-flex min-h-6 items-center rounded-full bg-subtle px-2.5 py-0.5 text-caption font-medium text-text-secondary">
             {examKindName}
           </span>
           <StatusChip tone="warning">{t("status")}</StatusChip>
@@ -76,7 +76,14 @@ export function CheckingExamCard({
   );
 }
 
-export function MyExamCard({ card }: { card: MyExamCardData }) {
+export function MyExamCard({
+  card,
+  headingLevel = 3,
+}: {
+  card: MyExamCardData;
+  headingLevel?: 3 | 4;
+}) {
+  const CardHeading = headingLevel === 4 ? "h4" : "h3";
   const t = useTranslations("home");
   const storefront = useTranslations("storefront");
   const locale = useLocale();
@@ -110,14 +117,14 @@ export function MyExamCard({ card }: { card: MyExamCardData }) {
   return (
     <article className="flex flex-col gap-3.5 rounded-xl border border-border bg-surface p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex h-6 items-center rounded-full bg-subtle px-2.5 text-caption font-medium text-text-secondary">
+        <span className="inline-flex min-h-6 items-center rounded-full bg-subtle px-2.5 py-0.5 text-caption font-medium text-text-secondary">
           {examKindName}
         </span>
-        <span className="inline-flex h-6 items-center rounded-full bg-primary-50 px-2.5 text-caption font-semibold text-primary-text">
+        <span className="inline-flex min-h-6 items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-caption font-semibold text-primary-text">
           {t("card.purchased")}
         </span>
         {card.buildMode === REVIEW_BUILD_MODE && (
-          <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
+          <span className="inline-flex min-h-6 items-center rounded-full bg-info-bg px-2.5 py-0.5 text-caption font-semibold text-info">
             {storefront("review")}
           </span>
         )}
@@ -127,9 +134,9 @@ export function MyExamCard({ card }: { card: MyExamCardData }) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <h3 data-exam-content className="line-clamp-2 text-title font-semibold text-text">
+        <CardHeading data-exam-content className="line-clamp-2 text-title font-semibold wrap-break-word text-text">
           {card.name}
-        </h3>
+        </CardHeading>
         <div className="flex flex-wrap items-center gap-1.5">
           <FormatChip format={card.format} scopeLabel={card.scopeLabel ?? undefined} />
         </div>
