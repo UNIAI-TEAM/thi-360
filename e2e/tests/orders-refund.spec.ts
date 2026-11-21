@@ -160,8 +160,8 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
       await expect(page.getByText(account.username, { exact: true })).toBeVisible();
       const row = page.locator("tr", { hasText: account.username });
       await expect(row.getByText("2 đơn đã trả")).toBeVisible();
-      await expect(row.getByRole("link", { name: order1 })).toBeVisible();
-      await expect(row.getByRole("link", { name: order2 })).toBeVisible();
+      await expect(row.getByRole("link", { name: order1, exact: true })).toBeVisible();
+      await expect(row.getByRole("link", { name: order2, exact: true })).toBeVisible();
     } finally {
       await adminCtx.close();
     }
@@ -184,8 +184,9 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
         const page = await examCtx.newPage();
         await page.goto(`${ADMIN_URL}/exams/${encodeURIComponent(sharedExamId)}/listing`);
         await expect(page.getByRole("form", { name: "Thông tin bán" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Bài thi" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Đơn hàng" })).toHaveCount(0);
+        const menu = page.getByRole("navigation", { name: "Menu chính" });
+        await expect(menu.getByRole("link", { name: "Bài thi" })).toBeVisible();
+        await expect(menu.getByRole("link", { name: "Đơn hàng" })).toHaveCount(0);
         await expect(page.getByRole("link", { name: /Người mua/ })).toHaveCount(0);
 
         for (const forbiddenRoute of [
@@ -210,7 +211,9 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
         await loginAsCredentials(orderCtx, orderViewOnlyAdmin.username, ACCOUNT_PASSWORD, "vi");
         const page = await orderCtx.newPage();
         await page.goto(`${ADMIN_URL}/orders`);
-        await expect(page.getByRole("link", { name: "Đơn hàng" })).toBeVisible();
+        await expect(
+          page.getByRole("navigation", { name: "Menu chính" }).getByRole("link", { name: "Đơn hàng" }),
+        ).toBeVisible();
         await expect(page.getByRole("link", { name: orderCode, exact: true })).toBeVisible();
 
         await page.getByRole("link", { name: orderCode, exact: true }).click();
@@ -249,6 +252,7 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
               state: "PAID",
               paymentStatus: "SUCCEEDED",
               refundStatus: "NONE",
+              grants: [],
               payments,
             },
           });
@@ -347,7 +351,12 @@ test.describe("Web Admin Orders, Buyers & Refund (FA-3)", () => {
 
           await page.goto(`${ADMIN_URL}/orders/${encodeURIComponent(orderCode)}`);
           await page.getByRole("button", { name: /Hoàn tiền|Refund/ }).first().click();
-          await expect(page.getByRole("dialog")).toBeVisible();
+          const dialog = page.getByRole("dialog");
+          await expect(dialog).toBeVisible();
+          await page.evaluate(async () => {
+            await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined)));
+          });
+          await expect(dialog).toHaveCSS("opacity", "1");
           await expectMatrixClean(page, "orders-refund-dialog", cell);
         } finally {
           await ctx.close();
