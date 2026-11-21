@@ -27,7 +27,9 @@ CREATE TABLE attempt.attempt_audio_play (
     version bigint NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT uq_attempt_audio_play_attempt_asset UNIQUE (attempt_id, asset_id)
+    CONSTRAINT uq_attempt_audio_play_attempt_asset UNIQUE (attempt_id, asset_id),
+    CONSTRAINT chk_attempt_audio_play_position_le_duration CHECK (position_ms <= duration_ms),
+    CONSTRAINT chk_attempt_audio_play_anchor_le_duration CHECK (anchor_position_ms <= duration_ms)
 );
 
 CREATE INDEX idx_attempt_audio_play_attempt_part

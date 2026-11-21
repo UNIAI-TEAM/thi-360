@@ -41,10 +41,12 @@ public final class AudioAssetFixture implements AutoCloseable {
     }
 
     public CreatedAsset createFromClasspath(String classpathLocation, String fileName) {
-        byte[] bytes = readResource(classpathLocation);
+        return createAttachment(fileName, "audio/mpeg", readResource(classpathLocation));
+    }
+
+    public CreatedAsset createAttachment(String fileName, String mime, byte[] bytes) {
         UUID assetId = Ids.newId();
         String objectKey = KEY_PREFIX + assetId;
-        String mime = "audio/mpeg";
         byte[] sha256 = sha256(bytes);
 
         storage.put(objectKey, bytes, mime);

@@ -60,6 +60,7 @@ public class AttemptAudioFileCheck {
         }
 
         record RootRef(String partCode, VersionKey key) {}
+        record AudioCandidate(String partCode, UUID questionId, UUID assetId) {}
         List<RootRef> candidateRoots = new java.util.ArrayList<>();
         Set<VersionKey> keysWithAttachments = new LinkedHashSet<>();
 
@@ -86,11 +87,29 @@ public class AttemptAudioFileCheck {
             return CheckResult.EMPTY;
         }
 
-        Map<VersionKey, List<Attachment>> probed =
-                audioFileProbe.probe(examId, keysWithAttachments, true);
-        Map<UUID, CheckedAudioAsset> checkedByAssetId = new LinkedHashMap<>();
-
+        // Step 1: Metadata-only query (verifyStorage = false) so non-audio exams never touch object storage.
+        Map<VersionKey, List<Attachment>> metadata =
+                audioFileProbe.probe(examId, keysWithAttachments, false);
+        List<RootRef> audioRoots = new java.util.ArrayList<>();
+        Set<VersionKey> audioKeys = new LinkedHashSet<>();
         for (RootRef ref : candidateRoots) {
+            List<Attachment> attachments = metadata.getOrDefault(ref.key(), List.of());
+            boolean hasAudio = attachments.stream().anyMatch(att -> isAudioMime(att.mime()));
+            if (hasAudio) {
+                audioKeys.add(ref.key());
+                audioRoots.add(ref);
+            }
+        }
+        if (audioKeys.isEmpty()) {
+            return CheckResult.EMPTY;
+        }
+
+        // Step 2: Verify storage existence only for keys carrying at least one audio attachment.
+        Map<VersionKey, List<Attachment>> probed = audioFileProbe.probe(examId, audioKeys, true);
+
+        // Step 3 (R1-21): Fail fast on any missing audio attachment before downloading/parsing uncached MP3s.
+        List<AudioCandidate> audioCandidates = new java.util.ArrayList<>();
+        for (RootRef ref : audioRoots) {
             List<Attachment> attachments = probed.getOrDefault(ref.key(), List.of());
             for (Attachment att : attachments) {
                 if (!isAudioMime(att.mime())) {
@@ -104,31 +123,39 @@ public class AttemptAudioFileCheck {
                             att.id(),
                             "Audio asset missing in storage");
                 }
-                if (checkedByAssetId.containsKey(att.id())) {
-                    continue;
-                }
-                try {
-                    long durationMs = audioDurationReader.resolveDurationMs(att.id());
-                    checkedByAssetId.put(
-                            att.id(),
-                            new CheckedAudioAsset(att.id(), ref.partCode(), durationMs));
-                } catch (AudioDurationReader.AudioAssetMissingException ex) {
-                    throw new AudioFileCheckException(
-                            AbortReason.AUDIO_ASSET_MISSING,
-                            examCode,
-                            ref.key().questionId(),
-                            att.id(),
-                            ex.getMessage(),
-                            ex);
-                } catch (AudioDurationReader.AudioAssetInvalidException ex) {
-                    throw new AudioFileCheckException(
-                            AbortReason.AUDIO_ASSET_INVALID,
-                            examCode,
-                            ref.key().questionId(),
-                            att.id(),
-                            ex.getMessage(),
-                            ex);
-                }
+                audioCandidates.add(
+                        new AudioCandidate(ref.partCode(), ref.key().questionId(), att.id()));
+            }
+        }
+
+        // Step 4: Measure distinct readable audio durations (cached in attempt.audio_asset_duration).
+        Map<UUID, CheckedAudioAsset> checkedByAssetId = new LinkedHashMap<>();
+        for (AudioCandidate candidate : audioCandidates) {
+            if (checkedByAssetId.containsKey(candidate.assetId())) {
+                continue;
+            }
+            try {
+                long durationMs = audioDurationReader.resolveDurationMs(candidate.assetId());
+                checkedByAssetId.put(
+                        candidate.assetId(),
+                        new CheckedAudioAsset(
+                                candidate.assetId(), candidate.partCode(), durationMs));
+            } catch (AudioDurationReader.AudioAssetMissingException ex) {
+                throw new AudioFileCheckException(
+                        AbortReason.AUDIO_ASSET_MISSING,
+                        examCode,
+                        candidate.questionId(),
+                        candidate.assetId(),
+                        ex.getMessage(),
+                        ex);
+            } catch (AudioDurationReader.AudioAssetInvalidException ex) {
+                throw new AudioFileCheckException(
+                        AbortReason.AUDIO_ASSET_INVALID,
+                        examCode,
+                        candidate.questionId(),
+                        candidate.assetId(),
+                        ex.getMessage(),
+                        ex);
             }
         }
 

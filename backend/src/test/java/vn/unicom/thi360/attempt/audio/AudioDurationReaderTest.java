@@ -77,6 +77,135 @@ class AudioDurationReaderTest {
         System.arraycopy(cbr, 0, truncatedLastFrame, 0, truncatedLastFrame.length);
         assertThatThrownBy(() -> AudioDurationReader.measureMp3DurationMs(truncatedLastFrame))
                 .isInstanceOf(AudioAssetInvalidException.class);
+
+        byte[] truncatedWithId3v1 = concat(truncatedLastFrame, id3v1Tag());
+        assertThatThrownBy(() -> AudioDurationReader.measureMp3DurationMs(truncatedWithId3v1))
+                .isInstanceOf(AudioAssetInvalidException.class);
+
+        byte[] trailingGarbage = concat(cbr, new byte[] {0, 0, 1, 2});
+        assertThatThrownBy(() -> AudioDurationReader.measureMp3DurationMs(trailingGarbage))
+                .isInstanceOf(AudioAssetInvalidException.class);
+
+        byte[] headerOnly = AudioAssetFixture.readResource("attempt/audio/header-only.mp3");
+        assertThatThrownBy(
+                        () ->
+                                AudioDurationReader.measureMp3DurationMs(
+                                        concat(headerOnly, new byte[64])))
+                .isInstanceOf(AudioAssetInvalidException.class);
+    }
+
+    @Test
+    void stripsTrailingId3v1TagOnAllRepoSamples() {
+        byte[] cbr = AudioAssetFixture.readResource("attempt/audio/silence-30s-cbr.mp3");
+        byte[] vbr = AudioAssetFixture.readResource("attempt/audio/silence-30s-vbr-xing.mp3");
+        byte[] twoB =
+                AudioAssetFixture.readResource("db/devdata/assets/hsca-en-listening-single-01.mp3");
+
+        byte[] tag = id3v1Tag();
+        assertThat(AudioDurationReader.measureMp3DurationMs(concat(cbr, tag))).isEqualTo(30_000L);
+        assertThat(AudioDurationReader.measureMp3DurationMs(concat(vbr, tag))).isEqualTo(30_000L);
+        assertThat(AudioDurationReader.measureMp3DurationMs(concat(twoB, tag))).isEqualTo(2_088L);
+    }
+
+    @Test
+    void handlesStackedId3v2HeadersApeV2FooterLyrics3AndTrailingNullPadding() {
+        byte[] cbr = AudioAssetFixture.readResource("attempt/audio/silence-30s-cbr.mp3");
+        byte[] twoB =
+                AudioAssetFixture.readResource("db/devdata/assets/hsca-en-listening-single-01.mp3");
+
+        // Stacked ID3v2 headers + trailing APEv2 (with header & footer) + ID3v1 + null padding
+        byte[] stackedId3v2 = concat(id3v2Tag(24), id3v2Tag(32));
+        byte[] apeWithHeader = apeV2Tag(true, 16);
+        byte[] apeFooterOnly = apeV2Tag(false, 20);
+        byte[] trailingZeros = new byte[48];
+
+        assertThat(
+                        AudioDurationReader.measureMp3DurationMs(
+                                concat(stackedId3v2, cbr, trailingZeros, apeWithHeader, id3v1Tag())))
+                .isEqualTo(30_000L);
+        assertThat(
+                        AudioDurationReader.measureMp3DurationMs(
+                                concat(id3v2Tag(12), twoB, trailingZeros, apeFooterOnly)))
+                .isEqualTo(2_088L);
+        assertThat(
+                        AudioDurationReader.measureMp3DurationMs(
+                                concat(cbr, lyrics3v2Tag("Test lyrics"), id3v1Tag())))
+                .isEqualTo(30_000L);
+    }
+
+    private static byte[] id3v1Tag() {
+        byte[] tag = new byte[128];
+        tag[0] = 'T';
+        tag[1] = 'A';
+        tag[2] = 'G';
+        byte[] title = "Sample Title".getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(title, 0, tag, 3, title.length);
+        return tag;
+    }
+
+    private static byte[] id3v2Tag(int bodySize) {
+        byte[] tag = new byte[10 + bodySize];
+        tag[0] = 'I';
+        tag[1] = 'D';
+        tag[2] = '3';
+        tag[3] = 3; // ID3v2.3
+        tag[4] = 0;
+        tag[5] = 0;
+        tag[6] = (byte) ((bodySize >> 21) & 0x7F);
+        tag[7] = (byte) ((bodySize >> 14) & 0x7F);
+        tag[8] = (byte) ((bodySize >> 7) & 0x7F);
+        tag[9] = (byte) (bodySize & 0x7F);
+        return tag;
+    }
+
+    private static byte[] apeV2Tag(boolean withHeader, int itemsSize) {
+        int tagSize = itemsSize + 32; // items + footer (excludes optional header)
+        int totalSize = tagSize + (withHeader ? 32 : 0);
+        byte[] ape = new byte[totalSize];
+        long flagsBase = withHeader ? 0x8000_0000L : 0L;
+        if (withHeader) {
+            writeApeHeaderOrFooter(ape, 0, 2000L, tagSize, 1, flagsBase | 0x2000_0000L);
+        }
+        writeApeHeaderOrFooter(ape, totalSize - 32, 2000L, tagSize, 1, flagsBase);
+        return ape;
+    }
+
+    private static void writeApeHeaderOrFooter(
+            byte[] buf, int offset, long version, int tagSize, int itemCount, long flags) {
+        byte[] magic = "APETAGEX".getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(magic, 0, buf, offset, 8);
+        writeUint32Le(buf, offset + 8, version);
+        writeUint32Le(buf, offset + 12, tagSize);
+        writeUint32Le(buf, offset + 16, itemCount);
+        writeUint32Le(buf, offset + 20, flags);
+    }
+
+    private static void writeUint32Le(byte[] buf, int offset, long val) {
+        buf[offset] = (byte) (val & 0xFF);
+        buf[offset + 1] = (byte) ((val >>> 8) & 0xFF);
+        buf[offset + 2] = (byte) ((val >>> 16) & 0xFF);
+        buf[offset + 3] = (byte) ((val >>> 24) & 0xFF);
+    }
+
+    private static byte[] lyrics3v2Tag(String text) {
+        byte[] begin = ("LYRICSBEGIN" + text).getBytes(StandardCharsets.US_ASCII);
+        String sizeStr = String.format(java.util.Locale.ROOT, "%06d", begin.length);
+        byte[] trailer = (sizeStr + "LYRICS200").getBytes(StandardCharsets.US_ASCII);
+        return concat(begin, trailer);
+    }
+
+    private static byte[] concat(byte[]... parts) {
+        int len = 0;
+        for (byte[] p : parts) {
+            len += p.length;
+        }
+        byte[] out = new byte[len];
+        int pos = 0;
+        for (byte[] p : parts) {
+            System.arraycopy(p, 0, out, pos, p.length);
+            pos += p.length;
+        }
+        return out;
     }
 
     @Test

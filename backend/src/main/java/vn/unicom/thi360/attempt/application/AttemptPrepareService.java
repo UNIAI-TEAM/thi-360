@@ -2,8 +2,12 @@ package vn.unicom.thi360.attempt.application;
 
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -30,9 +34,11 @@ import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.BlockSummary;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Option;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PathChoice;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.Section;
 import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingExam;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.ServingPath;
 import vn.unicom.thi360.shared.api.NotFoundException;
 
 /** Prepares the exam launch summary for an active learner's entitlement (LT §5.1, AC-11, AC-12). */
@@ -112,8 +118,10 @@ public class AttemptPrepareService {
                         .toList();
 
         AttemptTiming timing = AttemptTiming.valueOf(version.timing());
-        List<String> answerFormats = deriveAnswerFormats(version);
-        ListeningPolicyView listeningPolicy = deriveListeningPolicy(version);
+        AllowedOptions allowedOptions =
+                resolveAllowedOptions(serving.servingPaths(), desc.optionCodes());
+        List<String> answerFormats = deriveAnswerFormats(version, allowedOptions);
+        ListeningPolicyView listeningPolicy = deriveListeningPolicy(version, allowedOptions);
         return new AttemptPrepareResponse(
                 entitlementId,
                 serving.examId(),
@@ -140,7 +148,101 @@ public class AttemptPrepareService {
                 listeningPolicy);
     }
 
-    private static List<String> deriveAnswerFormats(PublishedVersion version) {
+    private record AllowedOptions(
+            boolean filter,
+            Map<String, Set<String>> optionIdsByPart,
+            Map<String, Set<String>> optionCodesByPart,
+            Set<String> globalOptionCodes) {
+
+        boolean isOptionAllowed(String partId, Option option) {
+            if (!filter) {
+                return true;
+            }
+            if (option.id() != null
+                    && optionIdsByPart.getOrDefault(partId, Set.of()).contains(option.id())) {
+                return true;
+            }
+            String normCode = normalizeCode(option.code());
+            if (normCode == null) {
+                return false;
+            }
+            return optionCodesByPart.getOrDefault(partId, Set.of()).contains(normCode)
+                    || (optionIdsByPart.isEmpty()
+                            && optionCodesByPart.isEmpty()
+                            && globalOptionCodes.contains(normCode));
+        }
+
+        Set<String> allowedOptionIdsForPart(Part part) {
+            if (!filter || part.options() == null || part.options().isEmpty()) {
+                return Set.of();
+            }
+            Set<String> allowedIds = new LinkedHashSet<>();
+            for (Option option : part.options()) {
+                if (option.id() != null && isOptionAllowed(part.id(), option)) {
+                    allowedIds.add(option.id());
+                }
+            }
+            return allowedIds;
+        }
+    }
+
+    private static AllowedOptions resolveAllowedOptions(
+            List<ServingPath> servingPaths, List<String> grantedOptionCodes) {
+        Set<String> granted = new LinkedHashSet<>();
+        if (grantedOptionCodes != null) {
+            for (String code : grantedOptionCodes) {
+                String normalized = normalizeCode(code);
+                if (normalized != null) {
+                    granted.add(normalized);
+                }
+            }
+        }
+        boolean hasServingPaths = servingPaths != null && !servingPaths.isEmpty();
+        if (!hasServingPaths) {
+            if (granted.isEmpty()) {
+                return new AllowedOptions(false, Map.of(), Map.of(), Set.of());
+            }
+            return new AllowedOptions(true, Map.of(), Map.of(), Set.copyOf(granted));
+        }
+
+        Map<String, Set<String>> optionIdsByPart = new LinkedHashMap<>();
+        Map<String, Set<String>> optionCodesByPart = new LinkedHashMap<>();
+        for (ServingPath path : servingPaths) {
+            if (!granted.isEmpty() && path.choices() != null && !path.choices().isEmpty()) {
+                boolean allGranted =
+                        path.choices().stream()
+                                .map(PathChoice::code)
+                                .map(AttemptPrepareService::normalizeCode)
+                                .allMatch(c -> c != null && granted.contains(c));
+                if (!allGranted) {
+                    continue;
+                }
+            }
+            if (path.choices() == null) {
+                continue;
+            }
+            for (PathChoice choice : path.choices()) {
+                if (choice.partId() == null) {
+                    continue;
+                }
+                if (choice.optionId() != null) {
+                    optionIdsByPart
+                            .computeIfAbsent(choice.partId(), k -> new LinkedHashSet<>())
+                            .add(choice.optionId());
+                }
+                String normCode = normalizeCode(choice.code());
+                if (normCode != null) {
+                    optionCodesByPart
+                            .computeIfAbsent(choice.partId(), k -> new LinkedHashSet<>())
+                            .add(normCode);
+                }
+            }
+        }
+        return new AllowedOptions(true, optionIdsByPart, optionCodesByPart, Set.copyOf(granted));
+    }
+
+    private static List<String> deriveAnswerFormats(
+            PublishedVersion version, AllowedOptions allowedOptions) {
         if (version.parts() == null) {
             return List.of();
         }
@@ -149,8 +251,14 @@ public class AttemptPrepareService {
             if (part.blocks() == null) {
                 continue;
             }
+            Set<String> allowedPartOptionIds = allowedOptions.allowedOptionIdsForPart(part);
             for (BlockSummary block : part.blocks()) {
                 if (block.omitted()) {
+                    continue;
+                }
+                if (allowedOptions.filter()
+                        && block.optionId() != null
+                        && !allowedPartOptionIds.contains(block.optionId())) {
                     continue;
                 }
                 String format =
@@ -165,7 +273,8 @@ public class AttemptPrepareService {
         return List.copyOf(formats);
     }
 
-    private static ListeningPolicyView deriveListeningPolicy(PublishedVersion version) {
+    private static ListeningPolicyView deriveListeningPolicy(
+            PublishedVersion version, AllowedOptions allowedOptions) {
         if (version.parts() == null) {
             return null;
         }
@@ -175,13 +284,21 @@ public class AttemptPrepareService {
             }
             if (part.options() != null) {
                 for (Option option : part.options()) {
-                    if (hasRequiredAudio(option.sections())) {
+                    if (allowedOptions.isOptionAllowed(part.id(), option)
+                            && hasRequiredAudio(option.sections())) {
                         return new ListeningPolicyView(AttemptAudioPlay.MAX_PLAYS, false);
                     }
                 }
             }
         }
         return null;
+    }
+
+    private static String normalizeCode(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        return raw.trim().toUpperCase(Locale.ROOT);
     }
 
     private static boolean hasRequiredAudio(List<Section> sections) {

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -96,7 +98,6 @@ class AttemptAudioFileCheckIT extends AbstractIntegrationTest {
     @Autowired private ApplicationContext context;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper objectMapper;
-    @Autowired private ObjectStorage objectStorage;
     @Autowired private EntitlementGrantService grantService;
     @Autowired private PublishedExamPort publishedExamPort;
     @Autowired private AttemptRepository attemptRepository;
@@ -108,6 +109,7 @@ class AttemptAudioFileCheckIT extends AbstractIntegrationTest {
     @MockitoSpyBean private PaperSolverPort paperSolverPort;
     @MockitoSpyBean private QuestionAttachmentPort questionAttachmentPort;
     @MockitoSpyBean private QuestionAssetContentPort questionAssetContentPort;
+    @MockitoSpyBean private ObjectStorage objectStorage;
 
     private final List<UUID> createdUserIds = new ArrayList<>();
     private final List<UUID> createdQuestionIds = new ArrayList<>();
@@ -121,7 +123,7 @@ class AttemptAudioFileCheckIT extends AbstractIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        reset(paperSolverPort, questionAttachmentPort, questionAssetContentPort);
+        reset(paperSolverPort, questionAttachmentPort, questionAssetContentPort, objectStorage);
         for (UUID userId : createdUserIds) {
             AttemptTestFixtures.cleanupUser(jdbc, userId);
         }
@@ -349,6 +351,85 @@ class AttemptAudioFileCheckIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void pdfOnlyAttachmentSkipsObjectStorageAndOpensCleanly() throws Exception {
+        UUID userId = createStudent("paper-pdf-only");
+        byte[] pdfBytes = "%PDF-1.4\nPDF-only attachment".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        var pdf = assetFixture.createAttachment("handout.pdf", "application/pdf", pdfBytes);
+        UUID qPdfOnly = createReadyQuestionWithAttachments(List.of(pdf.assetId()), "PDF-ONLY");
+        stubListeningPaperWithQuestions(List.of(qPdfOnly));
+
+        clearInvocations(questionAttachmentPort, questionAssetContentPort, objectStorage);
+        doThrow(new ExternalServiceException("STORAGE_MUST_NOT_BE_CALLED"))
+                .when(objectStorage)
+                .exists(any());
+
+        GrantOrderResult.Line line = grant(userId, "DS-HSCA-TOAN", 2);
+        MvcResult res = performStart(userId, "pdf-only-" + UUID.randomUUID(), line.entitlementId());
+        assertThat(res.getResponse().getStatus()).isEqualTo(202);
+        UUID attemptId = UUID.fromString(json(res).path("attemptId").asText());
+
+        Attempt opened = awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+        assertThat(opened.getStartedAt()).isNotNull();
+        verify(questionAttachmentPort).attachments(any(), eq(false));
+        verify(questionAttachmentPort, never()).attachments(any(), eq(true));
+        verify(objectStorage, never()).exists(any());
+        verifyNoInteractions(questionAssetContentPort);
+        assertThat(attemptAudioPlayRepository.findByAttemptIdOrderByAssetIdAsc(attemptId)).isEmpty();
+    }
+
+    @Test
+    void mixedPdfAndAudioAttachmentMeasuresOnlyAudioAndLeavesPdfDownloadableWithoutPlayId()
+            throws Exception {
+        UUID userId = createStudent("paper-pdf-audio");
+        byte[] pdfBytes = "%PDF-1.4\nMixed handout".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        var pdf = assetFixture.createAttachment("mixed.pdf", "application/pdf", pdfBytes);
+        var cbr = assetFixture.createFromAudioResource("silence-30s-cbr.mp3");
+        UUID qMixed =
+                createReadyQuestionWithAttachments(
+                        List.of(pdf.assetId(), cbr.assetId()), "MIXED-PDF-AUDIO");
+        stubListeningPaperWithQuestions(List.of(qMixed));
+
+        clearInvocations(questionAttachmentPort, questionAssetContentPort);
+        GrantOrderResult.Line line = grant(userId, "DS-HSCA-ANH-MINI", 2);
+        MvcResult res = performStart(userId, "mixed-" + UUID.randomUUID(), line.entitlementId());
+        assertThat(res.getResponse().getStatus()).isEqualTo(202);
+        UUID attemptId = UUID.fromString(json(res).path("attemptId").asText());
+
+        awaitTerminalStartState(attemptId, AttemptState.IN_PROGRESS);
+        verify(questionAssetContentPort, never()).loadContent(pdf.assetId());
+        verify(questionAssetContentPort, times(1)).loadContent(cbr.assetId());
+
+        List<AttemptAudioPlay> plays =
+                attemptAudioPlayRepository.findByAttemptIdOrderByAssetIdAsc(attemptId);
+        assertThat(plays).hasSize(1);
+        assertThat(plays.getFirst().getAssetId()).isEqualTo(cbr.assetId());
+        assertThat(plays.getFirst().getDurationMs()).isEqualTo(30_000L);
+
+        // PDF remains downloadable without playId while audio requires active playId
+        MvcResult pdfDownload =
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+                                                attemptId,
+                                                pdf.assetId())
+                                        .with(AttemptTestFixtures.asExamUser(userId, "learner")))
+                        .andReturn();
+        assertThat(pdfDownload.getResponse().getStatus()).isEqualTo(200);
+        assertThat(pdfDownload.getResponse().getContentType()).isEqualTo("application/pdf");
+        assertThat(pdfDownload.getResponse().getContentAsByteArray()).isEqualTo(pdfBytes);
+
+        MvcResult audioWithoutPlayId =
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+                                                attemptId,
+                                                cbr.assetId())
+                                        .with(AttemptTestFixtures.asExamUser(userId, "learner")))
+                        .andReturn();
+        assertThat(audioWithoutPlayId.getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
     void faultEndpointOnlyInE2eProfile() throws Exception {
         UUID examId = AttemptTestFixtures.dsExamId(jdbc, "DS-HSCA-ANH-MINI");
         assertThat(context.getBeanNamesForType(E2eAudioFaultController.class)).isEmpty();
@@ -468,6 +549,11 @@ class AttemptAudioFileCheckIT extends AbstractIntegrationTest {
     }
 
     private UUID createReadyListeningQuestion(UUID assetId, String prefix) throws Exception {
+        return createReadyQuestionWithAttachments(List.of(assetId), prefix);
+    }
+
+    private UUID createReadyQuestionWithAttachments(List<UUID> attachmentIds, String prefix)
+            throws Exception {
         UUID adminId = UUID.randomUUID();
         SaveQuestionRequest createReq =
                 new SaveQuestionRequest(
@@ -483,7 +569,7 @@ class AttemptAudioFileCheckIT extends AbstractIntegrationTest {
                         "<p>Audio test " + prefix + "</p>",
                         null,
                         List.of(),
-                        List.of(assetId),
+                        attachmentIds,
                         new QuestionBody.SingleChoiceBody(
                                 QuestionType.SINGLE_CHOICE,
                                 List.of(
