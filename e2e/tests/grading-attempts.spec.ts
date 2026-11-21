@@ -896,9 +896,18 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       await expect(nav.getByRole("link", { name: "Lượt thi" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Chấm tự luận" })).toHaveCount(0);
 
+      const searchResPromise = page.waitForResponse(
+        (r) =>
+          r.url().includes("/api/v1/admin/attempts") &&
+          r.url().includes(encodeURIComponent(submitted.student.username)) &&
+          r.request().method() === "GET" &&
+          r.status() === 200,
+      );
       await page.getByRole("searchbox", { name: "Học viên" }).fill(submitted.student.username);
+      const searchRes = await searchResPromise;
+      expect(searchRes.ok()).toBe(true);
       const table = page.getByRole("table", { name: "Danh sách lượt thi" });
-      const rowLink = table.getByRole("link", { name: submitted.shortCode });
+      const rowLink = table.locator(`a[href$="/attempts/${submitted.attemptId}"]`);
       await expect(rowLink).toBeVisible();
       await rowLink.click();
 

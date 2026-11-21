@@ -294,7 +294,34 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       await loginAdmin(ctx, "vi");
       const page = await ctx.newPage();
 
+      const trialRequests: string[] = [];
+      ctx.on("page", (opened) => {
+        opened.on("request", (req) => {
+          trialRequests.push(`${req.method()} ${req.url()}`);
+        });
+      });
+
       const { trialPage, paper } = await generateAndOpenTrial(page, ctx, sp2e.id);
+
+      // R1-46: trang làm thử chỉ lấy dữ liệu qua API /preview/, không gọi GET /admin/exams/{id} và không render tab editor.
+      const leakedAdminExamCalls = trialRequests.filter((entry) => {
+        const [, rawUrl = ""] = entry.split(" ", 2);
+        const { pathname } = new URL(rawUrl);
+        return (
+          pathname.startsWith(`/api/v1/admin/exams/${sp2e.id}`) &&
+          !pathname.startsWith(`/api/v1/admin/exams/${sp2e.id}/preview/`)
+        );
+      });
+      expect(leakedAdminExamCalls).toEqual([]);
+      for (const editorTabLabel of [
+        "Thông tin chung",
+        "Cấu trúc",
+        "Thông tin bán",
+        "Kiểm tra",
+        "Phiên bản",
+      ]) {
+        await expect(trialPage.getByRole("link", { name: editorTabLabel })).toHaveCount(0);
+      }
 
       // Xác minh giao diện không đếm ngược và gia hạn thời gian giữ
       await expect(page.getByText("Đã mở đề làm thử trong tab mới.")).toBeAttached();
@@ -389,8 +416,17 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       expect(gradeJson.items.length).toBeGreaterThanOrEqual(22);
       expect(gradeJson.maxScore).toBeGreaterThan(0);
       expect(typeof gradeJson.rawScore).toBe("number");
-      const tfItem = gradeJson.items.find((it) => it.type === "TRUE_FALSE");
-      expect(tfItem?.gradingDetail?.statementResults).toHaveLength(4);
+      const gradedP1 = gradeJson.items.find((it) => it.questionId === part1FirstQ.questionId);
+      const gradedP2 = gradeJson.items.find((it) => it.questionId === part2FirstQ.questionId);
+      const gradedP3 = gradeJson.items.find((it) => it.questionId === part3FirstQ.questionId);
+      expect(gradedP1?.outcome).toBeDefined();
+      expect(gradedP1?.outcome).not.toBe("BLANK");
+      expect(gradedP2?.outcome).not.toBe("BLANK");
+      expect(gradedP3?.outcome).not.toBe("BLANK");
+      expect(gradedP2?.gradingDetail?.statementResults).toHaveLength(4);
+      expect(
+        gradedP2?.gradingDetail?.statementResults?.every((st) => st.answered === true),
+      ).toBe(true);
 
       const viNum = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 });
 
@@ -442,8 +478,10 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
   }) => {
     const admin = await adminApi();
     const tree = await createKnowledgeTree(admin, "TOAN", `fa4ord${SHORT_RUN}`);
+    const treeShuf = await createKnowledgeTree(admin, "TOAN", `fa4shf${SHORT_RUN}`);
 
     const fixedScTexts = ["SC Co dinh 1", "SC Co dinh 2", "SC Co dinh 3", "SC Co dinh 4"];
+    const shuffledScTexts = ["SC Dao 1", "SC Dao 2", "SC Dao 3", "SC Dao 4"];
     const fixedChildScTexts = ["Con1 Co dinh 1", "Con1 Co dinh 2", "Con1 Co dinh 3", "Con1 Co dinh 4"];
     const fixedChildMcTexts = ["Con2 Co dinh 1", "Con2 Co dinh 2", "Con2 Co dinh 3", "Con2 Co dinh 4"];
 
@@ -462,6 +500,21 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
           shuffleOptions: false,
         },
         sourceCode: `FA4-SC-${RUN_ID}`.slice(0, 60),
+      },
+      {
+        type: "SINGLE_CHOICE",
+        subjectCode: "TOAN",
+        gradeCode: "G12",
+        difficultyCode: "TH",
+        points: 1,
+        knowledge: [{ nodeId: treeShuf.leafId, primary: true }],
+        content: `<p>FA4 SC co dao ${RUN_ID}</p>`,
+        body: {
+          type: "SINGLE_CHOICE",
+          options: shuffledScTexts.map((txt, idx) => ({ id: randomUUID(), content: `<p>${txt}</p>`, correct: idx === 0 })),
+          shuffleOptions: true,
+        },
+        sourceCode: `FA4-SCS-${RUN_ID}`.slice(0, 60),
       },
       {
         type: "QUESTION_SET",
@@ -596,9 +649,18 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
         questionCount: 1,
         knowledgeScope: { nodeIds: [tree.leafId], competencyCodes: [] },
       },
+      {
+        ...templateBlock,
+        id: randomUUID(),
+        ord: baseOrd + 3,
+        name: "Nhom 4 Mot dap an co dao",
+        questionType: "SINGLE_CHOICE",
+        questionCount: 1,
+        knowledgeScope: { nodeIds: [treeShuf.leafId], competencyCodes: [] },
+      },
     ];
-    section.questionCount = 4;
-    part.questionCount = 4;
+    section.questionCount = 5;
+    part.questionCount = 5;
 
     const putStructRes = await admin.api.put(`${ADMIN_URL}/api/v1/admin/exams/${examId}/structure`, {
       headers: admin.headers,
@@ -618,7 +680,18 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       // Lần sinh 1 (seed mặc định 1 từ UI)
       const first = await generateAndOpenTrial(page, ctx, examId);
       const allItems1 = first.paper.parts.flatMap((p) => p.blocks.flatMap((b) => b.items));
-      const sc1 = allItems1.find((it) => it.kind === "QUESTION" && it.question?.type === "SINGLE_CHOICE")!.question!;
+      const sc1 = allItems1.find(
+        (it) =>
+          it.kind === "QUESTION" &&
+          it.question?.type === "SINGLE_CHOICE" &&
+          it.question.body.options?.some((opt) => opt.content.includes("SC Co dinh 1")),
+      )!.question!;
+      const shuffledSc1 = allItems1.find(
+        (it) =>
+          it.kind === "QUESTION" &&
+          it.question?.type === "SINGLE_CHOICE" &&
+          it.question.body.options?.some((opt) => opt.content.includes("SC Dao 1")),
+      )!.question!;
       const qsSet1 = allItems1.find((it) => it.kind === "SET")!.set!;
       const qsChildren1 = qsSet1.children;
       const qs1ChildSc = qsChildren1[0]!;
@@ -629,6 +702,15 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
         .locator(`#trial-question-${sc1.questionId} [data-question-options] [data-exam-content]`)
         .allInnerTexts();
       expect(scDomTexts1.map((t) => t.trim())).toEqual(fixedScTexts);
+
+      expect(shuffledSc1.optionOrder?.length).toBe(4);
+      const expectedShufOrder1 = shuffledSc1.optionOrder!.map((id) =>
+        shuffledSc1.body.options!.find((opt) => opt.id === id)!.content.replace(/<[^>]+>/g, "").trim(),
+      );
+      const shufDomTexts1 = await first.trialPage
+        .locator(`#trial-question-${shuffledSc1.questionId} [data-question-options] [data-exam-content]`)
+        .allInnerTexts();
+      expect(shufDomTexts1.map((t) => t.trim())).toEqual(expectedShufOrder1);
 
       const childScDomTexts1 = await first.trialPage
         .locator(
@@ -644,28 +726,41 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
         .allInnerTexts();
       expect(childMcDomTexts1.map((t) => t.trim())).toEqual(fixedChildMcTexts);
 
-      // Kiểm tra cột phải MATCHING đang hiển thị & tương tác chọn ghép đôi hoạt động
+      // Kiểm tra cột phải MATCHING theo optionOrder thực tế trong DOM & tương tác chọn ghép đôi hoạt động
+      expect(mt1.optionOrder?.length).toBe(4);
+      const expectedMatchOrder1 = mt1.optionOrder!.map((id) =>
+        mt1.body.right!.find((r) => r.id === id)!.content.replace(/<[^>]+>/g, "").trim(),
+      );
       const mtSection1 = first.trialPage.locator(`#trial-question-${mt1.questionId}`);
       await expect(mtSection1).toBeVisible();
       const firstMatchCombo = mtSection1.getByRole("combobox").first();
       await firstMatchCombo.click();
+      const optionTexts1 = await first.trialPage.locator('[role="option"]').allInnerTexts();
+      expect(optionTexts1.map((txt) => txt.replace(/^[a-z]\.\s*/i, "").trim())).toEqual(expectedMatchOrder1);
       await first.trialPage.getByRole("option").first().click();
-
-      const matchingRightIds1 = mt1.optionOrder ?? mt1.body.right?.map((r) => r.id) ?? [];
-      expect(matchingRightIds1.length).toBe(4);
       await first.trialPage.close();
 
       // Lần sinh 2 trên trang vừa reload (cùng seed = 1 từ giao diện) -> thứ tự optionOrder giữ nguyên hoàn toàn
       const second = await generateAndOpenTrial(page, ctx, examId);
       const allItems2 = second.paper.parts.flatMap((p) => p.blocks.flatMap((b) => b.items));
-      const sc2 = allItems2.find((it) => it.kind === "QUESTION" && it.question?.type === "SINGLE_CHOICE")!.question!;
+      const sc2 = allItems2.find(
+        (it) => it.kind === "QUESTION" && it.question?.questionId === sc1.questionId,
+      )!.question!;
+      const shuffledSc2 = allItems2.find(
+        (it) => it.kind === "QUESTION" && it.question?.questionId === shuffledSc1.questionId,
+      )!.question!;
       const qsChildren2 = allItems2.find((it) => it.kind === "SET")!.set!.children;
       const mt2 = allItems2.find((it) => it.kind === "QUESTION" && it.question?.type === "MATCHING")!.question!;
 
       expect(sc2.optionOrder).toEqual(sc1.optionOrder);
+      expect(shuffledSc2.optionOrder).toEqual(shuffledSc1.optionOrder);
+      const shufDomTexts2 = await second.trialPage
+        .locator(`#trial-question-${shuffledSc2.questionId} [data-question-options] [data-exam-content]`)
+        .allInnerTexts();
+      expect(shufDomTexts2.map((t) => t.trim())).toEqual(expectedShufOrder1);
       expect(qsChildren2[0]!.optionOrder).toEqual(qs1ChildSc.optionOrder);
       expect(qsChildren2[1]!.optionOrder).toEqual(qs1ChildMc.optionOrder);
-      expect(mt2.optionOrder ?? mt2.body.right?.map((r) => r.id)).toEqual(matchingRightIds1);
+      expect(mt2.optionOrder).toEqual(mt1.optionOrder);
       await second.trialPage.close();
     } finally {
       await ctx.close();
