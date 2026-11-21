@@ -146,13 +146,13 @@ public class StorefrontQueryService {
         if (resolvedSort == StorefrontSort.NEWEST) {
             StorefrontProductRepository.Page result = repository.list(query);
             List<PricedProduct> priced = result.items().stream()
-                    .filter(item -> item.examId() != null)
-                    .map(item -> new PricedProduct(item.examId(), item.examKindItemId(), item.listPriceVnd()))
+                    .map(StorefrontQueryService::toPricedProduct)
+                    .filter(p -> p.productKey() != null)
                     .toList();
             Map<UUID, PriceResult> priceMap = prices.priceOfAll(priced);
             List<ProductCard> cards = result.items().stream().map(item -> {
                 ProductCard card = read(item.card(), ProductCard.class);
-                return card.withPrice(priceFor(priceMap, item.examId(), item.listPriceVnd()));
+                return card.withPrice(priceFor(priceMap, productKey(item), item.listPriceVnd()));
             }).toList();
             int totalPages = (int) ((result.total() + resolvedSize - 1) / resolvedSize);
             return new PageResponse<>(cards, resolvedPage, resolvedSize, result.total(), totalPages);
@@ -164,12 +164,12 @@ public class StorefrontQueryService {
             return new PageResponse<>(List.of(), resolvedPage, resolvedSize, 0, 0);
         }
         Map<UUID, PriceResult> priceMap = prices.priceOfAll(all.stream()
-                .filter(item -> item.examId() != null)
-                .map(item -> new PricedProduct(item.examId(), item.examKindItemId(), item.listPriceVnd()))
+                .map(StorefrontQueryService::toPricedProduct)
+                .filter(p -> p.productKey() != null)
                 .toList());
 
         Comparator<SortableProduct> priceComparator = Comparator.comparingLong(
-                item -> priceFor(priceMap, item.examId(), item.listPriceVnd()).price());
+                item -> priceFor(priceMap, productKey(item), item.listPriceVnd()).price());
         if (resolvedSort == StorefrontSort.PRICE_DESC) {
             priceComparator = priceComparator.reversed();
         }
@@ -191,7 +191,7 @@ public class StorefrontQueryService {
                     slice.stream().map(SortableProduct::id).toList());
             cards = slice.stream()
                     .map(item -> read(cardJsonById.get(item.id()), ProductCard.class)
-                            .withPrice(priceFor(priceMap, item.examId(), item.listPriceVnd())))
+                            .withPrice(priceFor(priceMap, productKey(item), item.listPriceVnd())))
                     .toList();
         }
         int totalPages = (int) ((total + resolvedSize - 1) / resolvedSize);
@@ -215,7 +215,7 @@ public class StorefrontQueryService {
         }
         ProductDetail detail = read(stored.detail(), ProductDetail.class);
         return detail.withPrice(prices.priceOf(
-                new PricedProduct(stored.examId(), stored.examKindItemId(), stored.listPriceVnd())));
+                new PricedProduct(stored.examId(), stored.bundleId(), stored.examKindItemId(), stored.listPriceVnd())));
     }
 
     /**
@@ -259,8 +259,24 @@ public class StorefrontQueryService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private static PriceResult priceFor(Map<UUID, PriceResult> priceMap, UUID examId, long listPriceVnd) {
-        PriceResult resolved = examId == null ? null : priceMap.get(examId);
+    private static PricedProduct toPricedProduct(ListedProduct item) {
+        return new PricedProduct(item.examId(), item.bundleId(), item.examKindItemId(), item.listPriceVnd());
+    }
+
+    private static PricedProduct toPricedProduct(SortableProduct item) {
+        return new PricedProduct(item.examId(), item.bundleId(), item.examKindItemId(), item.listPriceVnd());
+    }
+
+    private static UUID productKey(ListedProduct item) {
+        return item.examId() != null ? item.examId() : item.bundleId();
+    }
+
+    private static UUID productKey(SortableProduct item) {
+        return item.examId() != null ? item.examId() : item.bundleId();
+    }
+
+    private static PriceResult priceFor(Map<UUID, PriceResult> priceMap, UUID productId, long listPriceVnd) {
+        PriceResult resolved = productId == null ? null : priceMap.get(productId);
         return resolved != null ? resolved : new PriceResult(listPriceVnd, listPriceVnd, null);
     }
 

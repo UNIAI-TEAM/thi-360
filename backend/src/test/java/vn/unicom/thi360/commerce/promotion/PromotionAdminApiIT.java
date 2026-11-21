@@ -462,21 +462,6 @@ class PromotionAdminApiIT extends PromotionIntegrationTest {
                             .content(mapper.writeValueAsString(body)))
                     .andExpect(status().isBadRequest());
         }
-
-        Map<String, Object> bundleBody = Map.of(
-                "kind", "AUTO",
-                "name", "Bundle Scope",
-                "discountType", "AMOUNT",
-                "discountValue", 10_000,
-                "startsAt", now.minus(1, ChronoUnit.HOURS).toString(),
-                "endsAt", now.plus(1, ChronoUnit.DAYS).toString(),
-                "scope", "BUNDLE");
-        mockMvc.perform(post(BASE)
-                        .with(adminAs(actor))
-                        .header("Idempotency-Key", "k-" + UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(bundleBody)))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

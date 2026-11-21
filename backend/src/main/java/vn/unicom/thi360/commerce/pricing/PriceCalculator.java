@@ -28,11 +28,24 @@ public interface PriceCalculator {
     QuoteCalculation previewPromotion(PricedProduct product, UUID promotionId);
 
     /**
-     * @param examId the exam behind the product, for promotions scoped to an exam
+     * @param examId the exam behind the product (null for bundles), for promotions scoped to an exam
+     * @param bundleId the bundle behind the product (null for single exams), for promotions scoped to a bundle
      * @param examKindItemId the catalog item of the exam kind, for promotions scoped to a kind
      * @param listPriceVnd the list price of the serving version
      */
-    record PricedProduct(UUID examId, UUID examKindItemId, long listPriceVnd) {
+    record PricedProduct(UUID examId, UUID bundleId, UUID examKindItemId, long listPriceVnd) {
+
+        public PricedProduct(UUID examId, UUID examKindItemId, long listPriceVnd) {
+            this(examId, null, examKindItemId, listPriceVnd);
+        }
+
+        public static PricedProduct forBundle(UUID bundleId, UUID examKindItemId, long listPriceVnd) {
+            return new PricedProduct(null, bundleId, examKindItemId, listPriceVnd);
+        }
+
+        public UUID productKey() {
+            return examId != null ? examId : bundleId;
+        }
     }
 
     /**
