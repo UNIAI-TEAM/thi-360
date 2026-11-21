@@ -778,12 +778,13 @@ class QueryDrMappingIT extends AbstractIntegrationTest {
             });
             e2eService.queryPaymentNow(hostilePay.id());
 
+            mutableClock.setAt(mutableClock.instant().plusSeconds(1));
             responder.set(req -> new HttpMock(
                     500, "text/html", "<html>Internal Error: " + sentinelSecret + "</html>"));
             e2eService.queryPaymentNow(hostilePay.id());
 
             List<String> persistedRaws = jdbc.queryForList(
-                    "SELECT raw::text FROM commerce.payment_event WHERE payment_id = ? ORDER BY received_at ASC",
+                    "SELECT raw::text FROM commerce.payment_event WHERE payment_id = ? ORDER BY received_at ASC, id ASC",
                     String.class, hostilePay.id());
             assertThat(persistedRaws).hasSize(2);
             for (String rawText : persistedRaws) {
