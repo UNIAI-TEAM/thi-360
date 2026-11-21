@@ -157,8 +157,9 @@ public class EssayGrade {
     /** Refreshes {@code lastActivityAt} when the current holder re-claims their own active draft. */
     public void touch(Instant now) {
         requireActiveDraft("touch");
-        this.lastActivityAt = Objects.requireNonNull(now, "now must not be null");
-        this.updatedAt = now;
+        Instant activityAt = clampActivityAt(now);
+        this.lastActivityAt = activityAt;
+        this.updatedAt = activityAt;
     }
 
     /** Saves draft criteria, points, and comment while refreshing {@code lastActivityAt}. */
@@ -168,11 +169,12 @@ public class EssayGrade {
             String comment,
             Instant now) {
         requireActiveDraft("saveDraft");
+        Instant activityAt = clampActivityAt(now);
         this.criteria = criteria == null ? null : List.copyOf(criteria);
         this.points = points;
         this.comment = comment;
-        this.lastActivityAt = Objects.requireNonNull(now, "now must not be null");
-        this.updatedAt = now;
+        this.lastActivityAt = activityAt;
+        this.updatedAt = activityAt;
     }
 
     /** Transitions an active draft to {@code FINAL} with validated scores. */
@@ -182,13 +184,19 @@ public class EssayGrade {
             String comment,
             Instant now) {
         requireActiveDraft("finalize");
-        this.criteria = criteria == null ? null : List.copyOf(criteria);
+        Instant activityAt = clampActivityAt(now);
         this.points = Objects.requireNonNull(points, "points must not be null");
+        this.criteria = criteria == null ? null : List.copyOf(criteria);
         this.comment = comment;
         this.state = EssayGradeState.FINAL;
-        this.lastActivityAt = Objects.requireNonNull(now, "now must not be null");
-        this.finalizedAt = now;
-        this.updatedAt = now;
+        this.lastActivityAt = activityAt;
+        this.finalizedAt = activityAt;
+        this.updatedAt = activityAt;
+    }
+
+    private Instant clampActivityAt(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        return now.isBefore(this.claimedAt) ? this.claimedAt : now;
     }
 
     /** Marks this grade row as superseded by a replacement claim or reopen draft. */

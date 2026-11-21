@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -768,6 +769,7 @@ class EssayGradingIT extends AbstractAttemptDsIT {
                     .doesNotContain("BÀI MẪU V2");
             assertThat(detail.path("wordLimit").asInt()).isEqualTo(350);
             assertThat(detail.path("wordCount").asInt()).isEqualTo(5);
+            assertThat(detail.path("answerHtml").asText()).contains("Một hai ba bốn năm");
             assertThat(detail.path("rubric")).hasSize(2);
             assertThat(detail.path("rubric").get(0).path("id").asText()).isEqualTo("r1");
             assertThat(detail.path("rubric").get(1).path("id").asText()).isEqualTo("r2");
@@ -1087,6 +1089,40 @@ class EssayGradingIT extends AbstractAttemptDsIT {
                 .andReturn();
         assertThat(nullCriterionFin.getResponse().getStatus()).isEqualTo(422);
         assertThat(json(nullCriterionFin).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
+
+        // 5b. Bean validation bounds: >50 criteria & >100 char criterion id -> 400 VALIDATION_FAILED (R2-6)
+        List<EssayCriterionInput> tooManyCriteria = IntStream.range(0, 51)
+                .mapToObj(i -> new EssayCriterionInput("c-" + i, BigDecimal.ZERO, null))
+                .toList();
+        MvcResult tooManyCriteriaPut = performSaveDraft(
+                graderA,
+                sub.essayItemId(),
+                new SaveEssayDraftRequest(tooManyCriteria, BigDecimal.TEN, null, v0));
+        assertThat(tooManyCriteriaPut.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(tooManyCriteriaPut).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        MvcResult tooManyCriteriaFin = performFinalize(
+                graderA,
+                sub.essayItemId(),
+                new FinalizeEssayRequest(null, tooManyCriteria, BigDecimal.TEN, null));
+        assertThat(tooManyCriteriaFin.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(tooManyCriteriaFin).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        List<EssayCriterionInput> longCriterionId = List.of(
+                new EssayCriterionInput("x".repeat(101), BigDecimal.TEN, null));
+        MvcResult longIdPut = performSaveDraft(
+                graderA,
+                sub.essayItemId(),
+                new SaveEssayDraftRequest(longCriterionId, BigDecimal.TEN, null, v0));
+        assertThat(longIdPut.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(longIdPut).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        MvcResult longIdFin = performFinalize(
+                graderA,
+                sub.essayItemId(),
+                new FinalizeEssayRequest(null, longCriterionId, BigDecimal.TEN, null));
+        assertThat(longIdFin.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(longIdFin).path("code").asText()).isEqualTo("VALIDATION_FAILED");
 
         // 6. Save valid draft then finalize with empty body -> 200 using saved draft (R1-21)
         MvcResult savedDraft = performSaveDraft(

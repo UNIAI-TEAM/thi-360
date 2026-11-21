@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.AnswerChange;
+import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
 import vn.unicom.thi360.attempt.api.AttemptPosition;
 import vn.unicom.thi360.attempt.api.CompensateAttemptRequest;
 import vn.unicom.thi360.attempt.api.FaultAttemptRequest;
@@ -657,6 +658,44 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
                 Integer.class,
                 attempt.getId().toString());
         assertThat(viewedAudit).isEqualTo(1);
+
+        // Choice-bearing attempt: Part 3 choice populates parts[2].choice.optionCode and choices (R2-7)
+        UUID choiceStudent = createStudent("ops-detail-choice-student");
+        GrantOrderResult.Line hsaGrant = grant(choiceStudent, "DS-HSA-FULL-MINI", 2, List.of());
+        Attempt hsaAttempt = startAndAwaitOpen(
+                choiceStudent, UUID.randomUUID().toString(), hsaGrant.entitlementId(), null);
+        UUID hsaSessionId = claimSession(choiceStudent, hsaAttempt.getId());
+        List<AttemptPart> hsaParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(hsaAttempt.getId());
+        assertThat(hsaParts).hasSize(3);
+        assertThat(performFinishPart(choiceStudent, hsaAttempt.getId(), hsaParts.get(0).getId(), hsaSessionId,
+                new FinishPartRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
+        assertThat(performFinishPart(choiceStudent, hsaAttempt.getId(), hsaParts.get(1).getId(), hsaSessionId,
+                new FinishPartRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
+        awaitPartState(hsaParts.get(2).getId(), PartState.AWAITING_CHOICE);
+        assertThat(performChoice(
+                choiceStudent,
+                hsaAttempt.getId(),
+                hsaParts.get(2).getId(),
+                UUID.randomUUID().toString(),
+                hsaSessionId,
+                new ConfirmPartChoiceRequest("SCIENCE", List.of("LY", "HOA", "SINH"))).getResponse().getStatus()).isEqualTo(202);
+        awaitPartState(hsaParts.get(2).getId(), PartState.OPEN);
+        assertThat(performSubmit(choiceStudent, hsaAttempt.getId(), UUID.randomUUID().toString(), hsaSessionId,
+                new SubmitAttemptRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
+        drainAllOutbox();
+
+        MvcResult choiceDetailRes = mockMvc.perform(get("/api/v1/admin/attempts/{id}", hsaAttempt.getId())
+                        .with(asUser(viewer, "viewer", Permissions.ATTEMPT_VIEW)))
+                .andReturn();
+        assertThat(choiceDetailRes.getResponse().getStatus()).isEqualTo(200);
+        JsonNode choiceDetail = json(choiceDetailRes);
+        JsonNode part3View = choiceDetail.path("parts").get(2);
+        assertThat(part3View.path("choice").path("optionCode").asText()).isEqualTo("SCIENCE");
+        assertThat(part3View.path("choice").path("subjectCodes"))
+                .extracting(JsonNode::asText)
+                .containsExactly("LY", "HOA", "SINH");
+        assertThat(choiceDetail.path("choices").path(part3View.path("partCode").asText()).path("optionCode").asText())
+                .isEqualTo("SCIENCE");
     }
 
     private void drainAllOutbox() {

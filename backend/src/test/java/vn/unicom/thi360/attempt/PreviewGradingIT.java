@@ -338,6 +338,16 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
         assertThat(badTypeEn.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
         assertThat(badTypeEn.path("message").asText()).isEqualTo("Submitted answer format is invalid");
 
+        // 1b. Null element inside MULTIPLE_CHOICE optionIds -> ValueInstantiationException -> 422 INVALID_ANSWER_FORMAT (R2-4)
+        JsonNode nullMcOption = json(mockMvc.perform(
+                        post("/api/v1/admin/exams/{id}/preview/{previewId}/grade", examId, previewId)
+                                .with(asUser(Permissions.EXAM_VIEW))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"answers\":{\"" + qSingle + "\":{\"type\":\"MULTIPLE_CHOICE\",\"optionIds\":[null]}}}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andReturn());
+        assertThat(nullMcOption.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
+
         // 2. Non-existent option ID -> AnswerValueValidator -> 422 INVALID_ANSWER_FORMAT (vi + en, R1-8/9)
         JsonNode badOption = gradeExpectStatus(
                 examId, previewId, Map.of(qSingle.toString(), Map.of("type", "SINGLE_CHOICE", "optionId", "non-existent")), 422);

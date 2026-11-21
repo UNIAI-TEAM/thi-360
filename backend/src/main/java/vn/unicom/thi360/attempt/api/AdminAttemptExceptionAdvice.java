@@ -2,6 +2,7 @@ package vn.unicom.thi360.attempt.api;
 
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Locale;
@@ -97,6 +98,11 @@ public class AdminAttemptExceptionAdvice {
             if (cur instanceof InvalidTypeIdException ite
                     && ite.getBaseType() != null
                     && AnswerValue.class.isAssignableFrom(ite.getBaseType().getRawClass())) {
+                return true;
+            }
+            if (cur instanceof ValueInstantiationException vie
+                    && vie.getType() != null
+                    && AnswerValue.class.isAssignableFrom(vie.getType().getRawClass())) {
                 return true;
             }
             if (cur instanceof MismatchedInputException mie) {
