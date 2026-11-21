@@ -1,4 +1,5 @@
 import type { components } from "@thi360/api-client";
+import { clearAllAttemptDrafts } from "@/features/attempt-draft";
 import { createBrowserApiClient, toApiStatusError } from "@/lib/api/client";
 
 export type StudentSession = components["schemas"]["MeResponse"];
@@ -68,6 +69,11 @@ export async function logoutSession(): Promise<void> {
   const { error, response } = await client.POST("/api/v1/auth/logout");
   if (!response.ok && response.status !== 401) {
     throw toApiStatusError(response.status, error);
+  }
+  try {
+    await clearAllAttemptDrafts();
+  } catch {
+    // Best-effort draft cleanup on explicit logout (AC-24).
   }
 }
 

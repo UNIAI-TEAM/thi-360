@@ -130,15 +130,22 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
             JsonNode p3Choice = hsa.path("afterStartChoices").get(0);
             assertThat(p3Choice.path("options").size()).isGreaterThanOrEqualTo(2);
             JsonNode scienceOpt = null;
+            JsonNode anhOpt = null;
             for (JsonNode opt : p3Choice.path("options")) {
-                if ("SCIENCE".equals(opt.path("code").asText())) {
+                String code = opt.path("code").asText();
+                if ("SCIENCE".equals(code)) {
                     scienceOpt = opt;
+                } else if ("ANH".equals(code)) {
+                    anhOpt = opt;
                 }
             }
             assertThat(scienceOpt).isNotNull();
             assertThat(scienceOpt.path("chooseSubjects").asInt()).isEqualTo(3);
             assertThat(scienceOpt.path("subjects")).hasSize(5);
             assertThat(scienceOpt.path("countsByPick")).hasSize(3);
+            assertChoiceOptionMatchesSinglePath(scienceOpt, hsaServing, "SCIENCE");
+            assertThat(anhOpt).isNotNull();
+            assertChoiceOptionMatchesSinglePath(anhOpt, hsaServing, "ANH");
         } finally {
             jdbc.update(
                     "UPDATE exam.exam_version SET config = ?::jsonb WHERE exam_id = ? AND version_no = 1",
@@ -150,7 +157,7 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
                     hsaLine.examId());
         }
 
-        // 2. QDA FULL: afterStartChoices combinations ordered cleanly
+        // 2. QDA FULL: afterStartChoices combinations ordered cleanly with ChoiceOptionView metrics
         GrantOrderResult.Line qdaLine = grant(userId, "DS-QDA-FULL-MINI", 2, List.of());
         MvcResult qdaRes = performPrepare(userId, qdaLine.entitlementId());
         assertThat(qdaRes.getResponse().getStatus()).isEqualTo(200);
@@ -158,7 +165,13 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(qda);
         assertThat(qda.path("preChoice").isNull()).isTrue();
         assertThat(qda.path("afterStartChoices")).hasSize(1);
-        assertThat(qda.path("afterStartChoices").get(0).path("options")).isNotEmpty();
+        JsonNode qdaOptions = qda.path("afterStartChoices").get(0).path("options");
+        assertThat(qdaOptions).isNotEmpty();
+        ServingExam qdaServing = publishedExamPort.findServing(qdaLine.examId()).orElseThrow();
+        for (JsonNode qdaOpt : qdaOptions) {
+            assertThat(qdaOpt.path("kind").asText()).isEqualTo("COMBINATION");
+            assertChoiceOptionMatchesSinglePath(qdaOpt, qdaServing, qdaOpt.path("code").asText());
+        }
 
         // 3. SPT Informatics with single granted branch -> preChoice preselectedCode = CS, filtered options, and omittedGroups
         GrantOrderResult.Line sptCsLine = grant(userId, "DS-SPT-INFORMATICS-MINI", 2, List.of("CS"));
@@ -168,7 +181,10 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(spt);
         assertThat(spt.path("preChoice").path("preselectedCode").asText()).isEqualTo("CS");
         assertThat(spt.path("preChoice").path("options")).hasSize(1);
-        assertThat(spt.path("preChoice").path("options").get(0).path("code").asText()).isEqualTo("CS");
+        JsonNode csOpt = spt.path("preChoice").path("options").get(0);
+        assertThat(csOpt.path("code").asText()).isEqualTo("CS");
+        ServingExam sptServing = publishedExamPort.findServing(sptCsLine.examId()).orElseThrow();
+        assertChoiceOptionMatchesSinglePath(csOpt, sptServing, "CS");
         assertThat(spt.path("omittedGroups")).isNotEmpty();
         assertThat(spt.path("parts").get(1).path("questionCount").asInt()).isEqualTo(2);
 
@@ -369,6 +385,133 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
                     "UPDATE exam.exam_version SET parts = ?::jsonb WHERE exam_id = ? AND version_no = 1",
                     originalPartsJson,
                     hsaBase.examId());
+        }
+    }
+
+    @Test
+    void choiceOptionIncompleteSnapshotSerializesMetricsAsJsonNull() throws Exception {
+        UUID userId = createStudent("prep-null-metrics");
+        GrantOrderResult.Line hsaLine = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        ServingExam originalServing = publishedExamPort.findServing(hsaLine.examId()).orElseThrow();
+        String anhPathId =
+                originalServing.servingPaths().stream()
+                        .filter(p -> p.choices().stream().anyMatch(c -> "ANH".equals(c.code())))
+                        .findFirst()
+                        .orElseThrow()
+                        .pathId();
+        String originalPartsJson =
+                jdbc.queryForObject(
+                        "SELECT parts::text FROM exam.exam_version WHERE exam_id = ? AND version_no = 1",
+                        String.class,
+                        hsaLine.examId());
+        String originalConfigJson =
+                jdbc.queryForObject(
+                        "SELECT config::text FROM exam.exam_version WHERE exam_id = ? AND version_no = 1",
+                        String.class,
+                        hsaLine.examId());
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode partsRoot =
+                    (com.fasterxml.jackson.databind.node.ObjectNode)
+                            objectMapper.readTree(originalPartsJson);
+            boolean removed = false;
+            for (JsonNode partNode : partsRoot.path("parts")) {
+                com.fasterxml.jackson.databind.node.ArrayNode partPaths =
+                        (com.fasterxml.jackson.databind.node.ArrayNode) partNode.path("paths");
+                for (int i = 0; i < partPaths.size(); i++) {
+                    if (anhPathId.equals(partPaths.get(i).path("pathId").asText())) {
+                        partPaths.remove(i);
+                        removed = true;
+                        break;
+                    }
+                }
+                if (removed) {
+                    break;
+                }
+            }
+            assertThat(removed).isTrue();
+            com.fasterxml.jackson.databind.node.ObjectNode configRoot =
+                    (com.fasterxml.jackson.databind.node.ObjectNode)
+                            objectMapper.readTree(originalConfigJson);
+            configRoot.putNull("durationMinutes");
+            jdbc.update(
+                    "UPDATE exam.exam_version SET parts = ?::jsonb, config = ?::jsonb "
+                            + "WHERE exam_id = ? AND version_no = 1",
+                    objectMapper.writeValueAsString(partsRoot),
+                    objectMapper.writeValueAsString(configRoot),
+                    hsaLine.examId());
+
+            MvcResult res = performPrepare(userId, hsaLine.entitlementId());
+            assertThat(res.getResponse().getStatus()).isEqualTo(200);
+            JsonNode body = json(res);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(body);
+            JsonNode options = body.path("afterStartChoices").get(0).path("options");
+            JsonNode anhOpt = null;
+            JsonNode scienceOpt = null;
+            for (JsonNode opt : options) {
+                String code = opt.path("code").asText();
+                if ("ANH".equals(code)) {
+                    anhOpt = opt;
+                } else if ("SCIENCE".equals(code)) {
+                    scienceOpt = opt;
+                }
+            }
+            assertThat(anhOpt).isNotNull();
+            assertThat(anhOpt.has("questionCount")).isTrue();
+            assertThat(anhOpt.path("questionCount").isNull()).isTrue();
+            assertThat(anhOpt.has("durationMinutes")).isTrue();
+            assertThat(anhOpt.path("durationMinutes").isNull()).isTrue();
+            assertThat(anhOpt.has("maxPoints")).isTrue();
+            assertThat(anhOpt.path("maxPoints").isNull()).isTrue();
+
+            assertThat(scienceOpt).isNotNull();
+            assertThat(scienceOpt.path("questionCount").isIntegralNumber()).isTrue();
+            assertThat(scienceOpt.path("durationMinutes").isIntegralNumber()).isTrue();
+            assertThat(scienceOpt.path("maxPoints").isNumber()).isTrue();
+        } finally {
+            jdbc.update(
+                    "UPDATE exam.exam_version SET parts = ?::jsonb, config = ?::jsonb "
+                            + "WHERE exam_id = ? AND version_no = 1",
+                    originalPartsJson,
+                    originalConfigJson,
+                    hsaLine.examId());
+        }
+    }
+
+    private static void assertChoiceOptionMatchesSinglePath(
+            JsonNode optionJson, ServingExam serving, String optionCode) {
+        List<ServingPath> matchingPaths =
+                serving.servingPaths().stream()
+                        .filter(p -> p.choices().stream().anyMatch(c -> optionCode.equals(c.code())))
+                        .toList();
+        assertThat(matchingPaths)
+                .as("unique serving path for option %s", optionCode)
+                .hasSize(1);
+        ServingPath path = matchingPaths.getFirst();
+        if (path.questionCount() == null) {
+            assertThat(optionJson.has("questionCount")).isTrue();
+            assertThat(optionJson.path("questionCount").isNull()).isTrue();
+        } else {
+            assertThat(optionJson.path("questionCount").isIntegralNumber()).isTrue();
+            assertThat(optionJson.path("questionCount").asInt()).isEqualTo(path.questionCount());
+        }
+        Integer expectedDuration =
+                path.durationMinutes() != null ? path.durationMinutes() : serving.version().durationMinutes();
+        if (expectedDuration == null) {
+            assertThat(optionJson.has("durationMinutes")).isTrue();
+            assertThat(optionJson.path("durationMinutes").isNull()).isTrue();
+        } else {
+            assertThat(optionJson.path("durationMinutes").isIntegralNumber()).isTrue();
+            assertThat(optionJson.path("durationMinutes").asInt()).isEqualTo(expectedDuration);
+        }
+        BigDecimal expectedMaxPoints =
+                path.maxPoints() != null ? path.maxPoints() : serving.version().maxScore();
+        if (expectedMaxPoints == null) {
+            assertThat(optionJson.has("maxPoints")).isTrue();
+            assertThat(optionJson.path("maxPoints").isNull()).isTrue();
+        } else {
+            assertThat(optionJson.path("maxPoints").isNumber()).isTrue();
+            assertThat(new BigDecimal(optionJson.path("maxPoints").asText()))
+                    .isEqualByComparingTo(expectedMaxPoints);
         }
     }
 }
