@@ -140,13 +140,22 @@ describe("BundleDetailView (AC-3, AC-4, AC-11, AC-12, AC-17, A7.7)", () => {
     for (const bcLink of within(breadcrumbNav).getAllByRole("link")) {
       expect(bcLink).toHaveClass("focus-visible:ring-primary-text", "pointer-coarse:after:-inset-x-2");
     }
+    const currentCrumb = within(breadcrumbNav).getByText(BUNDLE_DETAIL.name).closest("li");
+    expect(currentCrumb).toHaveAttribute("aria-current", "page");
+    expect(currentCrumb).toHaveClass("min-w-0", "max-w-full", "wrap-break-word");
 
     const itemsSection = screen.getByRole("region", { name: "Các bài trong bộ" });
     const examLinks = within(itemsSection).getAllByRole("link");
     expect(examLinks[0]).toHaveTextContent("SP2E Toán – Đề luyện số 1");
     expect(examLinks[0]).toHaveAttribute("href", "/exams/SP2E-TOAN-01");
     expect(examLinks[0]).toHaveAttribute("data-exam-content");
-    expect(examLinks[0]).toHaveClass("focus-visible:ring-primary-text", "pointer-coarse:after:-inset-x-2", "wrap-break-word");
+    expect(examLinks[0]).toHaveClass(
+      "min-w-0",
+      "max-w-full",
+      "focus-visible:ring-primary-text",
+      "pointer-coarse:after:-inset-x-2",
+      "wrap-break-word",
+    );
     expect(examLinks[1]).toHaveTextContent("SP2E Vật lí – Ôn tập chương");
     expect(examLinks[1]).toHaveAttribute("href", "/exams/SP2E-LY-01");
 

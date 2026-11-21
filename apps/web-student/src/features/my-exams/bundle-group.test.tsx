@@ -79,7 +79,12 @@ describe("groupMyExams & MyExamsView bundle grouping (AC-14)", () => {
 
     const bundleHeading = await screen.findByRole("heading", { level: 3, name: "Bộ đề SP2E khối A00" });
     expect(bundleHeading).toHaveAttribute("data-exam-content");
-    expect(bundleHeading).toHaveClass("wrap-break-word");
+    expect(bundleHeading).toHaveClass(
+      "min-w-0",
+      "max-w-full",
+      "wrap-break-word",
+      "focus-visible:ring-primary-text",
+    );
     expect(bundleHeading).toHaveAttribute("tabindex", "-1");
     const bundleSection = bundleHeading.closest("section")!;
     const bundleCode = within(bundleSection).getByText("BO-SP2E-A00");

@@ -40,7 +40,7 @@ function BundleExamRow({ item, index }: { item: BundleDetailItem; index: number 
               href={`/exams/${encodeURIComponent(item.code)}`}
               data-exam-content
               className={cn(
-                "rounded-sm text-title font-semibold wrap-break-word text-text hover:text-primary-text hover:underline",
+                "min-w-0 max-w-full rounded-sm text-title font-semibold wrap-break-word text-text hover:text-primary-text hover:underline",
                 focusRing,
                 coarseTextHitArea,
               )}
@@ -164,7 +164,7 @@ export function BundleDetailView({
             </Link>
           </li>
           <li aria-hidden>/</li>
-          <li aria-current="page" className="wrap-break-word text-text" data-exam-content>
+          <li aria-current="page" className="min-w-0 max-w-full wrap-break-word text-text" data-exam-content>
             {product.name}
           </li>
         </ol>

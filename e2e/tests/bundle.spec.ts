@@ -142,7 +142,8 @@ test.describe("FB · Bộ đề trên web", () => {
       await expect(studentPage).toHaveURL(/format=BUNDLE/);
       await expect(studentPage.locator('[aria-busy="true"]')).toHaveCount(0);
 
-      const catalogCards = studentPage.getByRole("article");
+      const catalogSection = studentPage.getByRole("region", { name: "Chọn bài thi" });
+      const catalogCards = catalogSection.getByRole("article");
       await expect(catalogCards.first()).toBeVisible();
       const visibleCount = await catalogCards.count();
       for (let idx = 0; idx < visibleCount; idx += 1) {
@@ -157,7 +158,7 @@ test.describe("FB · Bộ đề trên web", () => {
         await studentPage.getByRole("searchbox", { name: "Tìm theo tên hoặc mã" }).fill(bundleCode);
         await expect(studentPage).toHaveURL(new RegExp(`q=${encodeURIComponent(bundleCode)}`));
         await expect(studentPage.locator('[aria-busy="true"]')).toHaveCount(0);
-        ourCard = studentPage.getByRole("article").filter({
+        ourCard = catalogSection.getByRole("article").filter({
           has: studentPage.getByRole("heading", { name: bundleName }),
         });
       }
@@ -173,7 +174,9 @@ test.describe("FB · Bộ đề trên web", () => {
       await expect(itemsSection).toBeVisible();
       for (const examCode of expectedExamCodes) {
         const exam = examByCode(examCode);
-        const itemRow = itemsSection.locator("li").filter({ hasText: exam.name });
+        const itemRow = itemsSection.locator("li").filter({
+          has: studentPage.getByRole("link", { name: exam.name, exact: true }),
+        });
         await expect(itemRow).toBeVisible();
         await expect(itemRow.getByRole("link", { name: exam.name })).toHaveAttribute(
           "href",
@@ -186,8 +189,7 @@ test.describe("FB · Bộ đề trên web", () => {
         await expect(itemRow.getByText(/\d+ câu/)).toBeVisible();
         await expect(itemRow.getByText(/\d+ phút/)).toBeVisible();
         await expect(itemRow.getByText(/\d+(?:,\d+)? điểm/)).toBeVisible();
-        await expect(itemRow.getByText("Quyền lợi bài này:")).toBeVisible();
-        await expect(itemRow.getByText("3 lượt", { exact: true })).toBeVisible();
+        await expect(itemRow.getByText("Quyền lợi bài này: 3 lượt", { exact: true })).toBeVisible();
         await expect(itemRow.getByText("Điểm và đáp án", { exact: true })).toBeVisible();
       }
 
@@ -247,9 +249,9 @@ test.describe("FB · Bộ đề trên web", () => {
       await expect(orderRow).toBeVisible();
       await expect(orderRow.getByText("Bộ đề", { exact: true })).toBeVisible();
       await expect(orderRow.getByText(bundleName, { exact: true })).toBeVisible();
-      await expect(orderRow.getByText(/3 bài thi/)).toBeVisible();
+      await expect(orderRow.getByText("3 bài thi", { exact: true })).toBeVisible();
       for (const examName of expectedExamNames) {
-        await expect(orderRow.getByText(examName)).toBeVisible();
+        await expect(orderRow.getByText(examName, { exact: true })).toBeVisible();
       }
 
       await orderRow.getByRole("link", { name: orderCode, exact: true }).click();

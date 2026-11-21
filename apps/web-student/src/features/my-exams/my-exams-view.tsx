@@ -197,7 +197,10 @@ export function MyExamsView({
                               id={headingId}
                               tabIndex={-1}
                               data-exam-content
-                              className="text-h3 font-bold wrap-break-word text-text focus:outline-hidden"
+                              className={cn(
+                                "min-w-0 max-w-full rounded-sm text-h3 font-bold wrap-break-word text-text",
+                                focusRing,
+                              )}
                             >
                               {group.bundle.name}
                             </h3>
