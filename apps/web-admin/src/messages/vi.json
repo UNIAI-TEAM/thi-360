@@ -6387,6 +6387,13 @@
         "section": "Môn",
         "sectionOption": "{subject} · {part}",
         "sectionWithCount": "{name} · {count, number} câu"
+      },
+      "trial": {
+        "button": "Làm thử như học viên",
+        "expiredError": "Đề thử đã hết hạn. Hãy sinh lại đề thử mới để làm thử.",
+        "genericError": "Không mở được phiên làm thử. Hãy thử lại.",
+        "liveOpened": "Đã mở đề làm thử trong tab mới.",
+        "unavailable": "Chưa có đề thử để làm"
       }
     },
     "publish": {
@@ -7671,6 +7678,104 @@
           "untitled": "Chưa đặt tên"
         }
       }
+    },
+    "trial": {
+      "backToPreview": "Về Xem trước",
+      "editor": {
+        "bold": "In đậm",
+        "bulletList": "Danh sách dấu chấm",
+        "italic": "In nghiêng",
+        "orderedList": "Danh sách đánh số",
+        "redo": "Làm lại",
+        "toolbarLabel": "Thanh định dạng bài viết",
+        "undo": "Hoàn tác"
+      },
+      "emptyPaper": "Đề thử chưa có câu hỏi nào.",
+      "error": {
+        "description": "Không tải được đề làm thử. Thử tải lại hoặc quay về trang Xem trước.",
+        "retry": "Thử lại",
+        "title": "Không tải được đề làm thử"
+      },
+      "expired": {
+        "backAction": "Quay lại sinh đề thử mới",
+        "description": "Đề xem trước này đã hết hạn giữ nên không thể làm tiếp hoặc chấm bài.",
+        "title": "Đề làm thử đã hết hạn"
+      },
+      "leaveDialog": {
+        "cancel": "Ở lại",
+        "confirm": "Bỏ",
+        "description": "Bài làm thử sẽ bị xóa khi rời trang vì hệ thống không lưu lượt làm thử.",
+        "title": "Bỏ lần làm thử này?"
+      },
+      "loading": "Đang tải đề làm thử",
+      "modeBadge": "Chế độ làm thử",
+      "nextPart": "Phần tiếp theo",
+      "palette": {
+        "ariaLabel": "Bảng điều hướng câu hỏi",
+        "count": "{answered}/{total} câu",
+        "itemAnswered": "Câu {number} · đã trả lời",
+        "itemUnanswered": "Câu {number} · chưa trả lời",
+        "title": "Danh sách câu hỏi"
+      },
+      "partFallback": "Phần {order}",
+      "partNavAriaLabel": "Chuyển phần đề thi",
+      "partPoints": "{points} điểm",
+      "partRange": "Câu {first}–{last}",
+      "previousPart": "Phần trước",
+      "progress": "{answered}/{total} đã trả lời",
+      "referenceDuration": "Thời lượng đề thật: {minutes} phút",
+      "result": {
+        "backToPreview": "Về trang Xem trước",
+        "blank": "Bỏ trống",
+        "clozeItem": "Ô {index}:",
+        "columns": {
+          "answer": "Bài làm",
+          "outcome": "Kết quả",
+          "points": "Điểm",
+          "question": "Câu",
+          "type": "Dạng câu"
+        },
+        "empty": "Không có câu hỏi nào trong kết quả chấm.",
+        "essayWords": "{count} chữ",
+        "heading": "Kết quả làm thử",
+        "notRecordedBadge": "Không lưu kết quả thật",
+        "outcome": {
+          "BLANK": "Bỏ trống",
+          "CORRECT": "Đúng",
+          "PARTIAL": "Đúng một phần",
+          "PENDING_REVIEW": "Chờ chấm",
+          "WRONG": "Sai"
+        },
+        "partPendingSummary": "{earned} / {max} trắc nghiệm · tự luận chờ chấm",
+        "partsTitle": "Điểm theo phần",
+        "pointsPair": "{earned} / {max}",
+        "questionLabel": "Câu {number}",
+        "retakeButton": "Làm lại đề này",
+        "scoreLabel": "Tổng điểm làm thử",
+        "scoreNote": "Điểm tạm tính từ máy chủ theo đúng bài làm vừa nộp.",
+        "scorePendingCell": "Chờ chấm",
+        "scorePendingNote": "Đề có câu tự luận chưa chấm tay nên tổng điểm chỉ tính phần trắc nghiệm/tự động.",
+        "scorePendingSummary": "{earned} / {max} phần trắc nghiệm · tự luận chưa chấm",
+        "scoreValue": "{score} / {max}",
+        "statBlank": "{count} bỏ trống",
+        "statCorrect": "{count} đúng",
+        "statPartial": "{count} đúng một phần",
+        "statPending": "{count} chờ chấm",
+        "statWrong": "{count} sai",
+        "statementPrefix": "{letter})",
+        "statsTitle": "Thống kê từng câu",
+        "tableAriaLabel": "Chi tiết từng câu của kết quả làm thử",
+        "tableTitle": "Chi tiết từng câu",
+        "tfFalse": "Sai",
+        "tfTrue": "Đúng"
+      },
+      "retentionNotice": "Đề giữ tới {time}",
+      "retrySubmit": "Thử lại",
+      "submitButton": "Nộp bài & Chấm thử",
+      "submitError": "Không chấm được bài làm thử. Bài làm của bạn vẫn được giữ nguyên; hãy thử lại.",
+      "title": "Làm thử như học viên",
+      "untimedNotice": "Không tính giờ · Không lưu lượt, không trừ quyền dùng",
+      "versionBadge": "Bản công bố v{version}"
     }
   },
   "grading": {

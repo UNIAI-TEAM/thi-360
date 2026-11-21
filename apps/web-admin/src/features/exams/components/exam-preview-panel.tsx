@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -12,12 +13,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@thi360/ui";
-import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
+import { AlertCircle, ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, Play, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
+import { defaultPreviewTrialApiDeps, trialPageHref, type PreviewTrialApiDeps } from "../trial/api";
 import { usePreviewMinutesLeft } from "../preview-retention";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
@@ -42,6 +44,7 @@ export interface ExamPreviewPanelProps {
   version: number | null;
   onClearVersion: () => void;
   onShowCheck: () => void;
+  trialDeps?: PreviewTrialApiDeps;
 }
 
 interface PathOption {
@@ -67,6 +70,7 @@ export function ExamPreviewPanel({
   version,
   onClearVersion,
   onShowCheck,
+  trialDeps = defaultPreviewTrialApiDeps,
 }: ExamPreviewPanelProps) {
   const t = useTranslations("exams.preview");
   const tIssue = useTranslations("exams.review.issue");
@@ -78,11 +82,33 @@ export function ExamPreviewPanel({
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
   const scopeName = useId();
+  const trialUnavailableId = useId();
   const [liveMessage, setLiveMessage] = useState("");
   const [run, setRun] = useState(0);
   const [tab, setTab] = useState<"paper" | "allocation">("paper");
   const [original, setOriginal] = useState(false);
   const [resultLabel, setResultLabel] = useState("");
+  const [trialExpires, setTrialExpires] = useState<{ previewId: string; expiresAt: string } | null>(null);
+  const [trialErrorCode, setTrialErrorCode] = useState<string | null>(null);
+
+  const extendTrial = useMutation({
+    mutationFn: (previewId: string) =>
+      trialDeps.extendPreviewForTrial({ examId: exam.id, previewId }),
+    onSuccess: (res, previewId) => {
+      setTrialErrorCode(null);
+      if (res.expiresAt) {
+        setTrialExpires({ previewId, expiresAt: res.expiresAt });
+      }
+      setLiveMessage(t("trial.liveOpened"));
+      const href = trialPageHref(exam.id, previewId, res.expiresAt ?? null);
+      window.open(href, "_blank", "noopener,noreferrer");
+    },
+    onError: (error) => {
+      const code = errorCodeOf(error) ?? "GENERIC";
+      setTrialErrorCode(code);
+      setLiveMessage(code === "PREVIEW_EXPIRED" ? t("trial.expiredError") : t("trial.genericError"));
+    },
+  });
 
   const parts = version !== null ? versionQuery.data?.parts : exam.parts;
   const sectionOptions = useMemo(() => listPreviewSections(parts ?? []), [parts]);
@@ -173,6 +199,7 @@ export function ExamPreviewPanel({
     setRun(nextRun);
     setTab("paper");
     setOriginal(false);
+    setTrialErrorCode(null);
     setLiveMessage(t("live.generating"));
     generate.mutate(
       {
@@ -220,8 +247,16 @@ export function ExamPreviewPanel({
   };
 
   const data = generate.data;
-  const minutesLeft = usePreviewMinutesLeft(data?.expiresAt ?? null, PREVIEW_RETENTION_MINUTES);
   const shown = data?.status === "GENERATED" ? data : null;
+  const extendedExpiresAt =
+    shown?.previewId && trialExpires?.previewId === shown.previewId
+      ? trialExpires.expiresAt
+      : null;
+  const effectiveExpiresAt = extendedExpiresAt ?? data?.expiresAt ?? null;
+  const minutesLeft = usePreviewMinutesLeft(
+    effectiveExpiresAt,
+    extendedExpiresAt ? undefined : PREVIEW_RETENTION_MINUTES,
+  );
   const expired = generate.isError && errorCodeOf(generate.error) === "PREVIEW_EXPIRED";
   const runStatus = data
     ? t(data.status === "GENERATED" ? "runStatus" : "runStatusFailed", {
@@ -305,27 +340,63 @@ export function ExamPreviewPanel({
   } else if (data.status === "FAILED") {
     body = <PreviewFailure exam={exam} result={data} label={resultLabel} onShowCheck={onShowCheck} />;
   } else {
+    const canStartTrial = data.previewId !== null;
     body = (
       <div className="flex flex-col gap-4">
-        <Card padding="md" className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h3 className="text-title font-semibold text-text">{t("resultTitle", { label: resultLabel })}</h3>
-            <p className="text-body text-text-secondary">
-              {t("resultMeta", {
-                questions: data.paper.totalQuestions,
-                seed: data.seed,
-                retention: t("retention", {
-                  minutes: PREVIEW_RETENTION_MINUTES,
-                  state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
-                  left: minutesLeft ?? 0,
-                }),
-              })}
-            </p>
+        <Card padding="md" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h3 className="text-title font-semibold text-text">{t("resultTitle", { label: resultLabel })}</h3>
+              <p className="text-body text-text-secondary">
+                {t("resultMeta", {
+                  questions: data.paper.totalQuestions,
+                  seed: data.seed,
+                  retention: t("retention", {
+                    minutes: PREVIEW_RETENTION_MINUTES,
+                    state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                    left: minutesLeft ?? 0,
+                  }),
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setOriginal((value) => !value)}>
+                <ListOrdered />
+                {original ? t("order.showShuffled") : t("order.showOriginal")}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={!canStartTrial}
+                loading={extendTrial.isPending}
+                aria-describedby={!canStartTrial ? trialUnavailableId : undefined}
+                onClick={() => {
+                  if (!data.previewId || extendTrial.isPending) return;
+                  extendTrial.mutate(data.previewId);
+                }}
+              >
+                <Play aria-hidden />
+                {t("trial.button")}
+              </Button>
+            </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setOriginal((value) => !value)}>
-            <ListOrdered />
-            {original ? t("order.showShuffled") : t("order.showOriginal")}
-          </Button>
+          {!canStartTrial && (
+            <p id={trialUnavailableId} className="text-caption text-text-muted">
+              {t("trial.unavailable")}
+            </p>
+          )}
+          {trialErrorCode && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-bg px-3 py-2 text-caption text-danger"
+            >
+              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {trialErrorCode === "PREVIEW_EXPIRED" ? t("trial.expiredError") : t("trial.genericError")}
+              </span>
+            </div>
+          )}
         </Card>
         <Tabs variant="segmented" value={tab} onValueChange={(value) => setTab(value as "paper" | "allocation")}>
           <TabsList aria-label={t("tabs.label")} className="max-w-md">
@@ -478,6 +549,7 @@ function PreviewFailure({
   onShowCheck: () => void;
 }) {
   const t = useTranslations("exams.preview");
+  const unavailableId = useId();
   const issueText = useIssueText(exam);
   const issueContent = useIssueText(exam, true);
   const invalid = result.reason === "INVALID";
@@ -498,7 +570,7 @@ function PreviewFailure({
           ))}
         </ul>
         <p className="text-body text-text-secondary">{t("failNote")}</p>
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           {invalid ? (
             <Button asChild variant="link" size="sm">
               <Link href={fixHref ?? `/exams/${encodeURIComponent(exam.id)}/structure`}>
@@ -512,7 +584,20 @@ function PreviewFailure({
               <ArrowRight />
             </Button>
           )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled
+            aria-describedby={unavailableId}
+          >
+            <Play aria-hidden />
+            {t("trial.button")}
+          </Button>
         </div>
+        <p id={unavailableId} className="text-caption text-text-muted">
+          {t("trial.unavailable")}
+        </p>
       </div>
     </div>
   );
