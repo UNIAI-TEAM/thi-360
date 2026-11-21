@@ -41,7 +41,23 @@ async function openCell(
   const context = await openMatrixContext(browser, cell, WEB_URL);
   await context.addCookies(cookies);
   await applyMatrixCookies(context, cell, WEB_URL);
-  return { context, page: await context.newPage() };
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  return { context, page };
+}
+
+async function waitForDialogSettled(page: Page): Promise<void> {
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 20_000 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[role="dialog"]');
+    if (!el) return false;
+    const opacity = Number.parseFloat(getComputedStyle(el).opacity);
+    return (
+      Number.isFinite(opacity) &&
+      opacity >= 0.99 &&
+      el.getAnimations({ subtree: true }).every((a) => a.playState === "finished")
+    );
+  });
 }
 
 async function ensureActivePlayerSession(page: Page, lang: MatrixLang): Promise<void> {
@@ -183,7 +199,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
           await expectMatrixClean(page, "player", cell);
 
           await page.getByRole("button", { name: cell.lang === "en" ? "Finish section" : "Hoàn thành phần" }).click();
-          await expect(page.getByRole("dialog")).toBeVisible();
+          await waitForDialogSettled(page);
           await expectMatrixClean(page, "finish-part-dialog", cell);
           await page
             .getByRole("dialog")
@@ -194,7 +210,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
           await ensureActivePlayerSession(page, cell.lang);
           await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
           await page.getByRole("button", { name: cell.lang === "en" ? "Submit exam" : "Nộp bài" }).click();
-          await expect(page.getByRole("dialog")).toBeVisible();
+          await waitForDialogSettled(page);
           await expectMatrixClean(page, "submit-confirm-dialog", cell);
           await page
             .getByRole("dialog")
@@ -248,6 +264,7 @@ test.describe("Ma trận hiển thị 8 ô cho màn chuẩn bị & làm bài (AC
                   : "Bài thi đang mở ở một phiên khác",
             }),
           ).toBeVisible({ timeout: 20_000 });
+          await waitForDialogSettled(page);
           await expectMatrixClean(page, "takeover-dialog", cell);
         } finally {
           await context.close();

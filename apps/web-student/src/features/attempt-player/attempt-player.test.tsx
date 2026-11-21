@@ -1599,4 +1599,152 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" }));
     expect(await screen.findByText("Câu phần 2")).toBeInTheDocument();
   });
+
+  it("401 trên handleReconcileSubmit mở khóa hộp thoại Nộp bài về unconfirmed sau khi refreshSession thành công (FE-R3-2)", async () => {
+    const user = userEvent.setup();
+    const openState: AttemptStateResponse = {
+      attemptId: "att-401-reconcile-submit",
+      state: "IN_PROGRESS",
+      navigationMode: "FREE",
+      timing: "SHARED",
+      deadlineAt: "2026-11-21T11:00:00Z",
+      examName: "Đề đối soát nộp bài 401",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "OPEN",
+          items: [makeOpenMcqItem("q-rs1", 1, "Câu đối soát nộp bài")],
+        },
+      ],
+    };
+    const closedState: AttemptStateResponse = {
+      ...openState,
+      state: "GRADING",
+      parts: [{ ord: 1, partId: "p1", partName: "Phần 1", state: "CLOSED", items: [] }],
+    };
+
+    const loadAttemptStateFn = vi
+      .fn<() => Promise<AttemptStateResponse>>()
+      .mockResolvedValueOnce(openState)
+      .mockRejectedValueOnce(new ApiStatusError(401, "Expired during submit reconcile"))
+      .mockResolvedValueOnce(closedState);
+
+    const submitAttemptFn = vi
+      .fn<NonNullable<AttemptPlayerDeps["submitAttemptFn"]>>()
+      .mockRejectedValueOnce(new Error("Transient network loss"));
+    const refreshSessionFn = vi.fn(async () => undefined);
+    const clearAttemptDraftsFn = vi.fn(async () => undefined);
+
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-401-reconcile-submit"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn,
+          submitAttemptFn,
+          refreshSessionFn,
+          clearAttemptDraftsFn,
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu đối soát nộp bài")).toBeInTheDocument();
+
+    // 1. Submit hits transient error -> enters unconfirmed state
+    await user.click(screen.getByRole("button", { name: "Nộp bài" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Nộp bài" }));
+
+    expect(await within(dialog).findByRole("heading", { name: "Chưa xác nhận nộp bài" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" })).toBeEnabled();
+
+    // 2. Reconcile hits 401 -> refreshSession succeeds -> dialog returns to "unconfirmed" (unlocked, NOT stuck reconciling)
+    await user.click(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" }));
+    await waitFor(() => expect(refreshSessionFn).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" })).toBeEnabled(),
+    );
+    expect(within(dialog).getByRole("heading", { name: "Chưa xác nhận nộp bài" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Quay lại kiểm tra" })).toBeEnabled();
+
+    // 3. Reconcile retry succeeds -> transitions to closed attempt view
+    await user.click(within(dialog).getByRole("button", { name: "Kiểm tra trạng thái lượt" }));
+    expect(await screen.findByRole("heading", { name: "Lượt thi đã đóng" })).toBeInTheDocument();
+    expect(clearAttemptDraftsFn).toHaveBeenCalledWith("user-1", "att-401-reconcile-submit");
+  });
+
+  it("gắn aria-disabled trên fieldset khi tab chỉ xem (VIS-R3-1) và đặt QuestionNav controls trong cột trái cùng header mobile (VIS-R3-3)", async () => {
+    const bus = createInMemoryTabLockBus();
+    const stateOpen: AttemptStateResponse = {
+      attemptId: "att-vis-r3",
+      state: "IN_PROGRESS",
+      navigationMode: "FREE",
+      timing: "SHARED",
+      deadlineAt: "2026-11-21T11:00:00Z",
+      examName: "Đề luyện tập HSA FULL số 01",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "OPEN",
+          items: [makeOpenMcqItem("q-v1", 1, "Câu kiểm tra bố cục")],
+        },
+      ],
+    };
+
+    // Claim ownership on tab 1 first
+    const tab1 = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vis-r3"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => stateOpen),
+          createTabLockChannelFn: bus,
+        })}
+      />,
+    );
+    expect(await screen.findByText("Câu kiểm tra bố cục")).toBeInTheDocument();
+    await waitFor(() => {
+      const fs1 = document.querySelector("fieldset[data-attempt-question-fieldset]");
+      expect(fs1).not.toHaveAttribute("disabled");
+      expect(fs1).not.toHaveAttribute("aria-disabled");
+    });
+
+    // Check header mobile layout classes & QuestionNav placement in tab 1
+    const heading = screen.getByRole("heading", { name: "Đề luyện tập HSA FULL số 01" });
+    expect(heading.parentElement).toHaveClass("w-full", "min-w-0", "md:w-auto", "md:flex-1");
+    const controls = screen.getByRole("region", { name: "Điều hướng câu hỏi" });
+    const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    const twoCol = aside.parentElement as HTMLElement;
+    expect(twoCol).toHaveClass("lg:flex-row");
+    expect(twoCol.children).toHaveLength(2);
+    expect(twoCol.children[0]).toContainElement(controls);
+    expect(twoCol.children[1]).toBe(aside);
+
+    // Tab 2 starts as secondary_readonly -> fieldset has both disabled and aria-disabled="true"
+    const tab2 = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-vis-r3"
+        userId="user-1"
+        deps={makeBaseDeps({
+          loadAttemptStateFn: vi.fn(async () => stateOpen),
+          createTabLockChannelFn: bus,
+        })}
+      />,
+    );
+    await waitFor(() => {
+      const fieldsets = document.querySelectorAll("fieldset[data-attempt-question-fieldset]");
+      expect(fieldsets).toHaveLength(2);
+      expect(fieldsets[1]).toBeDisabled();
+      expect(fieldsets[1]).toHaveAttribute("aria-disabled", "true");
+    });
+
+    tab2.unmount();
+    tab1.unmount();
+  });
 });

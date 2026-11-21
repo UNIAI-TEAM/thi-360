@@ -327,6 +327,7 @@
       "legendUnsaved": "Unsaved",
       "next": "Next",
       "openGrid": "Questions ({current}/{total})",
+      "openGridCompact": "Q {current}/{total}",
       "prev": "Previous",
       "progressLabel": "Progress: {answered} of {total} questions",
       "questionPosition": "Question {current}/{total}",

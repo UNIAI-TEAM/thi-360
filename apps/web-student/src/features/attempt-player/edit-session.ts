@@ -405,7 +405,7 @@ export class EditSessionController {
       await this.claim(false);
     } else if (this.status === "active" && this.sessionId) {
       this.startHeartbeat();
-      void this.sendHeartbeatNow();
+      await this.sendHeartbeatNow();
     }
   }
 

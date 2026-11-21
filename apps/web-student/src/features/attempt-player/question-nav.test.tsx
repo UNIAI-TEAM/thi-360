@@ -110,4 +110,43 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^16,/ })).toHaveLength(1);
   });
+
+  it("render children trong cột trái ngay trên thanh điều hướng gọn và giữ aside ở cột phải (VIS-R3-3)", () => {
+    const { container } = renderWithProviders(
+      <QuestionNav
+        items={SAMPLE_ITEMS}
+        currentUnitIndex={1}
+        totalUnits={4}
+        currentDisplayNumber={17}
+        totalDisplayItems={4}
+        onSelectUnit={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        canPrev={true}
+        canNext={true}
+        footer={<p>Gợi ý phím tắt</p>}
+      >
+        <div data-testid="question-card">Thân câu hỏi</div>
+      </QuestionNav>,
+    );
+
+    const layoutRow = container.firstElementChild as HTMLElement;
+    expect(layoutRow).toHaveClass("lg:flex-row");
+
+    const leftColumn = layoutRow.children[0] as HTMLElement;
+    const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    expect(layoutRow.children).toHaveLength(2);
+    expect(layoutRow.children[1]).toBe(aside);
+
+    const card = screen.getByTestId("question-card");
+    const controls = screen.getByRole("region", { name: "Điều hướng câu hỏi" });
+    expect(leftColumn).toContainElement(card);
+    expect(leftColumn).toContainElement(controls);
+    expect(leftColumn).toContainElement(screen.getByText("Gợi ý phím tắt"));
+
+    // Compact mobile trigger keeps full accessible name while showing compact label
+    const gridBtn = screen.getByRole("button", { name: "Danh sách câu (17/4)" });
+    expect(gridBtn).toHaveTextContent("Câu 17/4");
+    expect(controls).toHaveClass("rounded-xl", "border", "flex", "items-center", "justify-between");
+  });
 });

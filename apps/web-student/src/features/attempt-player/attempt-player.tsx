@@ -1558,9 +1558,9 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     <div className="flex min-h-dvh flex-col bg-page text-text">
       <header className="sticky top-0 z-20 border-b border-border bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1 space-y-1">
+          <div className="w-full min-w-0 space-y-1 md:w-auto md:flex-1">
             {attemptState.examName ? (
-              <h1 className="truncate text-title font-bold text-text" data-exam-content="">
+              <h1 className="line-clamp-2 text-title font-bold text-text" data-exam-content="">
                 {attemptState.examName}
               </h1>
             ) : null}
@@ -1589,7 +1589,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {remainingMs !== null && durationParts ? (
               <div
                 role="timer"
@@ -1706,123 +1706,123 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             onRetryGeneration={handleRetryGeneration}
           />
         ) : activeUnit ? (
-          <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-start">
-            <div className="min-w-0 flex-1 space-y-4">
-              <div className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
-                {activeUnit.attachments.length > 0 ? (
-                  <div
-                    aria-label={t("player.attachmentsLabel")}
-                    className="mb-4 space-y-2 rounded-xl border border-border bg-subtle p-3.5"
-                  >
-                    {activeUnit.attachments.map((att, idx) => {
-                      const safeUrl = att.url;
-                      if (!safeUrl) return null;
-                      if (att.mime?.startsWith("audio/")) {
-                        return (
-                          <audio
-                            key={att.assetId ?? idx}
-                            controls
-                            preload="none"
-                            src={safeUrl}
-                            className="w-full"
-                          />
-                        );
-                      }
+          <QuestionNav
+            items={navItems}
+            currentUnitIndex={safeUnitIndex}
+            totalUnits={units.length}
+            currentDisplayNumber={activeUnit.displayStart}
+            totalDisplayItems={navItems.length}
+            onSelectUnit={goToUnit}
+            onPrev={() => goToUnit(safeUnitIndex - 1)}
+            onNext={() => goToUnit(safeUnitIndex + 1)}
+            canPrev={safeUnitIndex > 0}
+            canNext={safeUnitIndex < units.length - 1}
+            footer={<p className="text-caption text-text-muted">{t("player.shortcutHint")}</p>}
+          >
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
+              {activeUnit.attachments.length > 0 ? (
+                <div
+                  aria-label={t("player.attachmentsLabel")}
+                  className="mb-4 space-y-2 rounded-xl border border-border bg-subtle p-3.5"
+                >
+                  {activeUnit.attachments.map((att, idx) => {
+                    const safeUrl = att.url;
+                    if (!safeUrl) return null;
+                    if (att.mime?.startsWith("audio/")) {
                       return (
-                        <a
+                        <audio
                           key={att.assetId ?? idx}
-                          href={safeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={cn(
-                            "inline-flex items-center gap-2 text-caption font-medium text-primary-text hover:underline",
-                            focusRing,
-                          )}
-                        >
-                          <FileText className="size-4 shrink-0" aria-hidden="true" />
-                          <span>{att.fileName ?? safeUrl}</span>
-                        </a>
+                          controls
+                          preload="none"
+                          src={safeUrl}
+                          className="w-full"
+                        />
                       );
-                    })}
-                  </div>
-                ) : null}
+                    }
+                    return (
+                      <a
+                        key={att.assetId ?? idx}
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "inline-flex items-center gap-2 text-caption font-medium text-primary-text hover:underline",
+                          focusRing,
+                        )}
+                      >
+                        <FileText className="size-4 shrink-0" aria-hidden="true" />
+                        <span>{att.fileName ?? safeUrl}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : null}
 
-                <fieldset disabled={isReadOnly} data-attempt-question-fieldset="" className="min-w-0">
-                  {activeUnit.kind === "QUESTION_SET" ? (
-                    <Question
-                      mode="answer"
-                      question={activeUnit.kitQuestion}
-                      value={buildQuestionSetKitValue(activeUnit.childItems, getAnswer)}
-                      flaggedIds={Object.fromEntries(
-                        activeUnit.childItems
-                          .map((child) => child.itemId)
-                          .filter((id): id is string => Boolean(id))
-                          .map((id) => [id, getFlagged(id)]),
-                      )}
-                      onToggleChildFlag={toggleItemFlag}
-                      renderEditor={
-                        activeQuestionHasEssay
-                          ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
-                          : undefined
+              <fieldset
+                disabled={isReadOnly}
+                aria-disabled={isReadOnly || undefined}
+                data-attempt-question-fieldset=""
+                className="min-w-0"
+              >
+                {activeUnit.kind === "QUESTION_SET" ? (
+                  <Question
+                    mode="answer"
+                    question={activeUnit.kitQuestion}
+                    value={buildQuestionSetKitValue(activeUnit.childItems, getAnswer)}
+                    flaggedIds={Object.fromEntries(
+                      activeUnit.childItems
+                        .map((child) => child.itemId)
+                        .filter((id): id is string => Boolean(id))
+                        .map((id) => [id, getFlagged(id)]),
+                    )}
+                    onToggleChildFlag={toggleItemFlag}
+                    renderEditor={
+                      activeQuestionHasEssay
+                        ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
+                        : undefined
+                    }
+                    onChange={(nextValue) => {
+                      if (!nextValue || typeof nextValue !== "object" || !("children" in nextValue)) {
+                        return;
                       }
-                      onChange={(nextValue) => {
-                        if (!nextValue || typeof nextValue !== "object" || !("children" in nextValue)) {
-                          return;
+                      const childMap = nextValue.children ?? {};
+                      for (const child of activeUnit.childItems) {
+                        const cid = child.itemId;
+                        const cType = child.questionType;
+                        if (!cid || !cType || cType === "QUESTION_SET") continue;
+                        const nextKitChild = childMap[cid];
+                        const nextApiAns = toApiAnswer(cType, nextKitChild);
+                        const prevApiAns = getAnswer(cid);
+                        if (JSON.stringify(prevApiAns) !== JSON.stringify(nextApiAns)) {
+                          recordAnswerUpdate(cid, cType, nextApiAns);
                         }
-                        const childMap = nextValue.children ?? {};
-                        for (const child of activeUnit.childItems) {
-                          const cid = child.itemId;
-                          const cType = child.questionType;
-                          if (!cid || !cType || cType === "QUESTION_SET") continue;
-                          const nextKitChild = childMap[cid];
-                          const nextApiAns = toApiAnswer(cType, nextKitChild);
-                          const prevApiAns = getAnswer(cid);
-                          if (JSON.stringify(prevApiAns) !== JSON.stringify(nextApiAns)) {
-                            recordAnswerUpdate(cid, cType, nextApiAns);
-                          }
-                        }
-                      }}
-                    >
-                      {activeUnit.childKitQuestions}
-                    </Question>
-                  ) : (
-                    <Question
-                      mode="answer"
-                      question={activeUnit.kitQuestion}
-                      value={toKitAnswer(getAnswer(activeUnit.id))}
-                      flagged={getFlagged(activeUnit.id)}
-                      onToggleFlag={() => toggleItemFlag(activeUnit.id)}
-                      renderEditor={
-                        activeQuestionHasEssay
-                          ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
-                          : undefined
                       }
-                      onChange={(nextValue) => {
-                        const qType = activeUnit.parentItem.questionType;
-                        if (!qType || qType === "QUESTION_SET") return;
-                        recordAnswerUpdate(activeUnit.id, qType, toApiAnswer(qType, nextValue));
-                      }}
-                    />
-                  )}
-                </fieldset>
-              </div>
-
-              <p className="text-caption text-text-muted">{t("player.shortcutHint")}</p>
+                    }}
+                  >
+                    {activeUnit.childKitQuestions}
+                  </Question>
+                ) : (
+                  <Question
+                    mode="answer"
+                    question={activeUnit.kitQuestion}
+                    value={toKitAnswer(getAnswer(activeUnit.id))}
+                    flagged={getFlagged(activeUnit.id)}
+                    onToggleFlag={() => toggleItemFlag(activeUnit.id)}
+                    renderEditor={
+                      activeQuestionHasEssay
+                        ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
+                        : undefined
+                    }
+                    onChange={(nextValue) => {
+                      const qType = activeUnit.parentItem.questionType;
+                      if (!qType || qType === "QUESTION_SET") return;
+                      recordAnswerUpdate(activeUnit.id, qType, toApiAnswer(qType, nextValue));
+                    }}
+                  />
+                )}
+              </fieldset>
             </div>
-
-            <QuestionNav
-              items={navItems}
-              currentUnitIndex={safeUnitIndex}
-              totalUnits={units.length}
-              currentDisplayNumber={activeUnit.displayStart}
-              totalDisplayItems={navItems.length}
-              onSelectUnit={goToUnit}
-              onPrev={() => goToUnit(safeUnitIndex - 1)}
-              onNext={() => goToUnit(safeUnitIndex + 1)}
-              canPrev={safeUnitIndex > 0}
-              canNext={safeUnitIndex < units.length - 1}
-            />
-          </div>
+          </QuestionNav>
         ) : (
           <div className="rounded-2xl border border-border bg-surface p-8 text-center text-body text-text-muted">
             {t("player.noActiveQuestion")}

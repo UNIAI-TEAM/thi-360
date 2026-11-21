@@ -311,12 +311,16 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     const tab2Fieldset = page2.locator("main fieldset[data-attempt-question-fieldset]");
     await expect(readonlyNotice).toBeVisible({ timeout: 20_000 });
     await expect(tab2Fieldset).toBeVisible();
+    await expect(tab2Fieldset).toHaveAttribute("disabled", "");
     await expect(tab2Fieldset).toBeDisabled();
+    await expect(tab2Fieldset.locator("input, button, select, textarea").first()).toBeDisabled();
 
     await page.close({ runBeforeUnload: true });
 
     await expect(readonlyNotice).toBeHidden({ timeout: 15_000 });
+    await expect(tab2Fieldset).not.toHaveAttribute("disabled");
     await expect(tab2Fieldset).toBeEnabled({ timeout: 15_000 });
+    await expect(tab2Fieldset.locator("input, button, select, textarea").first()).toBeEnabled();
 
     await page2.getByRole("button", { name: "Câu sau" }).click();
     await answerCurrentUnit(page2);

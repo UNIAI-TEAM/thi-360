@@ -301,4 +301,58 @@ describe("EditSessionController & AttemptTabLock (AC-21, AC-22, AC-30)", () => {
 
     hbCtrl.destroy();
   });
+
+  it("resumeAfterAuthRefresh await sendHeartbeatNow khi heartbeat sau refresh trả 401 (FE-R3-1)", async () => {
+    let rejectPostRefreshHb: ((reason?: unknown) => void) | undefined;
+    const hbFn = vi
+      .fn<(attemptId: string, sessionId: string) => Promise<HeartbeatResponse>>()
+      .mockRejectedValueOnce(new ApiStatusError(401, "Initial expired"))
+      .mockImplementationOnce(
+        () =>
+          new Promise<HeartbeatResponse>((_resolve, reject) => {
+            rejectPostRefreshHb = reject;
+          }),
+      );
+
+    const onUnauthorized = vi.fn();
+    const ctrl = new EditSessionController({
+      attemptId: "att-401-post-refresh",
+      userId: "user-1",
+      claimSessionFn: vi.fn(async () => ({
+        conflict: false as const,
+        sessionId: "sess-post-refresh",
+        serverNow: "2026-11-21T10:00:00Z",
+      })),
+      heartbeatFn: hbFn,
+      onUnauthorized,
+    });
+
+    await ctrl.claim(false);
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS);
+    expect(hbFn).toHaveBeenCalledTimes(1);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+
+    let resumeSettled = false;
+    const resumePromise = ctrl.resumeAfterAuthRefresh().then(() => {
+      resumeSettled = true;
+    });
+
+    // Wait for immediate post-refresh heartbeat call to be issued; resumeAfterAuthRefresh MUST still be pending
+    await Promise.resolve();
+    expect(hbFn).toHaveBeenCalledTimes(2);
+    expect(resumeSettled).toBe(false);
+
+    // Reject post-refresh heartbeat with 401 while resumeAfterAuthRefresh is awaited
+    rejectPostRefreshHb?.(new ApiStatusError(401, "Still expired after refresh"));
+    await resumePromise;
+
+    expect(resumeSettled).toBe(true);
+    expect(onUnauthorized).toHaveBeenCalledTimes(2);
+
+    // Heartbeat interval was stopped cleanly when post-refresh heartbeat returned 401
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_INTERVAL_MS * 2);
+    expect(hbFn).toHaveBeenCalledTimes(2);
+
+    ctrl.destroy();
+  });
 });
