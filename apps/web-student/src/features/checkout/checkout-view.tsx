@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, EmptyState, Skeleton, StatusChip, cn } from "@thi360/ui";
+import { Button, EmptyState, Skeleton, StatusChip } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
 import {
   ArrowLeft,
@@ -739,7 +739,7 @@ export function CheckoutView({
                         id="checkout-buy-button"
                         ref={payButtonRef}
                         type="button"
-                        variant={cn(activeQuote.finalPrice === 0 ? "exam" : "primary") as "exam" | "primary"}
+                        variant={activeQuote.finalPrice === 0 ? "exam" : "primary"}
                         size="lg"
                         loading={submitting}
                         disabled={isBlockedByChecking || Boolean(accountChanged) || !acknowledgedSession}

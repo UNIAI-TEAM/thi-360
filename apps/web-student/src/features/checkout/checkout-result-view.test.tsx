@@ -137,7 +137,7 @@ describe("CheckoutResultView", () => {
     expect(navigate).toHaveBeenCalledWith("http://mock-vnpay/retry02");
   });
 
-  it("poll mỗi 2 giây và dừng ở 60 giây với màn hình Đang chờ xác nhận thanh toán (AC-3, AC-5)", async () => {
+  it("poll mỗi 2 giây và dừng ở 60 giây với màn hình Đang kiểm tra thanh toán (AC-3, AC-5)", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     try {
       navState.search = "order=DHPEND60&state=checking";
@@ -170,8 +170,9 @@ describe("CheckoutResultView", () => {
         });
       }
 
-      expect(screen.getByRole("heading", { level: 1, name: "Đang kiểm tra thanh toán" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
       expect(screen.getByText("Đang kiểm tra")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Xem chi tiết đơn" })).toHaveAttribute("href", "/account/orders/DHPEND60");
       expect(loadOrderDetail).toHaveBeenCalledTimes(1);
 
       await act(async () => {
@@ -185,7 +186,9 @@ describe("CheckoutResultView", () => {
         });
       }
 
-      expect(screen.getByRole("heading", { level: 1, name: "Đang chờ xác nhận thanh toán" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Đang kiểm tra thanh toán" })).toBeInTheDocument();
+      expect(screen.getByText(/Đã quá 60 giây.*DHPEND60/)).toBeInTheDocument();
+      expect(screen.getByText(/liên hệ hỗ trợ.*DHPEND60/)).toBeInTheDocument();
       const countAtTimeout = loadOrderDetail.mock.calls.length;
 
       await act(async () => {
@@ -218,13 +221,13 @@ describe("CheckoutResultView", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Thanh toán thành công" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Đăng nhập để xem bài thi" })).toHaveAttribute(
       "href",
-      "/login?callbackUrl=%2Fcheckout%2Fresult%3Fvnp_TxnRef%3DDHGUEST01%26vnp_ResponseCode%3D00%26vnp_SecureHash%3Dvalid",
+      "/login?callbackUrl=%2Fcheckout%2Fresult%3Forder%3DDHGUEST01",
     );
     expect(loadOrderDetail).not.toHaveBeenCalled();
     okGuest.unmount();
 
     navState.search = "vnp_TxnRef=DHGUEST02&vnp_ResponseCode=24&vnp_SecureHash=valid";
-    renderWithProviders(
+    const failedGuest = renderWithProviders(
       <CheckoutResultView
         loadCurrentSession={async () => null}
         verifyReturn={async () => ({ orderCode: "DHGUEST02", paymentState: "FAILED" })}
@@ -232,7 +235,20 @@ describe("CheckoutResultView", () => {
       />,
     );
     expect(await screen.findByRole("heading", { level: 1, name: "Thanh toán chưa thành công" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Đăng nhập để kiểm tra đơn" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Đăng nhập để kiểm tra đơn" })).toHaveAttribute(
+      "href",
+      "/login?callbackUrl=%2Fcheckout%2Fresult%3Forder%3DDHGUEST02",
+    );
+    expect(loadOrderDetail).not.toHaveBeenCalled();
+    failedGuest.unmount();
+
+    navState.search = "";
+    renderWithProviders(<CheckoutResultView loadCurrentSession={async () => null} loadOrderDetail={loadOrderDetail} />);
+    expect(await screen.findByRole("heading", { name: "Thiếu thông tin giao dịch" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Đăng nhập" })).toHaveAttribute(
+      "href",
+      "/login?callbackUrl=%2Fcheckout%2Fresult",
+    );
     expect(loadOrderDetail).not.toHaveBeenCalled();
   });
 

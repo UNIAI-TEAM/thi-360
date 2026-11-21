@@ -63,6 +63,7 @@ export function CheckoutResultView({
 }) {
   const t = useTranslations("checkout.result");
   const ordersT = useTranslations("orders");
+  const headerT = useTranslations("header");
   const common = useTranslations("common");
   const storefront = useTranslations("storefront");
   const support = useTranslations("landing.support");
@@ -114,6 +115,9 @@ export function CheckoutResultView({
       verifyQuery.error.status === 400);
 
   const verifiedOrderCode = hasVnpParams ? (verifyQuery.data?.orderCode ?? "") : directOrderCode.trim();
+  const orderResultUrl = verifiedOrderCode
+    ? `/checkout/result?order=${encodeURIComponent(verifiedOrderCode)}`
+    : currentResultUrl;
   const canLoadOrder = Boolean(
     isStudent &&
       verifiedOrderCode &&
@@ -273,7 +277,7 @@ export function CheckoutResultView({
             description={t("missingOrderBody")}
             action={
               <Button asChild variant="primary">
-                <Link href={withCallbackUrl("/login", currentResultUrl)}>{ordersT("guest.login")}</Link>
+                <Link href={withCallbackUrl("/login", currentResultUrl)}>{headerT("login")}</Link>
               </Button>
             }
           />
@@ -281,7 +285,7 @@ export function CheckoutResultView({
       }
 
       const vnpState = verifyQuery.data?.paymentState;
-      const loginHref = withCallbackUrl("/login", currentResultUrl);
+      const loginHref = withCallbackUrl("/login", orderResultUrl);
 
       if (vnpState === "SUCCEEDED") {
         return (
@@ -401,7 +405,7 @@ export function CheckoutResultView({
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <Button asChild variant="primary">
-                <Link href={withCallbackUrl("/login", currentResultUrl)}>{ordersT("notFound.otherAccount")}</Link>
+                <Link href={withCallbackUrl("/login", orderResultUrl)}>{ordersT("notFound.otherAccount")}</Link>
               </Button>
               <Button asChild variant="secondary">
                 <Link href="/account/orders">{t("viewOrders")}</Link>
@@ -564,7 +568,7 @@ export function CheckoutResultView({
               {t("checkAgain")}
             </Button>
             <Button asChild variant="primary">
-              <Link href={`/account/orders/${encodeURIComponent(order.code)}`}>{t("viewOrders")}</Link>
+              <Link href={`/account/orders/${encodeURIComponent(order.code)}`}>{t("viewOrder")}</Link>
             </Button>
             <Button asChild variant="secondary">
               <Link href="/home">{t("viewMyExams")}</Link>
