@@ -386,17 +386,39 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     const entHeader = within(entitlementsBlock).getByRole("heading", {
       name: viMessages.users.learning.blocks.entitlements.title,
     }).parentElement!;
+    expect(entHeader.parentElement).toHaveClass("px-4", "py-3");
     expect(within(entHeader).getByText("4")).toBeInTheDocument();
     const entTable = within(entitlementsBlock).getByRole("table", {
       name: viMessages.users.learning.entitlementsTable.ariaLabel,
     });
     const entRows = within(entTable).getAllByRole("row").slice(1);
     expect(entRows).toHaveLength(4);
-    expect(within(entRows[0]!).getByText("Đề thi thử HSA Toán")).toHaveAttribute("data-exam-content");
-    expect(within(entRows[0]!).getByText("HSA-TOAN-2026")).toHaveAttribute("data-exam-content");
-    expect(within(entRows[0]!).getAllByRole("cell").slice(1, 4).map((cell) => cell.textContent)).toEqual(["4", "2", "1"]);
-    // Khi examName null, rơi về examCode với data-exam-content.
-    expect(within(entRows[1]!).getByText("VACT-FULL-01")).toHaveAttribute("data-exam-content");
+    const entRow0Exam = within(entRows[0]!).getByText("Đề thi thử HSA Toán");
+    expect(entRow0Exam).toHaveAttribute("data-exam-content");
+    expect(entRow0Exam).toHaveClass("line-clamp-2", "wrap-anywhere");
+    const entRow0Code = within(entRows[0]!).getByText("HSA-TOAN-2026");
+    expect(entRow0Code).toHaveAttribute("data-exam-content");
+    expect(entRow0Code).toHaveClass("wrap-anywhere");
+    const entRow0Cells = within(entRows[0]!).getAllByRole("cell");
+    expect(entRow0Cells[1]).toHaveTextContent("4");
+    expect(entRow0Cells[2]).toHaveTextContent("2");
+    expect(within(entRow0Cells[3]!).getByText("1")).toBeInTheDocument();
+    expect(within(entRow0Cells[3]!).getByText("Đang giữ: 1")).toBeInTheDocument();
+    expect(entRow0Cells[3]).not.toHaveTextContent(viMessages.users.learning.entitlementsTable.revokedLabel);
+    // Khi examName null, rơi về examCode với data-exam-content và wrap-anywhere.
+    const entRow1Fallback = within(entRows[1]!).getByText("VACT-FULL-01");
+    expect(entRow1Fallback).toHaveAttribute("data-exam-content");
+    expect(entRow1Fallback).toHaveClass("line-clamp-2", "wrap-anywhere");
+    expect(within(within(entRows[1]!).getAllByRole("cell")[3]!).getByText("Đang giữ: 1")).toBeInTheDocument();
+    // Hàng 2 có reserved = 0 và revoked = 0: không hiện dòng phụ.
+    const entRow2RemainingCell = within(entRows[2]!).getAllByRole("cell")[3]!;
+    expect(entRow2RemainingCell).toHaveTextContent("0");
+    expect(entRow2RemainingCell).not.toHaveTextContent(viMessages.users.learning.entitlementsTable.reservedLabel);
+    expect(entRow2RemainingCell).not.toHaveTextContent(viMessages.users.learning.entitlementsTable.revokedLabel);
+    // Hàng 3 có attemptsRevoked = 3: hiện nhãn Đã thu hồi: 3 ở cột Còn lại.
+    const entRow3RemainingCell = within(entRows[3]!).getAllByRole("cell")[3]!;
+    expect(within(entRow3RemainingCell).getByText("0")).toBeInTheDocument();
+    expect(within(entRow3RemainingCell).getByText("Đã thu hồi: 3")).toBeInTheDocument();
     expect(within(entTable).getByText("Còn lượt").closest("[data-tone]")).toHaveAttribute("data-tone", "success");
     expect(within(entTable).getByText("Đang làm bài").closest("[data-tone]")).toHaveAttribute("data-tone", "info");
     expect(within(entTable).getByText("Hết lượt").closest("[data-tone]")).toHaveAttribute("data-tone", "neutral");
@@ -408,6 +430,7 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     const attHeader = within(attemptsBlock).getByRole("heading", {
       name: viMessages.users.learning.blocks.attempts.title,
     }).parentElement!;
+    expect(attHeader.parentElement).toHaveClass("px-4", "py-3");
     expect(within(attHeader).getByText("6")).toBeInTheDocument();
     const attTable = within(attemptsBlock).getByRole("table", {
       name: viMessages.users.learning.attemptsTable.ariaLabel,
@@ -415,9 +438,13 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     const attRows = within(attTable).getAllByRole("row").slice(1);
     expect(attRows).toHaveLength(6);
 
-    // Hàng 0: SCORED với điểm thập phân 85,5 / 100 và mã lượt.
+    // Hàng 0: SCORED với tên bài thi có wrap-anywhere, thời điểm vi (Asia/Ho_Chi_Minh), điểm 85,5 / 100 và mã lượt.
+    const attRow0Exam = within(attRows[0]!).getByText("Đề thi thử HSA Toán");
+    expect(attRow0Exam).toHaveAttribute("data-exam-content");
+    expect(attRow0Exam).toHaveClass("line-clamp-2", "wrap-anywhere");
     expect(within(attRows[0]!).getByText("Lượt #1")).toBeInTheDocument();
     expect(within(attRows[0]!).getByText("A1B2C3D4")).toBeInTheDocument();
+    expect(within(attRows[0]!).getAllByRole("cell")[3]).toHaveTextContent("10:15 20/11/2026");
     expect(within(attRows[0]!).getByText("85,5 / 100")).toBeInTheDocument();
     expect(within(attRows[0]!).getByText("Đã chấm").closest("[data-tone]")).toHaveAttribute("data-tone", "success");
 
@@ -544,6 +571,8 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     expect(within(entTable).getByText("In use")).toBeInTheDocument();
     expect(within(entTable).getByText("Exhausted")).toBeInTheDocument();
     expect(within(entTable).getByText("Revoked")).toBeInTheDocument();
+    expect(within(entTable).getAllByText("Reserved: 1")).toHaveLength(2);
+    expect(within(entTable).getByText("Revoked: 3")).toBeInTheDocument();
 
     // Nội dung bài thi tiếng Việt nằm trong [data-exam-content].
     expect(within(attTable).getByText("Đề thi thử HSA Toán")).toHaveAttribute("data-exam-content");
@@ -575,14 +604,18 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
 
     const entCards = within(entList).getAllByRole("listitem");
     expect(entCards).toHaveLength(4);
-    expect(within(entCards[0]!).getByText("Đề thi thử HSA Toán")).toHaveAttribute("data-exam-content");
+    const entCardTitle = within(entCards[0]!).getByText("Đề thi thử HSA Toán");
+    expect(entCardTitle).toHaveAttribute("data-exam-content");
+    expect(entCardTitle).toHaveClass("line-clamp-2");
     expect(within(entCards[0]!).getByText("HSA-TOAN-2026")).toHaveAttribute("data-exam-content");
     expect(entCards[0]!).toHaveTextContent("Đã cấp: 4 · Đã dùng: 2 · Còn lại: 1 · Đang giữ: 1");
     expect(entCards[3]!).toHaveTextContent("Đã thu hồi: 3");
 
     const attCards = within(attList).getAllByRole("listitem");
     expect(attCards).toHaveLength(6);
-    expect(within(attCards[0]!).getByText("Đề thi thử HSA Toán")).toHaveAttribute("data-exam-content");
+    const attCardTitle = within(attCards[0]!).getByText("Đề thi thử HSA Toán");
+    expect(attCardTitle).toHaveAttribute("data-exam-content");
+    expect(attCardTitle).toHaveClass("line-clamp-2");
     expect(attCards[0]!).toHaveTextContent("Lượt #1 · A1B2C3D4");
     expect(attCards[0]!).toHaveTextContent("Điểm: 85,5 / 100");
     expect(attCards[1]!).toHaveTextContent("Điểm: 0 / 100");
@@ -593,7 +626,7 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     expectNoRawEnumTokens(container);
   });
 
-  it("dự phòng khi thiếu examName/examCode, maxScore null hoặc SCORED thiếu score", async () => {
+  it("dự phòng khi thiếu examName/examCode, startedAt không hợp lệ, trạng thái lạ, maxScore null hoặc SCORED thiếu score", async () => {
     const edgeData: StudentLearning = {
       ...EMPTY_LEARNING,
       dataAvailable: true,
@@ -604,6 +637,9 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
           examId: "eeee0000-0000-4000-8000-000000000099",
           examName: "",
           examCode: null,
+          attemptsReserved: 1,
+          attemptsRevoked: 2,
+          status: "UNKNOWN_ENTITLEMENT" as StudentLearning["entitlements"][number]["status"],
         },
       ],
       attempts: [
@@ -619,10 +655,20 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
           score: null,
           maxScore: 100,
         },
+        {
+          ...POPULATED_LEARNING.attempts[0]!,
+          attemptId: "att-edge-3-0000-4000-8000-000000000003",
+          examId: "ffff0000-0000-4000-8000-000000000077",
+          examName: "   ",
+          status: "UNKNOWN_ATTEMPT" as StudentLearning["attempts"][number]["status"],
+          startedAt: "not-a-date",
+          score: 12,
+          maxScore: 100,
+        },
       ],
     };
 
-    renderWithProviders(
+    const { container } = renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <LearningProfileTab
           userId={BASE_USER.id}
@@ -634,7 +680,13 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     const entTable = await screen.findByRole("table", {
       name: viMessages.users.learning.entitlementsTable.ariaLabel,
     });
-    expect(within(entTable).getByText("eeee0000-0000-4000-8000-000000000099")).toHaveAttribute("data-exam-content");
+    const entEdgeRow = within(entTable).getAllByRole("row")[1]!;
+    const entFallbackId = within(entEdgeRow).getByText("eeee0000-0000-4000-8000-000000000099");
+    expect(entFallbackId).toHaveAttribute("data-exam-content");
+    expect(entFallbackId).toHaveClass("wrap-anywhere");
+    expect(within(entEdgeRow).getAllByRole("cell")[3]).toHaveTextContent("1Đang giữ: 1 · Đã thu hồi: 2");
+    const entUnknownChip = within(entEdgeRow).getByText("—").closest("[data-tone]");
+    expect(entUnknownChip).toHaveAttribute("data-tone", "neutral");
 
     const attTable = screen.getByRole("table", {
       name: viMessages.users.learning.attemptsTable.ariaLabel,
@@ -643,5 +695,20 @@ describe("LearningProfileTab (LP / UNI-2743)", () => {
     expect(within(attRows[0]!).getAllByRole("cell")[4]).toHaveTextContent("85,5");
     expect(within(attRows[0]!).getAllByRole("cell")[4]?.textContent).not.toContain("/");
     expect(within(attRows[1]!).getAllByRole("cell")[4]).toHaveTextContent("—");
+
+    // Hàng 2: examName chỉ gồm khoảng trắng -> rơi về examId với [data-exam-content], startedAt lỗi -> "—", status lạ -> "—".
+    const attEdgeRow = attRows[2]!;
+    const attFallbackId = within(attEdgeRow).getByText("ffff0000-0000-4000-8000-000000000077");
+    expect(attFallbackId).toHaveAttribute("data-exam-content");
+    expect(attFallbackId).toHaveClass("wrap-anywhere");
+    const attEdgeCells = within(attEdgeRow).getAllByRole("cell");
+    expect(attEdgeCells[2]?.querySelector("[data-tone]")).toHaveAttribute("data-tone", "neutral");
+    expect(attEdgeCells[2]).toHaveTextContent("—");
+    expect(attEdgeCells[3]).toHaveTextContent("—");
+    expect(attEdgeCells[4]).toHaveTextContent("—");
+
+    expect(container.textContent).not.toContain("UNKNOWN_ENTITLEMENT");
+    expect(container.textContent).not.toContain("UNKNOWN_ATTEMPT");
+    expectNoRawEnumTokens(container);
   });
 });

@@ -23,7 +23,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { type ReactNode, useMemo } from "react";
+import { Fragment, type ReactNode, useMemo } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "@/features/exams/display-number";
 import { usePermissions } from "@/features/session/session-provider";
 import { type StudentLearning, type UsersApiDeps, USERS_QUERY_KEYS } from "../api";
@@ -165,11 +165,11 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
           const { primaryLabel, secondaryCode } = resolveEntitlementExamDisplay(row.original);
           return (
             <div className="flex min-w-44 flex-col gap-0.5 py-1.5">
-              <span data-exam-content="" className="line-clamp-2 font-medium text-text">
+              <span data-exam-content="" className="line-clamp-2 font-medium wrap-anywhere text-text">
                 {primaryLabel}
               </span>
               {secondaryCode && (
-                <span data-exam-content="" className="font-mono text-caption text-text-muted tabular-nums">
+                <span data-exam-content="" className="font-mono text-caption wrap-anywhere text-text-muted tabular-nums">
                   {secondaryCode}
                 </span>
               )}
@@ -193,9 +193,32 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
         id: "attemptsLeft",
         header: t("learning.entitlementsTable.columns.attemptsLeft"),
         enableSorting: false,
-        cell: ({ row }) => (
-          <span className="font-medium text-text tabular-nums">{format.number(row.original.attemptsLeft)}</span>
-        ),
+        cell: ({ row }) => {
+          const { attemptsLeft, attemptsReserved, attemptsRevoked } = row.original;
+          const subCounts: string[] = [];
+          if (attemptsReserved > 0) {
+            subCounts.push(`${t("learning.entitlementsTable.reservedLabel")}: ${format.number(attemptsReserved)}`);
+          }
+          if (attemptsRevoked > 0) {
+            subCounts.push(`${t("learning.entitlementsTable.revokedLabel")}: ${format.number(attemptsRevoked)}`);
+          }
+          if (subCounts.length === 0) {
+            return <span className="font-medium text-text tabular-nums">{format.number(attemptsLeft)}</span>;
+          }
+          return (
+            <div className="flex flex-col gap-0.5 py-1.5">
+              <span className="font-medium text-text tabular-nums">{format.number(attemptsLeft)}</span>
+              <span className="text-caption text-text-muted tabular-nums">
+                {subCounts.map((detail, index) => (
+                  <Fragment key={detail}>
+                    {index > 0 && " · "}
+                    <span className="whitespace-nowrap">{detail}</span>
+                  </Fragment>
+                ))}
+              </span>
+            </div>
+          );
+        },
       },
       {
         id: "status",
@@ -213,7 +236,7 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
         const { primaryLabel, secondaryCode } = resolveEntitlementExamDisplay(item);
         return (
           <ListCard
-            title={<span data-exam-content="">{primaryLabel}</span>}
+            title={<span data-exam-content="" className="line-clamp-2">{primaryLabel}</span>}
             caption={
               secondaryCode ? (
                 <span data-exam-content="" className="font-mono tabular-nums">
@@ -276,7 +299,7 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
         header: t("learning.attemptsTable.columns.exam"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span data-exam-content="" className="line-clamp-2 block min-w-40 font-medium text-text">
+          <span data-exam-content="" className="line-clamp-2 block min-w-40 font-medium wrap-anywhere text-text">
             {resolveAttemptExamLabel(row.original)}
           </span>
         ),
@@ -317,7 +340,7 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
         const shortId = formatAttemptShortId(item.attemptId);
         return (
           <ListCard
-            title={<span data-exam-content="">{resolveAttemptExamLabel(item)}</span>}
+            title={<span data-exam-content="" className="line-clamp-2">{resolveAttemptExamLabel(item)}</span>}
             caption={
               <span className="tabular-nums">
                 {item.attemptNo != null ? (
@@ -411,7 +434,7 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
         padding="none"
         className="flex flex-col overflow-hidden @2xl:col-span-2"
       >
-        <div className={data.entitlements.length > 0 ? "border-b border-border px-6 py-4" : "px-6 pt-6 pb-2"}>
+        <div className={data.entitlements.length > 0 ? "border-b border-border px-4 py-3" : "px-6 pt-6 pb-2"}>
           <SectionTitle
             title={t("learning.blocks.entitlements.title")}
             count={data.entitlements.length > 0 ? format.number(data.entitlements.length) : undefined}
@@ -451,7 +474,7 @@ export function LearningProfileTab({ userId, getUserLearning }: LearningProfileT
         padding="none"
         className="flex flex-col overflow-hidden @2xl:col-span-2"
       >
-        <div className={data.attempts.length > 0 ? "border-b border-border px-6 py-4" : "px-6 pt-6 pb-2"}>
+        <div className={data.attempts.length > 0 ? "border-b border-border px-4 py-3" : "px-6 pt-6 pb-2"}>
           <SectionTitle
             title={t("learning.blocks.attempts.title")}
             count={data.attempts.length > 0 ? format.number(data.attempts.length) : undefined}
