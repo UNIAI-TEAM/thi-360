@@ -389,13 +389,6 @@ describe("AttemptHistoryView · AC-4, AC-13..AC-16, AC-18, AC-19", () => {
       size: 20,
     });
 
-    // Clear exam chip -> removes examId param
-    await userEvent.click(screen.getByRole("button", { name: "Bỏ lọc theo bài" }));
-    expect(navMocks.replace).toHaveBeenCalledWith(
-      "/history?kind=LEGACY&scope=SUBJECT&from=2026-11-01&to=2026-11-20",
-      { scroll: false },
-    );
-
     // Select kind option (R1-31)
     navMocks.replace.mockClear();
     await userEvent.click(screen.getByRole("combobox", { name: "Kỳ thi" }));
@@ -409,12 +402,12 @@ describe("AttemptHistoryView · AC-4, AC-13..AC-16, AC-18, AC-19", () => {
     navMocks.replace.mockClear();
     fireEvent.change(screen.getByLabelText("Từ ngày"), { target: { value: "2026-11-05" } });
     expect(navMocks.replace).toHaveBeenCalledWith(
-      `/history?kind=LEGACY&scope=SUBJECT&examId=${uuid}&from=2026-11-05&to=2026-11-20`,
+      `/history?kind=HSA&scope=SUBJECT&examId=${uuid}&from=2026-11-05&to=2026-11-20`,
       { scroll: false },
     );
     fireEvent.change(screen.getByLabelText("Đến ngày"), { target: { value: "2026-11-18" } });
     expect(navMocks.replace).toHaveBeenCalledWith(
-      `/history?kind=LEGACY&scope=SUBJECT&examId=${uuid}&from=2026-11-01&to=2026-11-18`,
+      `/history?kind=HSA&scope=SUBJECT&examId=${uuid}&from=2026-11-05&to=2026-11-18`,
       { scroll: false },
     );
 
@@ -422,8 +415,16 @@ describe("AttemptHistoryView · AC-4, AC-13..AC-16, AC-18, AC-19", () => {
     navMocks.replace.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Trang 2" }));
     expect(navMocks.replace).toHaveBeenCalledWith(
-      `/history?kind=LEGACY&scope=SUBJECT&examId=${uuid}&from=2026-11-01&to=2026-11-20&page=2`,
+      `/history?kind=HSA&scope=SUBJECT&examId=${uuid}&from=2026-11-05&to=2026-11-18&page=2`,
       { scroll: true },
+    );
+
+    // Clear exam chip -> removes examId param and resets page to 1
+    navMocks.replace.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Bỏ lọc theo bài" }));
+    expect(navMocks.replace).toHaveBeenCalledWith(
+      "/history?kind=HSA&scope=SUBJECT&from=2026-11-05&to=2026-11-18",
+      { scroll: false },
     );
     uuidView.unmount();
 
@@ -461,6 +462,76 @@ describe("AttemptHistoryView · AC-4, AC-13..AC-16, AC-18, AC-19", () => {
       await vi.advanceTimersByTimeAsync(350);
     });
     expect(navMocks.replace).toHaveBeenLastCalledWith("/history?q=HSA+1", { scroll: false });
+  });
+
+  it("giữ nguyên các bộ lọc cập nhật liên tiếp trước khi router.replace đồng bộ useSearchParams (W5)", async () => {
+    vi.useFakeTimers();
+    navMocks.setSearch("?kind=HSA&from=2026-11-21&to=2026-11-21");
+    renderWithProviders(
+      <AttemptHistoryView
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadHistory={async () => ({ items: [makeItem()], page: 0, size: 20, totalItems: 1, totalPages: 1 })}
+        loadExamKinds={async () => EXAM_KINDS}
+        loadSubjects={async () => SUBJECTS}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(screen.getByRole("table", { name: "Danh sách lịch sử luyện thi" })).toBeInTheDocument();
+
+    navMocks.replace.mockClear();
+    const fromInput = document.querySelector("#history-from") as HTMLInputElement;
+    const toInput = document.querySelector("#history-to") as HTMLInputElement;
+    expect(fromInput).not.toBeNull();
+    expect(toInput).not.toBeNull();
+
+    // Rapid sequential changes to #history-from and #history-to without navMocks.search updating in between
+    fireEvent.change(fromInput, { target: { value: "2000-01-01" } });
+    fireEvent.change(toInput, { target: { value: "2000-01-01" } });
+
+    expect(navMocks.replace).toHaveBeenCalledTimes(2);
+    expect(navMocks.replace).toHaveBeenNthCalledWith(
+      1,
+      "/history?kind=HSA&from=2000-01-01&to=2026-11-21",
+      { scroll: false },
+    );
+    expect(navMocks.replace).toHaveBeenNthCalledWith(
+      2,
+      "/history?kind=HSA&from=2000-01-01&to=2000-01-01",
+      { scroll: false },
+    );
+
+    // Unrelated re-render (typing in search) while URL update is in-flight must not clobber latestFilterStateRef,
+    // and debounce timer must sync latestFilterStateRef before calling router.replace
+    navMocks.replace.mockClear();
+    const searchInput = screen.getByLabelText("Tìm theo tên bài") as HTMLInputElement;
+    fireEvent.change(searchInput, { target: { value: "Đề mới" } });
+    fireEvent.change(fromInput, { target: { value: "2026-10-01" } });
+    expect(navMocks.replace).toHaveBeenLastCalledWith(
+      "/history?kind=HSA&from=2026-10-01&to=2000-01-01",
+      { scroll: false },
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
+    expect(navMocks.replace).toHaveBeenLastCalledWith(
+      "/history?q=%C4%90%E1%BB%81+m%E1%BB%9Bi&kind=HSA&from=2026-10-01&to=2000-01-01",
+      { scroll: false },
+    );
+
+    fireEvent.change(toInput, { target: { value: "2026-10-31" } });
+    expect(navMocks.replace).toHaveBeenLastCalledWith(
+      "/history?q=%C4%90%E1%BB%81+m%E1%BB%9Bi&kind=HSA&from=2026-10-01&to=2026-10-31",
+      { scroll: false },
+    );
+
+    // clearAllFilters resets latestFilterStateRef synchronously before router.replace
+    fireEvent.click(screen.getByRole("button", { name: "Xóa bộ lọc" }));
+    expect(navMocks.replace).toHaveBeenLastCalledWith("/history", { scroll: false });
+    fireEvent.change(fromInput, { target: { value: "2026-11-15" } });
+    expect(navMocks.replace).toHaveBeenLastCalledWith("/history?from=2026-11-15", { scroll: false });
   });
 
   it("chuyển sang CardList ở màn hình hẹp (1 tab stop mỗi thẻ) và áp dụng pickName song ngữ + ANH trên en (R1-42)", async () => {

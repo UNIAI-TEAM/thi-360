@@ -148,24 +148,32 @@ export function AttemptHistoryView({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const filterState = useMemo(() => parseHistorySearchParams(searchParams), [searchParams]);
+  const searchParamsKey = searchParams.toString();
+  const filterState = useMemo(
+    () => parseHistorySearchParams(new URLSearchParams(searchParamsKey)),
+    [searchParamsKey],
+  );
   const [inputQ, setInputQ] = useState(filterState.q);
   const pushedQRef = useRef(filterState.q);
   const latestFilterStateRef = useRef(filterState);
   useEffect(() => {
     latestFilterStateRef.current = filterState;
-  });
+  }, [filterState]);
 
   const updateQuery = useCallback(
     (patch: Partial<HistoryFilterState>, options?: { scroll?: boolean }) => {
       const next: HistoryFilterState = {
-        ...filterState,
+        ...latestFilterStateRef.current,
         ...patch,
       };
+      latestFilterStateRef.current = next;
+      if (patch.q !== undefined) {
+        pushedQRef.current = next.q;
+      }
       const qs = toHistorySearchString(next);
       router.replace(qs ? `/history?${qs}` : "/history", { scroll: options?.scroll ?? false });
     },
-    [filterState, router],
+    [router],
   );
 
   useEffect(() => {
@@ -180,6 +188,7 @@ export function AttemptHistoryView({
         q: trimmed,
         page: 1,
       };
+      latestFilterStateRef.current = next;
       const qs = toHistorySearchString(next);
       router.replace(qs ? `/history?${qs}` : "/history", { scroll: false });
     }, SEARCH_DEBOUNCE_MS);
@@ -196,6 +205,15 @@ export function AttemptHistoryView({
   const clearAllFilters = useCallback(() => {
     pushedQRef.current = "";
     setInputQ("");
+    latestFilterStateRef.current = {
+      q: "",
+      kind: "",
+      scope: "",
+      examId: "",
+      from: "",
+      to: "",
+      page: 1,
+    };
     router.replace("/history", { scroll: false });
   }, [router]);
 
@@ -432,7 +450,7 @@ export function AttemptHistoryView({
                   />
                 </div>
 
-                <div className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
+                <div className="flex min-w-0 flex-[1_1_11rem] flex-col gap-1">
                   <label htmlFor="history-from" className="text-caption font-medium text-text-secondary">
                     {t("filters.from")}
                   </label>
@@ -447,7 +465,7 @@ export function AttemptHistoryView({
                   />
                 </div>
 
-                <div className="flex min-w-0 flex-[1_1_9rem] flex-col gap-1">
+                <div className="flex min-w-0 flex-[1_1_11rem] flex-col gap-1">
                   <label htmlFor="history-to" className="text-caption font-medium text-text-secondary">
                     {t("filters.to")}
                   </label>
