@@ -253,6 +253,19 @@ export class AttemptSaveQueue {
     return !item.dirtyAnswer && !item.dirtyFlag && item.localSeq === item.serverConfirmedSeq;
   }
 
+  getSnapshotMaps(): {
+    answers: Record<string, ApiAnswerValue | null>;
+    flags: Record<string, boolean>;
+  } {
+    const answers: Record<string, ApiAnswerValue | null> = {};
+    const flags: Record<string, boolean> = {};
+    for (const [itemId, item] of this.items.entries()) {
+      answers[itemId] = item.answer;
+      flags[itemId] = item.flagged;
+    }
+    return { answers, flags };
+  }
+
   getDirtyItemIds(): string[] {
     const dirty: string[] = [];
     for (const item of this.items.values()) {
