@@ -245,9 +245,9 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | CM-4b | UNI-2715 | `exam-access`, `/me/exams` | CM-1, CM-4a |  | 2 | merge PR #146 (`9ce34f90`) |
 | CM-3a | UNI-2716 | Đơn hàng, cổng giả lập, IPN, trang quay lại, đơn 0 đồng, cấp quyền sau thu tiền, quy tắc một khoản được tính mỗi đơn | CM-2, CM-4b, ML |  | 5 | merge PR #163 (`29c6cbdf`) |
 | CM-3b | UNI-2717 | Cổng VNPAY thật, `querydr`, đơn hết hạn, tiền về muộn sau hết hạn | CM-3a | VP-1 | 3 | merge PR #165 (`04965899`) |
-| CM-5 | UNI-2718 | Quản lý đơn, người mua, hoàn tiền, tiếp tục cấp quyền, đối soát, xử lý tiền về trên lần đã ghi thất bại | CM-3a |  | 5 | đang làm (bro) |
+| CM-5 | UNI-2718 | Quản lý đơn, người mua, hoàn tiền, tiếp tục cấp quyền, đối soát, xử lý tiền về trên lần đã ghi thất bại | CM-3a |  | 5 | merge PR #168 (`bcfdde0b`) |
 | VP-2 | UNI-2719 | Luồng VNPAY sandbox thật có IPN, qua bản demo | CM-3b, FS-3, FA-3, DS, G2 |  | 1 | chưa mở |
-| CM-6 | UNI-2720 | Bộ đề: bảng, công bố, bảng chiếu, đơn nhiều bài, cấp quyền từng bài, hoàn tiền, voucher phạm vi bộ | CM-1, CM-3a, CM-4b, DS | CM-5 | 3 | chưa mở |
+| CM-6 | UNI-2720 | Bộ đề: bảng, công bố, bảng chiếu, đơn nhiều bài, cấp quyền từng bài, hoàn tiền, voucher phạm vi bộ | CM-1, CM-3a, CM-4b, DS | CM-5 | 3 | đang làm (bro) |
 | AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | merge PR #157 (`11527568`) |
 | AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | merge PR #160 (`d75b1369`) |
 | AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | merge PR #164 (`f0d05797`) |
@@ -259,7 +259,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | AT-8 | UNI-2729 | THPTQG chuyển tự do giữa các phần | AT-2a | AT-3, AT-6 | 2 | chưa mở |
 | FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | merge PR #149 (`1e49a9e5`) |
 | FS-2 | UNI-2731 | Web học viên: đăng ký, xác minh, quên mật khẩu, hồ sơ | ID-1, ID-2 | FS-1 | 3 | merge PR #142 (`db46d807`) |
-| FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | đang làm (local) |
+| FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | merge PR #167 (`0afe8021`) |
 | FS-4 | UNI-2733 | `packages/ui`: thành phần 8 dạng câu (làm bài và chỉ đọc); đưa bộ hiển thị nội dung (`RichTextView`, mọi loại nút, KaTeX, mhchem) vào `packages/ui` |  |  | 3 | merge PR #122 (`4f3820ab`) |
 | FS-5 | UNI-2734 | Web học viên: chuẩn bị (có chọn định hướng Tin học), chờ sinh đề, màn làm bài, lưu, ngoại tuyến, tiếp quản | FS-4, AT-2b, AT-3, CM-3a, AT-8 |  | 4 | chưa mở |
 | FS-6 | UNI-2735 | Web học viên: kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | FS-4, AT-4, FS-1, CM-3a |  | 3 | chưa mở |
@@ -267,7 +267,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | FB | UNI-2737 | Bộ đề trên web: màn admin "Bộ đề"; thẻ, chi tiết, mua bộ và nhóm thẻ theo bộ ở web học viên | CM-6, FS-1, FS-3, FA-1 | FA-3 | 2 | chưa mở |
 | FA-1 | UNI-2738 | Web admin: tab Thông tin bán, ảnh bìa, cảnh báo chấm tay, menu của đợt | EX-1, FS-4 | DS | 2 | merge PR #144 (`ac60b21d`) |
 | FA-2 | UNI-2739 | Web admin: Khuyến mãi | CM-2, FA-1 |  | 3 | merge PR #161 (`664edae8`) |
-| FA-3 | UNI-2740 | Web admin: Đơn hàng, người mua, hoàn tiền, đối soát tiền về muộn | CM-5, FA-1 |  | 4 | chưa mở |
+| FA-3 | UNI-2740 | Web admin: Đơn hàng, người mua, hoàn tiền, đối soát tiền về muộn | CM-5, FA-1 |  | 4 | đang làm (local) |
 | FA-4 | UNI-2741 | Web admin: hàng chờ chấm thật, vận hành lượt, làm thử như học viên (phần web) | AT-5, FA-1, FS-4, FS-5, FS-6 |  | 3 | chưa mở |
 | FA-5 | UNI-2742 | Web admin: màn Sinh thử dùng giao diện câu hỏi chung, audio khi làm thử | FA-4, FS-7 |  | 2 | chưa mở |
 | LP | UNI-2743 | Web admin: tab Hồ sơ học tập nối Quyền sử dụng và Lịch sử lượt thi | CM-4b, AT-4, FA-1 |  | 2 | chưa mở |
