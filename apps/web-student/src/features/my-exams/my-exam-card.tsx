@@ -76,7 +76,14 @@ export function CheckingExamCard({
   );
 }
 
-export function MyExamCard({ card }: { card: MyExamCardData }) {
+export function MyExamCard({
+  card,
+  headingLevel = 3,
+}: {
+  card: MyExamCardData;
+  headingLevel?: 3 | 4;
+}) {
+  const CardHeading = headingLevel === 4 ? "h4" : "h3";
   const t = useTranslations("home");
   const storefront = useTranslations("storefront");
   const locale = useLocale();
@@ -127,9 +134,9 @@ export function MyExamCard({ card }: { card: MyExamCardData }) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <h3 data-exam-content className="line-clamp-2 text-title font-semibold text-text">
+        <CardHeading data-exam-content className="line-clamp-2 text-title font-semibold wrap-break-word text-text">
           {card.name}
-        </h3>
+        </CardHeading>
         <div className="flex flex-wrap items-center gap-1.5">
           <FormatChip format={card.format} scopeLabel={card.scopeLabel ?? undefined} />
         </div>

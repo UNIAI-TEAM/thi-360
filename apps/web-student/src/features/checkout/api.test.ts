@@ -6,6 +6,7 @@ import {
   loadProductForCheckout,
   OrderConflictError,
   ProductGoneError,
+  ProductUnavailableError,
   verifyVnpayReturn,
 } from "./api";
 
@@ -160,5 +161,73 @@ describe("checkout/api", () => {
       status: 422,
       code: "VNPAY_SIGNATURE_INVALID",
     });
+  });
+
+  it("R1-4 / R1-6 / R1-37: loadProductForCheckout và fetchPriceQuote xử lý 409 PRODUCT_UNAVAILABLE (stub vs full), 409 khác/thiếu code và 200 saleState UNAVAILABLE", async () => {
+    const fullBundle = {
+      code: "BO-FULL",
+      name: "Bộ đề SP2E",
+      productType: "BUNDLE",
+      format: "BUNDLE",
+      examKind: { code: "SP2E", nameVi: "SP2E", nameEn: "SP2E" },
+      benefits: { aiExplanation: true, strengthWeakness: false, practice: true },
+      listPrice: 300000,
+      price: 250000,
+    };
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(409, {
+          code: "PRODUCT_UNAVAILABLE",
+          message: "Unavailable",
+          product: { code: "BO-STUB", name: "Stub only" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(409, {
+          code: "PRODUCT_UNAVAILABLE",
+          message: "Unavailable",
+          product: fullBundle,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(409, { message: "Code-less 409", fieldErrors: [] }))
+      .mockResolvedValueOnce(jsonResponse(409, { code: "OTHER_CONFLICT", message: "Other", fieldErrors: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { ...fullBundle, code: "BO-200", saleState: "UNAVAILABLE" }))
+      .mockResolvedValueOnce(jsonResponse(409, { code: "PRODUCT_UNAVAILABLE", message: "Bundle unavailable" }))
+      .mockResolvedValueOnce(jsonResponse(409, { message: "No code conflict", fieldErrors: [] }))
+      .mockResolvedValueOnce(jsonResponse(409, { code: "OTHER_CONFLICT", message: "Other 409", fieldErrors: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(loadProductForCheckout("BO-STUB")).resolves.toEqual({
+      status: "unavailable",
+      product: undefined,
+    });
+    await expect(loadProductForCheckout("BO-FULL")).resolves.toEqual({
+      status: "unavailable",
+      product: fullBundle,
+    });
+    await expect(loadProductForCheckout("BO-NOCODE")).rejects.toMatchObject({
+      status: 409,
+    });
+    await expect(loadProductForCheckout("BO-OTHER")).rejects.toMatchObject({
+      status: 409,
+      code: "OTHER_CONFLICT",
+    });
+    await expect(loadProductForCheckout("BO-200")).resolves.toMatchObject({
+      status: "unavailable",
+      product: { code: "BO-200", saleState: "UNAVAILABLE" },
+    });
+
+    await expect(fetchPriceQuote({ code: "BO-FULL" })).rejects.toBeInstanceOf(ProductUnavailableError);
+    const noCodeQuoteErr = await fetchPriceQuote({ code: "BO-FULL" }).catch((err: unknown) => err);
+    expect(noCodeQuoteErr).toBeInstanceOf(ApiStatusError);
+    expect(noCodeQuoteErr).not.toBeInstanceOf(ProductUnavailableError);
+    expect((noCodeQuoteErr as ApiStatusError).status).toBe(409);
+
+    const otherQuoteErr = await fetchPriceQuote({ code: "BO-FULL" }).catch((err: unknown) => err);
+    expect(otherQuoteErr).toBeInstanceOf(ApiStatusError);
+    expect(otherQuoteErr).not.toBeInstanceOf(ProductUnavailableError);
+    expect((otherQuoteErr as ApiStatusError).code).toBe("OTHER_CONFLICT");
   });
 });

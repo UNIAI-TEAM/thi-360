@@ -77,8 +77,8 @@ test.describe("FB · Bộ đề trên web", () => {
       await adminPage.getByRole("link", { name: "Tạo bộ đề" }).first().click();
       await expect(adminPage).toHaveURL(`${ADMIN_URL}/bundles/new`);
 
-      await adminPage.getByLabel("Mã bộ", { exact: true }).fill(bundleCode);
-      await adminPage.getByLabel("Tên bộ", { exact: true }).fill(bundleName);
+      await adminPage.getByLabel(/^Mã bộ/).fill(bundleCode);
+      await adminPage.getByLabel(/^Tên bộ/).fill(bundleName);
       await adminPage.getByLabel("Mô tả ngắn trên thẻ", { exact: true }).fill(bundleSummary);
       await adminPage.getByLabel("Mô tả", { exact: true }).fill(bundleDescription);
 
@@ -89,9 +89,11 @@ test.describe("FB · Bộ đề trên web", () => {
       await expect(candidatesTable).toBeVisible();
 
       for (const examCode of expectedExamCodes) {
-        const candidateRow = candidatesTable.locator("tbody tr").filter({ hasText: examCode });
+        const candidateRow = candidatesTable
+          .locator("tbody tr")
+          .filter({ has: adminPage.getByRole("checkbox", { name: `Chọn ${examCode}`, exact: true }) });
         await expect(candidateRow).toHaveCount(1);
-        await candidateRow.getByRole("checkbox").check();
+        await candidateRow.getByRole("checkbox", { name: `Chọn ${examCode}`, exact: true }).check();
       }
       await expect(
         adminPage.getByRole("list", { name: "Thứ tự bài thi trong bộ" }).getByRole("listitem"),
@@ -228,7 +230,7 @@ test.describe("FB · Bộ đề trên web", () => {
       await expect(bundleGroup.locator("article")).toHaveCount(3);
       for (const examName of expectedExamNames) {
         const card = bundleGroup.locator("article").filter({
-          has: studentPage.getByRole("heading", { level: 3, name: examName }),
+          has: studentPage.getByRole("heading", { level: 4, name: examName }),
         });
         await expect(card).toBeVisible();
         await expect(card.getByText("Có thể bắt đầu", { exact: true })).toBeVisible();
@@ -267,7 +269,7 @@ test.describe("FB · Bộ đề trên web", () => {
       // 5. Bắt đầu 1 môn trong bộ, 2 môn còn lại giữ nguyên lượt và trạng thái (AC-2)
       const firstExamName = expectedExamNames[0]!;
       const firstCard = bundleGroup.locator("article").filter({
-        has: studentPage.getByRole("heading", { level: 3, name: firstExamName }),
+        has: studentPage.getByRole("heading", { level: 4, name: firstExamName }),
       });
       const prepareHref = await firstCard.getByRole("link", { name: "Bắt đầu" }).getAttribute("href");
       const entitlementMatch = prepareHref ? /^\/prepare\/([0-9a-f-]{36})$/i.exec(prepareHref) : null;
@@ -322,7 +324,7 @@ test.describe("FB · Bộ đề trên web", () => {
 
       for (const otherName of expectedExamNames.slice(1)) {
         const otherCard = bundleGroup.locator("article").filter({
-          has: studentPage.getByRole("heading", { level: 3, name: otherName }),
+          has: studentPage.getByRole("heading", { level: 4, name: otherName }),
         });
         await expect(otherCard.getByText("Có thể bắt đầu", { exact: true })).toBeVisible();
         await expect(otherCard.getByRole("link", { name: "Bắt đầu" })).toHaveAttribute(
@@ -363,19 +365,23 @@ test.describe("FB · Bộ đề trên web", () => {
       const candidatesTable = adminPage.getByRole("table", { name: "Danh sách bài thi đang bán cùng kỳ thi" });
       await expect(candidatesTable).toBeVisible();
 
-      const reviewRow = candidatesTable.locator("tbody tr").filter({ hasText: review.code });
+      const reviewRow = candidatesTable
+        .locator("tbody tr")
+        .filter({ has: adminPage.getByRole("checkbox", { name: `Chọn ${review.code}`, exact: true }) });
       await expect(reviewRow).toBeVisible();
       await expect(reviewRow.getByText("Bài ôn", { exact: true })).toBeVisible();
 
-      const stdRow = candidatesTable.locator("tbody tr").filter({ hasText: stdExam.code });
+      const stdRow = candidatesTable
+        .locator("tbody tr")
+        .filter({ has: adminPage.getByRole("checkbox", { name: `Chọn ${stdExam.code}`, exact: true }) });
       await expect(stdRow).toBeVisible();
       await expect(stdRow.getByText("Bài ôn", { exact: true })).toHaveCount(0);
 
-      await reviewRow.getByRole("checkbox").check();
-      await stdRow.getByRole("checkbox").check();
+      await reviewRow.getByRole("checkbox", { name: `Chọn ${review.code}`, exact: true }).check();
+      await stdRow.getByRole("checkbox", { name: `Chọn ${stdExam.code}`, exact: true }).check();
 
-      await adminPage.getByLabel("Mã bộ", { exact: true }).fill(reviewBundleCode);
-      await adminPage.getByLabel("Tên bộ", { exact: true }).fill(reviewBundleName);
+      await adminPage.getByLabel(/^Mã bộ/).fill(reviewBundleCode);
+      await adminPage.getByLabel(/^Tên bộ/).fill(reviewBundleName);
       await adminPage.getByLabel("Mô tả ngắn trên thẻ", { exact: true }).fill(`Bộ đề HSA có bài ôn ${CLEAN_RUN_SUFFIX}`);
       await adminPage.getByLabel("Mô tả", { exact: true }).fill(`Kiểm tra nhãn Bài ôn trong bộ đề ${CLEAN_RUN_SUFFIX}.`);
       await adminPage.getByLabel("Giá bộ", { exact: true }).fill("59000");

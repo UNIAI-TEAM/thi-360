@@ -1,4 +1,5 @@
 import type { components } from "@thi360/api-client";
+import { isFullProductDetail } from "@/features/storefront/format";
 import type { ProductDetail } from "@/features/storefront/types";
 import { createBrowserApiClient, toApiStatusError } from "@/lib/api/client";
 
@@ -81,9 +82,12 @@ export async function loadProductForCheckout(code: string): Promise<ProductCheck
     };
   }
   if (response.status === 409) {
-    const unavailable = error as { code?: string; product?: ProductDetail } | undefined;
-    if (!unavailable?.code || unavailable.code === "PRODUCT_UNAVAILABLE") {
-      return { status: "unavailable", product: unavailable?.product };
+    const unavailable = error as { code?: string; product?: unknown } | undefined;
+    if (unavailable?.code === "PRODUCT_UNAVAILABLE") {
+      return {
+        status: "unavailable",
+        product: isFullProductDetail(unavailable.product) ? unavailable.product : undefined,
+      };
     }
   }
   if (response.status === 404) {
@@ -109,7 +113,7 @@ export async function fetchPriceQuote(request: PriceQuoteRequest): Promise<Price
   }
   if (response.status === 409) {
     const conflict = error as { code?: string; message?: string } | undefined;
-    if (!conflict?.code || conflict.code === "PRODUCT_UNAVAILABLE") {
+    if (conflict?.code === "PRODUCT_UNAVAILABLE") {
       throw new ProductUnavailableError(conflict?.message);
     }
   }

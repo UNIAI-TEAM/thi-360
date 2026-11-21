@@ -272,7 +272,7 @@
       "unavailableTitle": "Bộ đề tạm thời chưa bán được."
     },
     "home": {
-      "crossReference": "Bài <examContent>{examName}</examContent> đang hiện ở nhóm <examContent>{bundleName}</examContent>",
+      "crossReference": "Bài <examContent>{examName}</examContent> đang hiện ở nhóm <bundleLink>{bundleName}</bundleLink>",
       "groupFootnote": "Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.",
       "standaloneHeading": "Bài mua lẻ",
       "viewBundle": "Xem bộ đề"

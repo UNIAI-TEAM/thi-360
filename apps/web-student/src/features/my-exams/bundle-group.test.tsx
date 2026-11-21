@@ -79,10 +79,20 @@ describe("groupMyExams & MyExamsView bundle grouping (AC-14)", () => {
 
     const bundleHeading = await screen.findByRole("heading", { level: 3, name: "Bộ đề SP2E khối A00" });
     expect(bundleHeading).toHaveAttribute("data-exam-content");
+    expect(bundleHeading).toHaveClass("wrap-break-word");
+    expect(bundleHeading).toHaveAttribute("tabindex", "-1");
     const bundleSection = bundleHeading.closest("section")!;
-    expect(within(bundleSection).getByText("BO-SP2E-A00")).toBeInTheDocument();
+    const bundleCode = within(bundleSection).getByText("BO-SP2E-A00");
+    expect(bundleCode).toHaveAttribute("data-exam-content");
+    expect(bundleCode).toHaveClass("wrap-anywhere");
     expect(within(bundleSection).getByText("2 bài")).toBeInTheDocument();
     expect(within(bundleSection).getByRole("link", { name: "Xem bộ đề" })).toHaveAttribute("href", "/exams/BO-SP2E-A00");
+
+    // R1-35 / R1-36: phân cấp heading h2 (mục) -> h3 (nhóm bộ) -> h4 (thẻ bài thi trong bộ), bài lẻ giữ h3 dưới h2
+    expect(screen.getByRole("heading", { level: 2, name: "Bài đã mua" })).toBeInTheDocument();
+    expect(within(bundleSection).getByRole("heading", { level: 4, name: "SP2E Toán – Đề luyện số 1" })).toBeInTheDocument();
+    expect(within(bundleSection).getByRole("heading", { level: 4, name: "SP2E Vật lí – Đề luyện số 1" })).toBeInTheDocument();
+    expect(within(bundleSection).queryByRole("heading", { level: 3, name: "SP2E Toán – Đề luyện số 1" })).toBeNull();
 
     // Thẻ 1 (Toán): Tiếp tục, Xem kết quả, Lịch sử độc lập
     expect(within(bundleSection).getByRole("link", { name: "Tiếp tục" })).toHaveAttribute("href", "/attempts/att-math-1");
@@ -144,7 +154,14 @@ describe("groupMyExams & MyExamsView bundle grouping (AC-14)", () => {
       ),
     ).toBeInTheDocument();
     expect(within(oldGroup).getByText("SP2E Toán – Đề luyện số 1")).toHaveAttribute("data-exam-content");
-    expect(within(oldGroup).getByText("Bộ đề SP2E Mới")).toHaveAttribute("data-exam-content");
+    const crossRefLink = within(oldGroup).getByRole("link", { name: "Bộ đề SP2E Mới" });
+    expect(crossRefLink).toHaveAttribute("href", "#bundle-group-bnd-new");
+    expect(crossRefLink).toHaveAttribute("data-exam-content");
+    expect(crossRefLink).toHaveClass("focus-visible:ring-primary-text", "pointer-coarse:after:-inset-x-2");
+    expect(screen.getByRole("heading", { level: 3, name: "Bộ đề SP2E Mới" })).toHaveAttribute(
+      "id",
+      "bundle-group-bnd-new",
+    );
   });
 
   it("giao diện tiếng Anh không lẫn chữ giao diện tiếng Việt ngoài data-exam-content", async () => {

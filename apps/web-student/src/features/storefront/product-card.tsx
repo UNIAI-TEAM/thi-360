@@ -61,8 +61,8 @@ export function ProductCard({ product, action }: { product: ProductCardData; act
     <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
       <Link href={href} tabIndex={-1} aria-hidden className="block">
         {isBundle ? (
-          <div className="flex aspect-video flex-col justify-between bg-[#065F46] bg-[linear-gradient(115deg,#065F46,#047857)] p-4 text-white forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
-            <span className="self-start rounded-full border border-white/30 bg-black/20 px-2.5 py-0.5 text-caption font-semibold text-white forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
+          <div className="flex aspect-video flex-col justify-between bg-primary-fill bg-[linear-gradient(115deg,var(--color-primary-fill-active),var(--color-primary-fill))] p-4 text-on-primary forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
+            <span className="self-start rounded-full border border-on-primary/35 bg-primary-fill-active px-2.5 py-0.5 text-caption font-semibold text-on-primary forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
               {product.examKind.code}
             </span>
             <div className="flex items-center gap-2">

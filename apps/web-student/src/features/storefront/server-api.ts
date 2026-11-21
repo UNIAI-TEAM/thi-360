@@ -1,6 +1,7 @@
 import { createApiClient } from "@thi360/api-client";
 import { resolveApiBase } from "@thi360/web-kit/proxy";
 import { type CatalogQuery, toApiQuery } from "./catalog-query";
+import { isFullProductDetail } from "./format";
 import type { Loaded, ProductDetail, ProductLookup, ProductPage, StorefrontFilters } from "./types";
 
 /** Cache dữ liệu danh mục ở máy chủ web 60 giây (TM 11.1); API công khai cũng trả `Cache-Control: max-age=60`. */
@@ -59,9 +60,12 @@ export async function loadProductOnServer(code: string): Promise<ProductLookup> 
   }
   if (response.status === 404) return { status: "notFound" };
   if (response.status === 409) {
-    const unavailable = error as { code?: string; product?: ProductDetail } | undefined;
-    if (!unavailable?.code || unavailable.code === "PRODUCT_UNAVAILABLE") {
-      return { status: "unavailable", product: unavailable?.product };
+    const unavailable = error as { code?: string; product?: unknown } | undefined;
+    if (unavailable?.code === "PRODUCT_UNAVAILABLE") {
+      return {
+        status: "unavailable",
+        product: isFullProductDetail(unavailable.product) ? unavailable.product : undefined,
+      };
     }
   }
   if (response.status === 410) {

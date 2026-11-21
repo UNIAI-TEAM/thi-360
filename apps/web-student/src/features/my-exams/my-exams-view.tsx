@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Button, EmptyState, SectionTitle, Skeleton } from "@thi360/ui";
+import { Badge, Button, cn, EmptyState, focusRing, SectionTitle, Skeleton } from "@thi360/ui";
 import { APP_TIME_ZONE } from "@thi360/web-kit/preferences";
 import { Compass, FileText, Package, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { StudentSession } from "@/features/session/api";
+import { coarseTextHitArea } from "@/lib/styles";
 import { loadMyExams, MY_EXAMS_QUERY_KEY, type MyExamsLoader } from "./api";
 import { groupMyExams } from "./group-my-exams";
 import { CheckingExamCard, MyExamCard } from "./my-exam-card";
@@ -192,12 +193,19 @@ export function MyExamsView({
                         </span>
                         <div className="flex min-w-0 flex-col gap-0.5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 id={headingId} data-exam-content className="text-h3 font-bold text-text">
+                            <h3
+                              id={headingId}
+                              tabIndex={-1}
+                              data-exam-content
+                              className="text-h3 font-bold wrap-break-word text-text focus:outline-hidden"
+                            >
                               {group.bundle.name}
                             </h3>
                             <Badge>{t("examCount", { count: totalInBundle })}</Badge>
                           </div>
-                          <span className="text-caption text-text-muted">{group.bundle.code}</span>
+                          <span data-exam-content className="text-caption wrap-anywhere text-text-muted">
+                            {group.bundle.code}
+                          </span>
                         </div>
                       </div>
                       <Button asChild variant="link" className="min-h-11 px-1">
@@ -210,7 +218,7 @@ export function MyExamsView({
                     {group.cards.length > 0 && (
                       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
                         {group.cards.map((card) => (
-                          <MyExamCard key={card.entitlementId ?? card.code} card={card} />
+                          <MyExamCard key={card.entitlementId ?? card.code} card={card} headingLevel={4} />
                         ))}
                       </div>
                     )}
@@ -223,9 +231,22 @@ export function MyExamsView({
                               examName: ref.examName,
                               bundleName: ref.primaryBundle.name,
                               examContent: (chunks) => (
-                                <span data-exam-content className="font-semibold text-text">
+                                <span data-exam-content className="font-semibold wrap-break-word text-text">
                                   {chunks}
                                 </span>
+                              ),
+                              bundleLink: (chunks) => (
+                                <a
+                                  href={`#bundle-group-${ref.primaryBundle.bundleId}`}
+                                  data-exam-content
+                                  className={cn(
+                                    "rounded-sm font-semibold wrap-break-word text-primary-text underline-offset-2 hover:underline",
+                                    focusRing,
+                                    coarseTextHitArea,
+                                  )}
+                                >
+                                  {chunks}
+                                </a>
                               ),
                             })}
                           </li>

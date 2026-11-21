@@ -7,7 +7,7 @@ import { renderWithProviders } from "@/test/render";
 import { ADMIN_SESSION, STUDENT_SESSION } from "@/test/storefront-fixtures";
 import { BundleDetailView } from "./bundle-detail-view";
 import type { ExamAccessResult } from "./exam-access";
-import { ExamGoneView } from "./exam-status-views";
+import { BundleUnavailableView, ExamGoneView } from "./exam-status-views";
 import type { ProductDetail } from "./types";
 
 const mocks = vi.hoisted(() => ({
@@ -111,23 +111,42 @@ afterEach(() => {
 });
 
 describe("BundleDetailView (AC-3, AC-4, AC-11, AC-12, AC-17, A7.7)", () => {
-  it("AC-11 & AC-17: hiện tên bộ, banner hero-dark chữ trắng, từng bài với môn/câu/thời lượng/điểm/quyền lợi và nhãn Bài ôn", async () => {
+  it("AC-11 & AC-17: hiện tên bộ, banner token semantic primary-fill / on-primary, focusRing & coarseTextHitArea, từng bài với môn/câu/thời lượng/điểm/quyền lợi và nhãn Bài ôn", async () => {
     const { container } = renderWithProviders(<BundleDetailView product={BUNDLE_DETAIL} />);
 
-    expect(screen.getByRole("heading", { level: 1, name: BUNDLE_DETAIL.name })).toHaveAttribute("data-exam-content");
+    const titleHeading = screen.getByRole("heading", { level: 1, name: BUNDLE_DETAIL.name });
+    expect(titleHeading).toHaveAttribute("data-exam-content");
+    expect(titleHeading).toHaveClass("wrap-break-word");
     expect(screen.getByText(BUNDLE_DETAIL.summary!)).toHaveAttribute("data-exam-content");
     expect(screen.getByText(BUNDLE_DETAIL.description!)).toHaveAttribute("data-exam-content");
-    expect(screen.getByText("BO-SP2E-001")).toBeInTheDocument();
 
-    const banner = container.querySelector(".text-white");
+    const codeEl = screen.getByText("BO-SP2E-001");
+    expect(codeEl).toHaveAttribute("data-exam-content");
+    expect(codeEl).toHaveClass("wrap-anywhere");
+
+    const banner = container.querySelector(".bg-primary-fill");
     expect(banner).not.toBeNull();
-    expect(banner).not.toHaveClass("text-on-primary");
+    expect(banner).toHaveClass(
+      "bg-primary-fill",
+      "text-on-primary",
+      "forced-colors:bg-[Canvas]",
+      "forced-colors:text-[CanvasText]",
+    );
+    expect(banner).not.toHaveClass("text-white");
+    expect(banner?.className).not.toMatch(/#065F46|#047857/i);
+    expect(banner?.querySelector(".bg-primary-fill-active")).toHaveClass("border-on-primary/35", "text-on-primary");
+
+    const breadcrumbNav = screen.getByRole("navigation", { name: "Vị trí trang" });
+    for (const bcLink of within(breadcrumbNav).getAllByRole("link")) {
+      expect(bcLink).toHaveClass("focus-visible:ring-primary-text", "pointer-coarse:after:-inset-x-2");
+    }
 
     const itemsSection = screen.getByRole("region", { name: "Các bài trong bộ" });
     const examLinks = within(itemsSection).getAllByRole("link");
     expect(examLinks[0]).toHaveTextContent("SP2E Toán – Đề luyện số 1");
     expect(examLinks[0]).toHaveAttribute("href", "/exams/SP2E-TOAN-01");
     expect(examLinks[0]).toHaveAttribute("data-exam-content");
+    expect(examLinks[0]).toHaveClass("focus-visible:ring-primary-text", "pointer-coarse:after:-inset-x-2", "wrap-break-word");
     expect(examLinks[1]).toHaveTextContent("SP2E Vật lí – Ôn tập chương");
     expect(examLinks[1]).toHaveAttribute("href", "/exams/SP2E-LY-01");
 
@@ -143,13 +162,15 @@ describe("BundleDetailView (AC-3, AC-4, AC-11, AC-12, AC-17, A7.7)", () => {
     expect(within(itemsSection).getByText("Điểm, đáp án và lời giải")).toBeInTheDocument();
     expect(within(itemsSection).getByText("Có gợi ý phần Hình học")).toHaveAttribute("data-exam-content");
 
-    // Khách: luôn có nút Mua bộ đề dẫn tới /login kèm callbackUrl checkout
+    // Khách: luôn có nút Mua bộ đề dẫn tới /login kèm callbackUrl checkout và link Đăng ký có focusRing + coarseTextHitArea
     const aside = screen.getByRole("complementary");
     const buyLink = await within(aside).findByRole("link", { name: "Mua bộ đề" });
     expect(buyLink).toHaveAttribute(
       "href",
       `/login?callbackUrl=${encodeURIComponent("/checkout/BO-SP2E-001?v=2&p=299000")}`,
     );
+    const registerLink = within(aside).getByRole("link", { name: "Đăng ký" });
+    expect(registerLink).toHaveClass("focus-visible:ring-primary-text", "pointer-coarse:after:-inset-x-2");
     expect(within(aside).getByText("299.000 đ")).toBeInTheDocument();
     expect(within(aside).getByText("349.000 đ").closest("s")).not.toBeNull();
   });
@@ -307,5 +328,57 @@ describe("BundleDetailView (AC-3, AC-4, AC-11, AC-12, AC-17, A7.7)", () => {
     clone.querySelectorAll("[data-exam-content]").forEach((node) => node.remove());
     const textWithoutFallbackSubject = (clone.textContent ?? "").replaceAll("Vật lí", "");
     expect(textWithoutFallbackSubject).not.toMatch(/[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i);
+  });
+
+  it("R1-24: bài IN_PROGRESS ở lượt cuối (attemptsLeft === 0) không hiện thông báo '0 lượt'", async () => {
+    mocks.session.current = STUDENT_SESSION;
+    mocks.access.mockResolvedValue({
+      kind: "rows",
+      rows: [
+        {
+          code: "BO-SP2E-001",
+          state: "NONE",
+          attemptsLeft: 0,
+          entitlementId: null,
+          activeAttemptId: null,
+          hasPendingFulfillment: false,
+          pendingOrderCode: null,
+          items: [
+            {
+              examId: "ex-math",
+              code: "SP2E-TOAN-01",
+              name: "SP2E Toán – Đề luyện số 1",
+              state: "IN_PROGRESS",
+              attemptsLeft: 0,
+              entitlementId: "ent-1",
+              activeAttemptId: "att-1",
+              hasPendingFulfillment: false,
+              pendingOrderCode: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    renderWithProviders(<BundleDetailView product={BUNDLE_DETAIL} />);
+
+    expect(await screen.findByRole("link", { name: "Mua bộ đề" })).toBeInTheDocument();
+    expect(screen.queryByText(/Bạn đã có 0 lượt/)).toBeNull();
+    expect(screen.queryByText(/0 lượt/)).toBeNull();
+  });
+
+  it("R1-39: dựng BundleUnavailableView ở cả vi và en với nút Mua bộ đề bị khóa và link /#exams", () => {
+    const viView = renderWithProviders(<BundleUnavailableView />);
+    expect(screen.getByRole("heading", { level: 1, name: "Bộ đề tạm thời chưa bán được." })).toBeInTheDocument();
+    const viBtn = screen.getByRole("button", { name: "Mua bộ đề" });
+    expect(viBtn).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Về danh mục bài thi" })).toHaveAttribute("href", "/#exams");
+    viView.unmount();
+
+    renderWithProviders(<BundleUnavailableView />, { locale: "en", messages: enMessages });
+    expect(screen.getByRole("heading", { level: 1, name: "This bundle is temporarily unavailable." })).toBeInTheDocument();
+    const enBtn = screen.getByRole("button", { name: "Buy bundle" });
+    expect(enBtn).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Back to the exam catalog" })).toHaveAttribute("href", "/#exams");
   });
 });

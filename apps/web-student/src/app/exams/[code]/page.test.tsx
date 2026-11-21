@@ -1,7 +1,10 @@
+import { screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { BundleDetailView } from "@/features/storefront/bundle-detail-view";
 import { BundleUnavailableView } from "@/features/storefront/exam-status-views";
 import viMessages from "@/messages/vi.json";
+import { renderWithProviders } from "@/test/render";
 import { FULL_DETAIL } from "@/test/storefront-fixtures";
 import ExamPage, { generateMetadata } from "./page";
 
@@ -65,13 +68,28 @@ describe("/exams/[code]", () => {
 
     mocks.lookup.mockResolvedValueOnce({ status: "unavailable" });
     const unavailableEmpty = await ExamPage(params("BUNDLE-UNAVAIL"));
-    expect((unavailableEmpty as { props: { children: { type: unknown } } }).props.children.type).toBe(BundleUnavailableView);
+    const unavailableEmptyChild = (unavailableEmpty as { props: { children: ReactElement } }).props.children;
+    expect(unavailableEmptyChild.type).toBe(BundleUnavailableView);
+    const renderedEmpty = renderWithProviders(unavailableEmptyChild);
+    expect(screen.getByRole("heading", { level: 1, name: "Bộ đề tạm thời chưa bán được." })).toBeInTheDocument();
+    renderedEmpty.unmount();
     await expect(
       (async () => {
         mocks.lookup.mockResolvedValueOnce({ status: "unavailable" });
         return generateMetadata(params("BUNDLE-UNAVAIL"));
       })(),
     ).resolves.toEqual({ title: viMessages.bundle.unavailablePage.title });
+
+    // R1-45 / R1-46: sản phẩm không phải bộ đề ở trạng thái unavailable cũng rơi về BundleUnavailableView, không dựng BundleDetailView
+    mocks.lookup.mockResolvedValueOnce({ status: "unavailable", product: FULL_DETAIL });
+    const unavailableExam = await ExamPage(params("HSA-FULL-01"));
+    expect((unavailableExam as { props: { children: { type: unknown } } }).props.children.type).toBe(
+      BundleUnavailableView,
+    );
+    mocks.lookup.mockResolvedValueOnce({ status: "unavailable", product: FULL_DETAIL });
+    await expect(generateMetadata(params("HSA-FULL-01"))).resolves.toEqual({
+      title: viMessages.bundle.unavailablePage.title,
+    });
 
     mocks.lookup.mockResolvedValueOnce({ status: "unavailable", product: bundleProduct });
     const unavailableWithProduct = await ExamPage(params("BUNDLE-HSA-01"));

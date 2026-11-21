@@ -1,5 +1,5 @@
 import { APP_TIME_ZONE } from "@thi360/web-kit/preferences";
-import type { DecimalRange, IntRange } from "./types";
+import type { DecimalRange, IntRange, ProductDetail } from "./types";
 
 /** Nhãn "Bài ôn" khi bài xây từ chế độ ôn tập (`buildMode = REVIEW`, BS 2). */
 export const REVIEW_BUILD_MODE = "REVIEW";
@@ -7,6 +7,20 @@ export const REVIEW_BUILD_MODE = "REVIEW";
 /** Nhận diện sản phẩm bộ đề theo `productType` hoặc `format`. */
 export function isBundleProduct(product: { productType?: string | null; format?: string | null }): boolean {
   return product.productType === "BUNDLE" || product.format === "BUNDLE";
+}
+
+/** Kiểm tra dữ liệu chi tiết sản phẩm đầy đủ từ phản hồi API (tránh payload rút gọn ở 409 gây TypeError). */
+export function isFullProductDetail(value: unknown): value is ProductDetail {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.code !== "string" || typeof candidate.name !== "string") return false;
+  if (typeof candidate.listPrice !== "number" || !Number.isFinite(candidate.listPrice)) return false;
+  if (typeof candidate.price !== "number" || !Number.isFinite(candidate.price)) return false;
+  const examKind = candidate.examKind;
+  if (typeof examKind !== "object" || examKind === null) return false;
+  if (typeof (examKind as Record<string, unknown>).code !== "string") return false;
+  if (typeof candidate.benefits !== "object" || candidate.benefits === null) return false;
+  return true;
 }
 
 // `en-GB` luôn cho "dd/MM"; mẫu của `vi` là "dd-MM", không đúng quy ước ngày của DESIGN.md mục 8.

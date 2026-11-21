@@ -473,18 +473,45 @@ export function CheckoutView({
 
     if (!accessRow) return null;
 
+    const checkingBanner = isBlockedByChecking ? (
+      <section
+        role="status"
+        className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-warning border-l-4 bg-warning-bg p-5"
+      >
+        <div className="flex min-w-0 flex-1 basis-72 items-start gap-3">
+          <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
+          <div className="flex flex-col gap-1">
+            <h2 className="text-title font-semibold text-warning">
+              {t("accessBanner.checkingTitle", { orderCode: pendingOrderCode ?? "" })}
+            </h2>
+            <p className="text-body text-text-secondary">{t("accessBanner.checkingDescription")}</p>
+          </div>
+        </div>
+        <Button asChild variant="secondary" className="shrink-0">
+          <Link
+            href={
+              pendingOrderCode
+                ? `/checkout/result?order=${encodeURIComponent(pendingOrderCode)}&state=checking`
+                : "/account/orders"
+            }
+          >
+            {t("accessBanner.viewPaymentStatus")}
+          </Link>
+        </Button>
+      </section>
+    ) : null;
+
     if (isBundle && bundleAccessItems.length > 0) {
-      const ownedBundleItems = bundleAccessItems.filter(
-        (item) => item.attemptsLeft > 0 || item.state === "CAN_START" || item.state === "IN_PROGRESS",
-      );
+      const ownedBundleItems = bundleAccessItems.filter((item) => item.attemptsLeft > 0);
       const pendingBundleItems = bundleAccessItems.filter(
         (item) => item.hasPendingFulfillment || item.state === "CHECKING",
       );
-      if (ownedBundleItems.length === 0 && pendingBundleItems.length === 0 && !isBlockedByChecking) {
+      if (ownedBundleItems.length === 0 && pendingBundleItems.length === 0 && !checkingBanner) {
         return null;
       }
       return (
         <div className="flex flex-col gap-3">
+          {checkingBanner}
           {ownedBundleItems.length > 0 && (
             <section
               role="status"
@@ -544,29 +571,8 @@ export function CheckoutView({
       );
     }
 
-    if (isBlockedByChecking) {
-      const resultHref = pendingOrderCode
-        ? `/checkout/result?order=${encodeURIComponent(pendingOrderCode)}&state=checking`
-        : "/account/orders";
-      return (
-        <section
-          role="status"
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-warning border-l-4 bg-warning-bg p-5"
-        >
-          <div className="flex min-w-0 flex-1 basis-72 items-start gap-3">
-            <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
-            <div className="flex flex-col gap-1">
-              <h2 className="text-title font-semibold text-warning">
-                {t("accessBanner.checkingTitle", { orderCode: pendingOrderCode ?? "" })}
-              </h2>
-              <p className="text-body text-text-secondary">{t("accessBanner.checkingDescription")}</p>
-            </div>
-          </div>
-          <Button asChild variant="secondary" className="shrink-0">
-            <Link href={resultHref}>{t("accessBanner.viewPaymentStatus")}</Link>
-          </Button>
-        </section>
-      );
+    if (checkingBanner) {
+      return checkingBanner;
     }
 
     if (hasExistingAccess) {
@@ -637,7 +643,9 @@ export function CheckoutView({
             )}
           >
             <ArrowLeft aria-hidden className="size-4" />
-            {isBundle ? bundleT("checkout.backToBundle") : t("backToExam")}
+            {isBundle || (effectiveLookup?.status === "unavailable" && !product)
+              ? bundleT("checkout.backToBundle")
+              : t("backToExam")}
           </Link>
         </div>
 
@@ -977,7 +985,9 @@ export function CheckoutView({
                                   <div className="flex items-baseline gap-1">
                                     <dt className="sr-only">{detailRights("attempts")}</dt>
                                     <dd className="m-0 font-medium text-text">
-                                      {storefront("units.attempts", { count: item.attemptsGranted })}
+                                      {storefront("units.attempts", {
+                                        count: activeQuote?.attemptsGranted ?? item.attemptsGranted,
+                                      })}
                                     </dd>
                                   </div>
                                   {resultViewLabel && (
@@ -1004,18 +1014,18 @@ export function CheckoutView({
                       <span>
                         {t("product.attemptsGranted", { count: activeQuote?.attemptsGranted ?? product.attemptsGranted })}
                       </span>
-                      {rangeText(product.questionCount) && (
+                      {rangeText(product.questionCount, locale) && (
                         <span>
                           {storefront("units.questions", {
-                            value: rangeText(product.questionCount)!,
+                            value: rangeText(product.questionCount, locale)!,
                             count: product.questionCount?.max ?? 0,
                           })}
                         </span>
                       )}
-                      {rangeText(product.durationMinutes) && (
+                      {rangeText(product.durationMinutes, locale) && (
                         <span>
                           {storefront("units.minutes", {
-                            value: rangeText(product.durationMinutes)!,
+                            value: rangeText(product.durationMinutes, locale)!,
                             count: product.durationMinutes?.max ?? 0,
                           })}
                         </span>

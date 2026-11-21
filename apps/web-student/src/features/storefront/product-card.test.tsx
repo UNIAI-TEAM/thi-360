@@ -133,7 +133,7 @@ describe("ProductCard", () => {
     expect(within(article).getByText("79,000 VND")).toBeInTheDocument();
   });
 
-  it("thẻ bộ đề: hiện dải hero-dark chữ trắng (không dùng text-on-primary), nhãn Bộ đề, lượt mỗi bài và nút Mua bộ đề (AC-10)", () => {
+  it("thẻ bộ đề: hiện banner dùng token semantic primary-fill / on-primary (không hardcoded hex hay text-white), nhãn Bộ đề, lượt mỗi bài và nút Mua bộ đề (AC-10, R1-13)", () => {
     const { container } = renderWithProviders(
       <ProductCard
         product={BUNDLE_CARD}
@@ -160,9 +160,19 @@ describe("ProductCard", () => {
     );
 
     const article = card(BUNDLE_CARD.name);
-    const banner = article.querySelector(".text-white");
+    const banner = article.querySelector(".bg-primary-fill");
     expect(banner).not.toBeNull();
-    expect(banner).not.toHaveClass("text-on-primary");
+    expect(banner).toHaveClass(
+      "bg-primary-fill",
+      "text-on-primary",
+      "forced-colors:bg-[Canvas]",
+      "forced-colors:text-[CanvasText]",
+    );
+    expect(banner).not.toHaveClass("text-white");
+    expect(banner?.className).not.toMatch(/#065F46|#047857/i);
+    const bannerChip = banner?.querySelector(".bg-primary-fill-active");
+    expect(bannerChip).not.toBeNull();
+    expect(bannerChip).toHaveClass("border-on-primary/35", "text-on-primary");
     expect(container.querySelector("img")).toBeNull();
     expect(within(article).getAllByText("Bộ đề").length).toBeGreaterThanOrEqual(1);
     expect(within(article).getByText("96 câu · 210 phút · 2 lượt mỗi bài")).toBeInTheDocument();

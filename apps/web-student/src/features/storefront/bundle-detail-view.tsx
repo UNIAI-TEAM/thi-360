@@ -3,6 +3,7 @@ import { pickName } from "@thi360/web-kit/i18n";
 import { Package } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
+import { coarseTextHitArea } from "@/lib/styles";
 import { BundleBuyPanel } from "./bundle-buy-panel";
 import { SectionHeading, SupportLine, YesNo } from "./exam-detail-view";
 import { REVIEW_BUILD_MODE, rangeText } from "./format";
@@ -38,7 +39,11 @@ function BundleExamRow({ item, index }: { item: BundleDetailItem; index: number 
             <Link
               href={`/exams/${encodeURIComponent(item.code)}`}
               data-exam-content
-              className={cn("rounded-sm text-title font-semibold text-text hover:text-primary-text hover:underline", focusRing)}
+              className={cn(
+                "rounded-sm text-title font-semibold wrap-break-word text-text hover:text-primary-text hover:underline",
+                focusRing,
+                coarseTextHitArea,
+              )}
             >
               {item.name}
             </Link>
@@ -148,18 +153,18 @@ export function BundleDetailView({
       <nav aria-label={detail("breadcrumbLabel")}>
         <ol className="flex flex-wrap items-center gap-2 text-field-label text-text-muted">
           <li>
-            <Link href="/" className={cn("rounded-sm hover:underline", focusRing)}>
+            <Link href="/" className={cn("rounded-sm hover:underline", focusRing, coarseTextHitArea)}>
               {detail("breadcrumbHome")}
             </Link>
           </li>
           <li aria-hidden>/</li>
           <li>
-            <Link href="/#exams" className={cn("rounded-sm hover:underline", focusRing)}>
+            <Link href="/#exams" className={cn("rounded-sm hover:underline", focusRing, coarseTextHitArea)}>
               {detail("breadcrumbCatalog")}
             </Link>
           </li>
           <li aria-hidden>/</li>
-          <li aria-current="page" className="text-text" data-exam-content>
+          <li aria-current="page" className="wrap-break-word text-text" data-exam-content>
             {product.name}
           </li>
         </ol>
@@ -168,8 +173,8 @@ export function BundleDetailView({
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[999_1_35rem] flex-col gap-5">
           <section aria-labelledby="p-title" className="overflow-hidden rounded-xl border border-border bg-surface">
-            <div className="flex aspect-[16/5] flex-col justify-between bg-[#065F46] bg-[linear-gradient(115deg,#065F46,#047857)] p-6 text-white forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
-              <span className="self-start rounded-full border border-white/30 bg-black/20 px-3 py-0.5 text-caption font-semibold text-white forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
+            <div className="flex aspect-[16/5] flex-col justify-between bg-primary-fill bg-[linear-gradient(115deg,var(--color-primary-fill-active),var(--color-primary-fill))] p-6 text-on-primary forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
+              <span className="self-start rounded-full border border-on-primary/35 bg-primary-fill-active px-3 py-0.5 text-caption font-semibold text-on-primary forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]">
                 {product.examKind.code}
               </span>
               <div className="flex items-center gap-3">
@@ -189,11 +194,14 @@ export function BundleDetailView({
                     {storefront("review")}
                   </span>
                 )}
-                <span className="text-caption text-text-muted">
-                  {detail("codeLabel")} <strong className="font-semibold text-text">{product.code}</strong>
+                <span className="min-w-0 text-caption text-text-muted">
+                  {detail("codeLabel")}{" "}
+                  <strong data-exam-content className="font-semibold wrap-anywhere text-text">
+                    {product.code}
+                  </strong>
                 </span>
               </div>
-              <h1 id="p-title" data-exam-content className="text-h1 font-bold text-text">
+              <h1 id="p-title" data-exam-content className="text-h1 font-bold wrap-break-word text-text">
                 {product.name}
               </h1>
               {product.summary && (

@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: lookup.product.name, description: lookup.product.summary ?? undefined };
   }
   if (lookup.status === "unavailable") {
-    if (lookup.product) {
+    if (lookup.product && isBundleProduct(lookup.product)) {
       return { title: lookup.product.name, description: lookup.product.summary ?? undefined };
     }
     const bundleT = await getTranslations("bundle");
@@ -47,7 +47,7 @@ export default async function ExamPage({ params }: Props) {
       {lookup.status === "gone" ? (
         <ExamGoneView product={lookup.product} />
       ) : lookup.status === "unavailable" ? (
-        lookup.product ? (
+        lookup.product && isBundleProduct(lookup.product) ? (
           <BundleDetailView product={lookup.product} unavailable />
         ) : (
           <BundleUnavailableView />

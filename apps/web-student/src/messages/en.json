@@ -272,7 +272,7 @@
       "unavailableTitle": "This bundle is temporarily unavailable."
     },
     "home": {
-      "crossReference": "<examContent>{examName}</examContent> is shown under <examContent>{bundleName}</examContent>",
+      "crossReference": "<examContent>{examName}</examContent> is shown under <bundleLink>{bundleName}</bundleLink>",
       "groupFootnote": "Submitting one exam only ends that exam's attempt; other exams in the bundle stay unchanged. Remaining attempts include standalone purchases of the same exam.",
       "standaloneHeading": "Individual exams",
       "viewBundle": "View bundle"

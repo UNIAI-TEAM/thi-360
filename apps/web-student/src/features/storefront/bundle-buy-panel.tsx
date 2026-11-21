@@ -1,10 +1,11 @@
 "use client";
 
-import { Button, Skeleton } from "@thi360/ui";
+import { Button, cn, focusRing, Skeleton } from "@thi360/ui";
 import { Info, RefreshCw, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { withCallbackUrl } from "@/features/account/account-links";
+import { coarseTextHitArea } from "@/lib/styles";
 import { checkoutPath } from "./access-action";
 import { useExamAccess } from "./exam-access";
 import { formatDayMonth, rangeText } from "./format";
@@ -12,7 +13,7 @@ import { ProductPrice } from "./product-price";
 import type { BundleAccessExamItem, ProductDetail } from "./types";
 
 function hasOwnedAttempts(item: BundleAccessExamItem): boolean {
-  return item.attemptsLeft > 0 || item.state === "CAN_START" || item.state === "IN_PROGRESS";
+  return item.attemptsLeft > 0;
 }
 
 /** Khung "Giá bộ" của trang chi tiết bộ đề (AC-3, AC-11, AC-12). */
@@ -138,7 +139,11 @@ export function BundleBuyPanel({
             <Link
               href={withCallbackUrl("/register", checkout)}
               prefetch={false}
-              className="font-medium text-primary-text underline-offset-2 hover:underline"
+              className={cn(
+                "rounded-sm font-medium text-primary-text underline-offset-2 hover:underline",
+                focusRing,
+                coarseTextHitArea,
+              )}
             >
               {header("register")}
             </Link>
