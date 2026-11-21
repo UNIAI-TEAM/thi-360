@@ -2,6 +2,7 @@ package vn.unicom.thi360.commerce.order.expiry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,12 +29,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.commerce.payment.domain.LateSuccessReview;
+import vn.unicom.thi360.commerce.payment.domain.Payment;
 import vn.unicom.thi360.commerce.payment.domain.PaymentEventSource;
 import vn.unicom.thi360.commerce.payment.domain.PaymentState;
 import vn.unicom.thi360.commerce.payment.gateway.MockVnpayGateway;
 import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway;
+import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.QueryDrRequest;
 import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.QueryDrResult;
 import vn.unicom.thi360.commerce.payment.gateway.VnpaySigner;
+import vn.unicom.thi360.commerce.payment.infrastructure.PaymentRepository;
 import vn.unicom.thi360.commerce.payment.vnpay.QueryDrService;
 import vn.unicom.thi360.commerce.payment.vnpay.VnpayTestClockConfig;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
@@ -60,6 +65,7 @@ class LatePaymentAfterExpiryIT extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
+    @Autowired private PaymentRepository paymentRepository;
     @Autowired private OrderExpiryService orderExpiryService;
     @Autowired private QueryDrService queryDrService;
     @Autowired private MutableClock mutableClock;
@@ -194,6 +200,77 @@ class LatePaymentAfterExpiryIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = ? AND signature_valid = true",
                 Integer.class, unknownAttempt.id(), PaymentEventSource.QUERYDR.name())).isEqualTo(1);
+    }
+
+    @Test
+    void lateSuccessOnOriginalFailedAttemptAfterOrderExpiryRoutesToCaCPendingReview() throws Exception {
+        Instant t0 = mutableClock.instant();
+        LearnerAccount buyer1 = fixtures.createLearner();
+        LearnerAccount buyer2 = fixtures.createLearner();
+        StoredTestProduct product = fixtures.insertOnSaleProduct("HSA", 200_000L, 3);
+        Promotion voucher = fixtures.createVoucher(
+                "AC20CAC", DiscountType.AMOUNT, 50_000L, null,
+                t0.minus(1, ChronoUnit.HOURS), t0.plus(1, ChronoUnit.DAYS),
+                5, 1, true, PromotionScope.ALL, PromotionAudienceType.ALL);
+
+        // 1. Tạo 2 đơn thật có attempt_seq = 1 rồi để OrderExpiryService đóng sang EXPIRED (00/02 -> FAILED).
+        OrderHandle oIpn = createOrder(buyer1, product, voucher.getCode(), 150_000L);
+        OrderHandle oQdr = createOrder(buyer2, product, voucher.getCode(), 150_000L);
+
+        mutableClock.setAt(t0.plus(Duration.ofMinutes(20)));
+        doAnswer(inv -> {
+            QueryDrRequest req = inv.getArgument(0);
+            return signedResult("00", "02", req.txnRef(), 150_000L, "0");
+        }).when(vnpayGateway).queryDr(any());
+        orderExpiryService.expirePendingOrders();
+
+        assertThat(orderState(oIpn.orderId())).isEqualTo("EXPIRED");
+        assertThat(orderState(oQdr.orderId())).isEqualTo("EXPIRED");
+        assertThat(redemptionState(oIpn.orderId(), voucher.getId())).isEqualTo("RELEASED");
+        assertThat(redemptionState(oQdr.orderId(), voucher.getId())).isEqualTo("RELEASED");
+        assertThat(promoStat(voucher.getId(), "used_count")).isZero();
+
+        // 2. Tiền về muộn qua IPN trên đúng lần FAILED attempt_seq = 1 -> BS §14 Ca C (chờ CM-5 /late-success).
+        callIpn(oIpn.firstTxnRef(), 150_000L, "99003001")
+                .andExpect(jsonPath("$.RspCode").value("00"));
+
+        Payment pIpn = paymentRepository.findByTxnRef(oIpn.firstTxnRef()).orElseThrow();
+        assertThat(pIpn.getState()).isEqualTo(PaymentState.FAILED);
+        assertThat(pIpn.getLateSuccessReview()).isEqualTo(LateSuccessReview.PENDING);
+        assertThat(pIpn.getVnpTransactionNo()).isEqualTo("99003001");
+        assertThat(orderState(oIpn.orderId())).isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject(
+                "SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, oIpn.orderId()))
+                .isFalse();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?", Integer.class, oIpn.orderId()))
+                .isZero();
+        assertThat(redemptionState(oIpn.orderId(), voucher.getId())).isEqualTo("RELEASED");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.order_history WHERE order_id = ? AND reason = ?",
+                Integer.class, oIpn.orderId(), "LATE_SUCCESS_PENDING_REVIEW:" + oIpn.firstTxnRef())).isEqualTo(1);
+
+        // 3. Tiền về muộn qua querydr trên đúng lần FAILED attempt_seq = 1 -> BS §14 Ca C (chờ CM-5 /late-success).
+        Payment pQdrBefore = paymentRepository.findByTxnRef(oQdr.firstTxnRef()).orElseThrow();
+        doReturn(signedResult("00", "00", oQdr.firstTxnRef(), 150_000L, "99003002"))
+                .when(vnpayGateway).queryDr(any());
+        queryDrService.queryPaymentNow(pQdrBefore.getId());
+
+        Payment pQdr = paymentRepository.findById(pQdrBefore.getId()).orElseThrow();
+        assertThat(pQdr.getState()).isEqualTo(PaymentState.FAILED);
+        assertThat(pQdr.getLateSuccessReview()).isEqualTo(LateSuccessReview.PENDING);
+        assertThat(pQdr.getVnpTransactionNo()).isEqualTo("99003002");
+        assertThat(orderState(oQdr.orderId())).isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject(
+                "SELECT needs_review FROM commerce.purchase_order WHERE id = ?", Boolean.class, oQdr.orderId()))
+                .isFalse();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?", Integer.class, oQdr.orderId()))
+                .isZero();
+        assertThat(redemptionState(oQdr.orderId(), voucher.getId())).isEqualTo("RELEASED");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.payment_event WHERE payment_id = ? AND source = ? AND signature_valid = true AND outcome = 'LATE_SUCCESS_PENDING_00'",
+                Integer.class, pQdr.getId(), PaymentEventSource.QUERYDR.name())).isEqualTo(1);
     }
 
     private OrderHandle createOrder(

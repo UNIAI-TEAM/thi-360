@@ -80,6 +80,7 @@ public class QueryDrClaimRepository {
                 FROM commerce.payment p
                 WHERE p.order_id = ?
                   AND p.state IN ('CREATED', 'UNKNOWN')
+                  AND p.created_at >= ?
                   AND (p.next_query_at IS NULL OR p.next_query_at <= ?)
                 ORDER BY p.attempt_seq ASC, p.id ASC
                 FOR UPDATE SKIP LOCKED
@@ -151,25 +152,75 @@ public class QueryDrClaimRepository {
     }
 
     /**
-     * Nhận toàn bộ lần thanh toán mở chưa quá cooldown của một đơn (dùng cho worker hết hạn đơn)
-     * và đặt {@code next_query_at = now + cooldown} trong transaction {@code REQUIRES_NEW}.
+     * Nhận toàn bộ lần thanh toán mở trong cửa sổ {@code maxAge} chưa quá cooldown của một đơn
+     * (dùng cho worker hết hạn đơn) và đặt {@code next_query_at = now + cooldown} trong {@code REQUIRES_NEW}.
      */
-    public List<ClaimedPayment> claimOpenForOrder(UUID orderId, Instant now, Duration cooldown) {
+    public List<ClaimedPayment> claimOpenForOrder(
+            UUID orderId, Instant now, Duration maxAge, Duration cooldown) {
         Objects.requireNonNull(orderId, "orderId must not be null");
         Objects.requireNonNull(now, "now must not be null");
+        Objects.requireNonNull(maxAge, "maxAge must not be null");
         Objects.requireNonNull(cooldown, "cooldown must not be null");
+        Instant maxCutoff = now.minus(maxAge);
         Instant nextQueryAt = now.plus(cooldown);
 
         List<ClaimedPayment> result = requiresNewTx.execute(status -> jdbcTemplate.query(
                 CLAIM_FOR_ORDER_SQL,
                 (PreparedStatement ps) -> {
                     ps.setObject(1, orderId);
-                    ps.setObject(2, utc(now));
-                    ps.setObject(3, utc(nextQueryAt));
-                    ps.setObject(4, utc(now));
+                    ps.setObject(2, utc(maxCutoff));
+                    ps.setObject(3, utc(now));
+                    ps.setObject(4, utc(nextQueryAt));
+                    ps.setObject(5, utc(now));
                 },
                 ROW_MAPPER));
         return result == null ? List.of() : result;
+    }
+
+    /**
+     * Chuyển các lần thanh toán {@code CREATED} đã quá ngưỡng {@code maxAge} sang {@code UNKNOWN}
+     * và xóa {@code next_query_at} cho các lần mở đã quá 24 giờ trong transaction {@code REQUIRES_NEW}.
+     */
+    public int transitionAgedPaymentsPastMaxAge(Instant cutoff, Instant now) {
+        Objects.requireNonNull(cutoff, "cutoff must not be null");
+        Objects.requireNonNull(now, "now must not be null");
+        OffsetDateTime cutoffUtc = utc(cutoff);
+        OffsetDateTime nowUtc = utc(now);
+        Integer updated = requiresNewTx.execute(status -> {
+            int createdTransitioned = jdbcTemplate.update("""
+                    UPDATE commerce.payment
+                    SET state = 'UNKNOWN', next_query_at = NULL, updated_at = ?, version = version + 1
+                    WHERE state = 'CREATED'
+                      AND created_at < ?
+                    """, nowUtc, cutoffUtc);
+            int unknownCleared = jdbcTemplate.update("""
+                    UPDATE commerce.payment
+                    SET next_query_at = NULL, updated_at = ?, version = version + 1
+                    WHERE state = 'UNKNOWN'
+                      AND created_at < ?
+                      AND next_query_at IS NOT NULL
+                    """, nowUtc, cutoffUtc);
+            return createdTransitioned + unknownCleared;
+        });
+        return updated == null ? 0 : updated;
+    }
+
+    /**
+     * Đẩy {@code next_query_at = now + cooldown} cho lần thanh toán còn mở khi tra cứu trực tiếp
+     * để tránh worker nền tra cứu trùng lặp ngay sau đó.
+     */
+    public void extendCooldownIfOpen(UUID paymentId, Instant now, Duration cooldown) {
+        Objects.requireNonNull(paymentId, "paymentId must not be null");
+        Objects.requireNonNull(now, "now must not be null");
+        Objects.requireNonNull(cooldown, "cooldown must not be null");
+        OffsetDateTime nextQueryAtUtc = utc(now.plus(cooldown));
+        OffsetDateTime nowUtc = utc(now);
+        requiresNewTx.executeWithoutResult(status -> jdbcTemplate.update("""
+                UPDATE commerce.payment
+                SET next_query_at = ?, updated_at = ?, version = version + 1
+                WHERE id = ?
+                  AND state IN ('CREATED', 'UNKNOWN')
+                """, nextQueryAtUtc, nowUtc, paymentId));
     }
 
     private static ClaimedPayment mapRow(ResultSet rs, int rowNum) throws SQLException {

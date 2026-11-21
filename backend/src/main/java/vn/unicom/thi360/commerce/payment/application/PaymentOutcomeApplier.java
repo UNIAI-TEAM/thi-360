@@ -131,6 +131,10 @@ public class PaymentOutcomeApplier {
             Map<String, Object> rawPayload,
             boolean signatureValid) {
         Objects.requireNonNull(action, "action must not be null");
+        if (!signatureValid && action != QueryDrOutcomeAction.KEEP_UNCHANGED) {
+            throw new IllegalArgumentException(
+                    "Unsigned querydr outcome cannot mutate payment state: action=" + action);
+        }
         String effectiveOutcomeTag = StringUtils.hasText(outcomeTag)
                 ? outcomeTag.trim()
                 : "QUERYDR_" + action.name();
@@ -242,22 +246,24 @@ public class PaymentOutcomeApplier {
                     metadata.payDate(), metadata.responseCode(), metadata.transactionStatus(), now);
             paymentRepository.save(payment);
             String effectiveReason = StringUtils.hasText(reviewReason) ? reviewReason.trim() : outcomeTag;
-            order.flagNeedsReview(effectiveReason, now);
-            purchaseOrderRepository.save(order);
-            orderHistoryRepository.save(new OrderHistory(
-                    Ids.newId(),
-                    order.getId(),
-                    order.getState(),
-                    order.getState(),
-                    actor,
-                    effectiveReason + ":" + payment.getTxnRef(),
-                    now));
-            auditRecorder.record(AuditEvent.builder("commerce", "PAYMENT_NEEDS_REVIEW")
-                    .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
-                    .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
-                    .reason(effectiveReason)
-                    .after(Map.of("txnRef", payment.getTxnRef(), "outcome", outcomeTag))
-                    .build());
+            if (!order.isNeedsReview()) {
+                order.flagNeedsReview(effectiveReason, now);
+                purchaseOrderRepository.save(order);
+                orderHistoryRepository.save(new OrderHistory(
+                        Ids.newId(),
+                        order.getId(),
+                        order.getState(),
+                        order.getState(),
+                        actor,
+                        effectiveReason + ":" + payment.getTxnRef(),
+                        now));
+                auditRecorder.record(AuditEvent.builder("commerce", "PAYMENT_NEEDS_REVIEW")
+                        .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
+                        .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
+                        .reason(effectiveReason)
+                        .after(Map.of("txnRef", payment.getTxnRef(), "outcome", outcomeTag))
+                        .build());
+            }
             recordEvent(payment.getId(), source, rawPayload, signatureValid, now, outcomeTag);
             return new ApplyResult("00", "Marked unknown needs review", null);
         }

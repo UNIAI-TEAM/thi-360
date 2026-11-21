@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties(prefix = "thi360.commerce.order-expiry")
 public record OrderExpiryProperties(
         @DefaultValue("PT1M") Duration interval,
-        @DefaultValue("20") int batchSize
+        @DefaultValue("20") Integer batchSize
 ) {
 
     private static final Duration DEFAULT_INTERVAL = Duration.ofMinutes(1);
@@ -18,7 +18,7 @@ public record OrderExpiryProperties(
 
     public OrderExpiryProperties {
         interval = interval == null ? DEFAULT_INTERVAL : requirePositive(interval, "interval");
-        batchSize = batchSize == 0 ? DEFAULT_BATCH_SIZE : requirePositiveInt(batchSize, "batchSize");
+        batchSize = batchSize == null ? DEFAULT_BATCH_SIZE : requirePositiveInt(batchSize, "batchSize");
     }
 
     private static Duration requirePositive(Duration duration, String fieldName) {

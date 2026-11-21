@@ -80,24 +80,34 @@ public class VnpayRealModeStartupGuard implements BeanFactoryPostProcessor, Envi
                         "Missing required VNPAY configuration for mode " + mode + ": " + String.join(", ", missing));
             }
 
-            validateHttpUri(payUrl, "THI360_VNPAY_PAY_URL");
-            validateHttpUri(apiUrl, "THI360_VNPAY_API_URL");
+            validateHttpUri(payUrl, "THI360_VNPAY_PAY_URL", mode);
+            validateHttpUri(apiUrl, "THI360_VNPAY_API_URL", mode);
         }
 
         return mode;
     }
 
-    private static void validateHttpUri(String rawUrl, String envVarName) {
+    private static void validateHttpUri(String rawUrl, String envVarName, VnpayMode mode) {
         URI uri;
+        String expectedScheme = mode == VnpayMode.PRODUCTION ? "https" : "http or https";
         try {
             uri = URI.create(rawUrl.trim());
         } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException(envVarName + " must be a valid http or https URI with a host");
+            throw new IllegalStateException(
+                    envVarName + " must be a valid " + expectedScheme + " URI with a host and no fragment");
         }
         String scheme = uri.getScheme();
-        boolean validScheme = "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
-        if (!validScheme || !StringUtils.hasText(uri.getHost())) {
-            throw new IllegalStateException(envVarName + " must be a valid http or https URI with a host");
+        boolean validScheme = mode == VnpayMode.PRODUCTION
+                ? "https".equalsIgnoreCase(scheme)
+                : ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
+        int port = uri.getPort();
+        boolean invalidPort = port != -1 && (port < 1 || port > 65535);
+        if (!validScheme
+                || !StringUtils.hasText(uri.getHost())
+                || uri.getRawFragment() != null
+                || invalidPort) {
+            throw new IllegalStateException(
+                    envVarName + " must be a valid " + expectedScheme + " URI with a host and no fragment");
         }
     }
 

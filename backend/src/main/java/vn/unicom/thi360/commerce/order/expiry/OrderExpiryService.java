@@ -2,11 +2,9 @@ package vn.unicom.thi360.commerce.order.expiry;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +16,7 @@ import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.commerce.order.domain.OrderHistory;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
+import vn.unicom.thi360.commerce.order.expiry.OrderExpiryRepository.ExpiredOrderCandidate;
 import vn.unicom.thi360.commerce.order.expiry.OrderExpiryRepository.LockedOrder;
 import vn.unicom.thi360.commerce.order.expiry.OrderExpiryRepository.LockedPayment;
 import vn.unicom.thi360.commerce.order.infrastructure.OrderHistoryRepository;
@@ -79,24 +78,26 @@ public class OrderExpiryService {
     /** Quét tối đa 25 lô đơn quá hạn, trả về số đơn đã chuyển sang {@code EXPIRED}. */
     public int expirePendingOrders() {
         int expiredCount = 0;
-        Set<UUID> visited = new HashSet<>();
+        ExpiredOrderCandidate cursor = null;
+        int batchSize = orderExpiryProperties.batchSize();
         for (int batch = 0; batch < MAX_BATCHES; batch++) {
-            List<UUID> orderIds = orderExpiryRepository.findExpiredPendingOrderIds(
-                    clock.instant(), visited, orderExpiryProperties.batchSize());
-            if (orderIds.isEmpty()) {
+            List<ExpiredOrderCandidate> candidates = orderExpiryRepository.findExpiredPendingOrderIds(
+                    clock.instant(), queryDrProperties.maxAge(), cursor, batchSize);
+            if (candidates.isEmpty()) {
                 break;
             }
-            for (UUID orderId : orderIds) {
-                if (!visited.add(orderId)) {
-                    continue;
-                }
+            for (ExpiredOrderCandidate candidate : candidates) {
                 try {
-                    if (processExpiredOrder(orderId)) {
+                    if (processExpiredOrder(candidate.id())) {
                         expiredCount++;
                     }
                 } catch (RuntimeException ex) {
-                    log.warn("Unexpected error expiring pending order {}", orderId, ex);
+                    log.warn("Unexpected error expiring pending order {}", candidate.id(), ex);
                 }
+            }
+            cursor = candidates.getLast();
+            if (candidates.size() < batchSize) {
+                break;
             }
         }
         return expiredCount;
@@ -104,9 +105,14 @@ public class OrderExpiryService {
 
     private boolean processExpiredOrder(UUID orderId) {
         List<ClaimedPayment> claimedPayments = queryDrClaimRepository.claimOpenForOrder(
-                orderId, clock.instant(), queryDrProperties.cooldown());
+                orderId, clock.instant(), queryDrProperties.maxAge(), queryDrProperties.cooldown());
         for (ClaimedPayment claimed : claimedPayments) {
-            queryDrService.executeClaimedQuery(claimed);
+            try {
+                queryDrService.executeClaimedQuery(claimed);
+            } catch (RuntimeException ex) {
+                log.warn("Unexpected error executing querydr for claimed payment {} on order {}",
+                        claimed.paymentId(), orderId, ex);
+            }
         }
         return Boolean.TRUE.equals(txTemplate.execute(status -> tryExpireOrderInTx(orderId)));
     }

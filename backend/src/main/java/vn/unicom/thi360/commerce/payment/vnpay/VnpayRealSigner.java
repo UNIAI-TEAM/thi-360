@@ -98,6 +98,18 @@ public class VnpayRealSigner {
 
     /** Dựng chuỗi {@code key=value&...} sắp tăng dần theo tên cho {@code pay} / {@code return} / {@code ipn}. */
     public String buildPaySignData(Map<String, String> params) {
+        return formatPayParams(params, signingProperties.payEncoding());
+    }
+
+    /**
+     * Dựng chuỗi query cho URL chuyển hướng HTTP {@code pay}: luôn mã hóa URL UTF-8
+     * ngay cả khi {@code pay-encoding} là {@link PayEncodingRule#RAW}.
+     */
+    public String buildPayQueryString(Map<String, String> params) {
+        return formatPayParams(params, PayEncodingRule.JAVA_URL_ENCODER);
+    }
+
+    private static String formatPayParams(Map<String, String> params, PayEncodingRule rule) {
         if (params == null || params.isEmpty()) {
             return "";
         }
@@ -113,7 +125,6 @@ public class VnpayRealSigner {
             }
             sorted.put(key, value);
         }
-        PayEncodingRule rule = signingProperties.payEncoding();
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> entry : sorted.entrySet()) {
             if (!sb.isEmpty()) {

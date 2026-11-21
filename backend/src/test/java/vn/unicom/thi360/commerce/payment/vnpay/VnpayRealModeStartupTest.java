@@ -179,6 +179,70 @@ class VnpayRealModeStartupTest {
                             .doesNotContain(SENTINEL_PAY_URL);
                 });
 
+        // R1-26: từ chối #fragment, cổng ngoài [1..65535], và http:// ở PRODUCTION (SANDBOX vẫn cho http://).
+        for (String mode : List.of("SANDBOX", "PRODUCTION")) {
+            for (String invalidUrl : List.of(
+                    "https://sentinel-fragment.example/pay#frag",
+                    "https://sentinel-port.example:70000/pay",
+                    "https://sentinel-zero-port.example:0/pay")) {
+                MockEnvironment invalidUrlEnv = new MockEnvironment()
+                        .withProperty("THI360_VNPAY_MODE", mode)
+                        .withProperty("THI360_VNPAY_TMN_CODE", SENTINEL_TMN)
+                        .withProperty("THI360_VNPAY_HASH_SECRET", SENTINEL_SECRET)
+                        .withProperty("THI360_VNPAY_PAY_URL", invalidUrl)
+                        .withProperty("THI360_VNPAY_API_URL", SENTINEL_API_URL);
+                assertThatThrownBy(() -> VnpayRealModeStartupGuard.validate(invalidUrlEnv))
+                        .isInstanceOf(IllegalStateException.class)
+                        .satisfies(ex -> {
+                            assertThat(ex.getMessage()).contains("THI360_VNPAY_PAY_URL");
+                            assertThat(stackTraceOf(ex))
+                                    .doesNotContain(invalidUrl)
+                                    .doesNotContain(SENTINEL_TMN)
+                                    .doesNotContain(SENTINEL_SECRET);
+                        });
+            }
+        }
+
+        String httpPayUrl = "http://sentinel-http.example:8080/pay";
+        String httpApiUrl = "http://sentinel-http.example:8080/api";
+        MockEnvironment prodHttpPayEnv = new MockEnvironment()
+                .withProperty("THI360_VNPAY_MODE", "PRODUCTION")
+                .withProperty("THI360_VNPAY_TMN_CODE", SENTINEL_TMN)
+                .withProperty("THI360_VNPAY_HASH_SECRET", SENTINEL_SECRET)
+                .withProperty("THI360_VNPAY_PAY_URL", httpPayUrl)
+                .withProperty("THI360_VNPAY_API_URL", SENTINEL_API_URL);
+        assertThatThrownBy(() -> VnpayRealModeStartupGuard.validate(prodHttpPayEnv))
+                .isInstanceOf(IllegalStateException.class)
+                .satisfies(ex -> {
+                    assertThat(ex.getMessage()).contains("THI360_VNPAY_PAY_URL").contains("https");
+                    assertThat(stackTraceOf(ex))
+                            .doesNotContain(httpPayUrl)
+                            .doesNotContain(SENTINEL_SECRET);
+                });
+
+        MockEnvironment prodHttpApiEnv = new MockEnvironment()
+                .withProperty("THI360_VNPAY_MODE", "PRODUCTION")
+                .withProperty("THI360_VNPAY_TMN_CODE", SENTINEL_TMN)
+                .withProperty("THI360_VNPAY_HASH_SECRET", SENTINEL_SECRET)
+                .withProperty("THI360_VNPAY_PAY_URL", SENTINEL_PAY_URL)
+                .withProperty("THI360_VNPAY_API_URL", httpApiUrl);
+        assertThatThrownBy(() -> VnpayRealModeStartupGuard.validate(prodHttpApiEnv))
+                .isInstanceOf(IllegalStateException.class)
+                .satisfies(ex -> {
+                    assertThat(ex.getMessage()).contains("THI360_VNPAY_API_URL").contains("https");
+                    assertThat(stackTraceOf(ex))
+                            .doesNotContain(httpApiUrl)
+                            .doesNotContain(SENTINEL_SECRET);
+                });
+
+        MockEnvironment sandboxHttpEnv = new MockEnvironment()
+                .withProperty("THI360_VNPAY_MODE", "SANDBOX")
+                .withProperty("THI360_VNPAY_TMN_CODE", SENTINEL_TMN)
+                .withProperty("THI360_VNPAY_HASH_SECRET", SENTINEL_SECRET)
+                .withProperty("THI360_VNPAY_PAY_URL", httpPayUrl)
+                .withProperty("THI360_VNPAY_API_URL", httpApiUrl);
+        assertThat(VnpayRealModeStartupGuard.validate(sandboxHttpEnv)).isEqualTo(VnpayMode.SANDBOX);
+
         MockEnvironment mockEnv = new MockEnvironment().withProperty("THI360_VNPAY_MODE", "MOCK");
         assertThat(VnpayRealModeStartupGuard.validate(mockEnv)).isEqualTo(VnpayMode.MOCK);
     }

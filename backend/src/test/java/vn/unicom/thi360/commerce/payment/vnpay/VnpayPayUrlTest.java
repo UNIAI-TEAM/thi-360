@@ -16,6 +16,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import vn.unicom.thi360.commerce.payment.gateway.VnpayGateway.PayRequest;
 import vn.unicom.thi360.commerce.payment.gateway.VnpayProperties;
+import vn.unicom.thi360.commerce.payment.vnpay.VnpaySigningProperties.PayEncodingRule;
 
 /**
  * AC-3: Kiểm tra URL {@code pay} đủ tham số TM 8.4, múi giờ GMT+7, {@code vnp_Amount = số tiền × 100},
@@ -154,6 +155,55 @@ class VnpayPayUrlTest {
         assertThatThrownBy(() -> gateway.pay(new PayRequest(
                 "TXN1", "ORD1", 5_000L, "Thanh toan", "vn", "https://thi360.example/return", "127.0.0.1", "2026-11-21", null)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rawPayEncodingStillUrlEncodesRedirectQueryStringAndVerifiesRoundTrip() {
+        VnpayRealSigner rawSigner = new VnpayRealSigner(
+                new VnpaySigningProperties(PayEncodingRule.RAW, null, null, null));
+        VnpayProperties props = new VnpayProperties(
+                "SANDBOX",
+                "TEST-TMN",
+                "TEST-HASH-SECRET-KEY-001",
+                "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+                "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
+                List.of(),
+                null,
+                null,
+                null);
+        RealVnpayGateway rawGateway = new RealVnpayGateway(
+                props,
+                new VnpayClientProperties(null, null, null),
+                rawSigner,
+                new ObjectMapper(),
+                Clock.fixed(FIXED_UTC, ZoneOffset.UTC));
+
+        String orderInfo = "Thanh toan don A & B?x=1";
+        String returnUrl = "https://thi360.example/checkout/result?from=vnpay&step=2";
+        String url = rawGateway.pay(new PayRequest(
+                "DH261121RAW01",
+                "DH261121RAW",
+                50_000L,
+                orderInfo,
+                "vn",
+                returnUrl,
+                "203.0.113.7",
+                null,
+                null));
+
+        URI parsedUri = URI.create(url);
+        assertThat(parsedUri.getRawQuery()).doesNotContain(" ");
+        Map<String, String> decodedParams = parseQueryParams(url);
+        assertThat(decodedParams)
+                .containsEntry("vnp_OrderInfo", orderInfo)
+                .containsEntry("vnp_ReturnUrl", returnUrl)
+                .containsEntry("vnp_TxnRef", "DH261121RAW01")
+                .containsEntry("vnp_Amount", "5000000");
+
+        assertThat(rawGateway.verify(decodedParams)).isTrue();
+        Map<String, String> tampered = new LinkedHashMap<>(decodedParams);
+        tampered.put("vnp_Amount", "100");
+        assertThat(rawGateway.verify(tampered)).isFalse();
     }
 
     private static Map<String, String> parseQueryParams(String url) {

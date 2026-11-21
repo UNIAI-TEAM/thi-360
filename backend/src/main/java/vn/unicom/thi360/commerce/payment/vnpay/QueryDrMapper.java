@@ -55,6 +55,16 @@ public final class QueryDrMapper {
                     DecisionKind.KEEP_UNCHANGED, "QUERYDR_INVALID_SIGNATURE", null, false);
         }
 
+        String returnedTxnRef = trimToNull(result.txnRef());
+        String expectedRef = trimToNull(expectedTxnRef);
+        if (returnedTxnRef != null && expectedRef != null && !returnedTxnRef.equals(expectedRef)) {
+            return new QueryDrDecision(
+                    DecisionKind.UNKNOWN_NEEDS_REVIEW,
+                    "QUERYDR_TXN_REF_MISMATCH",
+                    "VNPAY_QUERYDR_TXN_REF_MISMATCH",
+                    false);
+        }
+
         String responseCode = trimToNull(result.responseCode());
         String txnStatus = trimToNull(result.transactionStatus());
 
@@ -82,7 +92,7 @@ public final class QueryDrMapper {
             long expectedAmountVnd,
             String txnStatus) {
         if ("00".equals(txnStatus)) {
-            if (result.amountVnd() != null && result.amountVnd() != expectedAmountVnd) {
+            if (result.amountVnd() == null || result.amountVnd() != expectedAmountVnd) {
                 return new QueryDrDecision(
                         DecisionKind.UNKNOWN_NEEDS_REVIEW,
                         "QUERYDR_AMOUNT_MISMATCH",
@@ -91,7 +101,7 @@ public final class QueryDrMapper {
             }
             String returnedTxnRef = trimToNull(result.txnRef());
             String expectedRef = trimToNull(expectedTxnRef);
-            if (returnedTxnRef != null && expectedRef != null && !returnedTxnRef.equals(expectedRef)) {
+            if (returnedTxnRef == null || expectedRef == null || !returnedTxnRef.equals(expectedRef)) {
                 return new QueryDrDecision(
                         DecisionKind.UNKNOWN_NEEDS_REVIEW,
                         "QUERYDR_TXN_REF_MISMATCH",

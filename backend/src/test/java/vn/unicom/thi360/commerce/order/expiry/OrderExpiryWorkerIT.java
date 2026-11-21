@@ -5,17 +5,22 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -44,6 +49,8 @@ import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures.LearnerAccount;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures.StoredTestProduct;
+import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.outbox.OutboxRelay;
 import vn.unicom.thi360.shared.testapi.MutableClock;
 
 /**
@@ -61,6 +68,7 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private OrderExpiryService orderExpiryService;
+    @Autowired private OutboxRelay outboxRelay;
     @Autowired private MutableClock mutableClock;
 
     @MockitoSpyBean
@@ -124,17 +132,27 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
         int expiredCount = orderExpiryService.expirePendingOrders();
         assertThat(expiredCount).isGreaterThanOrEqualTo(2);
 
+        while (outboxRelay.relayBatch() > 0) {
+            // Đẩy hết outbox sang audit.audit_event.
+        }
+
         for (OrderHandle h : new OrderHandle[] {expiredBy02, expiredBy91}) {
             assertThat(orderState(h.orderId())).isEqualTo("EXPIRED");
             assertThat(redemptionState(h.orderId(), voucher.getId())).isEqualTo("RELEASED");
             assertThat(jdbc.queryForObject(
                     "SELECT COUNT(*) FROM commerce.order_history WHERE order_id = ? AND from_state = 'PENDING_PAYMENT' AND to_state = 'EXPIRED' AND actor = 'SYSTEM' AND reason = 'ORDER_EXPIRED'",
                     Integer.class, h.orderId())).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'ORDER_EXPIRED' AND target_id = ?",
+                    Integer.class, h.orderId().toString())).isEqualTo(1);
         }
 
         assertThat(orderState(stillPending.orderId())).isEqualTo("PENDING_PAYMENT");
         assertThat(redemptionState(stillPending.orderId(), voucher.getId())).isEqualTo("RESERVED");
         assertThat(usedCount(voucher.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM audit.audit_event WHERE module = 'commerce' AND action = 'ORDER_EXPIRED' AND target_id = ?",
+                Integer.class, stillPending.orderId().toString())).isZero();
     }
 
     @Test
@@ -174,6 +192,17 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
         assertThat(redemptionState(order.orderId(), voucher.getId())).isEqualTo("RESERVED");
         assertThat(usedCount(voucher.getId())).isEqualTo(1);
 
+        // 3b. Sau cooldown 5 phút, 00/04 -> payment sang UNKNOWN, đơn vẫn giữ PENDING_PAYMENT và voucher vẫn RESERVED (R1-24).
+        mutableClock.setAt(t0.plus(Duration.ofMinutes(35)));
+        doReturn(queryResult(order.txnRef(), "00", "04")).when(vnpayGateway).queryDr(any());
+        orderExpiryService.expirePendingOrders();
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.payment WHERE order_id = ?", String.class, order.orderId()))
+                .isEqualTo("UNKNOWN");
+        assertThat(orderState(order.orderId())).isEqualTo("PENDING_PAYMENT");
+        assertThat(redemptionState(order.orderId(), voucher.getId())).isEqualTo("RESERVED");
+        assertThat(usedCount(voucher.getId())).isEqualTo(1);
+
         // 4. Lần thanh toán FAILED có late_success_review = PENDING cũng không bị đóng sang EXPIRED.
         LearnerAccount buyer2 = fixtures.createLearner();
         var orderWithPendingReview = fixtures.insertStubOrder(
@@ -186,6 +215,22 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
                 failedPendingReview.id());
         orderExpiryService.expirePendingOrders();
         assertThat(orderState(orderWithPendingReview.id())).isEqualTo("PENDING_PAYMENT");
+
+        // 5. Đơn đã quá hạn có sẵn payment UNKNOWN (vd quá 24h hoặc trong cooldown) giữ PENDING_PAYMENT & voucher RESERVED (R1-24).
+        LearnerAccount buyer3 = fixtures.createLearner();
+        mutableClock.setAt(t0);
+        OrderHandle preExistingUnknownOrder = createOrder(buyer3, product, voucher.getCode(), 150_000L);
+        assertThat(usedCount(voucher.getId())).isEqualTo(2);
+        jdbc.update(
+                "UPDATE commerce.payment SET state = 'UNKNOWN', created_at = ?, updated_at = ? WHERE order_id = ?",
+                Timestamp.from(t0.minus(Duration.ofHours(25))),
+                Timestamp.from(t0.minus(Duration.ofHours(25))),
+                preExistingUnknownOrder.orderId());
+        mutableClock.setAt(t0.plus(Duration.ofMinutes(40)));
+        orderExpiryService.expirePendingOrders();
+        assertThat(orderState(preExistingUnknownOrder.orderId())).isEqualTo("PENDING_PAYMENT");
+        assertThat(redemptionState(preExistingUnknownOrder.orderId(), voucher.getId())).isEqualTo("RESERVED");
+        assertThat(usedCount(voucher.getId())).isEqualTo(2);
     }
 
     @Test
@@ -210,6 +255,99 @@ class OrderExpiryWorkerIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM commerce.entitlement_grant WHERE order_id = ?",
                 Integer.class, order.orderId())).isEqualTo(1);
+    }
+
+    @Test
+    void doesNotQueryAgedOpenPaymentsPast24hAndKeepsOrderPending() {
+        Instant now = Instant.parse("2026-11-21T12:00:00Z");
+        mutableClock.setAt(now);
+
+        LearnerAccount buyer = fixtures.createLearner();
+        StoredTestProduct product = fixtures.insertOnSaleProduct("HSA", 200_000L, 1);
+        var order = fixtures.insertStubOrder(
+                buyer, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                200_000L, now.minus(Duration.ofHours(23)), null);
+        var agedUnknown = fixtures.insertStubPayment(order, 1, 200_000L, PaymentState.UNKNOWN);
+        var agedCreated = fixtures.insertStubPayment(order, 2, 200_000L, PaymentState.CREATED);
+        Timestamp agedTs = Timestamp.from(now.minus(Duration.ofHours(24)).minusSeconds(1));
+        jdbc.update(
+                "UPDATE commerce.payment SET created_at = ?, updated_at = ? WHERE id IN (?, ?)",
+                agedTs, agedTs, agedUnknown.id(), agedCreated.id());
+
+        int expired = orderExpiryService.expirePendingOrders();
+        assertThat(expired).isZero();
+        verify(vnpayGateway, never()).queryDr(any());
+        assertThat(orderState(order.id())).isEqualTo("PENDING_PAYMENT");
+    }
+
+    @Test
+    void doesNotStarveFreshExpiredOrdersBehind500PlusStuckPendingOrders() throws Exception {
+        Instant t0 = mutableClock.instant();
+        LearnerAccount stuckBuyer = fixtures.createLearner();
+        LearnerAccount freshBuyer = fixtures.createLearner();
+        StoredTestProduct product = fixtures.insertOnSaleProduct("HSA", 200_000L, 1);
+        Promotion voucher = fixtures.createVoucher(
+                "STARV07", DiscountType.AMOUNT, 50_000L, null,
+                t0.minus(1, ChronoUnit.HOURS), t0.plus(1, ChronoUnit.DAYS),
+                2, 1, true, PromotionScope.ALL, PromotionAudienceType.ALL);
+
+        int stuckCount = 510;
+        List<UUID> stuckOrderIds = new ArrayList<>(stuckCount);
+        try {
+            Timestamp agedPaymentTs = Timestamp.from(t0.minus(Duration.ofHours(25)));
+            List<Object[]> orderRows = new ArrayList<>(stuckCount);
+            List<Object[]> paymentRows = new ArrayList<>(stuckCount);
+            for (int i = 0; i < stuckCount; i++) {
+                UUID orderId = Ids.newId();
+                stuckOrderIds.add(orderId);
+                String orderCode = "STUCK" + String.format("%04d", i) + UUID.randomUUID().toString().substring(0, 6);
+                Timestamp expiresTs = Timestamp.from(t0.minus(Duration.ofHours(20)).plusSeconds(i));
+                orderRows.add(new Object[] {
+                    orderId, orderCode, stuckBuyer.id(), stuckBuyer.username(), stuckBuyer.fullName(),
+                    product.examId(), product.versionNo(), "STUCKPROD-" + i, product.name(),
+                    product.listPriceVnd(), 200_000L, product.attemptsGranted(),
+                    expiresTs, agedPaymentTs, agedPaymentTs
+                });
+                boolean isUnknownAged = (i % 2 == 0);
+                paymentRows.add(new Object[] {
+                    Ids.newId(), orderId, orderCode + "01",
+                    isUnknownAged ? "UNKNOWN" : "FAILED",
+                    isUnknownAged ? null : "PENDING",
+                    isUnknownAged ? null : agedPaymentTs,
+                    agedPaymentTs, agedPaymentTs
+                });
+            }
+            jdbc.batchUpdate("""
+                    INSERT INTO commerce.purchase_order
+                        (id, code, user_id, buyer_username, buyer_full_name, product_type, exam_id, exam_version_no,
+                         option_codes, product_code, product_name, list_price_vnd, discount_applied, amount_due_vnd,
+                         attempts_granted, benefits, result_view, payment_method, state, expires_at,
+                         created_at, updated_at, version)
+                    VALUES (?, ?, ?, ?, ?, 'EXAM', ?, ?, '{}'::text[], ?, ?, ?, 'NONE', ?, ?,
+                            '{}'::jsonb, 'FULL_SOLUTION', 'VNPAY', 'PENDING_PAYMENT', ?, ?, ?, 0)
+                    """, orderRows);
+            jdbc.batchUpdate("""
+                    INSERT INTO commerce.payment
+                        (id, order_id, attempt_seq, txn_ref, vnp_create_date, vnp_expire_date, amount_vnd,
+                         state, is_duplicate, late_success_review, late_success_at, created_at, updated_at, version)
+                    VALUES (?, ?, 1, ?, '20261120100000', '20261120101500', 200000, ?, false, ?, ?, ?, ?, 0)
+                    """, paymentRows);
+
+            OrderHandle freshOrder = createOrder(freshBuyer, product, voucher.getCode(), 150_000L);
+            assertThat(usedCount(voucher.getId())).isEqualTo(1);
+
+            mutableClock.setAt(t0.plus(Duration.ofMinutes(30)));
+            doReturn(queryResult(freshOrder.txnRef(), "00", "02")).when(vnpayGateway).queryDr(any());
+
+            int expiredCount = orderExpiryService.expirePendingOrders();
+            assertThat(expiredCount).isGreaterThanOrEqualTo(1);
+            assertThat(orderState(freshOrder.orderId())).isEqualTo("EXPIRED");
+            assertThat(redemptionState(freshOrder.orderId(), voucher.getId())).isEqualTo("RELEASED");
+            assertThat(usedCount(voucher.getId())).isZero();
+            assertThat(orderState(stuckOrderIds.getFirst())).isEqualTo("PENDING_PAYMENT");
+        } finally {
+            CommerceTestFixtures.deleteStubOrdersForUser(jdbc, stuckBuyer.id());
+        }
     }
 
     private OrderHandle createOrder(

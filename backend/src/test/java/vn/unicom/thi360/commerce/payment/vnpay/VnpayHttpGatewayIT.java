@@ -16,6 +16,9 @@ import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -105,6 +108,9 @@ class VnpayHttpGatewayIT {
 
     @AfterEach
     void tearDown() {
+        if (gateway != null) {
+            gateway.destroy();
+        }
         if (server != null) {
             server.stop(0);
         }
@@ -380,6 +386,218 @@ class VnpayHttpGatewayIT {
             vnpayLogger.detachAppender(appender);
             vnpayLogger.setLevel(previousLevel);
         }
+    }
+
+    @Test
+    void signed0000WithMalformedZeroOrBlankAmountYieldsNullAmountVnd() {
+        for (String rawAmount : List.of("15000050", "0", "")) {
+            handlerRef.set(req -> {
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("vnp_ResponseId", "resp_amt");
+                resp.put("vnp_Command", "querydr");
+                resp.put("vnp_ResponseCode", "00");
+                resp.put("vnp_Message", "Success");
+                resp.put("vnp_TmnCode", TEST_TMN);
+                resp.put("vnp_TxnRef", "DH261121BADAMT");
+                resp.put("vnp_Amount", rawAmount);
+                resp.put("vnp_BankCode", "NCB");
+                resp.put("vnp_PayDate", "20261121100230");
+                resp.put("vnp_TransactionNo", "90001234");
+                resp.put("vnp_TransactionType", "01");
+                resp.put("vnp_TransactionStatus", "00");
+                resp.put("vnp_OrderInfo", "Info");
+                resp.put("vnp_SecureHash", signQueryDrResponse(resp));
+                return MockResponse.json(200, resp);
+            });
+
+            QueryDrResult res = gateway.queryDr(new QueryDrRequest(
+                    null, "DH261121BADAMT", "20261121100000", null, null, null, null));
+            assertThat(res.signatureValid()).isTrue();
+            assertThat(res.responseCode()).isEqualTo("00");
+            assertThat(res.transactionStatus()).isEqualTo("00");
+            assertThat(res.amountVnd()).isNull();
+        }
+    }
+
+    @Test
+    void mismatchedCommandOrTmnCodeFailsEnvelopeVerificationWhileNon00AllowsMissingEnvelope() {
+        // 1. Sai vnp_TmnCode hoặc hoán đổi vnp_Command trên querydr (dù chữ ký đúng) -> signatureValid=false, trường nghiệp vụ null.
+        for (String[] cmdAndTmn : new String[][] {
+            {"querydr", "OTHER-TMN"},
+            {"refund", TEST_TMN},
+            {null, TEST_TMN},
+            {"querydr", null}
+        }) {
+            handlerRef.set(req -> {
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("vnp_ResponseId", "resp_bad_env");
+                if (cmdAndTmn[0] != null) {
+                    resp.put("vnp_Command", cmdAndTmn[0]);
+                }
+                resp.put("vnp_ResponseCode", "00");
+                resp.put("vnp_Message", "Success");
+                if (cmdAndTmn[1] != null) {
+                    resp.put("vnp_TmnCode", cmdAndTmn[1]);
+                }
+                resp.put("vnp_TxnRef", "DH261121ENV01");
+                resp.put("vnp_Amount", "20000000");
+                resp.put("vnp_TransactionStatus", "00");
+                resp.put("vnp_SecureHash", signQueryDrResponse(resp));
+                return MockResponse.json(200, resp);
+            });
+
+            QueryDrResult qRes = gateway.queryDr(new QueryDrRequest(
+                    null, "DH261121ENV01", "20261121100000", null, null, null, null));
+            assertThat(qRes.signatureValid()).isFalse();
+            assertThat(qRes.responseCode()).isNull();
+            assertThat(qRes.txnRef()).isNull();
+            assertThat(qRes.amountVnd()).isNull();
+            assertThat(qRes.transactionStatus()).isNull();
+        }
+
+        // 2. Sai vnp_TmnCode hoặc hoán đổi vnp_Command trên refund (dù chữ ký đúng) -> signatureValid=false, trường nghiệp vụ null.
+        for (String[] cmdAndTmn : new String[][] {
+            {"refund", "OTHER-TMN"},
+            {"querydr", TEST_TMN},
+            {null, TEST_TMN},
+            {"refund", null}
+        }) {
+            handlerRef.set(req -> {
+                Map<String, Object> resp = new LinkedHashMap<>();
+                resp.put("vnp_ResponseId", "refund_bad_env");
+                if (cmdAndTmn[0] != null) {
+                    resp.put("vnp_Command", cmdAndTmn[0]);
+                }
+                resp.put("vnp_ResponseCode", "00");
+                resp.put("vnp_Message", "Success");
+                if (cmdAndTmn[1] != null) {
+                    resp.put("vnp_TmnCode", cmdAndTmn[1]);
+                }
+                resp.put("vnp_TxnRef", "DH261121ENV02");
+                resp.put("vnp_Amount", "20000000");
+                resp.put("vnp_TransactionStatus", "05");
+                resp.put("vnp_SecureHash", signRefundResponse(resp));
+                return MockResponse.json(200, resp);
+            });
+
+            RefundResult rRes = gateway.refund(new RefundRequest(
+                    null, "02", "DH261121ENV02", 200_000L, null, "20261121100000", "admin.ops", null, null, "Hoan"));
+            assertThat(rRes.signatureValid()).isFalse();
+            assertThat(rRes.responseCode()).isNull();
+            assertThat(rRes.txnRef()).isNull();
+            assertThat(rRes.amountVnd()).isNull();
+            assertThat(rRes.transactionStatus()).isNull();
+        }
+
+        // 3. Phản hồi lỗi != "00" (vd "99") cho phép thiếu vnp_Command / vnp_TmnCode nếu chữ ký hợp lệ.
+        handlerRef.set(req -> {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("vnp_ResponseId", "resp_err_99");
+            resp.put("vnp_ResponseCode", "99");
+            resp.put("vnp_Message", "System Error");
+            resp.put("vnp_SecureHash", signQueryDrResponse(resp));
+            return MockResponse.json(200, resp);
+        });
+        QueryDrResult err99 = gateway.queryDr(new QueryDrRequest(
+                null, "DH261121ERR99", "20261121100000", null, null, null, null));
+        assertThat(err99.signatureValid()).isTrue();
+        assertThat(err99.responseCode()).isEqualTo("99");
+    }
+
+    @Test
+    void oversizedResponseBodyThrowsTransportExceptionAndDestroyDoesNotCloseInjectedClient() throws Exception {
+        String oversizedBody = "{\"vnp_ResponseCode\":\"00\",\"pad\":\""
+                + TEST_SECRET + "x".repeat(65_600) + "\"}";
+        handlerRef.set(req -> new MockResponse(200, "application/json", oversizedBody, 0));
+
+        assertThatThrownBy(() -> gateway.queryDr(new QueryDrRequest(
+                null, "DH_BIG_BODY", "20261121100000", null, null, null, null)))
+                .isInstanceOf(VnpayTransportException.class)
+                .satisfies(ex -> {
+                    VnpayTransportException tex = (VnpayTransportException) ex;
+                    assertThat(tex.isTimeout()).isFalse();
+                    assertThat(tex.getHttpStatus()).isEqualTo(200);
+                    assertThat(stackTraceOf(ex)).doesNotContain(TEST_SECRET);
+                });
+
+        // Kiểm tra destroy() không đóng HttpClient được tiêm từ bên ngoài.
+        HttpClient externalClient = HttpClient.newHttpClient();
+        String apiUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/merchant_webapi/api/transaction";
+        RealVnpayGateway injectedGateway = new RealVnpayGateway(
+                new VnpayProperties("SANDBOX", TEST_TMN, TEST_SECRET,
+                        "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html", apiUrl, List.of(), null, null, null),
+                new VnpayClientProperties(Duration.ofSeconds(2), Duration.ofSeconds(2), "10.0.0.5"),
+                signer,
+                MAPPER,
+                Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
+                externalClient);
+        injectedGateway.destroy();
+
+        handlerRef.set(req -> {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("vnp_ResponseId", "ok_after_destroy");
+            resp.put("vnp_Command", "querydr");
+            resp.put("vnp_ResponseCode", "99");
+            resp.put("vnp_TmnCode", TEST_TMN);
+            resp.put("vnp_SecureHash", signQueryDrResponse(resp));
+            return MockResponse.json(200, resp);
+        });
+        assertThat(injectedGateway.queryDr(new QueryDrRequest(
+                null, "DH_EXT_CLIENT", "20261121100000", null, null, null, null)).signatureValid()).isTrue();
+        HttpResponse<String> ping = externalClient.send(
+                HttpRequest.newBuilder(java.net.URI.create(apiUrl))
+                        .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(ping.statusCode()).isEqualTo(200);
+        externalClient.close();
+    }
+
+    @Test
+    void jsonNullOptionalFieldsPassChecksumAndAreOmittedFromRawResponse() {
+        handlerRef.set(req -> {
+            String cmd = String.valueOf(req.body().get("vnp_Command"));
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("vnp_ResponseId", "resp_nulls");
+            resp.put("vnp_Command", cmd);
+            resp.put("vnp_ResponseCode", "00");
+            resp.put("vnp_Message", "Success");
+            resp.put("vnp_TmnCode", TEST_TMN);
+            resp.put("vnp_TxnRef", "DH261121NULL01");
+            resp.put("vnp_Amount", "20000000");
+            resp.put("vnp_BankCode", null);
+            resp.put("vnp_PayDate", "20261121100230");
+            resp.put("vnp_TransactionNo", "90001234");
+            resp.put("vnp_TransactionType", "querydr".equals(cmd) ? "01" : "02");
+            resp.put("vnp_TransactionStatus", "querydr".equals(cmd) ? "00" : "05");
+            resp.put("vnp_OrderInfo", "Info");
+            if ("querydr".equals(cmd)) {
+                resp.put("vnp_PromotionCode", null);
+                resp.put("vnp_PromotionAmount", null);
+                resp.put("vnp_SecureHash", signQueryDrResponse(resp));
+            } else {
+                resp.put("vnp_SecureHash", signRefundResponse(resp));
+            }
+            return MockResponse.json(200, resp);
+        });
+
+        QueryDrResult qRes = gateway.queryDr(new QueryDrRequest(
+                null, "DH261121NULL01", "20261121100000", null, null, null, null));
+        assertThat(qRes.signatureValid()).isTrue();
+        assertThat(qRes.promotionCode()).isNull();
+        assertThat(qRes.promotionAmount()).isNull();
+        assertThat(qRes.bankCode()).isNull();
+        assertThat(qRes.rawResponse())
+                .containsEntry("vnp_ResponseCode", "00")
+                .doesNotContainKeys("vnp_PromotionCode", "vnp_PromotionAmount", "vnp_BankCode");
+
+        RefundResult rRes = gateway.refund(new RefundRequest(
+                null, "02", "DH261121NULL01", 200_000L, "90001234", "20261121100000", "admin.ops", null, null, "Hoan"));
+        assertThat(rRes.signatureValid()).isTrue();
+        assertThat(rRes.bankCode()).isNull();
+        assertThat(rRes.rawResponse())
+                .containsEntry("vnp_ResponseCode", "00")
+                .doesNotContainKey("vnp_BankCode");
     }
 
     private RealVnpayGateway createGateway(String apiUrl, Duration readTimeout) {

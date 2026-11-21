@@ -3,12 +3,10 @@ package vn.unicom.thi360.commerce.order.expiry;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -24,6 +22,9 @@ import vn.unicom.thi360.commerce.payment.domain.PaymentState;
  */
 @Repository
 public class OrderExpiryRepository {
+
+    public record ExpiredOrderCandidate(UUID id, Instant expiresAt) {
+    }
 
     public record LockedOrder(
             UUID id,
@@ -69,55 +70,83 @@ public class OrderExpiryRepository {
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate must not be null");
     }
 
-    /** Tìm tối đa {@code batchSize} đơn {@code PENDING_PAYMENT} đã quá {@code expires_at}. */
-    public List<UUID> findExpiredPendingOrderIds(Instant now, Collection<UUID> excludedIds, int batchSize) {
+    /**
+     * Tìm tối đa {@code batchSize} đơn {@code PENDING_PAYMENT} đã quá {@code expires_at}
+     * và hiện có thể xử lý được, phân trang keyset theo {@code (expires_at, id)}.
+     */
+    public List<ExpiredOrderCandidate> findExpiredPendingOrderIds(
+            Instant now, Duration paymentMaxAge, ExpiredOrderCandidate cursor, int batchSize) {
         Objects.requireNonNull(now, "now must not be null");
+        Objects.requireNonNull(paymentMaxAge, "paymentMaxAge must not be null");
         if (batchSize <= 0) {
             return List.of();
         }
         OffsetDateTime cutoff = utc(now);
-        if (excludedIds == null || excludedIds.isEmpty()) {
+        OffsetDateTime maxAgeCutoff = utc(now.minus(paymentMaxAge));
+        if (cursor == null) {
             return jdbcTemplate.query(
                     """
-                    SELECT id
-                    FROM commerce.purchase_order
-                    WHERE state = 'PENDING_PAYMENT'
-                      AND expires_at IS NOT NULL
-                      AND expires_at <= ?
-                    ORDER BY expires_at ASC, id ASC
+                    SELECT o.id, o.expires_at
+                    FROM commerce.purchase_order o
+                    WHERE o.state = 'PENDING_PAYMENT'
+                      AND o.expires_at IS NOT NULL
+                      AND o.expires_at <= ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM commerce.payment p
+                          WHERE p.order_id = o.id
+                            AND (p.state = 'SUCCEEDED'
+                                 OR p.late_success_review = 'PENDING'
+                                 OR (p.state IN ('CREATED', 'UNKNOWN')
+                                     AND (p.created_at < ? OR (p.next_query_at IS NOT NULL AND p.next_query_at > ?))))
+                      )
+                    ORDER BY o.expires_at ASC, o.id ASC
                     LIMIT ?
                     """,
                     (PreparedStatement ps) -> {
                         ps.setObject(1, cutoff);
-                        ps.setInt(2, batchSize);
+                        ps.setObject(2, maxAgeCutoff);
+                        ps.setObject(3, cutoff);
+                        ps.setInt(4, batchSize);
                     },
-                    (rs, rowNum) -> rs.getObject("id", UUID.class));
+                    OrderExpiryRepository::mapCandidate);
         }
 
-        List<UUID> excluded = new ArrayList<>(excludedIds);
-        String placeholders = String.join(", ", Collections.nCopies(excluded.size(), "?"));
-        String sql = """
-                SELECT id
-                FROM commerce.purchase_order
-                WHERE state = 'PENDING_PAYMENT'
-                  AND expires_at IS NOT NULL
-                  AND expires_at <= ?
-                  AND id NOT IN (""" + placeholders + """
-                )
-                ORDER BY expires_at ASC, id ASC
-                LIMIT ?
-                """;
+        OffsetDateTime cursorExpiresAt = utc(cursor.expiresAt());
         return jdbcTemplate.query(
-                sql,
+                """
+                SELECT o.id, o.expires_at
+                FROM commerce.purchase_order o
+                WHERE o.state = 'PENDING_PAYMENT'
+                  AND o.expires_at IS NOT NULL
+                  AND o.expires_at <= ?
+                  AND NOT EXISTS (
+                      SELECT 1 FROM commerce.payment p
+                      WHERE p.order_id = o.id
+                        AND (p.state = 'SUCCEEDED'
+                             OR p.late_success_review = 'PENDING'
+                             OR (p.state IN ('CREATED', 'UNKNOWN')
+                                 AND (p.created_at < ? OR (p.next_query_at IS NOT NULL AND p.next_query_at > ?))))
+                  )
+                  AND (o.expires_at > ? OR (o.expires_at = ? AND o.id > ?))
+                ORDER BY o.expires_at ASC, o.id ASC
+                LIMIT ?
+                """,
                 (PreparedStatement ps) -> {
-                    int idx = 1;
-                    ps.setObject(idx++, cutoff);
-                    for (UUID id : excluded) {
-                        ps.setObject(idx++, id);
-                    }
-                    ps.setInt(idx, batchSize);
+                    ps.setObject(1, cutoff);
+                    ps.setObject(2, maxAgeCutoff);
+                    ps.setObject(3, cutoff);
+                    ps.setObject(4, cursorExpiresAt);
+                    ps.setObject(5, cursorExpiresAt);
+                    ps.setObject(6, cursor.id());
+                    ps.setInt(7, batchSize);
                 },
-                (rs, rowNum) -> rs.getObject("id", UUID.class));
+                OrderExpiryRepository::mapCandidate);
+    }
+
+    private static ExpiredOrderCandidate mapCandidate(ResultSet rs, int rowNum) throws SQLException {
+        return new ExpiredOrderCandidate(
+                rs.getObject("id", UUID.class),
+                rs.getObject("expires_at", OffsetDateTime.class).toInstant());
     }
 
     public LockedOrder lockOrder(UUID orderId) {

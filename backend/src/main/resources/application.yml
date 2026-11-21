@@ -224,6 +224,8 @@ thi360:
       cooldown: PT5M
       not-found-grace: PT15M
       batch-size: 20
+      cycle-budget: PT4M
+      max-consecutive-transport-failures: 5
     order-expiry:
       interval: PT1M
       batch-size: 20
@@ -411,5 +413,5 @@ thi360:
     mode: ${THI360_VNPAY_MODE:PRODUCTION}
     tmn-code: ${THI360_VNPAY_TMN_CODE:dev-only-test-tmn}
     hash-secret: ${THI360_VNPAY_HASH_SECRET:dev-only-test-vnpay-secret}
-    pay-url: ${THI360_VNPAY_PAY_URL:http://127.0.0.1:19999/pay}
-    api-url: ${THI360_VNPAY_API_URL:http://127.0.0.1:19999/api}
+    pay-url: ${THI360_VNPAY_PAY_URL:https://127.0.0.1:19999/pay}
+    api-url: ${THI360_VNPAY_API_URL:https://127.0.0.1:19999/api}

@@ -145,7 +145,8 @@ class QueryDrClaimRepositoryIT extends AbstractIntegrationTest {
             }));
 
             assertThat(lockedLatch.await(5, TimeUnit.SECONDS)).isTrue();
-            List<ClaimedPayment> firstClaim = claimRepository.claimOpenForOrder(order.id(), baseNow, COOLDOWN);
+            List<ClaimedPayment> firstClaim = claimRepository.claimOpenForOrder(
+                    order.id(), baseNow, MAX_AGE, COOLDOWN);
             releaseLatch.countDown();
             locker.get(10, TimeUnit.SECONDS);
 
@@ -156,10 +157,52 @@ class QueryDrClaimRepositoryIT extends AbstractIntegrationTest {
 
             // Sau khi nhả khóa, lockedPay chưa có cooldown nên nhận được; freePay đang trong cooldown nên bỏ qua
             List<ClaimedPayment> secondClaim = claimRepository.claimOpenForOrder(
-                    order.id(), baseNow.plusSeconds(10), COOLDOWN);
+                    order.id(), baseNow.plusSeconds(10), MAX_AGE, COOLDOWN);
             assertThat(secondClaim).extracting(ClaimedPayment::paymentId)
                     .containsExactly(lockedPay.id());
         }
+    }
+
+    @Test
+    void claimOpenForOrderEnforces24hMaxAgeAndTransitionsAgedCreatedToUnknown() {
+        Instant baseNow = Instant.parse("2026-11-21T12:00:00Z");
+        LearnerAccount buyer = fixtures.createLearner();
+        StoredTestProduct product = fixtures.insertOnSaleProduct("HSA", 120_000L, 1);
+        StubOrder agedOrder = fixtures.insertStubOrder(
+                buyer, product, OrderState.PENDING_PAYMENT, PaymentMethod.VNPAY,
+                120_000L, baseNow.minusSeconds(60), null);
+
+        StubPayment oldUnknown = insertAt(agedOrder, 1, PaymentState.UNKNOWN, baseNow.minus(MAX_AGE).minusSeconds(1));
+        StubPayment oldCreated = insertAt(agedOrder, 2, PaymentState.CREATED, baseNow.minus(MAX_AGE).minusSeconds(1));
+        jdbc.update(
+                "UPDATE commerce.payment SET next_query_at = ? WHERE id IN (?, ?)",
+                Timestamp.from(baseNow.minusSeconds(30)),
+                oldUnknown.id(),
+                oldCreated.id());
+
+        assertThat(claimRepository.claimOpenForOrder(agedOrder.id(), baseNow, MAX_AGE, COOLDOWN)).isEmpty();
+
+        StubPayment exactBoundary = insertAt(agedOrder, 3, PaymentState.CREATED, baseNow.minus(MAX_AGE));
+        assertThat(claimRepository.claimOpenForOrder(agedOrder.id(), baseNow, MAX_AGE, COOLDOWN))
+                .extracting(ClaimedPayment::paymentId)
+                .containsExactly(exactBoundary.id());
+
+        int updated = claimRepository.transitionAgedPaymentsPastMaxAge(baseNow.minus(MAX_AGE), baseNow);
+        assertThat(updated).isGreaterThanOrEqualTo(2);
+
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, oldCreated.id()))
+                .isEqualTo("UNKNOWN");
+        assertThat(jdbc.queryForObject(
+                "SELECT next_query_at FROM commerce.payment WHERE id = ?", OffsetDateTime.class, oldCreated.id()))
+                .isNull();
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.payment WHERE id = ?", String.class, oldUnknown.id()))
+                .isEqualTo("UNKNOWN");
+        assertThat(jdbc.queryForObject(
+                "SELECT next_query_at FROM commerce.payment WHERE id = ?", OffsetDateTime.class, oldUnknown.id()))
+                .isNull();
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.payment WHERE id = ?", String.class, exactBoundary.id()))
+                .isEqualTo("CREATED");
     }
 
     private StubPayment insertAt(StubOrder order, int seq, PaymentState state, Instant createdAt) {

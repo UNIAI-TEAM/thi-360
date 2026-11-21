@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -116,6 +117,13 @@ class QueryDrWorkerIT extends AbstractIntegrationTest {
         StubPayment tooOld = insertAt(order, 4, PaymentState.UNKNOWN, baseNow.minus(Duration.ofHours(24)).minusSeconds(1));
         StubPayment succeeded = insertAt(order, 5, PaymentState.SUCCEEDED, baseNow.minus(Duration.ofMinutes(20)));
         StubPayment failed = insertAt(order, 6, PaymentState.FAILED, baseNow.minus(Duration.ofMinutes(20)));
+        StubPayment tooOldCreated = insertAt(
+                order, 7, PaymentState.CREATED, baseNow.minus(Duration.ofHours(24)).minusSeconds(1));
+        jdbc.update(
+                "UPDATE commerce.payment SET next_query_at = ? WHERE id IN (?, ?)",
+                Timestamp.from(baseNow.minusSeconds(10)),
+                tooOld.id(),
+                tooOldCreated.id());
 
         List<String> queriedTxnRefs = new CopyOnWriteArrayList<>();
         doAnswer(inv -> {
@@ -128,9 +136,19 @@ class QueryDrWorkerIT extends AbstractIntegrationTest {
 
         assertThat(queriedTxnRefs)
                 .contains(atMinEdge.txnRef(), atMaxEdge.txnRef())
-                .doesNotContain(tooYoung.txnRef(), tooOld.txnRef(), succeeded.txnRef(), failed.txnRef());
+                .doesNotContain(
+                        tooYoung.txnRef(), tooOld.txnRef(), tooOldCreated.txnRef(),
+                        succeeded.txnRef(), failed.txnRef());
         assertThat(paymentRepository.findById(tooOld.id()).orElseThrow().getState())
                 .isEqualTo(PaymentState.UNKNOWN);
+        assertThat(jdbc.queryForObject(
+                "SELECT next_query_at FROM commerce.payment WHERE id = ?", OffsetDateTime.class, tooOld.id()))
+                .isNull();
+        assertThat(paymentRepository.findById(tooOldCreated.id()).orElseThrow().getState())
+                .isEqualTo(PaymentState.UNKNOWN);
+        assertThat(jdbc.queryForObject(
+                "SELECT next_query_at FROM commerce.payment WHERE id = ?", OffsetDateTime.class, tooOldCreated.id()))
+                .isNull();
     }
 
     @Test

@@ -14,7 +14,9 @@ public record QueryDrProperties(
         @DefaultValue("PT24H") Duration maxAge,
         @DefaultValue("PT5M") Duration cooldown,
         @DefaultValue("PT15M") Duration notFoundGrace,
-        @DefaultValue("20") int batchSize
+        @DefaultValue("20") Integer batchSize,
+        @DefaultValue("PT4M") Duration cycleBudget,
+        @DefaultValue("5") Integer maxConsecutiveTransportFailures
 ) {
 
     private static final Duration DEFAULT_INTERVAL = Duration.ofMinutes(5);
@@ -23,16 +25,25 @@ public record QueryDrProperties(
     private static final Duration DEFAULT_COOLDOWN = Duration.ofMinutes(5);
     private static final Duration DEFAULT_NOT_FOUND_GRACE = Duration.ofMinutes(15);
     private static final int DEFAULT_BATCH_SIZE = 20;
+    private static final Duration DEFAULT_CYCLE_BUDGET = Duration.ofMinutes(4);
+    private static final int DEFAULT_MAX_CONSECUTIVE_TRANSPORT_FAILURES = 5;
 
     public QueryDrProperties {
         interval = interval == null ? DEFAULT_INTERVAL : requirePositive(interval, "interval");
         minAge = minAge == null ? DEFAULT_MIN_AGE : requirePositive(minAge, "minAge");
         maxAge = maxAge == null ? DEFAULT_MAX_AGE : requirePositive(maxAge, "maxAge");
+        if (minAge.compareTo(maxAge) > 0) {
+            throw new IllegalArgumentException("thi360.commerce.querydr.minAge must not exceed maxAge");
+        }
         cooldown = cooldown == null ? DEFAULT_COOLDOWN : requirePositive(cooldown, "cooldown");
         notFoundGrace = notFoundGrace == null
                 ? DEFAULT_NOT_FOUND_GRACE
                 : requirePositive(notFoundGrace, "notFoundGrace");
-        batchSize = batchSize == 0 ? DEFAULT_BATCH_SIZE : requirePositiveInt(batchSize, "batchSize");
+        batchSize = batchSize == null ? DEFAULT_BATCH_SIZE : requirePositiveInt(batchSize, "batchSize");
+        cycleBudget = cycleBudget == null ? DEFAULT_CYCLE_BUDGET : requirePositive(cycleBudget, "cycleBudget");
+        maxConsecutiveTransportFailures = maxConsecutiveTransportFailures == null
+                ? DEFAULT_MAX_CONSECUTIVE_TRANSPORT_FAILURES
+                : requirePositiveInt(maxConsecutiveTransportFailures, "maxConsecutiveTransportFailures");
     }
 
     private static Duration requirePositive(Duration duration, String fieldName) {

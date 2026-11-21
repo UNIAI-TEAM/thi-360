@@ -3,7 +3,9 @@ package vn.unicom.thi360.commerce.payment.vnpay;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -24,6 +26,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
@@ -37,7 +40,7 @@ import vn.unicom.thi360.commerce.payment.gateway.VnpayProperties;
  */
 @Component
 @Conditional(VnpayRealModeCondition.class)
-public class RealVnpayGateway implements VnpayGateway {
+public class RealVnpayGateway implements VnpayGateway, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(RealVnpayGateway.class);
     private static final ZoneId GMT_PLUS_7 = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -46,6 +49,7 @@ public class RealVnpayGateway implements VnpayGateway {
     private static final long MAX_SCALED_AMOUNT = 999_999_999_999L;
     private static final int MAX_ORDER_INFO_LENGTH = 255;
     private static final int MAX_REQUEST_ID_LENGTH = 32;
+    private static final int MAX_RESPONSE_BYTES = 64 * 1024;
     private static final String REDACTED = "[REDACTED]";
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
@@ -56,6 +60,7 @@ public class RealVnpayGateway implements VnpayGateway {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final HttpClient httpClient;
+    private final boolean ownsHttpClient;
 
     @Autowired
     public RealVnpayGateway(
@@ -73,7 +78,8 @@ public class RealVnpayGateway implements VnpayGateway {
                 HttpClient.newBuilder()
                         .connectTimeout(Objects.requireNonNull(clientProperties, "clientProperties must not be null")
                                 .connectTimeout())
-                        .build());
+                        .build(),
+                true);
     }
 
     public RealVnpayGateway(
@@ -83,12 +89,31 @@ public class RealVnpayGateway implements VnpayGateway {
             ObjectMapper objectMapper,
             Clock clock,
             HttpClient httpClient) {
+        this(properties, clientProperties, signer, objectMapper, clock, httpClient, false);
+    }
+
+    private RealVnpayGateway(
+            VnpayProperties properties,
+            VnpayClientProperties clientProperties,
+            VnpayRealSigner signer,
+            ObjectMapper objectMapper,
+            Clock clock,
+            HttpClient httpClient,
+            boolean ownsHttpClient) {
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.clientProperties = Objects.requireNonNull(clientProperties, "clientProperties must not be null");
         this.signer = Objects.requireNonNull(signer, "signer must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
+        this.ownsHttpClient = ownsHttpClient;
+    }
+
+    @Override
+    public void destroy() {
+        if (ownsHttpClient) {
+            httpClient.close();
+        }
     }
 
     @Override
@@ -126,7 +151,7 @@ public class RealVnpayGateway implements VnpayGateway {
         params.put("vnp_ExpireDate", expireDate);
 
         String secureHash = signer.signPay(params, secret);
-        String queryData = signer.buildPaySignData(params);
+        String queryData = signer.buildPayQueryString(params);
         String separator = resolveQuerySeparator(payUrl);
         return payUrl + separator + queryData + "&vnp_SecureHash=" + secureHash;
     }
@@ -168,11 +193,12 @@ public class RealVnpayGateway implements VnpayGateway {
 
         log.debug("Calling VNPAY querydr for txnRef={} requestId={}", txnRef, requestId);
         Map<String, Object> parsed = postJsonCommand("querydr", payload);
-        boolean signatureValid = signer.verifyQueryDrResponse(parsed, secret);
+        boolean signatureValid = isValidCommandResponse(
+                parsed, "querydr", tmnCode, signer.verifyQueryDrResponse(parsed, secret));
         Map<String, Object> sanitizedRaw = sanitizeRawMap(parsed, secret);
 
         if (!signatureValid) {
-            log.warn("VNPAY querydr response failed checksum verification for txnRef={} requestId={}",
+            log.warn("VNPAY querydr response failed checksum or envelope verification for txnRef={} requestId={}",
                     txnRef, requestId);
             return new QueryDrResult(
                     false, null, null, null, null, null, null, null, null, null, null, null, null, null, sanitizedRaw);
@@ -237,11 +263,12 @@ public class RealVnpayGateway implements VnpayGateway {
 
         log.debug("Calling VNPAY refund for txnRef={} requestId={} type={}", txnRef, requestId, transactionType);
         Map<String, Object> parsed = postJsonCommand("refund", payload);
-        boolean signatureValid = signer.verifyRefundResponse(parsed, secret);
+        boolean signatureValid = isValidCommandResponse(
+                parsed, "refund", tmnCode, signer.verifyRefundResponse(parsed, secret));
         Map<String, Object> sanitizedRaw = sanitizeRawMap(parsed, secret);
 
         if (!signatureValid) {
-            log.warn("VNPAY refund response failed checksum verification for txnRef={} requestId={}",
+            log.warn("VNPAY refund response failed checksum or envelope verification for txnRef={} requestId={}",
                     txnRef, requestId);
             return new RefundResult(
                     false, null, null, null, null, null, null, null, null, null, null, null, sanitizedRaw);
@@ -263,6 +290,24 @@ public class RealVnpayGateway implements VnpayGateway {
                 sanitizedRaw);
     }
 
+    private static boolean isValidCommandResponse(
+            Map<String, Object> parsed,
+            String expectedCommand,
+            String expectedTmnCode,
+            boolean checksumValid) {
+        if (!checksumValid) {
+            return false;
+        }
+        String retCmd = asTrimmedString(parsed.get("vnp_Command"));
+        String retTmn = asTrimmedString(parsed.get("vnp_TmnCode"));
+        String retCode = asTrimmedString(parsed.get("vnp_ResponseCode"));
+        boolean commandValid = expectedCommand.equalsIgnoreCase(retCmd)
+                || (retCmd == null && !"00".equals(retCode));
+        boolean tmnValid = expectedTmnCode.equals(retTmn)
+                || (retTmn == null && !"00".equals(retCode));
+        return commandValid && tmnValid;
+    }
+
     private Map<String, Object> postJsonCommand(String command, Map<String, String> payload) {
         URI apiUri = URI.create(requireApiUrl());
         String requestBody;
@@ -279,9 +324,9 @@ public class RealVnpayGateway implements VnpayGateway {
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
                 .build();
 
-        HttpResponse<String> response;
+        HttpResponse<InputStream> response;
         try {
-            response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
         } catch (HttpTimeoutException ex) {
             throw new VnpayTransportException(true, null, "VNPAY " + command + " timed out", ex);
         } catch (InterruptedException ex) {
@@ -292,11 +337,18 @@ public class RealVnpayGateway implements VnpayGateway {
         }
 
         int statusCode = response.statusCode();
-        if (statusCode < 200 || statusCode >= 300) {
-            throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " HTTP " + statusCode);
+        String rawBody;
+        try (InputStream bodyStream = response.body()) {
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " HTTP " + statusCode);
+            }
+            rawBody = readBoundedUtf8(bodyStream, statusCode, command);
+        } catch (HttpTimeoutException ex) {
+            throw new VnpayTransportException(true, statusCode, "VNPAY " + command + " timed out", ex);
+        } catch (IOException ex) {
+            throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " network error", ex);
         }
 
-        String rawBody = response.body();
         if (!StringUtils.hasText(rawBody)) {
             throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " empty response");
         }
@@ -310,6 +362,25 @@ public class RealVnpayGateway implements VnpayGateway {
         } catch (IOException | IllegalArgumentException ex) {
             throw new VnpayTransportException(false, statusCode, "VNPAY " + command + " non-JSON response");
         }
+    }
+
+    private static String readBoundedUtf8(InputStream bodyStream, int statusCode, String command) throws IOException {
+        if (bodyStream == null) {
+            return "";
+        }
+        byte[] chunk = new byte[4096];
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int total = 0;
+        int read;
+        while ((read = bodyStream.read(chunk)) != -1) {
+            total += read;
+            if (total > MAX_RESPONSE_BYTES) {
+                throw new VnpayTransportException(
+                        false, statusCode, "VNPAY " + command + " response exceeds " + MAX_RESPONSE_BYTES + " bytes");
+            }
+            out.write(chunk, 0, read);
+        }
+        return out.toString(StandardCharsets.UTF_8);
     }
 
     private static long scaleAndValidateAmount(long amountVnd) {

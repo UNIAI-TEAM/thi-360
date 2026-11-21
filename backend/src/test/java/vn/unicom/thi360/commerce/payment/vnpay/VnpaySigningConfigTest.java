@@ -2,8 +2,14 @@ package vn.unicom.thi360.commerce.payment.vnpay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -115,6 +121,109 @@ class VnpaySigningConfigTest {
         assertThat(rCustomQueryDr).isEqualTo(rDefault);
         assertThat(rSha256).hasSize(64).isNotEqualTo(rDefault).isNotEqualTo(rHmac256);
         assertThat(rHmac256).hasSize(64).isNotEqualTo(rDefault);
+
+        AtomicReference<VnpayRealSigner> querySha256RefundSha512Signer = new AtomicReference<>();
+        new ApplicationContextRunner()
+                .withUserConfiguration(VnpayRealConfiguration.class, VnpayRealSigner.class)
+                .withPropertyValues(
+                        "thi360.vnpay.mode=MOCK",
+                        "thi360.vnpay.signing.query-dr-hash-algorithm=SHA256",
+                        "thi360.vnpay.signing.refund-hash-algorithm=SHA512")
+                .run(ctx -> querySha256RefundSha512Signer.set(ctx.getBean(VnpayRealSigner.class)));
+
+        Map<String, Object> queryRespBase = Map.ofEntries(
+                Map.entry("vnp_ResponseId", "resp01"),
+                Map.entry("vnp_Command", "querydr"),
+                Map.entry("vnp_ResponseCode", "00"),
+                Map.entry("vnp_Message", "OK"),
+                Map.entry("vnp_TmnCode", "TEST-TMN"),
+                Map.entry("vnp_TxnRef", "DH261121ALG01"),
+                Map.entry("vnp_Amount", "1000000"),
+                Map.entry("vnp_BankCode", "NCB"),
+                Map.entry("vnp_PayDate", "20261121102100"),
+                Map.entry("vnp_TransactionNo", "90000001"),
+                Map.entry("vnp_TransactionType", "01"),
+                Map.entry("vnp_TransactionStatus", "00"),
+                Map.entry("vnp_OrderInfo", "Kiem tra GD"),
+                Map.entry("vnp_PromotionCode", ""),
+                Map.entry("vnp_PromotionAmount", ""));
+        String queryRespData = defaultSigner.get().buildQueryDrResponseSignData(queryRespBase);
+        String queryRespHmac512 = hmacHex("HmacSHA512", queryRespData, TEST_SECRET);
+
+        assertResponseVerification(
+                customQueryDrSigner.get(), queryRespBase, hmacHex("HmacSHA256", queryRespData, TEST_SECRET),
+                queryRespHmac512, true);
+        assertResponseVerification(
+                querySha256RefundSha512Signer.get(), queryRespBase, digestHex("SHA-256", TEST_SECRET + queryRespData),
+                queryRespHmac512, true);
+        assertResponseVerification(
+                shaDigestSigner.get(), queryRespBase, digestHex("SHA-512", TEST_SECRET + queryRespData),
+                queryRespHmac512, true);
+
+        Map<String, Object> refundRespBase = Map.ofEntries(
+                Map.entry("vnp_ResponseId", "resp02"),
+                Map.entry("vnp_Command", "refund"),
+                Map.entry("vnp_ResponseCode", "00"),
+                Map.entry("vnp_Message", "OK"),
+                Map.entry("vnp_TmnCode", "TEST-TMN"),
+                Map.entry("vnp_TxnRef", "DH261121ALG01"),
+                Map.entry("vnp_Amount", "1000000"),
+                Map.entry("vnp_BankCode", "NCB"),
+                Map.entry("vnp_PayDate", "20261121110100"),
+                Map.entry("vnp_TransactionNo", "90000001"),
+                Map.entry("vnp_TransactionType", "02"),
+                Map.entry("vnp_TransactionStatus", "05"),
+                Map.entry("vnp_OrderInfo", "Hoan tien GD"));
+        String refundRespData = defaultSigner.get().buildRefundResponseSignData(refundRespBase);
+        String refundRespHmac512 = hmacHex("HmacSHA512", refundRespData, TEST_SECRET);
+
+        assertResponseVerification(
+                shaDigestSigner.get(), refundRespBase, hmacHex("HmacSHA256", refundRespData, TEST_SECRET),
+                refundRespHmac512, false);
+        assertResponseVerification(
+                customRefundSigner.get(), refundRespBase, digestHex("SHA-256", TEST_SECRET + refundRespData),
+                refundRespHmac512, false);
+        assertResponseVerification(
+                querySha256RefundSha512Signer.get(), refundRespBase, digestHex("SHA-512", TEST_SECRET + refundRespData),
+                refundRespHmac512, false);
+    }
+
+    private static void assertResponseVerification(
+            VnpayRealSigner signer,
+            Map<String, Object> baseFields,
+            String expectedAlgHash,
+            String defaultHmac512Hash,
+            boolean queryDr) {
+        Map<String, Object> valid = new LinkedHashMap<>(baseFields);
+        valid.put("vnp_SecureHash", expectedAlgHash);
+        Map<String, Object> wrongAlg = new LinkedHashMap<>(baseFields);
+        wrongAlg.put("vnp_SecureHash", defaultHmac512Hash);
+        if (queryDr) {
+            assertThat(signer.verifyQueryDrResponse(valid, TEST_SECRET)).isTrue();
+            assertThat(signer.verifyQueryDrResponse(wrongAlg, TEST_SECRET)).isFalse();
+        } else {
+            assertThat(signer.verifyRefundResponse(valid, TEST_SECRET)).isTrue();
+            assertThat(signer.verifyRefundResponse(wrongAlg, TEST_SECRET)).isFalse();
+        }
+    }
+
+    private static String hmacHex(String jcaAlg, String data, String secret) {
+        try {
+            Mac mac = Mac.getInstance(jcaAlg);
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), jcaAlg));
+            return HexFormat.of().formatHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    private static String digestHex(String jcaAlg, String input) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance(jcaAlg).digest(input.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     private static String signDataWith(String encodingRule, Map<String, String> params) {

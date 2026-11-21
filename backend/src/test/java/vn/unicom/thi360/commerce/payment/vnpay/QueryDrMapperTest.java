@@ -33,11 +33,29 @@ class QueryDrMapperTest {
 
     @Test
     void mapsResponseCode00TransactionStatusesAndMismatchChecks() {
-        assertThat(decide(result(true, "00", "00", AMOUNT_VND, TXN_REF), EXPIRE_INSTANT).kind())
-                .isEqualTo(DecisionKind.SUCCEEDED);
+        QueryDrDecision validSuccess = decide(result(true, "00", "00", AMOUNT_VND, TXN_REF), EXPIRE_INSTANT);
+        assertThat(validSuccess.kind()).isEqualTo(DecisionKind.SUCCEEDED);
+        assertThat(validSuccess.outcomeTag()).isEqualTo("QUERYDR_SUCCEEDED_00");
+        assertThat(validSuccess.reviewReason()).isNull();
 
-        assertThat(decide(result(true, "00", "00", null, null), EXPIRE_INSTANT).kind())
-                .isEqualTo(DecisionKind.SUCCEEDED);
+        QueryDrDecision missingAmount = decide(result(true, "00", "00", null, TXN_REF), EXPIRE_INSTANT);
+        assertThat(missingAmount.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
+        assertThat(missingAmount.outcomeTag()).isEqualTo("QUERYDR_AMOUNT_MISMATCH");
+        assertThat(missingAmount.reviewReason()).isEqualTo("VNPAY_QUERYDR_AMOUNT_MISMATCH");
+
+        QueryDrDecision missingTxnRef = decide(result(true, "00", "00", AMOUNT_VND, null), EXPIRE_INSTANT);
+        assertThat(missingTxnRef.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
+        assertThat(missingTxnRef.outcomeTag()).isEqualTo("QUERYDR_TXN_REF_MISMATCH");
+        assertThat(missingTxnRef.reviewReason()).isEqualTo("VNPAY_QUERYDR_TXN_REF_MISMATCH");
+
+        QueryDrDecision blankTxnRef = decide(result(true, "00", "00", AMOUNT_VND, "   "), EXPIRE_INSTANT);
+        assertThat(blankTxnRef.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
+        assertThat(blankTxnRef.outcomeTag()).isEqualTo("QUERYDR_TXN_REF_MISMATCH");
+        assertThat(blankTxnRef.reviewReason()).isEqualTo("VNPAY_QUERYDR_TXN_REF_MISMATCH");
+
+        QueryDrDecision bothMissing = decide(result(true, "00", "00", null, null), EXPIRE_INSTANT);
+        assertThat(bothMissing.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
+        assertThat(bothMissing.outcomeTag()).isEqualTo("QUERYDR_AMOUNT_MISMATCH");
 
         QueryDrDecision amountMismatch = decide(result(true, "00", "00", 50_000L, TXN_REF), EXPIRE_INSTANT);
         assertThat(amountMismatch.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
@@ -47,6 +65,7 @@ class QueryDrMapperTest {
         QueryDrDecision txnRefMismatch = decide(result(true, "00", "00", AMOUNT_VND, "OTHER_REF"), EXPIRE_INSTANT);
         assertThat(txnRefMismatch.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
         assertThat(txnRefMismatch.outcomeTag()).isEqualTo("QUERYDR_TXN_REF_MISMATCH");
+        assertThat(txnRefMismatch.reviewReason()).isEqualTo("VNPAY_QUERYDR_TXN_REF_MISMATCH");
 
         assertThat(decide(result(true, "00", "01", AMOUNT_VND, TXN_REF), EXPIRE_INSTANT).kind())
                 .isEqualTo(DecisionKind.KEEP_UNCHANGED);
@@ -100,6 +119,18 @@ class QueryDrMapperTest {
                 .isEqualTo(DecisionKind.UNKNOWN);
         assertThat(decide(result(true, null, null, null, TXN_REF), atThreshold).kind())
                 .isEqualTo(DecisionKind.UNKNOWN);
+
+        for (QueryDrResult mismatched : new QueryDrResult[] {
+            result(true, "00", "02", AMOUNT_VND, "OTHER_REF"),
+            result(true, "00", "04", AMOUNT_VND, "OTHER_REF"),
+            result(true, "00", "07", AMOUNT_VND, "OTHER_REF"),
+            result(true, "91", null, null, "OTHER_REF")
+        }) {
+            QueryDrDecision d = decide(mismatched, atThreshold);
+            assertThat(d.kind()).isEqualTo(DecisionKind.UNKNOWN_NEEDS_REVIEW);
+            assertThat(d.outcomeTag()).isEqualTo("QUERYDR_TXN_REF_MISMATCH");
+            assertThat(d.reviewReason()).isEqualTo("VNPAY_QUERYDR_TXN_REF_MISMATCH");
+        }
     }
 
     private static QueryDrDecision decide(QueryDrResult res, Instant now) {
