@@ -6,6 +6,13 @@ import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import { OrderDetailView } from "../components/order-detail-view";
 import {
+  OrderPaymentStatusChip,
+  OrderRefundStatusChip,
+  OrderStateChip,
+  PaymentAttemptStateChip,
+  RefundRowStateChip,
+} from "../components/order-status-chips";
+import {
   makeOrderDetail,
   makePayment,
   makeRefund,
@@ -213,5 +220,219 @@ describe("OrderDetailView (AC-4, AC-9, AC-10, AC-15, AC-17)", () => {
     expect(
       await screen.findByText("Đơn hàng không ở trạng thái cho phép tiếp tục cấp quyền."),
     ).toBeInTheDocument();
+  });
+
+  it("D-4: chip trạng thái không lộ raw i18n key khi nhận UNKNOWN hoặc enum lạ", () => {
+    const { container } = renderOrdersUi(
+      <div>
+        <OrderStateChip state="FUTURE_ORDER_STATE" />
+        <OrderPaymentStatusChip status="FUTURE_PAY_STATUS" />
+        <PaymentAttemptStateChip state="FUTURE_ATTEMPT_STATE" />
+        <OrderRefundStatusChip status="UNKNOWN" />
+        <OrderRefundStatusChip status="FUTURE_REFUND_STATUS" />
+        <RefundRowStateChip state="FUTURE_ROW_STATE" />
+      </div>,
+      { locale: "vi" },
+    );
+
+    expect(container.textContent).not.toContain("orders.");
+    expect(screen.getAllByText("Chưa rõ").length).toBeGreaterThanOrEqual(6);
+
+    const enRender = renderOrdersUi(<OrderRefundStatusChip status="UNKNOWN" />, {
+      locale: "en",
+    });
+    expect(enRender.container.textContent).toContain("Unknown");
+    expect(enRender.container.textContent).not.toContain("orders.");
+  });
+
+  it("D-6: timeline lịch sử dịch mã sự kiện/tác nhân và tô màu gatewayMessage theo trạng thái", async () => {
+    fakeApi.get("/api/v1/admin/orders/{code}", () =>
+      ok(
+        makeOrderDetail({
+          payments: [
+            makePayment({
+              id: "pay-1",
+              txnRef: "TXN01",
+              state: "SUCCEEDED",
+              refunds: [
+                makeRefund({
+                  id: "ref-fail",
+                  paymentTxnRef: "TXN01",
+                  state: "FAILED",
+                  gatewayMessage: "Bank rejected card",
+                }),
+                makeRefund({
+                  id: "ref-ok",
+                  paymentTxnRef: "TXN01",
+                  state: "SUCCEEDED",
+                  gatewayMessage: "Refund completed cleanly",
+                }),
+                makeRefund({
+                  id: "ref-unk",
+                  paymentTxnRef: "TXN01",
+                  state: "UNKNOWN",
+                  gatewayMessage: "Gateway timeout pending check",
+                }),
+              ],
+            }),
+          ],
+          orderHistory: [
+            {
+              id: "h-1",
+              fromState: undefined,
+              toState: "CREATED",
+              reason: "ORDER_CREATED",
+              actor: "LEARNER",
+              at: "2026-11-20T08:00:00.000Z",
+            },
+            {
+              id: "h-2",
+              fromState: "CREATED",
+              toState: "PENDING_PAYMENT",
+              reason: "PAYMENT_ATTEMPT_CREATED:TXN01",
+              actor: "PLATFORM",
+              at: "2026-11-20T08:01:00.000Z",
+            },
+            {
+              id: "h-3",
+              fromState: "PENDING_PAYMENT",
+              toState: "PAID",
+              reason: "PAYMENT_SUCCEEDED:TXN01",
+              actor: "VNPAY_IPN",
+              at: "2026-11-20T08:02:00.000Z",
+            },
+            {
+              id: "h-4",
+              fromState: "PAID",
+              toState: "FULFILLED",
+              reason: "FULFILLED",
+              actor: "WORKER",
+              at: "2026-11-20T08:03:00.000Z",
+            },
+            {
+              id: "h-5",
+              fromState: "EXPIRED",
+              toState: "PAID",
+              reason: "LATE_SUCCESS_PENDING_REVIEW:TXN01",
+              actor: "VNPAY_QUERYDR",
+              at: "2026-11-20T08:04:00.000Z",
+            },
+          ],
+          auditEvents: [
+            {
+              id: "a-1",
+              action: "ORDER_RETRY_FULFILL",
+              module: "ORDERS",
+              outcome: "SUCCESS",
+              actorType: "SYSTEM",
+              actorRoles: [],
+              actorUsername: undefined,
+              reason: "Custom free-text note from support",
+              occurredAt: "2026-11-20T08:05:00.000Z",
+            },
+          ],
+        }),
+      ),
+    );
+
+    const { container } = renderOrdersUi(<OrderDetailView code="DH-261121-0001" />, {
+      locale: "en",
+    });
+
+    expect(await screen.findByText("Order created")).toBeInTheDocument();
+    expect(screen.getByText("Created payment attempt (TXN01)")).toBeInTheDocument();
+    expect(screen.getByText("Payment succeeded (TXN01)")).toBeInTheDocument();
+    expect(screen.getByText("Entitlements granted")).toBeInTheDocument();
+    expect(
+      screen.getByText("Late-success payment on failed attempt, pending review (TXN01)"),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText("Learner")).toBeInTheDocument();
+    expect(screen.getByText("Platform admin")).toBeInTheDocument();
+    expect(screen.getByText("VNPAY IPN")).toBeInTheDocument();
+    expect(screen.getByText("VNPAY QueryDR")).toBeInTheDocument();
+    expect(screen.getAllByText("System").length).toBeGreaterThanOrEqual(2);
+
+    const freeTextNode = screen.getByText("Custom free-text note from support");
+    expect(freeTextNode.closest("[data-exam-content]")).not.toBeNull();
+
+    const failMsg = screen.getByText("Bank rejected card");
+    expect(failMsg).toHaveClass("text-danger");
+    expect(failMsg.closest("[data-exam-content]")).not.toBeNull();
+
+    const okMsg = screen.getByText("Refund completed cleanly");
+    expect(okMsg).toHaveClass("text-text-secondary");
+    expect(okMsg).not.toHaveClass("text-danger");
+
+    const unkMsg = screen.getByText("Gateway timeout pending check");
+    expect(unkMsg).toHaveClass("text-warning");
+
+    expect(container.querySelectorAll("ol")).toHaveLength(1);
+  });
+
+  it("D-2: chuyển bảng cấp quyền, giao dịch và hoàn tiền sang ListCard ở viewport hẹp mà vẫn giữ nút thao tác", async () => {
+    const origGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () =>
+      ({
+        width: 350,
+        height: 120,
+        top: 0,
+        left: 0,
+        bottom: 120,
+        right: 350,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    try {
+      fakeApi.get("/api/v1/admin/orders/{code}", () =>
+        ok(
+          makeOrderDetail({
+            state: "PAID",
+            paymentStatus: "SUCCEEDED",
+            refundStatus: "NONE",
+            payments: [
+              makePayment({
+                id: "pay-pend",
+                attemptSeq: 1,
+                txnRef: "TXNPEND",
+                state: "CREATED",
+                lateSuccessAt: undefined,
+                refunds: [],
+              }),
+              makePayment({
+                id: "pay-late",
+                attemptSeq: 2,
+                txnRef: "TXNLATE",
+                state: "SUCCEEDED",
+                lateSuccessAt: "2026-11-20T09:00:00.000Z",
+                lateSuccessReview: "PENDING",
+                refundableAmountVnd: 100000,
+                refunds: [
+                  makeRefund({
+                    id: "ref-1",
+                    paymentTxnRef: "TXNLATE",
+                    state: "UNKNOWN",
+                    gatewayMessage: "Waiting gateway",
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ),
+      );
+
+      renderOrdersUi(<OrderDetailView code="DH-261121-0001" />);
+
+      expect((await screen.findAllByRole("button", { name: "Hoàn tiền" })).length).toBeGreaterThanOrEqual(2);
+      expect(screen.getAllByRole("button", { name: "Tra cứu lại" }).length).toBeGreaterThanOrEqual(1);
+      expect(
+        screen.getAllByRole("button", { name: "Xử lý tiền về muộn" }).length,
+      ).toBeGreaterThanOrEqual(2);
+      expect(document.querySelectorAll("table")).toHaveLength(0);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = origGetBoundingClientRect;
+    }
   });
 });

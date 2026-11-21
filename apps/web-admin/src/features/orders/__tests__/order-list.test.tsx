@@ -34,7 +34,7 @@ describe("OrderListView (AC-1, AC-2, AC-18, AC-19)", () => {
     fakeApi.get("/api/v1/admin/orders/attention", () => ok(makeAttentionSummary()));
   });
 
-  it("hiện đúng 10 cột theo thứ tự thiết kế khi có dữ liệu (AC-1 cột và thứ tự)", async () => {
+  it("hiện đúng 9 cột theo thứ tự thiết kế khi có dữ liệu (AC-1 cột gộp thời gian và nút icon Xem)", async () => {
     const order = makeOrderSummary({
       code: "DH-261121-0099",
       buyerFullName: "Tran Minh",
@@ -63,13 +63,50 @@ describe("OrderListView (AC-1, AC-2, AC-18, AC-19)", () => {
       "Trạng thái đơn",
       "Thanh toán",
       "Hoàn tiền",
-      "Tạo lúc",
-      "Thanh toán lúc",
+      "Thời gian",
       "Thao tác",
     ]);
 
     expect(within(table).getByText("Tran Minh")).toBeInTheDocument();
     expect(within(table).getByText("De thi VSTEP B2")).toBeInTheDocument();
+
+    const timestampsCell = table.querySelector("tbody [data-col='timestamps']");
+    expect(timestampsCell).not.toBeNull();
+    expect(timestampsCell).toHaveTextContent("Tạo lúc:");
+    expect(timestampsCell).toHaveTextContent("Thanh toán:");
+
+    const viewIconLink = within(table).getByRole("link", {
+      name: "Xem giao dịch đơn DH-261121-0099",
+    });
+    expect(viewIconLink).toHaveAttribute("href", "/orders/DH-261121-0099");
+    expect(table.querySelector("[data-col-summary='timestamps']")).not.toBeNull();
+  });
+
+  it("gắn data-exam-content chỉ lên các option bài thi động trong bộ lọc, không gắn lên Tất cả bài thi (D-1)", async () => {
+    fakeApi.get("/api/v1/admin/exams", () =>
+      ok({
+        items: [
+          { id: "exam-1", code: "DS-HSA-01", name: "Đề thi thử HSA số 1" },
+          { id: "exam-2", code: "DS-QDA-01", name: "Đề thi thử QDA số 1" },
+        ],
+      }),
+    );
+    fakeApi.get("/api/v1/admin/orders", () => ok(makeOrderListResponse([])));
+
+    const { container } = renderOrdersUi(<OrderListView />);
+
+    await waitFor(() => {
+      const dynamicOption = container.querySelector('select option[value="exam-1"]');
+      expect(dynamicOption).not.toBeNull();
+      expect(dynamicOption).toHaveAttribute("data-exam-content");
+    });
+
+    const allOption = container.querySelector('select option[value="__ALL__"]');
+    expect(allOption).not.toBeNull();
+    expect(allOption).not.toHaveAttribute("data-exam-content");
+    expect(container.querySelector('select option[value="exam-2"]')).toHaveAttribute(
+      "data-exam-content",
+    );
   });
 
   it("hỗ trợ tìm kiếm debounce, lọc ngày VN sang UTC, và fallback danh sách bài thi khi thiếu EXAM.VIEW (AC-2 tìm và lọc)", async () => {

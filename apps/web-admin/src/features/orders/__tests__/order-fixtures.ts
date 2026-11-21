@@ -8,6 +8,8 @@ import {
 } from "react";
 
 import { SessionProvider } from "@/features/session/session-provider";
+import en from "@/messages/en.json";
+import vi from "@/messages/vi.json";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
 
@@ -323,9 +325,11 @@ export function createNextNavigationMock() {
 
 export function renderOrdersUi(
   ui: ReactElement,
-  options?: { permissions?: string[] },
+  options?: { permissions?: string[]; locale?: "vi" | "en" },
 ) {
   const perms = options?.permissions ?? [...DEFAULT_ADMIN_PERMISSIONS];
+  const locale = options?.locale ?? "vi";
+  const messages = locale === "en" ? en : vi;
   const SessionWrapper = SessionProvider as ComponentType<{
     loadSession?: () => Promise<typeof TEST_ADMIN_SESSION>;
     children?: ReactNode;
@@ -341,5 +345,6 @@ export function renderOrdersUi(
       },
       ui,
     ),
+    { locale, messages },
   );
 }

@@ -130,5 +130,32 @@ describe("Late success review and excess payment refund (AC-24, AC-25)", () => {
     expect(
       screen.getByText("Thu tiền lần thứ hai sau khi đơn đã ghi nhận đủ"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/giữ quyền truy cập bài thi và không bị thu hồi các lượt thi hiện có/),
+    ).toBeInTheDocument();
+  });
+
+  it("chế độ en: cảnh báo khoản thu thừa nêu rõ giữ quyền và không thu hồi lượt thi hiện có (AC-25)", async () => {
+    const user = userEvent.setup();
+    const excessPayment = makePayment({
+      id: "pay-excess-en",
+      attemptSeq: 2,
+      txnRef: "TXN-EXCESS-EN",
+      duplicate: true,
+      excessReason: "AFTER_COUNTED",
+      refundableAmountVnd: 299000,
+    });
+
+    fakeApi.get("/api/v1/admin/orders/{code}", () =>
+      ok(makeOrderDetail({ payments: [excessPayment] })),
+    );
+
+    renderOrdersUi(<OrderDetailView code="DH-261121-0001" />, { locale: "en" });
+
+    await user.click((await screen.findAllByRole("button", { name: "Refund" }))[0]!);
+    expect(await screen.findByText("Excess payment requiring refund")).toBeInTheDocument();
+    expect(
+      screen.getByText(/keeps the buyer's exam access active and existing granted attempts are not revoked/),
+    ).toBeInTheDocument();
   });
 });

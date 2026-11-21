@@ -18,6 +18,7 @@ import {
   Select,
   type SelectOption,
   Table,
+  cn,
   focusRing,
 } from "@thi360/ui";
 
@@ -32,6 +33,7 @@ import {
 } from "../queries";
 import type { ExamBuyerRow, ExamBuyersQueryParams } from "../types";
 import { OrderStateChip } from "./order-status-chips";
+import { useExamOptionContentMarker } from "./use-exam-option-content-marker";
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_SORT = "lastPaidAt,desc";
@@ -99,12 +101,16 @@ export function OrderBuyersView() {
     if (examId && !opts.some((opt) => opt.value === examId)) {
       opts.unshift({
         value: examId,
-        label: examId,
+        label: <span data-exam-content>{examId}</span>,
         textValue: examId,
       });
     }
     return opts;
   }, [canViewExams, adminExamsQuery.data, derivedExamsQuery.data, examId]);
+
+  const examSelectRef = useExamOptionContentMarker(
+    examOptions.map((opt) => opt.value).join("|"),
+  );
 
   const columns: ComponentProps<typeof Table<ExamBuyerRow>>["columns"] = useMemo(
     () => [
@@ -138,7 +144,7 @@ export function OrderBuyersView() {
                   <Link
                     key={ord.orderId}
                     href={`/orders/${encodeURIComponent(ord.orderCode)}`}
-                    className={`font-mono text-xs text-primary-text hover:underline ${focusRing}`}
+                    className={cn("font-mono text-xs text-primary-text hover:underline", focusRing)}
                   >
                     {ord.orderCode}
                   </Link>
@@ -152,7 +158,7 @@ export function OrderBuyersView() {
         id: "paidAmount",
         header: t("buyers.colPaidAmount"),
         cell: ({ row }) => (
-          <span className="font-mono text-xs font-semibold text-text whitespace-nowrap">
+          <span className="font-mono text-xs font-semibold whitespace-nowrap text-text">
             {formatVnd(sumBuyerPaidVnd(row.original), locale)}
           </span>
         ),
@@ -174,7 +180,7 @@ export function OrderBuyersView() {
         id: "lastPaid",
         header: t("buyers.colLastPaid"),
         cell: ({ row }) => (
-          <span className="font-mono text-xs text-text-secondary whitespace-nowrap">
+          <span className="font-mono text-xs whitespace-nowrap text-text-secondary">
             {row.original.lastPaidAt ? formatOrderDateTime(row.original.lastPaidAt, locale) : "—"}
           </span>
         ),
@@ -189,7 +195,7 @@ export function OrderBuyersView() {
             <div className="flex items-center gap-2">
               <Link
                 href={`/orders/${encodeURIComponent(latest.orderCode)}`}
-                className={`font-mono text-xs font-medium text-primary-text hover:underline ${focusRing}`}
+                className={cn("font-mono text-xs font-medium text-primary-text hover:underline", focusRing)}
               >
                 {t("buyers.latestOrderLink")}
               </Link>
@@ -237,7 +243,7 @@ export function OrderBuyersView() {
 
       <Card className="p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex min-w-[260px] flex-1 flex-col gap-1.5">
+          <div ref={examSelectRef} className="flex min-w-[260px] flex-1 flex-col gap-1.5">
             <label htmlFor="buyers-exam-select" className="text-xs font-medium text-text-secondary">
               {t("buyers.examLabel")}
             </label>
@@ -247,6 +253,7 @@ export function OrderBuyersView() {
               placeholder={t("buyers.examPlaceholder")}
               options={examOptions}
               value={examId}
+              className="[&>span:first-child]:truncate"
               onValueChange={(nextExamId) => updateUrl(nextExamId, { page: 0 })}
             />
           </div>
@@ -321,69 +328,79 @@ export function OrderBuyersView() {
             />
           ) : (
             <>
-              <Table
-                aria-label={t("buyers.tableLabel")}
-                columns={columns}
-                data={items}
-                getRowId={(row) => row.userId}
-                loading={buyersQuery.isPending}
-                loadingRows={5}
-                refreshing={buyersQuery.isFetching && !buyersQuery.isPending}
-                empty={
-                  <EmptyState
-                    headingLevel={2}
-                    icon={<Users className="h-6 w-6" />}
-                    title={t("buyers.emptyTitle")}
-                    description={t("buyers.emptyDescription")}
-                  />
-                }
-                cards={{
-                  render: (buyer) => {
-                    const latest = buyer.orders[0];
-                    return (
-                      <ListCard
-                        title={
-                          latest ? (
-                            <ListCardTitleLink
-                              linkComponent={Link}
-                              href={`/orders/${encodeURIComponent(latest.orderCode)}`}
-                            >
+              <Card padding="none" className="overflow-hidden">
+                <Table
+                  aria-label={t("buyers.tableLabel")}
+                  columns={columns}
+                  data={items}
+                  getRowId={(row) => row.userId}
+                  loading={buyersQuery.isPending}
+                  loadingRows={5}
+                  refreshing={buyersQuery.isFetching && !buyersQuery.isPending}
+                  empty={
+                    <EmptyState
+                      headingLevel={2}
+                      icon={<Users className="h-6 w-6" />}
+                      title={t("buyers.emptyTitle")}
+                      description={t("buyers.emptyDescription")}
+                    />
+                  }
+                  cards={{
+                    render: (buyer) => {
+                      const latest = buyer.orders[0];
+                      return (
+                        <ListCard
+                          title={
+                            latest ? (
+                              <ListCardTitleLink
+                                linkComponent={Link}
+                                href={`/orders/${encodeURIComponent(latest.orderCode)}`}
+                              >
+                                <span data-exam-content>{buyer.fullName}</span>
+                              </ListCardTitleLink>
+                            ) : (
                               <span data-exam-content>{buyer.fullName}</span>
-                            </ListCardTitleLink>
-                          ) : (
-                            <span data-exam-content>{buyer.fullName}</span>
-                          )
-                        }
-                        caption={buyer.username}
-                        status={latest ? <OrderStateChip state={latest.state} /> : undefined}
-                        meta={[
-                          {
-                            label: t("buyers.colOrders"),
-                            value: t("buyers.paidCount", { count: buyer.purchaseCount }),
-                          },
-                          {
-                            label: t("buyers.colPaidAmount"),
-                            value: formatVnd(sumBuyerPaidVnd(buyer), locale),
-                          },
-                          {
-                            label: t("buyers.colAttempts"),
-                            value: `${buyer.attemptsRemaining} / ${buyer.attemptsTotal}`,
-                          },
-                        ]}
-                        actions={
-                          latest ? (
-                            <Button asChild variant="secondary" size="sm">
-                              <Link href={`/orders/${encodeURIComponent(latest.orderCode)}`}>
-                                {t("buyers.latestOrderLink")}
-                              </Link>
-                            </Button>
-                          ) : undefined
-                        }
-                      />
-                    );
-                  },
-                }}
-              />
+                            )
+                          }
+                          caption={buyer.username}
+                          status={latest ? <OrderStateChip state={latest.state} /> : undefined}
+                          meta={[
+                            {
+                              label: t("buyers.colOrders"),
+                              value: t("buyers.paidCount", { count: buyer.purchaseCount }),
+                            },
+                            {
+                              label: t("buyers.colPaidAmount"),
+                              value: formatVnd(sumBuyerPaidVnd(buyer), locale),
+                            },
+                            {
+                              label: t("buyers.colAttempts"),
+                              value: `${formatNumber(buyer.attemptsRemaining, locale)} / ${formatNumber(buyer.attemptsTotal, locale)}`,
+                            },
+                          ]}
+                        >
+                          {buyer.orders.length > 0 ? (
+                            <div className="relative z-1 flex flex-wrap gap-x-2.5 gap-y-1">
+                              {buyer.orders.map((ord) => (
+                                <Link
+                                  key={ord.orderId}
+                                  href={`/orders/${encodeURIComponent(ord.orderCode)}`}
+                                  className={cn(
+                                    "relative z-1 font-mono text-xs text-primary-text hover:underline",
+                                    focusRing,
+                                  )}
+                                >
+                                  {ord.orderCode}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : null}
+                        </ListCard>
+                      );
+                    },
+                  }}
+                />
+              </Card>
 
               {buyersQuery.data && buyersQuery.data.totalPages > 1 ? (
                 <Pagination

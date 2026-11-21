@@ -33,7 +33,7 @@ function mockAdminExamAndListing() {
       id: EXAM_ID,
       code: "IELTS-01",
       name: "IELTS Academic 01",
-      kind: "IELTS",
+      kind: "HSA",
       scope: "FULL",
       status: "PUBLISHED",
       revision: 1,
@@ -152,5 +152,79 @@ describe("OrderBuyersView & Exam buyers link (AC-5, AC-6)", () => {
     await waitFor(() => {
       expect(screen.queryByRole("link", { name: /Người mua/ })).not.toBeInTheDocument();
     });
+  });
+
+  it("chế độ en: dùng số ít '1 paid order' và số nhiều '2 paid orders' cùng data-exam-content trên option động (D-1, D-6)", async () => {
+    const user = userEvent.setup();
+    fakeApi.get("/api/v1/admin/exams", () =>
+      ok({
+        items: [{ id: EXAM_ID, code: "DS-HSA-01", name: "HSA Đề thi thử 01" }],
+      }),
+    );
+    fakeApi.get("/api/v1/admin/exams/{id}/buyers", () =>
+      ok(
+        makeBuyersResponse(
+          [
+            makeBuyerRow({ userId: "u-single", username: "single.user", purchaseCount: 1 }),
+            makeBuyerRow({ userId: "u-multi", username: "multi.user", purchaseCount: 2 }),
+          ],
+          { totalBuyers: 2, totalItems: 2 },
+        ),
+      ),
+    );
+
+    resetMockNavigation("/orders/buyers", `?exam=${EXAM_ID}`);
+    renderOrdersUi(<OrderBuyersView />, { locale: "en" });
+
+    expect(await screen.findByText("1 paid order")).toBeInTheDocument();
+    expect(screen.getByText("2 paid orders")).toBeInTheDocument();
+
+    const trigger = screen.getByRole("combobox", { name: "Exam" });
+    await user.click(trigger);
+
+    await waitFor(() => {
+      const optionMarker = document.querySelector('[role="option"] [data-exam-content]');
+      expect(optionMarker).not.toBeNull();
+      expect(optionMarker).toHaveTextContent("HSA Đề thi thử 01 (DS-HSA-01)");
+    });
+  });
+
+  it("khung hẹp (< 640px): ListCard hiện các liên kết mã đơn bấm được với relative z-1 (D-7)", async () => {
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue({
+        width: 350,
+        height: 400,
+        top: 0,
+        left: 0,
+        bottom: 400,
+        right: 350,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+
+    try {
+      fakeApi.get("/api/v1/admin/exams", () =>
+        ok({
+          items: [{ id: EXAM_ID, code: "DS-HSA-01", name: "HSA Test 01" }],
+        }),
+      );
+      fakeApi.get("/api/v1/admin/exams/{id}/buyers", () =>
+        ok(makeBuyersResponse([makeBuyerRow()], { totalBuyers: 1, totalItems: 1 })),
+      );
+
+      resetMockNavigation("/orders/buyers", `?exam=${EXAM_ID}`);
+      renderOrdersUi(<OrderBuyersView />);
+
+      const orderLink1 = await screen.findByRole("link", { name: "DH-261121-0002" });
+      const orderLink2 = screen.getByRole("link", { name: "DH-261120-0001" });
+      expect(orderLink1).toHaveAttribute("href", "/orders/DH-261121-0002");
+      expect(orderLink2).toHaveAttribute("href", "/orders/DH-261120-0001");
+      expect(orderLink1.className).toContain("relative");
+      expect(orderLink1.className).toContain("z-1");
+    } finally {
+      rectSpy.mockRestore();
+    }
   });
 });

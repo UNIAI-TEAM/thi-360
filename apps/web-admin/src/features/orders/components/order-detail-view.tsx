@@ -3,15 +3,19 @@
 import { AlertCircle, AlertTriangle, ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { type ComponentProps, useMemo, useState } from "react";
 
 import {
   Button,
   Card,
   EmptyState,
+  ListCard,
+  ListCardTag,
   PageHeader,
   Skeleton,
+  Table,
   Tooltip,
+  cn,
   focusRing,
 } from "@thi360/ui";
 
@@ -20,6 +24,7 @@ import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 
 import {
   formatStructuredOrderReason,
+  resolveOrderActorLabel,
   resolveOrderAuditActionLabel,
 } from "../audit-labels";
 import { OrderApiError, resolveOrderErrorMessage } from "../errors";
@@ -33,12 +38,15 @@ import {
 import { useAdminOrderDetailQuery } from "../queries";
 import type {
   AdminOrderDetailResponse,
+  GrantView,
   PaymentDetailView,
+  RefundResponse,
 } from "../types";
 import { ContinueFulfillDialog } from "./continue-fulfill-dialog";
 import { LateSuccessDialog } from "./late-success-dialog";
 import {
   GrantStateChip,
+  KNOWN_ORDER_STATES,
   OrderPaymentStatusChip,
   OrderRefundStatusChip,
   OrderStateChip,
@@ -56,19 +64,94 @@ const KNOWN_REVIEW_REASONS = new Set([
   "DUPLICATE_UNREFUNDED",
 ]);
 
+const KNOWN_PAYMENT_METHODS = new Set(["VNPAY", "FREE"]);
+const KNOWN_REFUND_KINDS = new Set(["API", "MANUAL"]);
+const KNOWN_LATE_SUCCESS_RESOLUTIONS = new Set([
+  "ACCEPTED",
+  "AUTO_EXCESS",
+  "PENDING",
+  "REJECTED",
+]);
+
+type TimelineTone = "success" | "warning" | "danger" | "info" | "neutral";
+
+const TIMELINE_DOT_CLASS: Record<TimelineTone, string> = {
+  success: "bg-success ring-success",
+  warning: "bg-warning ring-warning",
+  danger: "bg-danger ring-danger",
+  info: "bg-info ring-info",
+  neutral: "bg-neutral ring-neutral",
+};
+
 interface TimelineEntry {
   id: string;
   at: string;
   source: "ORDER" | "AUDIT";
-  actor: string;
+  actorLabel: string;
+  actorIsRawUsername: boolean;
   actionLabel: string;
   localizedReason: string | null;
   rawReason: string | null;
+  dotClass: string;
+}
+
+interface RefundRowItem {
+  refund: RefundResponse;
+  payment: PaymentDetailView;
+}
+
+function refundGatewayMessageClass(state: string): string {
+  if (state === "FAILED") return "text-danger";
+  if (state === "UNKNOWN") return "text-warning";
+  return "text-text-secondary";
+}
+
+function historyDotTone(toState: string, reason: string | null | undefined): TimelineTone {
+  const code = reason?.split(":")[0] ?? "";
+  if (toState === "FULFILLED" || code === "PAYMENT_SUCCEEDED") return "success";
+  if (toState === "REFUNDED" || code.startsWith("REFUND_")) return "info";
+  if (code.includes("REJECTED") || code.includes("FAILED") || code.includes("MISMATCH")) {
+    return "danger";
+  }
+  if (
+    toState === "PAID" ||
+    code.includes("LATE_") ||
+    code.includes("EXCESS") ||
+    code.includes("DOUBLE_CHARGE")
+  ) {
+    return "warning";
+  }
+  return "neutral";
+}
+
+function auditDotTone(action: string, outcome: string): TimelineTone {
+  if (outcome === "FAILURE" || action === "REFUND_FAILED") return "danger";
+  if (
+    action === "ENTITLEMENT_GRANTED" ||
+    action === "ORDER_FULFILLED_MANUALLY" ||
+    action === "PAYMENT_SUCCEEDED" ||
+    action === "REFUND_SUCCEEDED"
+  ) {
+    return "success";
+  }
+  if (
+    action.includes("EXCESS") ||
+    action.includes("DOUBLE_CHARGE") ||
+    action.includes("LATE_SUCCESS") ||
+    action === "PAYMENT_NEEDS_REVIEW"
+  ) {
+    return "warning";
+  }
+  if (action.includes("REFUND")) return "info";
+  return "neutral";
 }
 
 export function OrderDetailView({ code }: { code: string }) {
   const t = useTranslations("orders");
+  const tStates = useTranslations("orders.states");
+  const tFallback = useTranslations("orders.statusFallback");
   const tErrors = useTranslations("orders.errors");
+  const tHistory = useTranslations("orders.detail.history");
   const tAuditActions = useTranslations("orders.auditActions");
   const tHistoryReasons = useTranslations("orders.historyReasons");
   const tReviewReasons = useTranslations("orders.reviewReasons");
@@ -105,40 +188,306 @@ export function OrderDetailView({ code }: { code: string }) {
 
     for (const h of order.orderHistory) {
       const formatted = formatStructuredOrderReason(h.reason, tHistoryReasons);
-      const fromLabel = h.fromState ? t(`states.${h.fromState}`) : "—";
-      const toLabel = t(`states.${h.toState}`);
+      const actorResolved = resolveOrderActorLabel(h.actor, undefined, tHistory);
+      const fromLabel = !h.fromState
+        ? "—"
+        : KNOWN_ORDER_STATES.has(h.fromState)
+          ? tStates(h.fromState)
+          : tFallback("unknown");
+      const toLabel = KNOWN_ORDER_STATES.has(h.toState)
+        ? tStates(h.toState)
+        : tFallback("unknown");
       items.push({
         id: `history-${h.id}`,
         at: h.at,
         source: "ORDER",
-        actor: h.actor === "SYSTEM" ? t("detail.history.actorSystem") : h.actor,
+        actorLabel: actorResolved.label,
+        actorIsRawUsername: actorResolved.isRawUsername,
         actionLabel: t("detail.history.stateTransition", { from: fromLabel, to: toLabel }),
         localizedReason: formatted.localized,
         rawReason: formatted.rawText,
+        dotClass: TIMELINE_DOT_CLASS[historyDotTone(h.toState, h.reason)],
       });
     }
 
     for (const a of order.auditEvents) {
       const formatted = formatStructuredOrderReason(a.reason, tHistoryReasons);
-      const actor =
-        a.actorUsername ||
-        (a.actorType === "SYSTEM"
-          ? t("detail.history.actorSystem")
-          : t("detail.history.actorUnknown"));
+      const actorResolved = resolveOrderActorLabel(a.actorUsername, a.actorType, tHistory);
       items.push({
         id: `audit-${a.id}`,
         at: a.occurredAt,
         source: "AUDIT",
-        actor,
+        actorLabel: actorResolved.label,
+        actorIsRawUsername: actorResolved.isRawUsername,
         actionLabel: resolveOrderAuditActionLabel(a.action, tAuditActions),
         localizedReason: formatted.localized,
         rawReason: formatted.rawText,
+        dotClass: TIMELINE_DOT_CLASS[auditDotTone(a.action, a.outcome)],
       });
     }
 
     items.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
     return items;
-  }, [order, t, tAuditActions, tHistoryReasons]);
+  }, [order, t, tStates, tFallback, tHistory, tAuditActions, tHistoryReasons]);
+
+  const grantColumns: ComponentProps<typeof Table<GrantView>>["columns"] = useMemo(
+    () => [
+      {
+        id: "code",
+        header: t("detail.grants.code"),
+        cell: ({ row }) => (
+          <span className="block max-w-[260px] font-mono text-xs wrap-anywhere text-text">
+            {row.original.entitlementId}
+          </span>
+        ),
+      },
+      {
+        id: "remaining",
+        header: t("detail.grants.remaining"),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs whitespace-nowrap text-text">
+            {formatNumber(row.original.attemptsLeft, locale)} /{" "}
+            {formatNumber(row.original.attempts, locale)}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: t("detail.grants.status"),
+        cell: ({ row }) => <GrantStateChip grant={row.original} />,
+      },
+      {
+        id: "grantedAt",
+        header: t("detail.grants.createdAt"),
+        cell: ({ row }) => {
+          const grant = row.original;
+          return (
+            <div className="flex flex-col gap-0.5 font-mono text-xs text-text-secondary">
+              <span className="whitespace-nowrap">{formatOrderDateTime(grant.grantedAt, locale)}</span>
+              {grant.revokedAt ? (
+                <span className="text-[11px]">
+                  {t("detail.grants.revokedAt")}: {formatOrderDateTime(grant.revokedAt, locale)}
+                </span>
+              ) : null}
+            </div>
+          );
+        },
+      },
+    ],
+    [locale, t],
+  );
+
+  const paymentColumns: ComponentProps<typeof Table<PaymentDetailView>>["columns"] = useMemo(
+    () => [
+      {
+        id: "txnRef",
+        header: t("detail.payments.txnRef"),
+        cell: ({ row }) => {
+          const payment = row.original;
+          const bankMeta = [payment.bankCode, payment.cardType].filter(Boolean).join(" · ");
+          return (
+            <div className="flex max-w-[190px] min-w-0 flex-col gap-0.5">
+              <span className="font-mono text-xs font-semibold wrap-anywhere text-text">
+                #{formatAttemptSeq(payment.attemptSeq)} · {payment.txnRef}
+              </span>
+              {payment.vnpTransactionNo ? (
+                <span className="font-mono text-[11px] wrap-anywhere text-text-secondary">
+                  {t("detail.payments.vnpayTxnNo")}: {payment.vnpTransactionNo}
+                </span>
+              ) : null}
+              {bankMeta ? <span className="text-[11px] text-text-secondary">{bankMeta}</span> : null}
+            </div>
+          );
+        },
+      },
+      {
+        id: "amount",
+        header: () => <span className="block text-right">{t("detail.payments.amount")}</span>,
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-xs font-semibold whitespace-nowrap text-text">
+            {formatVnd(row.original.amountVnd, locale)}
+          </div>
+        ),
+      },
+      {
+        id: "status",
+        header: t("detail.payments.status"),
+        cell: ({ row }) => {
+          const payment = row.original;
+          const resolutionLabel = payment.lateSuccessReview
+            ? KNOWN_LATE_SUCCESS_RESOLUTIONS.has(payment.lateSuccessReview)
+              ? t(`lateSuccessResolutions.${payment.lateSuccessReview}`)
+              : tFallback("unknown")
+            : null;
+          return (
+            <div className="flex flex-col gap-1">
+              <PaymentAttemptStateChip
+                state={payment.state}
+                lateSuccessAt={payment.lateSuccessAt}
+              />
+              {resolutionLabel ? (
+                <span className="text-[11px] text-text-secondary">{resolutionLabel}</span>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
+        id: "classification",
+        header: t("detail.payments.classification"),
+        cell: ({ row }) => <PaymentClassificationChip payment={row.original} />,
+      },
+      {
+        id: "payDate",
+        header: t("detail.payments.payDate"),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs whitespace-nowrap text-text-secondary">
+            {row.original.payDate ? formatVnpayPayDate(row.original.payDate, locale) : "—"}
+          </span>
+        ),
+      },
+      {
+        id: "action",
+        header: () => <span className="block text-right">{t("detail.payments.action")}</span>,
+        cell: ({ row }) => {
+          const payment = row.original;
+          const showLateBtn = canRecover && payment.lateSuccessReview === "PENDING";
+          const showRefundBtn = canRefund && payment.state === "SUCCEEDED";
+          if (!showLateBtn && !showRefundBtn) {
+            return <span className="block text-right text-xs text-text-secondary">—</span>;
+          }
+          return (
+            <div className="flex flex-col items-end gap-1.5">
+              {showLateBtn ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLateSuccessPaymentId(payment.id)}
+                >
+                  {t("detail.actions.reviewLateSuccess")}
+                </Button>
+              ) : null}
+              {showRefundBtn ? (
+                <PaymentRefundActionButton
+                  payment={payment}
+                  onOpen={() => setRefundPaymentId(payment.id)}
+                />
+              ) : null}
+            </div>
+          );
+        },
+      },
+    ],
+    [canRecover, canRefund, locale, t, tFallback],
+  );
+
+  const refundColumns: ComponentProps<typeof Table<RefundRowItem>>["columns"] = useMemo(
+    () => [
+      {
+        id: "paymentRef",
+        header: t("detail.refunds.paymentRef"),
+        cell: ({ row }) => {
+          const { refund } = row.original;
+          return (
+            <div className="flex max-w-[165px] min-w-0 flex-col gap-0.5 font-mono text-xs text-text">
+              <span className="wrap-anywhere">{refund.paymentTxnRef}</span>
+              {refund.externalRef ? (
+                <span className="text-[11px] wrap-anywhere text-text-secondary">
+                  {refund.externalRef}
+                </span>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
+        id: "kind",
+        header: t("detail.refunds.kind"),
+        cell: ({ row }) => {
+          const kind = row.original.refund.kind;
+          return (
+            <span className="text-xs text-text-secondary">
+              {KNOWN_REFUND_KINDS.has(kind) ? t(`refundKinds.${kind}`) : tFallback("unknown")}
+            </span>
+          );
+        },
+      },
+      {
+        id: "amount",
+        header: () => <span className="block text-right">{t("detail.refunds.amount")}</span>,
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-xs font-semibold whitespace-nowrap text-text">
+            {formatVnd(row.original.refund.amountVnd, locale)}
+          </div>
+        ),
+      },
+      {
+        id: "status",
+        header: t("detail.refunds.status"),
+        cell: ({ row }) => <RefundRowStateChip state={row.original.refund.state} />,
+      },
+      {
+        id: "reason",
+        header: t("detail.refunds.reason"),
+        cell: ({ row }) => {
+          const { refund } = row.original;
+          return (
+            <div className="flex min-w-36 max-w-[240px] flex-col gap-0.5 text-xs text-text">
+              <p className="wrap-anywhere" data-exam-content>
+                {refund.reason}
+              </p>
+              {refund.gatewayMessage ? (
+                <p
+                  className={cn("wrap-anywhere", refundGatewayMessageClass(refund.state))}
+                  data-exam-content
+                >
+                  {refund.gatewayMessage}
+                </p>
+              ) : null}
+              {refund.markFailedReason ? (
+                <p className="text-text-secondary wrap-anywhere" data-exam-content>
+                  {refund.markFailedReason}
+                </p>
+              ) : null}
+            </div>
+          );
+        },
+      },
+      {
+        id: "createdAt",
+        header: t("detail.refunds.createdAt"),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs whitespace-nowrap text-text-secondary">
+            {formatOrderDateTime(row.original.refund.requestedAt, locale)}
+          </span>
+        ),
+      },
+      {
+        id: "action",
+        header: () => <span className="block text-right">{t("detail.refunds.action")}</span>,
+        cell: ({ row }) => {
+          const { refund, payment } = row.original;
+          if (!canRefund || refund.state !== "UNKNOWN") {
+            return <span className="block text-right text-xs text-text-secondary">—</span>;
+          }
+          return (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRefundPaymentId(payment.id)}
+              >
+                {t("detail.actions.queryRefund")}
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [canRefund, locale, t, tFallback],
+  );
 
   const isOffline = detailQuery.fetchStatus === "paused" && detailQuery.isPending;
 
@@ -214,17 +563,32 @@ export function OrderDetailView({ code }: { code: string }) {
       (p.refunds.some((r) => r.state === "UNKNOWN" || r.state === "PROCESSING") ||
         p.refundableAmountVnd > 0),
   );
-  const allRefunds = order.payments.flatMap((payment) =>
+  const allRefunds: RefundRowItem[] = order.payments.flatMap((payment) =>
     payment.refunds.map((refund) => ({ refund, payment })),
   );
 
-  const reviewReasonFormatted =
-    order.reviewReason && KNOWN_REVIEW_REASONS.has(order.reviewReason)
-      ? tReviewReasons(order.reviewReason)
-      : order.reviewReason;
+  let reviewReasonFormatted: string | null | undefined = order.reviewReason;
+  let reviewReasonIsRaw = false;
+  if (order.reviewReason) {
+    if (KNOWN_REVIEW_REASONS.has(order.reviewReason)) {
+      reviewReasonFormatted = tReviewReasons(order.reviewReason);
+    } else {
+      const structured = formatStructuredOrderReason(order.reviewReason, tHistoryReasons);
+      if (structured.localized) {
+        reviewReasonFormatted = structured.localized;
+      } else {
+        reviewReasonFormatted = structured.rawText;
+        reviewReasonIsRaw = true;
+      }
+    }
+  }
+
+  const paymentMethodLabel = KNOWN_PAYMENT_METHODS.has(order.paymentMethod)
+    ? t(`paymentMethods.${order.paymentMethod}`)
+    : tFallback("unknown");
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <PageHeader
           title={t("detail.title", { code: order.code })}
@@ -293,7 +657,7 @@ export function OrderDetailView({ code }: { code: string }) {
           <span>{t("detail.banners.replacedByOrder", { code: order.replacedByOrderCode })}</span>
           <Link
             href={`/orders/${encodeURIComponent(order.replacedByOrderCode)}`}
-            className={`font-mono text-sm font-semibold text-primary-text hover:underline ${focusRing}`}
+            className={cn("font-mono text-sm font-semibold text-primary-text hover:underline", focusRing)}
           >
             {order.replacedByOrderCode}
           </Link>
@@ -349,7 +713,10 @@ export function OrderDetailView({ code }: { code: string }) {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
           <div className="flex flex-col gap-0.5">
             <span className="font-semibold">{t("detail.banners.needsReviewTitle")}</span>
-            <span className="text-xs text-text-secondary" data-exam-content={!KNOWN_REVIEW_REASONS.has(order.reviewReason ?? "") || undefined}>
+            <span
+              className="text-xs text-text-secondary"
+              data-exam-content={reviewReasonIsRaw || undefined}
+            >
               {reviewReasonFormatted
                 ? t("detail.banners.needsReviewBody", { reason: reviewReasonFormatted })
                 : t("detail.banners.needsReviewTitle")}
@@ -397,7 +764,7 @@ export function OrderDetailView({ code }: { code: string }) {
                 {formatNumber(order.attemptsGranted, locale)}
               </dd>
               <dd className="text-xs text-text-secondary">
-                {t("detail.snapshot.paymentMethod")}: {t(`paymentMethods.${order.paymentMethod}`)}
+                {t("detail.snapshot.paymentMethod")}: {paymentMethodLabel}
               </dd>
             </div>
 
@@ -473,105 +840,120 @@ export function OrderDetailView({ code }: { code: string }) {
       </Card>
 
       {/* Block 2: Grants */}
-      <Card className="p-5">
-        <h2 className="text-base font-semibold text-text">{t("detail.grants.title")}</h2>
+      <Card padding="none" className="overflow-hidden">
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-base font-semibold text-text">{t("detail.grants.title")}</h2>
+        </div>
         {order.grants.length === 0 ? (
-          <p className="mt-3 text-sm text-text-secondary">{t("detail.grants.empty")}</p>
+          <p className="px-5 py-4 text-sm text-text-secondary">{t("detail.grants.empty")}</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-text-secondary">
-                  <th className="py-2 pr-4 font-semibold">{t("detail.grants.code")}</th>
-                  <th className="py-2 pr-4 font-semibold">{t("detail.grants.remaining")}</th>
-                  <th className="py-2 pr-4 font-semibold">{t("detail.grants.status")}</th>
-                  <th className="py-2 font-semibold">{t("detail.grants.createdAt")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.grants.map((grant) => (
-                  <tr key={grant.grantId} className="border-b border-border last:border-0">
-                    <td className="py-2.5 pr-4 font-mono text-xs text-text">
-                      {grant.entitlementId}
-                    </td>
-                    <td className="py-2.5 pr-4 font-mono text-xs text-text">
-                      {grant.attemptsLeft} / {grant.attempts}
-                    </td>
-                    <td className="py-2.5 pr-4">
-                      <GrantStateChip grant={grant} />
-                    </td>
-                    <td className="py-2.5 font-mono text-xs text-text-secondary">
-                      {formatOrderDateTime(grant.grantedAt, locale)}
-                      {grant.revokedAt
-                        ? ` (${t("detail.grants.revokedAt")}: ${formatOrderDateTime(grant.revokedAt, locale)})`
-                        : ""}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            aria-label={t("detail.grants.title")}
+            columns={grantColumns}
+            data={order.grants}
+            getRowId={(grant) => grant.grantId}
+            empty={<p className="px-5 py-4 text-sm text-text-secondary">{t("detail.grants.empty")}</p>}
+            cards={{
+              render: (grant) => (
+                <ListCard
+                  title={<span className="font-mono text-xs wrap-anywhere">{grant.entitlementId}</span>}
+                  status={<GrantStateChip grant={grant} />}
+                  meta={[
+                    {
+                      label: t("detail.grants.remaining"),
+                      value: `${formatNumber(grant.attemptsLeft, locale)} / ${formatNumber(grant.attempts, locale)}`,
+                    },
+                    {
+                      label: t("detail.grants.createdAt"),
+                      value: formatOrderDateTime(grant.grantedAt, locale),
+                    },
+                    Boolean(grant.revokedAt) && {
+                      label: t("detail.grants.revokedAt"),
+                      value: formatOrderDateTime(grant.revokedAt, locale),
+                    },
+                  ]}
+                />
+              ),
+            }}
+          />
         )}
       </Card>
 
       {/* Block 3A: Payments */}
-      <Card className="p-5">
-        <h2 className="text-base font-semibold text-text">{t("detail.payments.title")}</h2>
+      <Card padding="none" className="overflow-hidden">
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-base font-semibold text-text">{t("detail.payments.title")}</h2>
+        </div>
         {order.payments.length === 0 ? (
-          <p className="mt-3 text-sm text-text-secondary">{t("detail.payments.empty")}</p>
+          <p className="px-5 py-4 text-sm text-text-secondary">{t("detail.payments.empty")}</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-text-secondary">
-                  <th className="py-2 pr-3 font-semibold">{t("detail.payments.txnRef")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.payments.amount")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.payments.status")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.payments.classification")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.payments.payDate")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.payments.lateSuccessResolution")}</th>
-                  <th className="py-2 font-semibold text-right">{t("detail.payments.action")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.payments.map((payment) => (
-                  <tr key={payment.id} className="border-b border-border last:border-0 align-top">
-                    <td className="py-2.5 pr-3">
-                      <div className="font-mono text-xs font-semibold text-text">
+          <Table
+            aria-label={t("detail.payments.title")}
+            columns={paymentColumns}
+            data={order.payments}
+            getRowId={(payment) => payment.id}
+            className="[&_:is(th,td)]:px-3 [&_:is(th,td):first-child]:ps-5 [&_:is(th,td):last-child]:pe-5"
+            empty={
+              <p className="px-5 py-4 text-sm text-text-secondary">{t("detail.payments.empty")}</p>
+            }
+            cards={{
+              render: (payment) => {
+                const showLateBtn = canRecover && payment.lateSuccessReview === "PENDING";
+                const showRefundBtn = canRefund && payment.state === "SUCCEEDED";
+                const bankMeta = [payment.bankCode, payment.cardType].filter(Boolean).join(" · ");
+                const resolutionLabel = payment.lateSuccessReview
+                  ? KNOWN_LATE_SUCCESS_RESOLUTIONS.has(payment.lateSuccessReview)
+                    ? t(`lateSuccessResolutions.${payment.lateSuccessReview}`)
+                    : tFallback("unknown")
+                  : null;
+                return (
+                  <ListCard
+                    title={
+                      <span className="font-mono text-xs font-semibold wrap-anywhere">
                         #{formatAttemptSeq(payment.attemptSeq)} · {payment.txnRef}
-                      </div>
-                      {payment.vnpTransactionNo ? (
-                        <div className="font-mono text-[11px] text-text-secondary">
-                          {t("detail.payments.vnpayTxnNo")}: {payment.vnpTransactionNo}
-                        </div>
-                      ) : null}
-                      {payment.bankCode ? (
-                        <div className="text-[11px] text-text-secondary">{payment.bankCode}</div>
-                      ) : null}
-                    </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs font-semibold text-text whitespace-nowrap">
-                      {formatVnd(payment.amountVnd, locale)}
-                    </td>
-                    <td className="py-2.5 pr-3 whitespace-nowrap">
+                      </span>
+                    }
+                    caption={
+                      [
+                        payment.vnpTransactionNo
+                          ? `${t("detail.payments.vnpayTxnNo")}: ${payment.vnpTransactionNo}`
+                          : null,
+                        bankMeta || null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || undefined
+                    }
+                    status={
                       <PaymentAttemptStateChip
                         state={payment.state}
                         lateSuccessAt={payment.lateSuccessAt}
                       />
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      <PaymentClassificationChip payment={payment} />
-                    </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                      {payment.payDate ? formatVnpayPayDate(payment.payDate, locale) : "—"}
-                    </td>
-                    <td className="py-2.5 pr-3 text-xs text-text-secondary">
-                      {payment.lateSuccessReview
-                        ? t(`lateSuccessResolutions.${payment.lateSuccessReview}`)
-                        : "—"}
-                    </td>
-                    <td className="py-2.5 text-right whitespace-nowrap">
-                      <div className="flex justify-end gap-2">
-                        {canRecover && payment.lateSuccessReview === "PENDING" ? (
+                    }
+                    tags={<PaymentClassificationChip payment={payment} />}
+                    meta={[
+                      {
+                        label: t("detail.payments.amount"),
+                        value: (
+                          <span className="font-mono font-semibold text-text">
+                            {formatVnd(payment.amountVnd, locale)}
+                          </span>
+                        ),
+                      },
+                      {
+                        label: t("detail.payments.payDate"),
+                        value: payment.payDate
+                          ? formatVnpayPayDate(payment.payDate, locale)
+                          : "—",
+                      },
+                      Boolean(resolutionLabel) && {
+                        label: t("detail.payments.lateSuccessResolution"),
+                        value: resolutionLabel,
+                      },
+                    ]}
+                  >
+                    {showLateBtn || showRefundBtn ? (
+                      <div className="relative z-1 flex flex-wrap gap-2 pt-1">
+                        {showLateBtn ? (
                           <Button
                             type="button"
                             variant="outline"
@@ -581,77 +963,92 @@ export function OrderDetailView({ code }: { code: string }) {
                             {t("detail.actions.reviewLateSuccess")}
                           </Button>
                         ) : null}
-                        {canRefund && payment.state === "SUCCEEDED" ? (
+                        {showRefundBtn ? (
                           <PaymentRefundActionButton
                             payment={payment}
                             onOpen={() => setRefundPaymentId(payment.id)}
                           />
                         ) : null}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : null}
+                  </ListCard>
+                );
+              },
+            }}
+          />
         )}
       </Card>
 
       {/* Block 3B: Refund History */}
-      <Card className="p-5">
-        <h2 className="text-base font-semibold text-text">{t("detail.refunds.title")}</h2>
+      <Card padding="none" className="overflow-hidden">
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-base font-semibold text-text">{t("detail.refunds.title")}</h2>
+        </div>
         {allRefunds.length === 0 ? (
-          <p className="mt-3 text-sm text-text-secondary">{t("detail.refunds.empty")}</p>
+          <p className="px-5 py-4 text-sm text-text-secondary">{t("detail.refunds.empty")}</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-text-secondary">
-                  <th className="py-2 pr-3 font-semibold">{t("detail.refunds.paymentRef")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.refunds.kind")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.refunds.amount")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.refunds.status")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.refunds.reason")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.refunds.createdAt")}</th>
-                  <th className="py-2 font-semibold text-right">{t("detail.refunds.action")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allRefunds.map(({ refund, payment }) => (
-                  <tr key={refund.id} className="border-b border-border last:border-0 align-top">
-                    <td className="py-2.5 pr-3 font-mono text-xs text-text">
-                      <div>{refund.paymentTxnRef}</div>
-                      {refund.externalRef ? (
-                        <div className="text-[11px] text-text-secondary">{refund.externalRef}</div>
-                      ) : null}
-                    </td>
-                    <td className="py-2.5 pr-3 text-xs text-text-secondary whitespace-nowrap">
-                      {t(`refundKinds.${refund.kind}`)}
-                    </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs font-semibold text-text whitespace-nowrap">
-                      {formatVnd(refund.amountVnd, locale)}
-                    </td>
-                    <td className="py-2.5 pr-3 whitespace-nowrap">
-                      <RefundRowStateChip state={refund.state} />
-                    </td>
-                    <td className="py-2.5 pr-3 text-xs text-text">
-                      <p data-exam-content>{refund.reason}</p>
+          <Table
+            aria-label={t("detail.refunds.title")}
+            columns={refundColumns}
+            data={allRefunds}
+            getRowId={(item) => item.refund.id}
+            className="[&_:is(th,td)]:px-3 [&_:is(th,td):first-child]:ps-5 [&_:is(th,td):last-child]:pe-5"
+            empty={
+              <p className="px-5 py-4 text-sm text-text-secondary">{t("detail.refunds.empty")}</p>
+            }
+            cards={{
+              render: ({ refund, payment }) => {
+                const kindLabel = KNOWN_REFUND_KINDS.has(refund.kind)
+                  ? t(`refundKinds.${refund.kind}`)
+                  : tFallback("unknown");
+                return (
+                  <ListCard
+                    title={
+                      <span className="font-mono text-xs font-semibold wrap-anywhere">
+                        {refund.paymentTxnRef}
+                      </span>
+                    }
+                    caption={
+                      refund.externalRef
+                        ? `${kindLabel} · ${refund.externalRef}`
+                        : kindLabel
+                    }
+                    status={<RefundRowStateChip state={refund.state} />}
+                    meta={[
+                      {
+                        label: t("detail.refunds.amount"),
+                        value: (
+                          <span className="font-mono font-semibold text-text">
+                            {formatVnd(refund.amountVnd, locale)}
+                          </span>
+                        ),
+                      },
+                      {
+                        label: t("detail.refunds.createdAt"),
+                        value: formatOrderDateTime(refund.requestedAt, locale),
+                      },
+                    ]}
+                  >
+                    <div className="flex flex-col gap-1 text-xs">
+                      <p className="wrap-anywhere text-text" data-exam-content>
+                        {refund.reason}
+                      </p>
                       {refund.gatewayMessage ? (
-                        <p className="mt-0.5 text-danger" data-exam-content>
+                        <p
+                          className={cn("wrap-anywhere", refundGatewayMessageClass(refund.state))}
+                          data-exam-content
+                        >
                           {refund.gatewayMessage}
                         </p>
                       ) : null}
                       {refund.markFailedReason ? (
-                        <p className="mt-0.5 text-text-secondary" data-exam-content>
+                        <p className="text-text-secondary wrap-anywhere" data-exam-content>
                           {refund.markFailedReason}
                         </p>
                       ) : null}
-                    </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                      {formatOrderDateTime(refund.requestedAt, locale)}
-                    </td>
-                    <td className="py-2.5 text-right whitespace-nowrap">
-                      {canRefund && refund.state === "UNKNOWN" ? (
+                    </div>
+                    {canRefund && refund.state === "UNKNOWN" ? (
+                      <div className="relative z-1 flex flex-wrap gap-2 pt-1">
                         <Button
                           type="button"
                           variant="outline"
@@ -660,60 +1057,75 @@ export function OrderDetailView({ code }: { code: string }) {
                         >
                           {t("detail.actions.queryRefund")}
                         </Button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    ) : null}
+                  </ListCard>
+                );
+              },
+            }}
+          />
         )}
       </Card>
 
-      {/* Block 4: Order History & Audit Log */}
+      {/* Block 4: Order History & Audit Log Timeline */}
       <Card className="p-5">
         <h2 className="text-base font-semibold text-text">{t("detail.history.title")}</h2>
         {timelineEntries.length === 0 ? (
           <p className="mt-3 text-sm text-text-secondary">{t("detail.history.empty")}</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-text-secondary">
-                  <th className="py-2 pr-3 font-semibold">{t("detail.history.colTime")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.history.colType")}</th>
-                  <th className="py-2 pr-3 font-semibold">{t("detail.history.colActor")}</th>
-                  <th className="py-2 font-semibold">{t("detail.history.colDetail")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timelineEntries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-border last:border-0 align-top">
-                    <td className="py-2.5 pr-3 font-mono text-xs text-text-secondary whitespace-nowrap">
-                      {formatOrderDateTime(entry.at, locale)}
-                    </td>
-                    <td className="py-2.5 pr-3 text-xs text-text-secondary whitespace-nowrap">
+          <ol className="mt-4 flex flex-col">
+            {timelineEntries.map((entry) => (
+              <li
+                key={entry.id}
+                className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[9rem_1.25rem_minmax(0,1fr)]"
+              >
+                <time
+                  dateTime={entry.at}
+                  className="hidden py-2 font-mono text-xs whitespace-nowrap text-text-secondary tabular-nums sm:block"
+                >
+                  {formatOrderDateTime(entry.at, locale)}
+                </time>
+                <span aria-hidden="true" className="relative flex justify-center">
+                  <span className="absolute inset-y-0 w-px bg-border" />
+                  <span
+                    className={cn(
+                      "relative mt-3 size-2.5 shrink-0 rounded-full border-2 border-surface ring-1",
+                      entry.dotClass,
+                    )}
+                  />
+                </span>
+                <div className="flex min-w-0 flex-col gap-1 py-2 pb-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-sm font-semibold text-text">{entry.actionLabel}</span>
+                    <ListCardTag>
                       {entry.source === "ORDER"
                         ? t("detail.history.sourceOrder")
                         : t("detail.history.sourceAudit")}
-                    </td>
-                    <td className="py-2.5 pr-3 font-mono text-xs text-text">{entry.actor}</td>
-                    <td className="py-2.5 text-xs text-text">
-                      <p className="font-medium">{entry.actionLabel}</p>
-                      {entry.localizedReason ? (
-                        <p className="mt-0.5 text-text-secondary">{entry.localizedReason}</p>
-                      ) : null}
-                      {entry.rawReason ? (
-                        <p className="mt-0.5 text-text-secondary" data-exam-content>
-                          {entry.rawReason}
-                        </p>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </ListCardTag>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-secondary">
+                    <time dateTime={entry.at} className="font-mono tabular-nums sm:hidden">
+                      {formatOrderDateTime(entry.at, locale)}
+                    </time>
+                    <span
+                      className={entry.actorIsRawUsername ? "font-mono" : undefined}
+                      data-exam-content={entry.actorIsRawUsername || undefined}
+                    >
+                      {entry.actorLabel}
+                    </span>
+                  </div>
+                  {entry.localizedReason ? (
+                    <p className="text-xs text-text-secondary">{entry.localizedReason}</p>
+                  ) : null}
+                  {entry.rawReason ? (
+                    <p className="text-xs wrap-anywhere text-text-secondary" data-exam-content>
+                      {entry.rawReason}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
         )}
       </Card>
 
