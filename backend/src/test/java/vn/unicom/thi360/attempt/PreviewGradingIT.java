@@ -799,6 +799,119 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
         assertThat(hsaRes.path("rawScore").decimalValue()).isEqualByComparingTo("0.50");
     }
 
+    @Test
+    void hscaTrialGetsHalfPoint() throws Exception {
+        Subject s1 = createSubject();
+        Subject s2 = createSubject();
+        UUID qOnePt = insertMultipleChoicePartialThreeCorrect(s1, new BigDecimal("1.00"));
+        UUID qQuarterPt = insertMultipleChoicePartialThreeCorrect(s2, new BigDecimal("0.25"));
+
+        UUID hscaExam = insertCustomExam("HSCA", "SHARED", 60, """
+                [{"id":"p1","order":1,"name":"Part 1","questionCount":2,"maxPoints":1.25,"participation":{"mode":"ALL"},
+                  "sections":[
+                    {"id":"s1","subjectCode":"%s","questionCount":1,
+                      "blocks":[{"id":"b1","name":"MC 1pt","questionType":"MULTIPLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":1.0}]},
+                    {"id":"s2","subjectCode":"%s","questionCount":1,
+                      "blocks":[{"id":"b2","name":"MC 0.25pt","questionType":"MULTIPLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":0.25}]}
+                  ]}]
+                """.formatted(s1.code(), s2.code()), 2);
+
+        UUID previewId = generatePreview(hscaExam);
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put(qOnePt.toString(), Map.of("type", "MULTIPLE_CHOICE", "optionIds", List.of("o1", "o2")));
+        answers.put(qQuarterPt.toString(), Map.of("type", "MULTIPLE_CHOICE", "optionIds", List.of("o1", "o2")));
+
+        JsonNode res = gradeOk(hscaExam, previewId, answers);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(res);
+        assertThat(res.path("kindCode").asText()).isEqualTo("HSCA");
+
+        JsonNode onePtItem = findGradedItem(res.path("items"), qOnePt);
+        assertThat(onePtItem.path("outcome").asText()).isEqualTo("PARTIAL");
+        // Half credit of 1.00 = 0.50 (NOT proportional 2/3 = 0.67)
+        assertThat(onePtItem.path("earnedPoints").decimalValue()).isEqualByComparingTo("0.50");
+
+        JsonNode quarterPtItem = findGradedItem(res.path("items"), qQuarterPt);
+        assertThat(quarterPtItem.path("outcome").asText()).isEqualTo("PARTIAL");
+        assertThat(quarterPtItem.path("earnedPoints").decimalValue()).isEqualByComparingTo("0.1250");
+
+        // 0.50 + 0.125 = 0.625 -> rounded HALF_UP once to 0.63
+        assertThat(res.path("rawScore").decimalValue()).isEqualByComparingTo("0.63");
+        assertThat(res.path("maxScore").decimalValue()).isEqualByComparingTo("1.25");
+    }
+
+    @Test
+    void vsatTrialKeepsProportional() throws Exception {
+        Subject s1 = createSubject();
+        Subject s2 = createSubject();
+        UUID qThreePt = insertMultipleChoicePartialThreeCorrect(s1, new BigDecimal("3.00"));
+        UUID qOnePt = insertMultipleChoicePartialThreeCorrect(s2, new BigDecimal("1.00"));
+
+        UUID vsatExam = insertCustomExam("VSAT", "SHARED", 60, """
+                [{"id":"p1","order":1,"name":"Part 1","questionCount":2,"maxPoints":4.00,"participation":{"mode":"ALL"},
+                  "sections":[
+                    {"id":"s1","subjectCode":"%s","questionCount":1,
+                      "blocks":[{"id":"b1","name":"MC 3pt","questionType":"MULTIPLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":3.0}]},
+                    {"id":"s2","subjectCode":"%s","questionCount":1,
+                      "blocks":[{"id":"b2","name":"MC 1pt","questionType":"MULTIPLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":1.0}]}
+                  ]}]
+                """.formatted(s1.code(), s2.code()), 2);
+
+        UUID previewId = generatePreview(vsatExam);
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put(qThreePt.toString(), Map.of("type", "MULTIPLE_CHOICE", "optionIds", List.of("o1", "o2")));
+        answers.put(qOnePt.toString(), Map.of("type", "MULTIPLE_CHOICE", "optionIds", List.of("o1", "o2")));
+
+        JsonNode res = gradeOk(vsatExam, previewId, answers);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(res);
+        assertThat(res.path("kindCode").asText()).isEqualTo("VSAT");
+
+        JsonNode threePtItem = findGradedItem(res.path("items"), qThreePt);
+        assertThat(threePtItem.path("outcome").asText()).isEqualTo("PARTIAL");
+        // Proportional 2/3 of 3.00 = 2.00 (NOT half-credit 1.50)
+        assertThat(threePtItem.path("earnedPoints").decimalValue()).isEqualByComparingTo("2.00");
+
+        JsonNode onePtItem = findGradedItem(res.path("items"), qOnePt);
+        assertThat(onePtItem.path("outcome").asText()).isEqualTo("PARTIAL");
+        // Proportional 2/3 of 1.00 = 0.6667
+        assertThat(onePtItem.path("earnedPoints").decimalValue()).isEqualByComparingTo("0.6667");
+
+        // Exact 2 + 2/3 = 8/3 -> rounded HALF_UP once to 2.67
+        assertThat(res.path("rawScore").decimalValue()).isEqualByComparingTo("2.67");
+        assertThat(res.path("maxScore").decimalValue()).isEqualByComparingTo("4.00");
+    }
+
+    private UUID insertMultipleChoicePartialThreeCorrect(Subject subject, BigDecimal points) {
+        UUID id = UUID.randomUUID();
+        jdbc.update(
+                "insert into questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
+                        + "values (?,?,'MULTIPLE_CHOICE','READY',?,1,?)",
+                id,
+                "AT7-MC-" + id,
+                subject.id(),
+                points);
+        String snapshot = """
+                {
+                  "content": "<p>Multiple choice 3 correct</p>",
+                  "points": %s,
+                  "body": {
+                    "type": "MULTIPLE_CHOICE",
+                    "scoringRule": "PARTIAL",
+                    "options": [
+                      {"id": "o1", "content": "1", "correct": true},
+                      {"id": "o2", "content": "2", "correct": true},
+                      {"id": "o3", "content": "3", "correct": true},
+                      {"id": "w1", "content": "4", "correct": false}
+                    ]
+                  }
+                }
+                """.formatted(points.toPlainString());
+        jdbc.update(
+                "insert into questionbank.question_version(question_id, version_no, snapshot) values (?, 1, cast(? as jsonb))",
+                id,
+                snapshot);
+        return id;
+    }
+
     // --- Support helpers --------------------------------------------------------------------------------
 
     private JsonNode gradeOk(UUID examId, UUID previewId, Map<String, Object> answers) throws Exception {

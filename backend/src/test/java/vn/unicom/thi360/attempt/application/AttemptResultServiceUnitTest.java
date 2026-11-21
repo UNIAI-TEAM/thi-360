@@ -62,6 +62,9 @@ import vn.unicom.thi360.catalog.spi.CatalogStatus;
 import vn.unicom.thi360.commerce.spi.EntitlementBenefits;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Part;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Segment;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort.AssetContent;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort.AssetKind;
@@ -90,6 +93,7 @@ class AttemptResultServiceUnitTest {
     private EntitlementPort entitlementPort;
     private QuestionSourcePort questionSourcePort;
     private QuestionAssetContentPort questionAssetContentPort;
+    private PublishedExamPort publishedExamPort;
     private CatalogLookup catalogLookup;
     private AttemptResultService service;
     private AttemptSolutionAssetService solutionAssetService;
@@ -105,7 +109,7 @@ class AttemptResultServiceUnitTest {
         questionSourcePort = mock(QuestionSourcePort.class);
         QuestionAttachmentPort questionAttachmentPort = mock(QuestionAttachmentPort.class);
         questionAssetContentPort = mock(QuestionAssetContentPort.class);
-        PublishedExamPort publishedExamPort = mock(PublishedExamPort.class);
+        publishedExamPort = mock(PublishedExamPort.class);
         catalogLookup = mock(CatalogLookup.class);
         PlatformTransactionManager txManager = mock(PlatformTransactionManager.class);
         when(txManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
@@ -141,7 +145,8 @@ class AttemptResultServiceUnitTest {
                 catalogLookup,
                 new AttemptQuestionSanitizer(),
                 messages,
-                txManager);
+                txManager,
+                new AttemptSegmentResultBuilder());
 
         solutionAssetService = new AttemptSolutionAssetService(
                 accessGate,
@@ -635,6 +640,67 @@ class AttemptResultServiceUnitTest {
 
         ReviewGradingDetail scDetail = itemViewById(review, scChild.getId()).gradingDetail();
         assertThat(scDetail.selectedOptionId()).isEqualTo("sc1");
+    }
+
+    @Test
+    void resultIncludesSegmentsFromPublishedSnapshotAndOmitsWhenAbsent() {
+        UUID userId = UUID.randomUUID();
+        UUID attemptId = UUID.randomUUID();
+        UUID partId = UUID.randomUUID();
+
+        Attempt attempt = scoredHsaAttempt(attemptId, userId, null);
+        AttemptPart part = AttemptPart.createPending(
+                partId, attemptId, "p1", "Phần 1", 0, 60, 2, new BigDecimal("12.00"), 1L);
+        part.open(NOW, NOW.plusSeconds(3600));
+        part.close(PartCloseReason.ATTEMPT_SUBMITTED, NOW.plusSeconds(100));
+
+        AttemptItem i1 = AttemptItem.create(
+                UUID.randomUUID(), attemptId, partId, null, "sec-1", null, "blk-1",
+                null, 1, 1, 1, UUID.randomUUID(), 1, QuestionType.SINGLE_CHOICE, new BigDecimal("6.00"), List.of());
+        i1.recordGrading(new BigDecimal("6.0000"), ItemOutcome.CORRECT, Map.of("exactFraction", "6"));
+        AttemptItem i2 = AttemptItem.create(
+                UUID.randomUUID(), attemptId, partId, null, "sec-1", null, "blk-1",
+                null, 2, 2, 1, UUID.randomUUID(), 1, QuestionType.SINGLE_CHOICE, new BigDecimal("6.00"), List.of());
+        i2.recordGrading(BigDecimal.ZERO, ItemOutcome.BLANK, Map.of("exactFraction", "0"));
+
+        PublishedVersion versionWithSegments = new PublishedVersion(
+                attempt.getExamId(), attempt.getExamVersionNo(), "SERVING", "PUBLISHED", NOW,
+                "VSAT", "V-SAT", UUID.randomUUID(), "VSAT", "SUBJECT", null, null,
+                "STANDARD", "SHARED", 60, new BigDecimal("12.00"), null, "RAW", null,
+                List.of(new Part("p1", 1, "Part 1", 60, 2, 2, 2, "ALL", null, new BigDecimal("12.00"),
+                        List.of(
+                                new Segment("P1", "Phần I", 1, 1, 1, new BigDecimal("6.00")),
+                                new Segment("P2", "Phần II", 2, 2, 1, new BigDecimal("6.00"))),
+                        List.of(), List.of(), List.of(), List.of(), List.of())),
+                List.of(), List.of(), List.of(), List.of(), null);
+
+        when(accessGate.requireLearner()).thenReturn(userId);
+        when(attemptGuard.requireOwnedAttempt(attemptId, userId)).thenReturn(attempt);
+        when(entitlementPort.benefitsOf(attemptId))
+                .thenReturn(new EntitlementBenefits(UUID.randomUUID(), attempt.getExamId(), Map.of(), "SCORE", List.of(), 1));
+        when(attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId)).thenReturn(List.of(part));
+        when(attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId)).thenReturn(List.of(i1, i2));
+        when(publishedExamPort.loadVersion(attempt.getExamId(), attempt.getExamVersionNo()))
+                .thenReturn(Optional.of(versionWithSegments));
+        when(catalogLookup.listGroupItems("SUBJECT")).thenReturn(List.of());
+
+        Locale prev = LocaleContextHolder.getLocale();
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("vi"));
+        try {
+            AttemptResultResponse withSegs = service.getResult(attemptId);
+            assertThat(withSegs.segments()).hasSize(2);
+            assertThat(withSegs.segments().get(0).code()).isEqualTo("P1");
+            assertThat(withSegs.segments().get(0).score()).isEqualByComparingTo("6.00");
+            assertThat(withSegs.segments().get(1).code()).isEqualTo("P2");
+            assertThat(withSegs.segments().get(1).score()).isEqualByComparingTo("0.00");
+
+            when(publishedExamPort.loadVersion(attempt.getExamId(), attempt.getExamVersionNo()))
+                    .thenReturn(Optional.empty());
+            AttemptResultResponse withoutSegs = service.getResult(attemptId);
+            assertThat(withoutSegs.segments()).isNull();
+        } finally {
+            LocaleContextHolder.setLocale(prev);
+        }
     }
 
     private static ReviewItemView itemViewById(AttemptReviewResponse review, UUID itemId) {
