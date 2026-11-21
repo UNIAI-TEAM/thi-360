@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -13,6 +14,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
@@ -43,7 +45,8 @@ public class AttemptAssetService {
 
     private static final Pattern ADMIN_ASSET_URL_PATTERN =
             Pattern.compile(
-                    "/api/v1/admin/question-assets/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+                    "/api/v1/admin/question-assets/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+                    Pattern.CASE_INSENSITIVE);
 
     private final AttemptAccessGate accessGate;
     private final AttemptGuard attemptGuard;
@@ -158,7 +161,7 @@ public class AttemptAssetService {
             if (snapshot == null) {
                 continue;
             }
-            collectStudentVisibleAssets(item.getQuestionType(), snapshot, allowedIds);
+            collectStudentVisibleAssets(item.getQuestionType(), snapshot, assetId, allowedIds);
             if (allowedIds.contains(assetId)) {
                 return true;
             }
@@ -198,18 +201,24 @@ public class AttemptAssetService {
         Map<VersionKey, JsonNode> map = new LinkedHashMap<>();
         loadVersionsInto(keys, map);
 
+        Set<UUID> missingParentItemIds = new LinkedHashSet<>();
         Set<VersionKey> parentKeys = new LinkedHashSet<>();
         for (AttemptItem item : visibleItems) {
             VersionKey key = new VersionKey(item.getQuestionId(), item.getQuestionVersionNo());
             if (!map.containsKey(key) && item.getParentItemId() != null) {
                 AttemptItem parent = itemsById.get(item.getParentItemId());
-                if (parent == null) {
-                    parent = attemptItemRepository.findById(item.getParentItemId()).orElse(null);
-                }
                 if (parent != null) {
                     parentKeys.add(
                             new VersionKey(parent.getQuestionId(), parent.getQuestionVersionNo()));
+                } else {
+                    missingParentItemIds.add(item.getParentItemId());
                 }
+            }
+        }
+        if (!missingParentItemIds.isEmpty()) {
+            for (AttemptItem parent : attemptItemRepository.findAllById(missingParentItemIds)) {
+                parentKeys.add(
+                        new VersionKey(parent.getQuestionId(), parent.getQuestionVersionNo()));
             }
         }
         if (!parentKeys.isEmpty()) {
@@ -229,7 +238,8 @@ public class AttemptAssetService {
                         try {
                             map.putIfAbsent(
                                     new VersionKey(
-                                            UUID.fromString(idText), version.key().versionNo()),
+                                            UUID.fromString(idText.trim()),
+                                            version.key().versionNo()),
                                     child);
                         } catch (IllegalArgumentException ignored) {
                         }
@@ -240,8 +250,8 @@ public class AttemptAssetService {
     }
 
     private static void collectStudentVisibleAssets(
-            QuestionType questionType, JsonNode snapshot, Set<UUID> out) {
-        extractHtmlAssetIds(snapshot.path("content").asText(null), out);
+            QuestionType questionType, JsonNode snapshot, UUID targetAssetId, Set<UUID> out) {
+        extractHtmlAssetIds(snapshot.path("content").asText(null), targetAssetId, out);
 
         JsonNode attachments = snapshot.path("attachmentIds");
         if (attachments.isArray()) {
@@ -257,13 +267,17 @@ public class AttemptAssetService {
         // Only student-visible body fields: never solution, gradingGuide, rubric, sampleAnswer,
         // commonMistakes, blanks[].answers, or children[].solution.
         switch (questionType) {
-            case SINGLE_CHOICE, MULTIPLE_CHOICE -> collectArrayFieldHtml(body, "options", "content", out);
-            case SHORT_ANSWER -> extractHtmlAssetIds(body.path("inputHint").asText(null), out);
-            case CLOZE, QUESTION_SET -> extractHtmlAssetIds(body.path("passage").asText(null), out);
-            case TRUE_FALSE -> collectArrayFieldHtml(body, "statements", "content", out);
+            case SINGLE_CHOICE, MULTIPLE_CHOICE ->
+                    collectArrayFieldHtml(body, "options", "content", targetAssetId, out);
+            case SHORT_ANSWER ->
+                    extractHtmlAssetIds(body.path("inputHint").asText(null), targetAssetId, out);
+            case CLOZE, QUESTION_SET ->
+                    extractHtmlAssetIds(body.path("passage").asText(null), targetAssetId, out);
+            case TRUE_FALSE ->
+                    collectArrayFieldHtml(body, "statements", "content", targetAssetId, out);
             case MATCHING -> {
-                collectArrayFieldHtml(body, "left", "content", out);
-                collectArrayFieldHtml(body, "right", "content", out);
+                collectArrayFieldHtml(body, "left", "content", targetAssetId, out);
+                collectArrayFieldHtml(body, "right", "content", targetAssetId, out);
             }
             case ESSAY -> {
                 // Intentionally empty: gradingGuide, rubric, and sampleAnswer are confidential.
@@ -272,23 +286,43 @@ public class AttemptAssetService {
     }
 
     private static void collectArrayFieldHtml(
-            JsonNode body, String arrayField, String htmlField, Set<UUID> out) {
+            JsonNode body,
+            String arrayField,
+            String htmlField,
+            UUID targetAssetId,
+            Set<UUID> out) {
         JsonNode array = body.path(arrayField);
         if (!array.isArray()) {
             return;
         }
         for (JsonNode elem : array) {
-            extractHtmlAssetIds(elem.path(htmlField).asText(null), out);
+            extractHtmlAssetIds(elem.path(htmlField).asText(null), targetAssetId, out);
         }
     }
 
-    private static void extractHtmlAssetIds(String html, Set<UUID> out) {
+    private static void extractHtmlAssetIds(String html, UUID targetAssetId, Set<UUID> out) {
         if (html == null || html.isBlank()) {
+            return;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        if (targetAssetId != null && !lower.contains(targetAssetId.toString())) {
+            return;
+        }
+        if (!lower.contains("data-asset-id")
+                && !lower.contains("/api/v1/admin/question-assets/")) {
             return;
         }
         Document doc = Jsoup.parseBodyFragment(html);
         for (Element el : doc.select("[data-asset-id]")) {
             addUuid(el.attr("data-asset-id"), out);
+        }
+        for (Element element : doc.body().getAllElements()) {
+            for (Attribute attr : element.attributes()) {
+                Matcher attrMatcher = ADMIN_ASSET_URL_PATTERN.matcher(attr.getValue());
+                while (attrMatcher.find()) {
+                    addUuid(attrMatcher.group(1), out);
+                }
+            }
         }
         Matcher matcher = ADMIN_ASSET_URL_PATTERN.matcher(html);
         while (matcher.find()) {
