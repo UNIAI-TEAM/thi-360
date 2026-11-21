@@ -46,8 +46,12 @@ export class OrderConflictError extends Error {
   }
 }
 
-export const CHECKOUT_QUOTE_QUERY_KEY = (code: string, seenVersionNo?: number, seenPrice?: number) =>
-  ["checkout", "quote", code, seenVersionNo ?? null, seenPrice ?? null] as const;
+export const CHECKOUT_QUOTE_QUERY_KEY = (
+  code: string,
+  seenVersionNo?: number,
+  seenPrice?: number,
+  userId: string | null = null,
+) => ["checkout", "quote", code, seenVersionNo ?? null, seenPrice ?? null, userId] as const;
 
 export const CHECKOUT_PRODUCT_QUERY_KEY = (code: string) => ["checkout", "product", code] as const;
 

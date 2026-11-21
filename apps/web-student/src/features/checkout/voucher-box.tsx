@@ -1,10 +1,11 @@
 "use client";
 
-import { Button, cn, focusRing } from "@thi360/ui";
+import { Button, Input } from "@thi360/ui";
 import { Check, Info, Tag, TriangleAlert, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ApiStatusError } from "@/lib/api/client";
+import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 import {
   fetchPriceQuote,
   type PriceQuote,
@@ -58,6 +59,7 @@ export function VoucherBox({
   requestQuote = fetchPriceQuote,
   onQuoteApplied,
   onProductGone,
+  onUnauthorized,
   disabled = false,
 }: {
   productCode: string;
@@ -67,6 +69,7 @@ export function VoucherBox({
   requestQuote?: PriceQuoteAction;
   onQuoteApplied: (nextQuote: PriceQuote, meta: { action: "apply" | "remove"; submittedCode?: string }) => void;
   onProductGone?: (product: { code: string; name: string }) => void;
+  onUnauthorized?: () => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("checkout.voucher");
@@ -76,7 +79,18 @@ export function VoucherBox({
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<VoucherFeedback | null>(null);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const shouldFocusInputRef = useRef(false);
+
   const isDisabled = disabled || submitting;
+  const hasError = feedback?.kind === "empty" || feedback?.kind === "error";
+
+  useEffect(() => {
+    if (!submitting && shouldFocusInputRef.current) {
+      shouldFocusInputRef.current = false;
+      inputRef.current?.focus();
+    }
+  }, [submitting]);
 
   async function handleApply(event: FormEvent) {
     event.preventDefault();
@@ -85,6 +99,7 @@ export function VoucherBox({
     const trimmed = codeInput.trim();
     if (!trimmed) {
       setFeedback({ kind: "empty" });
+      inputRef.current?.focus();
       return;
     }
 
@@ -122,6 +137,11 @@ export function VoucherBox({
         onProductGone?.(error.product);
         return;
       }
+      if (error instanceof ApiStatusError && error.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+      shouldFocusInputRef.current = true;
       setFeedback({ kind: "error", errorKey: mapVoucherErrorKey(error) });
     } finally {
       setSubmitting(false);
@@ -139,12 +159,18 @@ export function VoucherBox({
         ...(seenVersionNo !== undefined ? { seenVersionNo } : {}),
       });
       setCodeInput("");
+      shouldFocusInputRef.current = true;
       onQuoteApplied(nextQuote, { action: "remove" });
     } catch (error) {
       if (error instanceof ProductGoneError) {
         onProductGone?.(error.product);
         return;
       }
+      if (error instanceof ApiStatusError && error.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+      shouldFocusInputRef.current = true;
       setFeedback({ kind: "error", errorKey: mapVoucherErrorKey(error) });
     } finally {
       setSubmitting(false);
@@ -168,7 +194,7 @@ export function VoucherBox({
             size="sm"
             disabled={isDisabled}
             onClick={() => void handleRemove()}
-            className="h-auto px-2 py-1 text-caption text-text-secondary hover:text-text"
+            className={cnLocalRemoveButtonClass()}
           >
             <X aria-hidden className="size-3.5" />
             {t("remove")}
@@ -181,40 +207,41 @@ export function VoucherBox({
           <label htmlFor="voucher-code-input" className="text-caption font-medium text-text-secondary">
             {t("label")}
           </label>
-          <input
+          <Input
+            ref={inputRef}
             id="voucher-code-input"
             name="voucherCode"
             type="text"
+            size="lg"
             value={codeInput}
             disabled={isDisabled}
             autoComplete="off"
             placeholder={t("placeholder")}
+            aria-invalid={hasError || undefined}
+            aria-describedby={hasError ? "voucher-error-msg" : undefined}
+            className={touchFieldText}
             onChange={(event) => {
               setCodeInput(event.target.value);
               if (feedback?.kind === "empty" || feedback?.kind === "error") {
                 setFeedback(null);
               }
             }}
-            className={cn(
-              "h-10 w-full rounded-lg border border-border-input bg-surface px-3 text-body text-text placeholder:text-text-muted disabled:cursor-not-allowed disabled:opacity-60",
-              focusRing,
-            )}
           />
         </div>
-        <Button type="submit" variant="secondary" loading={submitting} disabled={disabled} className="shrink-0">
-          {submitting ? t("checking") : t("apply")}
+        <Button type="submit" variant="secondary" size="lg" loading={submitting} disabled={disabled} className="shrink-0">
+          {t("apply")}
         </Button>
       </form>
 
       {feedback?.kind === "empty" && (
-        <p role="alert" className="flex items-start gap-2 text-caption font-medium text-danger">
+        <p id="voucher-error-msg" role="alert" className="flex items-start gap-2 text-caption font-medium text-danger">
           <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>{t("emptyInput")}</span>
         </p>
       )}
 
       {feedback?.kind === "error" && (
-        <p role="alert" className="flex items-start gap-2 text-caption font-medium text-danger">
+        <p id="voucher-error-msg" role="alert" className="flex items-start gap-2 text-caption font-medium text-danger">
           <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>{t(`errors.${feedback.errorKey}`)}</span>
         </p>
@@ -233,7 +260,7 @@ export function VoucherBox({
       {feedback?.kind === "applied" && (
         <p
           role="status"
-          className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary-50 px-3 py-2 text-caption font-medium text-primary-text"
+          className="flex items-start gap-2 rounded-lg border border-border-primary bg-primary-50 px-3 py-2 text-caption font-medium text-primary-text"
         >
           <Check aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
@@ -258,17 +285,26 @@ export function VoucherBox({
       {!feedback && quote.voucher && (
         <p
           role="status"
-          className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary-50 px-3 py-2 text-caption font-medium text-primary-text"
+          className="flex items-start gap-2 rounded-lg border border-border-primary bg-primary-50 px-3 py-2 text-caption font-medium text-primary-text"
         >
           <Check aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
-            {t("applied", {
-              code: quote.voucher.code,
-              discount: storefront("price", { amount: quote.voucher.discountVnd }),
-            })}
+            {quote.discountApplied === "COMBINED"
+              ? t("appliedCombined", {
+                  code: quote.voucher.code,
+                  discount: storefront("price", { amount: quote.voucher.discountVnd }),
+                })
+              : t("applied", {
+                  code: quote.voucher.code,
+                  discount: storefront("price", { amount: quote.voucher.discountVnd }),
+                })}
           </span>
         </p>
       )}
     </section>
   );
+}
+
+function cnLocalRemoveButtonClass() {
+  return `h-auto min-h-8 px-2.5 py-1 text-caption text-text-secondary hover:text-text ${coarseTextHitArea}`;
 }

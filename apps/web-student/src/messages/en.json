@@ -273,8 +273,10 @@
       "checkingTitle": "Checking order {orderCode}",
       "continueAttempt": "Continue",
       "enterExam": "Go to exam",
-      "existingInProgressTitle": "You have an attempt in progress ({count} attempts for this exam)",
-      "existingTitle": "You currently have {count} attempts for this exam",
+      "existingInProgressTitle": "You have an attempt in progress ({count, plural, one {# attempt} other {# attempts}} for this exam)",
+      "existingTitle": "You currently have {count, plural, one {# attempt} other {# attempts}} for this exam",
+      "loadErrorDescription": "Could not verify your current access to this exam. Please try again before continuing.",
+      "loadErrorTitle": "Unable to verify exam access",
       "viewPaymentStatus": "View payment status"
     },
     "account": {
@@ -291,7 +293,7 @@
     "backToCatalog": "Back to exam catalog",
     "backToExam": "Back to exam",
     "gone": {
-      "description": "{name} has been discontinued and is no longer available for purchase.",
+      "description": "<examContent>{name}</examContent> has been discontinued and is no longer available for purchase.",
       "title": "This exam is no longer on sale"
     },
     "heading": "Confirm purchase",
@@ -336,6 +338,8 @@
       "guestCheckingBody": "Payment confirmation is still in progress for order {code}. Sign in to view detailed status.",
       "guestCheckingHeading": "Awaiting payment confirmation",
       "guestFailedHeading": "Payment unsuccessful",
+      "guestOrderSignInBody": "Sign in to view order {code}.",
+      "guestOrderSignInHeading": "Sign in to view order status",
       "guestSignInCheck": "Sign in to check order",
       "guestSignInView": "Sign in to view exam",
       "guestSuccessBody": "Payment for order {code} succeeded. Sign in with the purchasing account to view and start your exam.",
@@ -348,12 +352,14 @@
       "missingOrderHeading": "Missing transaction details",
       "notOwnedBody": "Order {code} was not found in account {username}. You may be signed in with a different account.",
       "notOwnedHeading": "Order not found in the signed-in account",
+      "pollErrorNotice": "Could not refresh the latest order status right now. Checking will continue automatically.",
       "retryPay": "Retry payment",
       "retryingPay": "Redirecting to VNPAY...",
       "successBody": "Order {code} has been confirmed. Exam access is now active in your account.",
       "successFreeBody": "Order {code} used a free voucher and exam access has been granted immediately.",
       "successHeading": "Exam granted",
       "txnRefLabel": "Transaction ref:",
+      "verifyNotFoundBody": "No order was found for this payment response.",
       "viewMyExams": "Go to My exams",
       "viewOrder": "View order details",
       "viewOrders": "View my orders"
@@ -362,12 +368,13 @@
     "subtitle": "Review your account, exam details, and payment breakdown before continuing.",
     "summary": {
       "ctaFree": "Apply voucher & get exam",
+      "ctaFreeNoVoucher": "Get free exam",
       "ctaVnpay": "Pay with VNPAY",
       "errorGeneric": "Unable to create order. Please try again.",
       "errorRateLimited": "Too many requests. Please wait a moment and try again.",
       "freeVoucher": "0 VND (voucher applied)",
       "listPrice": "List price",
-      "promotion": "Auto promotion ({name})",
+      "promotion": "Auto promotion (<examContent>{name}</examContent>)",
       "promotionFallback": "Auto promotion",
       "submitting": "Creating order...",
       "title": "Payment summary",
@@ -464,9 +471,12 @@
     "checking": {
       "message": "Payment received for order {orderCode}. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support via {contact} and include your order code.",
       "messageNoContact": "Payment received for order {orderCode}. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support with your order code. {pending}",
+      "messageNoOrder": "Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support via {contact}.",
+      "messageNoOrderNoContact": "Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support. {pending}",
       "reload": "Reload",
       "sectionTitle": "Checking",
-      "status": "Checking"
+      "status": "Checking",
+      "viewOrder": "View order"
     },
     "emptyDescription": "Choose an exam from the catalog to start practicing.",
     "emptyTitle": "You have no exams yet",
@@ -656,6 +666,8 @@
     },
     "amount": {
       "discountSummary": "{amount} off",
+      "free": "Free",
+      "freeAmount": "0 VND",
       "freeVoucher": "0 VND (voucher applied)",
       "freeVoucherNote": "Free with voucher",
       "vnpay": "VNPAY"
@@ -687,6 +699,7 @@
         "strengths": "Strengths and weaknesses",
         "yes": "Yes"
       },
+      "errorTitle": "Unable to load order details",
       "fields": {
         "amountDue": "Amount due",
         "attempts": "Attempts granted",
@@ -704,10 +717,36 @@
       },
       "heading": "Order {code}",
       "history": {
-        "actorLearner": "Learner",
-        "actorSystem": "System",
+        "actors": {
+          "ADMIN": "Administrator",
+          "LEARNER": "Learner",
+          "SYSTEM": "System",
+          "VNPAY_IPN": "VNPAY gateway",
+          "unknown": "System"
+        },
         "created": "Order created",
         "empty": "No history events yet.",
+        "reasons": {
+          "AUTO_EXCESS_AFTER_COUNTED": "Transaction {ref} automatically recorded as excess after counted payment",
+          "CANCELLED_BY_USER": "Cancelled by learner",
+          "DOUBLE_CHARGE_REPLACED_ORDER": "Duplicate charge flagged on replacement order chain ({ref})",
+          "DOUBLE_CHARGE_REVIEW": "Duplicate charge pending review ({ref})",
+          "EXCESS_AFTER_COUNTED": "Excess payment {ref} received after order was already paid",
+          "EXPIRED": "Order payment window expired",
+          "FREE_ORDER_PAID": "Zero-amount order confirmed immediately",
+          "FULFILLED": "Exam access granted",
+          "LATE_PAYMENT_RECLAIMED": "Late payment {ref} received and reconciled for fulfillment",
+          "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": "Late payment {ref} on replaced order (duplicate charge review)",
+          "LATE_PAYMENT_REPLACED_RECLAIMED": "Late payment {ref} received on replaced order",
+          "LATE_SUCCESS_PENDING_REVIEW": "Late success on transaction {ref}, pending review",
+          "ORDER_CREATED": "Created order awaiting payment",
+          "PAYMENT_ATTEMPT_CREATED": "Created payment attempt {ref}",
+          "PAYMENT_SUCCEEDED": "Payment succeeded for transaction {ref}",
+          "REFUNDED": "Order refunded",
+          "REPLACED_BY": "Replaced by order {ref}",
+          "REUSE_PENDING_PAYMENT": "Reused pending order with payment attempt {ref}",
+          "unknown": "Order status updated"
+        },
         "title": "Order history",
         "transition": "{from} → {to}"
       },
@@ -719,6 +758,7 @@
         "createdAt": "Time",
         "duplicate": "Duplicate",
         "empty": "Free order; no VNPAY payment attempts.",
+        "emptyVnpay": "No payment attempts yet.",
         "reason": "Details",
         "states": {
           "CREATED": "Created",
@@ -745,6 +785,7 @@
       "PAYMENT_ATTEMPTS_EXCEEDED": "This order has exceeded the maximum payment attempts. Please create a new order.",
       "PRODUCT_DISCONTINUED": "This exam is no longer on sale. Payment cannot continue for this order.",
       "PRODUCT_NOT_FOUND": "The exam for this order could not be found.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
       "generic": "Unable to complete the action. Please try again or create a new order."
     },
     "exploreExams": "Explore exams",
@@ -760,6 +801,9 @@
     "paidCheckingSupportPending": "If it takes too long, contact support and include order code {code}. {pending}",
     "pendingHoldUntil": "Price held until {time}",
     "replacedBy": "Replaced by order {code}",
+    "staleDescription": "Could not refresh data; showing the version loaded at {time}.",
+    "staleDescriptionNoTime": "Could not refresh data; showing the previously loaded version.",
+    "staleTitle": "Data may be out of date.",
     "stateSubtext": {
       "PAID": "Payment received, granting exam"
     },

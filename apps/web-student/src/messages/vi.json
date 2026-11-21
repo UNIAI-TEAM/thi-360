@@ -273,8 +273,10 @@
       "checkingTitle": "Đang kiểm tra đơn {orderCode}",
       "continueAttempt": "Tiếp tục",
       "enterExam": "Vào bài thi",
-      "existingInProgressTitle": "Bạn đang có lượt làm dở ({count} lượt với bài thi này)",
-      "existingTitle": "Bạn đang có {count} lượt với bài thi này",
+      "existingInProgressTitle": "Bạn đang có lượt làm dở ({count, plural, other {# lượt với bài thi này}})",
+      "existingTitle": "Bạn đang có {count, plural, other {# lượt với bài thi này}}",
+      "loadErrorDescription": "Không thể kiểm tra quyền làm bài hiện tại của bạn. Vui lòng thử lại trước khi tiếp tục.",
+      "loadErrorTitle": "Chưa kiểm tra được quyền sử dụng",
       "viewPaymentStatus": "Xem trạng thái thanh toán"
     },
     "account": {
@@ -291,7 +293,7 @@
     "backToCatalog": "Về danh mục bài thi",
     "backToExam": "Quay lại bài thi",
     "gone": {
-      "description": "Sản phẩm {name} đã ngừng kinh doanh. Bạn không thể tạo đơn mua mới.",
+      "description": "Sản phẩm <examContent>{name}</examContent> đã ngừng kinh doanh. Bạn không thể tạo đơn mua mới.",
       "title": "Bài thi này hiện đã ngừng bán"
     },
     "heading": "Xác nhận mua",
@@ -336,6 +338,8 @@
       "guestCheckingBody": "Hệ thống đang xác nhận kết quả thanh toán cho đơn {code}. Hãy đăng nhập để xem trạng thái chi tiết.",
       "guestCheckingHeading": "Đang chờ xác nhận thanh toán",
       "guestFailedHeading": "Thanh toán chưa thành công",
+      "guestOrderSignInBody": "Đăng nhập để xem kết quả đơn {code}.",
+      "guestOrderSignInHeading": "Đăng nhập để xem trạng thái đơn hàng",
       "guestSignInCheck": "Đăng nhập để kiểm tra đơn",
       "guestSignInView": "Đăng nhập để xem bài thi",
       "guestSuccessBody": "Giao dịch cho đơn {code} đã thành công. Hãy đăng nhập đúng tài khoản đã mua để xem và vào bài thi của bạn.",
@@ -348,12 +352,14 @@
       "missingOrderHeading": "Thiếu thông tin giao dịch",
       "notOwnedBody": "Không tìm thấy đơn {code} trong tài khoản {username}. Có thể bạn đang đăng nhập bằng một tài khoản khác.",
       "notOwnedHeading": "Không tìm thấy đơn trong tài khoản đang đăng nhập",
+      "pollErrorNotice": "Tạm thời không kiểm tra được trạng thái mới nhất. Hệ thống vẫn đang tiếp tục thử lại.",
       "retryPay": "Thanh toán lại",
       "retryingPay": "Đang chuyển tới VNPAY...",
       "successBody": "Đơn {code} đã được xác nhận thành công. Bài thi đã được cấp vào tài khoản của bạn.",
       "successFreeBody": "Đơn {code} đã được áp dụng voucher miễn phí và cấp bài thi ngay lập tức.",
       "successHeading": "Đã cấp bài thi",
       "txnRefLabel": "Mã giao dịch:",
+      "verifyNotFoundBody": "Không tìm thấy đơn hàng tương ứng với phản hồi thanh toán này.",
       "viewMyExams": "Vào Bài thi của tôi",
       "viewOrder": "Xem chi tiết đơn",
       "viewOrders": "Xem đơn của tôi"
@@ -362,12 +368,13 @@
     "subtitle": "Kiểm tra thông tin tài khoản, bài thi và chi tiết thanh toán trước khi tiếp tục.",
     "summary": {
       "ctaFree": "Dùng voucher và nhận bài thi",
+      "ctaFreeNoVoucher": "Nhận bài thi miễn phí",
       "ctaVnpay": "Thanh toán qua VNPAY",
       "errorGeneric": "Không thể tạo đơn hàng. Vui lòng thử lại.",
       "errorRateLimited": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
       "freeVoucher": "0 đ (đã áp dụng voucher)",
       "listPrice": "Giá gốc",
-      "promotion": "Ưu đãi tự động ({name})",
+      "promotion": "Ưu đãi tự động (<examContent>{name}</examContent>)",
       "promotionFallback": "Ưu đãi tự động",
       "submitting": "Đang tạo đơn hàng...",
       "title": "Chi tiết thanh toán",
@@ -464,9 +471,12 @@
     "checking": {
       "message": "Đã nhận thanh toán cho đơn {orderCode}. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại trang sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua {contact} và gửi kèm mã đơn.",
       "messageNoContact": "Đã nhận thanh toán cho đơn {orderCode}. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại trang sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ kèm mã đơn. {pending}",
+      "messageNoOrder": "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại trang sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua {contact}.",
+      "messageNoOrderNoContact": "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại trang sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ. {pending}",
       "reload": "Tải lại",
       "sectionTitle": "Đang kiểm tra",
-      "status": "Đang kiểm tra"
+      "status": "Đang kiểm tra",
+      "viewOrder": "Xem đơn"
     },
     "emptyDescription": "Chọn bài thi phù hợp trong danh mục để bắt đầu luyện tập.",
     "emptyTitle": "Bạn chưa có bài thi nào",
@@ -656,6 +666,8 @@
     },
     "amount": {
       "discountSummary": "đã giảm {amount}",
+      "free": "Miễn phí",
+      "freeAmount": "0 đ",
       "freeVoucher": "0 đ (đã áp dụng voucher)",
       "freeVoucherNote": "Miễn phí nhờ voucher",
       "vnpay": "VNPAY"
@@ -687,6 +699,7 @@
         "strengths": "Đánh giá điểm mạnh, điểm yếu",
         "yes": "Có"
       },
+      "errorTitle": "Không tải được chi tiết đơn hàng",
       "fields": {
         "amountDue": "Số tiền phải trả",
         "attempts": "Số lượt được cấp",
@@ -704,10 +717,36 @@
       },
       "heading": "Đơn {code}",
       "history": {
-        "actorLearner": "Học viên",
-        "actorSystem": "Hệ thống",
+        "actors": {
+          "ADMIN": "Quản trị viên",
+          "LEARNER": "Học viên",
+          "SYSTEM": "Hệ thống",
+          "VNPAY_IPN": "Cổng thanh toán VNPAY",
+          "unknown": "Hệ thống"
+        },
         "created": "Tạo đơn",
         "empty": "Chưa có lịch sử xử lý.",
+        "reasons": {
+          "AUTO_EXCESS_AFTER_COUNTED": "Giao dịch {ref} tự động ghi nhận thu thừa sau khoản đã tính",
+          "CANCELLED_BY_USER": "Học viên đã hủy đơn hàng",
+          "DOUBLE_CHARGE_REPLACED_ORDER": "Cảnh báo thu trùng trên chuỗi đơn thay thế ({ref})",
+          "DOUBLE_CHARGE_REVIEW": "Cần đối soát thu trùng ({ref})",
+          "EXCESS_AFTER_COUNTED": "Giao dịch {ref} thu thừa sau khi đơn đã thanh toán",
+          "EXPIRED": "Đơn hàng đã hết hạn thanh toán",
+          "FREE_ORDER_PAID": "Đơn hàng 0 đồng được xác nhận ngay",
+          "FULFILLED": "Đã cấp quyền vào bài thi",
+          "LATE_PAYMENT_RECLAIMED": "Nhận thanh toán muộn ({ref}) và đã đối soát cấp quyền",
+          "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": "Nhận thanh toán muộn ({ref}) trên đơn đã thay thế (cần kiểm tra thu trùng)",
+          "LATE_PAYMENT_REPLACED_RECLAIMED": "Nhận thanh toán muộn ({ref}) trên đơn đã thay thế",
+          "LATE_SUCCESS_PENDING_REVIEW": "Giao dịch {ref} báo thành công muộn, đang chờ đối soát",
+          "ORDER_CREATED": "Khởi tạo đơn hàng chờ thanh toán",
+          "PAYMENT_ATTEMPT_CREATED": "Khởi tạo giao dịch thanh toán {ref}",
+          "PAYMENT_SUCCEEDED": "Thanh toán thành công qua giao dịch {ref}",
+          "REFUNDED": "Đơn hàng đã được hoàn tiền",
+          "REPLACED_BY": "Đã thay thế bằng đơn {ref}",
+          "REUSE_PENDING_PAYMENT": "Tạo lại liên kết thanh toán {ref} trên đơn đang chờ",
+          "unknown": "Cập nhật trạng thái đơn hàng"
+        },
         "title": "Lịch sử xử lý",
         "transition": "{from} → {to}"
       },
@@ -719,6 +758,7 @@
         "createdAt": "Thời điểm",
         "duplicate": "Thu trùng",
         "empty": "Đơn miễn phí, không phát sinh giao dịch VNPAY.",
+        "emptyVnpay": "Chưa có giao dịch thanh toán.",
         "reason": "Chi tiết",
         "states": {
           "CREATED": "Khởi tạo",
@@ -745,6 +785,7 @@
       "PAYMENT_ATTEMPTS_EXCEEDED": "Đơn đã vượt quá số lần tạo giao dịch thanh toán. Vui lòng tạo đơn mới.",
       "PRODUCT_DISCONTINUED": "Bài thi đã ngừng bán. Không thể tiếp tục thanh toán đơn này.",
       "PRODUCT_NOT_FOUND": "Không tìm thấy bài thi của đơn này.",
+      "RATE_LIMITED": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.",
       "generic": "Không thực hiện được thao tác. Vui lòng thử lại hoặc tạo đơn mới."
     },
     "exploreExams": "Khám phá bài thi",
@@ -760,6 +801,9 @@
     "paidCheckingSupportPending": "Nếu chờ quá lâu, hãy liên hệ hỗ trợ kèm mã đơn {code}. {pending}",
     "pendingHoldUntil": "Giữ giá tới {time}",
     "replacedBy": "Thay bằng đơn {code}",
+    "staleDescription": "Không tải lại được dữ liệu; đang hiện bản đã tải lúc {time}.",
+    "staleDescriptionNoTime": "Không tải lại được dữ liệu; đang hiện bản đã tải trước đó.",
+    "staleTitle": "Dữ liệu chưa được cập nhật.",
     "stateSubtext": {
       "PAID": "Đã nhận tiền, đang cấp bài thi"
     },

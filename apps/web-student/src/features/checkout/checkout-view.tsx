@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, EmptyState, Skeleton, StatusChip } from "@thi360/ui";
+import { Button, cn, EmptyState, focusRing, Skeleton, StatusChip } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
 import {
   ArrowLeft,
@@ -18,7 +18,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type HeaderAccount, StudentHeader } from "@/components/student-header";
 import { withCallbackUrl } from "@/features/account/account-links";
-import { formatOrderSupportSummary } from "@/features/orders/format";
+import { formatOrderSupportSummary, shouldResetIdempotencyKey } from "@/features/orders/format";
 import {
   loadSession,
   SESSION_QUERY_KEY,
@@ -30,6 +30,7 @@ import { rangeText, REVIEW_BUILD_MODE } from "@/features/storefront/format";
 import { FormatChip } from "@/features/storefront/product-card";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl } from "@/lib/env";
+import { coarseTextHitArea } from "@/lib/styles";
 import {
   CHECKOUT_PRODUCT_QUERY_KEY,
   CHECKOUT_QUOTE_QUERY_KEY,
@@ -44,13 +45,19 @@ import {
   type ProductCheckoutLookup,
   ProductGoneError,
 } from "./api";
-import { VoucherBox } from "./voucher-box";
+import { mapVoucherErrorKey, VoucherBox, type VoucherErrorKey } from "./voucher-box";
 
 function parseOptionalInt(raw: string | null, min: number): number | undefined {
   if (!raw || !/^\d+$/.test(raw.trim())) return undefined;
   const parsed = Number.parseInt(raw.trim(), 10);
   return Number.isSafeInteger(parsed) && parsed >= min ? parsed : undefined;
 }
+
+type SubmitErrorState =
+  | { kind: "rateLimited" }
+  | { kind: "paymentAttemptsExceeded" }
+  | { kind: "voucher"; key: VoucherErrorKey }
+  | { kind: "generic" };
 
 export function CheckoutView({
   code,
@@ -72,6 +79,7 @@ export function CheckoutView({
   navigate?: (url: string) => void;
 }) {
   const t = useTranslations("checkout");
+  const ordersT = useTranslations("orders");
   const common = useTranslations("common");
   const storefront = useTranslations("storefront");
   const detailRights = useTranslations("storefront.detail.rights");
@@ -97,47 +105,44 @@ export function CheckoutView({
   const [goneProduct, setGoneProduct] = useState<{ code: string; name: string } | null>(null);
   const [priceChangedSeen, setPriceChangedSeen] = useState<{ seenPrice?: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<"rateLimited" | "generic" | string | null>(null);
+  const [submitError, setSubmitError] = useState<SubmitErrorState | null>(null);
+  const [voucherResetVersion, setVoucherResetVersion] = useState(0);
 
   const idempotencyKeyRef = useRef<string | null>(null);
   const inFlightSubmitRef = useRef(false);
   const paySectionRef = useRef<HTMLDivElement | null>(null);
   const payButtonRef = useRef<HTMLButtonElement | null>(null);
+  const prevCodeRef = useRef(code);
+
+  useEffect(() => {
+    if (prevCodeRef.current === code) return;
+    prevCodeRef.current = code;
+    setOverrideQuote(null);
+    setGoneProduct(null);
+    setPriceChangedSeen(null);
+    setSubmitError(null);
+    setVoucherResetVersion((v) => v + 1);
+    idempotencyKeyRef.current = null;
+  }, [code]);
 
   const sessionQuery = useQuery({
     queryKey: SESSION_QUERY_KEY,
-    queryFn: async () => {
-      const next = await loadCurrentSession();
-      if (next && next.access === "EXAM") {
-        setBaselineSession((prev) => prev ?? next);
-      }
-      return next;
-    },
+    queryFn: loadCurrentSession,
     staleTime: 0,
     refetchOnWindowFocus: true,
     retry: false,
   });
 
-  useEffect(() => {
-    function handleVisibilityOrFocus() {
-      if (document.visibilityState === "hidden") return;
-      void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
-    }
-    window.addEventListener("focus", handleVisibilityOrFocus);
-    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
-    return () => {
-      window.removeEventListener("focus", handleVisibilityOrFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
-    };
-  }, [queryClient]);
-
-  useEffect(() => {
-    if (sessionQuery.isError && sessionQuery.error instanceof ApiStatusError && sessionQuery.error.status === 401) {
-      navigate(withCallbackUrl("/login", currentCheckoutPath));
-    }
-  }, [sessionQuery.isError, sessionQuery.error, navigate, currentCheckoutPath]);
-
   const liveSession = sessionQuery.data;
+  if (!baselineSession && liveSession?.access === "EXAM") {
+    setBaselineSession(liveSession);
+  }
+
+  const isSessionUnauthorized =
+    sessionQuery.isError &&
+    sessionQuery.error instanceof ApiStatusError &&
+    sessionQuery.error.status === 401;
+
   const isStudent = liveSession?.access === "EXAM";
   const acknowledgedSession = baselineSession ?? (isStudent ? liveSession : null);
   const accountChanged =
@@ -153,10 +158,37 @@ export function CheckoutView({
     enabled: !initialProduct && !goneProduct,
   });
 
-  const effectiveLookup: ProductCheckoutLookup | undefined = goneProduct
+  const baseQuoteQueryKey = CHECKOUT_QUOTE_QUERY_KEY(
+    code,
+    seenVersionNo,
+    seenPrice,
+    acknowledgedSession?.id ?? null,
+  );
+
+  const preQuoteLookup: ProductCheckoutLookup | undefined = goneProduct
     ? { status: "gone", product: goneProduct }
     : (productQuery.data ?? initialProduct);
+  const preQuoteProduct = preQuoteLookup?.status === "ok" ? preQuoteLookup.product : undefined;
 
+  const baseQuoteQuery = useQuery({
+    queryKey: baseQuoteQueryKey,
+    queryFn: () =>
+      requestQuote({
+        code,
+        ...(seenPrice !== undefined ? { seenPrice } : {}),
+        ...(seenVersionNo !== undefined ? { seenVersionNo } : {}),
+      }),
+    enabled: isStudent && Boolean(preQuoteProduct) && !goneProduct,
+    retry: false,
+  });
+
+  const quoteGoneProduct =
+    baseQuoteQuery.error instanceof ProductGoneError ? baseQuoteQuery.error.product : null;
+  const resolvedGoneProduct = goneProduct ?? quoteGoneProduct;
+
+  const effectiveLookup: ProductCheckoutLookup | undefined = resolvedGoneProduct
+    ? { status: "gone", product: resolvedGoneProduct }
+    : (productQuery.data ?? initialProduct);
   const product = effectiveLookup?.status === "ok" ? effectiveLookup.product : undefined;
 
   const accessQuery = useQuery({
@@ -166,39 +198,22 @@ export function CheckoutView({
     staleTime: 0,
   });
 
-  const baseQuoteQuery = useQuery({
-    queryKey: CHECKOUT_QUOTE_QUERY_KEY(code, seenVersionNo, seenPrice),
-    queryFn: async () => {
-      try {
-        return await requestQuote({
-          code,
-          ...(seenPrice !== undefined ? { seenPrice } : {}),
-          ...(seenVersionNo !== undefined ? { seenVersionNo } : {}),
-        });
-      } catch (error) {
-        if (error instanceof ProductGoneError) {
-          setGoneProduct(error.product);
-        }
-        throw error;
-      }
-    },
-    enabled: isStudent && Boolean(product) && !goneProduct,
-    retry: false,
-  });
-
   const activeQuote = overrideQuote ?? baseQuoteQuery.data;
 
   const hasBaselineMismatch = useMemo(() => {
-    if (!baseQuoteQuery.data) return false;
-    const base = baseQuoteQuery.data;
-    if (base.changed) return true;
-    if (seenVersionNo !== undefined && base.versionNo !== seenVersionNo) return true;
-    if (seenPrice !== undefined && base.finalPrice !== seenPrice) return true;
+    if (!activeQuote) return false;
+    if (activeQuote.changed) return true;
+    if (seenVersionNo !== undefined && activeQuote.versionNo !== seenVersionNo) return true;
+    if (baseQuoteQuery.data && activeQuote.versionNo !== baseQuoteQuery.data.versionNo) return true;
+    if (!overrideQuote && seenPrice !== undefined && activeQuote.finalPrice !== seenPrice) return true;
     return false;
-  }, [baseQuoteQuery.data, seenVersionNo, seenPrice]);
+  }, [activeQuote, baseQuoteQuery.data, overrideQuote, seenVersionNo, seenPrice]);
 
   const showPriceChangedBanner = Boolean(priceChangedSeen || hasBaselineMismatch);
   const displaySeenPrice = priceChangedSeen?.seenPrice ?? seenPrice;
+
+  const accessUnavailable =
+    accessQuery.isLoading || accessQuery.isError || accessQuery.data?.kind !== "rows";
 
   const accessRow = useMemo(() => {
     if (accessQuery.data?.kind !== "rows") return undefined;
@@ -211,7 +226,7 @@ export function CheckoutView({
 
   const account: HeaderAccount = liveSession
     ? { kind: "user", session: liveSession }
-    : sessionQuery.isLoading
+    : sessionQuery.isLoading || isSessionUnauthorized
       ? { kind: "loading" }
       : { kind: "none" };
 
@@ -225,10 +240,11 @@ export function CheckoutView({
     setAccountConflict(null);
     setOverrideQuote(null);
     setSubmitError(null);
+    setVoucherResetVersion((v) => v + 1);
     idempotencyKeyRef.current = null;
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["checkout", "access", code] }),
-      queryClient.invalidateQueries({ queryKey: CHECKOUT_QUOTE_QUERY_KEY(code, seenVersionNo, seenPrice) }),
+      queryClient.invalidateQueries({ queryKey: ["checkout", "quote", code] }),
     ]);
   }
 
@@ -236,6 +252,7 @@ export function CheckoutView({
     if (
       inFlightSubmitRef.current ||
       submitting ||
+      accessUnavailable ||
       isBlockedByChecking ||
       Boolean(accountChanged) ||
       !activeQuote ||
@@ -279,7 +296,9 @@ export function CheckoutView({
       }
       navigate(`/checkout/result?order=${encodeURIComponent(response.order.code)}`);
     } catch (error) {
-      idempotencyKeyRef.current = null;
+      if (shouldResetIdempotencyKey(error)) {
+        idempotencyKeyRef.current = null;
+      }
 
       if (error instanceof ProductGoneError) {
         setGoneProduct(error.product);
@@ -290,36 +309,85 @@ export function CheckoutView({
         if (error.code === "PRICE_CHANGED" && error.quote) {
           setPriceChangedSeen({ seenPrice: activeQuote.finalPrice });
           setOverrideQuote(error.quote);
+          setVoucherResetVersion((v) => v + 1);
           return;
         }
         if (error.code === "ACCOUNT_CHANGED") {
           const refreshed = await sessionQuery.refetch();
-          const current = refreshed.data ?? liveSession;
-          if (current && current.access === "EXAM") {
+          const current = refreshed.isSuccess ? refreshed.data : null;
+          if (current && current.access === "EXAM" && current.id !== acknowledgedSession.id) {
             setAccountConflict({
               previousUsername: acknowledgedSession.username,
               current,
             });
-          } else {
+          } else if (!current || current.access !== "EXAM") {
             navigate(withCallbackUrl("/login", currentCheckoutPath));
+          } else {
+            setSubmitError({ kind: "generic" });
           }
           return;
         }
       }
 
-      if (error instanceof ApiStatusError && (error.status === 429 || error.code === "RATE_LIMITED")) {
-        setSubmitError("rateLimited");
-        return;
+      if (error instanceof ApiStatusError) {
+        if (error.status === 401) {
+          void sessionQuery.refetch();
+          return;
+        }
+        if (error.status === 429 || error.code === "RATE_LIMITED") {
+          setSubmitError({ kind: "rateLimited" });
+          return;
+        }
+        if (error.status === 422 || error.code === "PAYMENT_ATTEMPTS_EXCEEDED" || error.code?.startsWith("VOUCHER_")) {
+          if (error.code === "PAYMENT_ATTEMPTS_EXCEEDED") {
+            setSubmitError({ kind: "paymentAttemptsExceeded" });
+            return;
+          }
+          if (error.code?.startsWith("VOUCHER_")) {
+            setSubmitError({ kind: "voucher", key: mapVoucherErrorKey(error) });
+            setOverrideQuote(null);
+            setVoucherResetVersion((v) => v + 1);
+            void baseQuoteQuery.refetch();
+            return;
+          }
+        }
       }
 
-      setSubmitError("generic");
+      setSubmitError({ kind: "generic" });
     } finally {
       inFlightSubmitRef.current = false;
       setSubmitting(false);
     }
   }
 
+  function renderSubmitErrorText(err: SubmitErrorState): string {
+    if (err.kind === "rateLimited") return t("summary.errorRateLimited");
+    if (err.kind === "paymentAttemptsExceeded") return ordersT("errors.PAYMENT_ATTEMPTS_EXCEEDED");
+    if (err.kind === "voucher") return t(`voucher.errors.${err.key}`);
+    return t("summary.errorGeneric");
+  }
+
   function renderAccessBanner() {
+    if (accessQuery.isError) {
+      return (
+        <section
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-danger/30 bg-danger-bg p-5"
+        >
+          <div className="flex min-w-0 flex-1 basis-72 items-start gap-3">
+            <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
+            <div className="flex flex-col gap-1">
+              <h2 className="text-title font-semibold text-danger">{t("accessBanner.loadErrorTitle")}</h2>
+              <p className="text-body text-text-secondary">{t("accessBanner.loadErrorDescription")}</p>
+            </div>
+          </div>
+          <Button type="button" variant="secondary" onClick={() => void accessQuery.refetch()}>
+            {common("retry")}
+          </Button>
+        </section>
+      );
+    }
+
     if (!accessRow) return null;
 
     if (isBlockedByChecking) {
@@ -350,19 +418,21 @@ export function CheckoutView({
     if (hasExistingAccess) {
       const isInProgress = accessRow.state === "IN_PROGRESS" && Boolean(accessRow.activeAttemptId);
       const enterHref = isInProgress
-        ? `/attempts/${accessRow.activeAttemptId}`
+        ? `/attempts/${encodeURIComponent(accessRow.activeAttemptId!)}`
         : accessRow.entitlementId
-          ? `/prepare/${accessRow.entitlementId}`
+          ? `/prepare/${encodeURIComponent(accessRow.entitlementId)}`
           : "/home";
 
       return (
         <section
           role="status"
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary/30 bg-primary-50 p-5"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border-primary bg-primary-50 p-5"
         >
           <div className="flex min-w-0 flex-1 basis-72 flex-col gap-1">
             <h2 className="text-title font-semibold text-primary-text">
-              {t("accessBanner.existingTitle", { count: accessRow.attemptsLeft })}
+              {isInProgress
+                ? t("accessBanner.existingInProgressTitle", { count: accessRow.attemptsLeft })
+                : t("accessBanner.existingTitle", { count: accessRow.attemptsLeft })}
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -389,29 +459,53 @@ export function CheckoutView({
     return null;
   }
 
+  function renderSkeleton() {
+    return (
+      <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-44 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
 
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto flex w-full max-w-[1170px] flex-col gap-6 px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-center gap-3 text-body">
           <Link
             href={`/exams/${encodeURIComponent(code)}`}
-            className="inline-flex items-center gap-1.5 font-medium text-text-secondary transition-colors hover:text-text"
+            className={cn(
+              "inline-flex min-h-11 items-center gap-1.5 rounded-sm font-medium text-text-secondary transition-colors hover:text-text",
+              focusRing,
+            )}
           >
             <ArrowLeft aria-hidden className="size-4" />
             {t("backToExam")}
           </Link>
         </div>
 
-        {sessionQuery.isLoading || (isStudent && !effectiveLookup && productQuery.isLoading) ? (
-          <div className="flex flex-col gap-4">
-            <Skeleton className="h-9 w-64" />
-            <Skeleton className="h-44 w-full rounded-xl" />
-            <Skeleton className="h-64 w-full rounded-xl" />
-          </div>
-        ) : liveSession && liveSession.access !== "EXAM" ? (
+        {sessionQuery.isLoading || isSessionUnauthorized ? (
+          renderSkeleton()
+        ) : sessionQuery.isError ? (
           <EmptyState
+            headingLevel={1}
+            icon={<TriangleAlert />}
+            title={t("loadError.title")}
+            description={t("loadError.description")}
+            action={
+              <Button type="button" variant="secondary" onClick={() => void sessionQuery.refetch()}>
+                {common("retry")}
+              </Button>
+            }
+          />
+        ) : !liveSession ? (
+          renderSkeleton()
+        ) : liveSession.access !== "EXAM" ? (
+          <EmptyState
+            headingLevel={1}
             icon={<TriangleAlert />}
             title={t("account.adminBlockedTitle")}
             description={t("account.adminBlockedDescription")}
@@ -421,8 +515,11 @@ export function CheckoutView({
               </Button>
             }
           />
+        ) : !effectiveLookup && productQuery.isLoading ? (
+          renderSkeleton()
         ) : effectiveLookup?.status === "notFound" ? (
           <EmptyState
+            headingLevel={1}
             icon={<TriangleAlert />}
             title={t("notFound.title")}
             description={t("notFound.description")}
@@ -433,18 +530,27 @@ export function CheckoutView({
             }
           />
         ) : effectiveLookup?.status === "gone" ? (
-          <EmptyState
-            icon={<TriangleAlert />}
-            title={t("gone.title")}
-            description={t("gone.description", { name: effectiveLookup.product.name })}
-            action={
-              <Button asChild variant="primary">
-                <Link href="/#exams">{t("backToCatalog")}</Link>
-              </Button>
-            }
-          />
+          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <div
+              aria-hidden
+              className="grid size-12 place-items-center rounded-full bg-primary-50 text-primary-text [&_svg]:size-6"
+            >
+              <TriangleAlert />
+            </div>
+            <h1 className="text-title font-semibold text-text">{t("gone.title")}</h1>
+            <p className="max-w-sm text-body text-text-muted">
+              {t.rich("gone.description", {
+                name: effectiveLookup.product.name,
+                examContent: (chunks) => <span data-exam-content>{chunks}</span>,
+              })}
+            </p>
+            <Button asChild variant="primary">
+              <Link href="/#exams">{t("backToCatalog")}</Link>
+            </Button>
+          </div>
         ) : !product ? (
           <EmptyState
+            headingLevel={1}
             icon={<TriangleAlert />}
             title={t("loadError.title")}
             description={t("loadError.description")}
@@ -478,7 +584,12 @@ export function CheckoutView({
                     </p>
                   </div>
                 </div>
-                <Button type="button" variant="primary" onClick={() => void handleAcknowledgeNewAccount()}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => void handleAcknowledgeNewAccount()}
+                  className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
+                >
                   {t("account.continueAsCurrent", { username: accountChanged.current.username })}
                 </Button>
               </section>
@@ -525,7 +636,11 @@ export function CheckoutView({
                       </h2>
                       <Link
                         href={withCallbackUrl("/login", currentCheckoutPath)}
-                        className="text-caption font-semibold text-primary-text hover:underline"
+                        className={cn(
+                          "inline-flex items-center rounded-sm text-caption font-semibold text-primary-text hover:underline",
+                          focusRing,
+                          coarseTextHitArea,
+                        )}
                       >
                         {t("account.switchAccount")}
                       </Link>
@@ -604,7 +719,7 @@ export function CheckoutView({
                       ) : (
                         <X aria-hidden className="size-3.5 text-text-muted" />
                       )}
-                      {detailRights("ai")}
+                      {detailRights("ai")}: {product.benefits.aiExplanation ? detailRights("yes") : detailRights("no")}
                     </span>
                     <span className="inline-flex items-center gap-1">
                       {product.benefits.strengthWeakness ? (
@@ -612,7 +727,8 @@ export function CheckoutView({
                       ) : (
                         <X aria-hidden className="size-3.5 text-text-muted" />
                       )}
-                      {detailRights("strengths")}
+                      {detailRights("strengths")}:{" "}
+                      {product.benefits.strengthWeakness ? detailRights("yes") : detailRights("no")}
                     </span>
                     <span className="inline-flex items-center gap-1">
                       {product.benefits.practice ? (
@@ -620,7 +736,7 @@ export function CheckoutView({
                       ) : (
                         <X aria-hidden className="size-3.5 text-text-muted" />
                       )}
-                      {detailRights("practice")}
+                      {detailRights("practice")}: {product.benefits.practice ? detailRights("yes") : detailRights("no")}
                     </span>
                   </div>
                   {product.benefits.note && (
@@ -648,6 +764,7 @@ export function CheckoutView({
               <div ref={paySectionRef} className="flex flex-col gap-5">
                 {activeQuote && (
                   <VoucherBox
+                    key={`${code}:${acknowledgedSession?.id ?? ""}:${voucherResetVersion}`}
                     productCode={code}
                     seenPrice={seenPrice}
                     seenVersionNo={seenVersionNo}
@@ -655,6 +772,7 @@ export function CheckoutView({
                     requestQuote={requestQuote}
                     disabled={isBlockedByChecking || Boolean(accountChanged) || submitting}
                     onProductGone={(gone) => setGoneProduct(gone)}
+                    onUnauthorized={() => void sessionQuery.refetch()}
                     onQuoteApplied={(nextQuote) => {
                       setOverrideQuote(nextQuote);
                       setSubmitError(null);
@@ -672,7 +790,7 @@ export function CheckoutView({
                   </h2>
 
                   {baseQuoteQuery.isLoading && !activeQuote ? (
-                    <div className="flex flex-col gap-3">
+                    <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-3">
                       <Skeleton className="h-5 w-full" />
                       <Skeleton className="h-5 w-3/4" />
                       <Skeleton className="h-11 w-full rounded-lg" />
@@ -700,7 +818,10 @@ export function CheckoutView({
                           <div className="flex items-baseline justify-between gap-2 text-primary-text">
                             <dt>
                               {activeQuote.promotion.name
-                                ? t("summary.promotion", { name: activeQuote.promotion.name })
+                                ? t.rich("summary.promotion", {
+                                    name: activeQuote.promotion.name,
+                                    examContent: (chunks) => <span data-exam-content>{chunks}</span>,
+                                  })
                                 : t("summary.promotionFallback")}
                             </dt>
                             <dd className="font-medium">
@@ -731,7 +852,7 @@ export function CheckoutView({
                       {submitError && (
                         <p role="alert" className="flex items-start gap-2 text-caption font-medium text-danger">
                           <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-                          <span>{submitError === "rateLimited" ? t("summary.errorRateLimited") : t("summary.errorGeneric")}</span>
+                          <span>{renderSubmitErrorText(submitError)}</span>
                         </p>
                       )}
 
@@ -742,15 +863,20 @@ export function CheckoutView({
                         variant={activeQuote.finalPrice === 0 ? "exam" : "primary"}
                         size="lg"
                         loading={submitting}
-                        disabled={isBlockedByChecking || Boolean(accountChanged) || !acknowledgedSession}
+                        disabled={
+                          accessUnavailable ||
+                          isBlockedByChecking ||
+                          Boolean(accountChanged) ||
+                          !acknowledgedSession
+                        }
                         onClick={() => void handleCreateOrder()}
                         className="w-full"
                       >
-                        {submitting
-                          ? t("summary.submitting")
-                          : activeQuote.finalPrice === 0
+                        {activeQuote.finalPrice === 0
+                          ? activeQuote.voucher
                             ? t("summary.ctaFree")
-                            : t("summary.ctaVnpay")}
+                            : t("summary.ctaFreeNoVoucher")
+                          : t("summary.ctaVnpay")}
                       </Button>
                     </>
                   ) : null}

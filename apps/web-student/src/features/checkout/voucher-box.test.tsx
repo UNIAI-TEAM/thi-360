@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { PriceQuote } from "@/features/checkout/api";
@@ -99,11 +99,19 @@ describe("VoucherBox · AC-6", () => {
       />,
     );
 
+    const input = screen.getByLabelText("Nhập mã giảm giá");
+    expect(input).toHaveClass("h-12", "max-sm:text-title", "pointer-coarse:text-title");
+
     await user.click(screen.getByRole("button", { name: "Áp dụng" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Vui lòng nhập mã giảm giá.");
+    const emptyAlert = screen.getByRole("alert");
+    expect(emptyAlert).toHaveTextContent("Vui lòng nhập mã giảm giá.");
+    expect(emptyAlert).toHaveAttribute("id", "voucher-error-msg");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute("aria-describedby", "voucher-error-msg");
+    expect(input).toHaveFocus();
     expect(requestQuote).not.toHaveBeenCalled();
 
-    await user.type(screen.getByLabelText("Nhập mã giảm giá"), "  GIAM20  ");
+    await user.type(input, "  GIAM20  ");
     await user.click(screen.getByRole("button", { name: "Áp dụng" }));
 
     expect(requestQuote).toHaveBeenNthCalledWith(1, {
@@ -112,7 +120,9 @@ describe("VoucherBox · AC-6", () => {
       seenPrice: 300000,
       seenVersionNo: 1,
     });
-    expect(await screen.findByRole("status")).toHaveTextContent("Đã áp dụng mã GIAM20 (-60.000 đ).");
+    const appliedStatus = await screen.findByRole("status");
+    expect(appliedStatus).toHaveTextContent("Đã áp dụng mã GIAM20 (-60.000 đ).");
+    expect(appliedStatus).toHaveClass("border-border-primary");
 
     view.rerender(
       <VoucherBox
@@ -172,6 +182,7 @@ describe("VoucherBox · AC-6", () => {
     expect(onQuoteApplied).toHaveBeenLastCalledWith(expect.objectContaining({ discountApplied: "NONE" }), {
       action: "remove",
     });
+    await waitFor(() => expect(screen.getByLabelText("Nhập mã giảm giá")).toHaveFocus());
   });
 
   it("hiện thông báo thay thế ưu đãi tự động khi voucher thay auto promo", async () => {
@@ -218,6 +229,58 @@ describe("VoucherBox · AC-6", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Đã áp dụng mã GIAM50 (-150.000 đ). Mã này giảm nhiều hơn nên đã thay thế ưu đãi tự động.",
     );
+  });
+
+  it("giữ nguyên nhãn nút Áp dụng khi đang kiểm tra (R1-65) và gọi onUnauthorized khi 401 (R1-30)", async () => {
+    const user = userEvent.setup();
+    let resolvePending!: (value: PriceQuote) => void;
+    const pendingQuote = vi.fn(
+      () =>
+        new Promise<PriceQuote>((resolve) => {
+          resolvePending = resolve;
+        }),
+    );
+
+    const loadingView = renderWithProviders(
+      <VoucherBox
+        productCode="HSA-FULL-01"
+        quote={makeQuote()}
+        requestQuote={pendingQuote}
+        onQuoteApplied={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nhập mã giảm giá"), "WAIT20");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+
+    const busyBtn = screen.getByRole("button", { name: "Áp dụng" });
+    expect(busyBtn).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("button", { name: "Đang kiểm tra..." })).toBeNull();
+
+    resolvePending(makeQuote());
+    await waitFor(() => expect(busyBtn).not.toHaveAttribute("aria-busy", "true"));
+    loadingView.unmount();
+
+    const onUnauthorized = vi.fn();
+    const unauthRequest = vi
+      .fn()
+      .mockRejectedValue(new ApiStatusError(401, "Unauthorized", { code: "UNAUTHORIZED" }));
+
+    renderWithProviders(
+      <VoucherBox
+        productCode="HSA-FULL-01"
+        quote={makeQuote()}
+        requestQuote={unauthRequest}
+        onQuoteApplied={vi.fn()}
+        onUnauthorized={onUnauthorized}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nhập mã giảm giá"), "GIAM20");
+    await user.click(screen.getByRole("button", { name: "Áp dụng" }));
+
+    await waitFor(() => expect(onUnauthorized).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   const errorCases: Array<{
@@ -279,9 +342,15 @@ describe("VoucherBox · AC-6", () => {
       { locale: "vi" },
     );
 
-    await user.type(screen.getByLabelText("Nhập mã giảm giá"), "BADCODE");
+    const viInput = screen.getByLabelText("Nhập mã giảm giá");
+    await user.type(viInput, "BADCODE");
     await user.click(screen.getByRole("button", { name: "Áp dụng" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(expectedVi);
+    const viAlert = await screen.findByRole("alert");
+    expect(viAlert).toHaveTextContent(expectedVi);
+    expect(viAlert).toHaveAttribute("id", "voucher-error-msg");
+    expect(viInput).toHaveAttribute("aria-invalid", "true");
+    expect(viInput).toHaveAttribute("aria-describedby", "voucher-error-msg");
+    await waitFor(() => expect(viInput).toHaveFocus());
     viView.unmount();
 
     renderWithProviders(
@@ -289,8 +358,11 @@ describe("VoucherBox · AC-6", () => {
       { locale: "en", messages: enMessages },
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Enter voucher code" }), "BADCODE");
+    const enInput = screen.getByRole("textbox", { name: "Enter voucher code" });
+    await user.type(enInput, "BADCODE");
     await user.click(screen.getByRole("button", { name: "Apply" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(expectedEn);
+    expect(enInput).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() => expect(enInput).toHaveFocus());
   });
 });
