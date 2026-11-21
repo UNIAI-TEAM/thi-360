@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import vn.unicom.thi360.commerce.order.domain.ProductType;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.StoredProduct;
 
@@ -22,7 +23,8 @@ public class StorefrontProductLockRepository {
 
     private static final String BASE_SELECT = """
             SELECT id, exam_id, exam_item_id, code, name, sale_state, version_no,
-                   list_price_vnd, attempts_granted, card::text, detail::text
+                   list_price_vnd, attempts_granted, card::text, detail::text,
+                   product_type, bundle_id
             FROM commerce.storefront_product
             WHERE code_normalized = ?
             """;
@@ -83,6 +85,8 @@ public class StorefrontProductLockRepository {
                 rs.getLong("list_price_vnd"),
                 rs.getInt("attempts_granted"),
                 rs.getString("card"),
-                rs.getString("detail"));
+                rs.getString("detail"),
+                ProductType.valueOf(rs.getString("product_type")),
+                rs.getObject("bundle_id", UUID.class));
     }
 }

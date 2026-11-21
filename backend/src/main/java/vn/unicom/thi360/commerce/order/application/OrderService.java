@@ -14,6 +14,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,9 @@ import org.springframework.util.StringUtils;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
+import vn.unicom.thi360.commerce.bundle.domain.BundleSnapshot;
+import vn.unicom.thi360.commerce.bundle.domain.BundleVersion;
+import vn.unicom.thi360.commerce.bundle.infrastructure.BundleVersionRepository;
 import vn.unicom.thi360.commerce.entitlement.access.application.ExamLearnerGate;
 import vn.unicom.thi360.commerce.fulfillment.application.FulfillmentService;
 import vn.unicom.thi360.commerce.order.domain.OrderHistory;
@@ -61,6 +67,7 @@ import vn.unicom.thi360.commerce.storefront.application.StorefrontErrorCodes;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 import vn.unicom.thi360.commerce.storefront.domain.StorefrontSearchText;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.StoredProduct;
+import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.identity.spi.UserDirectory.MailContact;
 import vn.unicom.thi360.identity.spi.UserDirectory.UserSummary;
@@ -105,6 +112,8 @@ public class OrderService {
     private final Clock clock;
     private final Duration orderExpireDuration;
     private final String webUrl;
+    private final BundleVersionRepository bundleVersionRepository;
+    private final PublishedExamPort publishedExamPort;
 
     public OrderService(
             ExamLearnerGate learnerGate,
@@ -125,8 +134,38 @@ public class OrderService {
             ObjectMapper objectMapper,
             PlatformTransactionManager transactionManager,
             Clock clock,
+            Duration orderExpireDuration,
+            String webUrl) {
+        this(learnerGate, storefrontLockRepository, purchaseOrderRepository, purchaseOrderItemRepository,
+                orderHistoryRepository, paymentRepository, priceCalculator, promotionRedemptionService,
+                fulfillmentService, vnpayGateway, codeGenerator, userDirectory, idempotentCommand, auditRecorder,
+                messages, objectMapper, transactionManager, clock, orderExpireDuration, webUrl, null, null);
+    }
+
+    @Autowired
+    public OrderService(
+            ExamLearnerGate learnerGate,
+            StorefrontProductLockRepository storefrontLockRepository,
+            PurchaseOrderRepository purchaseOrderRepository,
+            PurchaseOrderItemRepository purchaseOrderItemRepository,
+            OrderHistoryRepository orderHistoryRepository,
+            PaymentRepository paymentRepository,
+            PriceCalculator priceCalculator,
+            PromotionRedemptionService promotionRedemptionService,
+            FulfillmentService fulfillmentService,
+            VnpayGateway vnpayGateway,
+            OrderCodeGenerator codeGenerator,
+            UserDirectory userDirectory,
+            IdempotentCommand idempotentCommand,
+            AuditRecorder auditRecorder,
+            AppMessages messages,
+            ObjectMapper objectMapper,
+            PlatformTransactionManager transactionManager,
+            Clock clock,
             @Value("${thi360.commerce.order.expire-duration:PT15M}") Duration orderExpireDuration,
-            @Value("${thi360.web-url:http://localhost:3000}") String webUrl) {
+            @Value("${thi360.web-url:http://localhost:3000}") String webUrl,
+            BundleVersionRepository bundleVersionRepository,
+            PublishedExamPort publishedExamPort) {
         this.learnerGate = Objects.requireNonNull(learnerGate);
         this.storefrontLockRepository = Objects.requireNonNull(storefrontLockRepository);
         this.purchaseOrderRepository = Objects.requireNonNull(purchaseOrderRepository);
@@ -147,6 +186,8 @@ public class OrderService {
         this.clock = Objects.requireNonNull(clock);
         this.orderExpireDuration = Objects.requireNonNull(orderExpireDuration);
         this.webUrl = normalizeWebUrl(webUrl);
+        this.bundleVersionRepository = bundleVersionRepository;
+        this.publishedExamPort = publishedExamPort;
     }
 
     public CreateOrderResponse createOrder(
@@ -257,7 +298,7 @@ public class OrderService {
 
         String normalizedVoucher = trimToNull(request.voucherCode());
         PricedProduct pricedProduct = new PricedProduct(
-                stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
+                stored.examId(), stored.bundleId(), stored.examKindItemId(), stored.listPriceVnd());
         QuoteCalculation calc = priceCalculator.calculateQuote(
                 new QuoteRequest(pricedProduct, userId, normalizedVoucher, existingPendingId, now));
 
@@ -315,59 +356,167 @@ public class OrderService {
 
         UserSummary buyer = userDirectory.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("Authenticated buyer missing in identity directory: " + userId));
-        ProductDetailSnapshot detailSnapshot = parseDetailSnapshot(stored.detail());
 
         UUID newOrderId = Ids.newId();
         String newOrderCode = codeGenerator.nextOrderCode();
         boolean isFree = calc.finalPrice() == 0L;
+        boolean isBundle = stored.productType() == ProductType.BUNDLE || stored.bundleId() != null;
 
-        PurchaseOrder newOrder = isFree
-                ? PurchaseOrder.createFreeExamOrder(
+        PurchaseOrder newOrder;
+        List<PurchaseOrderItem> orderItems;
+        if (isBundle) {
+            UUID bundleId = Objects.requireNonNull(stored.bundleId(), "bundleId must not be null for BUNDLE product");
+            BundleVersion bundleVersion = Objects.requireNonNull(bundleVersionRepository,
+                            "bundleVersionRepository is required for BUNDLE orders")
+                    .findByBundleIdAndVersionNo(bundleId, stored.versionNo())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Missing bundle_version for bundle " + bundleId + " version " + stored.versionNo()));
+            BundleSnapshot snapshot = bundleVersion.getSnapshot();
+            Map<String, Object> bundleBenefits = toBenefitsMap(snapshot.benefits());
+            String bundleResultView = StringUtils.hasText(snapshot.resultView())
+                    ? snapshot.resultView()
+                    : DEFAULT_RESULT_VIEW;
+            int attemptsPerExam = snapshot.attemptsPerExam();
+            String productName = StringUtils.hasText(snapshot.name()) ? snapshot.name() : stored.name();
+
+            newOrder = isFree
+                    ? PurchaseOrder.createFreeBundleOrder(
+                            newOrderId,
+                            newOrderCode,
+                            userId,
+                            buyer.username(),
+                            buyer.fullName(),
+                            bundleId,
+                            stored.versionNo(),
+                            stored.code(),
+                            productName,
+                            stored.listPriceVnd(),
+                            discounts.promotionId(),
+                            discounts.promotionDiscountVnd(),
+                            discounts.voucherId(),
+                            discounts.voucherCode(),
+                            discounts.voucherDiscountVnd(),
+                            calc.discountApplied(),
+                            attemptsPerExam,
+                            bundleBenefits,
+                            bundleResultView,
+                            now)
+                    : PurchaseOrder.createPendingBundleOrder(
+                            newOrderId,
+                            newOrderCode,
+                            userId,
+                            buyer.username(),
+                            buyer.fullName(),
+                            bundleId,
+                            stored.versionNo(),
+                            stored.code(),
+                            productName,
+                            stored.listPriceVnd(),
+                            discounts.promotionId(),
+                            discounts.promotionDiscountVnd(),
+                            discounts.voucherId(),
+                            discounts.voucherCode(),
+                            discounts.voucherDiscountVnd(),
+                            calc.discountApplied(),
+                            calc.finalPrice(),
+                            attemptsPerExam,
+                            bundleBenefits,
+                            bundleResultView,
+                            now.plus(orderExpireDuration),
+                            now);
+
+            List<BundleSnapshot.SnapshotItem> sortedItems = snapshot.items().stream()
+                    .sorted(Comparator.comparingInt(BundleSnapshot.SnapshotItem::position))
+                    .toList();
+            orderItems = new ArrayList<>(sortedItems.size());
+            for (BundleSnapshot.SnapshotItem item : sortedItems) {
+                PublishedExamPort.ServingExam serving = (publishedExamPort == null || item.examId() == null)
+                        ? null
+                        : publishedExamPort.findServing(item.examId()).orElse(null);
+                if (serving == null
+                        || !"PUBLISHED".equals(serving.status())
+                        || serving.version() == null
+                        || serving.version().listing() == null) {
+                    throw new ConflictException("PRODUCT_UNAVAILABLE", messages.get("PRODUCT_UNAVAILABLE"));
+                }
+                PublishedExamPort.PublishedVersion liveVersion = serving.version();
+                List<String> itemOptionCodes = extractServingOptionCodes(serving);
+                orderItems.add(new PurchaseOrderItem(
+                        Ids.newId(),
                         newOrderId,
-                        newOrderCode,
-                        userId,
-                        buyer.username(),
-                        buyer.fullName(),
-                        stored.examId(),
-                        stored.versionNo(),
-                        detailSnapshot.optionCodes(),
-                        stored.code(),
-                        stored.name(),
-                        stored.listPriceVnd(),
-                        discounts.promotionId(),
-                        discounts.promotionDiscountVnd(),
-                        discounts.voucherId(),
-                        discounts.voucherCode(),
-                        discounts.voucherDiscountVnd(),
-                        calc.discountApplied(),
-                        stored.attemptsGranted(),
-                        detailSnapshot.benefits(),
-                        detailSnapshot.resultView(),
-                        now)
-                : PurchaseOrder.createPendingExamOrder(
-                        newOrderId,
-                        newOrderCode,
-                        userId,
-                        buyer.username(),
-                        buyer.fullName(),
-                        stored.examId(),
-                        stored.versionNo(),
-                        detailSnapshot.optionCodes(),
-                        stored.code(),
-                        stored.name(),
-                        stored.listPriceVnd(),
-                        discounts.promotionId(),
-                        discounts.promotionDiscountVnd(),
-                        discounts.voucherId(),
-                        discounts.voucherCode(),
-                        discounts.voucherDiscountVnd(),
-                        calc.discountApplied(),
-                        calc.finalPrice(),
-                        stored.attemptsGranted(),
-                        detailSnapshot.benefits(),
-                        detailSnapshot.resultView(),
-                        now.plus(orderExpireDuration),
-                        now);
+                        item.examId(),
+                        liveVersion.versionNo(),
+                        liveVersion.code(),
+                        liveVersion.name(),
+                        itemOptionCodes,
+                        attemptsPerExam,
+                        bundleBenefits,
+                        bundleResultView,
+                        item.position()));
+            }
+        } else {
+            ProductDetailSnapshot detailSnapshot = parseDetailSnapshot(stored.detail());
+            newOrder = isFree
+                    ? PurchaseOrder.createFreeExamOrder(
+                            newOrderId,
+                            newOrderCode,
+                            userId,
+                            buyer.username(),
+                            buyer.fullName(),
+                            stored.examId(),
+                            stored.versionNo(),
+                            detailSnapshot.optionCodes(),
+                            stored.code(),
+                            stored.name(),
+                            stored.listPriceVnd(),
+                            discounts.promotionId(),
+                            discounts.promotionDiscountVnd(),
+                            discounts.voucherId(),
+                            discounts.voucherCode(),
+                            discounts.voucherDiscountVnd(),
+                            calc.discountApplied(),
+                            stored.attemptsGranted(),
+                            detailSnapshot.benefits(),
+                            detailSnapshot.resultView(),
+                            now)
+                    : PurchaseOrder.createPendingExamOrder(
+                            newOrderId,
+                            newOrderCode,
+                            userId,
+                            buyer.username(),
+                            buyer.fullName(),
+                            stored.examId(),
+                            stored.versionNo(),
+                            detailSnapshot.optionCodes(),
+                            stored.code(),
+                            stored.name(),
+                            stored.listPriceVnd(),
+                            discounts.promotionId(),
+                            discounts.promotionDiscountVnd(),
+                            discounts.voucherId(),
+                            discounts.voucherCode(),
+                            discounts.voucherDiscountVnd(),
+                            calc.discountApplied(),
+                            calc.finalPrice(),
+                            stored.attemptsGranted(),
+                            detailSnapshot.benefits(),
+                            detailSnapshot.resultView(),
+                            now.plus(orderExpireDuration),
+                            now);
+
+            orderItems = List.of(new PurchaseOrderItem(
+                    Ids.newId(),
+                    newOrderId,
+                    stored.examId(),
+                    stored.versionNo(),
+                    stored.code(),
+                    stored.name(),
+                    detailSnapshot.optionCodes(),
+                    stored.attemptsGranted(),
+                    detailSnapshot.benefits(),
+                    detailSnapshot.resultView(),
+                    1));
+        }
 
         purchaseOrderRepository.saveAndFlush(newOrder);
 
@@ -388,18 +537,9 @@ public class OrderService {
                     .build());
         }
 
-        purchaseOrderItemRepository.saveAndFlush(new PurchaseOrderItem(
-                Ids.newId(),
-                newOrderId,
-                stored.examId(),
-                stored.versionNo(),
-                stored.code(),
-                stored.name(),
-                detailSnapshot.optionCodes(),
-                stored.attemptsGranted(),
-                detailSnapshot.benefits(),
-                detailSnapshot.resultView(),
-                1));
+        for (PurchaseOrderItem orderItem : orderItems) {
+            purchaseOrderItemRepository.saveAndFlush(orderItem);
+        }
 
         List<ReserveRequest> reserveRequests = buildReserveRequests(discounts);
         if (!reserveRequests.isEmpty()) {
@@ -563,7 +703,7 @@ public class OrderService {
                     .findPendingPaymentOrderId(userId, normalizedProductCode)
                     .orElse(null);
             PricedProduct pricedProduct = new PricedProduct(
-                    stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
+                    stored.examId(), stored.bundleId(), stored.examKindItemId(), stored.listPriceVnd());
             QuoteCalculation freshCalc = priceCalculator.calculateQuote(
                     new QuoteRequest(pricedProduct, userId, voucherCode, survivingPendingId, now));
             return PriceQuote.from(stored, freshCalc, true);
@@ -576,9 +716,12 @@ public class OrderService {
         }
     }
 
-    private static StoredProduct requireOnSaleProduct(StoredProduct stored) {
-        if (stored == null || stored.saleState() == SaleState.UNAVAILABLE) {
+    private StoredProduct requireOnSaleProduct(StoredProduct stored) {
+        if (stored == null) {
             throw new NotFoundException(StorefrontErrorCodes.PRODUCT_NOT_FOUND, null);
+        }
+        if (stored.saleState() == SaleState.UNAVAILABLE) {
+            throw new ConflictException("PRODUCT_UNAVAILABLE", messages.get("PRODUCT_UNAVAILABLE"));
         }
         if (stored.saleState() == SaleState.DISCONTINUED) {
             throw new ProductDiscontinuedException(stored.code(), stored.name());
@@ -604,7 +747,13 @@ public class OrderService {
         if (calc.finalPrice() <= 0L) {
             return false;
         }
-        return Integer.valueOf(stored.versionNo()).equals(existing.getExamVersionNo())
+        Integer existingVersion = stored.bundleId() != null
+                ? existing.getBundleVersionNo()
+                : existing.getExamVersionNo();
+        return existing.getProductType() == stored.productType()
+                && Objects.equals(existing.getBundleId(), stored.bundleId())
+                && Objects.equals(existing.getExamId(), stored.examId())
+                && Integer.valueOf(stored.versionNo()).equals(existingVersion)
                 && existing.getAttemptsGranted() == stored.attemptsGranted()
                 && existing.getListPriceVnd() == calc.listPrice()
                 && existing.getAmountDueVnd() == calc.finalPrice()
@@ -612,6 +761,38 @@ public class OrderService {
                 && Objects.equals(existing.getPromotionId(), discounts.promotionId())
                 && Objects.equals(existing.getVoucherId(), discounts.voucherId())
                 && Objects.equals(normalizeUpper(existing.getVoucherCode()), normalizeUpper(discounts.voucherCode()));
+    }
+
+    private static Map<String, Object> toBenefitsMap(BundleSnapshot.BundleBenefits benefits) {
+        if (benefits == null) {
+            return Map.of();
+        }
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("aiExplanation", benefits.aiExplanation());
+        raw.put("strengthWeakness", benefits.strengthWeakness());
+        raw.put("practice", benefits.practice());
+        if (StringUtils.hasText(benefits.note())) {
+            raw.put("note", benefits.note());
+        }
+        return PurchaseOrder.copyNonNullEntries(raw);
+    }
+
+    private List<String> extractServingOptionCodes(PublishedExamPort.ServingExam serving) {
+        if (serving == null || serving.servingPaths() == null) {
+            return List.of();
+        }
+        Set<String> codes = new LinkedHashSet<>();
+        for (PublishedExamPort.ServingPath path : serving.servingPaths()) {
+            if (path.choices() == null) {
+                continue;
+            }
+            for (PublishedExamPort.PathChoice choice : path.choices()) {
+                if (StringUtils.hasText(choice.code())) {
+                    codes.add(choice.code());
+                }
+            }
+        }
+        return codes.isEmpty() ? List.of() : List.copyOf(codes);
     }
 
     private static DiscountSnapshot resolveDiscounts(QuoteCalculation calc) {

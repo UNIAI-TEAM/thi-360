@@ -554,11 +554,11 @@ public class StorefrontProjector {
             throw new IllegalStateException(e);
         }
         String hash = HexFormat.of().formatHex(digest.digest(json(row).getBytes(StandardCharsets.UTF_8)));
-        return new StorefrontRow(row.examId(), row.code(), row.codeNormalized(), row.versionNo(), row.saleState(),
-                row.name(), row.searchText(), row.examItemId(), row.kindCode(), row.scope(), row.scopeItemId(),
-                row.subjectItemIds(), row.partCodes(), row.partNames(), row.questionCount(), row.questionCountMax(),
-                row.durationMinutes(), row.durationMinutesMax(), row.maxPoints(), row.maxPointsMax(), row.buildMode(),
-                row.listPriceVnd(), row.attemptsGranted(), row.coverAssetId(), row.card(), row.detail(), hash,
-                row.publishedAt());
+        return new StorefrontRow(row.examId(), row.bundleId(), row.productType(), row.code(), row.codeNormalized(),
+                row.versionNo(), row.saleState(), row.name(), row.searchText(), row.examItemId(), row.kindCode(),
+                row.scope(), row.scopeItemId(), row.subjectItemIds(), row.partCodes(), row.partNames(),
+                row.questionCount(), row.questionCountMax(), row.durationMinutes(), row.durationMinutesMax(),
+                row.maxPoints(), row.maxPointsMax(), row.buildMode(), row.listPriceVnd(), row.attemptsGranted(),
+                row.coverAssetId(), row.card(), row.detail(), hash, row.publishedAt());
     }
 }

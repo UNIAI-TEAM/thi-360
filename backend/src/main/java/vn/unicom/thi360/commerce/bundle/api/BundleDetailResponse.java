@@ -1,0 +1,44 @@
+package vn.unicom.thi360.commerce.bundle.api;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import vn.unicom.thi360.commerce.bundle.domain.BundleResultView;
+import vn.unicom.thi360.commerce.bundle.domain.BundleStatus;
+import vn.unicom.thi360.commerce.storefront.domain.SaleState;
+
+@Schema(description = "Chi tiết bộ đề quản trị (TM 16.4)")
+public record BundleDetailResponse(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+        @Schema(types = {"string", "null"}) String summary,
+        @Schema(types = {"string", "null"}) String description,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID examKindItemId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String examKindCode,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String examKindNameVi,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String examKindNameEn,
+        @Schema(types = {"integer", "null"}) Long listPriceVnd,
+        @Schema(types = {"integer", "null"}) Integer attemptsPerExam,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BundleBenefitsView benefits,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BundleResultView resultView,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BundleStatus status,
+        @Schema(types = {"string", "null"}) SaleState saleState,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasUnpublishedChanges,
+        @Schema(types = {"integer", "null"}) Integer servingVersion,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long revision,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<BundleItemView> items,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
+        @Schema(types = {"string", "null"}) UUID createdBy,
+        @Schema(types = {"string", "null"}) String createdByUsername,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
+        @Schema(types = {"string", "null"}) UUID updatedBy,
+        @Schema(types = {"string", "null"}) String updatedByUsername,
+        @Schema(types = {"string", "null"}) Instant discontinuedAt,
+        @Schema(types = {"string", "null"}) UUID discontinuedBy) {
+
+    public BundleDetailResponse {
+        items = items == null ? List.of() : List.copyOf(items);
+    }
+}
