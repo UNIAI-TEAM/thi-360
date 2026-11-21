@@ -4,7 +4,7 @@ import { AlertCircle, Eye, ReceiptText, RefreshCw, RotateCcw, Search, Users } fr
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { type ComponentProps, useEffect, useId, useMemo, useState } from "react";
+import { type ComponentProps, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -28,7 +28,12 @@ import {
 import { usePermissions } from "@/features/session/session-provider";
 
 import { resolveOrderErrorMessage } from "../errors";
-import { formatOrderDateTime, formatVnd } from "../format";
+import {
+  formatOrderDateTime,
+  formatVnd,
+  isValidVnCalendarDate,
+  parseAllowedSort,
+} from "../format";
 import {
   useAdminExamsForFilterQuery,
   useAdminOrderAttentionQuery,
@@ -54,6 +59,14 @@ import { useExamOptionContentMarker } from "./use-exam-option-content-marker";
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_SORT = "createdAt,desc";
+const ORDER_SORT_FIELDS = new Set([
+  "createdAt",
+  "paidAt",
+  "fulfilledAt",
+  "amountDueVnd",
+  "code",
+  "state",
+]);
 
 /**
  * Hide low-priority columns when the table container is narrower than `@68rem` / `@54rem`
@@ -91,8 +104,10 @@ const VALID_ATTENTION_TYPES = new Set<OrderAttentionType>([
 function parseQueryParams(sp: ReturnType<typeof useSearchParams>): OrdersListQueryParams {
   const q = sp.get("q") ?? "";
   const examId = sp.get("examId") ?? "";
-  const fromDate = sp.get("from") ?? "";
-  const toDate = sp.get("to") ?? "";
+  const rawFrom = sp.get("from") ?? "";
+  const rawTo = sp.get("to") ?? "";
+  const fromDate = rawFrom && isValidVnCalendarDate(rawFrom) ? rawFrom : "";
+  const toDate = rawTo && isValidVnCalendarDate(rawTo) ? rawTo : "";
 
   const rawPaymentStatus = sp.get("paymentStatus") ?? "ALL";
   const paymentStatus = VALID_PAYMENT_STATUSES.has(rawPaymentStatus as AdminPaymentStatus)
@@ -120,7 +135,7 @@ function parseQueryParams(sp: ReturnType<typeof useSearchParams>): OrdersListQue
   const rawSize = Number(sp.get("size") ?? String(DEFAULT_PAGE_SIZE));
   const size = Number.isInteger(rawSize) && rawSize >= 1 && rawSize <= 100 ? rawSize : DEFAULT_PAGE_SIZE;
 
-  const sort = sp.get("sort") || DEFAULT_SORT;
+  const sort = parseAllowedSort(sp.get("sort"), ORDER_SORT_FIELDS, DEFAULT_SORT);
 
   return {
     q,
@@ -172,23 +187,42 @@ export function OrderListView() {
   const paymentMethodId = useId();
 
   const params = useMemo(() => parseQueryParams(searchParams), [searchParams]);
+  const paramsRef = useRef(params);
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
+
   const [searchDraft, setSearchDraft] = useState<string | null>(null);
   const searchInput = searchDraft ?? params.q;
+  const prevUrlQRef = useRef(params.q);
 
-  const updateUrlParams = (patch: Partial<OrdersListQueryParams>) => {
-    const merged: OrdersListQueryParams = { ...params, ...patch };
-    const qs = buildSearchString(merged);
-    router.replace(`${pathname}${qs}`, { scroll: false });
-  };
+  useEffect(() => {
+    if (params.q !== prevUrlQRef.current) {
+      prevUrlQRef.current = params.q;
+      setSearchDraft(null);
+    }
+  }, [params.q]);
+
+  const updateUrlParams = useCallback(
+    (patch: Partial<OrdersListQueryParams>) => {
+      const merged: OrdersListQueryParams = { ...paramsRef.current, ...patch };
+      paramsRef.current = merged;
+      const qs = buildSearchString(merged);
+      router.replace(`${pathname}${qs}`, { scroll: false });
+    },
+    [pathname, router],
+  );
 
   useEffect(() => {
     if (searchDraft === null) return;
     const trimmedInput = searchDraft.trim();
-    const trimmedParam = params.q.trim();
+    const trimmedParam = paramsRef.current.q.trim();
 
     if (trimmedInput === "") {
       if (trimmedParam !== "") {
         updateUrlParams({ q: "", page: 0 });
+      } else {
+        setSearchDraft(null);
       }
       return;
     }
@@ -200,8 +234,7 @@ export function OrderListView() {
       setSearchDraft(null);
     }, 300);
     return () => window.clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchDraft, params.q]);
+  }, [searchDraft, updateUrlParams]);
 
   const canViewExams = !permissions.isLoading && permissions.can("EXAM.VIEW");
   const adminExamsQuery = useAdminExamsForFilterQuery(canViewExams);
@@ -209,6 +242,13 @@ export function OrderListView() {
 
   const listQuery = useAdminOrdersListQuery(params);
   const attentionQuery = useAdminOrderAttentionQuery(true);
+
+  const totalPages = listQuery.data?.totalPages ?? 0;
+  useEffect(() => {
+    if (listQuery.data && totalPages > 0 && params.page >= totalPages) {
+      updateUrlParams({ page: Math.max(0, totalPages - 1) });
+    }
+  }, [listQuery.data, totalPages, params.page, updateUrlParams]);
 
   const examOptions: SelectOption[] = useMemo(() => {
     const source = canViewExams ? adminExamsQuery.data : derivedExamsQuery.data;
@@ -223,8 +263,15 @@ export function OrderListView() {
         textValue: display,
       });
     }
+    if (params.examId && !base.some((opt) => opt.value === params.examId)) {
+      base.push({
+        value: params.examId,
+        label: <span data-exam-content>{params.examId}</span>,
+        textValue: params.examId,
+      });
+    }
     return base;
-  }, [canViewExams, adminExamsQuery.data, derivedExamsQuery.data, t]);
+  }, [canViewExams, adminExamsQuery.data, derivedExamsQuery.data, params.examId, t]);
 
   const examSelectRef = useExamOptionContentMarker(
     examOptions.map((opt) => opt.value).join("|"),
@@ -261,6 +308,11 @@ export function OrderListView() {
     [t],
   );
 
+  const pageSizeOptions = useMemo(
+    () => Array.from(new Set([10, 20, 50, 100, params.size])).sort((a, b) => a - b),
+    [params.size],
+  );
+
   const hasActiveFilters = Boolean(
     params.q ||
       params.examId ||
@@ -294,7 +346,7 @@ export function OrderListView() {
               </Link>
               <span
                 data-col-summary="timestamps"
-                className="hidden font-mono text-[11px] text-text-secondary @max-[68rem]:block"
+                className="hidden font-mono text-caption text-text-secondary @max-[68rem]:block"
               >
                 {item.paidAt
                   ? t("list.cardPaid", { date: formatOrderDateTime(item.paidAt, locale) })
@@ -306,7 +358,7 @@ export function OrderListView() {
                 </div>
               ) : null}
               {item.needsReview ? (
-                <span className="inline-flex w-fit rounded border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-medium text-warning">
+                <span className="inline-flex w-fit rounded border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-caption font-medium text-warning">
                   {t("list.needsReviewTag")}
                 </span>
               ) : null}
@@ -321,10 +373,10 @@ export function OrderListView() {
           const item = row.original;
           return (
             <div className="flex max-w-[115px] min-w-0 flex-col">
-              <span className="truncate text-xs font-medium text-text" data-exam-content>
+              <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
                 {item.buyerFullName}
               </span>
-              <span className="truncate font-mono text-[11px] text-text-secondary">
+              <span className="font-mono text-caption wrap-anywhere text-text-secondary">
                 {item.buyerUsername}
               </span>
             </div>
@@ -338,10 +390,10 @@ export function OrderListView() {
           const item = row.original;
           return (
             <div className="flex max-w-[130px] min-w-0 flex-col">
-              <span className="line-clamp-2 text-xs font-medium text-text" data-exam-content>
+              <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
                 {item.productName}
               </span>
-              <span className="truncate font-mono text-[11px] text-text-secondary">
+              <span className="font-mono text-caption wrap-anywhere text-text-secondary">
                 {item.productCode}
               </span>
             </div>
@@ -410,7 +462,7 @@ export function OrderListView() {
                   href={`/orders/${encodeURIComponent(row.original.code)}`}
                   aria-label={actionLabel}
                   className={cn(
-                    "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-subtle hover:text-text",
+                    "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-subtle hover:text-text pointer-coarse:min-h-11 pointer-coarse:min-w-11",
                     focusRing,
                   )}
                 >
@@ -425,7 +477,9 @@ export function OrderListView() {
     [locale, t],
   );
 
-  const isOffline = listQuery.fetchStatus === "paused" && listQuery.isPending;
+  const isOffline =
+    listQuery.fetchStatus === "paused" &&
+    (listQuery.isPending || listQuery.isPlaceholderData);
   const items = listQuery.data?.items ?? [];
   const totalItems = listQuery.data?.totalItems ?? 0;
 
@@ -481,6 +535,7 @@ export function OrderListView() {
                 <Input
                   id={searchId}
                   type="search"
+                  maxLength={200}
                   value={searchInput}
                   onChange={(event) => setSearchDraft(event.target.value)}
                   placeholder={t("filters.searchPlaceholder")}
@@ -511,6 +566,7 @@ export function OrderListView() {
               id={fromId}
               type="date"
               value={params.fromDate}
+              max={params.toDate || undefined}
               onChange={(event) => updateUrlParams({ fromDate: event.target.value, page: 0 })}
               aria-label={t("filters.from")}
             />
@@ -524,6 +580,7 @@ export function OrderListView() {
               id={toId}
               type="date"
               value={params.toDate}
+              min={params.fromDate || undefined}
               onChange={(event) => updateUrlParams({ toDate: event.target.value, page: 0 })}
               aria-label={t("filters.to")}
             />
@@ -538,7 +595,6 @@ export function OrderListView() {
               aria-label={t("filters.exam")}
               options={examOptions}
               value={params.examId || "__ALL__"}
-              className="[&>span:first-child]:truncate"
               onValueChange={(value) =>
                 updateUrlParams({ examId: value === "__ALL__" ? "" : value, page: 0 })
               }
@@ -554,7 +610,6 @@ export function OrderListView() {
               aria-label={t("filters.paymentStatus")}
               options={paymentStatusOptions}
               value={params.paymentStatus}
-              className="[&>span:first-child]:truncate"
               onValueChange={(value) =>
                 updateUrlParams({ paymentStatus: value as OrdersListQueryParams["paymentStatus"], page: 0 })
               }
@@ -570,7 +625,6 @@ export function OrderListView() {
               aria-label={t("filters.refundStatus")}
               options={refundStatusOptions}
               value={params.refundStatus}
-              className="[&>span:first-child]:truncate"
               onValueChange={(value) =>
                 updateUrlParams({ refundStatus: value as OrdersListQueryParams["refundStatus"], page: 0 })
               }
@@ -586,7 +640,6 @@ export function OrderListView() {
               aria-label={t("filters.paymentMethod")}
               options={paymentMethodOptions}
               value={params.paymentMethod}
-              className="[&>span:first-child]:truncate"
               onValueChange={(value) =>
                 updateUrlParams({ paymentMethod: value as OrdersListQueryParams["paymentMethod"], page: 0 })
               }
@@ -630,96 +683,105 @@ export function OrderListView() {
           }
         />
       ) : (
-        <>
-          <Card padding="none" className={cn("overflow-hidden", DROP_LOW_PRIORITY_COLUMNS)}>
-            <Table
-              aria-label={t("list.tableLabel")}
-              columns={columns}
-              data={items}
-              getRowId={(row) => row.orderId}
-              stickyColumns={{ start: true, end: true }}
-              loading={listQuery.isPending}
-              loadingRows={6}
-              refreshing={listQuery.isFetching && !listQuery.isPending}
-              className="[&_:is(th,td)]:px-2.5 [&_:is(th,td):first-child]:ps-4 [&_:is(th,td):last-child]:pe-4"
-              empty={
-                <EmptyState
-                  headingLevel={2}
-                  icon={<ReceiptText className="h-6 w-6" />}
-                  title={hasActiveFilters ? t("list.filteredEmptyTitle") : t("list.emptyTitle")}
-                  description={
-                    hasActiveFilters ? t("list.filteredEmptyDescription") : t("list.emptyDescription")
+        <Card padding="none" className={cn("overflow-hidden", DROP_LOW_PRIORITY_COLUMNS)}>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 text-body">
+            <p className="font-medium text-text tabular-nums">
+              {listQuery.isPending
+                ? t("list.loading")
+                : t("list.totalItems", { total: totalItems })}
+            </p>
+          </div>
+          <Table
+            aria-label={t("list.tableLabel")}
+            columns={columns}
+            data={items}
+            getRowId={(row) => row.orderId}
+            stickyColumns={{ start: true, end: true }}
+            loading={listQuery.isPending}
+            loadingRows={params.size}
+            refreshing={listQuery.isFetching && !listQuery.isPending}
+            className="[&_:is(th,td)]:px-2.5 [&_:is(th,td):first-child]:ps-4 [&_:is(th,td):last-child]:pe-4"
+            empty={
+              <EmptyState
+                headingLevel={2}
+                icon={<ReceiptText className="h-6 w-6" />}
+                title={hasActiveFilters ? t("list.filteredEmptyTitle") : t("list.emptyTitle")}
+                description={
+                  hasActiveFilters ? t("list.filteredEmptyDescription") : t("list.emptyDescription")
+                }
+                action={
+                  hasActiveFilters ? (
+                    <Button type="button" variant="secondary" onClick={handleResetFilters}>
+                      {t("filters.clear")}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            }
+            cards={{
+              render: (row) => (
+                <ListCard
+                  title={
+                    <ListCardTitleLink
+                      linkComponent={Link}
+                      href={`/orders/${encodeURIComponent(row.code)}`}
+                    >
+                      {row.code}
+                    </ListCardTitleLink>
                   }
-                  action={
-                    hasActiveFilters ? (
-                      <Button type="button" variant="secondary" onClick={handleResetFilters}>
-                        {t("filters.clear")}
-                      </Button>
-                    ) : undefined
+                  caption={
+                    <span data-exam-content>
+                      {row.productName} · {row.buyerFullName}
+                    </span>
                   }
-                />
-              }
-              cards={{
-                render: (row) => (
-                  <ListCard
-                    title={
-                      <ListCardTitleLink
-                        linkComponent={Link}
-                        href={`/orders/${encodeURIComponent(row.code)}`}
-                      >
-                        {row.code}
-                      </ListCardTitleLink>
-                    }
-                    caption={
-                      <span data-exam-content>
-                        {row.productName} · {row.buyerFullName}
-                      </span>
-                    }
-                    status={<OrderStateChip state={row.orderState} />}
-                    tags={
-                      <>
-                        <OrderPaymentStatusChip status={row.paymentStatus} />
-                        <OrderRefundStatusChip status={row.refundStatus} />
-                        {row.needsReview ? (
-                          <ListCardTag>{t("list.needsReviewTag")}</ListCardTag>
-                        ) : null}
-                      </>
-                    }
-                    meta={[
-                      {
-                        label: t("columns.amount"),
-                        value: (
-                          <span className="font-mono font-semibold text-text">
-                            {formatVnd(row.amountDueVnd, locale)}
-                          </span>
-                        ),
-                      },
-                      {
-                        label: row.paidAt ? t("columns.paidAt") : t("columns.createdAt"),
-                        value: row.paidAt
-                          ? formatOrderDateTime(row.paidAt, locale)
-                          : formatOrderDateTime(row.createdAt, locale),
-                      },
-                    ]}
-                  >
-                    <p className="text-xs text-text-secondary">
-                      {t("list.cardAccount", { username: row.buyerUsername })}
-                    </p>
-                  </ListCard>
-                ),
-              }}
-            />
-          </Card>
+                  status={<OrderStateChip state={row.orderState} />}
+                  tags={
+                    <>
+                      <OrderPaymentStatusChip status={row.paymentStatus} />
+                      <OrderRefundStatusChip status={row.refundStatus} />
+                      {row.needsReview ? (
+                        <ListCardTag>{t("list.needsReviewTag")}</ListCardTag>
+                      ) : null}
+                    </>
+                  }
+                  meta={[
+                    {
+                      label: t("columns.amount"),
+                      value: (
+                        <span className="font-mono font-semibold text-text">
+                          {formatVnd(row.amountDueVnd, locale)}
+                        </span>
+                      ),
+                    },
+                    {
+                      label: row.paidAt ? t("columns.paidAt") : t("columns.createdAt"),
+                      value: row.paidAt
+                        ? formatOrderDateTime(row.paidAt, locale)
+                        : formatOrderDateTime(row.createdAt, locale),
+                    },
+                  ]}
+                >
+                  <p className="text-xs text-text-secondary">
+                    {t("list.cardAccount", { username: row.buyerUsername })}
+                  </p>
+                </ListCard>
+              ),
+            }}
+          />
 
-          {listQuery.data && listQuery.data.totalPages > 1 ? (
-            <Pagination
-              page={params.page + 1}
-              pageSize={params.size}
-              total={totalItems}
-              onPageChange={(nextPage) => updateUrlParams({ page: Math.max(0, nextPage - 1) })}
-            />
+          {listQuery.data && (listQuery.data.totalPages > 1 || params.page > 0) ? (
+            <div className="border-t border-border px-4 py-3">
+              <Pagination
+                page={params.page + 1}
+                pageSize={params.size}
+                total={totalItems}
+                pageSizeOptions={pageSizeOptions}
+                onPageSizeChange={(nextSize) => updateUrlParams({ size: nextSize, page: 0 })}
+                onPageChange={(nextPage) => updateUrlParams({ page: Math.max(0, nextPage - 1) })}
+              />
+            </div>
           ) : null}
-        </>
+        </Card>
       )}
     </div>
   );

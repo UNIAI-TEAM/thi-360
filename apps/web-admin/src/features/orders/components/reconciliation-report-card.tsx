@@ -13,6 +13,31 @@ export function ReconciliationReportCard() {
   const locale = useLocale();
   const query = useLatestReconciliationReportQuery();
 
+  if (query.fetchStatus === "paused" && query.isPending) {
+    return (
+      <Card className="p-4">
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger-bg p-3 text-sm text-danger"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{t("offlineError")}</span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void query.refetch()}
+          >
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            {t("retry")}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
   if (query.isPending) {
     return (
       <Card className="p-4" aria-label={t("title")}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Button, Card, cn, focusRing, Skeleton } from "@thi360/ui";
@@ -85,6 +85,7 @@ export function OrderAttentionStrip({
               type="button"
               variant="secondary"
               size="sm"
+              className="pointer-coarse:min-h-11"
               onClick={() => onSelectAttention("")}
             >
               <X className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
@@ -108,15 +109,18 @@ export function OrderAttentionStrip({
                 aria-pressed={isSelected}
                 onClick={() => onSelectAttention(isSelected ? "" : kind)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                  "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors pointer-coarse:min-h-11",
                   focusRing,
                   isSelected
-                    ? "border-primary-600 bg-surface text-text"
+                    ? "border-2 border-primary-600 bg-surface text-text"
                     : count > 0
                       ? "border-warning/40 bg-warning-bg text-text hover:border-warning"
                       : "border-border bg-subtle text-text-secondary hover:bg-surface",
                 )}
               >
+                {isSelected ? (
+                  <Check className="size-3.5 shrink-0 text-primary-text" aria-hidden="true" />
+                ) : null}
                 <span>{t(`kinds.${kind}`)}</span>
                 <span
                   className={cn(
