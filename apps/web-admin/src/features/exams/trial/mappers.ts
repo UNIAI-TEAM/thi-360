@@ -280,6 +280,10 @@ export function sliceTrialPartSegments(part: PreviewTrialPart): TrialSegmentSlic
     });
 }
 
+export function trialPartKey(part: PreviewTrialPart, index: number): string {
+  return part.partId ?? `part-${index}`;
+}
+
 export interface TrialLeafDescriptor {
   question: PreviewTrialQuestion;
   questionId: string;
@@ -293,8 +297,8 @@ export interface TrialLeafDescriptor {
 export function listPaperLeafQuestions(paper: PreviewTrialPaperResponse): TrialLeafDescriptor[] {
   const result: TrialLeafDescriptor[] = [];
   const parts = [...(paper.parts ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  for (const part of parts) {
-    const partId = part.partId ?? "";
+  parts.forEach((part, idx) => {
+    const partId = trialPartKey(part, idx);
     const partName = part.name ?? "";
     for (const block of part.blocks ?? []) {
       for (const item of block.items ?? []) {
@@ -323,7 +327,7 @@ export function listPaperLeafQuestions(paper: PreviewTrialPaperResponse): TrialL
         }
       }
     }
-  }
+  });
   return result.sort((a, b) => a.number - b.number);
 }
 
@@ -360,7 +364,9 @@ export function isTrialLeafAnswered(
     }
     case "CLOZE": {
       const v = value as KitClozeAnswer;
-      return Object.values(v.blanks ?? {}).some((entry) => entry.trim().length > 0);
+      return Object.values(v.blanks ?? {}).some(
+        (entry) => typeof entry === "string" && entry.trim().length > 0,
+      );
     }
     case "TRUE_FALSE": {
       const v = value as KitTrueFalseAnswer;
@@ -400,7 +406,7 @@ export function toApiTrialAnswer(
       const v = value as KitClozeAnswer;
       const blanks: Record<string, string> = {};
       for (const [k, text] of Object.entries(v.blanks ?? {})) {
-        if (text.trim().length > 0) blanks[k] = text.trim();
+        if (typeof text === "string" && text.trim().length > 0) blanks[k] = text.trim();
       }
       return { type: "CLOZE", blanks };
     }
@@ -459,7 +465,7 @@ export function computeObjectiveTotals(grade: PreviewGradeResponse): ObjectiveTo
   for (const item of grade.items ?? []) {
     if (item.pendingReview) {
       pendingCount += 1;
-    } else {
+    } else if (item.type !== "ESSAY") {
       gradedCount += 1;
       earnedPoints += item.earnedPoints ?? 0;
       maxPoints += item.maxPoints ?? 0;
@@ -480,6 +486,7 @@ function roundPoints(n: number): number {
 export interface TrialPartScoreSummary {
   partId: string;
   partName: string;
+  objectiveCount: number;
   earnedPoints: number;
   maxPoints: number;
   hasPending: boolean;
@@ -503,17 +510,19 @@ export function computePartScoreSummaries(
 
   return [...(paper.parts ?? [])]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((part) => {
-      const partId = part.partId ?? "";
+    .map((part, idx) => {
+      const partId = trialPartKey(part, idx);
       const leaves = leavesByPart.get(partId) ?? [];
       let earned = 0;
       let max = 0;
+      let objectiveCount = 0;
       let hasPending = false;
       for (const leaf of leaves) {
         const g = byQuestionId.get(leaf.questionId);
         if (g?.pendingReview) {
           hasPending = true;
-        } else {
+        } else if (leaf.type !== "ESSAY") {
+          objectiveCount += 1;
           earned += g?.earnedPoints ?? 0;
           max += g?.maxPoints ?? leaf.question.points ?? 0;
         }
@@ -521,12 +530,37 @@ export function computePartScoreSummaries(
       return {
         partId,
         partName: part.name ?? "",
+        objectiveCount,
         earnedPoints: roundPoints(earned),
-        maxPoints: roundPoints(max > 0 ? max : (part.points ?? 0)),
+        maxPoints: roundPoints(objectiveCount > 0 ? max : (hasPending ? 0 : (part.points ?? 0))),
         hasPending,
         questionCount: leaves.length,
       };
     });
+}
+
+export function extractClozeResultEntries(
+  question: PreviewTrialQuestion | undefined,
+  blanks: Readonly<Record<string, unknown>> | undefined,
+): Array<{ index: number; value: string }> {
+  const schemaBlanks = (question?.body as RawQuestionBodyShape | undefined)?.blanks;
+  if (schemaBlanks && schemaBlanks.length > 0) {
+    return schemaBlanks
+      .map((blank, idx) => {
+        const raw = blank.id ? blanks?.[blank.id] : undefined;
+        return typeof raw === "string" && raw.trim().length > 0
+          ? { index: idx + 1, value: raw.trim() }
+          : null;
+      })
+      .filter((entry): entry is { index: number; value: string } => entry !== null);
+  }
+  return Object.entries(blanks ?? {})
+    .map(([, raw], idx) =>
+      typeof raw === "string" && raw.trim().length > 0
+        ? { index: idx + 1, value: raw.trim() }
+        : null,
+    )
+    .filter((entry): entry is { index: number; value: string } => entry !== null);
 }
 
 export interface TrueFalseStatementEntry {

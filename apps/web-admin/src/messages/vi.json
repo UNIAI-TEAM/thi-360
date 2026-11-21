@@ -6374,6 +6374,7 @@
       "resultMeta": "{questions, number} câu · hạt giống {seed} · {retention} · câu ghi sổ xem trước, không trừ lượt",
       "resultTitle": "Đề thử · {label}",
       "retention": "giữ trong {minutes, number} phút{state, select, left { (còn {left, number} phút)} expired { (đã hết hạn)} other {}}",
+      "retentionExtended": "gia hạn tới {time}{state, select, left { (còn {left, number} phút)} expired { (đã hết hạn)} other {}}",
       "scope": {
         "count": "Số câu của môn",
         "countOption": "{count, number} câu{full, select, yes {} other { (bỏ 1 câu)}}",
@@ -6393,6 +6394,8 @@
         "expiredError": "Đề thử đã hết hạn. Hãy sinh lại đề thử mới để làm thử.",
         "genericError": "Không mở được phiên làm thử. Hãy thử lại.",
         "liveOpened": "Đã mở đề làm thử trong tab mới.",
+        "popupBlocked": "Trình duyệt đã chặn cửa sổ bật lên. Hãy bấm liên kết để mở đề làm thử.",
+        "popupBlockedLink": "Mở đề làm thử trong tab mới",
         "unavailable": "Chưa có đề thử để làm"
       }
     },
@@ -7707,9 +7710,17 @@
         "description": "Bài làm thử sẽ bị xóa khi rời trang vì hệ thống không lưu lượt làm thử.",
         "title": "Bỏ lần làm thử này?"
       },
+      "live": {
+        "graded": "Đã chấm xong bài làm thử.",
+        "retake": "Đã xóa bài làm trước để làm lại đề thử."
+      },
       "loading": "Đang tải đề làm thử",
       "modeBadge": "Chế độ làm thử",
       "nextPart": "Phần tiếp theo",
+      "offline": {
+        "description": "Máy đang mất kết nối nên chưa tải được đề làm thử. Đề sẽ tự tải lại khi có mạng, hoặc bấm Thử lại.",
+        "title": "Mất kết nối mạng"
+      },
       "palette": {
         "ariaLabel": "Bảng điều hướng câu hỏi",
         "count": "{answered}/{total} câu",
@@ -7746,6 +7757,7 @@
           "PENDING_REVIEW": "Chờ chấm",
           "WRONG": "Sai"
         },
+        "partEssayOnlyPending": "Chờ chấm tự luận",
         "partPendingSummary": "{earned} / {max} trắc nghiệm · tự luận chờ chấm",
         "partsTitle": "Điểm theo phần",
         "pointsPair": "{earned} / {max}",

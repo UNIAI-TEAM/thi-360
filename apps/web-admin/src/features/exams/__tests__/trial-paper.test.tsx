@@ -1,5 +1,7 @@
+import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import Link from "next/link";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { renderWithProviders } from "@/test/render";
@@ -206,11 +208,13 @@ function buildPendingGradeFixture(): PreviewGradeResponse {
 }
 
 beforeEach(() => {
+  onlineManager.setOnline(true);
   routerMock.push.mockReset();
   Element.prototype.scrollIntoView = vi.fn();
 });
 
 afterEach(() => {
+  onlineManager.setOnline(true);
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -305,11 +309,35 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Kết quả làm thử" })).toBeInTheDocument();
+      const resultHeading = screen.getByRole("heading", { level: 1, name: "Kết quả làm thử" });
+      expect(resultHeading).toBeInTheDocument();
+      expect(resultHeading).toHaveFocus();
     });
+
+    // R1-33: xác minh exact POST .../grade request body khớp đáp án đã chọn
+    const gradeRequests = server.calls("POST", GRADE_PATH);
+    expect(gradeRequests).toHaveLength(2);
+    expect(gradeRequests[1]!.body).toEqual({
+      answers: {
+        "q-sc-1": { type: "SINGLE_CHOICE", optionId: "opt-a" },
+        "q-tf-2": {
+          type: "TRUE_FALSE",
+          statements: { s2: true, s3: false, s4: true },
+        },
+      },
+    });
+
+    // R1-32: LiveStatus thông báo đã chấm xong
+    expect(document.querySelector('[role="status"][aria-live="polite"]')).toHaveTextContent(
+      "Đã chấm xong bài làm thử.",
+    );
 
     // AC-22: tổng điểm chỉ tính trắc nghiệm + ghi chú tự luận chưa chấm
     expect(screen.getByText("1,5 / 3 phần trắc nghiệm · tự luận chưa chấm")).toBeInTheDocument();
+
+    // R1-4/R1-5: Phần 2 chỉ có Tự luận không được hiện "0 / 5"
+    expect(screen.getByText("Chờ chấm tự luận")).toBeInTheDocument();
+    expect(screen.queryByText(/0 \/ 5 trắc nghiệm/)).not.toBeInTheDocument();
 
     // AC-19: câu Đúng/Sai liệt kê đủ 4 ý a), b), c), d) với giá trị đã chọn và kết quả từng ý
     const resultTable = screen.getByRole("table", { name: "Chi tiết từng câu của kết quả làm thử" });
@@ -331,10 +359,14 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     const backLink = screen.getByRole("link", { name: "Về trang Xem trước" });
     expect(backLink).toHaveAttribute("href", `/exams/${EXAM_ID}/review?tab=preview`);
 
-    // Bấm Làm lại đề này -> xóa trắng câu trả lời và không gọi lại POST .../preview
+    // Bấm Làm lại đề này -> xóa trắng câu trả lời, focus tiêu đề h1 và báo LiveStatus (R1-32)
     const requestCountBeforeRetake = server.requests.length;
     await user.click(screen.getByRole("button", { name: "Làm lại đề này" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "Làm thử như học viên" })).toBeInTheDocument();
+    const retakeHeading = await screen.findByRole("heading", { level: 1, name: "Làm thử như học viên" });
+    await waitFor(() => expect(retakeHeading).toHaveFocus());
+    expect(document.querySelector('[role="status"][aria-live="polite"]')).toHaveTextContent(
+      "Đã xóa bài làm trước để làm lại đề thử.",
+    );
     expect(screen.getByRole("radio", { name: /Hà Nội/ })).not.toBeChecked();
     expect(server.requests.length).toBe(requestCountBeforeRetake);
   });
@@ -390,6 +422,17 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
 
   it("Palette: bấm vào số câu ở phần khác tự chuyển phần và gọi scrollIntoView", async () => {
     const user = userEvent.setup();
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy;
+
+    const matchMediaMock = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    vi.stubGlobal("matchMedia", matchMediaMock);
+
     const server = new FakeServer().on("GET", PAPER_PATH, {
       status: 200,
       body: buildTrialPaperFixture(),
@@ -404,5 +447,221 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     await user.click(q3Btn);
 
     expect(await screen.findByText("Viết đoạn văn ngắn về tinh thần tự học.")).toBeInTheDocument();
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalled());
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "auto", block: "start" });
+  });
+
+  it("R1-10: submit-time 410 PREVIEW_EXPIRED hiện cảnh báo hết hạn và gỡ beforeunload", async () => {
+    const user = userEvent.setup();
+    const server = new FakeServer()
+      .on("GET", PAPER_PATH, { status: 200, body: buildTrialPaperFixture() })
+      .on("POST", GRADE_PATH, { status: 410, body: { code: "PREVIEW_EXPIRED" } });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Đề làm thử đã hết hạn");
+    expect(within(alert).getByRole("link", { name: "Quay lại sinh đề thử mới" })).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/review?tab=preview`,
+    );
+
+    const unloadEvent = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unloadEvent);
+    expect(unloadEvent.defaultPrevented).toBe(false);
+  });
+
+  it("R1-9 & R1-11: tiêu đề Câu 1 không nằm trong [data-exam-content] và optionOrder đảo ngược thứ tự DOM", async () => {
+    const fixture = buildTrialPaperFixture();
+    fixture.parts![0]!.blocks![0]!.items![0]!.question!.optionOrder = ["opt-b", "opt-a"];
+    const server = new FakeServer().on("GET", PAPER_PATH, { status: 200, body: fixture });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+
+    const heading = screen.getByRole("heading", { level: 3, name: "Câu 1" });
+    expect(heading.closest("[data-exam-content]")).toBeNull();
+
+    const q1Card = document.getElementById("trial-question-q-sc-1")!;
+    const optionTexts = Array.from(q1Card.querySelectorAll("[data-question-options] [data-exam-content]")).map((el) =>
+      el.textContent?.trim(),
+    );
+    expect(optionTexts).toEqual(["Đà Nẵng", "Hà Nội"]);
+  });
+
+  it("R1-6/R1-7 & R1-14: CLOZE render đề bài đúng 1 lần và điền trống ô 2 giữ nguyên Ô 2 ở kết quả", async () => {
+    const user = userEvent.setup();
+    const clozePaper: PreviewTrialPaperResponse = {
+      examId: EXAM_ID,
+      previewId: PREVIEW_ID,
+      parts: [
+        {
+          partId: "part-cloze",
+          name: "Phần Điền khuyết",
+          order: 1,
+          firstNumber: 1,
+          lastNumber: 2,
+          points: 2,
+          blocks: [
+            {
+              blockId: "blk-c",
+              questionType: "CLOZE",
+              items: [
+                {
+                  kind: "QUESTION",
+                  question: {
+                    number: 1,
+                    questionId: "q-cloze-1",
+                    type: "CLOZE",
+                    content: "<p>Điền từ thích hợp vào hai ô trống dưới đây:</p>",
+                    points: 2,
+                    body: {
+                      type: "CLOZE",
+                      passage: "<p>Thủ đô là [[b1]] bên bờ [[b2]].</p>",
+                      blanks: [{ id: "b1" }, { id: "b2" }],
+                    } as never,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const server = new FakeServer()
+      .on("GET", PAPER_PATH, { status: 200, body: clozePaper })
+      .on("POST", GRADE_PATH, {
+        status: 200,
+        body: {
+          examId: EXAM_ID,
+          previewId: PREVIEW_ID,
+          rawScore: 1,
+          maxScore: 2,
+          hasPendingManualGrading: false,
+          items: [
+            {
+              questionId: "q-cloze-1",
+              number: 1,
+              type: "CLOZE",
+              outcome: "PARTIAL",
+              earnedPoints: 1,
+              maxPoints: 2,
+              pendingReview: false,
+            },
+          ],
+        },
+      });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Điền từ thích hợp vào hai ô trống dưới đây:");
+    expect(screen.getAllByText("Điền từ thích hợp vào hai ô trống dưới đây:")).toHaveLength(1);
+
+    const inputs = await screen.findAllByRole("textbox");
+    expect(inputs).toHaveLength(2);
+    await user.type(inputs[1]!, "Sông Hồng");
+
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+    const resultTable = await screen.findByRole("table", { name: "Chi tiết từng câu của kết quả làm thử" });
+    expect(server.calls("POST", GRADE_PATH)[0]!.body).toEqual({
+      answers: {
+        "q-cloze-1": { type: "CLOZE", blanks: { b2: "Sông Hồng" } },
+      },
+    });
+    expect(within(resultTable).getByText(/Ô 2:/)).toBeInTheDocument();
+    expect(within(resultTable).getByText("Sông Hồng")).toBeInTheDocument();
+    expect(within(resultTable).queryByText(/Ô 1:/)).not.toBeInTheDocument();
+  });
+
+  it("R1-18: bấm liên kết nội bộ trong app bật ConfirmDialog rời trang và đổi previewId xóa trắng đáp án", async () => {
+    const user = userEvent.setup();
+    const previewId2 = "55555555-5555-4555-8555-555555555555";
+    const paperPath2 = `${EXAM_PATH}/preview/${previewId2}/paper`;
+    const server = new FakeServer()
+      .on("GET", PAPER_PATH, { status: 200, body: buildTrialPaperFixture() })
+      .on("GET", paperPath2, {
+        status: 200,
+        body: { ...buildTrialPaperFixture(), previewId: previewId2 },
+      });
+    server.install();
+
+    const view = renderWithProviders(
+      <>
+        <Link href="/exams">Danh sách bài thi</Link>
+        <PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />
+      </>,
+    );
+
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+    await user.click(screen.getByRole("radio", { name: /Hà Nội/ }));
+    expect(screen.getByRole("radio", { name: /Hà Nội/ })).toBeChecked();
+
+    await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Bỏ lần làm thử này?")).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ" }));
+    expect(routerMock.push).toHaveBeenCalledWith("/exams");
+
+    // Đổi previewId reset toàn bộ đáp án đã chọn
+    view.rerender(
+      <>
+        <Link href="/exams">Danh sách bài thi</Link>
+        <PreviewTrialView examId={EXAM_ID} previewId={previewId2} />
+      </>,
+    );
+    await waitFor(() => expect(screen.getByRole("radio", { name: /Hà Nội/ })).not.toBeChecked());
+  });
+
+  it("R1-27: ngoại tuyến khi tải đề ban đầu hiện EmptyState ngoại tuyến kèm nút Thử lại", async () => {
+    const user = userEvent.setup();
+    onlineManager.setOnline(false);
+
+    const server = new FakeServer().on("GET", PAPER_PATH, {
+      status: 200,
+      body: buildTrialPaperFixture(),
+    });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Mất kết nối mạng" })).toBeInTheDocument();
+
+    onlineManager.setOnline(true);
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(await screen.findByText("Thủ đô của Việt Nam là thành phố nào?")).toBeInTheDocument();
+  });
+
+  it("R1-30 & R1-39: TrialEssayEditor toolbar chỉ có 1 Tab stop với roving ArrowRight và part thiếu partId vẫn nhảy phần đúng", async () => {
+    const user = userEvent.setup();
+    const fixture = buildTrialPaperFixture();
+    delete fixture.parts![0]!.partId;
+    delete fixture.parts![1]!.partId;
+
+    const server = new FakeServer().on("GET", PAPER_PATH, { status: 200, body: fixture });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+
+    const paletteNav = screen.getByRole("complementary", { name: "Bảng điều hướng câu hỏi" });
+    await user.click(within(paletteNav).getByRole("button", { name: /Câu 3/ }));
+    expect(await screen.findByText("Viết đoạn văn ngắn về tinh thần tự học.")).toBeInTheDocument();
+
+    const toolbar = screen.getByRole("toolbar", { name: "Thanh định dạng bài viết" });
+    const buttons = within(toolbar).getAllByRole("button");
+    expect(buttons.filter((btn) => btn.tabIndex === 0)).toHaveLength(1);
+    expect(buttons.every((btn) => !btn.hasAttribute("disabled"))).toBe(true);
+
+    buttons[0]!.focus();
+    expect(buttons[0]).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(buttons[1]).toHaveFocus();
   });
 });

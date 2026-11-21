@@ -4,7 +4,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   Button,
   Card,
+  cn,
   EmptyState,
+  focusRing,
   ListCard,
   ListCardTag,
   StatusChip,
@@ -24,12 +26,13 @@ import {
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import { reviewPreviewHref } from "./api";
 import {
   computeObjectiveTotals,
   computePartScoreSummaries,
+  extractClozeResultEntries,
   extractTrueFalseEntries,
   listPaperLeafQuestions,
   matchingLabelMaps,
@@ -64,6 +67,7 @@ export interface TrialResultViewProps {
   grade: PreviewGradeResponse;
   answers: Readonly<Record<string, KitAnswerValue>>;
   onRetake: () => void;
+  focusHeadingOnMount?: boolean;
 }
 
 export function TrialResultView({
@@ -72,10 +76,18 @@ export function TrialResultView({
   grade,
   answers,
   onRetake,
+  focusHeadingOnMount = false,
 }: TrialResultViewProps) {
   const t = useTranslations("exams.trial");
   const tContent = useTranslations("content.questionType");
   const format = useFormatter();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (focusHeadingOnMount) {
+      headingRef.current?.focus();
+    }
+  }, [focusHeadingOnMount]);
 
   const objective = useMemo(() => computeObjectiveTotals(grade), [grade]);
   const partSummaries = useMemo(() => computePartScoreSummaries(paper, grade), [paper, grade]);
@@ -229,7 +241,11 @@ export function TrialResultView({
               {t("result.backToPreview")}
             </Link>
           </Button>
-          <h1 className="text-page-title font-bold tracking-tight text-text">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className={cn("rounded-sm text-page-title font-bold tracking-tight text-text", focusRing)}
+          >
             {t("result.heading")}
           </h1>
           <StatusChip tone="neutral">{t("result.notRecordedBadge")}</StatusChip>
@@ -302,10 +318,12 @@ export function TrialResultView({
                 </span>
                 <span className="text-caption text-text-secondary tabular-nums">
                   {summary.hasPending
-                    ? t("result.partPendingSummary", {
-                        earned: format.number(summary.earnedPoints, DISPLAY_NUMBER_FORMAT),
-                        max: format.number(summary.maxPoints, DISPLAY_NUMBER_FORMAT),
-                      })
+                    ? summary.objectiveCount === 0
+                      ? t("result.partEssayOnlyPending")
+                      : t("result.partPendingSummary", {
+                          earned: format.number(summary.earnedPoints, DISPLAY_NUMBER_FORMAT),
+                          max: format.number(summary.maxPoints, DISPLAY_NUMBER_FORMAT),
+                        })
                     : t("result.pointsPair", {
                         earned: format.number(summary.earnedPoints, DISPLAY_NUMBER_FORMAT),
                         max: format.number(summary.maxPoints, DISPLAY_NUMBER_FORMAT),
@@ -426,15 +444,15 @@ function TrialResultAnswerCell({ row }: { row: GradedQuestionRow }) {
     }
     case "CLOZE": {
       const a = row.answer as KitClozeAnswer;
-      const entries = Object.entries(a.blanks ?? {}).filter(([, v]) => v.trim().length > 0);
+      const entries = extractClozeResultEntries(row.descriptor?.question, a.blanks);
       if (entries.length === 0) return <span className="text-text-muted">{t("result.blank")}</span>;
       return (
         <span className="wrap-anywhere text-text">
-          {entries.map(([, val], idx) => (
-            <span key={idx}>
+          {entries.map((entry, idx) => (
+            <span key={entry.index}>
               {idx > 0 && " · "}
-              {t("result.clozeItem", { index: idx + 1 })}{" "}
-              <span data-exam-content>{val}</span>
+              {t("result.clozeItem", { index: entry.index })}{" "}
+              <span data-exam-content>{entry.value}</span>
             </span>
           ))}
         </span>

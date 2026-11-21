@@ -6374,6 +6374,7 @@
       "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · {retention} · questions are logged as preview, no attempt is used",
       "resultTitle": "Trial paper · {label}",
       "retention": "kept for {minutes, number} minutes{state, select, left { ({left, number} min left)} expired { (expired)} other {}}",
+      "retentionExtended": "extended until {time}{state, select, left { ({left, number} min left)} expired { (expired)} other {}}",
       "scope": {
         "count": "Questions in the subject",
         "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",
@@ -6393,6 +6394,8 @@
         "expiredError": "The trial paper has expired. Generate a new preview to try as student.",
         "genericError": "Could not start the trial session. Please try again.",
         "liveOpened": "Opened the trial session in a new tab.",
+        "popupBlocked": "Your browser blocked the new tab. Use the link to open the trial session.",
+        "popupBlockedLink": "Open trial session in a new tab",
         "unavailable": "No trial paper available"
       }
     },
@@ -7707,9 +7710,17 @@
         "description": "Your trial answers will be lost on leave because trial runs are not saved.",
         "title": "Leave this trial run?"
       },
+      "live": {
+        "graded": "Trial submission graded.",
+        "retake": "Cleared previous answers to retake the trial."
+      },
       "loading": "Loading trial paper",
       "modeBadge": "Trial mode",
       "nextPart": "Next part",
+      "offline": {
+        "description": "You are offline, so the trial paper could not load. It reloads automatically when back online, or press Retry.",
+        "title": "No network connection"
+      },
       "palette": {
         "ariaLabel": "Question navigation",
         "count": "{answered}/{total}",
@@ -7746,6 +7757,7 @@
           "PENDING_REVIEW": "Awaiting grading",
           "WRONG": "Wrong"
         },
+        "partEssayOnlyPending": "Essay awaiting grading",
         "partPendingSummary": "{earned} / {max} objective · essay pending",
         "partsTitle": "Score by part",
         "pointsPair": "{earned} / {max}",

@@ -2,10 +2,9 @@
 
 import { Button, Card, cn, focusRing, StatusChip } from "@thi360/ui";
 import { Question, type AnswerValue as KitAnswerValue, type EssayEditorProps } from "@thi360/ui/question";
-import { RichTextView } from "@thi360/ui/rich-text";
 import { AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import { PreviewAudioList } from "../components/exam-preview-audio";
 import {
@@ -16,6 +15,7 @@ import {
   toKitTrialQuestion,
   toKitTrialSet,
   toTrialAttachments,
+  trialPartKey,
 } from "./mappers";
 import { TrialEssayEditor } from "./trial-essay-editor";
 import type {
@@ -39,6 +39,7 @@ export interface TrialPaperViewProps {
   submitting: boolean;
   submitError: string | null;
   initialExpiresAt?: string | null;
+  focusHeadingKey?: number;
 }
 
 export function TrialPaperView({
@@ -50,29 +51,34 @@ export function TrialPaperView({
   submitting,
   submitError,
   initialExpiresAt,
+  focusHeadingKey = 0,
 }: TrialPaperViewProps) {
   const t = useTranslations("exams.trial");
   const tPreview = useTranslations("exams.preview");
   const format = useFormatter();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (focusHeadingKey > 0) {
+      headingRef.current?.focus();
+    }
+  }, [focusHeadingKey]);
 
   const sortedParts = useMemo(
     () => [...(paper.parts ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [paper.parts],
   );
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
-  const activePart = useMemo(() => {
-    if (sortedParts.length === 0) return null;
+  const activePartIndex = useMemo(() => {
+    if (sortedParts.length === 0) return -1;
     if (selectedPartId) {
-      const found = sortedParts.find((part) => (part.partId ?? "") === selectedPartId);
-      if (found) return found;
+      const foundIndex = sortedParts.findIndex((part, idx) => trialPartKey(part, idx) === selectedPartId);
+      if (foundIndex >= 0) return foundIndex;
     }
-    return sortedParts[0]!;
+    return 0;
   }, [sortedParts, selectedPartId]);
-
-  const activePartIndex = useMemo(
-    () => (activePart ? sortedParts.findIndex((p) => p.partId === activePart.partId) : -1),
-    [sortedParts, activePart],
-  );
+  const activePart = activePartIndex >= 0 ? sortedParts[activePartIndex]! : null;
+  const activePartKey = activePart ? trialPartKey(activePart, activePartIndex) : null;
 
   const leafDescriptors = useMemo(() => listPaperLeafQuestions(paper), [paper]);
   const leavesByPartId = useMemo(() => {
@@ -90,35 +96,47 @@ export function TrialPaperView({
     [leafDescriptors, answers],
   );
 
-  const pendingScrollIdRef = useRef<string | null>(null);
+  const pendingScrollRef = useRef<{
+    questionId: string;
+    targetPartKey: string;
+    setQuestionId?: string;
+  } | null>(null);
+
+  const performScroll = useCallback((questionId: string, setQuestionId?: string) => {
+    const directEl = document.getElementById(`trial-question-${questionId}`);
+    const fallbackEl = setQuestionId
+      ? document.getElementById(`trial-question-${setQuestionId}`)
+      : null;
+    const target = directEl ?? fallbackEl;
+    if (target && typeof target.scrollIntoView === "function") {
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const pending = pendingScrollRef.current;
+    if (!pending || activePartKey !== pending.targetPartKey) return;
+    pendingScrollRef.current = null;
+    performScroll(pending.questionId, pending.setQuestionId);
+  }, [activePartKey, performScroll]);
 
   const scrollToQuestion = useCallback(
-    (questionId: string, targetPartId: string, setQuestionId?: string) => {
-      const scrollNow = () => {
-        const directEl = document.getElementById(`trial-question-${questionId}`);
-        const fallbackEl = setQuestionId
-          ? document.getElementById(`trial-question-${setQuestionId}`)
-          : null;
-        const target = directEl ?? fallbackEl;
-        if (target && typeof target.scrollIntoView === "function") {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      };
-
-      if (activePart && (activePart.partId ?? "") !== targetPartId) {
-        pendingScrollIdRef.current = questionId;
-        setSelectedPartId(targetPartId);
-        requestAnimationFrame(() => {
-          if (pendingScrollIdRef.current === questionId) {
-            pendingScrollIdRef.current = null;
-            scrollNow();
-          }
-        });
+    (questionId: string, targetPartKey: string, setQuestionId?: string) => {
+      if (activePartKey && activePartKey !== targetPartKey) {
+        pendingScrollRef.current = { questionId, targetPartKey, setQuestionId };
+        setSelectedPartId(targetPartKey);
       } else {
-        scrollNow();
+        pendingScrollRef.current = null;
+        performScroll(questionId, setQuestionId);
       }
     },
-    [activePart],
+    [activePartKey, performScroll],
   );
 
   const expiresLabel = useMemo(() => {
@@ -130,7 +148,7 @@ export function TrialPaperView({
 
   return (
     <div className="@container flex flex-col gap-5">
-      <header className="sticky top-0 z-10 -mx-4 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur-xs">
+      <header className="sticky top-0 z-10 -mx-4 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur-xs sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
             <Button
@@ -143,7 +161,13 @@ export function TrialPaperView({
               <ArrowLeft aria-hidden />
               {t("backToPreview")}
             </Button>
-            <h1 className="text-title font-bold text-text">{t("title")}</h1>
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              className={cn("rounded-sm text-title font-bold text-text", focusRing)}
+            >
+              {t("title")}
+            </h1>
             <StatusChip tone="warning">{t("modeBadge")}</StatusChip>
             {paper.versionNo != null && (
               <StatusChip tone="neutral">{t("versionBadge", { version: paper.versionNo })}</StatusChip>
@@ -195,8 +219,8 @@ export function TrialPaperView({
       {sortedParts.length > 1 && (
         <nav aria-label={t("partNavAriaLabel")} className="flex flex-wrap gap-2">
           {sortedParts.map((part, idx) => {
-            const pId = part.partId ?? `part-${idx}`;
-            const isSelected = activePart?.partId === part.partId;
+            const pId = trialPartKey(part, idx);
+            const isSelected = activePartKey === pId;
             return (
               <button
                 key={pId}
@@ -204,9 +228,9 @@ export function TrialPaperView({
                 aria-pressed={isSelected}
                 onClick={() => setSelectedPartId(pId)}
                 className={cn(
-                  "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3.5 py-2 text-label transition-colors",
+                  "inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-2 rounded-lg border px-3.5 py-2 text-label font-medium transition-colors motion-reduce:transition-none",
                   isSelected
-                    ? "border-primary-500 bg-primary-bg font-semibold text-primary-text"
+                    ? "border-2 border-primary-600 bg-primary-50 text-primary-text"
                     : "border-border bg-surface text-text-secondary hover:bg-subtle hover:text-text",
                   focusRing,
                 )}
@@ -228,9 +252,10 @@ export function TrialPaperView({
 
       <div className="grid items-start gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,18.5rem)]">
         <div className="flex min-w-0 flex-col gap-5">
-          {activePart ? (
+          {activePart && activePartKey ? (
             <TrialPartBody
               part={activePart}
+              partKey={activePartKey}
               answers={answers}
               onAnswerChange={onAnswerChange}
               t={t}
@@ -249,8 +274,9 @@ export function TrialPaperView({
                 variant="secondary"
                 disabled={activePartIndex <= 0}
                 onClick={() => {
-                  const prev = sortedParts[activePartIndex - 1];
-                  if (prev?.partId) setSelectedPartId(prev.partId);
+                  const prevIdx = activePartIndex - 1;
+                  const prev = sortedParts[prevIdx];
+                  if (prev) setSelectedPartId(trialPartKey(prev, prevIdx));
                 }}
               >
                 <ChevronLeft aria-hidden />
@@ -261,8 +287,9 @@ export function TrialPaperView({
                 variant="secondary"
                 disabled={activePartIndex < 0 || activePartIndex >= sortedParts.length - 1}
                 onClick={() => {
-                  const next = sortedParts[activePartIndex + 1];
-                  if (next?.partId) setSelectedPartId(next.partId);
+                  const nextIdx = activePartIndex + 1;
+                  const next = sortedParts[nextIdx];
+                  if (next) setSelectedPartId(trialPartKey(next, nextIdx));
                 }}
               >
                 {t("nextPart")}
@@ -286,7 +313,7 @@ export function TrialPaperView({
 
             <div className="flex flex-col gap-3">
               {sortedParts.map((part, idx) => {
-                const pId = part.partId ?? `part-${idx}`;
+                const pId = trialPartKey(part, idx);
                 const partLeaves = leavesByPartId.get(pId) ?? [];
                 if (partLeaves.length === 0) return null;
                 return (
@@ -297,7 +324,7 @@ export function TrialPaperView({
                     <div className="grid grid-cols-5 gap-1.5">
                       {partLeaves.map((leaf) => {
                         const answered = isTrialLeafAnswered(leaf.type, answers[leaf.questionId]);
-                        const isCurrentPart = activePart?.partId === part.partId;
+                        const isCurrentPart = activePartKey === pId;
                         return (
                           <button
                             key={leaf.questionId}
@@ -308,9 +335,9 @@ export function TrialPaperView({
                               { number: format.number(leaf.number) },
                             )}
                             className={cn(
-                              "flex h-9 items-center justify-center rounded-md border text-label tabular-nums transition-colors",
+                              "flex h-9 items-center justify-center rounded-md border text-label tabular-nums transition-colors motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:min-w-11",
                               answered
-                                ? "border-primary-500 bg-primary-bg font-semibold text-primary-text"
+                                ? "border-primary-600 bg-primary-50 font-semibold text-primary-text"
                                 : "border-border bg-surface text-text hover:bg-subtle",
                               isCurrentPart && !answered && "border-border-strong",
                               focusRing,
@@ -334,12 +361,14 @@ export function TrialPaperView({
 
 function TrialPartBody({
   part,
+  partKey,
   answers,
   onAnswerChange,
   t,
   tPreview,
 }: {
   part: PreviewTrialPart;
+  partKey: string;
   answers: Readonly<Record<string, KitAnswerValue>>;
   onAnswerChange: (questionId: string, value: KitAnswerValue) => void;
   t: ReturnType<typeof useTranslations<"exams.trial">>;
@@ -350,11 +379,11 @@ function TrialPartBody({
 
   return (
     <section
-      aria-labelledby={`trial-part-${part.partId}`}
+      aria-labelledby={`trial-part-${partKey}`}
       className="flex flex-col gap-5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2.5">
-        <h2 id={`trial-part-${part.partId}`} className="text-h3 font-bold text-text">
+        <h2 id={`trial-part-${partKey}`} className="text-h3 font-bold text-text">
           <span data-exam-content>{part.name}</span>
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted tabular-nums">
@@ -489,29 +518,27 @@ function TrialItemView({
             />
           );
         })}
-        <div data-exam-content>
-          <Question
-            question={setQuestion}
-            mode="answer"
-            headingLevel={3}
-            value={setValue}
-            renderEditor={renderTrialEssayEditor}
-            onChange={(next) => {
-              if (!next || typeof next !== "object" || !("children" in next)) return;
-              const childrenMap = (next as { children?: Record<string, KitAnswerValue> }).children ?? {};
-              for (const child of setChildren) {
-                const cid = child.questionId;
-                if (!cid) continue;
-                const nextChildVal = childrenMap[cid];
-                if (nextChildVal !== undefined && nextChildVal !== answers[cid]) {
-                  onAnswerChange(cid, nextChildVal);
-                }
+        <Question
+          question={setQuestion}
+          mode="answer"
+          headingLevel={3}
+          value={setValue}
+          renderEditor={renderTrialEssayEditor}
+          onChange={(next) => {
+            if (!next || typeof next !== "object" || !("children" in next)) return;
+            const childrenMap = (next as { children?: Record<string, KitAnswerValue> }).children ?? {};
+            for (const child of setChildren) {
+              const cid = child.questionId;
+              if (!cid) continue;
+              const nextChildVal = childrenMap[cid];
+              if (nextChildVal !== undefined && nextChildVal !== answers[cid]) {
+                onAnswerChange(cid, nextChildVal);
               }
-            }}
-          >
-            {childQuestions}
-          </Question>
-        </div>
+            }
+          }}
+        >
+          {childQuestions}
+        </Question>
       </div>
     );
   }
@@ -527,27 +554,20 @@ function TrialItemView({
         id={`trial-question-${qId}`}
         className="scroll-mt-28 flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
       >
-        {q.content && kitQuestion.body.type === "CLOZE" && (
-          <div data-exam-content className="text-body text-text-secondary">
-            <RichTextView html={q.content} />
-          </div>
-        )}
         {attachments.length > 0 && (
           <PreviewAudioList
             attachments={attachments}
             name={tPreview("audio.forQuestion", { number: q.number ?? 1 })}
           />
         )}
-        <div data-exam-content>
-          <Question
-            question={kitQuestion}
-            mode="answer"
-            headingLevel={3}
-            value={answers[qId] ?? null}
-            renderEditor={renderTrialEssayEditor}
-            onChange={(val) => onAnswerChange(qId, val)}
-          />
-        </div>
+        <Question
+          question={kitQuestion}
+          mode="answer"
+          headingLevel={3}
+          value={answers[qId] ?? null}
+          renderEditor={renderTrialEssayEditor}
+          onChange={(val) => onAnswerChange(qId, val)}
+        />
       </div>
     );
   }

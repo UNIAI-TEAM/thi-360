@@ -4,7 +4,9 @@ import { useMutation } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  cn,
   EmptyState,
+  focusRing,
   LiveStatus,
   Select,
   Skeleton,
@@ -90,18 +92,32 @@ export function ExamPreviewPanel({
   const [resultLabel, setResultLabel] = useState("");
   const [trialExpires, setTrialExpires] = useState<{ previewId: string; expiresAt: string } | null>(null);
   const [trialErrorCode, setTrialErrorCode] = useState<string | null>(null);
+  const [blockedTrialHref, setBlockedTrialHref] = useState<string | null>(null);
+  const activePreviewIdRef = useRef<string | null>(null);
 
   const extendTrial = useMutation({
     mutationFn: (previewId: string) =>
       trialDeps.extendPreviewForTrial({ examId: exam.id, previewId }),
     onSuccess: (res, previewId) => {
+      if (activePreviewIdRef.current !== previewId) return;
       setTrialErrorCode(null);
       if (res.expiresAt) {
         setTrialExpires({ previewId, expiresAt: res.expiresAt });
       }
-      setLiveMessage(t("trial.liveOpened"));
       const href = trialPageHref(exam.id, previewId, res.expiresAt ?? null);
-      window.open(href, "_blank", "noopener,noreferrer");
+      const popup = window.open(href, "_blank");
+      if (!popup) {
+        setBlockedTrialHref(href);
+        setLiveMessage(t("trial.popupBlocked"));
+        return;
+      }
+      try {
+        popup.opener = null;
+      } catch {
+        // Ignore if browser restricts setting opener on child window
+      }
+      setBlockedTrialHref(null);
+      setLiveMessage(t("trial.liveOpened"));
     },
     onError: (error) => {
       const code = errorCodeOf(error) ?? "GENERIC";
@@ -200,6 +216,8 @@ export function ExamPreviewPanel({
     setTab("paper");
     setOriginal(false);
     setTrialErrorCode(null);
+    setBlockedTrialHref(null);
+    activePreviewIdRef.current = null;
     setLiveMessage(t("live.generating"));
     generate.mutate(
       {
@@ -210,6 +228,7 @@ export function ExamPreviewPanel({
       },
       {
         onSuccess: (result) => {
+          activePreviewIdRef.current = result.status === "GENERATED" ? (result.previewId ?? null) : null;
           setResultLabel(labelOf(result, used));
           setLiveMessage(
             result.status === "GENERATED"
@@ -248,6 +267,9 @@ export function ExamPreviewPanel({
 
   const data = generate.data;
   const shown = data?.status === "GENERATED" ? data : null;
+  useEffect(() => {
+    activePreviewIdRef.current = !generate.isPending && shown?.previewId ? shown.previewId : null;
+  }, [generate.isPending, shown?.previewId]);
   const extendedExpiresAt =
     shown?.previewId && trialExpires?.previewId === shown.previewId
       ? trialExpires.expiresAt
@@ -351,11 +373,17 @@ export function ExamPreviewPanel({
                 {t("resultMeta", {
                   questions: data.paper.totalQuestions,
                   seed: data.seed,
-                  retention: t("retention", {
-                    minutes: PREVIEW_RETENTION_MINUTES,
-                    state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
-                    left: minutesLeft ?? 0,
-                  }),
+                  retention: extendedExpiresAt
+                    ? t("retentionExtended", {
+                        time: format.dateTime(new Date(extendedExpiresAt), "dateTime"),
+                        state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                        left: minutesLeft ?? 0,
+                      })
+                    : t("retention", {
+                        minutes: PREVIEW_RETENTION_MINUTES,
+                        state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                        left: minutesLeft ?? 0,
+                      }),
                 })}
               </p>
             </div>
@@ -373,6 +401,7 @@ export function ExamPreviewPanel({
                 aria-describedby={!canStartTrial ? trialUnavailableId : undefined}
                 onClick={() => {
                   if (!data.previewId || extendTrial.isPending) return;
+                  setBlockedTrialHref(null);
                   extendTrial.mutate(data.previewId);
                 }}
               >
@@ -385,6 +414,26 @@ export function ExamPreviewPanel({
             <p id={trialUnavailableId} className="text-caption text-text-muted">
               {t("trial.unavailable")}
             </p>
+          )}
+          {blockedTrialHref && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-caption text-text">
+              <span className="flex items-center gap-2">
+                <Info aria-hidden className="size-4 shrink-0 text-warning" />
+                <span>{t("trial.popupBlocked")}</span>
+              </span>
+              <a
+                href={blockedTrialHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setBlockedTrialHref(null)}
+                className={cn(
+                  "inline-flex min-h-8 items-center rounded-sm font-semibold text-primary-text underline pointer-coarse:min-h-11",
+                  focusRing,
+                )}
+              >
+                {t("trial.popupBlockedLink")}
+              </a>
+            </div>
           )}
           {trialErrorCode && (
             <div

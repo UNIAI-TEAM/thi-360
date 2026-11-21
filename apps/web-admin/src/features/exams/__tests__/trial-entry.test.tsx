@@ -123,9 +123,10 @@ afterEach(() => {
 });
 
 describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", () => {
-  it("bấm nút gọi POST .../trial một lần, cập nhật expiresAt và mở tab /try với noopener,noreferrer", async () => {
+  it("bấm nút gọi POST .../trial một lần, cập nhật expiresAt và mở tab /try với opener = null", async () => {
     const user = userEvent.setup();
-    const openSpy = vi.fn();
+    const fakeWindow = { opener: window } as unknown as Window;
+    const openSpy = vi.fn(() => fakeWindow);
     vi.stubGlobal("open", openSpy);
 
     const extendedExpiresAt = new Date(Date.now() + 90 * 60_000).toISOString();
@@ -151,9 +152,71 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
     expect(openSpy).toHaveBeenCalledWith(
       `/exams/${EXAM_ID}/preview/${PREVIEW_ID}/try?expiresAt=${encodeURIComponent(extendedExpiresAt)}`,
       "_blank",
-      "noopener,noreferrer",
     );
-    expect(await screen.findByText(/còn 90 phút/)).toBeInTheDocument();
+    expect(fakeWindow.opener).toBeNull();
+    expect(await screen.findByText(/gia hạn tới .*còn 90 phút/)).toBeInTheDocument();
+    expect(screen.queryByText(/giữ trong 30 phút/)).not.toBeInTheDocument();
+  });
+
+  it("R1-1..R1-3: khi trình duyệt chặn popup (window.open trả null) hiện liên kết dự phòng và thông báo LiveStatus", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.fn(() => null);
+    vi.stubGlobal("open", openSpy);
+
+    const extendedExpiresAt = new Date(Date.now() + 60 * 60_000).toISOString();
+    const server = new FakeServer()
+      .on("POST", PREVIEW_PATH, { status: 200, body: generatedPreviewBody() })
+      .on("POST", TRIAL_PATH, { status: 200, body: { expiresAt: extendedExpiresAt } });
+
+    renderPanel(server);
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    await user.click(await screen.findByRole("button", { name: "Làm thử như học viên" }));
+
+    const fallbackLink = await screen.findByRole("link", { name: "Mở đề làm thử trong tab mới" });
+    expect(fallbackLink).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/preview/${PREVIEW_ID}/try?expiresAt=${encodeURIComponent(extendedExpiresAt)}`,
+    );
+    expect(fallbackLink).toHaveAttribute("target", "_blank");
+    expect(fallbackLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    const liveStatus = screen.getByRole("status");
+    expect(liveStatus).toHaveTextContent(
+      "Trình duyệt đã chặn cửa sổ bật lên. Hãy bấm liên kết để mở đề làm thử.",
+    );
+  });
+
+  it("R1-1: sinh lại đề thử khi POST .../trial đang chờ không mở tab cho previewId cũ", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.fn(() => ({ opener: window } as unknown as Window));
+    vi.stubGlobal("open", openSpy);
+
+    const previewId2 = "44444444-4444-4444-4444-444444444444";
+    const server = new FakeServer()
+      .on(
+        "POST",
+        PREVIEW_PATH,
+        { status: 200, body: generatedPreviewBody() },
+        { status: 200, body: generatedPreviewBody({ previewId: previewId2 }) },
+      )
+      .on("POST", TRIAL_PATH, {
+        status: 200,
+        body: { expiresAt: new Date(Date.now() + 60 * 60_000).toISOString() },
+      })
+      .hold("POST", TRIAL_PATH);
+
+    renderPanel(server);
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    await user.click(await screen.findByRole("button", { name: "Làm thử như học viên" }));
+    expect(server.calls("POST", TRIAL_PATH)).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Sinh đề thử mới" }));
+    await screen.findByRole("button", { name: "Làm thử như học viên" });
+
+    server.release("POST", TRIAL_PATH);
+    await waitFor(() => expect(server.calls("POST", TRIAL_PATH)).toHaveLength(1));
+    await waitFor(() => expect(openSpy).not.toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: "Mở đề làm thử trong tab mới" })).not.toBeInTheDocument();
   });
 
   it("khi POST .../trial trả 410 PREVIEW_EXPIRED: hiện thông báo hết hạn, không mở tab mới", async () => {

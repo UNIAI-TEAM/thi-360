@@ -21,6 +21,7 @@ export default async function ExamPreviewTrialPage({
   return (
     <Suspense fallback={<Skeleton className="h-96" />}>
       <PreviewTrialView
+        key={`${id}:${previewId}`}
         examId={id}
         previewId={previewId}
         initialExpiresAt={expiresAt ?? null}
