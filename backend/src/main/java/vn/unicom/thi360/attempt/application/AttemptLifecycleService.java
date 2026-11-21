@@ -31,7 +31,6 @@ import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
 import vn.unicom.thi360.attempt.domain.AudioPlayState;
 import vn.unicom.thi360.attempt.domain.EndReason;
-import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.domain.PartCloseReason;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.attempt.infrastructure.AttemptAudioPlayRepository;
@@ -71,10 +70,53 @@ public class AttemptLifecycleService {
     private final FinalAnswerWriter finalAnswerWriter;
     private final PartTransitionHook partTransitionHook;
     private final AttemptAudioPlayRepository attemptAudioPlayRepository;
+    private final AttemptNavigationPolicy navigationPolicy;
     private final TransactionTemplate txTemplate;
     private final Clock clock;
 
     @Autowired
+    public AttemptLifecycleService(
+            AttemptAccessGate accessGate,
+            AttemptRepository attemptRepository,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptEventRepository attemptEventRepository,
+            PublishedExamPort publishedExamPort,
+            EntitlementPort entitlementPort,
+            OutboxPublisher outboxPublisher,
+            IdempotentCommand idempotentCommand,
+            OverdueAttemptCloser overdueAttemptCloser,
+            AttemptSessionChecker attemptSessionChecker,
+            FinalAnswerWriter finalAnswerWriter,
+            ObjectProvider<PartTransitionHook> partTransitionHookProvider,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptNavigationPolicy navigationPolicy,
+            PlatformTransactionManager transactionManager,
+            Clock clock) {
+        this(
+                accessGate,
+                attemptRepository,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptEventRepository,
+                publishedExamPort,
+                entitlementPort,
+                outboxPublisher,
+                idempotentCommand,
+                overdueAttemptCloser,
+                attemptSessionChecker,
+                finalAnswerWriter,
+                Objects.requireNonNull(partTransitionHookProvider)
+                        .getIfAvailable(() -> PartTransitionHook.NOOP),
+                Objects.requireNonNull(
+                        attemptAudioPlayRepository,
+                        "attemptAudioPlayRepository must not be null"),
+                Objects.requireNonNull(navigationPolicy, "navigationPolicy must not be null"),
+                transactionManager,
+                clock,
+                true);
+    }
+
     public AttemptLifecycleService(
             AttemptAccessGate accessGate,
             AttemptRepository attemptRepository,
@@ -110,6 +152,7 @@ public class AttemptLifecycleService {
                 Objects.requireNonNull(
                         attemptAudioPlayRepository,
                         "attemptAudioPlayRepository must not be null"),
+                AttemptNavigationPolicy.defaultPolicy(),
                 transactionManager,
                 clock,
                 true);
@@ -146,6 +189,7 @@ public class AttemptLifecycleService {
                 finalAnswerWriter,
                 partTransitionHook,
                 null,
+                AttemptNavigationPolicy.defaultPolicy(),
                 transactionManager,
                 clock,
                 false);
@@ -183,6 +227,7 @@ public class AttemptLifecycleService {
                 finalAnswerWriter,
                 partTransitionHook,
                 attemptAudioPlayRepository,
+                AttemptNavigationPolicy.defaultPolicy(),
                 transactionManager,
                 clock,
                 true);
@@ -203,6 +248,7 @@ public class AttemptLifecycleService {
             FinalAnswerWriter finalAnswerWriter,
             PartTransitionHook partTransitionHook,
             AttemptAudioPlayRepository attemptAudioPlayRepository,
+            AttemptNavigationPolicy navigationPolicy,
             PlatformTransactionManager transactionManager,
             Clock clock,
             boolean requireAudioPlayRepository) {
@@ -226,6 +272,8 @@ public class AttemptLifecycleService {
                                 attemptAudioPlayRepository,
                                 "attemptAudioPlayRepository must not be null")
                         : attemptAudioPlayRepository;
+        this.navigationPolicy =
+                navigationPolicy == null ? AttemptNavigationPolicy.defaultPolicy() : navigationPolicy;
         this.txTemplate = new TransactionTemplate(Objects.requireNonNull(transactionManager));
         this.clock = Objects.requireNonNull(clock);
     }
@@ -282,6 +330,9 @@ public class AttemptLifecycleService {
         int partIdx = indexOfPart(parts, partId);
         if (partIdx < 0) {
             throw new NotFoundException("NOT_FOUND", null);
+        }
+        if (!navigationPolicy.allowsPartFinish(attempt.getNavigationMode())) {
+            throw new ConflictException("PART_FINISH_NOT_ALLOWED");
         }
         if (partIdx == parts.size() - 1) {
             throw new ConflictException("ATTEMPT_PART_IS_LAST");
@@ -407,7 +458,8 @@ public class AttemptLifecycleService {
             return buildSubmitResponse(lockNow, attempt, parts, List.of());
         }
 
-        if (attempt.getNavigationMode() == NavigationMode.SEQUENTIAL && hasUnfinishedPartForSubmit(parts)) {
+        if (navigationPolicy.requiresLastPartForSubmit(attempt.getNavigationMode())
+                && hasUnfinishedPartForSubmit(parts)) {
             throw new ConflictException("PART_NOT_LAST");
         }
 
@@ -728,8 +780,8 @@ public class AttemptLifecycleService {
                 : null;
     }
 
-    private static AttemptPart resolveSubmitTargetPart(Attempt attempt, List<AttemptPart> parts) {
-        if (attempt.getNavigationMode() != NavigationMode.SEQUENTIAL) {
+    private AttemptPart resolveSubmitTargetPart(Attempt attempt, List<AttemptPart> parts) {
+        if (!navigationPolicy.requiresLastPartForSubmit(attempt.getNavigationMode())) {
             return null;
         }
         List<AttemptPart> openParts =
