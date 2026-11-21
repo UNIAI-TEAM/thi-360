@@ -43,7 +43,7 @@ function BundleExamRow({ item, index }: { item: BundleDetailItem; index: number 
               {item.name}
             </Link>
             {item.buildMode === REVIEW_BUILD_MODE && (
-              <span className="rounded-full bg-info-bg px-2.5 py-0.5 text-caption font-semibold text-info">
+              <span className="inline-flex min-h-6 items-center rounded-full bg-info-bg px-2.5 py-0.5 text-caption font-semibold text-info">
                 {storefront("review")}
               </span>
             )}
@@ -82,7 +82,7 @@ function BundleExamRow({ item, index }: { item: BundleDetailItem; index: number 
         </dl>
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-border pt-3 text-field-label text-text-secondary sm:pl-11">
+      <div className="flex flex-col gap-2 border-t border-border pt-3 text-field-label text-text-secondary sm:pl-11">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="font-medium text-text">
             {t("examRightsPrefix")} {storefront("units.attempts", { count: item.attemptsGranted })}
@@ -94,17 +94,25 @@ function BundleExamRow({ item, index }: { item: BundleDetailItem; index: number 
                 : item.resultView}
             </span>
           )}
-          <span className="inline-flex items-center gap-1.5">
-            <span>{detail("rights.practice")}:</span>
-            <YesNo value={item.benefits.practice} />
+        </div>
+        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+          <span className="flex items-baseline justify-between gap-2 sm:inline-flex sm:items-center sm:justify-start sm:gap-1.5">
+            <span className="min-w-0">{detail("rights.practice")}:</span>
+            <span className="shrink-0 whitespace-nowrap">
+              <YesNo value={item.benefits.practice} />
+            </span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span>{detail("rights.strengths")}:</span>
-            <YesNo value={item.benefits.strengthWeakness} />
+          <span className="flex items-baseline justify-between gap-2 sm:inline-flex sm:items-center sm:justify-start sm:gap-1.5">
+            <span className="min-w-0">{detail("rights.strengths")}:</span>
+            <span className="shrink-0 whitespace-nowrap">
+              <YesNo value={item.benefits.strengthWeakness} />
+            </span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span>{detail("rights.ai")}:</span>
-            <YesNo value={item.benefits.aiExplanation} />
+          <span className="flex items-baseline justify-between gap-2 sm:inline-flex sm:items-center sm:justify-start sm:gap-1.5">
+            <span className="min-w-0">{detail("rights.ai")}:</span>
+            <span className="shrink-0 whitespace-nowrap">
+              <YesNo value={item.benefits.aiExplanation} />
+            </span>
           </span>
         </div>
         {item.benefits.note && (
@@ -171,7 +179,7 @@ export function BundleDetailView({
             </div>
             <div className="flex flex-col gap-3.5 p-6">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-primary-600 bg-primary-50 px-2.5 py-0.5 text-caption font-semibold text-primary-700">
+                <span className="inline-flex min-h-6 items-center rounded-full border border-primary-600 bg-primary-50 px-2.5 py-0.5 text-caption font-semibold text-primary-700">
                   {examKindLabel}
                 </span>
                 <FormatChip format={product.format} />

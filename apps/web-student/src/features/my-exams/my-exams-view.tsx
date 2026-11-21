@@ -243,7 +243,11 @@ export function MyExamsView({
           {standaloneCards.length > 0 && (
             <div className="flex flex-col gap-4">
               {bundleGroups.length > 0 && (
-                <h3 className="text-h3 font-bold text-text">{bundleT("home.standaloneHeading")}</h3>
+                <SectionTitle
+                  title={bundleT("home.standaloneHeading")}
+                  count={t("examCount", { count: standaloneCards.length })}
+                  className="flex-wrap"
+                />
               )}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
                 {standaloneCards.map((card) => (

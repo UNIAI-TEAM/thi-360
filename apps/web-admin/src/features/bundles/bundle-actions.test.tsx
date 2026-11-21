@@ -115,7 +115,7 @@ describe("Bundle Publish & Discontinue Actions (AC-7)", () => {
     await screen.findByText("Bộ đề SP2E khối A00");
     const listTable = screen.getByRole("table", { name: "Danh sách bộ đề" });
     await user.click(
-      screen.getByRole("button", { name: "Thao tác khác với Bộ đề SP2E khối A00" }),
+      screen.getByRole("button", { name: "Thao tác khác với BO-SP2E-001" }),
     );
     await user.click(await screen.findByRole("menuitem", { name: "Ngừng bán" }));
 

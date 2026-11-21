@@ -8806,8 +8806,8 @@
       "discontinue": "Discontinue",
       "dismiss": "Dismiss",
       "edit": "Edit bundle",
-      "editAria": "Edit bundle {name}",
-      "moreAria": "More actions for {name}",
+      "editAria": "Edit bundle {code}",
+      "moreAria": "More actions for {code}",
       "publish": "Publish",
       "refresh": "Refresh",
       "republish": "Republish",
@@ -8815,7 +8815,7 @@
       "saveChanges": "Save changes",
       "saveDraft": "Save draft",
       "view": "View details",
-      "viewAria": "View bundle {name}"
+      "viewAria": "View bundle {code}"
     },
     "badges": {
       "review": "Review"
@@ -8951,7 +8951,7 @@
         "otherSubject": "Other subject",
         "pointsValue": "{value} pts",
         "questionsValue": "{value} questions",
-        "selectAria": "Select {name}",
+        "selectAria": "Select {code}",
         "selectKindFirst": "Select an exam kind in section 1 to browse eligible on-sale exams.",
         "selectedCountChip": "Selected {count}/{max} · min {min}",
         "tableAria": "Eligible on-sale exams for this exam kind"
@@ -8986,11 +8986,11 @@
         "empty": "No exams selected yet.",
         "hint": "Students see the exams in this order on the bundle detail page and on My Exams.",
         "listAria": "Order of exams in bundle",
-        "moveDown": "Move {name} down",
+        "moveDown": "Move {code} down",
         "moveDownTooltip": "Move down",
-        "moveUp": "Move {name} up",
+        "moveUp": "Move {code} up",
         "moveUpTooltip": "Move up",
-        "remove": "Remove {name} from bundle",
+        "remove": "Remove {code} from bundle",
         "removeTooltip": "Remove",
         "title": "Order in bundle"
       },
@@ -9059,6 +9059,11 @@
       "notSet": "—",
       "offlineDescription": "Your device is offline, so loading bundles is paused.",
       "offlineTitle": "Offline",
+      "summary": {
+        "attempts": "Attempts/exam: {value}",
+        "itemCount": "{count, plural, one {# exam} other {# exams}}",
+        "updatedAt": "Updated: {date}"
+      },
       "tableAria": "Bundles table",
       "title": "Bundles",
       "totalItems": "{total, plural, one {Total # bundle} other {Total # bundles}}"

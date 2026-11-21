@@ -63,7 +63,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
   const [discontinueOpen, setDiscontinueOpen] = useState(false);
   const formId = useId();
 
-  useSetBreadcrumbLeaf(query.data ? query.data.name : t("edit.title"));
+  useSetBreadcrumbLeaf(query.data ? query.data.code : t("edit.title"));
 
   const handleConflict = async () => {
     setHasConflict(true);

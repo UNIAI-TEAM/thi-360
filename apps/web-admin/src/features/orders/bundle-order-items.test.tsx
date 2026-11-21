@@ -39,6 +39,7 @@ describe("Bundle orders display in /orders and /orders/[code] (AC-9)", () => {
     const bundleOrder = makeOrderSummary({
       orderId: "ord-bundle-1",
       code: "DH-BUNDLE-001",
+      buyerUsername: "student01",
       productType: "BUNDLE",
       bundleId: "bundle-1",
       examId: undefined,
@@ -74,6 +75,10 @@ describe("Bundle orders display in /orders and /orders/[code] (AC-9)", () => {
     expect(
       firstExam.compareDocumentPosition(secondExam) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    const buyerCell = within(table).getByText("student01");
+    expect(buyerCell).toHaveClass("wrap-break-word");
+    expect(buyerCell).not.toHaveClass("wrap-anywhere");
+    expect(buyerCell.parentElement).toHaveClass("min-w-[7rem]");
     unmount();
 
     // Card mode at 358px in English locale

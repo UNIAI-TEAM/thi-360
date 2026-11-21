@@ -299,6 +299,8 @@ describe("BundleDetailView (AC-3, AC-4, AC-11, AC-12, AC-17, A7.7)", () => {
     expect(screen.getByText("Vật lí").closest("[data-exam-content]")).toBeNull();
     expect(screen.getByText("Review exam")).toBeInTheDocument();
     expect(screen.getByText(/You already have 1 attempt for/)).toBeInTheDocument();
+    const strengthsLabel = screen.getAllByText(/Strengths and weaknesses report/)[0]!;
+    expect(strengthsLabel.parentElement).toHaveClass("flex", "items-baseline", "justify-between");
 
     // Ngoài data-exam-content và ngoài tên môn fallback "Vật lí" (chỉ có dữ liệu test giả định không dấu hoặc ngoại lệ fallback), không còn chữ giao diện tiếng Việt.
     const clone = container.cloneNode(true) as HTMLElement;

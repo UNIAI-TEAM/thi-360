@@ -373,11 +373,11 @@ export function OrderListView() {
         cell: ({ row }) => {
           const item = row.original;
           return (
-            <div className="flex max-w-[115px] min-w-0 flex-col">
-              <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
+            <div className="flex min-w-[7rem] max-w-[10.5rem] flex-col">
+              <span className="line-clamp-2 text-xs font-medium wrap-break-word text-text" data-exam-content>
                 {item.buyerFullName}
               </span>
-              <span className="font-mono text-caption wrap-anywhere text-text-secondary">
+              <span className="font-mono text-caption wrap-break-word text-text-secondary">
                 {item.buyerUsername}
               </span>
             </div>
@@ -394,7 +394,7 @@ export function OrderListView() {
             ? [...(item.items ?? [])].sort((a, b) => a.position - b.position)
             : [];
           return (
-            <div className={cn("flex min-w-0 flex-col gap-0.5", isBundle ? "max-w-[220px]" : "max-w-[130px]")}>
+            <div className={cn("flex min-w-0 flex-col gap-0.5", isBundle ? "max-w-[180px]" : "max-w-[140px]")}>
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="line-clamp-2 text-xs font-medium wrap-anywhere text-text" data-exam-content>
                   {item.productName}

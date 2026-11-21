@@ -274,8 +274,8 @@ export function BundleListView() {
       const canOfferDiscontinue = canPublish && bundle.status === "PUBLISHED";
       const hasMenu = canOfferPublish || canOfferDiscontinue;
       const editOrViewLabel = canModify
-        ? t("actions.editAria", { name: bundle.name })
-        : t("actions.viewAria", { name: bundle.name });
+        ? t("actions.editAria", { code: bundle.code })
+        : t("actions.viewAria", { code: bundle.code });
       const editOrViewTooltip = canModify ? t("actions.edit") : t("actions.view");
       const toTarget = (): BundleActionTarget => ({
         id: bundle.id,
@@ -308,7 +308,7 @@ export function BundleListView() {
               <DropdownMenuTrigger asChild>
                 <IconButton
                   icon={<MoreHorizontal />}
-                  aria-label={t("actions.moreAria", { name: bundle.name })}
+                  aria-label={t("actions.moreAria", { code: bundle.code })}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -373,6 +373,33 @@ export function BundleListView() {
                   {b.summary}
                 </span>
               )}
+              <div className="hidden flex-wrap gap-x-3 gap-y-0.5 text-caption tabular-nums @max-[74rem]:flex">
+                <span
+                  data-col-summary="itemCount"
+                  className="hidden text-text-secondary @max-[56rem]:inline"
+                >
+                  {t("list.summary.itemCount", { count: b.itemCount })}
+                </span>
+                <span
+                  data-col-summary="attempts"
+                  className="hidden text-text-secondary @max-[64rem]:inline"
+                >
+                  {t("list.summary.attempts", {
+                    value:
+                      b.attemptsPerExam != null
+                        ? formatNumber(b.attemptsPerExam, locale)
+                        : t("list.notSet"),
+                  })}
+                </span>
+                <span
+                  data-col-summary="updatedAt"
+                  className="hidden font-mono text-text-muted @max-[74rem]:inline"
+                >
+                  {t("list.summary.updatedAt", {
+                    date: formatBundleDateTime(b.updatedAt, locale),
+                  })}
+                </span>
+              </div>
             </div>
           );
         },

@@ -206,7 +206,7 @@ export function BundleForm({
   const [candidateCache, setCandidateCache] = useState<
     Record<string, BundleCandidateResponse>
   >({});
-  const [pickerRef, isCardMode] = useCardMode<HTMLDivElement>(true, 640);
+  const [pickerRef, isCardMode] = useCardMode<HTMLDivElement>(true, 500);
 
   const examKindOptionsList = useMemo<ExamKindOption[]>(() => {
     const map = new Map<string, ExamKindOption>();
@@ -879,7 +879,7 @@ export function BundleForm({
                                   checked={checked}
                                   disabled={isReadOnly}
                                   aria-label={t("form.candidates.selectAria", {
-                                    name: candidate.name,
+                                    code: candidate.code,
                                   })}
                                   onCheckedChange={() => toggleCandidate(candidate)}
                                 />
@@ -940,28 +940,28 @@ export function BundleForm({
                 <div className="overflow-x-auto">
                   <table
                     aria-label={t("form.candidates.tableAria")}
-                    className="w-full border-separate border-spacing-0 text-body tabular-nums"
+                    className="w-full border-separate border-spacing-0 text-field-label tabular-nums"
                   >
                     <thead>
-                      <tr className="bg-table-head text-left text-field-label font-semibold text-text-muted">
-                        <th scope="col" className="w-12 border-b border-border px-4 py-2.5">
+                      <tr className="bg-table-head text-left text-caption font-semibold text-text-muted">
+                        <th scope="col" className="w-10 border-b border-border py-2.5 pr-1.5 pl-3">
                           <span className="sr-only">
                             {t("form.candidates.columns.select")}
                           </span>
                         </th>
-                        <th scope="col" className="border-b border-border px-3 py-2.5">
+                        <th scope="col" className="border-b border-border px-2 py-2.5">
                           {t("form.candidates.columns.exam")}
                         </th>
-                        <th scope="col" className="border-b border-border px-3 py-2.5">
+                        <th scope="col" className="border-b border-border px-2 py-2.5">
                           {t("form.candidates.columns.scope")}
                         </th>
-                        <th scope="col" className="border-b border-border px-3 py-2.5 text-right">
+                        <th scope="col" className="border-b border-border px-2 py-2.5 text-right">
                           {t("form.candidates.columns.questions")}
                         </th>
-                        <th scope="col" className="border-b border-border px-3 py-2.5 text-right">
+                        <th scope="col" className="border-b border-border px-2 py-2.5 text-right">
                           {t("form.candidates.columns.duration")}
                         </th>
-                        <th scope="col" className="border-b border-border px-4 py-2.5 text-right">
+                        <th scope="col" className="border-b border-border py-2.5 pr-3 pl-2 text-right">
                           {t("form.candidates.columns.points")}
                         </th>
                       </tr>
@@ -973,7 +973,7 @@ export function BundleForm({
                             <th
                               scope="rowgroup"
                               colSpan={6}
-                              className="border-b border-border bg-subtle px-4 py-2 text-left text-overline font-semibold text-text-muted"
+                              className="border-b border-border bg-subtle px-3 py-2 text-left text-overline font-semibold text-text-muted"
                             >
                               {group.subjectLabel}
                             </th>
@@ -990,18 +990,18 @@ export function BundleForm({
                                   checked ? "bg-primary-50" : "hover:bg-subtle",
                                 )}
                               >
-                                <td className="border-b border-border px-4 py-2.5">
+                                <td className="border-b border-border py-2.5 pr-1.5 pl-3">
                                   <Checkbox
                                     id={checkboxId}
                                     checked={checked}
                                     disabled={isReadOnly}
                                     aria-label={t("form.candidates.selectAria", {
-                                      name: candidate.name,
+                                      code: candidate.code,
                                     })}
                                     onCheckedChange={() => toggleCandidate(candidate)}
                                   />
                                 </td>
-                                <td className="border-b border-border px-3 py-2.5">
+                                <td className="min-w-0 border-b border-border px-2 py-2.5">
                                   <label
                                     htmlFor={checkboxId}
                                     className="flex cursor-pointer flex-col gap-0.5"
@@ -1009,7 +1009,7 @@ export function BundleForm({
                                     <span className="flex flex-wrap items-center gap-1.5">
                                       <span
                                         data-exam-content
-                                        className="font-semibold text-text"
+                                        className="font-semibold wrap-break-word text-text"
                                       >
                                         {candidate.name}
                                       </span>
@@ -1019,7 +1019,7 @@ export function BundleForm({
                                         </StatusChip>
                                       )}
                                     </span>
-                                    <span className="text-caption text-text-muted">
+                                    <span className="text-caption wrap-break-word text-text-muted">
                                       <span data-exam-content className="font-mono">
                                         {candidate.code}
                                       </span>
@@ -1032,16 +1032,16 @@ export function BundleForm({
                                     </span>
                                   </label>
                                 </td>
-                                <td className="border-b border-border px-3 py-2.5 whitespace-nowrap text-text-secondary">
+                                <td className="border-b border-border px-2 py-2.5 text-caption text-text-secondary">
                                   {scopeLabelOf(candidate.scope)}
                                 </td>
-                                <td className="border-b border-border px-3 py-2.5 text-right whitespace-nowrap text-text">
+                                <td className="border-b border-border px-2 py-2.5 text-right text-caption whitespace-nowrap text-text">
                                   {stats.questions}
                                 </td>
-                                <td className="border-b border-border px-3 py-2.5 text-right whitespace-nowrap text-text">
+                                <td className="border-b border-border px-2 py-2.5 text-right text-caption whitespace-nowrap text-text">
                                   {stats.duration}
                                 </td>
-                                <td className="border-b border-border px-4 py-2.5 text-right whitespace-nowrap text-text">
+                                <td className="border-b border-border py-2.5 pr-3 pl-2 text-right text-caption whitespace-nowrap text-text">
                                   {stats.points}
                                 </td>
                               </tr>
@@ -1106,21 +1106,21 @@ export function BundleForm({
                       <div className="flex items-center gap-1">
                         <IconButton
                           icon={<ArrowUp />}
-                          aria-label={t("form.order.moveUp", { name: item.name })}
+                          aria-label={t("form.order.moveUp", { code: item.code })}
                           tooltip={t("form.order.moveUpTooltip")}
                           disabled={isReadOnly || index === 0}
                           onClick={() => moveSelected(index, -1)}
                         />
                         <IconButton
                           icon={<ArrowDown />}
-                          aria-label={t("form.order.moveDown", { name: item.name })}
+                          aria-label={t("form.order.moveDown", { code: item.code })}
                           tooltip={t("form.order.moveDownTooltip")}
                           disabled={isReadOnly || index === selectedItems.length - 1}
                           onClick={() => moveSelected(index, 1)}
                         />
                         <IconButton
                           icon={<X />}
-                          aria-label={t("form.order.remove", { name: item.name })}
+                          aria-label={t("form.order.remove", { code: item.code })}
                           tooltip={t("form.order.removeTooltip")}
                           disabled={isReadOnly}
                           onClick={() => removeSelected(item.examId)}
@@ -1323,26 +1323,30 @@ export function BundleForm({
             </h2>
 
             <dl className="m-0 flex flex-col gap-2.5 text-body tabular-nums">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-text-muted">{t("form.aside.examKind")}</dt>
-                <dd className="m-0 font-semibold text-text">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="shrink-0 whitespace-nowrap text-text-muted">
+                  {t("form.aside.examKind")}
+                </dt>
+                <dd className="m-0 min-w-0 text-right font-semibold wrap-break-word text-text">
                   {examKindNameById.get(values.examKindItemId) ??
                     t("form.aside.notSelected")}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-text-muted">{t("form.aside.examCount")}</dt>
-                <dd className="m-0 font-semibold text-text">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="shrink-0 whitespace-nowrap text-text-muted">
+                  {t("form.aside.examCount")}
+                </dt>
+                <dd className="m-0 text-right font-semibold text-text">
                   {t("form.aside.examCountValue", {
                     count: formatNumber(values.examIds.length, locale),
                   })}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-text-muted">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="shrink-0 whitespace-nowrap text-text-muted">
                   {t("form.aside.totalQuestions")}
                 </dt>
-                <dd className="m-0 font-semibold text-text">
+                <dd className="m-0 text-right font-semibold text-text">
                   {totalQuestionDisplay
                     ? t("form.aside.questionsValue", {
                         value: totalQuestionDisplay,
@@ -1350,17 +1354,21 @@ export function BundleForm({
                     : t("form.aside.notAvailable")}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-text-muted">{t("form.aside.price")}</dt>
-                <dd className="m-0 font-semibold text-text">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="shrink-0 whitespace-nowrap text-text-muted">
+                  {t("form.aside.price")}
+                </dt>
+                <dd className="m-0 text-right font-semibold text-text">
                   {parsedPrice !== null
                     ? formatVnd(parsedPrice, locale)
                     : t("form.aside.notSet")}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-text-muted">{t("form.aside.attempts")}</dt>
-                <dd className="m-0 font-semibold text-text">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="shrink-0 whitespace-nowrap text-text-muted">
+                  {t("form.aside.attempts")}
+                </dt>
+                <dd className="m-0 text-right font-semibold text-text">
                   {parsedAttempts !== null
                     ? t("form.aside.attemptsValue", {
                         count: formatNumber(parsedAttempts, locale),

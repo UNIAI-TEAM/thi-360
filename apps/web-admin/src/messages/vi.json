@@ -8806,8 +8806,8 @@
       "discontinue": "Ngừng bán",
       "dismiss": "Đóng thông báo",
       "edit": "Sửa bộ đề",
-      "editAria": "Sửa bộ đề {name}",
-      "moreAria": "Thao tác khác với {name}",
+      "editAria": "Sửa bộ đề {code}",
+      "moreAria": "Thao tác khác với {code}",
       "publish": "Công bố",
       "refresh": "Làm mới",
       "republish": "Công bố lại",
@@ -8815,7 +8815,7 @@
       "saveChanges": "Lưu thay đổi",
       "saveDraft": "Lưu nháp",
       "view": "Xem chi tiết",
-      "viewAria": "Xem bộ đề {name}"
+      "viewAria": "Xem bộ đề {code}"
     },
     "badges": {
       "review": "Bài ôn"
@@ -8951,7 +8951,7 @@
         "otherSubject": "Môn khác",
         "pointsValue": "{value} điểm",
         "questionsValue": "{value} câu",
-        "selectAria": "Chọn {name}",
+        "selectAria": "Chọn {code}",
         "selectKindFirst": "Chọn kỳ thi ở mục 1 để xem danh sách bài thi đang bán.",
         "selectedCountChip": "Đã chọn {count}/{max} · tối thiểu {min}",
         "tableAria": "Danh sách bài thi đang bán cùng kỳ thi"
@@ -8986,11 +8986,11 @@
         "empty": "Chưa chọn bài thi nào.",
         "hint": "Học viên thấy các bài theo thứ tự này ở trang chi tiết bộ và ở Bài thi của tôi.",
         "listAria": "Thứ tự bài thi trong bộ",
-        "moveDown": "Đưa {name} xuống",
+        "moveDown": "Đưa {code} xuống",
         "moveDownTooltip": "Đưa xuống",
-        "moveUp": "Đưa {name} lên",
+        "moveUp": "Đưa {code} lên",
         "moveUpTooltip": "Đưa lên",
-        "remove": "Bỏ {name} khỏi bộ",
+        "remove": "Bỏ {code} khỏi bộ",
         "removeTooltip": "Bỏ bài",
         "title": "Thứ tự trong bộ"
       },
@@ -9059,6 +9059,11 @@
       "notSet": "—",
       "offlineDescription": "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách bộ đề.",
       "offlineTitle": "Đang ngoại tuyến",
+      "summary": {
+        "attempts": "Lượt mỗi bài: {value}",
+        "itemCount": "{count, plural, other {# bài}}",
+        "updatedAt": "Cập nhật: {date}"
+      },
       "tableAria": "Danh sách bộ đề",
       "title": "Bộ đề",
       "totalItems": "{total, plural, other {Tổng # bộ đề}}"

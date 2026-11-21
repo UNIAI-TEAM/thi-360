@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import {
@@ -39,6 +40,11 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
     pushedRoutes = [];
     bundleMockPush.fn = (href: string) => pushedRoutes.push(href);
     fakeApi.get("/api/v1/catalog/options", () => ok(EXAM_KIND_OPTIONS));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("tạo bộ đề: hiển thị ứng viên theo môn (kèm số câu, thời lượng, điểm, nhãn Bài ôn), kiểm tra 2-12 bài, đổi thứ tự lên/xuống và gửi CreateBundleRequest", async () => {
@@ -111,16 +117,16 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
     // Fill code & name, pick only 1 exam -> validation blocks (< 2 exams)
     await user.type(screen.getByLabelText(/Mã bộ/), "BO-SP2E-NEW");
     await user.type(screen.getByLabelText(/Tên bộ/), "Bộ đề mới SP2E");
-    await user.click(screen.getByRole("checkbox", { name: "Chọn SP2E Toán – Đề 1" }));
+    await user.click(screen.getByRole("checkbox", { name: "Chọn SP2E-TOAN-01" }));
     await user.click(screen.getByRole("button", { name: "Lưu nháp" }));
     expect(await screen.findByText(/Bộ đề phải chọn từ 2 đến 12 bài thi/)).toBeInTheDocument();
     expect(createdRequests).toHaveLength(0);
 
     // Pick second exam & reorder Up
-    await user.click(screen.getByRole("checkbox", { name: "Chọn SP2E Vật lí – Ôn tập" }));
+    await user.click(screen.getByRole("checkbox", { name: "Chọn SP2E-LY-REV" }));
     const orderList = screen.getByRole("list", { name: "Thứ tự bài thi trong bộ" });
     expect(within(orderList).getAllByRole("listitem")).toHaveLength(2);
-    await user.click(within(orderList).getByRole("button", { name: "Đưa SP2E Vật lí – Ôn tập lên" }));
+    await user.click(within(orderList).getByRole("button", { name: "Đưa SP2E-LY-REV lên" }));
 
     // Price, attempts, benefits, result view
     await user.type(screen.getByLabelText(/Giá bộ/), "299000");
@@ -167,7 +173,7 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
 
     await user.click(screen.getByRole("combobox", { name: /Kỳ thi/ }));
     await user.click(await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }));
-    await user.click(await screen.findByRole("checkbox", { name: "Chọn SP2E Toán – Đề 1" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Chọn SP2E-TOAN-01" }));
 
     // Try switching to SPT -> dialog opens
     await user.click(screen.getByRole("combobox", { name: /Kỳ thi/ }));
@@ -316,5 +322,61 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
         el.textContent?.includes("Bộ đề vừa được người khác cập nhật."),
       ),
     ).toBe(true);
+  });
+
+  it("F-1, F-2, V-4: picker desktop 596px dựng table, mobile 326px dựng card, aria-label dùng mã và nhãn Tóm tắt không gãy dòng", async () => {
+    fakeApi.get("/api/v1/admin/bundles/{id}", () =>
+      ok(makeBundleDetail({ id: BUNDLE_ID_1, name: "Bộ đề tiếng Việt dài", status: "DRAFT" })),
+    );
+    fakeApi.get("/api/v1/admin/bundles/candidates", () =>
+      ok([
+        makeCandidate({ examId: EXAM_TOAN_ID, code: "SP2E-TOAN-01", name: "SP2E Toán – Đề 1" }),
+        makeCandidate({
+          examId: EXAM_LY_ID,
+          code: "SP2E-LY-01",
+          name: "SP2E Vật lí – Đề 1",
+          subjectItemId: "sub-ly",
+          subjectCode: "LY",
+          subjectName: { nameVi: "Vật lí", nameEn: "Physics" },
+        }),
+      ]),
+    );
+
+    const resizeTo = installContainerWidth(596);
+    const { container } = renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />, { locale: "en" });
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "Bộ đề tiếng Việt dài" });
+    expect(heading.querySelector("[data-exam-content]")).not.toBeNull();
+
+    // Desktop 596px container renders candidate table (threshold 500)
+    const table = await screen.findByRole("table", { name: "Eligible on-sale exams for this exam kind" });
+    expect(within(table).getByRole("checkbox", { name: "Select SP2E-TOAN-01" })).toBeInTheDocument();
+
+    // Order controls and checkboxes use ASCII codes instead of Vietnamese names
+    const orderList = screen.getByRole("list", { name: "Order of exams in bundle" });
+    expect(within(orderList).getByRole("button", { name: "Move SP2E-TOAN-01 up" })).toBeInTheDocument();
+    expect(within(orderList).getByRole("button", { name: "Move SP2E-TOAN-01 down" })).toBeInTheDocument();
+    expect(within(orderList).getByRole("button", { name: "Remove SP2E-TOAN-01 from bundle" })).toBeInTheDocument();
+
+    // Summary <dt> keeps shrink-0 whitespace-nowrap
+    const summaryHeading = screen.getByRole("heading", { level: 2, name: "Summary" });
+    const examKindDt = within(summaryHeading.closest("aside")!).getByText("Exam kind");
+    expect(examKindDt).toHaveClass("shrink-0", "whitespace-nowrap");
+
+    // Verify no Vietnamese diacritics appear outside [data-exam-content] (text or aria-label);
+    // ignore hidden Radix <select aria-hidden="true"> options where SPT test fixture intentionally uses empty nameEn fallback.
+    const clone = container.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("[data-exam-content], select[aria-hidden='true']").forEach((el) => el.remove());
+    expect(clone.textContent).not.toMatch(/[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i);
+    for (const el of clone.querySelectorAll("[aria-label]")) {
+      expect(el.getAttribute("aria-label")).not.toMatch(/[ăâđêôơưàáạảãèéẹẻẽìíịỉĩòóọỏõùúụủũỳýỵỷỹ]/i);
+    }
+
+    // Narrow mobile container (326px < 500px) switches candidate picker to cards
+    resizeTo(Math.max(326, PHONE_CONTENT_WIDTH - 32));
+    await waitFor(() => {
+      expect(screen.queryByRole("table", { name: "Eligible on-sale exams for this exam kind" })).toBeNull();
+    });
+    expect(screen.getByRole("checkbox", { name: "Select SP2E-TOAN-01" })).toBeInTheDocument();
   });
 });

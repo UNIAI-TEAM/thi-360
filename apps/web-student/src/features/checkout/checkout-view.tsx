@@ -863,13 +863,13 @@ export function CheckoutView({
                   className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex h-6 items-center rounded-full bg-subtle px-2.5 text-caption font-medium text-text-secondary">
+                    <span className="inline-flex min-h-6 items-center rounded-full bg-subtle px-2.5 py-0.5 text-caption font-medium text-text-secondary">
                       {pickName(product.examKind, locale) || product.examKind.code}
                     </span>
                     <FormatChip format={product.format} scopeLabel={product.scopeLabel} />
                     {isBundle && <Badge>{bundleT("detail.examCountValue", { count: bundleItems.length })}</Badge>}
                     {product.buildMode === REVIEW_BUILD_MODE && (
-                      <span className="inline-flex h-6 items-center rounded-full bg-info-bg px-2.5 text-caption font-semibold text-info">
+                      <span className="inline-flex min-h-6 items-center rounded-full bg-info-bg px-2.5 py-0.5 text-caption font-semibold text-info">
                         {storefront("review")}
                       </span>
                     )}
@@ -914,83 +914,88 @@ export function CheckoutView({
                       </div>
 
                       {bundleItems.length > 0 && (
-                        <div
-                          role="region"
+                        <ul
                           aria-label={bundleT("checkout.tableCaption")}
-                          tabIndex={0}
-                          className={cn("overflow-x-auto rounded-lg border border-border", focusRing)}
+                          className="m-0 flex list-none flex-col divide-y divide-border rounded-lg border border-border p-0"
                         >
-                          <table className="w-full min-w-[30rem] border-collapse text-left tabular-nums">
-                            <caption className="sr-only">{bundleT("checkout.tableCaption")}</caption>
-                            <thead>
-                              <tr className="bg-table-head text-caption font-semibold text-text-muted">
-                                <th scope="col" className="px-3.5 py-2.5">
-                                  {ordersT("columns.product")}
-                                </th>
-                                <th scope="col" className="px-3 py-2.5 text-right">
-                                  {detailCols("questions")}
-                                </th>
-                                <th scope="col" className="px-3 py-2.5 text-right">
-                                  {detailCols("duration")}
-                                </th>
-                                <th scope="col" className="px-3 py-2.5 text-right">
-                                  {detailCols("maxPoints")}
-                                </th>
-                                <th scope="col" className="px-3.5 py-2.5 text-right">
-                                  {detailRights("attempts")}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {bundleItems.map((item) => {
-                                const subjectLabel = item.subjectName ? pickName(item.subjectName, locale) : "";
-                                const q = rangeText(item.questionCount, locale);
-                                const d = rangeText(item.durationMinutes, locale);
-                                const p = rangeText(item.maxPoints, locale);
-                                const existing = accessByExamCode.get(item.code);
-                                return (
-                                  <tr key={item.examId || item.code} className="border-t border-border">
-                                    <th scope="row" className="px-3.5 py-3 text-left font-semibold text-text">
-                                      <div className="flex flex-wrap items-center gap-1.5">
-                                        <span data-exam-content>{item.name}</span>
-                                        {item.buildMode === REVIEW_BUILD_MODE && (
-                                          <span className="rounded-full bg-info-bg px-2 py-0.5 text-caption font-semibold text-info">
-                                            {storefront("review")}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {subjectLabel && (
-                                        <div className="mt-0.5 text-caption font-normal text-text-muted">
-                                          {subjectLabel}
-                                        </div>
-                                      )}
-                                    </th>
-                                    <td className="px-3 py-3 text-right">{q ?? "—"}</td>
-                                    <td className="px-3 py-3 text-right whitespace-nowrap">
-                                      {d !== null
-                                        ? storefront("units.minutes", {
-                                            value: d,
-                                            count: item.durationMinutes?.max ?? 0,
-                                          })
-                                        : "—"}
-                                    </td>
-                                    <td className="px-3 py-3 text-right">
-                                      {p !== null ? detailHow("maxScore", { score: p }) : "—"}
-                                    </td>
-                                    <td className="px-3.5 py-3 text-right whitespace-nowrap">
-                                      <div>{storefront("units.attempts", { count: item.attemptsGranted })}</div>
-                                      {existing && existing.attemptsLeft > 0 && (
-                                        <div className="text-caption text-text-muted">
-                                          {storefront("access.attemptsLeft", { count: existing.attemptsLeft })}
-                                        </div>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                          {bundleItems.map((item) => {
+                            const subjectLabel = item.subjectName ? pickName(item.subjectName, locale) : "";
+                            const q = rangeText(item.questionCount, locale);
+                            const d = rangeText(item.durationMinutes, locale);
+                            const p = rangeText(item.maxPoints, locale);
+                            const existing = accessByExamCode.get(item.code);
+                            const resultViewLabel = item.resultView
+                              ? detailRights.has(`resultViews.${item.resultView}`)
+                                ? detailRights(`resultViews.${item.resultView}`)
+                                : item.resultView
+                              : null;
+
+                            return (
+                              <li key={item.examId || item.code} className="flex flex-col gap-1.5 px-3.5 py-3">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span data-exam-content className="font-semibold wrap-break-word text-text">
+                                    {item.name}
+                                  </span>
+                                  {item.buildMode === REVIEW_BUILD_MODE && (
+                                    <span className="inline-flex min-h-6 items-center rounded-full bg-info-bg px-2 py-0.5 text-caption font-semibold text-info">
+                                      {storefront("review")}
+                                    </span>
+                                  )}
+                                </div>
+                                {subjectLabel && (
+                                  <p className="text-caption text-text-muted">{subjectLabel}</p>
+                                )}
+                                <dl className="m-0 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-caption text-text-secondary tabular-nums">
+                                  {q !== null && (
+                                    <div className="flex items-baseline gap-1">
+                                      <dt className="sr-only">{detailCols("questions")}</dt>
+                                      <dd className="m-0">
+                                        {storefront("units.questions", {
+                                          value: q,
+                                          count: item.questionCount?.max ?? 0,
+                                        })}
+                                      </dd>
+                                    </div>
+                                  )}
+                                  {d !== null && (
+                                    <div className="flex items-baseline gap-1">
+                                      <dt className="sr-only">{detailCols("duration")}</dt>
+                                      <dd className="m-0">
+                                        {storefront("units.minutes", {
+                                          value: d,
+                                          count: item.durationMinutes?.max ?? 0,
+                                        })}
+                                      </dd>
+                                    </div>
+                                  )}
+                                  {p !== null && (
+                                    <div className="flex items-baseline gap-1">
+                                      <dt className="sr-only">{detailCols("maxPoints")}</dt>
+                                      <dd className="m-0">{detailHow("maxScore", { score: p })}</dd>
+                                    </div>
+                                  )}
+                                  <div className="flex items-baseline gap-1">
+                                    <dt className="sr-only">{detailRights("attempts")}</dt>
+                                    <dd className="m-0 font-medium text-text">
+                                      {storefront("units.attempts", { count: item.attemptsGranted })}
+                                    </dd>
+                                  </div>
+                                  {resultViewLabel && (
+                                    <div className="flex items-baseline gap-1">
+                                      <dt className="sr-only">{detailRights("resultView")}</dt>
+                                      <dd className="m-0">{resultViewLabel}</dd>
+                                    </div>
+                                  )}
+                                </dl>
+                                {existing && existing.attemptsLeft > 0 && (
+                                  <p className="text-caption font-medium text-primary-text">
+                                    {storefront("access.attemptsLeft", { count: existing.attemptsLeft })}
+                                  </p>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
                       )}
                       <p className="text-caption text-text-muted">{bundleT("checkout.existingNote")}</p>
                     </div>

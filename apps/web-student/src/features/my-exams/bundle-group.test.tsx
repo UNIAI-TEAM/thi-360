@@ -91,9 +91,12 @@ describe("groupMyExams & MyExamsView bundle grouping (AC-14)", () => {
     expect(within(bundleSection).getAllByRole("link", { name: "Xem kết quả" })).toHaveLength(2);
     expect(within(bundleSection).getAllByRole("link", { name: "Lịch sử" })).toHaveLength(2);
 
-    // Bài mua lẻ nằm ngoài nhóm bộ
+    // Bài mua lẻ nằm ngoài nhóm bộ, dùng SectionTitle có thanh dọc xanh 4px
     expect(within(bundleSection).queryByRole("heading", { name: "Đề thi thử ĐGNL HSA số 3" })).toBeNull();
-    expect(screen.getByRole("heading", { level: 3, name: "Bài mua lẻ" })).toBeInTheDocument();
+    const standaloneHeading = screen.getByRole("heading", { level: 2, name: "Bài mua lẻ" });
+    expect(standaloneHeading).toBeInTheDocument();
+    expect(standaloneHeading.parentElement?.querySelector(".bg-primary-600")).not.toBeNull();
+    expect(within(standaloneHeading.parentElement!).getByText("1 bài")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Đề thi thử ĐGNL HSA số 3" })).toBeInTheDocument();
   });
 

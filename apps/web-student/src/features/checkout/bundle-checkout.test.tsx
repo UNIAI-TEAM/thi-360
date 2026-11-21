@@ -198,11 +198,18 @@ describe("Bundle CheckoutView (AC-13)", () => {
     expect(screen.getByText("Bộ đề SP2E khối A00")).toHaveAttribute("data-exam-content");
     expect(screen.getByRole("link", { name: "Quay lại chi tiết bộ đề" })).toHaveAttribute("href", "/exams/BO-SP2E-001");
 
-    const itemsTable = screen.getByRole("table", { name: "Các bài trong bộ và quyền nhận được" });
-    expect(within(itemsTable).getByText("SP2E Toán – Đề luyện số 1")).toHaveAttribute("data-exam-content");
-    expect(within(itemsTable).getByText("SP2E Vật lí – Ôn tập")).toHaveAttribute("data-exam-content");
-    expect(within(itemsTable).getByText("Bài ôn")).toBeInTheDocument();
-    expect(within(itemsTable).getByText("Toán học")).toBeInTheDocument();
+    const itemsList = screen.getByRole("list", { name: "Các bài trong bộ và quyền nhận được" });
+    expect(screen.queryByRole("table", { name: "Các bài trong bộ và quyền nhận được" })).toBeNull();
+    expect(within(itemsList).getByText("SP2E Toán – Đề luyện số 1")).toHaveAttribute("data-exam-content");
+    expect(within(itemsList).getByText("SP2E Vật lí – Ôn tập")).toHaveAttribute("data-exam-content");
+    expect(within(itemsList).getByText("Bài ôn")).toBeInTheDocument();
+    expect(within(itemsList).getByText("Toán học")).toBeInTheDocument();
+    expect(within(itemsList).getByText("40 câu")).toBeInTheDocument();
+    expect(within(itemsList).getByText("90 phút")).toBeInTheDocument();
+    expect(within(itemsList).getAllByText("10 điểm")).toHaveLength(2);
+    expect(within(itemsList).getAllByText("2 lượt")).toHaveLength(2);
+    expect(within(itemsList).getAllByText("Điểm và đáp án")).toHaveLength(2);
+    expect(await within(itemsList).findByText("Còn 1 lượt")).toBeInTheDocument();
 
     // Thông báo đã có lượt bài trong bộ
     expect(await screen.findByText(/Bạn đã có 1 lượt bài/)).toHaveTextContent(

@@ -9,7 +9,7 @@ import { isBundleProduct, REVIEW_BUILD_MODE, rangeText } from "./format";
 import { ProductPrice } from "./product-price";
 import type { ProductCard as ProductCardData } from "./types";
 
-const chipBase = "rounded-full px-2.5 py-0.5 text-caption leading-[1.1875rem]";
+const chipBase = "inline-flex min-h-6 items-center rounded-full px-2.5 py-0.5 text-caption leading-[1.1875rem]";
 
 /** Chip hình thức của một sản phẩm: "Bài thi FULL", "Bài thi theo phần · <phần>", "Bài thi theo môn · <môn>", "Bộ đề". */
 export function FormatChip({

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
@@ -30,6 +30,11 @@ describe("BundleListView (AC-5)", () => {
     fakeApi.reset();
     resetBundleNavigation("/bundles", "");
     fakeApi.get("/api/v1/catalog/options", () => ok(EXAM_KIND_OPTIONS));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("hiện đủ trạng thái đang tải (skeleton 20 dòng), rỗng có nút Tạo (khi có EXAM.MODIFY), lỗi kèm Thử lại", async () => {
@@ -125,6 +130,11 @@ describe("BundleListView (AC-5)", () => {
     expect(within(table).getByText("Ngừng bán")).toBeInTheDocument();
     expect(within(table).getAllByText("Đang bán").length).toBe(2);
     expect(within(table).getAllByText("349.000 đ")).toHaveLength(3);
+    expect(table.querySelector("[data-col-summary='itemCount']")).not.toBeNull();
+    expect(table.querySelector("[data-col-summary='attempts']")).not.toBeNull();
+    expect(table.querySelector("[data-col-summary='updatedAt']")).not.toBeNull();
+    expect(within(table).getByRole("link", { name: "Sửa bộ đề BO-SP2E-001" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Thao tác khác với BO-SP2E-001" })).toBeInTheDocument();
 
     // Filter by status radio
     await user.click(screen.getByRole("radio", { name: "Nháp" }));
@@ -192,5 +202,8 @@ describe("BundleListView (AC-5)", () => {
     expect(kindTag2.closest("[data-exam-content]")).toBeNull();
     // VND formatted in en locale
     expect(within(cards[0]!).getByText("349,000 VND")).toBeInTheDocument();
+    // Action aria-labels use code so English UI never mixes Vietnamese bundle names
+    expect(within(cards[0]!).getByRole("link", { name: "Edit bundle BO-SP2E-001" })).toBeInTheDocument();
+    expect(within(cards[0]!).getByRole("button", { name: "More actions for BO-SP2E-001" })).toBeInTheDocument();
   });
 });
