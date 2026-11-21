@@ -255,4 +255,120 @@ class AttemptPrepareIT extends AbstractAttemptDsIT {
         assertThat(manageRes.getResponse().getStatus()).isEqualTo(403);
         assertThat(json(manageRes).path("code").asText()).isEqualTo("ATTEMPT_ACCESS_FORBIDDEN");
     }
+
+    @Test
+    void listeningPolicyOnlyWithAudio() throws Exception {
+        UUID userId = createStudent("prep-audio-policy");
+
+        for (String audioExamCode : List.of("DS-HSCA-ANH", "DS-HSCA-ANH-MINI")) {
+            GrantOrderResult.Line line = grant(userId, audioExamCode, 2, List.of());
+            MvcResult res = performPrepare(userId, line.entitlementId());
+            assertThat(res.getResponse().getStatus()).isEqualTo(200);
+            JsonNode body = json(res);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(body);
+            assertThat(body.path("listeningPolicy").path("maxPlays").asInt()).isEqualTo(2);
+            assertThat(body.path("listeningPolicy").path("seekable").asBoolean()).isFalse();
+            List<String> formats = new java.util.ArrayList<>();
+            body.path("answerFormats").forEach(n -> formats.add(n.asText()));
+            assertThat(formats).containsExactly("SINGLE_CHOICE");
+        }
+
+        for (String nonAudioExamCode :
+                List.of("DS-HSCA-TOAN", "DS-VSAT-TOAN", "DS-HSA-PART-MATH-MINI", "DS-VSAT-VAN")) {
+            GrantOrderResult.Line line = grant(userId, nonAudioExamCode, 2, List.of());
+            MvcResult res = performPrepare(userId, line.entitlementId());
+            assertThat(res.getResponse().getStatus()).isEqualTo(200);
+            JsonNode body = json(res);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(body);
+            assertThat(body.path("listeningPolicy").isNull())
+                    .as("listeningPolicy for %s", nonAudioExamCode)
+                    .isTrue();
+            List<String> formats = new java.util.ArrayList<>();
+            body.path("answerFormats").forEach(n -> formats.add(n.asText()));
+            assertThat(formats).as("answerFormats for %s", nonAudioExamCode).isNotEmpty();
+            if ("DS-VSAT-VAN".equals(nonAudioExamCode)) {
+                assertThat(formats).doesNotContain("ESSAY");
+            }
+        }
+    }
+
+    @Test
+    void optionRestrictedEntitlementFiltersAnswerFormatsAndListeningPolicy() throws Exception {
+        UUID userId = createStudent("prep-opt-filter");
+        GrantOrderResult.Line hsaBase = grant(userId, "DS-HSA-FULL-MINI", 2, List.of());
+        String originalPartsJson =
+                jdbc.queryForObject(
+                        "SELECT parts::text FROM exam.exam_version WHERE exam_id = ? AND version_no = 1",
+                        String.class,
+                        hsaBase.examId());
+        try {
+            // Mutate DS-HSA-FULL-MINI Part 3 options temporarily:
+            // SCIENCE gets a TRUE_FALSE block + audioRequirement=REQUIRED; ANH keeps SINGLE_CHOICE + ANY.
+            // Part 1 & Part 2 only have SINGLE_CHOICE / SHORT_ANSWER (no TRUE_FALSE, no audio).
+            com.fasterxml.jackson.databind.node.ObjectNode root =
+                    (com.fasterxml.jackson.databind.node.ObjectNode)
+                            objectMapper.readTree(originalPartsJson);
+            JsonNode part3 = root.path("parts").get(2);
+            for (JsonNode option : part3.path("options")) {
+                String code = option.path("code").asText();
+                if ("SCIENCE".equals(code)) {
+                    com.fasterxml.jackson.databind.node.ObjectNode firstSec =
+                            (com.fasterxml.jackson.databind.node.ObjectNode)
+                                    option.path("sections").get(0);
+                    firstSec.put("audioRequirement", "REQUIRED");
+                    com.fasterxml.jackson.databind.node.ObjectNode firstBlock =
+                            (com.fasterxml.jackson.databind.node.ObjectNode)
+                                    firstSec.path("blocks").get(0);
+                    firstBlock.put("questionType", "TRUE_FALSE");
+                }
+            }
+            jdbc.update(
+                    "UPDATE exam.exam_version SET parts = ?::jsonb WHERE exam_id = ? AND version_no = 1",
+                    objectMapper.writeValueAsString(root),
+                    hsaBase.examId());
+
+            // 1. Grant restricted to ANH -> excludes SCIENCE's TRUE_FALSE and audioRequirement=REQUIRED
+            UUID userAnh = createStudent("prep-opt-anh");
+            GrantOrderResult.Line anhOnly = grant(userAnh, "DS-HSA-FULL-MINI", 2, List.of("ANH"));
+            MvcResult anhRes = performPrepare(userAnh, anhOnly.entitlementId());
+            assertThat(anhRes.getResponse().getStatus()).isEqualTo(200);
+            JsonNode anhBody = json(anhRes);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(anhBody);
+            assertThat(anhBody.path("listeningPolicy").isNull()).isTrue();
+            List<String> anhFormats = new java.util.ArrayList<>();
+            anhBody.path("answerFormats").forEach(n -> anhFormats.add(n.asText()));
+            assertThat(anhFormats).containsExactlyInAnyOrder("SINGLE_CHOICE", "SHORT_ANSWER");
+            assertThat(anhFormats).doesNotContain("TRUE_FALSE");
+
+            // 2. Grant restricted to SCIENCE -> includes SCIENCE's TRUE_FALSE and listeningPolicy
+            UUID userScience = createStudent("prep-opt-sci");
+            GrantOrderResult.Line scienceOnly =
+                    grant(userScience, "DS-HSA-FULL-MINI", 2, List.of("SCIENCE"));
+            MvcResult scienceRes = performPrepare(userScience, scienceOnly.entitlementId());
+            assertThat(scienceRes.getResponse().getStatus()).isEqualTo(200);
+            JsonNode scienceBody = json(scienceRes);
+            ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(scienceBody);
+            assertThat(scienceBody.path("listeningPolicy").path("maxPlays").asInt()).isEqualTo(2);
+            assertThat(scienceBody.path("listeningPolicy").path("seekable").asBoolean()).isFalse();
+            List<String> scienceFormats = new java.util.ArrayList<>();
+            scienceBody.path("answerFormats").forEach(n -> scienceFormats.add(n.asText()));
+            assertThat(scienceFormats)
+                    .containsExactlyInAnyOrder("SINGLE_CHOICE", "SHORT_ANSWER", "TRUE_FALSE");
+
+            // 3. Unrestricted grant -> sees both options
+            MvcResult fullRes = performPrepare(userId, hsaBase.entitlementId());
+            assertThat(fullRes.getResponse().getStatus()).isEqualTo(200);
+            JsonNode fullBody = json(fullRes);
+            assertThat(fullBody.path("listeningPolicy").path("maxPlays").asInt()).isEqualTo(2);
+            List<String> fullFormats = new java.util.ArrayList<>();
+            fullBody.path("answerFormats").forEach(n -> fullFormats.add(n.asText()));
+            assertThat(fullFormats)
+                    .containsExactlyInAnyOrder("SINGLE_CHOICE", "SHORT_ANSWER", "TRUE_FALSE");
+        } finally {
+            jdbc.update(
+                    "UPDATE exam.exam_version SET parts = ?::jsonb WHERE exam_id = ? AND version_no = 1",
+                    originalPartsJson,
+                    hsaBase.examId());
+        }
+    }
 }

@@ -11,6 +11,8 @@ import vn.unicom.thi360.attempt.domain.AbortReason;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.AttemptTiming;
+import vn.unicom.thi360.attempt.domain.AudioEndReason;
+import vn.unicom.thi360.attempt.domain.AudioPlayState;
 import vn.unicom.thi360.attempt.domain.NavigationMode;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -42,10 +44,15 @@ public record AttemptStateResponse(
         @Schema(nullable = true) Instant deadlineAt,
         @Schema(nullable = true) Map<String, Object> lastPosition,
         @Schema(nullable = true) BigDecimal maxScore,
+        @Schema(description = "Chính sách nghe khi đề có audio; không có khi STARTING hoặc ABORTED", nullable = true)
+        AudioPolicyView audioPolicy,
+        @Schema(description = "Trạng thái phát từng tệp audio của lượt thi; không có khi STARTING hoặc ABORTED", nullable = true)
+        List<AttemptAudioPlayView> audioPlays,
         @Schema(description = "Các phần của lượt thi; không có khi STARTING hoặc ABORTED", nullable = true)
         List<AttemptPartStateView> parts) {
 
     public AttemptStateResponse {
+        audioPlays = audioPlays == null ? null : List.copyOf(audioPlays);
         parts = parts == null ? null : List.copyOf(parts);
     }
 
@@ -54,6 +61,8 @@ public record AttemptStateResponse(
                 serverNow,
                 attemptId,
                 AttemptState.STARTING,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -95,8 +104,27 @@ public record AttemptStateResponse(
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
+
+    public record AudioPolicyView(int maxPlays, boolean seekable) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record AttemptAudioPlayView(
+            UUID assetId,
+            UUID partId,
+            long durationMs,
+            int playsUsed,
+            int playsLeft,
+            AudioPlayState state,
+            @Schema(nullable = true) AudioEndReason endReason,
+            @Schema(nullable = true) UUID playId,
+            long positionMs) {}
+
+    public record AttemptAttachmentView(
+            UUID assetId, String fileName, String mime, String url) {}
 
     public record AttemptPartStateView(
             UUID partId,
@@ -133,9 +161,11 @@ public record AttemptStateResponse(
             long answerSeq,
             AnswerValue answer,
             String content,
-            AttemptQuestionBody questionBody) {
+            AttemptQuestionBody questionBody,
+            List<AttemptAttachmentView> attachments) {
         public AttemptItemView {
             optionOrder = optionOrder == null ? List.of() : List.copyOf(optionOrder);
+            attachments = attachments == null ? List.of() : List.copyOf(attachments);
         }
     }
 }

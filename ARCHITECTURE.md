@@ -33,6 +33,7 @@ Một backend chia module (modular monolith), chạy hai vai trò từ cùng m�
 | Dữ liệu | PostgreSQL 16, Redis 7, MinIO | Mỗi module một schema |
 | Bất đồng bộ | Bảng outbox trong PostgreSQL + worker | Chưa dùng Kafka |
 | File Excel | Apache POI | Cấp tài khoản hàng loạt, nhập/xuất danh mục |
+| Đọc khung MP3 | javazoom:jlayer (`1.0.1`) | Đọc khung MPEG để đo thời lượng tệp nghe MP3 trên máy chủ mà không giải mã âm thanh hay tạo tệp tạm (~105 KB, không phụ thuộc bắc cầu) |
 | Web | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, TanStack Query, TanStack Table, react-hook-form + zod, next-intl, lucide-react, dnd-kit | Hai app riêng: `web-admin`, `web-student` |
 | UI kit | `packages/ui`: thành phần tự viết trên Radix UI + class-variance-authority, token theo `DESIGN.md` | Cùng cách với `exam-portal` của reap. **Không dùng MUI** |
 | Client API | `packages/api-client` sinh từ OpenAPI | Web và mobile dùng chung |

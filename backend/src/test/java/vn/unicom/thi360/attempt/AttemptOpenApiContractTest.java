@@ -315,6 +315,28 @@ class AttemptOpenApiContractTest {
                 .contains("optionCode: string;")
                 .doesNotContain("optionCode?:")
                 .contains("subjectCodes?: string[];");
+
+        extractOperationBlock(schemaDts, "openAudioPlay");
+        extractOperationBlock(schemaDts, "resumeAudioPlay");
+        extractOperationBlock(schemaDts, "updateAudioProgress");
+        extractOperationBlock(schemaDts, "endAudioPlay");
+
+        String audioPlayResponseBlock = extractComponentSchemaBlock(schemaDts, "AttemptAudioPlayResponse");
+        assertThat(audioPlayResponseBlock)
+                .contains("durationMs: number;")
+                .contains("playsUsed: number;")
+                .contains("playsLeft: number;")
+                .contains("positionMs: number;")
+                .contains("state: \"IDLE\" | \"PLAYING\" | \"ENDED\";");
+
+        String attemptStateBlock = extractComponentSchemaBlock(schemaDts, "AttemptStateResponse");
+        assertThat(attemptStateBlock)
+                .contains("audioPolicy?: components[\"schemas\"][\"AudioPolicyView\"];")
+                .contains("audioPlays?: components[\"schemas\"][\"AttemptAudioPlayView\"][];");
+
+        String attemptItemBlock = extractComponentSchemaBlock(schemaDts, "AttemptItemView");
+        assertThat(attemptItemBlock)
+                .contains("attachments?: components[\"schemas\"][\"AttemptAttachmentView\"][];");
     }
 
     @Test
