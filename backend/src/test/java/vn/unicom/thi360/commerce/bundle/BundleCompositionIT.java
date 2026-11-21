@@ -99,6 +99,14 @@ class BundleCompositionIT extends AbstractBundleIT {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("BUNDLE_ATTEMPTS_INVALID"));
 
+        Map<String, Object> att1 = createPayload("ATT1-" + shortToken(), "Att 1", hsaId, twelve.subList(0, 2));
+        att1.put("attemptsPerExam", 1);
+        JsonNode createdAtt1 = createBundle(att1, auth);
+        performPublish(UUID.fromString(createdAtt1.path("id").asText()),
+                createdAtt1.path("revision").asLong(), auth)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.attemptsPerExam").value(1));
+
         Map<String, Object> att100 = createPayload("ATT100-" + shortToken(), "Att 100", hsaId, twelve.subList(0, 2));
         att100.put("attemptsPerExam", 100);
         createBundle(att100, auth);
@@ -112,6 +120,21 @@ class BundleCompositionIT extends AbstractBundleIT {
         BundleExamBuilder review = subjectExam("HSA", "VAN").review().named("Bài ôn Ngữ văn");
         serve(standard);
         serve(review);
+
+        // AC-4: API candidates phải liệt kê cả bài ôn REVIEW với buildMode == "REVIEW".
+        String candidatesJson = mockMvc.perform(get(ADMIN_BASE + "/candidates").param("examKind", "HSA").with(auth))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode candidates = mapper.readTree(candidatesJson);
+        JsonNode reviewCandidate = null;
+        for (JsonNode c : candidates) {
+            if (review.examId.toString().equals(c.path("examId").asText())) {
+                reviewCandidate = c;
+                break;
+            }
+        }
+        assertThat(reviewCandidate).isNotNull();
+        assertThat(reviewCandidate.path("buildMode").asText()).isEqualTo("REVIEW");
 
         String code = "BD-REV-" + shortToken();
         JsonNode created = createBundle(

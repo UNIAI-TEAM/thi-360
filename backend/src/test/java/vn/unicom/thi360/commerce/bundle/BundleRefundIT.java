@@ -193,13 +193,81 @@ class BundleRefundIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void partialRefundDoesNotRevokeUntilFullRefundCompletes() throws Exception {
+        LearnerAccount learner = createTrackedLearner();
+        JsonNode created = createAndPayBundleOrder(learner);
+        UUID orderId = UUID.fromString(created.path("order").path("id").asText());
+        String orderCode = created.path("order").path("code").asText();
+        UUID paymentId = jdbc.queryForObject(
+                "SELECT id FROM commerce.payment WHERE order_id = ? AND state = 'SUCCEEDED'",
+                UUID.class,
+                orderId);
+
+        // AC-20: Hoàn một phần (40k / 99k) -> đơn vẫn FULFILLED và không thu hồi lượt nào trên cả 3 môn.
+        issueRefund(orderCode, paymentId, 40_000L, "Hoàn một phần đơn bộ đề");
+
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, orderId))
+                .isEqualTo("FULFILLED");
+        List<Map<String, Object>> partialEntitlements = jdbc.queryForList("""
+                SELECT attempts_total, attempts_revoked
+                FROM commerce.entitlement
+                WHERE user_id = ?
+                """, learner.id());
+        assertThat(partialEntitlements).hasSize(3);
+        assertThat(partialEntitlements).allSatisfy(row -> {
+            assertThat(((Number) row.get("attempts_total")).intValue()).isEqualTo(3);
+            assertThat(((Number) row.get("attempts_revoked")).intValue()).isZero();
+        });
+        List<Map<String, Object>> partialGrants = jdbc.queryForList("""
+                SELECT attempts_revoked, revoked_at
+                FROM commerce.entitlement_grant
+                WHERE order_id = ?
+                """, orderId);
+        assertThat(partialGrants).hasSize(3);
+        assertThat(partialGrants).allSatisfy(row -> {
+            assertThat(((Number) row.get("attempts_revoked")).intValue()).isZero();
+            assertThat(row.get("revoked_at")).isNull();
+        });
+
+        // Hoàn tiếp phần còn lại (59k) để đủ 99k -> đơn thành REFUNDED và thu hồi hết 3 môn.
+        issueRefund(orderCode, paymentId, 59_000L, "Hoàn nốt phần còn lại");
+
+        assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, orderId))
+                .isEqualTo("REFUNDED");
+        List<Map<String, Object>> finalEntitlements = jdbc.queryForList("""
+                SELECT attempts_total, attempts_revoked
+                FROM commerce.entitlement
+                WHERE user_id = ?
+                """, learner.id());
+        assertThat(finalEntitlements).hasSize(3);
+        assertThat(finalEntitlements).allSatisfy(row -> {
+            assertThat(((Number) row.get("attempts_total")).intValue()).isEqualTo(3);
+            assertThat(((Number) row.get("attempts_revoked")).intValue()).isEqualTo(3);
+        });
+        List<Map<String, Object>> finalGrants = jdbc.queryForList("""
+                SELECT attempts_revoked, revoked_at
+                FROM commerce.entitlement_grant
+                WHERE order_id = ?
+                """, orderId);
+        assertThat(finalGrants).hasSize(3);
+        assertThat(finalGrants).allSatisfy(row -> {
+            assertThat(((Number) row.get("attempts_revoked")).intValue()).isEqualTo(3);
+            assertThat(row.get("revoked_at")).isNotNull();
+        });
+    }
+
     private void issueFullRefund(String orderCode, UUID paymentId) throws Exception {
+        issueRefund(orderCode, paymentId, 99_000L, "Hoàn toàn bộ đơn bộ đề SP2E");
+    }
+
+    private void issueRefund(String orderCode, UUID paymentId, long amountVnd, String reason) throws Exception {
         UUID adminId = UUID.randomUUID();
         trackedActorIds.add(adminId);
         RequestPostProcessor refundAdmin = fixtures.asManager(
                 adminId, "refund-admin", Permissions.ORDER_VIEW, Permissions.ORDER_REFUND);
         String body = mapper.writeValueAsString(new CreateRefundRequest(
-                99_000L, RefundKind.API, "Hoàn toàn bộ đơn bộ đề SP2E", Boolean.TRUE, null));
+                amountVnd, RefundKind.API, reason, Boolean.TRUE, null));
         mockMvc.perform(post("/api/v1/admin/orders/{code}/payments/{paymentId}/refunds", orderCode, paymentId)
                         .with(refundAdmin)
                         .header(HttpHeaders.ORIGIN, securityProperties.adminOrigins().getFirst())

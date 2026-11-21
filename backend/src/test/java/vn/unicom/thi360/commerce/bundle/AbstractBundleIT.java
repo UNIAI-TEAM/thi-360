@@ -321,6 +321,11 @@ abstract class AbstractBundleIT extends AbstractIntegrationTest {
             return this;
         }
 
+        BundleExamBuilder attempts(Integer attempts) {
+            this.attempts = attempts;
+            return this;
+        }
+
         BundleExamBuilder metrics(int questionCount, int durationMinutes, int maxPoints) {
             this.questionCount = questionCount;
             this.durationMinutes = durationMinutes;

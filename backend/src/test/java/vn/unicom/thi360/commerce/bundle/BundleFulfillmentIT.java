@@ -30,10 +30,11 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.commerce.bundle.devdata.BundleDevDataBuilder;
-import vn.unicom.thi360.commerce.entitlement.infrastructure.EntitlementGrantRepository;
+import vn.unicom.thi360.commerce.entitlement.application.EntitlementRowLocker;
 import vn.unicom.thi360.commerce.fulfillment.application.FulfillmentRetryWorker;
 import vn.unicom.thi360.commerce.fulfillment.application.FulfillmentService;
 import vn.unicom.thi360.commerce.payment.gateway.MockVnpayGateway;
@@ -74,7 +75,7 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
     @Autowired private PromotionRepository promotionRepository;
 
     @MockitoSpyBean
-    private EntitlementGrantRepository grantRepository;
+    private EntitlementRowLocker entitlementRowLocker;
 
     private CommerceTestFixtures fixtures;
 
@@ -82,13 +83,15 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
     void setUp() {
         PublishedExamSetSupport.ensureBuilt(context);
         bundleDevDataBuilder.build();
-        reset(grantRepository);
+        reset(entitlementRowLocker);
+        reset(AopTestUtils.<EntitlementRowLocker>getUltimateTargetObject(entitlementRowLocker));
         fixtures = new CommerceTestFixtures(jdbc, mapper, catalogLookup, promotionRepository, testSecuritySupport);
     }
 
     @AfterEach
     void tearDown() {
-        reset(grantRepository);
+        reset(entitlementRowLocker);
+        reset(AopTestUtils.<EntitlementRowLocker>getUltimateTargetObject(entitlementRowLocker));
         fixtures.cleanup();
     }
 
@@ -97,7 +100,7 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
         LearnerAccount learner = fixtures.createLearner();
         JsonNode created = createOrder(learner, BUNDLE_CODE, 99_000L);
         UUID orderId = UUID.fromString(created.path("order").path("id").asText());
-        payViaIpn(created.path("paymentUrl").asText(), 99_000L);
+        Map<String, String> ipnParams = payViaIpn(created.path("paymentUrl").asText(), 99_000L);
 
         assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, orderId))
                 .isEqualTo("FULFILLED");
@@ -129,6 +132,26 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
             assertThat(row.get("result_view")).isEqualTo("SCORE_AND_ANSWERS");
         });
 
+        // AC-17: Gửi lại đúng VNPAY IPN với cùng vnp_TxnRef & vnp_TransactionNo -> RspCode=02, không nhân đôi payment/grant/attempts.
+        sendIpn(ipnParams)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("02"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM commerce.payment WHERE order_id = ?", Integer.class, orderId))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM commerce.entitlement_grant WHERE order_id = ?",
+                Integer.class, orderId)).isEqualTo(3);
+        List<Map<String, Object>> entitlementsAfterIpnReplay = jdbc.queryForList("""
+                SELECT exam_id, attempts_total
+                FROM commerce.entitlement
+                WHERE user_id = ?
+                """, learner.id());
+        assertThat(entitlementsAfterIpnReplay).hasSize(3);
+        assertThat(entitlementsAfterIpnReplay)
+                .extracting(row -> (UUID) row.get("exam_id"))
+                .containsExactlyInAnyOrder(mathId, vanId, anhId);
+        assertThat(entitlementsAfterIpnReplay)
+                .allSatisfy(row -> assertThat(((Number) row.get("attempts_total")).intValue()).isEqualTo(3));
+
         // E16: gọi lại FulfillmentService không nhân đôi grant hoặc lượt thi.
         fulfillmentService.fulfill(orderId);
         Integer grantCountAfterReplay = jdbc.queryForObject(
@@ -136,36 +159,42 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
                 Integer.class,
                 orderId);
         assertThat(grantCountAfterReplay).isEqualTo(3);
+        assertThat(jdbc.queryForList("SELECT attempts_total FROM commerce.entitlement WHERE user_id = ?",
+                Integer.class, learner.id())).containsExactly(3, 3, 3);
     }
 
     @Test
     void partialGrantFailureRollsBackAllAndRetryWorkerCompletesAllThree() throws Exception {
         AtomicInteger calls = new AtomicInteger(0);
+        EntitlementRowLocker spy = AopTestUtils.getUltimateTargetObject(entitlementRowLocker);
         doAnswer(inv -> {
             if (calls.incrementAndGet() == 2) {
                 throw new RuntimeException("Simulated transient failure on 2nd bundle item");
             }
             return inv.callRealMethod();
-        }).when(grantRepository).saveAndFlush(any());
+        }).when(spy).lockOrCreatePurchase(any(), any());
 
         LearnerAccount learner = fixtures.createLearner();
         JsonNode created = createOrder(learner, BUNDLE_CODE, 99_000L);
         UUID orderId = UUID.fromString(created.path("order").path("id").asText());
         payViaIpn(created.path("paymentUrl").asText(), 99_000L);
 
-        // Giao dịch cấp quyền thất bại ở mục thứ 2 phải rollback toàn bộ mục thứ 1.
+        // Giao dịch cấp quyền thất bại ở mục thứ 2 sau khi mục thứ 1 đã flush -> phải rollback toàn bộ mục thứ 1.
+        assertThat(calls.get()).isEqualTo(2);
         Map<String, Object> orderRow = jdbc.queryForMap(
-                "SELECT state, fulfilled_at, fulfillment_tries FROM commerce.purchase_order WHERE id = ?",
+                "SELECT state, fulfilled_at, fulfillment_tries, fulfillment_error FROM commerce.purchase_order WHERE id = ?",
                 orderId);
         assertThat(orderRow.get("state")).isEqualTo("PAID");
         assertThat(orderRow.get("fulfilled_at")).isNull();
         assertThat(((Number) orderRow.get("fulfillment_tries")).intValue()).isEqualTo(1);
+        assertThat((String) orderRow.get("fulfillment_error"))
+                .contains("Simulated transient failure on 2nd bundle item");
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM commerce.entitlement WHERE user_id = ?", Integer.class, learner.id())).isZero();
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM commerce.entitlement_grant WHERE order_id = ?", Integer.class, orderId)).isZero();
 
-        reset(grantRepository);
+        reset(spy);
         fulfillmentRetryWorker.retryPendingFulfillments();
 
         assertThat(jdbc.queryForObject("SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, orderId))
@@ -245,7 +274,7 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
         return mapper.readTree(content);
     }
 
-    private void payViaIpn(String paymentUrl, long amountVnd) throws Exception {
+    private Map<String, String> payViaIpn(String paymentUrl, long amountVnd) throws Exception {
         String txnRef = parseQueryParams(paymentUrl).get("vnp_TxnRef");
         Map<String, String> params = new TreeMap<>();
         params.put("vnp_Amount", Long.toString(amountVnd * 100L));
@@ -260,15 +289,20 @@ class BundleFulfillmentIT extends AbstractIntegrationTest {
         params.put("vnp_TxnRef", txnRef);
         params.put("vnp_SecureHash", VnpaySigner.signPayParams(params, MockVnpayGateway.DEFAULT_MOCK_SECRET));
 
+        sendIpn(params)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("00"));
+        return params;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions sendIpn(Map<String, String> params) throws Exception {
         var req = get("/api/v1/public/payments/vnpay/ipn")
                 .with(r -> {
                     r.setRemoteAddr("127.0.0.1");
                     return r;
                 });
         params.forEach(req::param);
-        mockMvc.perform(req)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.RspCode").value("00"));
+        return mockMvc.perform(req);
     }
 
     private static Map<String, String> parseQueryParams(String url) {

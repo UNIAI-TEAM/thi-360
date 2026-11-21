@@ -125,6 +125,10 @@ class BundlePublishIT extends AbstractBundleIT {
         UUID bundleId = UUID.fromString(created.path("id").asText());
         long rev0 = created.path("revision").asLong();
 
+        // Không truyền body -> 400 Bad Request (R1-18)
+        performPublish(bundleId, null, auth).andExpect(status().isBadRequest());
+        performDiscontinue(bundleId, null, auth).andExpect(status().isBadRequest());
+
         // Discontinue khi còn DRAFT -> 409 BUNDLE_NOT_PUBLISHED
         performDiscontinue(bundleId, rev0, auth)
                 .andExpect(status().isConflict())

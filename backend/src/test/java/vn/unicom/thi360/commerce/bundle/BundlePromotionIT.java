@@ -3,6 +3,7 @@ package vn.unicom.thi360.commerce.bundle;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,11 +22,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.PricedProduct;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteCalculation;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteRequest;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
@@ -34,6 +37,7 @@ import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
  * AC-21: Khuyến mãi và voucher với {@code scope = BUNDLE} (validation, hiển thị giá trên storefront, ưu tiên
  * best auto giữa {@code BUNDLE} và {@code EXAM_KIND}, preview giá, và capWarnings).
  */
+@TestPropertySource(properties = "thi360.commerce.vnpay-min-amount=5000")
 class BundlePromotionIT extends AbstractBundleIT {
 
     private static final String PROMO_BASE = "/api/v1/admin/promotions";
@@ -46,6 +50,9 @@ class BundlePromotionIT extends AbstractBundleIT {
 
     @AfterEach
     void cleanupPromotions() {
+        for (UUID userId : learnerIds) {
+            CommerceTestFixtures.deleteStubOrdersForUser(jdbc, userId);
+        }
         for (UUID id : promoIds) {
             jdbc.update("DELETE FROM commerce.promotion_change_log WHERE promotion_id = ?", id);
             jdbc.update("DELETE FROM commerce.promotion_redemption WHERE promotion_id = ?", id);
@@ -210,12 +217,205 @@ class BundlePromotionIT extends AbstractBundleIT {
                 .andExpect(jsonPath("$.finalPrice").value(230_000));
 
         // 5. Auto giảm sâu chạm sàn vnpayMinAmount -> xuất hiện trong capWarnings cho bundleA
-        long minAmount = pricingProperties.vnpayMinAmount();
+        assertThat(pricingProperties.vnpayMinAmount()).isEqualTo(5_000L);
         JsonNode flooredPromo = createPromo(autoPromoPayload("Floor Check", 199_000L, "BUNDLE",
                 Map.of("bundleIds", List.of(bundleA))), auth);
-        if (minAmount > 1_000L) {
-            assertThat(flooredPromo.path("capWarnings").findValuesAsText("examId")).contains(bundleA.toString());
+        assertThat(flooredPromo.path("capWarnings").findValuesAsText("examId")).contains(bundleA.toString());
+
+        // 6. R1-30: scope = ALL (auto + voucher) áp dụng cho bundle; EXAM_KIND lệch (SP2E) không áp cho HSA bundle;
+        //    voucher scope = EXAM cho e1 bị từ chối VOUCHER_NOT_APPLICABLE khi áp lên bundle.
+        UUID sp2eId = kindItem("SP2E");
+        createPromo(autoPromoPayload("KM SP2E lệch kỳ thi", 45_000L, "EXAM_KIND",
+                Map.of("examKindIds", List.of(sp2eId))), auth);
+        // bundleB vẫn chỉ hưởng Giảm HSA 20k -> 230_000 (không bị KM SP2E 45k áp vào).
+        mockMvc.perform(get(STOREFRONT_BASE + "/products/" + codeB)
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.price").value(230_000))
+                .andExpect(jsonPath("$.promotion.name").value("Giảm HSA 20k"));
+
+        String examVoucherCode = "VEX" + shortToken();
+        Map<String, Object> examVoucherReq = autoPromoPayload("Voucher Riêng E1", 35_000L, "EXAM",
+                Map.of("examIds", List.of(e1.examId)));
+        examVoucherReq.put("kind", "VOUCHER");
+        examVoucherReq.put("code", examVoucherCode);
+        examVoucherReq.put("audience", "ALL");
+        examVoucherReq.put("combinable", false);
+        createPromo(examVoucherReq, auth);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> priceCalculator.calculateQuote(
+                new QuoteRequest(PricedProduct.forBundle(bundleA, hsaId, 200_000L), buyer, examVoucherCode)))
+                .isInstanceOfSatisfying(BusinessRuleException.class,
+                        ex -> assertThat(ex.getCode()).isEqualTo("VOUCHER_NOT_APPLICABLE"));
+
+        String allVoucherCode = "VALL" + shortToken();
+        Map<String, Object> allVoucherReq = autoPromoPayload("Voucher Toàn Sàn", 25_000L, "ALL", Map.of());
+        allVoucherReq.put("kind", "VOUCHER");
+        allVoucherReq.put("code", allVoucherCode);
+        allVoucherReq.put("audience", "ALL");
+        allVoucherReq.put("combinable", false);
+        createPromo(allVoucherReq, auth);
+        QuoteCalculation allVoucherQuote = priceCalculator.calculateQuote(
+                new QuoteRequest(PricedProduct.forBundle(bundleA, hsaId, 200_000L), buyer, allVoucherCode));
+        assertThat(allVoucherQuote.finalPrice()).isEqualTo(175_000L);
+
+        // scope = ALL auto (giảm 60k) thắng BUNDLE 30k & EXAM_KIND 20k trên bundleB -> 250k - 60k = 190k.
+        createPromo(autoPromoPayload("KM Toàn Sàn 60k", 60_000L, "ALL", Map.of()), auth);
+        mockMvc.perform(get(STOREFRONT_BASE + "/products/" + codeB)
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.price").value(190_000))
+                .andExpect(jsonPath("$.promotion.name").value("KM Toàn Sàn 60k"));
+    }
+
+    @Test
+    void sortsBundlesByPostPromotionPriceValidatesPatchBundleIdsAndPricePreviewXor() throws Exception {
+        UUID actor = trackActor();
+        var auth = asUser(actor, "combo.sort.admin",
+                Permissions.EXAM_VIEW, Permissions.EXAM_MODIFY, Permissions.EXAM_PUBLISH,
+                Permissions.PROMOTION_VIEW, Permissions.PROMOTION_MODIFY);
+        UUID hsaId = kindItem("HSA");
+
+        BundleExamBuilder e1 = partExam("HSA", "TOAN");
+        BundleExamBuilder e2 = subjectExam("HSA", "VAN");
+        serve(e1);
+        serve(e2);
+
+        String sortToken = "SORT" + shortToken();
+        String codeLow = sortToken + "-LOW";
+        Map<String, Object> reqLow = createPayload(codeLow, "Bộ Đề Thấp " + sortToken, hsaId,
+                List.of(e1.examId, e2.examId));
+        reqLow.put("listPriceVnd", 200_000L);
+        JsonNode createdLow = createBundle(reqLow, auth);
+        UUID bundleLow = UUID.fromString(createdLow.path("id").asText());
+        performPublish(bundleLow, createdLow.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        String codeHigh = sortToken + "-HIGH";
+        Map<String, Object> reqHigh = createPayload(codeHigh, "Bộ Đề Cao " + sortToken, hsaId,
+                List.of(e1.examId, e2.examId));
+        reqHigh.put("listPriceVnd", 250_000L);
+        JsonNode createdHigh = createBundle(reqHigh, auth);
+        UUID bundleHigh = UUID.fromString(createdHigh.path("id").asText());
+        performPublish(bundleHigh, createdHigh.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        // KM tự động đảo ngược thứ tự giá: bundleLow 200k - 20k = 180k, bundleHigh 250k - 100k = 150k.
+        createPromo(autoPromoPayload("Giảm Low 20k", 20_000L, "BUNDLE",
+                Map.of("bundleIds", List.of(bundleLow))), auth);
+        JsonNode highPromo = createPromo(autoPromoPayload("Giảm High 100k", 100_000L, "BUNDLE",
+                Map.of("bundleIds", List.of(bundleHigh))), auth);
+        UUID highPromoId = UUID.fromString(highPromo.path("id").asText());
+
+        mockMvc.perform(get(STOREFRONT_BASE + "/products")
+                        .param("format", "BUNDLE")
+                        .param("q", sortToken)
+                        .param("sort", "PRICE_ASC")
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].code").value(codeHigh))
+                .andExpect(jsonPath("$.items[0].price").value(150_000))
+                .andExpect(jsonPath("$.items[1].code").value(codeLow))
+                .andExpect(jsonPath("$.items[1].price").value(180_000));
+
+        mockMvc.perform(get(STOREFRONT_BASE + "/products")
+                        .param("format", "BUNDLE")
+                        .param("q", sortToken)
+                        .param("sort", "PRICE_DESC")
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].code").value(codeLow))
+                .andExpect(jsonPath("$.items[0].price").value(180_000))
+                .andExpect(jsonPath("$.items[1].code").value(codeHigh))
+                .andExpect(jsonPath("$.items[1].price").value(150_000));
+
+        // R1-29: PATCH cập nhật bundleIds khi chưa dùng -> 200; từ chối bundleIds trên ALL/EXAM_KIND/EXAM -> 400.
+        JsonNode editable = createPromo(autoPromoPayload("Promo Patch Target", 15_000L, "BUNDLE",
+                Map.of("bundleIds", List.of(bundleLow))), auth);
+        UUID editableId = UUID.fromString(editable.path("id").asText());
+        long editableRev = editable.path("revision").asLong();
+        String patchedJson = mockMvc.perform(patch(PROMO_BASE + "/" + editableId)
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "expectedRevision", editableRev,
+                                "bundleIds", List.of(bundleHigh)))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scopeItems.length()").value(1))
+                .andExpect(jsonPath("$.scopeItems[0].id").value(bundleHigh.toString()))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(patchedJson).path("revision").asLong()).isGreaterThan(editableRev);
+
+        JsonNode allPromo = createPromo(autoPromoPayload("Promo All", 5_000L, "ALL", Map.of()), auth);
+        JsonNode kindPromo = createPromo(autoPromoPayload("Promo Kind", 5_000L, "EXAM_KIND",
+                Map.of("examKindIds", List.of(hsaId))), auth);
+        JsonNode examPromo = createPromo(autoPromoPayload("Promo Exam", 5_000L, "EXAM",
+                Map.of("examIds", List.of(e1.examId))), auth);
+        for (JsonNode nonBundle : List.of(allPromo, kindPromo, examPromo)) {
+            mockMvc.perform(patch(PROMO_BASE + "/" + nonBundle.path("id").asText())
+                            .with(auth)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(Map.of(
+                                    "expectedRevision", nonBundle.path("revision").asLong(),
+                                    "bundleIds", List.of(bundleLow)))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("bundleIds"));
         }
+
+        // R1-29: Đã có lượt dùng (in-use) thì PATCH đổi bundleIds phải trả 409 PROMOTION_IN_USE.
+        String freeVoucherCode = "VUSE" + shortToken();
+        Map<String, Object> inUseVoucherReq = autoPromoPayload("Voucher In Use", 100L, "BUNDLE",
+                Map.of("bundleIds", List.of(bundleLow)));
+        inUseVoucherReq.put("kind", "VOUCHER");
+        inUseVoucherReq.put("code", freeVoucherCode);
+        inUseVoucherReq.put("discountType", "PERCENT");
+        inUseVoucherReq.put("audience", "ALL");
+        inUseVoucherReq.put("combinable", false);
+        JsonNode inUseVoucher = createPromo(inUseVoucherReq, auth);
+        UUID inUsePromoId = UUID.fromString(inUseVoucher.path("id").asText());
+        long inUseRev = inUseVoucher.path("revision").asLong();
+
+        UUID buyerId = createActiveLearner();
+        mockMvc.perform(post("/api/v1/me/orders")
+                        .with(learner(buyerId))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", codeLow,
+                                "voucherCode", freeVoucherCode,
+                                "expectedAccountId", buyerId,
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 0L))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.order.state").value("FULFILLED"));
+
+        mockMvc.perform(patch(PROMO_BASE + "/" + inUsePromoId)
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "expectedRevision", inUseRev,
+                                "bundleIds", List.of(bundleHigh)))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROMOTION_IN_USE"));
+
+        // R1-29 & R1-37: price-preview XOR (thiếu cả hai -> 400 REQUIRED; có cả hai -> 400 INVALID).
+        mockMvc.perform(post(PROMO_BASE + "/price-preview")
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("promotionId", highPromoId))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("examId"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("REQUIRED"));
+
+        mockMvc.perform(post(PROMO_BASE + "/price-preview")
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "examId", e1.examId,
+                                "bundleId", bundleHigh,
+                                "promotionId", highPromoId))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("bundleId"))
+                .andExpect(jsonPath("$.fieldErrors[0].code").value("INVALID"));
     }
 
     private Map<String, Object> autoPromoPayload(String name, long value, String scope, Map<String, Object> extra) {

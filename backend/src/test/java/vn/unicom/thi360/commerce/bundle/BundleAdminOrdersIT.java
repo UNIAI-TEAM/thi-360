@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.commerce.payment.gateway.MockVnpayGateway;
 import vn.unicom.thi360.commerce.payment.gateway.VnpaySigner;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
+import vn.unicom.thi360.commerce.storefront.application.StorefrontProjectionService;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures.LearnerAccount;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures.StoredTestProduct;
@@ -41,6 +42,9 @@ class BundleAdminOrdersIT extends AbstractBundleIT {
 
     @Autowired
     private SecurityProperties securityProperties;
+
+    @Autowired
+    private StorefrontProjectionService storefrontProjectionService;
 
     private CommerceTestFixtures fixtures;
 
@@ -141,6 +145,47 @@ class BundleAdminOrdersIT extends AbstractBundleIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalBuyers").value(1))
                 .andExpect(jsonPath("$.items[0].orders[0].orderCode").value(singleOrderCode));
+    }
+
+    @Test
+    void sameBuyerPurchasingStandaloneExamAndBundleIsCountedOnceInExamBuyers() throws Exception {
+        var e1 = partExam("HSA", "TOAN").price(65_000L).attempts(2);
+        var e2 = subjectExam("HSA", "LY");
+        serve(e1);
+        serve(e2);
+        storefrontProjectionService.project(e1.examId);
+
+        UUID hsaId = kindItem("HSA");
+        String bundleCode = "ADM-DEDUP-" + shortToken();
+        Map<String, Object> payload = createPayload(bundleCode, "Bộ đề Dedupe", hsaId, List.of(e1.examId, e2.examId));
+        payload.put("listPriceVnd", 210_000L);
+        payload.put("attemptsPerExam", 4);
+        JsonNode created = createBundle(payload, bundleAdmin());
+        UUID bundleId = UUID.fromString(created.path("id").asText());
+        performPublish(bundleId, created.path("revision").asLong(), bundleAdmin()).andExpect(status().isOk());
+
+        LearnerAccount buyer = fixtures.createLearner();
+        String singleOrderCode = buyAndPay(buyer, e1.code, 65_000L);
+        String bundleOrderCode = buyAndPay(buyer, bundleCode, 210_000L);
+
+        UUID adminId = trackActor();
+        RequestPostProcessor orderAdmin = fixtures.asManager(adminId, "order-admin-dedup", Permissions.ORDER_VIEW);
+        String origin = securityProperties.adminOrigins().getFirst();
+
+        // AC-24: Một tài khoản vừa mua lẻ e1 (2 lượt) vừa mua bộ chứa e1 (4 lượt) chỉ tính 1 buyer với tổng 6 lượt.
+        mockMvc.perform(get("/api/v1/admin/exams/{examId}/buyers", e1.examId)
+                        .with(orderAdmin)
+                        .header(HttpHeaders.ORIGIN, origin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalBuyers").value(1))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].userId").value(buyer.id().toString()))
+                .andExpect(jsonPath("$.items[0].purchaseCount").value(2))
+                .andExpect(jsonPath("$.items[0].attemptsTotal").value(6))
+                .andExpect(jsonPath("$.items[0].attemptsRemaining").value(6))
+                .andExpect(jsonPath("$.items[0].orders.length()").value(2))
+                .andExpect(jsonPath("$.items[0].orders[*].orderCode",
+                        org.hamcrest.Matchers.containsInAnyOrder(singleOrderCode, bundleOrderCode)));
     }
 
     private String buyAndPay(LearnerAccount learner, String productCode, long expectedAmountDue) throws Exception {

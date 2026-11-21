@@ -287,6 +287,13 @@ class BundleOrderIT extends AbstractBundleIT {
         rev = published.path("revision").asLong();
 
         LearnerAccount learner = fixtures.createLearner();
+        LearnerAccount fulfilledLearner = fixtures.createLearner();
+        JsonNode fulfilledResp = createBundleOrder(fulfilledLearner, bundleCode, null, 1, 160_000L)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString().transform(this::readTree);
+        UUID fulfilledOrderId = UUID.fromString(fulfilledResp.path("order").path("id").asText());
+        payOrderViaIpn(fulfilledResp.path("paymentUrl").asText(), 160_000L);
+
         JsonNode pendingResp = createBundleOrder(learner, bundleCode, null, 1, 160_000L)
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString().transform(this::readTree);
@@ -307,7 +314,10 @@ class BundleOrderIT extends AbstractBundleIT {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("PRODUCT_UNAVAILABLE"));
 
-        // AC-14: ngừng bán chính bộ đề -> 410 PRODUCT_DISCONTINUED cả trên create lẫn pay.
+        // AC-12: đơn đã cấp quyền trước khi thành phần ngừng bán vẫn giữ nguyên trạng thái, dòng đơn và quyền.
+        assertFulfilledOrderAndGrantsIntact(fulfilledOrderId, fulfilledLearner.id());
+
+        // AC-14: ngừng bán chính bộ đề -> 410 PRODUCT_DISCONTINUED cả trên create lẫn pay, quyền đã cấp giữ nguyên.
         performDiscontinue(bundleId, rev, bundleAdmin()).andExpect(status().isOk());
 
         createBundleOrder(learner, bundleCode, null, 1, 160_000L)
@@ -319,6 +329,93 @@ class BundleOrderIT extends AbstractBundleIT {
                         .header("Idempotency-Key", UUID.randomUUID().toString()))
                 .andExpect(status().isGone())
                 .andExpect(jsonPath("$.code").value("PRODUCT_DISCONTINUED"));
+
+        assertFulfilledOrderAndGrantsIntact(fulfilledOrderId, fulfilledLearner.id());
+    }
+
+    @Test
+    void bundleOrderUsesLiveServingExamVersionAndBlocksDiscontinuedMemberDuringOutboxLag() throws Exception {
+        var e1 = partExam("HSA", "TOAN").named("Toán V1").code("E1V1-" + shortToken());
+        var e2 = subjectExam("HSA", "LY").named("Lý V1");
+        serve(e1);
+        serve(e2);
+
+        UUID hsaId = kindItem("HSA");
+        String bundleCode = "ORD-LIVE-" + shortToken();
+        Map<String, Object> payload = createPayload(bundleCode, "Bộ đề Live Exam", hsaId, List.of(e1.examId, e2.examId));
+        payload.put("listPriceVnd", 190_000L);
+        payload.put("attemptsPerExam", 3);
+        JsonNode created = createBundle(payload, bundleAdmin());
+        UUID bundleId = UUID.fromString(created.path("id").asText());
+        performPublish(bundleId, created.path("revision").asLong(), bundleAdmin()).andExpect(status().isOk());
+
+        // Republish e1 lên v2 với tên mới và optionCodes mới, relay ExamPublished.
+        e1.nextVersion(2, "Toán V2 Live", 30, 45, 50);
+        ServingExam e1BaseV2 = e1.build();
+        ServingPath v2Path = new ServingPath(
+                "p-v2", 2,
+                List.of(new PathChoice("part-1", "opt-v2", "SUBJECT", "TOAN_V2", "Toán V2")),
+                30, BigDecimal.valueOf(50), 45,
+                List.of(new ServingPathPart("part-1", "Phần 1", 30, BigDecimal.valueOf(50), 45)),
+                List.of());
+        port.serve(new ServingExam(e1.examId, "PUBLISHED", e1BaseV2.version(), List.of(v2Path)));
+        emitExamEvent(ExamEventTopics.PUBLISHED, e1.examId, 2);
+
+        LearnerAccount learner = fixtures.createLearner();
+        JsonNode orderResp = createBundleOrder(learner, bundleCode, null, 1, 190_000L)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.order.bundleVersionNo").value(1))
+                .andReturn().getResponse().getContentAsString().transform(this::readTree);
+
+        UUID orderId = UUID.fromString(orderResp.path("order").path("id").asText());
+        List<Map<String, Object>> dbItems = jdbc.queryForList("""
+                SELECT exam_id, exam_version_no, exam_code, exam_name, option_codes
+                FROM commerce.purchase_order_item
+                WHERE order_id = ?
+                ORDER BY position ASC
+                """, orderId);
+        assertThat(dbItems).hasSize(2);
+        assertThat(dbItems.get(0).get("exam_id")).isEqualTo(e1.examId);
+        assertThat(((Number) dbItems.get(0).get("exam_version_no")).intValue()).isEqualTo(2);
+        assertThat(dbItems.get(0).get("exam_code")).isEqualTo(e1.code);
+        assertThat(dbItems.get(0).get("exam_name")).isEqualTo("Toán V2 Live");
+        assertThat((String[]) ((java.sql.Array) dbItems.get(0).get("option_codes")).getArray())
+                .containsExactly("TOAN_V2");
+
+        // Trong cửa sổ trễ outbox (e1 đã DISCONTINUED trên PublishedExamPort nhưng chưa relay ExamDiscontinued),
+        // storefront_product vẫn đang ON_SALE nhưng tạo đơn phải bị chặn với 409 PRODUCT_UNAVAILABLE.
+        e1.discontinued();
+        serve(e1);
+        LearnerAccount lagLearner = fixtures.createLearner();
+        createBundleOrder(lagLearner, bundleCode, null, 1, 190_000L)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PRODUCT_UNAVAILABLE"));
+    }
+
+    private void assertFulfilledOrderAndGrantsIntact(UUID orderId, UUID userId) {
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.purchase_order WHERE id = ?", String.class, orderId))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM commerce.purchase_order_item WHERE order_id = ?", Long.class, orderId))
+                .isEqualTo(2L);
+        List<Map<String, Object>> grants = jdbc.queryForList(
+                "SELECT attempts, attempts_revoked, revoked_at FROM commerce.entitlement_grant WHERE order_id = ?",
+                orderId);
+        assertThat(grants).hasSize(2);
+        assertThat(grants).allSatisfy(row -> {
+            assertThat(((Number) row.get("attempts")).intValue()).isEqualTo(2);
+            assertThat(((Number) row.get("attempts_revoked")).intValue()).isZero();
+            assertThat(row.get("revoked_at")).isNull();
+        });
+        List<Map<String, Object>> entitlements = jdbc.queryForList(
+                "SELECT attempts_total, attempts_revoked FROM commerce.entitlement WHERE user_id = ?",
+                userId);
+        assertThat(entitlements).hasSize(2);
+        assertThat(entitlements).allSatisfy(row -> {
+            assertThat(((Number) row.get("attempts_total")).intValue()).isEqualTo(2);
+            assertThat(((Number) row.get("attempts_revoked")).intValue()).isZero();
+        });
     }
 
     private org.springframework.test.web.servlet.ResultActions createBundleOrder(

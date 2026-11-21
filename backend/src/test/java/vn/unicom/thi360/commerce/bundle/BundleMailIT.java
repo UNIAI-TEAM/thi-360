@@ -64,9 +64,18 @@ class BundleMailIT extends AbstractBundleIT {
 
         LearnerAccount viLearner = fixtures.createLearner(true, "vi");
         LearnerAccount enLearner = fixtures.createLearner(true, "en");
+        LearnerAccount unverifiedLearner = fixtures.createLearner(false, "vi");
 
         String viOrderCode = buyAndPay(viLearner, bundleCode, 140_000L);
         String enOrderCode = buyAndPay(enLearner, bundleCode, 140_000L);
+        String unverifiedOrderCode = buyAndPay(unverifiedLearner, bundleCode, 140_000L);
+
+        assertThat(jdbc.queryForObject(
+                "SELECT state FROM commerce.purchase_order WHERE code = ?", String.class, unverifiedOrderCode))
+                .isEqualTo("FULFILLED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM shared.email_message WHERE user_id = ?", Long.class, unverifiedLearner.id()))
+                .isZero();
 
         String e1Code = port.findServing(e1.examId).orElseThrow().version().code();
         String e2Code = port.findServing(e2.examId).orElseThrow().version().code();

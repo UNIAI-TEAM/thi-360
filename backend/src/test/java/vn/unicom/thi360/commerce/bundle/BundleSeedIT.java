@@ -1,6 +1,7 @@
 package vn.unicom.thi360.commerce.bundle;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
@@ -120,6 +122,28 @@ class BundleSeedIT extends AbstractIntegrationTest {
         assertThat(prop).isNotNull();
         assertThat(prop.name()).containsExactly("thi360.devdata.published-exams.enabled");
         assertThat(prop.havingValue()).isEqualTo("true");
+    }
+
+    @Test
+    void runnerRegistersOnlyOnDevAndE2eWhenPropertyEnabled() {
+        ApplicationContextRunner runner = new ApplicationContextRunner()
+                .withBean(BundleDevDataBuilder.class, () -> mock(BundleDevDataBuilder.class))
+                .withUserConfiguration(BundleDevDataRunner.class);
+
+        runner.withPropertyValues("spring.profiles.active=dev", "thi360.devdata.published-exams.enabled=true")
+                .run(ctx -> assertThat(ctx).hasSingleBean(BundleDevDataRunner.class));
+
+        runner.withPropertyValues("spring.profiles.active=e2e", "thi360.devdata.published-exams.enabled=true")
+                .run(ctx -> assertThat(ctx).hasSingleBean(BundleDevDataRunner.class));
+
+        runner.withPropertyValues("spring.profiles.active=test", "thi360.devdata.published-exams.enabled=true")
+                .run(ctx -> assertThat(ctx).doesNotHaveBean(BundleDevDataRunner.class));
+
+        runner.withPropertyValues("thi360.devdata.published-exams.enabled=true")
+                .run(ctx -> assertThat(ctx).doesNotHaveBean(BundleDevDataRunner.class));
+
+        runner.withPropertyValues("spring.profiles.active=dev", "thi360.devdata.published-exams.enabled=false")
+                .run(ctx -> assertThat(ctx).doesNotHaveBean(BundleDevDataRunner.class));
     }
 
     private long countBundles() {

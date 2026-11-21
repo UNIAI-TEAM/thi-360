@@ -2,6 +2,10 @@ package vn.unicom.thi360.commerce.bundle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,12 +13,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import vn.unicom.thi360.commerce.bundle.application.BundleStorefrontProjector;
+import vn.unicom.thi360.commerce.bundle.domain.Bundle;
+import vn.unicom.thi360.commerce.bundle.domain.BundleVersion;
+import vn.unicom.thi360.commerce.bundle.infrastructure.BundleRepository;
+import vn.unicom.thi360.commerce.bundle.infrastructure.BundleVersionRepository;
 import vn.unicom.thi360.commerce.storefront.application.StorefrontProjectionService;
+import vn.unicom.thi360.commerce.storefront.domain.SaleState;
+import vn.unicom.thi360.commerce.storefront.domain.StorefrontRow;
+import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository;
 import vn.unicom.thi360.exam.spi.ExamEventTopics;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
@@ -26,6 +42,28 @@ class BundleStorefrontIT extends AbstractBundleIT {
 
     @Autowired
     private StorefrontProjectionService examProjectionService;
+
+    @Autowired
+    private StorefrontProductRepository storefrontProductRepository;
+
+    @Autowired
+    private BundleStorefrontProjector bundleStorefrontProjector;
+
+    @Autowired
+    private BundleRepository bundleRepository;
+
+    @MockitoSpyBean
+    private BundleVersionRepository bundleVersionRepository;
+
+    @BeforeEach
+    void resetBundleVersionSpyBefore() {
+        reset(bundleVersionRepository);
+    }
+
+    @AfterEach
+    void resetBundleVersionSpyAfter() {
+        reset(bundleVersionRepository);
+    }
 
     @Test
     void listsFiltersSortsAndServesPublicBundleDetailWithoutLeaks() throws Exception {
@@ -84,7 +122,7 @@ class BundleStorefrontIT extends AbstractBundleIT {
                 .andExpect(jsonPath("$.items[0].questionCount.min").value(70))
                 .andExpect(jsonPath("$.items[0].durationMinutes.min").value(105));
 
-        // Chi tiết sản phẩm bộ đề
+        // Chi tiết sản phẩm bộ đề (kiểm đầy đủ field BundleDetailItem — R1-27)
         String detailJson = mockMvc.perform(get(STOREFRONT_BASE + "/products/" + pubCode)
                         .header("X-Forwarded-For", newClientIp()))
                 .andExpect(status().isOk())
@@ -95,7 +133,35 @@ class BundleStorefrontIT extends AbstractBundleIT {
                 .andExpect(jsonPath("$.resultView").value("FULL_SOLUTION"))
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].code").value(partMath.code))
+                .andExpect(jsonPath("$.items[0].name").value("Phần Toán"))
+                .andExpect(jsonPath("$.items[0].subjectName.nameVi").value("Toán"))
+                .andExpect(jsonPath("$.items[0].questionCount.min").value(30))
+                .andExpect(jsonPath("$.items[0].questionCount.max").value(30))
+                .andExpect(jsonPath("$.items[0].durationMinutes.min").value(45))
+                .andExpect(jsonPath("$.items[0].durationMinutes.max").value(45))
+                .andExpect(jsonPath("$.items[0].maxPoints.min").value(50))
+                .andExpect(jsonPath("$.items[0].maxPoints.max").value(50))
+                .andExpect(jsonPath("$.items[0].attemptsGranted").value(4))
+                .andExpect(jsonPath("$.items[0].resultView").value("FULL_SOLUTION"))
+                .andExpect(jsonPath("$.items[0].benefits.aiExplanation").value(true))
+                .andExpect(jsonPath("$.items[0].benefits.strengthWeakness").value(true))
+                .andExpect(jsonPath("$.items[0].benefits.practice").value(false))
+                .andExpect(jsonPath("$.items[0].benefits.note").value("Hỗ trợ giải thích AI"))
                 .andExpect(jsonPath("$.items[1].code").value(subjectLit.code))
+                .andExpect(jsonPath("$.items[1].name").value("Môn Ngữ văn"))
+                .andExpect(jsonPath("$.items[1].subjectName.nameVi").value("Ngữ văn"))
+                .andExpect(jsonPath("$.items[1].questionCount.min").value(40))
+                .andExpect(jsonPath("$.items[1].questionCount.max").value(40))
+                .andExpect(jsonPath("$.items[1].durationMinutes.min").value(60))
+                .andExpect(jsonPath("$.items[1].durationMinutes.max").value(60))
+                .andExpect(jsonPath("$.items[1].maxPoints.min").value(100))
+                .andExpect(jsonPath("$.items[1].maxPoints.max").value(100))
+                .andExpect(jsonPath("$.items[1].attemptsGranted").value(4))
+                .andExpect(jsonPath("$.items[1].resultView").value("FULL_SOLUTION"))
+                .andExpect(jsonPath("$.items[1].benefits.aiExplanation").value(true))
+                .andExpect(jsonPath("$.items[1].benefits.strengthWeakness").value(true))
+                .andExpect(jsonPath("$.items[1].benefits.practice").value(false))
+                .andExpect(jsonPath("$.items[1].benefits.note").value("Hỗ trợ giải thích AI"))
                 .andReturn().getResponse().getContentAsString();
         assertThat(detailJson).contains(partMath.code, subjectLit.code);
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(detailJson);
@@ -142,6 +208,73 @@ class BundleStorefrontIT extends AbstractBundleIT {
                         .header("X-Forwarded-For", newClientIp()))
                 .andExpect(status().isGone())
                 .andExpect(jsonPath("$.code").value("PRODUCT_DISCONTINUED"));
+
+        // R1-16/17: Chạy rebuild ngay sau discontinue (không xóa row) -> projection_hash đã khớp nên written == 0.
+        mockMvc.perform(post("/api/v1/admin/storefront/rebuild").with(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.written").value(0))
+                .andExpect(jsonPath("$.failed").value(0));
+
+        // R1-14/15: Ghi đè stale SaleState.UNAVAILABLE ở cùng version_no không được phép đè DISCONTINUED.
+        Bundle discBundle = bundleRepository.findById(bundleId).orElseThrow();
+        BundleVersion discVersion = bundleVersionRepository
+                .findByBundleIdAndVersionNo(bundleId, discBundle.getServingVersion()).orElseThrow();
+        StorefrontRow staleUnavailable = bundleStorefrontProjector.buildRow(
+                discBundle, discVersion, SaleState.UNAVAILABLE,
+                Map.of(e1.examId, port.findServing(e1.examId).orElseThrow(),
+                        e2.examId, port.findServing(e2.examId).orElseThrow()));
+        assertThat(storefrontProductRepository.upsertBundle(UUID.randomUUID(), staleUnavailable, Instant.now()))
+                .isFalse();
+        assertThat(jdbc.queryForObject(
+                "SELECT sale_state FROM commerce.storefront_product WHERE bundle_id = ?", String.class, bundleId))
+                .isEqualTo("DISCONTINUED");
+    }
+
+    @Test
+    void rebuildIsolatesTransactionalBundleRepositoryExceptionWithoutMarkingOuterTxRollbackOnly() throws Exception {
+        UUID actor = trackActor();
+        var auth = bundleAdminAs(actor);
+        UUID hsaId = kindItem("HSA");
+        BundleExamBuilder eHealthy = partExam("HSA", "TOAN");
+        BundleExamBuilder e2 = subjectExam("HSA", "LY");
+        serve(eHealthy);
+        serve(e2);
+
+        JsonNode healthy = createBundle(createPayload("RB-TX-OK-" + shortToken(), "Healthy Bundle", hsaId,
+                List.of(eHealthy.examId, e2.examId)), auth);
+        UUID healthyId = UUID.fromString(healthy.path("id").asText());
+        performPublish(healthyId, healthy.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        JsonNode failing = createBundle(createPayload("RB-TX-ERR-" + shortToken(), "Failing Bundle", hsaId,
+                List.of(eHealthy.examId, e2.examId)), auth);
+        UUID failingId = UUID.fromString(failing.path("id").asText());
+        performPublish(failingId, failing.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        jdbc.update("DELETE FROM commerce.storefront_product WHERE exam_id = ? OR bundle_id = ?",
+                eHealthy.examId, healthyId);
+
+        doThrow(new RuntimeException("Simulated @Transactional repository failure during bundle rebuild"))
+                .when(bundleVersionRepository).findByBundleIdAndVersionNo(eq(failingId), anyInt());
+        try {
+            mockMvc.perform(post("/api/v1/admin/storefront/rebuild").with(auth))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.failed").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                    .andExpect(jsonPath("$.written").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
+
+            assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM commerce.storefront_product WHERE exam_id = ?",
+                    Long.class, eHealthy.examId)).isEqualTo(1L);
+            assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM commerce.storefront_product WHERE bundle_id = ?",
+                    Long.class, healthyId)).isEqualTo(1L);
+
+            drainOutbox();
+            assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM audit.audit_event WHERE action = 'STOREFRONT_REBUILT' AND actor_id = ?",
+                    Long.class, actor)).isEqualTo(1L);
+        } finally {
+            reset(bundleVersionRepository);
+        }
     }
 
     @Test

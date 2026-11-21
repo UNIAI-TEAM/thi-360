@@ -2,6 +2,7 @@ package vn.unicom.thi360.commerce.bundle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 import vn.unicom.thi360.exam.spi.ExamEventTopics;
 
 /**
@@ -120,10 +122,10 @@ class BundleEventIT extends AbstractBundleIT {
         UUID bundleId = UUID.fromString(created.path("id").asText());
         performPublish(bundleId, created.path("revision").asLong(), auth).andExpect(status().isOk());
 
-        // Cố tình gây lỗi port cho eFail; thêm đồng thời 1 sự kiện của standaloneOk vào outbox
+        // Cố tình gây lỗi port cho ePeer (bài thi anh em trong bộ) khi publish eFail v2 -> projection của eFail thành công, lỗi xảy ra trong BundleEventService.
         eFail.nextVersion(2, "Fail V2 Recovered", 50, 60, 100);
         serve(eFail);
-        port.failFor(eFail.examId);
+        port.failFor(ePeer.examId);
 
         UUID failEventId = UUID.randomUUID();
         UUID okEventId = UUID.randomUUID();
@@ -136,7 +138,11 @@ class BundleEventIT extends AbstractBundleIT {
 
             relay.relayBatch(500);
 
-            // standaloneOk phải thành công, eFail tăng attempts nhưng vẫn chưa processed
+            // R1-12: storefront_product của chính eFail đã cập nhật lên v2, standaloneOk thành công,
+            // còn eFail outbox event tăng attempts & chưa processed, và bundle vẫn ở v1.
+            assertThat(jdbc.queryForObject(
+                    "SELECT version_no FROM commerce.storefront_product WHERE exam_id = ?",
+                    Integer.class, eFail.examId)).isEqualTo(2);
             assertThat(jdbc.queryForObject(
                     "SELECT count(*) FROM commerce.storefront_product WHERE exam_id = ?",
                     Long.class, standaloneOk.examId)).isEqualTo(1L);
@@ -144,8 +150,13 @@ class BundleEventIT extends AbstractBundleIT {
                     "SELECT attempts, processed_at FROM shared.outbox_event WHERE id = ?", failEventId);
             assertThat(((Number) failOutbox.get("attempts")).intValue()).isGreaterThanOrEqualTo(1);
             assertThat(failOutbox.get("processed_at")).isNull();
+            mockMvc.perform(get(STOREFRONT_BASE + "/products/" + code)
+                            .header("X-Forwarded-For", newClientIp()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[0].versionNo").value(1))
+                    .andExpect(jsonPath("$.items[0].name").value("Fail V1"));
         } finally {
-            port.recover(eFail.examId);
+            port.recover(ePeer.examId);
         }
 
         // Cho phép retry ngay và chạy lại relay
@@ -161,6 +172,141 @@ class BundleEventIT extends AbstractBundleIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].versionNo").value(2))
                 .andExpect(jsonPath("$.items[0].name").value("Fail V2 Recovered"));
+    }
+
+    @Test
+    void draftCodeEditOnPublishedBundleDoesNotLeakOnExamEventOrRebuildUntilRepublish() throws Exception {
+        var auth = bundleAdmin();
+        UUID hsaId = kindItem("HSA");
+        BundleExamBuilder e1 = partExam("HSA", "TOAN").named("Toán V1");
+        BundleExamBuilder e2 = subjectExam("HSA", "LY").named("Lý V1");
+        serve(e1);
+        serve(e2);
+
+        String codeV1 = "EVT-C1-" + shortToken();
+        String codeV2 = "EVT-C2-" + shortToken();
+        JsonNode created = createBundle(
+                createPayload(codeV1, "Bộ đề V1", hsaId, List.of(e1.examId, e2.examId)), auth);
+        UUID bundleId = UUID.fromString(created.path("id").asText());
+        String pub1Json = performPublish(bundleId, created.path("revision").asLong(), auth)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long revAfterPub1 = mapper.readTree(pub1Json).path("revision").asLong();
+
+        // Sửa draft code sang codeV2 nhưng CHƯA publish lại
+        Map<String, Object> draftEdit = createPayload(codeV2, "Bộ đề V2 Nháp", hsaId, List.of(e1.examId, e2.examId));
+        draftEdit.put("expectedRevision", revAfterPub1);
+        String updJson = performUpdate(bundleId, draftEdit, auth)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long revAfterDraftEdit = mapper.readTree(updJson).path("revision").asLong();
+
+        // Bộ đề khác cố chiếm codeV1 đang phục vụ phải bị chặn 409 BUNDLE_CODE_TAKEN
+        performCreate(createPayload(codeV1, "Steal C1", hsaId, List.of(e1.examId, e2.examId)), auth)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BUNDLE_CODE_TAKEN"));
+
+        // Bắn sự kiện ExamPublished v2 + chạy storefront rebuild -> storefront vẫn phục vụ codeV1, codeV2 vẫn 404
+        e1.nextVersion(2, "Toán V2", 30, 45, 50);
+        serve(e1);
+        emitExamEvent(ExamEventTopics.PUBLISHED, e1.examId, 2);
+        mockMvc.perform(post("/api/v1/admin/storefront/rebuild").with(auth))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(STOREFRONT_BASE + "/products/" + codeV1)
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(codeV1))
+                .andExpect(jsonPath("$.name").value("Bộ đề V1"))
+                .andExpect(jsonPath("$.items[0].name").value("Toán V2"));
+        mockMvc.perform(get(STOREFRONT_BASE + "/products/" + codeV2)
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isNotFound());
+
+        // Publish v2 -> chuyển sang codeV2 trên storefront
+        performPublish(bundleId, revAfterDraftEdit, auth).andExpect(status().isOk());
+        mockMvc.perform(get(STOREFRONT_BASE + "/products/" + codeV2)
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(codeV2))
+                .andExpect(jsonPath("$.versionNo").value(2));
+    }
+
+    @Test
+    void staleEventDoesNotDowngradeWhenLiveVersionIsStillBelowExistingItemVersion() throws Exception {
+        var auth = bundleAdmin();
+        UUID hsaId = kindItem("HSA");
+        BundleExamBuilder e1 = partExam("HSA", "TOAN").named("Toán V3").version(3);
+        BundleExamBuilder e2 = subjectExam("HSA", "LY").named("Lý V1");
+        serve(e1);
+        serve(e2);
+
+        String code = "EVT-STALE-" + shortToken();
+        JsonNode created = createBundle(createPayload(code, "Stale Guard", hsaId, List.of(e1.examId, e2.examId)), auth);
+        UUID bundleId = UUID.fromString(created.path("id").asText());
+        performPublish(bundleId, created.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        // Giả lập port trả về liveVer = 2 (< existingItemVersion = 3) và nhận sự kiện cũ ExamPublished(e1, 1)
+        e1.nextVersion(2, "Toán V2 Cũ", 20, 30, 40);
+        serve(e1);
+        emitExamEvent(ExamEventTopics.PUBLISHED, e1.examId, 1);
+
+        mockMvc.perform(get(STOREFRONT_BASE + "/products/" + code)
+                        .header("X-Forwarded-For", newClientIp()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].versionNo").value(3))
+                .andExpect(jsonPath("$.items[0].name").value("Toán V3"));
+    }
+
+    @Test
+    void singleBundleFailureOnExamEventDoesNotRollBackHealthySiblingBundle() throws Exception {
+        var auth = bundleAdmin();
+        UUID hsaId = kindItem("HSA");
+        BundleExamBuilder eShared = partExam("HSA", "TOAN");
+        BundleExamBuilder eGood = subjectExam("HSA", "LY");
+        BundleExamBuilder eBad = subjectExam("HSA", "HOA");
+        serve(eShared);
+        serve(eGood);
+        serve(eBad);
+
+        JsonNode b1Created = createBundle(createPayload("SIB-OK-" + shortToken(), "Sibling OK", hsaId,
+                List.of(eShared.examId, eGood.examId)), auth);
+        UUID b1Id = UUID.fromString(b1Created.path("id").asText());
+        performPublish(b1Id, b1Created.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        JsonNode b2Created = createBundle(createPayload("SIB-ERR-" + shortToken(), "Sibling Err", hsaId,
+                List.of(eShared.examId, eBad.examId)), auth);
+        UUID b2Id = UUID.fromString(b2Created.path("id").asText());
+        performPublish(b2Id, b2Created.path("revision").asLong(), auth).andExpect(status().isOk());
+
+        eShared.discontinued();
+        serve(eShared);
+        port.failFor(eBad.examId);
+        UUID eventId = UUID.randomUUID();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(
+                    s -> outbox.publish(eventId, ExamEventTopics.DISCONTINUED,
+                            new ExamEventTopics.Payload(eShared.examId, 1)));
+            relay.relayBatch(500);
+
+            // R1-26: b1 khỏe mạnh phải lập tức chuyển UNAVAILABLE, trong khi b2 lỗi giữ ON_SALE & đợi retry.
+            assertThat(saleStateOf(b1Id)).isEqualTo(SaleState.UNAVAILABLE.name());
+            assertThat(saleStateOf(b2Id)).isEqualTo(SaleState.ON_SALE.name());
+            Map<String, Object> outboxRow = jdbc.queryForMap(
+                    "SELECT attempts, processed_at FROM shared.outbox_event WHERE id = ?", eventId);
+            assertThat(((Number) outboxRow.get("attempts")).intValue()).isGreaterThanOrEqualTo(1);
+            assertThat(outboxRow.get("processed_at")).isNull();
+        } finally {
+            port.recover(eBad.examId);
+        }
+
+        jdbc.update("UPDATE shared.outbox_event SET next_attempt_at = now() - interval '1 second' WHERE id = ?",
+                eventId);
+        drainOutbox();
+
+        assertThat(jdbc.queryForObject(
+                "SELECT processed_at FROM shared.outbox_event WHERE id = ?", Timestamp.class, eventId)).isNotNull();
+        assertThat(saleStateOf(b2Id)).isEqualTo(SaleState.UNAVAILABLE.name());
     }
 
     private String saleStateOf(UUID bundleId) {
