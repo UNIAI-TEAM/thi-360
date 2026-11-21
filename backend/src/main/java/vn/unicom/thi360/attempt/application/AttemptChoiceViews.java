@@ -38,4 +38,8 @@ final class AttemptChoiceViews {
         }
         return merged.isEmpty() ? Map.of() : Map.copyOf(merged);
     }
+
+    static AttemptChoiceSummary partChoice(AttemptPart part) {
+        return part == null ? null : AttemptChoiceSummary.fromRaw(part.getChoice());
+    }
 }

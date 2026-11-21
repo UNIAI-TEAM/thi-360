@@ -325,9 +325,7 @@ public class Attempt {
         }
     }
 
-    /**
-     * Marks grading failure after outbox retries are exhausted; never sets score to zero (AC-20).
-     */
+    /** Marks grading failure after outbox retries are exhausted; never sets score to zero (AC-20). */
     public void markGradingError(String errorMessage, Instant now) {
         if (this.state != AttemptState.GRADING && this.state != AttemptState.GRADING_ERROR) {
             throw new IllegalStateException("Cannot mark grading error from state " + this.state);
@@ -337,6 +335,28 @@ public class Attempt {
         this.gradingError = clean.length() > 1000 ? clean.substring(0, 1000) : clean;
         this.rawScore = null;
         this.displayScore = null;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
+    /** Reopens an attempt for regrading when a finalized essay is reopened, keeping prior totals (LT §9.2, AC-8). */
+    public void reopenForRegrading(Instant now) {
+        if (this.state != AttemptState.SCORED && this.state != AttemptState.PENDING_REVIEW) {
+            throw new IllegalStateException("Cannot reopen attempt for regrading from state " + this.state);
+        }
+        if (this.state == AttemptState.SCORED || this.regrading) {
+            this.state = AttemptState.PENDING_REVIEW;
+            this.regrading = true;
+        }
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
+    /** Marks an attempt with a system fault flag and reason while preserving closed scores/results (LT F20, AC-13). */
+    public void markFault(String faultFlag, String faultReason, Instant now) {
+        if (faultFlag == null || faultFlag.isBlank()) {
+            throw new IllegalArgumentException("faultFlag must not be blank");
+        }
+        this.faultFlag = faultFlag.trim();
+        this.faultReason = faultReason;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
