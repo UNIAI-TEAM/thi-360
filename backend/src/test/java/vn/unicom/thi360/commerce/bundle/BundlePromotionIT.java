@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator;
+import vn.unicom.thi360.commerce.pricing.PriceCalculator.DiscountApplied;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.PricedProduct;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteCalculation;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteRequest;
@@ -221,6 +222,14 @@ class BundlePromotionIT extends AbstractBundleIT {
         JsonNode flooredPromo = createPromo(autoPromoPayload("Floor Check", 199_000L, "BUNDLE",
                 Map.of("bundleIds", List.of(bundleA))), auth);
         assertThat(flooredPromo.path("capWarnings").findValuesAsText("examId")).contains(bundleA.toString());
+        // Dừng Floor Check sau khi kiểm chứng capWarnings để bước 6 không bị giá sàn 5k che mất.
+        mockMvc.perform(post(PROMO_BASE + "/" + flooredPromo.path("id").asText() + "/stop")
+                        .with(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "expectedRevision", flooredPromo.path("revision").asLong()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("STOPPED"));
 
         // 6. R1-30: scope = ALL (auto + voucher) áp dụng cho bundle; EXAM_KIND lệch (SP2E) không áp cho HSA bundle;
         //    voucher scope = EXAM cho e1 bị từ chối VOUCHER_NOT_APPLICABLE khi áp lên bundle.
@@ -248,7 +257,7 @@ class BundlePromotionIT extends AbstractBundleIT {
                         ex -> assertThat(ex.getCode()).isEqualTo("VOUCHER_NOT_APPLICABLE"));
 
         String allVoucherCode = "VALL" + shortToken();
-        Map<String, Object> allVoucherReq = autoPromoPayload("Voucher Toàn Sàn", 25_000L, "ALL", Map.of());
+        Map<String, Object> allVoucherReq = autoPromoPayload("Voucher Toàn Sàn", 35_000L, "ALL", Map.of());
         allVoucherReq.put("kind", "VOUCHER");
         allVoucherReq.put("code", allVoucherCode);
         allVoucherReq.put("audience", "ALL");
@@ -256,7 +265,10 @@ class BundlePromotionIT extends AbstractBundleIT {
         createPromo(allVoucherReq, auth);
         QuoteCalculation allVoucherQuote = priceCalculator.calculateQuote(
                 new QuoteRequest(PricedProduct.forBundle(bundleA, hsaId, 200_000L), buyer, allVoucherCode));
-        assertThat(allVoucherQuote.finalPrice()).isEqualTo(175_000L);
+        assertThat(allVoucherQuote.finalPrice()).isEqualTo(165_000L);
+        assertThat(allVoucherQuote.discountApplied()).isEqualTo(DiscountApplied.VOUCHER_ONLY);
+        assertThat(allVoucherQuote.voucher()).isNotNull();
+        assertThat(allVoucherQuote.voucher().code()).isEqualTo(allVoucherCode);
 
         // scope = ALL auto (giảm 60k) thắng BUNDLE 30k & EXAM_KIND 20k trên bundleB -> 250k - 60k = 190k.
         createPromo(autoPromoPayload("KM Toàn Sàn 60k", 60_000L, "ALL", Map.of()), auth);

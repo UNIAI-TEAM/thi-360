@@ -134,7 +134,7 @@ class BundleStorefrontIT extends AbstractBundleIT {
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].code").value(partMath.code))
                 .andExpect(jsonPath("$.items[0].name").value("Phần Toán"))
-                .andExpect(jsonPath("$.items[0].subjectName.nameVi").value("Toán"))
+                .andExpect(jsonPath("$.items[0].subjectName.nameVi").value("Toán học"))
                 .andExpect(jsonPath("$.items[0].questionCount.min").value(30))
                 .andExpect(jsonPath("$.items[0].questionCount.max").value(30))
                 .andExpect(jsonPath("$.items[0].durationMinutes.min").value(45))
@@ -175,6 +175,8 @@ class BundleStorefrontIT extends AbstractBundleIT {
         BundleExamBuilder e2 = subjectExam("HSA", "LY");
         serve(e1);
         serve(e2);
+        // Project e1 lên storefront trước để rebuild sau discontinue chỉ kiểm chứng idempotency của bundleId (R1-16/17).
+        emitExamEvent(ExamEventTopics.PUBLISHED, e1.examId, 1);
 
         String code = "SF-STATE-" + shortToken();
         JsonNode created = createBundle(createPayload(code, "Bộ đề Trạng thái", hsaId,
@@ -204,6 +206,9 @@ class BundleStorefrontIT extends AbstractBundleIT {
 
         // Ngừng bán chính bộ đề -> DISCONTINUED -> 410 PRODUCT_DISCONTINUED
         performDiscontinue(bundleId, revAfterPub, auth).andExpect(status().isOk());
+        Timestamp updatedAfterDiscontinue = jdbc.queryForObject(
+                "SELECT updated_at FROM commerce.storefront_product WHERE bundle_id = ?",
+                Timestamp.class, bundleId);
         mockMvc.perform(get(STOREFRONT_BASE + "/products/" + code)
                         .header("X-Forwarded-For", newClientIp()))
                 .andExpect(status().isGone())
@@ -214,6 +219,10 @@ class BundleStorefrontIT extends AbstractBundleIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.written").value(0))
                 .andExpect(jsonPath("$.failed").value(0));
+        Timestamp updatedAfterRebuild = jdbc.queryForObject(
+                "SELECT updated_at FROM commerce.storefront_product WHERE bundle_id = ?",
+                Timestamp.class, bundleId);
+        assertThat(updatedAfterRebuild).isEqualTo(updatedAfterDiscontinue);
 
         // R1-14/15: Ghi đè stale SaleState.UNAVAILABLE ở cùng version_no không được phép đè DISCONTINUED.
         Bundle discBundle = bundleRepository.findById(bundleId).orElseThrow();
