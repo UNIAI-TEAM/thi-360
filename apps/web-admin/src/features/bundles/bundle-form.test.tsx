@@ -1,9 +1,18 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusRingInset, UiStringsProvider } from "@thi360/ui";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
+import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { SessionProvider } from "@/features/session/session-provider";
+import en from "@/messages/en.json";
+import viMessages from "@/messages/vi.json";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
+import { TEST_ADMIN_SESSION } from "@/test/fixtures";
+import { APP_TIME_ZONE, INTL_FORMATS } from "@thi360/web-kit/preferences";
 
 import {
   BUNDLE_ID_1,
@@ -13,6 +22,7 @@ import {
   EXAM_LY_ID,
   EXAM_SPT_TOAN_ID,
   EXAM_TOAN_ID,
+  FULL_BUNDLE_PERMISSIONS,
   KIND_SP2E_ID,
   makeBundleDetail,
   makeCandidate,
@@ -43,6 +53,7 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
   });
 
   afterEach(() => {
+    onlineManager.setOnline(true);
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -378,5 +389,361 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
       expect(screen.queryByRole("table", { name: "Eligible on-sale exams for this exam kind" })).toBeNull();
     });
     expect(screen.getByRole("checkbox", { name: "Select SP2E-TOAN-01" })).toBeInTheDocument();
+  });
+
+  it("R1-18: lỗi submit lưu lỗi gốc để đổi ngôn ngữ tự dịch lại cảnh báo đang hiện", async () => {
+    fakeApi.get("/api/v1/admin/bundles/candidates", () =>
+      ok([
+        makeCandidate({ examId: EXAM_TOAN_ID, code: "SP2E-TOAN-01" }),
+        makeCandidate({ examId: EXAM_LY_ID, code: "SP2E-LY-01", subjectItemId: "sub-ly", subjectCode: "LY" }),
+      ]),
+    );
+    fakeApi.post("/api/v1/admin/bundles", () => fail(500, { code: "INTERNAL_ERROR" }));
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const SessionWrapper = SessionProvider as ComponentType<{
+      loadSession?: () => Promise<typeof TEST_ADMIN_SESSION>;
+      children?: ReactNode;
+    }>;
+    const renderAtLocale = (locale: "vi" | "en") => (
+      <NextIntlClientProvider
+        locale={locale === "en" ? "en-US" : "vi-VN"}
+        messages={locale === "en" ? en : viMessages}
+        timeZone={APP_TIME_ZONE}
+        formats={INTL_FORMATS}
+      >
+        <UiStringsProvider locale={locale}>
+          <QueryClientProvider client={queryClient}>
+            <SessionWrapper
+              loadSession={async () => ({
+                ...TEST_ADMIN_SESSION,
+                permissions: [...FULL_BUNDLE_PERMISSIONS],
+              })}
+            >
+              <BundleCreatePage />
+            </SessionWrapper>
+          </QueryClientProvider>
+        </UiStringsProvider>
+      </NextIntlClientProvider>
+    );
+
+    const user = userEvent.setup();
+    const { rerender } = render(renderAtLocale("vi"));
+
+    await user.click(await screen.findByRole("combobox", { name: /Kỳ thi/ }));
+    await user.click(await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }));
+    await user.type(screen.getByLabelText(/Mã bộ/), "BO-ERR-01");
+    await user.type(screen.getByLabelText(/Tên bộ/), "Bộ đề lỗi");
+    await user.click(await screen.findByRole("checkbox", { name: "Chọn SP2E-TOAN-01" }));
+    await user.click(screen.getByRole("checkbox", { name: "Chọn SP2E-LY-01" }));
+    await user.click(screen.getByRole("button", { name: "Lưu nháp" }));
+
+    expect(
+      await screen.findByText("Hệ thống gặp sự cố tạm thời. Vui lòng thử lại sau."),
+    ).toBeInTheDocument();
+
+    rerender(renderAtLocale("en"));
+    expect(
+      await screen.findByText("Temporary server failure. Please try again shortly."),
+    ).toBeInTheDocument();
+  });
+
+  it("R1-19 & R1-20: gửi lỗi thiếu Kỳ thi hoặc thiếu bài thi đưa focus tới đúng điều khiển, và bấm mục Cần xử lý đưa focus tới ô tương ứng", async () => {
+    fakeApi.get("/api/v1/admin/bundles/candidates", () =>
+      ok([
+        makeCandidate({ examId: EXAM_TOAN_ID, code: "SP2E-TOAN-01" }),
+        makeCandidate({ examId: EXAM_LY_ID, code: "SP2E-LY-01", subjectItemId: "sub-ly", subjectCode: "LY" }),
+      ]),
+    );
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleCreatePage />);
+
+    // 1. Submit empty form -> focuses Exam Kind trigger
+    const saveDraftBtn = await screen.findByRole("button", { name: "Lưu nháp" });
+    await user.click(saveDraftBtn);
+    const examKindCombo = screen.getByRole("combobox", { name: /Kỳ thi/ });
+    expect(document.activeElement).toBe(examKindCombo);
+
+    // 2. Select exam kind, fill code & name, leave examIds < 2 -> submit focuses first candidate checkbox
+    await user.click(examKindCombo);
+    await user.click(await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }));
+    const firstCheckbox = await screen.findByRole("checkbox", { name: "Chọn SP2E-TOAN-01" });
+    await user.type(screen.getByLabelText(/Mã bộ/), "BO-FOCUS-01");
+    await user.type(screen.getByLabelText(/Tên bộ/), "Bộ đề focus");
+    await user.click(screen.getByRole("button", { name: "Lưu nháp" }));
+    expect(document.activeElement).toBe(firstCheckbox);
+
+    // 3. Checklist links in Summary aside move focus to actual controls
+    await user.click(screen.getByRole("link", { name: "Chưa có mô tả bộ đề." }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Mô tả"));
+
+    await user.click(screen.getByRole("link", { name: "Chưa đặt giá bộ đề lớn hơn 0 đồng." }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Giá bộ"));
+
+    await user.click(screen.getByRole("link", { name: "Chưa đặt số lượt mỗi bài (1–100)." }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Số lượt mỗi bài"));
+
+    await user.click(screen.getByRole("link", { name: /Chọn ít nhất 2 bài/ }));
+    expect(document.activeElement).toBe(firstCheckbox);
+  });
+
+  it("R1-21/22/23 & R1-40: xử lý lỗi tải kỳ thi, ngoại tuyến/lỗi/rỗng danh sách ứng viên, và trạng thái tải/404/500/DISCONTINUED/BUNDLE_CODE_TAKEN", async () => {
+    // 1. examKindsQuery error + Retry, candidatesQuery offline + empty + error + Retry, BUNDLE_CODE_TAKEN
+    let kindCalls = 0;
+    fakeApi.get("/api/v1/catalog/options", () => {
+      kindCalls += 1;
+      if (kindCalls === 1) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok(EXAM_KIND_OPTIONS);
+    });
+    let candCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles/candidates", () => {
+      candCalls += 1;
+      if (candCalls === 1) return fail(500, { code: "INTERNAL_ERROR" });
+      if (candCalls === 2) return ok([]);
+      return ok([
+        makeCandidate({ examId: EXAM_TOAN_ID, code: "SP2E-TOAN-01" }),
+        makeCandidate({ examId: EXAM_LY_ID, code: "SP2E-LY-01", subjectItemId: "sub-ly", subjectCode: "LY" }),
+      ]);
+    });
+    fakeApi.post("/api/v1/admin/bundles", () => fail(409, { code: "BUNDLE_CODE_TAKEN" }));
+
+    const user = userEvent.setup();
+    const { unmount } = renderBundlesUi(<BundleCreatePage />);
+
+    expect(await screen.findByText("Không tải được danh sách kỳ thi.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => {
+      expect(screen.queryByText("Không tải được danh sách kỳ thi.")).toBeNull();
+    });
+
+    // Offline before selecting exam kind -> candidates shows offline notice instead of empty
+    act(() => {
+      onlineManager.setOnline(false);
+    });
+    await user.click(screen.getByRole("combobox", { name: /Kỳ thi/ }));
+    await user.click(await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }));
+    expect(
+      await screen.findByText("Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách bài thi."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Kỳ thi này chưa có bài thi đang bán phù hợp/)).toBeNull();
+
+    // Online resumes paused query -> 500 error -> Retry -> empty
+    act(() => {
+      onlineManager.setOnline(true);
+    });
+    expect(await screen.findByText("Hệ thống gặp sự cố tạm thời. Vui lòng thử lại sau.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(await screen.findByText(/Kỳ thi này chưa có bài thi đang bán phù hợp/)).toBeInTheDocument();
+
+    // Re-trigger fetch by toggling exam kind to SPT then back to SP2E
+    await user.click(screen.getByRole("combobox", { name: /Kỳ thi/ }));
+    await user.click(await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội" }));
+
+    await user.click(await screen.findByRole("checkbox", { name: "Chọn SP2E-TOAN-01" }));
+    await user.click(screen.getByRole("checkbox", { name: "Chọn SP2E-LY-01" }));
+    const codeInput = screen.getByLabelText(/Mã bộ/);
+    await user.type(codeInput, "BO-TAKEN");
+    await user.type(screen.getByLabelText(/Tên bộ/), "Bộ đề trùng mã");
+    await user.click(screen.getByRole("button", { name: "Lưu nháp" }));
+
+    expect(await screen.findByText("Mã bộ đề này đã tồn tại trên hệ thống.")).toBeInTheDocument();
+    expect(codeInput).toHaveAttribute("aria-invalid", "true");
+    expect(document.activeElement).toBe(codeInput);
+    unmount();
+
+    // 2. BundleEditPage loading state
+    fakeApi.pending("/api/v1/admin/bundles/{id}");
+    const { container: loadingContainer, unmount: unmountLoading } = renderBundlesUi(
+      <BundleEditPage bundleId={BUNDLE_ID_1} />,
+    );
+    expect(loadingContainer.querySelector('[aria-busy="true"]')).not.toBeNull();
+    unmountLoading();
+
+    // 3. BundleEditPage 404 state
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => fail(404, { code: "BUNDLE_NOT_FOUND" }));
+    const { unmount: unmount404 } = renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+    expect(await screen.findByText("Không tìm thấy bộ đề")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Quay lại danh sách" })).toHaveAttribute("href", "/bundles");
+    unmount404();
+
+    // 4. BundleEditPage 500 + Retry -> recovers to DISCONTINUED lockout even with EXAM.MODIFY + EXAM.PUBLISH
+    let editCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      editCalls += 1;
+      if (editCalls === 1) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok(makeBundleDetail({ id: BUNDLE_ID_1, status: "DISCONTINUED", saleState: "DISCONTINUED" }));
+    });
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />, {
+      permissions: ["EXAM.VIEW", "EXAM.MODIFY", "EXAM.PUBLISH"],
+    });
+    expect(await screen.findByText("Không tải được bộ đề")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+
+    expect(
+      await screen.findByText("Bộ đề đã ngừng bán nên không thể chỉnh sửa thêm."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tên bộ/)).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Lưu thay đổi" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Công bố/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ngừng bán" })).toBeNull();
+  });
+
+  it("R1-26/27 & R1-48: refetch lỗi sau 412 giữ nguyên dữ liệu đang sửa + hiện nút Thử lại, đồng thời hiển thị cả hai banner UNAVAILABLE và chưa công bố", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    let getCalls = 0;
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      getCalls += 1;
+      if (getCalls === 1) {
+        return ok(
+          makeBundleDetail({
+            id: BUNDLE_ID_1,
+            name: "Bộ đề gốc",
+            revision: 3,
+            status: "PUBLISHED",
+            saleState: "UNAVAILABLE",
+            hasUnpublishedChanges: true,
+            servingVersion: 2,
+          }),
+        );
+      }
+      if (getCalls === 2) {
+        return fail(500, { code: "INTERNAL_ERROR" });
+      }
+      return ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          name: "Bộ đề từ người khác",
+          revision: 4,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+        }),
+      );
+    });
+    fakeApi.get("/api/v1/admin/bundles/candidates", () => ok([makeCandidate()]));
+    fakeApi.put("/api/v1/admin/bundles/{id}", () => fail(412, { code: "BUNDLE_REVISION_CONFLICT" }));
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+
+    // R1-48: both unavailable and unpublished-changes banners appear
+    expect(await screen.findByText("Bộ đề đang không bán được.")).toBeInTheDocument();
+    expect(screen.getByText(/Đang bán phiên bản 2 · Có thay đổi chưa công bố/)).toBeInTheDocument();
+
+    const nameInput = screen.getByLabelText(/Tên bộ/);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Tên sửa chưa lưu");
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    // Refetch failed: form keeps unsaved input and shows inline Retry alert + corrected vi copy
+    expect(await screen.findByText("Không tải được bộ đề")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Tên sửa chưa lưu");
+
+    // Click Retry -> succeeds and loads server revision 4
+    await user.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Tên bộ/)).toHaveValue("Bộ đề từ người khác");
+    });
+  });
+
+  it("R1-28, R1-31, R1-32, R1-51 & gộp nhóm môn trùng: beforeunload khi bẩn, region cuộn bảng, vùng chạm checkbox, focus + LiveStatus khi xóa, fieldErrors có chỉ số và không trùng tiêu đề môn", async () => {
+    fakeApi.get("/api/v1/admin/bundles/candidates", () =>
+      ok([
+        makeCandidate({
+          examId: EXAM_TOAN_ID,
+          code: "SP2E-TOAN-01",
+          name: "SP2E Toán – Đề 1",
+          scope: "SUBJECT",
+          subjectItemId: "sub-toan-subject",
+          subjectCode: "TOAN",
+          subjectName: { nameVi: "Toán học", nameEn: "Mathematics" },
+        }),
+        makeCandidate({
+          examId: EXAM_LY_ID,
+          code: "SP2E-TOAN-P1",
+          name: "SP2E Toán – Phần 1",
+          scope: "PART",
+          subjectItemId: "sub-toan-part",
+          subjectCode: "TOAN",
+          subjectName: { nameVi: "Toán học", nameEn: "Mathematics" },
+        }),
+      ]),
+    );
+    fakeApi.post("/api/v1/admin/bundles", () =>
+      fail(422, {
+        code: "VALIDATION_FAILED",
+        fieldErrors: [{ field: "examIds[0]", message: "invalid item" }],
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleCreatePage />);
+
+    // Clean form does not cancel beforeunload
+    const cleanUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(cleanUnload);
+    expect(cleanUnload.defaultPrevented).toBe(false);
+
+    await user.click(screen.getByRole("combobox", { name: /Kỳ thi/ }));
+    await user.click(await screen.findByRole("option", { name: "Đánh giá năng lực ĐH Sư phạm Hà Nội 2" }));
+
+    // R1-31: candidate table horizontal scroll wrapper has region + name + tabIndex=0 + focusRingInset
+    const scrollRegion = await screen.findByRole("region", {
+      name: "Danh sách bài thi đang bán cùng kỳ thi",
+    });
+    expect(scrollRegion).toHaveAttribute("tabindex", "0");
+    expect(scrollRegion).toHaveClass(...focusRingInset.split(/\s+/));
+
+    // Visual-r2: PART & SUBJECT with same subject render ONE "Toán học" header, not two
+    const table = within(scrollRegion).getByRole("table", {
+      name: "Danh sách bài thi đang bán cùng kỳ thi",
+    });
+    expect(within(table).getAllByText("Toán học")).toHaveLength(1);
+
+    // R1-31: candidate checkboxes expand coarse-pointer hit area
+    const cb1 = within(table).getByRole("checkbox", { name: "Chọn SP2E-TOAN-01" });
+    const cb2 = within(table).getByRole("checkbox", { name: "Chọn SP2E-TOAN-P1" });
+    expect(cb1).toHaveClass("pointer-coarse:after:absolute", "pointer-coarse:after:-inset-3");
+
+    // Pick both exams -> dirty form triggers beforeunload
+    await user.click(cb1);
+    await user.click(cb2);
+    const dirtyUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(dirtyUnload);
+    expect(dirtyUnload.defaultPrevented).toBe(true);
+
+    // R1-51: server fieldErrors with indexed path examIds[0]
+    await user.type(screen.getByLabelText(/Mã bộ/), "BO-IDX-01");
+    await user.type(screen.getByLabelText(/Tên bộ/), "Bộ đề indexed");
+    await user.click(screen.getByRole("button", { name: "Lưu nháp" }));
+    const orderList = screen.getByRole("list", { name: "Thứ tự bài thi trong bộ" });
+    const errorId = orderList.getAttribute("aria-describedby");
+    expect(errorId).toBeTruthy();
+    expect(document.getElementById(errorId!)).toHaveAttribute("role", "alert");
+
+    // R1-32: keyboard removal moves focus to surviving item's Remove button (never document.body), then heading when empty
+    const removeFirst = within(orderList).getByRole("button", { name: "Bỏ SP2E-TOAN-01 khỏi bộ" });
+    removeFirst.focus();
+    await user.keyboard("{Enter}");
+
+    const removeSecond = within(orderList).getByRole("button", { name: "Bỏ SP2E-TOAN-P1 khỏi bộ" });
+    expect(document.activeElement).toBe(removeSecond);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(
+      screen.getByText("Đã bỏ SP2E-TOAN-01 khỏi bộ đề (còn 1 bài)."),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    const orderHeading = screen.getByRole("heading", { level: 3, name: "Thứ tự trong bộ" });
+    expect(document.activeElement).toBe(orderHeading);
+    expect(
+      screen.getByText("Đã bỏ SP2E-TOAN-P1 khỏi bộ đề (còn 0 bài)."),
+    ).toBeInTheDocument();
   });
 });

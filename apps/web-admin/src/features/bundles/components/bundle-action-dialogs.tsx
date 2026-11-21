@@ -4,7 +4,7 @@ import { ConfirmDialog, notify } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { resolveBundleErrorMessage } from "../errors";
+import { isBundleRevisionConflict, resolveBundleErrorMessage } from "../errors";
 import { useDiscontinueBundleMutation, usePublishBundleMutation } from "../queries";
 import type { BundleDetailResponse, BundleStatus } from "../types";
 
@@ -21,11 +21,13 @@ export function BundlePublishDialog({
   open,
   onOpenChange,
   onCompleted,
+  onConflict,
 }: {
   bundle: BundleActionTarget | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompleted?: (updated: BundleDetailResponse) => void;
+  onConflict?: () => Promise<void> | void;
 }) {
   const t = useTranslations("bundles");
   const tErrors = useTranslations("bundles.errors");
@@ -54,6 +56,9 @@ export function BundlePublishDialog({
         },
         onError: (err) => {
           setError(err);
+          if (isBundleRevisionConflict(err)) {
+            void onConflict?.();
+          }
         },
       },
     );
@@ -90,11 +95,13 @@ export function BundleDiscontinueDialog({
   open,
   onOpenChange,
   onCompleted,
+  onConflict,
 }: {
   bundle: BundleActionTarget | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompleted?: (updated: BundleDetailResponse) => void;
+  onConflict?: () => Promise<void> | void;
 }) {
   const t = useTranslations("bundles");
   const tErrors = useTranslations("bundles.errors");
@@ -122,6 +129,9 @@ export function BundleDiscontinueDialog({
         },
         onError: (err) => {
           setError(err);
+          if (isBundleRevisionConflict(err)) {
+            void onConflict?.();
+          }
         },
       },
     );

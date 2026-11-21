@@ -8812,6 +8812,7 @@
       "refresh": "Làm mới",
       "republish": "Công bố lại",
       "retry": "Thử lại",
+      "saveBeforePublish": "Lưu thay đổi trước khi công bố",
       "saveChanges": "Lưu thay đổi",
       "saveDraft": "Lưu nháp",
       "view": "Xem chi tiết",
@@ -8908,7 +8909,7 @@
         "totalQuestions": "Tổng số câu"
       },
       "banners": {
-        "conflictDescription": "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không bị ghi đè.",
+        "conflictDescription": "Bản mới nhất từ máy chủ đã được nạp lại; thay đổi chưa lưu của bạn không ghi đè dữ liệu máy chủ.",
         "conflictTitle": "Bộ đề vừa được người khác cập nhật.",
         "discontinuedReadOnly": "Bộ đề đã ngừng bán nên không thể chỉnh sửa thêm.",
         "readOnly": "Bạn chỉ có quyền xem bộ đề. Cần quyền sửa bài thi để tạo hoặc cập nhật.",
@@ -8948,6 +8949,7 @@
         "empty": "Kỳ thi này chưa có bài thi đang bán phù hợp để đưa vào bộ.",
         "emptyMetric": "—",
         "loading": "Đang tải danh sách bài thi đang bán...",
+        "offline": "Thiết bị đang ngoại tuyến nên tạm dừng tải danh sách bài thi.",
         "otherSubject": "Môn khác",
         "pointsValue": "{value} điểm",
         "questionsValue": "{value} câu",
@@ -8958,6 +8960,7 @@
       },
       "counter": "{count, number} / {max, number} ký tự",
       "currency": "đ",
+      "examKindsError": "Không tải được danh sách kỳ thi.",
       "fields": {
         "attemptsPerExam": "Số lượt mỗi bài",
         "benefitNote": "Giới hạn áp dụng của quyền lợi",
@@ -8990,8 +8993,11 @@
         "moveDownTooltip": "Đưa xuống",
         "moveUp": "Đưa {code} lên",
         "moveUpTooltip": "Đưa lên",
+        "movedDown": "Đã đưa {code} xuống vị trí {position}.",
+        "movedUp": "Đã đưa {code} lên vị trí {position}.",
         "remove": "Bỏ {code} khỏi bộ",
         "removeTooltip": "Bỏ bài",
+        "removed": "Đã bỏ {code} khỏi bộ đề (còn {count, plural, other {# bài}}).",
         "title": "Thứ tự trong bộ"
       },
       "resultView": {
@@ -9046,6 +9052,7 @@
       "filters": {
         "examKind": "Kỳ thi",
         "examKindAll": "Tất cả",
+        "examKindsError": "Không tải được danh sách kỳ thi để lọc.",
         "searchAria": "Tìm theo tên hoặc mã bộ đề",
         "searchPlaceholder": "Tìm theo tên hoặc mã bộ đề",
         "statusGroupAria": "Lọc theo trạng thái bộ đề",

@@ -8812,6 +8812,7 @@
       "refresh": "Refresh",
       "republish": "Republish",
       "retry": "Retry",
+      "saveBeforePublish": "Save changes before publishing",
       "saveChanges": "Save changes",
       "saveDraft": "Save draft",
       "view": "View details",
@@ -8948,6 +8949,7 @@
         "empty": "No eligible on-sale exams found for this exam kind.",
         "emptyMetric": "—",
         "loading": "Loading on-sale candidate exams...",
+        "offline": "Your device is offline, so loading candidate exams is paused.",
         "otherSubject": "Other subject",
         "pointsValue": "{value} pts",
         "questionsValue": "{value} questions",
@@ -8958,6 +8960,7 @@
       },
       "counter": "{count, number} / {max, number} characters",
       "currency": "VND",
+      "examKindsError": "Could not load exam kinds.",
       "fields": {
         "attemptsPerExam": "Attempts per exam",
         "benefitNote": "Benefit applicability notes",
@@ -8990,8 +8993,11 @@
         "moveDownTooltip": "Move down",
         "moveUp": "Move {code} up",
         "moveUpTooltip": "Move up",
+        "movedDown": "Moved {code} down to position {position}.",
+        "movedUp": "Moved {code} up to position {position}.",
         "remove": "Remove {code} from bundle",
         "removeTooltip": "Remove",
+        "removed": "Removed {code} from bundle ({count, plural, one {# exam} other {# exams}} remaining).",
         "title": "Order in bundle"
       },
       "resultView": {
@@ -9046,6 +9052,7 @@
       "filters": {
         "examKind": "Exam kind",
         "examKindAll": "All",
+        "examKindsError": "Could not load exam kinds for filtering.",
         "searchAria": "Search by bundle name or code",
         "searchPlaceholder": "Search by bundle name or code",
         "statusGroupAria": "Filter by bundle status",

@@ -137,4 +137,149 @@ describe("Bundle Publish & Discontinue Actions (AC-7)", () => {
     expect(await within(listTable).findByText("Ngừng bán")).toBeInTheDocument();
     expect(sentBodies).toEqual([{ expectedRevision: 5 }, { expectedRevision: 5 }]);
   });
+
+  it("R1-9/10: công bố gặp 412 tự nạp lại chi tiết để cập nhật expectedRevision khi thử lại", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    let detailCalls = 0;
+    let current = makeBundleDetail({ id: BUNDLE_ID_1, status: "DRAFT", revision: 2 });
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      detailCalls += 1;
+      return ok(current);
+    });
+
+    const sentBodies: unknown[] = [];
+    let publishCalls = 0;
+    fakeApi.post("/api/v1/admin/bundles/{id}/publish", (call) => {
+      publishCalls += 1;
+      sentBodies.push(call.options?.body);
+      if (publishCalls === 1) {
+        current = makeBundleDetail({ id: BUNDLE_ID_1, status: "DRAFT", revision: 5 });
+        return fail(412, { code: "BUNDLE_REVISION_CONFLICT" });
+      }
+      current = makeBundleDetail({
+        id: BUNDLE_ID_1,
+        status: "PUBLISHED",
+        saleState: "ON_SALE",
+        servingVersion: 1,
+        revision: 6,
+      });
+      return ok(current);
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+
+    await screen.findByRole("heading", { name: "Bộ đề SP2E khối A00" });
+    await user.click(screen.getByRole("button", { name: "Công bố" }));
+    const dialog = await screen.findByRole("dialog", { name: "Công bố bộ đề?" });
+
+    await user.click(within(dialog).getByRole("button", { name: "Công bố" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại.",
+    );
+    await waitFor(() => {
+      expect(detailCalls).toBeGreaterThanOrEqual(2);
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Công bố" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(sentBodies).toEqual([{ expectedRevision: 2 }, { expectedRevision: 5 }]);
+    expect(screen.getByText("Đang bán")).toBeInTheDocument();
+  });
+
+  it("R1-9/11: ngừng bán gặp 412 tự nạp lại để cập nhật expectedRevision khi thử lại", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    let detailCalls = 0;
+    let current = makeBundleDetail({
+      id: BUNDLE_ID_1,
+      status: "PUBLISHED",
+      saleState: "ON_SALE",
+      revision: 5,
+    });
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => {
+      detailCalls += 1;
+      return ok(current);
+    });
+
+    const sentBodies: unknown[] = [];
+    let discCalls = 0;
+    fakeApi.post("/api/v1/admin/bundles/{id}/discontinue", (call) => {
+      discCalls += 1;
+      sentBodies.push(call.options?.body);
+      if (discCalls === 1) {
+        current = makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          revision: 8,
+        });
+        return fail(412, { code: "BUNDLE_REVISION_CONFLICT" });
+      }
+      current = makeBundleDetail({
+        id: BUNDLE_ID_1,
+        status: "DISCONTINUED",
+        saleState: "DISCONTINUED",
+        revision: 9,
+      });
+      return ok(current);
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+
+    await screen.findByRole("heading", { name: "Bộ đề SP2E khối A00" });
+    await user.click(screen.getByRole("button", { name: "Ngừng bán" }));
+    const dialog = await screen.findByRole("dialog", { name: "Ngừng bán bộ đề?" });
+
+    await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Bộ đề vừa được người khác cập nhật. Bản mới nhất đã được nạp lại.",
+    );
+    await waitFor(() => {
+      expect(detailCalls).toBeGreaterThanOrEqual(2);
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Ngừng bán" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(sentBodies).toEqual([{ expectedRevision: 5 }, { expectedRevision: 8 }]);
+    expect(screen.getByText("Ngừng bán")).toBeInTheDocument();
+  });
+
+  it("R1-28: khi biểu mẫu có thay đổi chưa lưu, nút Công bố bị khóa kèm chú thích và mở lại sau khi lưu", async () => {
+    resetBundleNavigation(`/bundles/${BUNDLE_ID_1}`, "");
+    let current = makeBundleDetail({ id: BUNDLE_ID_1, status: "DRAFT", revision: 2 });
+    fakeApi.get("/api/v1/admin/bundles/{id}", () => ok(current));
+    fakeApi.put("/api/v1/admin/bundles/{id}", () => {
+      current = makeBundleDetail({
+        id: BUNDLE_ID_1,
+        name: "Tên mới đã sửa",
+        status: "DRAFT",
+        revision: 3,
+      });
+      return ok(current);
+    });
+
+    const user = userEvent.setup();
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+
+    const publishBtn = await screen.findByRole("button", { name: "Công bố" });
+    expect(publishBtn).not.toBeDisabled();
+
+    const nameInput = screen.getByLabelText(/Tên bộ/);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Tên mới đã sửa");
+
+    expect(publishBtn).toBeDisabled();
+    expect(screen.getByText("Lưu thay đổi trước khi công bố")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Công bố" })).not.toBeDisabled();
+    });
+    expect(screen.queryByText("Lưu thay đổi trước khi công bố")).toBeNull();
+  });
 });

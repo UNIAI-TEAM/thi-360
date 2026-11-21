@@ -216,10 +216,11 @@ export function OrderDetailView({ code }: { code: string }) {
   const canViewExam = !permissions.isLoading && permissions.can("EXAM.VIEW");
 
   const order = detailQuery.data;
+  const isBundleOrder = order?.productType === "BUNDLE";
 
   const sortedBundleItems = useMemo<OrderItemView[]>(
-    () => (order ? [...order.items].sort((a, b) => a.position - b.position) : []),
-    [order],
+    () => (isBundleOrder && order ? [...order.items].sort((a, b) => a.position - b.position) : []),
+    [isBundleOrder, order],
   );
   const bundleItemByExamId = useMemo(
     () => new Map(sortedBundleItems.map((item) => [item.examId, item])),
@@ -997,7 +998,7 @@ export function OrderDetailView({ code }: { code: string }) {
       </Card>
 
       {/* Block 1B: Bundle Items */}
-      {order.productType === "BUNDLE" || sortedBundleItems.length > 0 ? (
+      {isBundleOrder ? (
         <Card padding="none" className="overflow-hidden">
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-base font-semibold text-text">

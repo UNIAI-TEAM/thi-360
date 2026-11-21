@@ -1,8 +1,9 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
-import { fakeApi, ok, withRealApi } from "@/test/fake-api";
+import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import { OrderDetailView } from "./components/order-detail-view";
 import { OrderListView } from "./components/order-list-view";
@@ -178,5 +179,110 @@ describe("Bundle orders display in /orders and /orders/[code] (AC-9)", () => {
     expect(within(grantsTable).getByText("ent-2")).toBeInTheDocument();
     expect(within(grantsTable).getByText("SP2E Toán – Đề 1")).toBeInTheDocument();
     expect(within(grantsTable).getByText("SP2E Vật lí – Đề 1")).toBeInTheDocument();
+  });
+
+  it("R1-1/2/3: đơn mua lẻ EXAM có 1 phần tử items không hiện bảng Bài thi trong bộ đề và không lặp tên bài ở dòng quyền thi", async () => {
+    resetMockNavigation("/orders/DH-EXAM-PROD-1", "");
+    fakeApi.get("/api/v1/admin/orders/{code}", () =>
+      ok(
+        makeOrderDetail({
+          orderId: "ord-exam-prod-1",
+          code: "DH-EXAM-PROD-1",
+          productType: "EXAM",
+          bundleId: undefined,
+          bundleVersionNo: undefined,
+          examId: "exam-standalone-1",
+          examVersionNo: 1,
+          productCode: "IELTS-AC-01",
+          productName: "IELTS Academic Practice Test 01",
+          items: [
+            {
+              id: "oi-standalone-1",
+              position: 1,
+              examId: "exam-standalone-1",
+              examCode: "IELTS-AC-01",
+              examName: "IELTS Academic Practice Test 01",
+              examVersionNo: 1,
+              attemptsGranted: 3,
+              optionCodes: [],
+              benefits: {},
+              resultView: "FULL",
+            },
+          ],
+          grants: [
+            makeGrant({
+              grantId: "g-standalone-1",
+              entitlementId: "ent-standalone-1",
+              examId: "exam-standalone-1",
+              attempts: 3,
+              attemptsLeft: 3,
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderOrdersUi(<OrderDetailView code="DH-EXAM-PROD-1" />);
+
+    expect(await screen.findByText("Đơn hàng DH-EXAM-PROD-1")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Bài thi trong bộ đề" })).toBeNull();
+    expect(screen.queryByRole("table", { name: "Bài thi trong bộ đề" })).toBeNull();
+
+    const grantsTable = screen.getByRole("table", { name: "Quyền thi được cấp" });
+    expect(within(grantsTable).getByText("ent-standalone-1")).toBeInTheDocument();
+    expect(within(grantsTable).queryByText("IELTS Academic Practice Test 01")).toBeNull();
+    expect(within(grantsTable).queryByText("(IELTS-AC-01)")).toBeNull();
+  });
+
+  it("R1-14: người dùng chỉ có ORDER.VIEW vẫn thấy bài thi thuộc đơn bộ đề trong bộ lọc Bài thi", async () => {
+    const user = userEvent.setup();
+    let calledAdminExams = false;
+    fakeApi.get("/api/v1/admin/exams", () => {
+      calledAdminExams = true;
+      return fail(403, { code: "FORBIDDEN" });
+    });
+    fakeApi.get("/api/v1/admin/orders", () =>
+      ok(
+        makeOrderListResponse([
+          makeOrderSummary({
+            orderId: "ord-bundle-filter",
+            code: "DH-BUNDLE-FILTER",
+            productType: "BUNDLE",
+            bundleId: "bundle-1",
+            examId: undefined,
+            productCode: "BO-SP2E-001",
+            productName: "Bộ đề SP2E khối A00",
+            items: [
+              {
+                position: 1,
+                examId: "exam-bundle-1",
+                examCode: "SP2E-TOAN-01",
+                examName: "SP2E Toán – Đề 1",
+              },
+              {
+                position: 2,
+                examId: "exam-bundle-2",
+                examCode: "SP2E-LY-01",
+                examName: "SP2E Vật lí – Đề 1",
+              },
+            ],
+          }),
+        ]),
+      ),
+    );
+
+    renderOrdersUi(<OrderListView />, { permissions: ["ORDER.VIEW"] });
+
+    await screen.findByText("DH-BUNDLE-FILTER");
+    const examCombo = screen.getByRole("combobox", { name: "Bài thi" });
+    await user.click(examCombo);
+
+    expect(
+      await screen.findByRole("option", { name: "SP2E Toán – Đề 1 (SP2E-TOAN-01)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "SP2E Vật lí – Đề 1 (SP2E-LY-01)" }),
+    ).toBeInTheDocument();
+    expect(calledAdminExams).toBe(false);
   });
 });

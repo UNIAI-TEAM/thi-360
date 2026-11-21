@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
-import { AlertTriangle, ArrowLeft, Ban, Upload, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Ban, CircleAlert, Upload, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useId, useState } from "react";
@@ -59,16 +59,21 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
   const query = useBundleDetailQuery(bundleId);
   const [hasConflict, setHasConflict] = useState(false);
   const [reloadSeq, setReloadSeq] = useState(0);
+  const [isFormDirty, setIsFormDirty] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [discontinueOpen, setDiscontinueOpen] = useState(false);
   const formId = useId();
+  const publishBlockedReasonId = useId();
 
   useSetBreadcrumbLeaf(query.data ? query.data.code : t("edit.title"));
 
   const handleConflict = async () => {
     setHasConflict(true);
-    await query.refetch();
-    setReloadSeq((seq) => seq + 1);
+    const refetchResult = await query.refetch();
+    if (!refetchResult.isError) {
+      setIsFormDirty(false);
+      setReloadSeq((seq) => seq + 1);
+    }
   };
 
   if (query.isLoading) {
@@ -80,7 +85,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
     );
   }
 
-  if (query.isError || !query.data) {
+  if (!query.data) {
     const isOffline = query.fetchStatus === "paused" && !query.isError;
     const code = bundleErrorCode(query.error);
     const notFound =
@@ -148,7 +153,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
           </div>
           <div
             data-slot="page-actions"
-            className="flex max-w-full flex-wrap items-center gap-3"
+            className="flex max-w-full flex-col items-start gap-1.5 sm:items-end"
           >
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="secondary" asChild>
@@ -168,7 +173,12 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
                 </Button>
               )}
               {canPublish && detail.status !== "DISCONTINUED" && (
-                <Button type="button" onClick={() => setPublishOpen(true)}>
+                <Button
+                  type="button"
+                  disabled={isFormDirty}
+                  aria-describedby={isFormDirty ? publishBlockedReasonId : undefined}
+                  onClick={() => setPublishOpen(true)}
+                >
                   <Upload />
                   <span>
                     {detail.status === "PUBLISHED"
@@ -178,6 +188,11 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
                 </Button>
               )}
             </div>
+            {isFormDirty && canPublish && detail.status !== "DISCONTINUED" && (
+              <p id={publishBlockedReasonId} className="text-caption font-medium text-warning">
+                {t("actions.saveBeforePublish")}
+              </p>
+            )}
           </div>
         </header>
         <BundleStatusBadges
@@ -214,15 +229,44 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         </div>
       )}
 
+      {query.isError && (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-lg border border-danger bg-danger-bg p-4 text-danger sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <CircleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+            <div className="flex flex-col gap-0.5">
+              <p className="text-body font-semibold">{t("edit.errorTitle")}</p>
+              <p className="text-caption text-text">
+                {query.error
+                  ? resolveBundleErrorMessage(query.error, tErrors)
+                  : t("edit.errorDescription")}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void query.refetch()}
+          >
+            {t("actions.retry")}
+          </Button>
+        </div>
+      )}
+
       <BundleForm
         key={`${detail.revision}:${reloadSeq}`}
         mode="edit"
         formId={formId}
         initialDetail={detail}
         canModify={canModify}
+        onDirtyChange={setIsFormDirty}
         onConflict={handleConflict}
         onSaved={() => {
           setHasConflict(false);
+          setIsFormDirty(false);
           setReloadSeq((seq) => seq + 1);
         }}
       />
@@ -231,6 +275,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         bundle={actionTarget}
         open={publishOpen}
         onOpenChange={setPublishOpen}
+        onConflict={handleConflict}
         onCompleted={() => setHasConflict(false)}
       />
 
@@ -238,6 +283,7 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
         bundle={actionTarget}
         open={discontinueOpen}
         onOpenChange={setDiscontinueOpen}
+        onConflict={handleConflict}
         onCompleted={() => setHasConflict(false)}
       />
     </div>

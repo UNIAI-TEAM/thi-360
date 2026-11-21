@@ -28,7 +28,7 @@ export function BundleStatusBadges({
       {status === "PUBLISHED" && saleState === "UNAVAILABLE" && (
         <StatusChip tone="danger">{t("UNAVAILABLE")}</StatusChip>
       )}
-      {hasUnpublishedChanges && (
+      {status === "PUBLISHED" && hasUnpublishedChanges && (
         <StatusChip tone="warning">{t("UNPUBLISHED_CHANGES")}</StatusChip>
       )}
     </div>

@@ -14,6 +14,7 @@ import {
   IconButton,
   Input,
   ListCard,
+  LiveStatus,
   Select,
   type SelectOption,
   Skeleton,
@@ -21,6 +22,7 @@ import {
   Textarea,
   cn,
   focusRing,
+  focusRingInset,
   notify,
   useCardMode,
 } from "@thi360/ui";
@@ -34,12 +36,13 @@ import {
   CircleAlert,
   Lock,
   Save,
+  WifiOff,
   X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Fragment, useId, useMemo, useState, type ReactNode } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Controller, type FieldErrors, useForm, useWatch } from "react-hook-form";
 
 import { BlockRadioGroup } from "@/features/exams/components/block-radio-group";
 
@@ -112,6 +115,19 @@ const FIELD_MAP: Readonly<Record<string, keyof BundleFormValues>> = {
   resultView: "resultView",
 };
 
+const FIELD_ORDER: readonly (keyof BundleFormValues)[] = [
+  "examKindItemId",
+  "code",
+  "name",
+  "summary",
+  "description",
+  "examIds",
+  "listPriceVnd",
+  "attemptsPerExam",
+  "benefitNote",
+  "resultView",
+];
+
 function mergeDescribedBy(...ids: (string | undefined | false)[]): string | undefined {
   const joined = ids.filter(Boolean).join(" ");
   return joined || undefined;
@@ -122,6 +138,7 @@ export function BundleForm({
   formId,
   initialDetail,
   canModify,
+  onDirtyChange,
   onConflict,
   onSaved,
 }: {
@@ -129,6 +146,7 @@ export function BundleForm({
   formId: string;
   initialDetail?: BundleDetailResponse;
   canModify: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
   onConflict?: () => Promise<void> | void;
   onSaved?: () => void;
 }) {
@@ -180,12 +198,13 @@ export function BundleForm({
     handleSubmit,
     setValue,
     setError,
-    formState: { errors },
+    setFocus,
+    formState: { errors, isDirty },
   } = useForm<BundleFormValues>({
     defaultValues,
     resolver: zodResolver(schema),
     mode: "onTouched",
-    shouldFocusError: true,
+    shouldFocusError: false,
   });
 
   const values = useWatch({ control, defaultValue: defaultValues }) as BundleFormValues;
@@ -196,17 +215,54 @@ export function BundleForm({
     activeExamKindId,
     Boolean(activeExamKindId),
   );
+  const isCandidatesOffline =
+    Boolean(activeExamKindId) &&
+    candidatesQuery.fetchStatus === "paused" &&
+    (!candidatesQuery.data || candidatesQuery.isPlaceholderData);
 
   const createMutation = useCreateBundleMutation();
   const updateMutation = useUpdateBundleMutation(initialDetail?.id ?? "");
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<unknown>(null);
+  const [orderLiveMessage, setOrderLiveMessage] = useState("");
   const [pendingExamKindId, setPendingExamKindId] = useState<string | null>(null);
   const [candidateCache, setCandidateCache] = useState<
     Record<string, BundleCandidateResponse>
   >({});
   const [pickerRef, isCardMode] = useCardMode<HTMLDivElement>(true, 500);
+  const examKindWrapperRef = useRef<HTMLDivElement | null>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+  const priceInputRef = useRef<HTMLInputElement | null>(null);
+  const attemptsInputRef = useRef<HTMLInputElement | null>(null);
+  const orderHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const removeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const pendingOrderFocusRef = useRef<{ targetExamId: string | null } | null>(null);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty || isReadOnly) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty, isReadOnly]);
+
+  useEffect(() => {
+    const pending = pendingOrderFocusRef.current;
+    if (!pending) return;
+    pendingOrderFocusRef.current = null;
+    if (pending.targetExamId) {
+      removeButtonRefs.current.get(pending.targetExamId)?.focus();
+    } else {
+      orderHeadingRef.current?.focus();
+    }
+  }, [values.examIds]);
 
   const examKindOptionsList = useMemo<ExamKindOption[]>(() => {
     const map = new Map<string, ExamKindOption>();
@@ -265,30 +321,56 @@ export function BundleForm({
       subjectLabel: string;
       items: BundleCandidateResponse[];
     }[] = [];
-    const byKey = new Map<
+    const aliasToGroup = new Map<
       string,
       { key: string; subjectLabel: string; items: BundleCandidateResponse[] }
     >();
     for (const candidate of candidates) {
-      const key =
-        candidate.subjectItemId ?? candidate.subjectCode ?? "__OTHER__";
-      let group = byKey.get(key);
+      const subjectLabel = subjectLabelOf(
+        candidate.subjectName,
+        candidate.subjectCode,
+      );
+      const normalizedCode = candidate.subjectCode?.trim().toUpperCase() || null;
+      const normalizedItemId = candidate.subjectItemId?.trim() || null;
+      const hasSubject = Boolean(
+        normalizedCode ||
+          normalizedItemId ||
+          candidate.subjectName?.nameVi?.trim() ||
+          candidate.subjectName?.nameEn?.trim(),
+      );
+      const normalizedLabel = hasSubject
+        ? `label:${subjectLabel.trim().toLocaleLowerCase(uiLocale)}`
+        : "__OTHER__";
+      const aliases = [
+        normalizedCode ? `code:${normalizedCode}` : null,
+        normalizedItemId ? `id:${normalizedItemId}` : null,
+        normalizedLabel,
+      ].filter((alias): alias is string => Boolean(alias));
+
+      let group:
+        | { key: string; subjectLabel: string; items: BundleCandidateResponse[] }
+        | undefined;
+      for (const alias of aliases) {
+        group = aliasToGroup.get(alias);
+        if (group) break;
+      }
       if (!group) {
         group = {
-          key,
-          subjectLabel: subjectLabelOf(
-            candidate.subjectName,
-            candidate.subjectCode,
-          ),
+          key: aliases[0] ?? "__OTHER__",
+          subjectLabel,
           items: [],
         };
-        byKey.set(key, group);
         groups.push(group);
+      }
+      for (const alias of aliases) {
+        if (!aliasToGroup.has(alias)) {
+          aliasToGroup.set(alias, group);
+        }
       }
       group.items.push(candidate);
     }
     return groups;
-  }, [candidatesQuery.data, subjectLabelOf]);
+  }, [candidatesQuery.data, subjectLabelOf, uiLocale]);
 
   const itemMetadataById = useMemo(() => {
     const map = new Map<string, SelectedItemDisplay>();
@@ -356,6 +438,10 @@ export function BundleForm({
   const sectionItemsId = useId();
   const sectionPricingId = useId();
   const sectionBenefitsId = useId();
+  const pickerTargetId = useId();
+  const descriptionAnchorId = useId();
+  const priceAnchorId = useId();
+  const attemptsAnchorId = useId();
   const itemsErrorId = useId();
   const summaryTitleId = useId();
   const pricePreviewId = useId();
@@ -403,6 +489,28 @@ export function BundleForm({
     });
   };
 
+  const focusExamKindField = () => {
+    examKindWrapperRef.current
+      ?.querySelector<HTMLElement>('[role="combobox"]')
+      ?.focus();
+  };
+
+  const focusExamIdsField = () => {
+    const firstCheckbox = pickerRef.current?.querySelector<HTMLElement>(
+      'button[role="checkbox"]:not([disabled]), input[type="checkbox"]:not([disabled])',
+    );
+    if (firstCheckbox) {
+      firstCheckbox.focus();
+      return;
+    }
+    pickerRef.current?.focus();
+  };
+
+  const focusCustomField = (field: keyof BundleFormValues) => {
+    if (field === "examKindItemId") focusExamKindField();
+    else if (field === "examIds") focusExamIdsField();
+  };
+
   const moveSelected = (index: number, delta: -1 | 1) => {
     if (isReadOnly) return;
     const nextIndex = index + delta;
@@ -415,22 +523,48 @@ export function BundleForm({
       shouldTouch: true,
       shouldValidate: true,
     });
-  };
-
-  const removeSelected = (examId: string) => {
-    if (isReadOnly) return;
-    setValue(
-      "examIds",
-      values.examIds.filter((id) => id !== examId),
-      {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      },
+    const movedItem = selectedItems[index];
+    const code = movedItem?.code ?? moved!;
+    setOrderLiveMessage(
+      t(delta < 0 ? "form.order.movedUp" : "form.order.movedDown", {
+        code,
+        position: nextIndex + 1,
+      }),
     );
   };
 
-  const onSubmit = handleSubmit(async (submitted) => {
+  const removeSelected = (examId: string, index: number) => {
+    if (isReadOnly) return;
+    const nextIds = values.examIds.filter((id) => id !== examId);
+    const removedItem = selectedItems[index];
+    const code = removedItem?.code ?? examId;
+    pendingOrderFocusRef.current = {
+      targetExamId:
+        nextIds.length > 0
+          ? (nextIds[Math.min(index, nextIds.length - 1)] ?? null)
+          : null,
+    };
+    setValue("examIds", nextIds, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    setOrderLiveMessage(
+      t("form.order.removed", { code, count: nextIds.length }),
+    );
+  };
+
+  const onInvalidSubmit = (fieldErrors: FieldErrors<BundleFormValues>) => {
+    const firstInvalid = FIELD_ORDER.find((field) => Boolean(fieldErrors[field]));
+    if (!firstInvalid) return;
+    if (firstInvalid === "examKindItemId" || firstInvalid === "examIds") {
+      focusCustomField(firstInvalid);
+      return;
+    }
+    setFocus(firstInvalid);
+  };
+
+  const onValidSubmit = async (submitted: BundleFormValues) => {
     if (isReadOnly || isSaving) return;
     setSubmitError(null);
     try {
@@ -454,7 +588,7 @@ export function BundleForm({
         if (onConflict) {
           await onConflict();
         } else {
-          setSubmitError(resolveBundleErrorMessage(err, tErrors));
+          setSubmitError(err);
         }
         return;
       }
@@ -473,21 +607,27 @@ export function BundleForm({
       if (srvFields.length > 0) {
         let focused = false;
         for (const fe of srvFields) {
-          const mapped = FIELD_MAP[fe.field ?? ""];
+          const normalized = (fe.field ?? "")
+            .replace(/\[.*$/, "")
+            .replace(/\..*$/, "");
+          const mapped = FIELD_MAP[normalized];
           if (mapped) {
             setError(
               mapped,
               { type: "server", message: resolveBundleErrorMessage(err, tErrors) },
               { shouldFocus: !focused },
             );
+            if (!focused && (mapped === "examKindItemId" || mapped === "examIds")) {
+              focusCustomField(mapped);
+            }
             focused = true;
           }
         }
       }
 
-      setSubmitError(resolveBundleErrorMessage(err, tErrors));
+      setSubmitError(err);
     }
-  });
+  };
 
   const totalQuestionMin = selectedItems.reduce(
     (sum, item) => sum + (item.questionCount?.min ?? 0),
@@ -514,28 +654,28 @@ export function BundleForm({
       items.push({
         key: "tooFew",
         label: t("form.aside.issues.tooFew", { min: BUNDLE_LIMITS.itemsMin }),
-        href: `#${sectionItemsId}`,
+        href: `#${pickerTargetId}`,
       });
     }
     if (values.examIds.length > BUNDLE_LIMITS.itemsMax) {
       items.push({
         key: "tooMany",
         label: t("form.aside.issues.tooMany", { max: BUNDLE_LIMITS.itemsMax }),
-        href: `#${sectionItemsId}`,
+        href: `#${pickerTargetId}`,
       });
     }
     if (!values.description.trim()) {
       items.push({
         key: "description",
         label: t("form.aside.issues.description"),
-        href: `#${sectionInfoId}`,
+        href: `#${descriptionAnchorId}`,
       });
     }
     if (parsedPrice === null || parsedPrice <= 0) {
       items.push({
         key: "price",
         label: t("form.aside.issues.price"),
-        href: `#${sectionPricingId}`,
+        href: `#${priceAnchorId}`,
       });
     }
     if (
@@ -546,28 +686,53 @@ export function BundleForm({
       items.push({
         key: "attempts",
         label: t("form.aside.issues.attempts"),
-        href: `#${sectionPricingId}`,
+        href: `#${attemptsAnchorId}`,
       });
     }
     if (selectedItems.some((item) => item.saleState !== "ON_SALE")) {
       items.push({
         key: "unavailableItem",
         label: t("form.aside.issues.unavailableItem"),
-        href: `#${sectionItemsId}`,
+        href: `#${pickerTargetId}`,
       });
     }
     return items;
   }, [
+    attemptsAnchorId,
+    descriptionAnchorId,
     parsedAttempts,
     parsedPrice,
-    sectionInfoId,
-    sectionItemsId,
-    sectionPricingId,
+    pickerTargetId,
+    priceAnchorId,
     selectedItems,
     t,
     values.description,
     values.examIds.length,
   ]);
+
+  const focusChecklistTarget = (key: string) => {
+    if (key === "description") {
+      descriptionRef.current?.focus();
+      return;
+    }
+    if (key === "price") {
+      priceInputRef.current?.focus();
+      return;
+    }
+    if (key === "attempts") {
+      attemptsInputRef.current?.focus();
+      return;
+    }
+    if (key === "unavailableItem") {
+      const firstBad = selectedItems.find((item) => item.saleState !== "ON_SALE");
+      const removeBtn = firstBad ? removeButtonRefs.current.get(firstBad.examId) : undefined;
+      if (removeBtn) {
+        removeBtn.focus();
+        return;
+      }
+    }
+    focusExamIdsField();
+  };
 
   const counterText = (field: "summary" | "description" | "benefitNote") =>
     t("form.counter", {
@@ -652,8 +817,7 @@ export function BundleForm({
         )}
 
       {initialDetail?.status === "PUBLISHED" &&
-        initialDetail.hasUnpublishedChanges &&
-        initialDetail.saleState !== "UNAVAILABLE" && (
+        initialDetail.hasUnpublishedChanges && (
           <div
             role="status"
             className="flex items-start gap-3 rounded-lg border border-warning bg-warning-bg p-4 text-warning"
@@ -672,13 +836,13 @@ export function BundleForm({
           </div>
         )}
 
-      {submitError && (
+      {submitError !== null && submitError !== undefined && (
         <div
           role="alert"
           className="flex items-start gap-2.5 rounded-lg border border-danger bg-danger-bg px-4 py-3 text-body text-danger"
         >
           <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>{submitError}</span>
+          <span>{resolveBundleErrorMessage(submitError, tErrors)}</span>
         </div>
       )}
 
@@ -687,35 +851,57 @@ export function BundleForm({
           id={formId}
           aria-label={t("form.ariaLabel")}
           noValidate
-          onSubmit={(event) => void onSubmit(event)}
+          onSubmit={(event) =>
+            void handleSubmit(onValidSubmit, onInvalidSubmit)(event)
+          }
           className="flex min-w-0 flex-[999_1_34rem] flex-col gap-4"
         >
           {/* Section 1: Basic Info */}
           <Section id={sectionInfoId} index={1} title={t("form.sections.info")}>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(16rem,100%),1fr))] gap-4">
-              <FormField
-                label={t("form.fields.examKind")}
-                required
-                error={errors.examKindItemId?.message}
-                hint={t("form.hints.examKind")}
-              >
-                {(controlProps) => (
-                  <Controller
-                    control={control}
-                    name="examKindItemId"
-                    render={({ field }) => (
-                      <Select
-                        {...controlProps}
-                        disabled={isReadOnly || examKindsQuery.isLoading}
-                        placeholder={t("form.fields.examKindPlaceholder")}
-                        options={examKindSelectOptions}
-                        value={field.value || undefined}
-                        onValueChange={handleExamKindSelect}
-                      />
-                    )}
-                  />
+              <div className="flex min-w-0 flex-col gap-2">
+                <FormField
+                  label={t("form.fields.examKind")}
+                  required
+                  error={errors.examKindItemId?.message}
+                  hint={t("form.hints.examKind")}
+                >
+                  {(controlProps) => (
+                    <Controller
+                      control={control}
+                      name="examKindItemId"
+                      render={({ field }) => (
+                        <div ref={examKindWrapperRef}>
+                          <Select
+                            {...controlProps}
+                            disabled={isReadOnly || examKindsQuery.isLoading}
+                            placeholder={t("form.fields.examKindPlaceholder")}
+                            options={examKindSelectOptions}
+                            value={field.value || undefined}
+                            onValueChange={handleExamKindSelect}
+                          />
+                        </div>
+                      )}
+                    />
+                  )}
+                </FormField>
+                {examKindsQuery.isError && (
+                  <div
+                    role="alert"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-caption text-danger"
+                  >
+                    <span>{t("form.examKindsError")}</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void examKindsQuery.refetch()}
+                    >
+                      {t("actions.retry")}
+                    </Button>
+                  </div>
                 )}
-              </FormField>
+              </div>
 
               <FormField
                 label={t("form.fields.code")}
@@ -770,22 +956,32 @@ export function BundleForm({
               )}
             </FormField>
 
-            <FormField
-              label={t("form.fields.description")}
-              error={errors.description?.message}
-              hint={`${counterText("description")} · ${t("form.hints.description")}`}
-            >
-              {(controlProps) => (
-                <Textarea
-                  {...controlProps}
-                  rows={3}
-                  maxLength={BUNDLE_LIMITS.description}
-                  disabled={isReadOnly}
-                  placeholder={t("form.fields.descriptionPlaceholder")}
-                  {...register("description")}
-                />
-              )}
-            </FormField>
+            <div id={descriptionAnchorId}>
+              <FormField
+                label={t("form.fields.description")}
+                error={errors.description?.message}
+                hint={`${counterText("description")} · ${t("form.hints.description")}`}
+              >
+                {(controlProps) => {
+                  const { ref: descRegisterRef, ...descRegister } =
+                    register("description");
+                  return (
+                    <Textarea
+                      {...controlProps}
+                      rows={3}
+                      maxLength={BUNDLE_LIMITS.description}
+                      disabled={isReadOnly}
+                      placeholder={t("form.fields.descriptionPlaceholder")}
+                      {...descRegister}
+                      ref={(el) => {
+                        descRegisterRef(el);
+                        descriptionRef.current = el;
+                      }}
+                    />
+                  );
+                }}
+              </FormField>
+            </div>
           </Section>
 
           {/* Section 2: Member Exams Picker & Order */}
@@ -815,8 +1011,13 @@ export function BundleForm({
             </p>
 
             <div
+              id={pickerTargetId}
+              tabIndex={-1}
               ref={pickerRef}
-              className="overflow-hidden rounded-lg border border-border"
+              className={cn(
+                "overflow-hidden rounded-lg border border-border",
+                focusRingInset,
+              )}
             >
               {!activeExamKindId ? (
                 <p className="p-4 text-body text-text-muted">
@@ -836,6 +1037,24 @@ export function BundleForm({
                       <Skeleton className="h-6 w-4/5" />
                     </div>
                   )}
+                </div>
+              ) : isCandidatesOffline ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center justify-between gap-2 bg-subtle p-4 text-body text-text-secondary"
+                >
+                  <span className="flex items-center gap-2">
+                    <WifiOff aria-hidden className="size-4 shrink-0" />
+                    <span>{t("form.candidates.offline")}</span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void candidatesQuery.refetch()}
+                  >
+                    {t("actions.retry")}
+                  </Button>
                 </div>
               ) : candidatesQuery.isError ? (
                 <div
@@ -878,6 +1097,7 @@ export function BundleForm({
                                   id={checkboxId}
                                   checked={checked}
                                   disabled={isReadOnly}
+                                  className="relative pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
                                   aria-label={t("form.candidates.selectAria", {
                                     code: candidate.code,
                                   })}
@@ -937,7 +1157,12 @@ export function BundleForm({
                   ))}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div
+                  role="region"
+                  aria-label={t("form.candidates.tableAria")}
+                  tabIndex={0}
+                  className={cn("overflow-x-auto", focusRingInset)}
+                >
                   <table
                     aria-label={t("form.candidates.tableAria")}
                     className="w-full border-separate border-spacing-0 text-field-label tabular-nums"
@@ -995,6 +1220,7 @@ export function BundleForm({
                                     id={checkboxId}
                                     checked={checked}
                                     disabled={isReadOnly}
+                                    className="relative pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
                                     aria-label={t("form.candidates.selectAria", {
                                       code: candidate.code,
                                     })}
@@ -1062,7 +1288,12 @@ export function BundleForm({
             )}
 
             <div className="flex flex-col gap-2 pt-1">
-              <h3 className="text-label font-semibold text-text">
+              <LiveStatus message={orderLiveMessage} />
+              <h3
+                ref={orderHeadingRef}
+                tabIndex={-1}
+                className={cn("w-fit rounded-sm text-label font-semibold text-text", focusRing)}
+              >
                 {t("form.order.title")}
               </h3>
               {selectedItems.length === 0 ? (
@@ -1119,11 +1350,15 @@ export function BundleForm({
                           onClick={() => moveSelected(index, 1)}
                         />
                         <IconButton
+                          ref={(el) => {
+                            if (el) removeButtonRefs.current.set(item.examId, el);
+                            else removeButtonRefs.current.delete(item.examId);
+                          }}
                           icon={<X />}
                           aria-label={t("form.order.remove", { code: item.code })}
                           tooltip={t("form.order.removeTooltip")}
                           disabled={isReadOnly}
-                          onClick={() => removeSelected(item.examId)}
+                          onClick={() => removeSelected(item.examId, index)}
                         />
                       </div>
                     </li>
@@ -1139,87 +1374,97 @@ export function BundleForm({
           {/* Section 3: Pricing & Attempts */}
           <Section id={sectionPricingId} index={3} title={t("form.sections.pricing")}>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(16rem,100%),1fr))] gap-4">
-              <FormField
-                label={t("form.fields.listPriceVnd")}
-                error={errors.listPriceVnd?.message}
-                hint={t("form.hints.listPriceVnd")}
-              >
-                {(controlProps) => (
-                  <Controller
-                    control={control}
-                    name="listPriceVnd"
-                    render={({ field }) => {
-                      const amount = integerOf(field.value.trim());
-                      return (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <Input
-                              {...controlProps}
-                              aria-describedby={mergeDescribedBy(
-                                controlProps["aria-describedby"],
-                                amount !== null && pricePreviewId,
-                              )}
-                              name={field.name}
-                              ref={field.ref}
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="off"
-                              disabled={isReadOnly}
-                              className="text-right tabular-nums"
-                              value={field.value}
-                              onChange={(event) =>
-                                field.onChange(priceDigits(event.target.value))
-                              }
-                              onBlur={field.onBlur}
-                            />
-                            <span aria-hidden className="text-text-secondary">
-                              {t("form.currency")}
-                            </span>
+              <div id={priceAnchorId} className="min-w-0">
+                <FormField
+                  label={t("form.fields.listPriceVnd")}
+                  error={errors.listPriceVnd?.message}
+                  hint={t("form.hints.listPriceVnd")}
+                >
+                  {(controlProps) => (
+                    <Controller
+                      control={control}
+                      name="listPriceVnd"
+                      render={({ field }) => {
+                        const amount = integerOf(field.value.trim());
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                {...controlProps}
+                                aria-describedby={mergeDescribedBy(
+                                  controlProps["aria-describedby"],
+                                  amount !== null && pricePreviewId,
+                                )}
+                                name={field.name}
+                                ref={(el) => {
+                                  field.ref(el);
+                                  priceInputRef.current = el;
+                                }}
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                disabled={isReadOnly}
+                                className="text-right tabular-nums"
+                                value={field.value}
+                                onChange={(event) =>
+                                  field.onChange(priceDigits(event.target.value))
+                                }
+                                onBlur={field.onBlur}
+                              />
+                              <span aria-hidden className="text-text-secondary">
+                                {t("form.currency")}
+                              </span>
+                            </div>
+                            {amount !== null && (
+                              <p id={pricePreviewId} className="text-caption text-text-muted">
+                                {formatVnd(amount, locale)}
+                              </p>
+                            )}
                           </div>
-                          {amount !== null && (
-                            <p id={pricePreviewId} className="text-caption text-text-muted">
-                              {formatVnd(amount, locale)}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-                )}
-              </FormField>
+                        );
+                      }}
+                    />
+                  )}
+                </FormField>
+              </div>
 
-              <FormField
-                label={t("form.fields.attemptsPerExam")}
-                error={errors.attemptsPerExam?.message}
-                hint={t("form.hints.attemptsPerExam", {
-                  min: BUNDLE_LIMITS.attemptsMin,
-                  max: BUNDLE_LIMITS.attemptsMax,
-                })}
-              >
-                {(controlProps) => (
-                  <Controller
-                    control={control}
-                    name="attemptsPerExam"
-                    render={({ field }) => (
-                      <Input
-                        {...controlProps}
-                        name={field.name}
-                        ref={field.ref}
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="off"
-                        disabled={isReadOnly}
-                        className="tabular-nums"
-                        value={field.value}
-                        onChange={(event) =>
-                          field.onChange(priceDigits(event.target.value))
-                        }
-                        onBlur={field.onBlur}
-                      />
-                    )}
-                  />
-                )}
-              </FormField>
+              <div id={attemptsAnchorId} className="min-w-0">
+                <FormField
+                  label={t("form.fields.attemptsPerExam")}
+                  error={errors.attemptsPerExam?.message}
+                  hint={t("form.hints.attemptsPerExam", {
+                    min: BUNDLE_LIMITS.attemptsMin,
+                    max: BUNDLE_LIMITS.attemptsMax,
+                  })}
+                >
+                  {(controlProps) => (
+                    <Controller
+                      control={control}
+                      name="attemptsPerExam"
+                      render={({ field }) => (
+                        <Input
+                          {...controlProps}
+                          name={field.name}
+                          ref={(el) => {
+                            field.ref(el);
+                            attemptsInputRef.current = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          disabled={isReadOnly}
+                          className="tabular-nums"
+                          value={field.value}
+                          onChange={(event) =>
+                            field.onChange(priceDigits(event.target.value))
+                          }
+                          onBlur={field.onBlur}
+                        />
+                      )}
+                    />
+                  )}
+                </FormField>
+              </div>
             </div>
           </Section>
 
@@ -1393,6 +1638,10 @@ export function BundleForm({
                     <li key={item.key}>
                       <a
                         href={item.href}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          focusChecklistTarget(item.key);
+                        }}
                         className={cn(
                           "font-medium text-danger hover:underline",
                           focusRing,

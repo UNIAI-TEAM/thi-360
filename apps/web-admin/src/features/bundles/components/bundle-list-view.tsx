@@ -30,6 +30,7 @@ import { pickName } from "@thi360/web-kit/i18n";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import {
   Ban,
+  CircleAlert,
   Eye,
   MoreHorizontal,
   Package,
@@ -44,7 +45,7 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { usePermissions } from "@/features/session/session-provider";
 
@@ -122,24 +123,31 @@ export function BundleListView() {
   const [publishTarget, setPublishTarget] = useState<BundleActionTarget | null>(null);
   const [discontinueTarget, setDiscontinueTarget] = useState<BundleActionTarget | null>(null);
 
+  const [syncedSearchKey, setSyncedSearchKey] = useState<string | null>(null);
+  const lastSyncedSearchRef = useRef<string | null>(null);
   const searchTimerRef = useRef<number | null>(null);
   const searchInputId = useId();
   const examKindSelectId = useId();
 
   if (searchParamsKey !== prevSearchKey) {
     setPrevSearchKey(searchParamsKey);
-    const nextStatus = parseStatusFilter(searchParams.get("status"));
-    const nextExamKind = searchParams.get("examKind") ?? "";
-    const nextQ = searchParams.get("q") ?? "";
-    const nextPage = parsePage(searchParams.get("page"));
-    const nextSize = parseSize(searchParams.get("size"));
-    setStatusFilter(nextStatus);
-    setExamKindFilter(nextExamKind);
-    setSearchInput(nextQ);
-    setDebouncedQ(nextQ);
-    setPage(nextPage);
-    setPageSize(nextSize);
-    setLiveMessage("");
+    if (searchParamsKey === syncedSearchKey) {
+      setSyncedSearchKey(null);
+    } else {
+      if (syncedSearchKey !== null) setSyncedSearchKey(null);
+      const nextStatus = parseStatusFilter(searchParams.get("status"));
+      const nextExamKind = searchParams.get("examKind") ?? "";
+      const nextQ = searchParams.get("q") ?? "";
+      const nextPage = parsePage(searchParams.get("page"));
+      const nextSize = parseSize(searchParams.get("size"));
+      setStatusFilter(nextStatus);
+      setExamKindFilter(nextExamKind);
+      setSearchInput(nextQ);
+      setDebouncedQ(nextQ);
+      setPage(nextPage);
+      setPageSize(nextSize);
+      setLiveMessage("");
+    }
   }
 
   const cancelPendingSearch = useCallback(() => {
@@ -150,9 +158,15 @@ export function BundleListView() {
   }, []);
 
   useEffect(() => {
+    if (lastSyncedSearchRef.current === searchParamsKey) {
+      lastSyncedSearchRef.current = null;
+      return;
+    }
+    lastSyncedSearchRef.current = null;
     cancelPendingSearch();
-    return cancelPendingSearch;
   }, [cancelPendingSearch, searchParamsKey]);
+
+  useEffect(() => cancelPendingSearch, [cancelPendingSearch]);
 
   const syncUrl = useCallback(
     (
@@ -169,9 +183,12 @@ export function BundleListView() {
       if (nextPage > 1) next.set("page", String(nextPage));
       if (nextSize !== DEFAULT_PAGE_SIZE) next.set("size", String(nextSize));
       const qs = next.toString();
+      if (qs === searchParamsKey) return;
+      lastSyncedSearchRef.current = qs;
+      setSyncedSearchKey(qs);
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [pathname, router],
+    [pathname, router, searchParamsKey],
   );
 
   const handleSearchChange = (nextValue: string) => {
@@ -247,7 +264,27 @@ export function BundleListView() {
   });
 
   const isOffline =
-    listQuery.fetchStatus === "paused" && (listQuery.isLoading || listQuery.isPlaceholderData);
+    listQuery.fetchStatus === "paused" && (!listQuery.data || listQuery.isPlaceholderData);
+
+  const maxPage =
+    !isOffline &&
+    listQuery.data &&
+    !listQuery.isPlaceholderData &&
+    listQuery.data.totalPages >= 1
+      ? listQuery.data.totalPages
+      : null;
+
+  if (maxPage !== null && page > maxPage) {
+    setPage(maxPage);
+  }
+
+  const prevPageRef = useRef(page);
+  useEffect(() => {
+    if (maxPage !== null && prevPageRef.current > maxPage && page <= maxPage) {
+      syncUrl(statusFilter, examKindFilter, debouncedQ, page, pageSize);
+    }
+    prevPageRef.current = page;
+  }, [debouncedQ, examKindFilter, maxPage, page, pageSize, statusFilter, syncUrl]);
 
   const examKindOptions: SelectOption[] = useMemo(() => {
     const base: SelectOption[] = [{ value: "__ALL__", label: t("list.filters.examKindAll") }];
@@ -269,14 +306,17 @@ export function BundleListView() {
   );
 
   const renderRowActions = useCallback(
-    (bundle: BundleSummaryResponse) => {
+    (bundle: BundleSummaryResponse, options?: { inCard?: boolean }) => {
       const canOfferPublish = canPublish && bundle.status !== "DISCONTINUED";
       const canOfferDiscontinue = canPublish && bundle.status === "PUBLISHED";
       const hasMenu = canOfferPublish || canOfferDiscontinue;
-      const editOrViewLabel = canModify
+      const canEdit = canModify && bundle.status !== "DISCONTINUED";
+      if (options?.inCard && !hasMenu) return null;
+
+      const editOrViewLabel = canEdit
         ? t("actions.editAria", { code: bundle.code })
         : t("actions.viewAria", { code: bundle.code });
-      const editOrViewTooltip = canModify ? t("actions.edit") : t("actions.view");
+      const editOrViewTooltip = canEdit ? t("actions.edit") : t("actions.view");
       const toTarget = (): BundleActionTarget => ({
         id: bundle.id,
         code: bundle.code,
@@ -287,22 +327,24 @@ export function BundleListView() {
 
       return (
         <div className="flex items-center justify-end gap-1">
-          <Tooltip content={editOrViewTooltip}>
-            <Link
-              href={`/bundles/${bundle.id}`}
-              aria-label={editOrViewLabel}
-              className={cn(
-                "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-subtle hover:text-text pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-                focusRing,
-              )}
-            >
-              {canModify ? (
-                <Pencil className="size-[18px]" aria-hidden />
-              ) : (
-                <Eye className="size-[18px]" aria-hidden />
-              )}
-            </Link>
-          </Tooltip>
+          {!options?.inCard && (
+            <Tooltip content={editOrViewTooltip}>
+              <Link
+                href={`/bundles/${bundle.id}`}
+                aria-label={editOrViewLabel}
+                className={cn(
+                  "inline-flex size-10 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-subtle hover:text-text pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                  focusRing,
+                )}
+              >
+                {canEdit ? (
+                  <Pencil className="size-[18px]" aria-hidden />
+                ) : (
+                  <Eye className="size-[18px]" aria-hidden />
+                )}
+              </Link>
+            </Tooltip>
+          )}
           {hasMenu && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -312,9 +354,11 @@ export function BundleListView() {
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => router.push(`/bundles/${bundle.id}`)}>
-                  {canModify ? <Pencil /> : <Eye />}
-                  <span>{editOrViewTooltip}</span>
+                <DropdownMenuItem asChild>
+                  <Link href={`/bundles/${bundle.id}`}>
+                    {canEdit ? <Pencil /> : <Eye />}
+                    <span>{editOrViewTooltip}</span>
+                  </Link>
                 </DropdownMenuItem>
                 {canOfferPublish && (
                   <DropdownMenuItem onSelect={() => setPublishTarget(toTarget())}>
@@ -331,8 +375,7 @@ export function BundleListView() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       destructive
-                      onSelect={() => setDiscontinueTarget(toTarget())}
-                    >
+                      onSelect={() => setDiscontinueTarget(toTarget())}>
                       <Ban />
                       <span>{t("actions.discontinue")}</span>
                     </DropdownMenuItem>
@@ -344,7 +387,7 @@ export function BundleListView() {
         </div>
       );
     },
-    [canModify, canPublish, router, t],
+    [canModify, canPublish, t],
   );
 
   const columns = useMemo<ColumnDef<BundleSummaryResponse>[]>(
@@ -503,7 +546,7 @@ export function BundleListView() {
               {bundle.code}
             </span>
           }
-          actions={renderRowActions(bundle)}
+          actions={renderRowActions(bundle, { inCard: true })}
           status={
             <BundleStatusBadges
               status={bundle.status}
@@ -547,6 +590,48 @@ export function BundleListView() {
     }),
     [kindLabelOf, locale, renderRowActions, t],
   );
+
+  const handleStatusRadioKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    let targetIndex = -1;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      targetIndex = (currentIndex + 1) % STATUS_FILTER_OPTIONS.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      targetIndex =
+        (currentIndex - 1 + STATUS_FILTER_OPTIONS.length) % STATUS_FILTER_OPTIONS.length;
+    } else if (event.key === "Home") {
+      targetIndex = 0;
+    } else if (event.key === "End") {
+      targetIndex = STATUS_FILTER_OPTIONS.length - 1;
+    }
+    if (targetIndex === -1) return;
+    event.preventDefault();
+    const nextOption = STATUS_FILTER_OPTIONS[targetIndex];
+    if (!nextOption) return;
+    handleStatusChange(nextOption);
+    const group = event.currentTarget.closest('[role="radiogroup"]');
+    const radios = group?.querySelectorAll<HTMLButtonElement>('[role="radio"]:not(:disabled)');
+    radios?.[targetIndex]?.focus();
+  };
+
+  const resolveLiveTarget = (target: BundleActionTarget | null): BundleActionTarget | null => {
+    if (!target) return null;
+    const fresh = listQuery.data?.items.find((item) => item.id === target.id);
+    return fresh
+      ? {
+          id: fresh.id,
+          code: fresh.code,
+          name: fresh.name,
+          revision: fresh.revision,
+          status: fresh.status,
+        }
+      : target;
+  };
+
+  const livePublishTarget = resolveLiveTarget(publishTarget);
+  const liveDiscontinueTarget = resolveLiveTarget(discontinueTarget);
 
   const items = isOffline ? [] : (listQuery.data?.items ?? []);
   const totalItems = isOffline ? 0 : (listQuery.data?.totalItems ?? 0);
@@ -648,7 +733,7 @@ export function BundleListView() {
             aria-label={t("list.filters.statusGroupAria")}
             className="flex flex-wrap items-center gap-1.5"
           >
-            {STATUS_FILTER_OPTIONS.map((option) => {
+            {STATUS_FILTER_OPTIONS.map((option, index) => {
               const selected = statusFilter === option;
               return (
                 <button
@@ -656,11 +741,13 @@ export function BundleListView() {
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => handleStatusChange(option)}
+                  onKeyDown={(event) => handleStatusRadioKeyDown(event, index)}
                   className={cn(
                     "relative inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 motion-reduce:transition-none",
                     selected
-                      ? "border-primary-fill bg-primary-fill text-on-primary"
+                      ? "border-primary-fill bg-primary-fill text-on-primary forced-colors:border-2 forced-colors:underline"
                       : "border-border bg-surface text-text-secondary hover:bg-subtle",
                     focusRing,
                   )}
@@ -725,6 +812,26 @@ export function BundleListView() {
             )}
           </div>
 
+          {examKindsQuery.isError && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-caption text-danger"
+            >
+              <span className="flex items-center gap-2">
+                <CircleAlert aria-hidden className="size-4 shrink-0" />
+                <span>{t("list.filters.examKindsError")}</span>
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void examKindsQuery.refetch()}
+              >
+                {t("actions.retry")}
+              </Button>
+            </div>
+          )}
+
           {!listQuery.isLoading && !listQuery.isError && !isOffline && (
             <p className="text-caption text-text-muted tabular-nums">
               {t("list.totalItems", { total: totalItems })}
@@ -763,8 +870,8 @@ export function BundleListView() {
       </Card>
 
       <BundlePublishDialog
-        bundle={publishTarget}
-        open={publishTarget !== null}
+        bundle={livePublishTarget}
+        open={livePublishTarget !== null}
         onOpenChange={(open) => {
           if (!open) setPublishTarget(null);
         }}
@@ -774,8 +881,8 @@ export function BundleListView() {
       />
 
       <BundleDiscontinueDialog
-        bundle={discontinueTarget}
-        open={discontinueTarget !== null}
+        bundle={liveDiscontinueTarget}
+        open={liveDiscontinueTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDiscontinueTarget(null);
         }}

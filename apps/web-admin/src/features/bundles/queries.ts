@@ -12,6 +12,7 @@ import {
   publishBundle,
   updateBundle,
 } from "./api";
+import { isBundleRevisionConflict } from "./errors";
 import { bundleKeys } from "./keys";
 import type { BundlesListQueryParams, CreateBundleRequest, UpdateBundleRequest } from "./types";
 
@@ -79,6 +80,12 @@ export function usePublishBundleMutation() {
       queryClient.setQueryData(bundleKeys.detail(variables.id), updated);
       void queryClient.invalidateQueries({ queryKey: bundleKeys.lists() });
     },
+    onError: (err, variables) => {
+      if (isBundleRevisionConflict(err)) {
+        void queryClient.invalidateQueries({ queryKey: bundleKeys.detail(variables.id) });
+        void queryClient.invalidateQueries({ queryKey: bundleKeys.lists() });
+      }
+    },
   });
 }
 
@@ -90,6 +97,12 @@ export function useDiscontinueBundleMutation() {
     onSuccess: (updated, variables) => {
       queryClient.setQueryData(bundleKeys.detail(variables.id), updated);
       void queryClient.invalidateQueries({ queryKey: bundleKeys.lists() });
+    },
+    onError: (err, variables) => {
+      if (isBundleRevisionConflict(err)) {
+        void queryClient.invalidateQueries({ queryKey: bundleKeys.detail(variables.id) });
+        void queryClient.invalidateQueries({ queryKey: bundleKeys.lists() });
+      }
     },
   });
 }
