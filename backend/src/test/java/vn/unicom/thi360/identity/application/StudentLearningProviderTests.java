@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -19,6 +20,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.api.StudentLearningResponse;
+import vn.unicom.thi360.identity.api.StudentLearningResponse.StudentLearningAttempt;
+import vn.unicom.thi360.identity.api.StudentLearningResponse.StudentLearningEntitlement;
 import vn.unicom.thi360.identity.domain.PasswordPolicy;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.domain.UserSource;
@@ -33,6 +36,11 @@ import vn.unicom.thi360.identity.infrastructure.UserIdentityRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort;
 import vn.unicom.thi360.identity.spi.StudentLearningProvider;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.AttemptItem;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.AttemptLearningStatus;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.EntitlementItem;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.EntitlementLearningSource;
+import vn.unicom.thi360.identity.spi.StudentLearningProvider.EntitlementLearningStatus;
 import vn.unicom.thi360.shared.api.NotFoundException;
 import vn.unicom.thi360.shared.idempotency.IdempotencyService;
 import vn.unicom.thi360.shared.outbox.OutboxPublisher;
@@ -64,15 +72,28 @@ class StudentLearningProviderTests {
     }
 
     @Test
-    void getUserLearning_withProviderBean_delegatesToProvider() {
+    void getUserLearning_withProviderBean_mapsAllEntitlementFields() {
         UserAccountRepository userRepo = mock(UserAccountRepository.class);
         UUID userId = UUID.randomUUID();
+        UUID entitlementId = UUID.randomUUID();
+        UUID examId = UUID.randomUUID();
         when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
 
         StudentLearningProvider provider = mock(StudentLearningProvider.class);
         when(provider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
                 true,
-                List.of(Map.of("code", "PKG-1")),
+                List.of(new EntitlementItem(
+                        entitlementId,
+                        examId,
+                        "HSA-MATH-01",
+                        "Đề thi thử HSA Toán",
+                        EntitlementLearningSource.PURCHASE,
+                        4,
+                        1,
+                        1,
+                        0,
+                        2,
+                        EntitlementLearningStatus.ACTIVE)),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -83,7 +104,18 @@ class StudentLearningProviderTests {
 
         assertThat(response.userId()).isEqualTo(userId);
         assertThat(response.dataAvailable()).isTrue();
-        assertThat(response.entitlements()).hasSize(1);
+        assertThat(response.entitlements()).containsExactly(new StudentLearningEntitlement(
+                entitlementId,
+                examId,
+                "HSA-MATH-01",
+                "Đề thi thử HSA Toán",
+                EntitlementLearningSource.PURCHASE,
+                4,
+                1,
+                1,
+                0,
+                2,
+                EntitlementLearningStatus.ACTIVE));
         assertThat(response.attempts()).isEmpty();
         verify(provider).loadForUser(userId);
     }
@@ -92,14 +124,29 @@ class StudentLearningProviderTests {
     void mergesResultsOfTwoProviders() {
         UserAccountRepository userRepo = mock(UserAccountRepository.class);
         UUID userId = UUID.randomUUID();
+        UUID ent1 = UUID.randomUUID();
+        UUID ent2 = UUID.randomUUID();
+        UUID exam1 = UUID.randomUUID();
+        UUID exam2 = UUID.randomUUID();
+        UUID attemptId = UUID.randomUUID();
         when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
+
+        EntitlementItem item1 = new EntitlementItem(
+                ent1, exam1, "EX-1", "Exam 1", EntitlementLearningSource.PURCHASE,
+                2, 0, 1, 0, 1, EntitlementLearningStatus.ACTIVE);
+        EntitlementItem item2 = new EntitlementItem(
+                ent2, exam2, null, null, EntitlementLearningSource.CLASS,
+                1, 0, 1, 0, 0, EntitlementLearningStatus.IN_USE);
+        AttemptItem attemptItem = new AttemptItem(
+                attemptId, exam1, "Exam 1", "HSA", "FULL", 1, AttemptLearningStatus.SCORED,
+                NOW, NOW.plusSeconds(1200), new BigDecimal("85.50"), new BigDecimal("150.00"));
 
         // commerce contributes entitlements only; attempt contributes attempts and
         // dataAvailable on its own side — merged response concatenates every list.
         StudentLearningProvider commerceProvider = mock(StudentLearningProvider.class);
         when(commerceProvider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
                 false,
-                List.of(Map.of("entitlementId", "E-1"), Map.of("entitlementId", "E-2")),
+                List.of(item1, item2),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -108,7 +155,7 @@ class StudentLearningProviderTests {
         when(attemptProvider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
                 true,
                 List.of(),
-                List.of(Map.of("attemptId", "A-1")),
+                List.of(attemptItem),
                 List.of(),
                 List.of(),
                 List.of(Map.of("ticket", "S-1"))));
@@ -118,14 +165,74 @@ class StudentLearningProviderTests {
         StudentLearningResponse response = service.getUserLearning(userId);
 
         assertThat(response.dataAvailable()).isTrue();
-        assertThat(response.attempts()).containsExactly(Map.of("attemptId", "A-1"));
+        assertThat(response.attempts()).containsExactly(new StudentLearningAttempt(
+                attemptId,
+                exam1,
+                "Exam 1",
+                "HSA",
+                "FULL",
+                1,
+                AttemptLearningStatus.SCORED,
+                NOW,
+                NOW.plusSeconds(1200),
+                new BigDecimal("85.50"),
+                new BigDecimal("150.00")));
         assertThat(response.assessments()).isEmpty();
         assertThat(response.practice()).isEmpty();
         // Both providers fill supportRequests: every entry survives, in provider order.
         assertThat(response.supportRequests()).containsExactly(
                 Map.of("ticket", "S-0"), Map.of("ticket", "S-00"), Map.of("ticket", "S-1"));
         assertThat(response.entitlements()).containsExactly(
-                Map.of("entitlementId", "E-1"), Map.of("entitlementId", "E-2"));
+                new StudentLearningEntitlement(
+                        ent1, exam1, "EX-1", "Exam 1", EntitlementLearningSource.PURCHASE,
+                        2, 0, 1, 0, 1, EntitlementLearningStatus.ACTIVE),
+                new StudentLearningEntitlement(
+                        ent2, exam2, null, null, EntitlementLearningSource.CLASS,
+                        1, 0, 1, 0, 0, EntitlementLearningStatus.IN_USE));
+    }
+
+    @Test
+    void enforcesScoreAndStatusFidelityWhenMappingAttemptItems() {
+        UserAccountRepository userRepo = mock(UserAccountRepository.class);
+        UUID userId = UUID.randomUUID();
+        UUID examId = UUID.randomUUID();
+        when(userRepo.findById(userId)).thenReturn(Optional.of(activeAccount(userId)));
+
+        AttemptItem scoredZero = new AttemptItem(
+                UUID.randomUUID(), examId, "Exam A", "HSA", "PART", 1, AttemptLearningStatus.SCORED,
+                NOW, NOW.plusSeconds(60), BigDecimal.ZERO, new BigDecimal("50.00"));
+        AttemptItem pendingWithStaleScore = new AttemptItem(
+                UUID.randomUUID(), examId, "Exam A", "BCA", "FULL", 2, AttemptLearningStatus.PENDING_REVIEW,
+                NOW, NOW.plusSeconds(120), new BigDecimal("45.50"), new BigDecimal("100.00"));
+        AttemptItem inProgress = new AttemptItem(
+                UUID.randomUUID(), examId, "Exam A", "VACT", "FULL", 3, AttemptLearningStatus.IN_PROGRESS,
+                NOW, null, BigDecimal.ZERO, new BigDecimal("1200.00"));
+        AttemptItem gradingError = new AttemptItem(
+                UUID.randomUUID(), examId, "Exam A", "HSA", "PART", 4, AttemptLearningStatus.GRADING_ERROR,
+                NOW, NOW.plusSeconds(180), BigDecimal.ZERO, new BigDecimal("50.00"));
+
+        StudentLearningProvider provider = mock(StudentLearningProvider.class);
+        when(provider.loadForUser(userId)).thenReturn(new StudentLearningProvider.StudentLearningData(
+                true,
+                List.of(),
+                List.of(scoredZero, pendingWithStaleScore, inProgress, gradingError),
+                List.of(),
+                List.of(),
+                List.of()));
+
+        UserAdminService service = createService(userRepo, List.of(provider));
+        StudentLearningResponse response = service.getUserLearning(userId);
+
+        assertThat(response.attempts()).hasSize(4);
+        assertThat(response.attempts().get(0).status()).isEqualTo(AttemptLearningStatus.SCORED);
+        assertThat(response.attempts().get(0).score()).isEqualByComparingTo("0");
+        assertThat(response.attempts().get(0).maxScore()).isEqualByComparingTo("50.00");
+
+        for (int i = 1; i < 4; i++) {
+            StudentLearningAttempt nonScored = response.attempts().get(i);
+            assertThat(nonScored.score()).isNull();
+            assertThat(nonScored.maxScore()).isNull();
+        }
     }
 
     @Test
