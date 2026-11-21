@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import vn.unicom.thi360.commerce.order.domain.ProductType;
 import vn.unicom.thi360.commerce.pricing.CommercePricingProperties;
 import vn.unicom.thi360.commerce.pricing.PricingEngine;
 import vn.unicom.thi360.commerce.pricing.PricingEngine.AutoCandidate;
@@ -21,7 +22,7 @@ import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScopeItem;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionScopeItemRepository;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository;
-import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.CapWarningExam;
+import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.CapWarningProduct;
 
 /**
  * Evaluates {@link CapWarning} entries for automatic promotions whose discount is clamped by {@code vnpayMinAmount}
@@ -56,8 +57,8 @@ public class PromotionCapWarningService {
             return Map.of();
         }
 
-        List<CapWarningExam> exams = storefrontProductRepository.listOnSaleForCapWarnings();
-        if (exams.isEmpty()) {
+        List<CapWarningProduct> products = storefrontProductRepository.listOnSaleProductsForCapWarnings();
+        if (products.isEmpty()) {
             return Map.of();
         }
 
@@ -65,7 +66,7 @@ public class PromotionCapWarningService {
         Map<UUID, List<CapWarning>> result = new LinkedHashMap<>(autos.size());
         for (Promotion promo : autos) {
             ScopeSet scopeSet = scopesByPromo.getOrDefault(promo.getId(), ScopeSet.EMPTY);
-            result.put(promo.getId(), evaluate(promo, scopeSet, exams, minAmount));
+            result.put(promo.getId(), evaluate(promo, scopeSet, products, minAmount));
         }
         return result;
     }
@@ -76,17 +77,19 @@ public class PromotionCapWarningService {
         if (minAmount <= 0 || promo == null || promo.getKind() != PromotionKind.AUTO) {
             return List.of();
         }
-        List<CapWarningExam> exams = storefrontProductRepository.listOnSaleForCapWarnings();
-        if (exams.isEmpty()) {
+        List<CapWarningProduct> products = storefrontProductRepository.listOnSaleProductsForCapWarnings();
+        if (products.isEmpty()) {
             return List.of();
         }
         ScopeSet scopeSet = ScopeSet.from(scopeItems);
-        return evaluate(promo, scopeSet, exams, minAmount);
+        return evaluate(promo, scopeSet, products, minAmount);
     }
 
     private Map<UUID, ScopeSet> loadScopes(List<Promotion> autos) {
         List<UUID> scopedIds = autos.stream()
-                .filter(p -> p.getScope() == PromotionScope.EXAM_KIND || p.getScope() == PromotionScope.EXAM)
+                .filter(p -> p.getScope() == PromotionScope.EXAM_KIND
+                        || p.getScope() == PromotionScope.EXAM
+                        || p.getScope() == PromotionScope.BUNDLE)
                 .map(Promotion::getId)
                 .toList();
         if (scopedIds.isEmpty()) {
@@ -102,7 +105,7 @@ public class PromotionCapWarningService {
     }
 
     private static List<CapWarning> evaluate(
-            Promotion promo, ScopeSet scopeSet, List<CapWarningExam> exams, long minAmount) {
+            Promotion promo, ScopeSet scopeSet, List<CapWarningProduct> products, long minAmount) {
         AutoCandidate candidate = new AutoCandidate(
                 promo.getId(),
                 promo.getName(),
@@ -111,24 +114,24 @@ public class PromotionCapWarningService {
                 promo.getMaxDiscountVnd(),
                 promo.getEndsAt());
         List<CapWarning> warnings = new ArrayList<>();
-        for (CapWarningExam exam : exams) {
-            if (!matchesScope(promo.getScope(), scopeSet, exam)) {
+        for (CapWarningProduct product : products) {
+            if (!matchesScope(promo.getScope(), scopeSet, product) || product.targetId() == null) {
                 continue;
             }
-            AutoEvaluation eval = PricingEngine.evaluateAuto(exam.listPriceVnd(), candidate, minAmount);
+            AutoEvaluation eval = PricingEngine.evaluateAuto(product.listPriceVnd(), candidate, minAmount);
             if (!eval.floored()) {
                 continue;
             }
             long rawDiscount = PricingEngine.computeRawDiscount(
-                    exam.listPriceVnd(),
+                    product.listPriceVnd(),
                     promo.getDiscountType(),
                     promo.getDiscountValue(),
                     promo.getMaxDiscountVnd());
-            long discountedPrice = Math.max(0L, exam.listPriceVnd() - rawDiscount);
+            long discountedPrice = Math.max(0L, product.listPriceVnd() - rawDiscount);
             warnings.add(new CapWarning(
-                    exam.examId(),
-                    exam.name(),
-                    exam.listPriceVnd(),
+                    product.targetId(),
+                    product.name(),
+                    product.listPriceVnd(),
                     discountedPrice,
                     eval.promoPrice()));
         }
@@ -137,17 +140,22 @@ public class PromotionCapWarningService {
         return List.copyOf(warnings);
     }
 
-    private static boolean matchesScope(PromotionScope scope, ScopeSet targets, CapWarningExam exam) {
+    private static boolean matchesScope(PromotionScope scope, ScopeSet targets, CapWarningProduct product) {
         return switch (scope) {
             case ALL -> true;
-            case EXAM_KIND -> exam.examKindItemId() != null && targets.examKindIds().contains(exam.examKindItemId());
-            case EXAM -> exam.examId() != null && targets.examIds().contains(exam.examId());
-            case BUNDLE -> false;
+            case EXAM_KIND -> product.examKindItemId() != null
+                    && targets.examKindIds().contains(product.examKindItemId());
+            case EXAM -> product.productType() == ProductType.EXAM
+                    && product.examId() != null
+                    && targets.examIds().contains(product.examId());
+            case BUNDLE -> product.productType() == ProductType.BUNDLE
+                    && product.bundleId() != null
+                    && targets.bundleIds().contains(product.bundleId());
         };
     }
 
-    private record ScopeSet(Set<UUID> examKindIds, Set<UUID> examIds) {
-        static final ScopeSet EMPTY = new ScopeSet(Set.of(), Set.of());
+    private record ScopeSet(Set<UUID> examKindIds, Set<UUID> examIds, Set<UUID> bundleIds) {
+        static final ScopeSet EMPTY = new ScopeSet(Set.of(), Set.of(), Set.of());
 
         static ScopeSet from(List<PromotionScopeItem> items) {
             if (items == null || items.isEmpty()) {
@@ -155,6 +163,7 @@ public class PromotionCapWarningService {
             }
             Set<UUID> kinds = new HashSet<>();
             Set<UUID> exams = new HashSet<>();
+            Set<UUID> bundles = new HashSet<>();
             for (PromotionScopeItem item : items) {
                 if (item.getExamItemId() != null) {
                     kinds.add(item.getExamItemId());
@@ -162,8 +171,11 @@ public class PromotionCapWarningService {
                 if (item.getExamId() != null) {
                     exams.add(item.getExamId());
                 }
+                if (item.getBundleId() != null) {
+                    bundles.add(item.getBundleId());
+                }
             }
-            return new ScopeSet(Set.copyOf(kinds), Set.copyOf(exams));
+            return new ScopeSet(Set.copyOf(kinds), Set.copyOf(exams), Set.copyOf(bundles));
         }
     }
 }

@@ -72,6 +72,9 @@ public record CreatePromotionRequest(
         List<UUID> examIds,
 
         @Schema(nullable = true)
+        List<UUID> bundleIds,
+
+        @Schema(nullable = true)
         PromotionAudienceType audience,
 
         @Schema(nullable = true)
@@ -83,4 +86,28 @@ public record CreatePromotionRequest(
         @Schema(description = "Mặc định ACTIVE nếu không truyền", nullable = true)
         PromotionStatus status
 ) {
+    public CreatePromotionRequest(
+            PromotionKind kind,
+            String name,
+            String description,
+            String code,
+            DiscountType discountType,
+            Long discountValue,
+            Long maxDiscountVnd,
+            Instant startsAt,
+            Instant endsAt,
+            Integer totalLimit,
+            Integer perUserLimit,
+            Boolean combinable,
+            PromotionScope scope,
+            List<UUID> examKindIds,
+            List<UUID> examIds,
+            PromotionAudienceType audience,
+            List<UUID> audienceClassIds,
+            List<UUID> audienceUserIds,
+            PromotionStatus status) {
+        this(kind, name, description, code, discountType, discountValue, maxDiscountVnd, startsAt, endsAt,
+                totalLimit, perUserLimit, combinable, scope, examKindIds, examIds, null, audience,
+                audienceClassIds, audienceUserIds, status);
+    }
 }

@@ -50,6 +50,12 @@ final class PublishedQuestionPool {
             PoolSpec.set("VACT-SUY-LUAN", "SCIENTIFIC_THINKING", 20, 3, "10").competency("VACT-TD-SL"),
             // SP2E, THPTQG. The tagged group competes with the 20 untagged ones for the same 0.25-point questions: keep it deep.
             PoolSpec.of("TOAN-DLTH", "TOAN", SINGLE_CHOICE, 40, "0.25").tags("TOAN_DU_LIEU_TONG_HOP"),
+            // AD-154: SP2E_ANH_2026 0.2-point QUESTION_SET groups need 1 extra disjoint set each on top of 2 seeded sets.
+            PoolSpec.set("SP2E-ANH-DDC", "ANH", 1, 10, "0.2").tags("ANH_DOC_DIEN_CAU"),
+            PoolSpec.set("SP2E-ANH-DT", "ANH", 1, 5, "0.2").tags("ANH_DIEN_TU"),
+            PoolSpec.set("SP2E-ANH-DCC", "ANH", 1, 5, "0.2").tags("ANH_DIEN_CUM_CAU"),
+            PoolSpec.set("SP2E-ANH-DH1", "ANH", 1, 5, "0.2").tags("ANH_DOC_HIEU_1"),
+            PoolSpec.set("SP2E-ANH-DH2", "ANH", 1, 8, "0.2").tags("ANH_DOC_HIEU_2"),
             PoolSpec.of("TIN-TF-1", "INFORMATICS", TRUE_FALSE, 10, "1"),
             // H-SCA.
             PoolSpec.of("HSCA-TOAN-SC", "TOAN", SINGLE_CHOICE, 40, "0.25"),

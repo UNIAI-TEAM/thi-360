@@ -87,8 +87,8 @@ public class RealPriceCalculator implements PriceCalculator {
         Map<UUID, ScopeTargets> scopes = loadScopes(activeAutos);
         Map<UUID, PriceResult> results = new LinkedHashMap<>(products.size());
         for (PricedProduct product : products) {
-            if (product != null && product.examId() != null) {
-                results.put(product.examId(), computeDisplayPrice(product, activeAutos, scopes));
+            if (product != null && product.productKey() != null) {
+                results.put(product.productKey(), computeDisplayPrice(product, activeAutos, scopes));
             }
         }
         return results;
@@ -241,7 +241,9 @@ public class RealPriceCalculator implements PriceCalculator {
 
     private Map<UUID, ScopeTargets> loadScopes(List<Promotion> promotions) {
         List<UUID> scopedIds = promotions.stream()
-                .filter(p -> p.getScope() == PromotionScope.EXAM_KIND || p.getScope() == PromotionScope.EXAM)
+                .filter(p -> p.getScope() == PromotionScope.EXAM_KIND
+                        || p.getScope() == PromotionScope.EXAM
+                        || p.getScope() == PromotionScope.BUNDLE)
                 .map(Promotion::getId)
                 .toList();
         if (scopedIds.isEmpty()) {
@@ -256,6 +258,9 @@ public class RealPriceCalculator implements PriceCalculator {
             if (item.getExamId() != null) {
                 builder.examIds.add(item.getExamId());
             }
+            if (item.getBundleId() != null) {
+                builder.bundleIds.add(item.getBundleId());
+            }
         }
         Map<UUID, ScopeTargets> result = new HashMap<>(builders.size());
         builders.forEach((id, b) -> result.put(id, b.build()));
@@ -269,7 +274,8 @@ public class RealPriceCalculator implements PriceCalculator {
                     && targets.examKindItemIds().contains(product.examKindItemId());
             case EXAM -> product.examId() != null
                     && targets.examIds().contains(product.examId());
-            case BUNDLE -> false;
+            case BUNDLE -> product.bundleId() != null
+                    && targets.bundleIds().contains(product.bundleId());
         };
     }
 
@@ -283,16 +289,17 @@ public class RealPriceCalculator implements PriceCalculator {
                 promo.getDiscountValue(), promo.getMaxDiscountVnd(), promo.isCombinable());
     }
 
-    private record ScopeTargets(Set<UUID> examKindItemIds, Set<UUID> examIds) {
-        static final ScopeTargets EMPTY = new ScopeTargets(Set.of(), Set.of());
+    private record ScopeTargets(Set<UUID> examKindItemIds, Set<UUID> examIds, Set<UUID> bundleIds) {
+        static final ScopeTargets EMPTY = new ScopeTargets(Set.of(), Set.of(), Set.of());
     }
 
     private static final class ScopeTargetsBuilder {
         final Set<UUID> examKindItemIds = new HashSet<>();
         final Set<UUID> examIds = new HashSet<>();
+        final Set<UUID> bundleIds = new HashSet<>();
 
         ScopeTargets build() {
-            return new ScopeTargets(Set.copyOf(examKindItemIds), Set.copyOf(examIds));
+            return new ScopeTargets(Set.copyOf(examKindItemIds), Set.copyOf(examIds), Set.copyOf(bundleIds));
         }
     }
 }

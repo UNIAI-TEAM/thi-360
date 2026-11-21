@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +43,9 @@ import vn.unicom.thi360.commerce.promotion.api.PromotionPricePreviewRequest;
 import vn.unicom.thi360.commerce.promotion.api.PromotionRedemptionView;
 import vn.unicom.thi360.commerce.promotion.api.PromotionScopeItemView;
 import vn.unicom.thi360.commerce.promotion.api.PromotionSummary;
+import vn.unicom.thi360.commerce.bundle.domain.Bundle;
+import vn.unicom.thi360.commerce.bundle.domain.BundleStatus;
+import vn.unicom.thi360.commerce.bundle.infrastructure.BundleRepository;
 import vn.unicom.thi360.commerce.promotion.api.SuggestedCodeResponse;
 import vn.unicom.thi360.commerce.promotion.api.UpdatePromotionRequest;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
@@ -68,6 +72,7 @@ import vn.unicom.thi360.commerce.storefront.application.ProductDiscontinuedExcep
 import vn.unicom.thi360.commerce.storefront.application.StorefrontErrorCodes;
 import vn.unicom.thi360.commerce.storefront.domain.SaleState;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository;
+import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.BundleRef;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.ExamRef;
 import vn.unicom.thi360.commerce.storefront.infrastructure.StorefrontProductRepository.StoredProduct;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
@@ -116,6 +121,7 @@ public class PromotionAdminService {
     private final PromotionRedemptionRepository redemptionRepository;
     private final PromotionChangeLogRepository changeLogRepository;
     private final StorefrontProductRepository storefrontProductRepository;
+    private final BundleRepository bundleRepository;
     private final PromotionCapWarningService capWarningService;
     private final PriceCalculator priceCalculator;
     private final CatalogLookup catalogLookup;
@@ -128,6 +134,47 @@ public class PromotionAdminService {
     private final AppMessages messages;
     private final Clock clock;
 
+    @Autowired
+    public PromotionAdminService(
+            PromotionRepository promotionRepository,
+            PromotionScopeItemRepository scopeItemRepository,
+            PromotionAudienceRepository audienceRepository,
+            PromotionRedemptionRepository redemptionRepository,
+            PromotionChangeLogRepository changeLogRepository,
+            StorefrontProductRepository storefrontProductRepository,
+            BundleRepository bundleRepository,
+            PromotionCapWarningService capWarningService,
+            PriceCalculator priceCalculator,
+            CatalogLookup catalogLookup,
+            PublishedExamPort publishedExamPort,
+            ClassMembershipPort classMembershipPort,
+            UserDirectory userDirectory,
+            IdempotentCommand idempotentCommand,
+            AuditRecorder auditRecorder,
+            CurrentUserProvider currentUserProvider,
+            AppMessages messages,
+            Clock clock) {
+        this.promotionRepository = promotionRepository;
+        this.scopeItemRepository = scopeItemRepository;
+        this.audienceRepository = audienceRepository;
+        this.redemptionRepository = redemptionRepository;
+        this.changeLogRepository = changeLogRepository;
+        this.storefrontProductRepository = storefrontProductRepository;
+        this.bundleRepository = bundleRepository;
+        this.capWarningService = capWarningService;
+        this.priceCalculator = priceCalculator;
+        this.catalogLookup = catalogLookup;
+        this.publishedExamPort = publishedExamPort;
+        this.classMembershipPort = classMembershipPort;
+        this.userDirectory = userDirectory;
+        this.idempotentCommand = idempotentCommand;
+        this.auditRecorder = auditRecorder;
+        this.currentUserProvider = currentUserProvider;
+        this.messages = messages;
+        this.clock = clock;
+    }
+
+    /** Compat constructor for direct non-bundle test instantiation. */
     public PromotionAdminService(
             PromotionRepository promotionRepository,
             PromotionScopeItemRepository scopeItemRepository,
@@ -146,23 +193,10 @@ public class PromotionAdminService {
             CurrentUserProvider currentUserProvider,
             AppMessages messages,
             Clock clock) {
-        this.promotionRepository = promotionRepository;
-        this.scopeItemRepository = scopeItemRepository;
-        this.audienceRepository = audienceRepository;
-        this.redemptionRepository = redemptionRepository;
-        this.changeLogRepository = changeLogRepository;
-        this.storefrontProductRepository = storefrontProductRepository;
-        this.capWarningService = capWarningService;
-        this.priceCalculator = priceCalculator;
-        this.catalogLookup = catalogLookup;
-        this.publishedExamPort = publishedExamPort;
-        this.classMembershipPort = classMembershipPort;
-        this.userDirectory = userDirectory;
-        this.idempotentCommand = idempotentCommand;
-        this.auditRecorder = auditRecorder;
-        this.currentUserProvider = currentUserProvider;
-        this.messages = messages;
-        this.clock = clock;
+        this(promotionRepository, scopeItemRepository, audienceRepository, redemptionRepository,
+                changeLogRepository, storefrontProductRepository, null, capWarningService, priceCalculator,
+                catalogLookup, publishedExamPort, classMembershipPort, userDirectory, idempotentCommand,
+                auditRecorder, currentUserProvider, messages, clock);
     }
 
     @Transactional(readOnly = true)
@@ -226,12 +260,12 @@ public class PromotionAdminService {
         }
         promo = savePromotionHandlingCodeRace(promo);
 
-        List<PromotionScopeItem> scopeItems = replaceScopeItems(id, spec.scope(), spec.examKindIds(), spec.examIds(),
-                false);
+        List<PromotionScopeItem> scopeItems = replaceScopeItems(
+                id, spec.scope(), spec.examKindIds(), spec.examIds(), spec.bundleIds(), false);
         List<PromotionAudience> audiences = replaceAudienceTargets(id, spec.audience(), spec.audienceClassIds(),
                 spec.audienceUserIds(), false);
 
-        Map<String, Object> afterSnapshot = snapshot(promo, spec.examKindIds(), spec.examIds(),
+        Map<String, Object> afterSnapshot = snapshot(promo, spec.examKindIds(), spec.examIds(), spec.bundleIds(),
                 spec.audienceClassIds(), spec.audienceUserIds());
         List<PromotionFieldChange> changes = creationChanges(afterSnapshot);
         recordChangeAndAudit(promo, PromotionChangeAction.CREATED, "PROMOTION_CREATED",
@@ -253,7 +287,7 @@ public class PromotionAdminService {
         List<PromotionAudience> existingAudiences = audienceRepository.findByPromotionId(id);
         TargetIds currentTargets = TargetIds.from(existingScopeItems, existingAudiences);
         Map<String, Object> beforeSnapshot = snapshot(promo, currentTargets.examKindIds(), currentTargets.examIds(),
-                currentTargets.classIds(), currentTargets.userIds());
+                currentTargets.bundleIds(), currentTargets.classIds(), currentTargets.userIds());
 
         Instant now = clock.instant();
         CurrentUser actor = currentUserProvider.requireCurrentUser();
@@ -290,15 +324,16 @@ public class PromotionAdminService {
                     actor.username());
             promo = savePromotionHandlingCodeRace(promo);
 
-            finalScopeItems = replaceScopeItems(id, spec.scope(), spec.examKindIds(), spec.examIds(), true);
+            finalScopeItems = replaceScopeItems(
+                    id, spec.scope(), spec.examKindIds(), spec.examIds(), spec.bundleIds(), true);
             finalAudiences = replaceAudienceTargets(id, spec.audience(), spec.audienceClassIds(),
                     spec.audienceUserIds(), true);
-            finalTargets = new TargetIds(spec.examKindIds(), spec.examIds(), spec.audienceClassIds(),
+            finalTargets = new TargetIds(spec.examKindIds(), spec.examIds(), spec.bundleIds(), spec.audienceClassIds(),
                     spec.audienceUserIds());
         }
 
         Map<String, Object> afterSnapshot = snapshot(promo, finalTargets.examKindIds(), finalTargets.examIds(),
-                finalTargets.classIds(), finalTargets.userIds());
+                finalTargets.bundleIds(), finalTargets.classIds(), finalTargets.userIds());
         List<PromotionFieldChange> changes = diffSnapshots(beforeSnapshot, afterSnapshot);
         recordChangeAndAudit(promo, PromotionChangeAction.UPDATED, "PROMOTION_UPDATED",
                 actor, now, changes, beforeSnapshot, afterSnapshot);
@@ -389,7 +424,21 @@ public class PromotionAdminService {
 
     @Transactional(readOnly = true)
     public PriceQuote pricePreview(PromotionPricePreviewRequest request) {
-        StoredProduct stored = storefrontProductRepository.findByExamId(request.examId()).orElse(null);
+        if (request.examId() == null && request.bundleId() == null) {
+            throw fieldValidation(
+                    "examId",
+                    "REQUIRED",
+                    "validation.promotion.preview.target.required");
+        }
+        if (request.examId() != null && request.bundleId() != null) {
+            throw fieldValidation(
+                    "bundleId",
+                    "INVALID",
+                    "validation.promotion.preview.target.conflict");
+        }
+        StoredProduct stored = request.bundleId() != null
+                ? storefrontProductRepository.findByBundleId(request.bundleId()).orElse(null)
+                : storefrontProductRepository.findByExamId(request.examId()).orElse(null);
         if (stored == null || stored.saleState() == SaleState.UNAVAILABLE) {
             throw new NotFoundException(StorefrontErrorCodes.PRODUCT_NOT_FOUND, null);
         }
@@ -401,7 +450,7 @@ public class PromotionAdminService {
         }
 
         PricedProduct product = new PricedProduct(
-                stored.examId(), stored.examKindItemId(), stored.listPriceVnd());
+                stored.examId(), stored.bundleId(), stored.examKindItemId(), stored.listPriceVnd());
         QuoteCalculation calc = priceCalculator.previewPromotion(product, request.promotionId());
         return PriceQuote.from(stored, calc, false);
     }
@@ -428,6 +477,7 @@ public class PromotionAdminService {
                 req.scope(),
                 req.examKindIds(),
                 req.examIds(),
+                req.bundleIds(),
                 req.audience(),
                 req.audienceClassIds(),
                 req.audienceUserIds(),
@@ -491,6 +541,9 @@ public class PromotionAdminService {
         List<UUID> examIds = req.examIds() != null
                 ? req.examIds()
                 : (scope == promo.getScope() ? currentTargets.examIds() : List.of());
+        List<UUID> bundleIds = req.bundleIds() != null
+                ? req.bundleIds()
+                : (scope == promo.getScope() ? currentTargets.bundleIds() : List.of());
 
         PromotionAudienceType audience = req.audience() != null ? req.audience() : promo.getAudience();
         List<UUID> classIds = req.audienceClassIds() != null
@@ -503,7 +556,7 @@ public class PromotionAdminService {
         PromotionStatus status = req.status() != null ? req.status() : promo.getStatus();
         ValidatedSpec spec = validateSpec(
                 promo.getKind(), name, description, code, discountType, discountValue, maxDiscountVnd,
-                startsAt, endsAt, totalLimit, perUserLimit, combinable, scope, examKindIds, examIds,
+                startsAt, endsAt, totalLimit, perUserLimit, combinable, scope, examKindIds, examIds, bundleIds,
                 audience, classIds, userIds, status);
 
         if (spec.status() == PromotionStatus.ACTIVE && promo.getStatus() != PromotionStatus.ACTIVE
@@ -607,6 +660,11 @@ public class PromotionAdminService {
                         .equals(Set.copyOf(currentTargets.examIds()))) {
             return true;
         }
+        if (req.bundleIds() != null
+                && !Set.copyOf(deduplicateIds(req.bundleIds(), "bundleIds"))
+                        .equals(Set.copyOf(currentTargets.bundleIds()))) {
+            return true;
+        }
         if (req.audience() != null && req.audience() != promo.getAudience()) {
             return true;
         }
@@ -639,14 +697,12 @@ public class PromotionAdminService {
             PromotionScope scope,
             List<UUID> rawExamKindIds,
             List<UUID> rawExamIds,
+            List<UUID> rawBundleIds,
             PromotionAudienceType rawAudience,
             List<UUID> rawClassIds,
             List<UUID> rawUserIds,
             PromotionStatus status) {
 
-        if (scope == PromotionScope.BUNDLE) {
-            throw fieldValidation("scope", "INVALID", "validation.promotion.scope.invalid");
-        }
         if (discountValue == null || discountValue <= 0) {
             throw fieldValidation("discountValue", "INVALID", "validation.promotion.discountValue.invalid");
         }
@@ -720,12 +776,13 @@ public class PromotionAdminService {
 
         List<UUID> examKindIds = deduplicateIds(rawExamKindIds, "examKindIds");
         List<UUID> examIds = deduplicateIds(rawExamIds, "examIds");
-        validateScopeTargets(scope, examKindIds, examIds);
+        List<UUID> bundleIds = deduplicateIds(rawBundleIds, "bundleIds");
+        validateScopeTargets(scope, examKindIds, examIds, bundleIds);
 
         return new ValidatedSpec(
                 kind, name, description, trimmedCode, discountType, discountValue, maxDiscountVnd,
                 startsAt, endsAt, totalLimit, perUserLimit, resolvedCombinable, scope,
-                examKindIds, examIds, audience, classIds, userIds,
+                examKindIds, examIds, bundleIds, audience, classIds, userIds,
                 status == null ? PromotionStatus.ACTIVE : status);
     }
 
@@ -740,7 +797,8 @@ public class PromotionAdminService {
         return true;
     }
 
-    private void validateScopeTargets(PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds) {
+    private void validateScopeTargets(
+            PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds, List<UUID> bundleIds) {
         switch (scope) {
             case ALL -> {
                 if (!examKindIds.isEmpty()) {
@@ -749,10 +807,16 @@ public class PromotionAdminService {
                 if (!examIds.isEmpty()) {
                     throw fieldValidation("examIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
                 }
+                if (!bundleIds.isEmpty()) {
+                    throw fieldValidation("bundleIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
+                }
             }
             case EXAM_KIND -> {
                 if (!examIds.isEmpty()) {
                     throw fieldValidation("examIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
+                }
+                if (!bundleIds.isEmpty()) {
+                    throw fieldValidation("bundleIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
                 }
                 if (examKindIds.isEmpty()) {
                     throw fieldValidation("examKindIds", "EMPTY", "validation.promotion.scopeItems.empty");
@@ -768,6 +832,9 @@ public class PromotionAdminService {
                 if (!examKindIds.isEmpty()) {
                     throw fieldValidation("examKindIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
                 }
+                if (!bundleIds.isEmpty()) {
+                    throw fieldValidation("bundleIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
+                }
                 if (examIds.isEmpty()) {
                     throw fieldValidation("examIds", "EMPTY", "validation.promotion.scopeItems.empty");
                 }
@@ -777,7 +844,24 @@ public class PromotionAdminService {
                     }
                 }
             }
-            case BUNDLE -> throw fieldValidation("scope", "INVALID", "validation.promotion.scope.invalid");
+            case BUNDLE -> {
+                if (!examKindIds.isEmpty()) {
+                    throw fieldValidation("examKindIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
+                }
+                if (!examIds.isEmpty()) {
+                    throw fieldValidation("examIds", "NOT_ALLOWED", "validation.promotion.scopeItems.notAllowed");
+                }
+                if (bundleIds.isEmpty()) {
+                    throw fieldValidation("bundleIds", "EMPTY", "validation.promotion.scopeItems.empty");
+                }
+                List<Bundle> foundBundles = bundleRepository == null
+                        ? List.of()
+                        : bundleRepository.findByIdIn(bundleIds);
+                if (foundBundles.size() != bundleIds.size()
+                        || foundBundles.stream().anyMatch(b -> b.getStatus() != BundleStatus.PUBLISHED)) {
+                    throw new BusinessRuleException("PROMOTION_SCOPE_INVALID");
+                }
+            }
         }
     }
 
@@ -869,7 +953,8 @@ public class PromotionAdminService {
     }
 
     private List<PromotionScopeItem> replaceScopeItems(
-            UUID promotionId, PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds, boolean deleteFirst) {
+            UUID promotionId, PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds,
+            List<UUID> bundleIds, boolean deleteFirst) {
         if (deleteFirst) {
             scopeItemRepository.deleteByPromotionId(promotionId);
             scopeItemRepository.flush();
@@ -882,6 +967,10 @@ public class PromotionAdminService {
         } else if (scope == PromotionScope.EXAM) {
             for (UUID examId : examIds) {
                 rows.add(PromotionScopeItem.forExam(Ids.newId(), promotionId, examId));
+            }
+        } else if (scope == PromotionScope.BUNDLE) {
+            for (UUID bundleId : bundleIds) {
+                rows.add(PromotionScopeItem.forBundle(Ids.newId(), promotionId, bundleId));
             }
         }
         if (rows.isEmpty()) {
@@ -936,12 +1025,13 @@ public class PromotionAdminService {
     }
 
     private static Map<String, Object> snapshot(
-            Promotion p, List<UUID> examKindIds, List<UUID> examIds, List<UUID> classIds, List<UUID> userIds) {
+            Promotion p, List<UUID> examKindIds, List<UUID> examIds, List<UUID> bundleIds,
+            List<UUID> classIds, List<UUID> userIds) {
         return snapshot(
                 p.getKind(), p.getName(), p.getDescription(), p.getCode(), p.getDiscountType(),
                 p.getDiscountValue(), p.getMaxDiscountVnd(), p.getStartsAt(), p.getEndsAt(),
                 p.getTotalLimit(), p.getPerUserLimit(), p.getCombinable(), p.getScope(),
-                examKindIds, examIds, p.getAudience(), classIds, userIds, p.getStatus());
+                examKindIds, examIds, bundleIds, p.getAudience(), classIds, userIds, p.getStatus());
     }
 
     private static Map<String, Object> snapshot(ValidatedSpec spec) {
@@ -949,7 +1039,7 @@ public class PromotionAdminService {
                 spec.kind(), spec.name(), spec.description(), spec.code(), spec.discountType(),
                 spec.discountValue(), spec.maxDiscountVnd(), spec.startsAt(), spec.endsAt(),
                 spec.totalLimit(), spec.perUserLimit(), spec.combinable(), spec.scope(),
-                spec.examKindIds(), spec.examIds(), spec.audience(), spec.audienceClassIds(),
+                spec.examKindIds(), spec.examIds(), spec.bundleIds(), spec.audience(), spec.audienceClassIds(),
                 spec.audienceUserIds(), spec.status());
     }
 
@@ -958,7 +1048,8 @@ public class PromotionAdminService {
             DiscountType discountType, long discountValue, Long maxDiscountVnd,
             Instant startsAt, Instant endsAt, Integer totalLimit, Integer perUserLimit,
             Boolean combinable, PromotionScope scope, List<UUID> examKindIds, List<UUID> examIds,
-            PromotionAudienceType audience, List<UUID> classIds, List<UUID> userIds, PromotionStatus status) {
+            List<UUID> bundleIds, PromotionAudienceType audience, List<UUID> classIds, List<UUID> userIds,
+            PromotionStatus status) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("kind", kind.name());
         map.put("name", name);
@@ -975,6 +1066,7 @@ public class PromotionAdminService {
         map.put("scope", scope.name());
         map.put("examKindIds", sortedUuidStrings(examKindIds));
         map.put("examIds", sortedUuidStrings(examIds));
+        map.put("bundleIds", sortedUuidStrings(bundleIds));
         map.put("audience", audience == null ? null : audience.name());
         map.put("audienceClassIds", sortedUuidStrings(classIds));
         map.put("audienceUserIds", sortedUuidStrings(userIds));
@@ -1182,11 +1274,29 @@ public class PromotionAdminService {
                         .orElseGet(() -> new PromotionScopeItemView("EXAM", examId, null, null, null));
             }).toList();
         }
-        return items.stream()
+        List<UUID> bundleIds = items.stream()
                 .map(PromotionScopeItem::getBundleId)
                 .filter(Objects::nonNull)
-                .map(id -> new PromotionScopeItemView("BUNDLE", id, null, null, null))
                 .toList();
+        if (bundleIds.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, BundleRef> refs = storefrontProductRepository.findBundleRefsByBundleIds(bundleIds);
+        Map<UUID, Bundle> fallbacks = new HashMap<>();
+        List<UUID> missing = bundleIds.stream().filter(id -> !refs.containsKey(id)).toList();
+        if (!missing.isEmpty() && bundleRepository != null) {
+            bundleRepository.findByIdIn(missing).forEach(b -> fallbacks.put(b.getId(), b));
+        }
+        return bundleIds.stream().map(id -> {
+            BundleRef ref = refs.get(id);
+            if (ref != null) {
+                return new PromotionScopeItemView("BUNDLE", id, ref.code(), ref.name(), null);
+            }
+            Bundle fallback = fallbacks.get(id);
+            return fallback != null
+                    ? new PromotionScopeItemView("BUNDLE", id, fallback.getCode(), fallback.getName(), null)
+                    : new PromotionScopeItemView("BUNDLE", id, null, null, null);
+        }).toList();
     }
 
     private List<PromotionAudienceClassView> resolveAudienceClasses(List<PromotionAudience> audiences) {
@@ -1355,6 +1465,7 @@ public class PromotionAdminService {
             PromotionScope scope,
             List<UUID> examKindIds,
             List<UUID> examIds,
+            List<UUID> bundleIds,
             PromotionAudienceType audience,
             List<UUID> audienceClassIds,
             List<UUID> audienceUserIds,
@@ -1365,6 +1476,7 @@ public class PromotionAdminService {
     private record TargetIds(
             List<UUID> examKindIds,
             List<UUID> examIds,
+            List<UUID> bundleIds,
             List<UUID> classIds,
             List<UUID> userIds
     ) {
@@ -1377,6 +1489,10 @@ public class PromotionAdminService {
                     .map(PromotionScopeItem::getExamId)
                     .filter(Objects::nonNull)
                     .toList();
+            List<UUID> bundles = scopeItems.stream()
+                    .map(PromotionScopeItem::getBundleId)
+                    .filter(Objects::nonNull)
+                    .toList();
             List<UUID> classes = audiences.stream()
                     .map(PromotionAudience::getClassId)
                     .filter(Objects::nonNull)
@@ -1385,7 +1501,7 @@ public class PromotionAdminService {
                     .map(PromotionAudience::getUserId)
                     .filter(Objects::nonNull)
                     .toList();
-            return new TargetIds(kinds, exams, classes, users);
+            return new TargetIds(kinds, exams, bundles, classes, users);
         }
     }
 }
