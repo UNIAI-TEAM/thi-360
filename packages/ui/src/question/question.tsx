@@ -29,6 +29,8 @@ export interface QuestionProps extends KitQuestionProps<KitQuestion, AnswerValue
   flaggedIds?: Record<string, boolean>;
   /** Bộ câu hỏi: bấm cờ của câu con `childId`. Có hàm này thì mỗi câu con hiện nút cờ khi làm bài. */
   onToggleChildFlag?: (childId: string) => void;
+  /** Trả lời ngắn: bật/tắt thanh chèn ký hiệu ion/hóa học tường minh. */
+  showSymbolBar?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export function Question({
   renderEditor,
   flaggedIds,
   onToggleChildFlag,
+  showSymbolBar,
   ...rest
 }: QuestionProps) {
   switch (question.body.type) {
@@ -70,6 +73,7 @@ export function Question({
           question={question as KitQuestionOf<Extract<QuestionBody, { type: "SHORT_ANSWER" }>>}
           value={rest.value as { text: string } | null | undefined}
           onChange={rest.onChange as ((value: { text: string }) => void) | undefined}
+          showSymbolBar={showSymbolBar}
         />
       );
     case "CLOZE":
@@ -143,6 +147,7 @@ export function Question({
               onToggleFlag={childProps.onToggleFlag}
               matchUi={matchUi}
               renderEditor={renderEditor}
+              showSymbolBar={showSymbolBar}
             />
           )}
         />

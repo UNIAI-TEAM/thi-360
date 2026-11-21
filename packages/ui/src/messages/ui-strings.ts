@@ -112,6 +112,28 @@ export interface UiStrings {
     countTableSummary: (correct: number, total: number, earned: string) => string;
     questionLabel: (no: number) => string;
     questionRangeLabel: (from: number, to: number) => string;
+    audioPlayer: {
+      regionLabel: string;
+      play: string;
+      playing: string;
+      resume: string;
+      playsRemaining: (left: number, max: number) => string;
+      playsExhaustedBadge: (max: number) => string;
+      exhaustedReason: string;
+      partClosedReason: string;
+      timeUpReason: string;
+      submittedReason: string;
+      evictedReason: string;
+      disabledReason: string;
+      autoplayBlocked: string;
+      offlineWaiting: string;
+      playErrorRetry: string;
+      progressLabel: string;
+    };
+    symbolInput: {
+      groupLabel: string;
+      symbolNames: Record<string, string>;
+    };
   };
 }
 export const UI_STRINGS_VI: UiStrings = {
@@ -266,6 +288,44 @@ export const UI_STRINGS_VI: UiStrings = {
     questionLabel: (no) => `Câu ${NUMBER_FORMATTERS.vi.format(no)}`,
     questionRangeLabel: (from, to) =>
       `Câu ${NUMBER_FORMATTERS.vi.format(from)}–${NUMBER_FORMATTERS.vi.format(to)}`,
+    audioPlayer: {
+      regionLabel: "Trình phát audio",
+      play: "Nghe",
+      playing: "Đang phát…",
+      resume: "Phát lại",
+      playsRemaining: (left, max) =>
+        `Còn ${NUMBER_FORMATTERS.vi.format(left)}/${NUMBER_FORMATTERS.vi.format(max)} lần nghe`,
+      playsExhaustedBadge: (max) =>
+        `Đã hết lượt nghe (0/${NUMBER_FORMATTERS.vi.format(max)})`,
+      exhaustedReason: "Bạn đã dùng hết số lần nghe cho tệp audio này.",
+      partClosedReason: "Phần thi đã đóng, không thể nghe tiếp audio.",
+      timeUpReason: "Đã hết giờ làm bài, audio đã dừng phát.",
+      submittedReason: "Bài thi đã nộp, audio đã dừng phát.",
+      evictedReason: "Phiên làm bài đã chuyển sang thiết bị khác, audio đã dừng.",
+      disabledReason: "Trình phát audio đang tạm khóa.",
+      autoplayBlocked:
+        "Trình duyệt chặn tự động phát. Bấm Phát lại để tiếp tục mà không mất lượt nghe.",
+      offlineWaiting: "Mất kết nối mạng, đang chờ kết nối lại để phát tiếp.",
+      playErrorRetry: "Không thể phát audio lúc này. Bấm lại để thử tiếp.",
+      progressLabel: "Tiến độ phát audio",
+    },
+    symbolInput: {
+      groupLabel: "Thanh chèn ký hiệu",
+      symbolNames: {
+        plus: "Dấu cộng (+)",
+        minus: "Dấu trừ (-)",
+        lparen: "Mở ngoặc (",
+        rparen: "Đóng ngoặc )",
+        "charge-2plus": "Điện tích 2+",
+        "charge-3plus": "Điện tích 3+",
+        "charge-2minus": "Điện tích 2-",
+        "charge-3minus": "Điện tích 3-",
+        "sub-2": "Chỉ số dưới 2",
+        "sub-3": "Chỉ số dưới 3",
+        "sub-4": "Chỉ số dưới 4",
+        "arrow-right": "Mũi tên phản ứng (->)",
+      },
+    },
   },
 };
 
@@ -422,6 +482,44 @@ export const UI_STRINGS_EN: UiStrings = {
     questionLabel: (no) => `Question ${NUMBER_FORMATTERS.en.format(no)}`,
     questionRangeLabel: (from, to) =>
       `Question ${NUMBER_FORMATTERS.en.format(from)}–${NUMBER_FORMATTERS.en.format(to)}`,
+    audioPlayer: {
+      regionLabel: "Audio player",
+      play: "Play",
+      playing: "Playing…",
+      resume: "Resume playback",
+      playsRemaining: (left, max) =>
+        `${NUMBER_FORMATTERS.en.format(left)}/${NUMBER_FORMATTERS.en.format(max)} plays left`,
+      playsExhaustedBadge: (max) =>
+        `No plays left (0/${NUMBER_FORMATTERS.en.format(max)})`,
+      exhaustedReason: "You have used all plays for this audio.",
+      partClosedReason: "This part is closed; audio playback is unavailable.",
+      timeUpReason: "Time is up; audio playback has stopped.",
+      submittedReason: "Attempt submitted; audio playback has stopped.",
+      evictedReason: "Session moved to another device; audio playback stopped.",
+      disabledReason: "Audio player is currently disabled.",
+      autoplayBlocked:
+        "Browser blocked automatic playback. Click Resume playback to continue without using a play.",
+      offlineWaiting: "Connection lost; waiting to reconnect to resume playback.",
+      playErrorRetry: "Could not start audio right now. Click again to retry.",
+      progressLabel: "Audio playback progress",
+    },
+    symbolInput: {
+      groupLabel: "Symbol input bar",
+      symbolNames: {
+        plus: "Plus sign (+)",
+        minus: "Minus sign (-)",
+        lparen: "Left parenthesis (",
+        rparen: "Right parenthesis )",
+        "charge-2plus": "Charge 2+",
+        "charge-3plus": "Charge 3+",
+        "charge-2minus": "Charge 2-",
+        "charge-3minus": "Charge 3-",
+        "sub-2": "Subscript 2",
+        "sub-3": "Subscript 3",
+        "sub-4": "Subscript 4",
+        "arrow-right": "Reaction arrow (->)",
+      },
+    },
   },
 };
 
