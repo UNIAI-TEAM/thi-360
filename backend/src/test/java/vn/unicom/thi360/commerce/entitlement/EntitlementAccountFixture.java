@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 
 /** Inserts and removes a plain active student account directly, as the identity module's own ITs do. */
 final class EntitlementAccountFixture {
@@ -33,12 +34,7 @@ final class EntitlementAccountFixture {
 
     /** Removes the account and every commerce row of it, children first. */
     void remove(UUID userId) {
-        jdbc.update("DELETE FROM commerce.entitlement_usage WHERE grant_id IN (SELECT g.id"
-                + " FROM commerce.entitlement_grant g JOIN commerce.entitlement e ON e.id = g.entitlement_id"
-                + " WHERE e.user_id = ?)", userId);
-        jdbc.update("DELETE FROM commerce.entitlement_grant WHERE entitlement_id IN (SELECT id"
-                + " FROM commerce.entitlement WHERE user_id = ?)", userId);
-        jdbc.update("DELETE FROM commerce.entitlement WHERE user_id = ?", userId);
+        CommerceTestFixtures.deleteStubOrdersForUser(jdbc, userId);
         jdbc.update("DELETE FROM identity.user_account WHERE id = ?", userId);
     }
 }

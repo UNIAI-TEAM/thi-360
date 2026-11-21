@@ -47,7 +47,15 @@ class EntitlementDeletionGuardIT extends EntitlementIntegrationTest {
     @Test
     void accountWithEntitlementCannotBeDeleted() throws Exception {
         UUID userId = account();
-        grant(userId, newId(), 1);
+        // Option A (AD-132): insert a CLASS entitlement without purchase_order so EntitlementDeletionGuard is tested in isolation.
+        jdbc.update(
+                """
+                INSERT INTO commerce.entitlement
+                    (id, user_id, exam_id, source, source_ref, attempts_total, attempts_used, attempts_reserved,
+                     attempts_revoked)
+                VALUES (?, ?, ?, 'CLASS', ?, 1, 0, 0, 0)
+                """,
+                newId(), userId, newId(), newId());
 
         mockMvc.perform(get("/api/v1/admin/users/{id}/deletion-check", userId)
                         .with(asUser(Permissions.USER_MODIFY)))

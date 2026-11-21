@@ -29,6 +29,7 @@ public class CookieAuthFilter extends OncePerRequestFilter {
             "/api/v1/appearance",
             "/api/v1/auth/password/forgot",
             "/api/v1/auth/password/reset",
+            "/mock-vnpay",
             "/error"
     );
 
@@ -40,6 +41,7 @@ public class CookieAuthFilter extends OncePerRequestFilter {
                 || path.startsWith("/v3/api-docs")
                 // CM-1: a stale or wrong access cookie must not break the public pages (TM 10.2).
                 || path.startsWith("/api/v1/public/")
+                || path.startsWith("/mock-vnpay/")
                 || TestApiPaths.matches(path)
                 || RateLimitFilter.RegistrationRoute.matches(request);
     }

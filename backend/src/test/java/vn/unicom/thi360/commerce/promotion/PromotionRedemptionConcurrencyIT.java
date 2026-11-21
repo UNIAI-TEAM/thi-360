@@ -31,7 +31,7 @@ class PromotionRedemptionConcurrencyIT extends PromotionIntegrationTest {
         List<Callable<RedemptionView>> tasks = new ArrayList<>(threads);
         for (int i = 0; i < threads; i++) {
             UUID userId = UUID.randomUUID();
-            UUID orderId = UUID.randomUUID();
+            UUID orderId = stubOrder(userId);
             tasks.add(() -> redemptionService.reserve(voucher.getId(), userId, orderId, 20_000L));
         }
 
@@ -59,7 +59,7 @@ class PromotionRedemptionConcurrencyIT extends PromotionIntegrationTest {
         int threads = 15;
         List<Callable<RedemptionView>> tasks = new ArrayList<>(threads);
         for (int i = 0; i < threads; i++) {
-            UUID orderId = UUID.randomUUID();
+            UUID orderId = stubOrder(sameUser);
             tasks.add(() -> redemptionService.reserve(voucher.getId(), sameUser, orderId, 20_000L));
         }
 
@@ -105,9 +105,10 @@ class PromotionRedemptionConcurrencyIT extends PromotionIntegrationTest {
         assertThat(pgOrder).containsExactly(lowId, highId);
 
         // reserveForOrder given [highId, lowId] must lock in PostgreSQL unsigned order [lowId, highId]
-        UUID verifyOrderId = UUID.randomUUID();
+        UUID verifyUserId = UUID.randomUUID();
+        UUID verifyOrderId = stubOrder(verifyUserId, "DH-ORD");
         List<RedemptionView> reservedViews = redemptionService.reserveForOrder(
-                UUID.randomUUID(), verifyOrderId, "DH-ORD",
+                verifyUserId, verifyOrderId, "DH-ORD",
                 List.of(new ReserveRequest(highId, 15_000L), new ReserveRequest(lowId, 10_000L)));
         assertThat(reservedViews).extracting(RedemptionView::promotionId).containsExactly(lowId, highId);
 
@@ -116,11 +117,13 @@ class PromotionRedemptionConcurrencyIT extends PromotionIntegrationTest {
         List<UUID> toRelease = new ArrayList<>(pairedOrders);
         List<UUID> toConfirm = new ArrayList<>(pairedOrders);
         for (int i = 0; i < pairedOrders; i++) {
-            UUID relOrder = UUID.randomUUID();
-            UUID cnfOrder = UUID.randomUUID();
-            redemptionService.reserveForOrder(UUID.randomUUID(), relOrder, "DH-REL-" + i,
+            UUID relUser = UUID.randomUUID();
+            UUID cnfUser = UUID.randomUUID();
+            UUID relOrder = stubOrder(relUser, "DH-REL-" + i);
+            UUID cnfOrder = stubOrder(cnfUser, "DH-CNF-" + i);
+            redemptionService.reserveForOrder(relUser, relOrder, "DH-REL-" + i,
                     List.of(new ReserveRequest(highId, 15_000L), new ReserveRequest(lowId, 10_000L)));
-            redemptionService.reserveForOrder(UUID.randomUUID(), cnfOrder, "DH-CNF-" + i,
+            redemptionService.reserveForOrder(cnfUser, cnfOrder, "DH-CNF-" + i,
                     List.of(new ReserveRequest(highId, 15_000L), new ReserveRequest(lowId, 10_000L)));
             toRelease.add(relOrder);
             toConfirm.add(cnfOrder);
@@ -130,8 +133,8 @@ class PromotionRedemptionConcurrencyIT extends PromotionIntegrationTest {
         List<Callable<List<RedemptionView>>> tasks = new ArrayList<>();
         for (int i = 0; i < newReservations; i++) {
             UUID uid = UUID.randomUUID();
-            UUID oid = UUID.randomUUID();
             String code = "DH-NEW-" + i;
+            UUID oid = stubOrder(uid, code);
             tasks.add(() -> redemptionService.reserveForOrder(
                     uid, oid, code,
                     List.of(new ReserveRequest(highId, 15_000L), new ReserveRequest(lowId, 10_000L))));

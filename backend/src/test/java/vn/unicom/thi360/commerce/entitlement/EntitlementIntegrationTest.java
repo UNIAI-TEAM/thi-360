@@ -5,13 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import vn.unicom.thi360.AbstractIntegrationTest;
@@ -20,6 +23,7 @@ import vn.unicom.thi360.commerce.entitlement.application.GrantLine;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderCommand;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
+import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 
 /**
  * Shared set-up of the entitlement tests: random accounts, exams and orders per test (plan CM-4a "Dữ liệu
@@ -38,6 +42,16 @@ abstract class EntitlementIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     protected JdbcTemplate jdbc;
 
+    protected final Set<UUID> createdStubOrderIds = ConcurrentHashMap.newKeySet();
+
+    @AfterEach
+    void cleanupStubOrders() {
+        for (UUID orderId : createdStubOrderIds) {
+            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        }
+        createdStubOrderIds.clear();
+    }
+
     protected static UUID newId() {
         return UUID.randomUUID();
     }
@@ -46,8 +60,12 @@ abstract class EntitlementIntegrationTest extends AbstractIntegrationTest {
         return new GrantLine(examId, 1, attempts, List.of("OPT-A"), Map.of("ai", true), RESULT_VIEW_FULL);
     }
 
-    protected static GrantOrderCommand order(UUID orderId, UUID userId, GrantLine... lines) {
-        return new GrantOrderCommand(orderId, "ORD-" + orderId.toString().substring(0, 8), userId, List.of(lines));
+    protected GrantOrderCommand order(UUID orderId, UUID userId, GrantLine... lines) {
+        String orderCode = "ORD-" + orderId.toString().replace("-", "").substring(0, 12).toUpperCase();
+        UUID examId = (lines != null && lines.length > 0) ? lines[0].examId() : newId();
+        CommerceTestFixtures.insertMinimalStubOrder(jdbc, orderId, userId, examId, orderCode);
+        createdStubOrderIds.add(orderId);
+        return new GrantOrderCommand(orderId, orderCode, userId, List.of(lines));
     }
 
     /** Grants {@code attempts} attempts of one exam through a fresh order. */

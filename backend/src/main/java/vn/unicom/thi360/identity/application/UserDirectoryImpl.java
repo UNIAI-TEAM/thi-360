@@ -127,6 +127,31 @@ public class UserDirectoryImpl implements UserDirectory {
                 .filter(reason -> reason != null && !reason.isBlank());
     }
 
+    @Override
+    public Optional<MailContact> findMailContact(UUID userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userAccountRepository.findById(userId)
+                .map(UserDirectoryImpl::toMailContact);
+    }
+
+    private static MailContact toMailContact(UserAccount account) {
+        String fullName = (account.getFullName() != null && !account.getFullName().isBlank())
+                ? account.getFullName()
+                : account.getUsername();
+        String locale = account.getPreferredLocale();
+        String normalizedLocale = (locale == null || locale.isBlank())
+                ? UserAccount.DEFAULT_LOCALE
+                : locale.trim();
+        return new MailContact(
+                account.getId(),
+                fullName,
+                account.getEmail(),
+                account.getEmailVerifiedAt() != null,
+                normalizedLocale);
+    }
+
     private static UserSummary toSummary(UserAccount account) {
         return new UserSummary(
                 account.getId(),

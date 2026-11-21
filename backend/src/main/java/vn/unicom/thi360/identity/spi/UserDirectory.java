@@ -21,6 +21,19 @@ public interface UserDirectory {
         return Optional.empty();
     }
 
+    default Optional<MailContact> findMailContact(UUID userId) {
+        return Optional.empty();
+    }
+
+    record MailContact(
+            UUID userId,
+            String fullName,
+            String email,
+            boolean emailVerified,
+            String preferredLocale
+    ) {
+    }
+
     record UserDetailSummary(
             UUID id,
             String code,

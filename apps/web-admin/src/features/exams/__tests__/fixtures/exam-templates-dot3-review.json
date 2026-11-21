@@ -1,7 +1,7 @@
 {
   "source": {
-    "sha": "13628281dc4d4a981478ed9a728436e0e62009c6",
-    "exportedAt": "2026-11-19",
+    "sha": "ce464ab5806f262845ac81187010e095afdaf365",
+    "exportedAt": "2026-11-20",
     "note": "Du lieu kham pha, khong thay oracle BA: ky vong viet tay trong test (FTM R-1, R-7)."
   },
   "count": 9,
@@ -26,8 +26,8 @@
       "structure": {
         "parts": [
           {
-            "id": "BCA_REVIEW_PART",
-            "name": "Review",
+            "id": "5e56278b-d177-b493-2f0a-bb0b0ac5b62a",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -47,7 +47,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "5e56278b-d177-b493-2f0a-bb0b0ac5b62a",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "HSA_REVIEW",
@@ -69,8 +78,8 @@
       "structure": {
         "parts": [
           {
-            "id": "HSA_REVIEW_PART",
-            "name": "Review",
+            "id": "5b27a056-676e-d6b4-9e5d-d9baf39b7ed8",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -90,7 +99,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "5b27a056-676e-d6b4-9e5d-d9baf39b7ed8",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "HSCA_REVIEW",
@@ -113,7 +131,7 @@
         "parts": [
           {
             "id": "44ef8843-07be-5378-932d-695466b2d667",
-            "name": "Review",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -138,7 +156,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "44ef8843-07be-5378-932d-695466b2d667",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "QDA_REVIEW",
@@ -160,8 +187,8 @@
       "structure": {
         "parts": [
           {
-            "id": "QDA_REVIEW_PART",
-            "name": "Review",
+            "id": "7381173b-2ca1-dd15-47cd-05b943bc51cd",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -181,7 +208,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "7381173b-2ca1-dd15-47cd-05b943bc51cd",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "SP2E_REVIEW",
@@ -203,8 +239,8 @@
       "structure": {
         "parts": [
           {
-            "id": "SP2E_REVIEW_PART",
-            "name": "Review",
+            "id": "8bed3900-17c8-faa7-07e1-d6ff6101bca4",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -224,7 +260,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "8bed3900-17c8-faa7-07e1-d6ff6101bca4",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "SPT_REVIEW",
@@ -246,8 +291,8 @@
       "structure": {
         "parts": [
           {
-            "id": "SPT_REVIEW_PART",
-            "name": "Review",
+            "id": "ca8fe991-3654-84d6-6093-df1768154461",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -267,7 +312,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "ca8fe991-3654-84d6-6093-df1768154461",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "THPTQG_REVIEW",
@@ -290,7 +344,7 @@
         "parts": [
           {
             "id": "d488535e-d403-5737-994e-f3c25e919777",
-            "name": "Review",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -310,7 +364,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d488535e-d403-5737-994e-f3c25e919777",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "VACT_REVIEW",
@@ -333,7 +396,7 @@
         "parts": [
           {
             "id": "e29ab2f3-6070-56e3-bbfd-933ee323d888",
-            "name": "Review",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -358,7 +421,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "e29ab2f3-6070-56e3-bbfd-933ee323d888",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     },
     {
       "code": "VSAT_REVIEW",
@@ -381,7 +453,7 @@
         "parts": [
           {
             "id": "efc49b8a-f76a-5e8d-9608-8c1d62e48dc7",
-            "name": "Review",
+            "name": "Bài ôn",
             "order": 1,
             "options": [],
             "sections": [
@@ -406,7 +478,16 @@
       "publishable": true,
       "fixedCounts": false,
       "fixedBlockCounts": false,
-      "omittedLocked": false
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "efc49b8a-f76a-5e8d-9608-8c1d62e48dc7",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
     }
   ]
 }
