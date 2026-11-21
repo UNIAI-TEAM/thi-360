@@ -13,11 +13,13 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,6 +63,8 @@ import vn.unicom.thi360.commerce.spi.EntitlementBenefits;
 import vn.unicom.thi360.commerce.spi.EntitlementPort;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort;
+import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort.AssetContent;
+import vn.unicom.thi360.questionbank.spi.QuestionAssetContentPort.AssetKind;
 import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.Version;
@@ -71,7 +75,7 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 
 /**
  * Unit tests for {@link AttemptResultService} and {@link AttemptSolutionAssetService} (R1-7, R1-8,
- * R1-18, R1-20, R1-40, R1-41, R1-48, R1-51, R2-4, R2-6).
+ * R1-18, R1-20, R1-40, R1-41, R1-48, R1-51, R2-4, R2-6, R3-1).
  */
 class AttemptResultServiceUnitTest {
 
@@ -325,18 +329,39 @@ class AttemptResultServiceUnitTest {
 
     @Test
     void entitlementGrantResultViewOverridesDivergentAttemptResultView() {
-        // R2-4: entitlement_grant.result_view overrides divergent attempt.result_view='FULL_SOLUTION'
+        // R2-4 + R3-1: entitlement_grant.result_view overrides divergent attempt.result_view='FULL_SOLUTION'
         UUID userId = UUID.randomUUID();
         UUID attemptId = UUID.randomUUID();
+        UUID partId = UUID.randomUUID();
+        UUID questionId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
         Attempt attempt = scoredHsaAttempt(attemptId, userId, null);
         ReflectionTestUtils.setField(attempt, "resultView", "FULL_SOLUTION");
+
+        AttemptPart part = AttemptPart.createPending(
+                partId, attemptId, "P1", "Phần 1", 0, 30, 1, new BigDecimal("10.00"), 1L);
+        part.open(NOW, NOW.plusSeconds(1800));
+        part.close(PartCloseReason.ATTEMPT_SUBMITTED, NOW.plusSeconds(100));
+
+        AttemptItem item = AttemptItem.create(
+                UUID.randomUUID(), attemptId, partId, null, "sec-1", null, "blk-1",
+                null, 0, 1, 1, questionId, 1, QuestionType.SINGLE_CHOICE, new BigDecimal("10.00"), List.of());
+        item.recordGrading(new BigDecimal("10.00"), ItemOutcome.CORRECT, Map.of("exactFraction", "1"));
+
+        JsonNode solutionSnap = MAPPER.createObjectNode()
+                .put("solution", "<p>Lời giải <img data-asset-id=\"" + assetId + "\"></p>");
+        AssetContent stubbedAsset = new AssetContent(
+                assetId, AssetKind.IMAGE, "solution.png", "image/png", "PNG-BYTES".getBytes(StandardCharsets.UTF_8));
 
         when(accessGate.requireLearner()).thenReturn(userId);
         when(attemptGuard.requireOwnedAttempt(attemptId, userId)).thenReturn(attempt);
         when(attemptEventRepository.existsByAttemptIdAndType(attemptId, AttemptEventType.COMPENSATED))
                 .thenReturn(false);
-        when(attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId)).thenReturn(List.of());
-        when(attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId)).thenReturn(List.of());
+        when(attemptPartRepository.findByAttemptIdOrderByOrdAsc(attemptId)).thenReturn(List.of(part));
+        when(attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attemptId)).thenReturn(List.of(item));
+        when(questionSourcePort.loadVersions(List.of(new VersionKey(questionId, 1))))
+                .thenReturn(List.of(new Version(new VersionKey(questionId, 1), solutionSnap)));
+        when(questionAssetContentPort.loadContent(assetId)).thenReturn(Optional.of(stubbedAsset));
         when(catalogLookup.listGroupItems("SUBJECT")).thenReturn(List.of());
 
         Locale prev = LocaleContextHolder.getLocale();
@@ -360,7 +385,6 @@ class AttemptResultServiceUnitTest {
             LocaleContextHolder.setLocale(prev);
         }
 
-        UUID assetId = UUID.randomUUID();
         for (String grantView : List.of("SCORE", "SCORE_AND_ANSWERS")) {
             when(entitlementPort.benefitsOf(attemptId))
                     .thenReturn(new EntitlementBenefits(
@@ -371,6 +395,12 @@ class AttemptResultServiceUnitTest {
                     .satisfies(ex -> assertThat(((NotFoundException) ex).getCode()).isEqualTo("NOT_FOUND"));
         }
         verifyNoInteractions(questionAssetContentPort);
+
+        when(entitlementPort.benefitsOf(attemptId))
+                .thenReturn(new EntitlementBenefits(
+                        UUID.randomUUID(), attempt.getExamId(), Map.of(), "FULL_SOLUTION", List.of(), 1));
+        assertThat(solutionAssetService.loadSolutionAsset(attemptId, assetId)).isSameAs(stubbedAsset);
+        verify(questionAssetContentPort).loadContent(assetId);
     }
 
     @Test
