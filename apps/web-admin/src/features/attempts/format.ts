@@ -116,10 +116,17 @@ export function formatChoiceSummary(choice: AttemptChoiceSummary | undefined): s
   return parts.join(" · ");
 }
 
+const ESSAY_PREVIEW_MAX = 160;
+
 export function stripHtmlToPlainText(html: string): string {
   return html
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/(?:&#39;|&#039;|&apos;)/gi, "'")
+    .replace(/&amp;/gi, "&")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -143,23 +150,29 @@ export function parseAttemptAnswerDisplay(item: AdminAttemptItemView): Formatted
 
   switch (answer.type) {
     case "SINGLE_CHOICE": {
-      const optionId = answer.optionId?.trim() ?? "";
+      const optionId = typeof answer.optionId === "string" ? answer.optionId.trim() : "";
       return optionId ? { kind: "text", text: optionId, isExamContent: false } : { kind: "blank" };
     }
     case "MULTIPLE_CHOICE": {
-      const ids = (answer.optionIds ?? []).filter((id) => Boolean(id && id.trim()));
+      const ids = (answer.optionIds ?? []).filter(
+        (id) => typeof id === "string" && id.trim().length > 0,
+      );
       return ids.length > 0
         ? { kind: "text", text: ids.join(", "), isExamContent: false }
         : { kind: "blank" };
     }
     case "SHORT_ANSWER": {
-      const text = answer.text?.trim() ?? "";
+      const text = typeof answer.text === "string" ? answer.text.trim() : "";
       return text ? { kind: "text", text, isExamContent: true } : { kind: "blank" };
     }
     case "CLOZE": {
       const entries = Object.entries(answer.blanks ?? {})
-        .filter(([, val]) => val.trim().length > 0)
-        .map(([, val], idx) => ({ index: idx + 1, value: val.trim() }));
+        .map(([, val], idx) =>
+          typeof val === "string" && val.trim().length > 0
+            ? { index: idx + 1, value: val.trim() }
+            : null,
+        )
+        .filter((entry): entry is { index: number; value: string } => entry !== null);
       return entries.length > 0 ? { kind: "cloze", entries } : { kind: "blank" };
     }
     case "TRUE_FALSE": {
@@ -170,18 +183,22 @@ export function parseAttemptAnswerDisplay(item: AdminAttemptItemView): Formatted
     }
     case "MATCHING": {
       const pairs = Object.entries(answer.pairs ?? {})
-        .filter(([, right]) => Boolean(right && right.trim()))
+        .filter(([, right]) => typeof right === "string" && right.trim().length > 0)
         .map(([left, right]) => `${left} → ${right}`);
       return pairs.length > 0
         ? { kind: "text", text: pairs.join(" · "), isExamContent: false }
         : { kind: "blank" };
     }
     case "ESSAY": {
-      const preview = stripHtmlToPlainText(answer.html ?? "");
+      const plain = stripHtmlToPlainText(answer.html ?? "");
       const wordCount = typeof answer.wordCount === "number" ? answer.wordCount : 0;
-      if (!preview && wordCount === 0) {
+      if (!plain && wordCount === 0) {
         return { kind: "blank" };
       }
+      const preview =
+        plain.length > ESSAY_PREVIEW_MAX
+          ? `${plain.slice(0, ESSAY_PREVIEW_MAX - 1).trimEnd()}…`
+          : plain;
       return { kind: "essay", wordCount, preview };
     }
     default:
@@ -189,9 +206,75 @@ export function parseAttemptAnswerDisplay(item: AdminAttemptItemView): Formatted
   }
 }
 
+export const KNOWN_EVENT_FIELD_KEYS = [
+  "adminId",
+  "assetId",
+  "attemptId",
+  "attemptNo",
+  "closeReason",
+  "closedAt",
+  "detail",
+  "durationSec",
+  "endReason",
+  "entitlementId",
+  "error",
+  "essayGradeId",
+  "examCode",
+  "examId",
+  "examVersionNo",
+  "faultReason",
+  "finalAnswers",
+  "finishedAt",
+  "fromState",
+  "generationTries",
+  "graderId",
+  "gradingError",
+  "grantId",
+  "itemId",
+  "message",
+  "ord",
+  "partCode",
+  "partId",
+  "path",
+  "pendingReview",
+  "points",
+  "previousSessionId",
+  "questionId",
+  "reason",
+  "reclaimed",
+  "seq",
+  "sessionId",
+  "startedAt",
+  "state",
+  "toState",
+  "totalScore",
+  "tries",
+  "versionNo",
+] as const;
+
+export type KnownEventFieldKey = (typeof KNOWN_EVENT_FIELD_KEYS)[number];
+
+const KNOWN_EVENT_FIELD_KEY_SET: ReadonlySet<string> = new Set(KNOWN_EVENT_FIELD_KEYS);
+const FREE_TEXT_EVENT_DATA_KEYS: ReadonlySet<string> = new Set([
+  "reason",
+  "error",
+  "message",
+  "detail",
+  "path",
+  "faultReason",
+  "gradingError",
+]);
+
+export interface EventDetailEntry {
+  key: string;
+  labelKey?: KnownEventFieldKey;
+  isExamContent: boolean;
+  value: string;
+}
+
 export interface EventDetailInfo {
   partName?: string;
-  entries: Array<{ key: string; value: string }>;
+  entries: EventDetailEntry[];
 }
 
 function stringifyPrimitive(value: unknown): string | null {
@@ -214,12 +297,17 @@ export function extractEventDetailInfo(
   partNameById: ReadonlyMap<string, string>,
 ): EventDetailInfo {
   const partName = event.partId ? partNameById.get(event.partId) : undefined;
-  const entries: Array<{ key: string; value: string }> = [];
+  const entries: EventDetailEntry[] = [];
   if (event.data && typeof event.data === "object") {
     for (const [key, rawValue] of Object.entries(event.data)) {
       const str = stringifyPrimitive(rawValue);
       if (str !== null) {
-        entries.push({ key, value: str });
+        entries.push({
+          key,
+          labelKey: KNOWN_EVENT_FIELD_KEY_SET.has(key) ? (key as KnownEventFieldKey) : undefined,
+          isExamContent: FREE_TEXT_EVENT_DATA_KEYS.has(key),
+          value: str,
+        });
       }
     }
   }

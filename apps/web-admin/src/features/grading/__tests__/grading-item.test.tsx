@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApi, ok, withRealApi } from "@/test/fake-api";
-import { GradingItemView } from "../components/grading-item-view";
+import { GradingItemSkeleton, GradingItemView } from "../components/grading-item-view";
 import {
   EXAM_KIND_CATALOG_FIXTURES,
   GRADER_1_ID,
@@ -31,16 +31,27 @@ describe("GradingItemView word count & content isolation", () => {
     const essayHtml =
       '<p>Ba\u0300i&nbsp;vi\u00ea\u0301t</p><p><span class="math-inline" data-latex="x^2">x^2</span> + — ng\u0103\u0301n</p>';
 
+    let finalizedDone = false;
+    const finalizedGrade = makeEssayGrade({
+      state: "FINAL",
+      points: 7,
+      version: 3,
+      criteria: [
+        { id: "c1", points: 3 },
+        { id: "c2", points: 4 },
+      ],
+    });
     fakeApi.get("/api/v1/catalog/options", ok(EXAM_KIND_CATALOG_FIXTURES));
-    fakeApi.get(
-      "/api/v1/admin/grading/items/{itemId}",
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", () =>
       ok(
         makeDetail({
-          state: "IN_PROGRESS",
+          state: finalizedDone ? "DONE" : "IN_PROGRESS",
           answerHtml: essayHtml,
           wordLimit: 500,
           wordCount: 999,
-          activeGrade: makeEssayGrade({ graderId: GRADER_1_ID, version: 1 }),
+          activeGrade: finalizedDone
+            ? finalizedGrade
+            : makeEssayGrade({ graderId: GRADER_1_ID, version: 1 }),
         }),
       ),
     );
@@ -58,14 +69,14 @@ describe("GradingItemView word count & content isolation", () => {
         }),
       ),
     );
-    fakeApi.post(
-      "/api/v1/admin/grading/items/{itemId}/finalize",
-      ok({
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/finalize", () => {
+      finalizedDone = true;
+      return ok({
         attemptId: "att-1",
         attemptState: "SCORED",
-        grade: makeEssayGrade({ state: "FINAL", points: 7, version: 3 }),
-      }),
-    );
+        grade: finalizedGrade,
+      });
+    });
 
     renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
 
@@ -141,6 +152,37 @@ describe("GradingItemView word count & content isolation", () => {
     expect(screen.getByText("Prompt").closest("[data-exam-content]")).toBeNull();
     expect(screen.getByText("Grading guide").closest("[data-exam-content]")).toBeNull();
     expect(screen.getByText("Grading history")).toBeInTheDocument();
-    expect(screen.getByText("Reopen reason: Cần chấm lại")).toBeInTheDocument();
+    const reopenedReasonEl = screen.getByText("Cần chấm lại");
+    expect(reopenedReasonEl.closest("[data-exam-content]")).not.toBeNull();
+    expect(reopenedReasonEl.closest("p")).toHaveTextContent("Reopen reason: Cần chấm lại");
+  });
+
+  it("hiển thị tối đa 4 chữ số thập phân và GradingItemSkeleton có aria-busy (R1-23, R1-40)", async () => {
+    fakeApi.get("/api/v1/catalog/options", ok(EXAM_KIND_CATALOG_FIXTURES));
+    fakeApi.get(
+      "/api/v1/admin/grading/items/{itemId}",
+      ok(
+        makeDetail({
+          state: "DONE",
+          pointsMax: 10,
+          rubric: [{ id: "c1", description: "Tiêu chí 1", points: 5 }],
+          activeGrade: makeEssayGrade({
+            state: "FINAL",
+            points: 3.1234,
+            criteria: [{ id: "c1", points: 3.1234 }],
+            version: 2,
+          }),
+        }),
+      ),
+    );
+
+    renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />, { locale: "en" });
+    expect(await screen.findByText("3.1234 / 10")).toBeInTheDocument();
+    expect(screen.getByText("3.1234 / 5")).toBeInTheDocument();
+
+    const { container } = renderGradingUi(<GradingItemSkeleton label="Loading item" />, {
+      locale: "en",
+    });
+    expect(container.querySelector('[aria-busy="true"][aria-label="Loading item"]')).not.toBeNull();
   });
 });

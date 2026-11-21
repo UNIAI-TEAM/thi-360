@@ -1,8 +1,13 @@
+import { onlineManager, QueryClient, useQueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ATTEMPTS_QUERY_KEYS } from "@/features/attempts/keys";
+import { SessionProvider } from "@/features/session/session-provider";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import { GradingItemView } from "../components/grading-item-view";
+import { GRADING_QUERY_KEYS } from "../keys";
 import {
   EXAM_KIND_CATALOG_FIXTURES,
   GRADER_1_ID,
@@ -84,6 +89,13 @@ describe("GradingItemView workflows", () => {
   });
 
   it("nhận câu WAITING và tiếp quản câu đã quá hạn 30 phút", async () => {
+    let claimed = false;
+    const claimedGrade = makeEssayGrade({
+      graderId: GRADER_1_ID,
+      graderName: "Grader One",
+      claimExpired: false,
+      version: 1,
+    });
     const expired = makeDetail({
       state: "WAITING",
       activeGrade: makeEssayGrade({
@@ -92,11 +104,13 @@ describe("GradingItemView workflows", () => {
         claimExpired: true,
       }),
     });
-    fakeApi.get("/api/v1/admin/grading/items/{itemId}", ok(expired));
-    fakeApi.post(
-      "/api/v1/admin/grading/items/{itemId}/claim",
-      ok(makeEssayGrade({ graderId: GRADER_1_ID, graderName: "Grader One", claimExpired: false, version: 1 })),
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", () =>
+      ok(claimed ? makeDetail({ state: "IN_PROGRESS", activeGrade: claimedGrade }) : expired),
     );
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/claim", () => {
+      claimed = true;
+      return ok(claimedGrade);
+    });
 
     renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
     const takeoverBtn = await screen.findByRole("button", { name: "Tiếp quản chấm" });
@@ -207,39 +221,42 @@ describe("GradingItemView workflows", () => {
   });
 
   it("mở lại", async () => {
-    const finalized = makeDetail({
-      state: "DONE",
-      activeGrade: makeEssayGrade({
-        state: "FINAL",
-        points: 8,
-        criteria: [
-          { id: "c1", points: 3 },
-          { id: "c2", points: 5 },
-        ],
-        comment: "Initial grade",
-        finalizedAt: "2026-11-20T03:30:00Z",
-        version: 2,
-      }),
+    let reopened = false;
+    const finalizedGrade = makeEssayGrade({
+      state: "FINAL",
+      points: 8,
+      criteria: [
+        { id: "c1", points: 3 },
+        { id: "c2", points: 5 },
+      ],
+      comment: "Initial grade",
+      finalizedAt: "2026-11-20T03:30:00Z",
+      version: 2,
     });
-    fakeApi.get("/api/v1/admin/grading/items/{itemId}", ok(finalized));
-    fakeApi.post(
-      "/api/v1/admin/grading/items/{itemId}/reopen",
+    const reopenedGrade = makeEssayGrade({
+      id: "grade-2",
+      state: "DRAFT",
+      graderId: GRADER_1_ID,
+      points: 8,
+      criteria: [
+        { id: "c1", points: 3 },
+        { id: "c2", points: 5 },
+      ],
+      comment: "Initial grade",
+      reopenedReason: "Phúc khảo điểm câu 25",
+      version: 1,
+    });
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", () =>
       ok(
-        makeEssayGrade({
-          id: "grade-2",
-          state: "DRAFT",
-          graderId: GRADER_1_ID,
-          points: 8,
-          criteria: [
-            { id: "c1", points: 3 },
-            { id: "c2", points: 5 },
-          ],
-          comment: "Initial grade",
-          reopenedReason: "Phúc khảo điểm câu 25",
-          version: 1,
-        }),
+        reopened
+          ? makeDetail({ state: "IN_PROGRESS", regrading: true, activeGrade: reopenedGrade })
+          : makeDetail({ state: "DONE", activeGrade: finalizedGrade }),
       ),
     );
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/reopen", () => {
+      reopened = true;
+      return ok(reopenedGrade);
+    });
 
     renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
     await userEvent.click(await screen.findByRole("button", { name: "Mở lại để chấm lại" }));
@@ -264,10 +281,10 @@ describe("GradingItemView workflows", () => {
     expect(await screen.findByRole("button", { name: "Hoàn tất chấm" })).toBeInTheDocument();
   });
 
-  it("thiếu quyền GRADING.MODIFY chỉ được xem (AC-9)", async () => {
+  it("thiếu quyền GRADING.MODIFY chỉ được xem kể cả khi WAITING hoặc DONE (AC-9, R1-34)", async () => {
     fakeApi.get("/api/v1/admin/grading/items/{itemId}", ok(makeDetail({ state: "WAITING" })));
 
-    renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />, {
+    const { unmount } = renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />, {
       session: makeSession({ permissions: ["GRADING.VIEW"] }),
     });
 
@@ -276,28 +293,47 @@ describe("GradingItemView workflows", () => {
     expect(screen.queryByRole("button", { name: "Lưu nháp" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Hoàn tất chấm" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mở lại để chấm lại" })).not.toBeInTheDocument();
-  });
+    unmount();
 
-  it("hỗ trợ câu tự luận không có bảng tiêu chí (chỉ nhập tổng điểm)", async () => {
     fakeApi.get(
       "/api/v1/admin/grading/items/{itemId}",
       ok(
         makeDetail({
-          state: "IN_PROGRESS",
-          rubric: [],
-          pointsMax: 10,
-          activeGrade: makeEssayGrade({ graderId: GRADER_1_ID, version: 1 }),
+          state: "DONE",
+          activeGrade: makeEssayGrade({ state: "FINAL", points: 8, version: 1 }),
         }),
       ),
     );
-    fakeApi.post(
-      "/api/v1/admin/grading/items/{itemId}/finalize",
-      ok({
+    renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />, {
+      session: makeSession({ permissions: ["GRADING.VIEW"] }),
+    });
+    expect(await screen.findByRole("heading", { level: 2, name: "Đã chốt điểm" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mở lại để chấm lại" })).not.toBeInTheDocument();
+  });
+
+  it("hỗ trợ câu tự luận không có bảng tiêu chí (chỉ nhập tổng điểm)", async () => {
+    let finalizedDone = false;
+    const finalizedGrade = makeEssayGrade({ state: "FINAL", points: 7.5, version: 2 });
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", () =>
+      ok(
+        makeDetail({
+          state: finalizedDone ? "DONE" : "IN_PROGRESS",
+          rubric: [],
+          pointsMax: 10,
+          activeGrade: finalizedDone
+            ? finalizedGrade
+            : makeEssayGrade({ graderId: GRADER_1_ID, version: 1 }),
+        }),
+      ),
+    );
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/finalize", () => {
+      finalizedDone = true;
+      return ok({
         attemptId: "att-1",
         attemptState: "SCORED",
-        grade: makeEssayGrade({ state: "FINAL", points: 7.5, version: 2 }),
-      }),
-    );
+        grade: finalizedGrade,
+      });
+    });
 
     renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
     const total = await screen.findByLabelText("Tổng điểm câu");
@@ -309,5 +345,149 @@ describe("GradingItemView workflows", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Đã chốt điểm" })).toBeInTheDocument();
     const finalizeCall = fakeApi.calls.find((c) => c.path.endsWith("/finalize"));
     expect(finalizeCall?.options?.body).toEqual({ expectedVersion: 1, points: 7.5, comment: "" });
+  });
+
+  it("giữ input dirty khi refetch có version mới, hiện notice Tải lại dữ liệu và chỉ reset khi bấm (R1-19)", async () => {
+    let serverVersion = 1;
+    let qcRef: QueryClient | null = null;
+    function CaptureClient() {
+      const qc = useQueryClient();
+      useEffect(() => {
+        qcRef = qc;
+      }, [qc]);
+      return null;
+    }
+
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", () =>
+      ok(
+        makeDetail({
+          state: "IN_PROGRESS",
+          rubric: [],
+          pointsMax: 10,
+          activeGrade: makeEssayGrade({
+            graderId: GRADER_1_ID,
+            points: serverVersion === 1 ? undefined : 8.5,
+            comment: serverVersion === 1 ? "" : "Ghi chú từ máy chủ",
+            version: serverVersion,
+          }),
+        }),
+      ),
+    );
+
+    renderGradingUi(
+      <>
+        <CaptureClient />
+        <GradingItemView itemId={ITEM_1_ID} />
+      </>,
+    );
+
+    const total = await screen.findByLabelText("Tổng điểm câu");
+    await userEvent.type(total, "4");
+    expect(total).toHaveValue("4");
+
+    serverVersion = 2;
+    await qcRef!.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(ITEM_1_ID) });
+
+    const staleMsg = await screen.findByText(/Dữ liệu chấm từ máy chủ đã thay đổi/);
+    expect(staleMsg.closest('[role="status"]')).not.toBeNull();
+    expect(screen.getByLabelText("Tổng điểm câu")).toHaveValue("4");
+
+    await userEvent.click(screen.getByRole("button", { name: "Tải lại dữ liệu" }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tổng điểm câu")).toHaveValue("8,5");
+    });
+    expect(screen.getByLabelText("Nhận xét")).toHaveValue("Ghi chú từ máy chủ");
+    expect(screen.queryByText(/Dữ liệu chấm từ máy chủ đã thay đổi/)).not.toBeInTheDocument();
+  });
+
+  it("reset justFinalized khi mở lại và khi chuyển sang item khác, và chỉ tắt regrading khi attemptState SCORED (R1-20, R1-21, R1-22, R1-41)", async () => {
+    const OTHER_ITEM_ID = "88888888-8888-4888-8888-888888888888";
+    const invalidateSpy = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    let currentState: "IN_PROGRESS" | "DONE" = "IN_PROGRESS";
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", (req) => {
+      const pathParams = (req.options as { params?: { path?: { itemId?: string } } } | undefined)
+        ?.params?.path;
+      if (pathParams?.itemId === OTHER_ITEM_ID) {
+        return ok(
+          makeDetail({
+            itemId: OTHER_ITEM_ID,
+            state: "DONE",
+            activeGrade: makeEssayGrade({ id: "g-other", state: "FINAL", points: 9, version: 1 }),
+          }),
+        );
+      }
+      return ok(
+        makeDetail({
+          state: currentState,
+          regrading: true,
+          rubric: [],
+          pointsMax: 10,
+          activeGrade: makeEssayGrade({ graderId: GRADER_1_ID, points: 7, version: 1 }),
+        }),
+      );
+    });
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/finalize", () => {
+      currentState = "DONE";
+      return ok({
+        attemptId: "att-1",
+        attemptState: "GRADING",
+        grade: makeEssayGrade({ state: "FINAL", points: 7, version: 2 }),
+      });
+    });
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/reopen", () => {
+      currentState = "IN_PROGRESS";
+      return ok(makeEssayGrade({ id: "g-2", state: "DRAFT", points: 7, version: 3 }));
+    });
+
+    const { rerender } = renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
+    await screen.findByLabelText("Tổng điểm câu");
+    await userEvent.click(screen.getByRole("button", { name: "Hoàn tất chấm" }));
+    const confirmRegion = await screen.findByRole("region", { name: "Hoàn tất chấm câu tự luận?" });
+    await userEvent.click(
+      within(confirmRegion).getByRole("button", { name: "Xác nhận hoàn tất" }),
+    );
+
+    const doneHeading = await screen.findByRole("heading", { level: 2, name: "Đã chốt điểm" });
+    await waitFor(() => expect(document.activeElement).toBe(doneHeading));
+    // Vì attemptState = "GRADING" (chưa phải SCORED), badge "Đang chấm lại" vẫn phải giữ nguyên.
+    expect(screen.getByText("Đang chấm lại")).toBeInTheDocument();
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: GRADING_QUERY_KEYS.detail(ITEM_1_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.all });
+
+    // Mở lại chấm -> reset justFinalized và invalidate detail + attempts.
+    invalidateSpy.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Mở lại để chấm lại" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Lý do mở lại/), "Kiểm tra lại");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Xác nhận mở lại" }));
+    await screen.findByLabelText("Tổng điểm câu");
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: GRADING_QUERY_KEYS.detail(ITEM_1_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.all });
+
+    // Đổi sang itemId khác đang ở DONE -> không được focus tự động vào heading "Đã chốt điểm".
+    const session = makeSession();
+    rerender(
+      <SessionProvider loadSession={async () => session}>
+        <GradingItemView itemId={OTHER_ITEM_ID} />
+      </SessionProvider>,
+    );
+    const otherDoneHeading = await screen.findByRole("heading", { level: 2, name: "Đã chốt điểm" });
+    expect(document.activeElement).not.toBe(otherDoneHeading);
+  });
+
+  it("hiện trạng thái ngoại tuyến với nút Thử lại khi mất kết nối ở chi tiết chấm (R1-27)", async () => {
+    onlineManager.setOnline(false);
+    try {
+      renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
+      expect(await screen.findByText("Không có kết nối")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+      expect(screen.queryByLabelText("Đang tải câu tự luận")).not.toBeInTheDocument();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 });

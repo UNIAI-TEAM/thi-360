@@ -1,9 +1,10 @@
+import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
-import { AttemptListView } from "../components/attempt-list-view";
+import { AttemptListSkeleton, AttemptListView } from "../components/attempt-list-view";
 import {
   ATTEMPT_1_ID,
   ATTEMPT_EXAM_KIND_FIXTURES,
@@ -230,5 +231,38 @@ describe("AttemptListView", () => {
     const link = await screen.findByRole("link", { name: "7C1E4B9A" });
     expect(link).toHaveAttribute("href", `/attempts/${ATTEMPT_1_ID}`);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("ẩn danh sách cũ và phân trang khi ngoại tuyến, và AttemptListSkeleton dùng Skeleton (R1-26, R1-31)", async () => {
+    fakeApi.get(
+      "/api/v1/admin/attempts",
+      ok({
+        items: [makeAttemptSummary()],
+        page: 0,
+        size: 20,
+        totalItems: 30,
+        totalPages: 2,
+      }),
+    );
+
+    renderAttemptsUi(<AttemptListView />);
+    await screen.findByRole("link", { name: "7C1E4B9A" });
+    expect(screen.getByRole("navigation", { name: "Phân trang danh sách lượt thi" })).toBeInTheDocument();
+
+    try {
+      onlineManager.setOnline(false);
+      await userEvent.click(screen.getByRole("radio", { name: "Đang làm" }));
+
+      expect(await screen.findByText("Kiểm tra kết nối mạng rồi bấm Thử lại.")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "7C1E4B9A" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("navigation", { name: "Phân trang danh sách lượt thi" }),
+      ).not.toBeInTheDocument();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    const { container } = renderAttemptsUi(<AttemptListSkeleton />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 });

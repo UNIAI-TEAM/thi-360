@@ -30,11 +30,13 @@ import {
 import { GRADER_1_ID, GRADER_2_ID, makeDetail, makeEssayGrade } from "./grading-fixtures";
 
 describe("scoring helpers", () => {
-  it("parses comma and dot decimals up to 2 decimals and rejects invalid values", () => {
+  it("parses comma and dot decimals up to 4 decimals and rejects invalid values", () => {
     expect(parseScore("1,5")).toBe(1.5);
     expect(parseScore(" 2.25 ")).toBe(2.25);
     expect(parseScore("10")).toBe(10);
-    expect(parseScore("0,125")).toBeNaN();
+    expect(parseScore("0,125")).toBe(0.125);
+    expect(parseScore("0.1234")).toBe(0.1234);
+    expect(parseScore("0,12345")).toBeNaN();
     expect(parseScore("-1")).toBeNaN();
     expect(parseScore("abc")).toBeNaN();
     expect(parseScore("")).toBeNaN();
@@ -45,13 +47,17 @@ describe("scoring helpers", () => {
     expect(checkScoreInput("   ", 5, true)).toBe("required");
     expect(checkScoreInput("5", 5, true)).toBeNull();
     expect(checkScoreInput("0,5", 5, true)).toBeNull();
+    expect(checkScoreInput("0.1234", 5, true)).toBeNull();
+    expect(checkScoreInput("0.12345", 5, true)).toBe("invalid");
     expect(checkScoreInput("5,25", 5, false)).toBe("tooHigh");
     expect(checkScoreInput("-0.5", 5, false)).toBe("invalid");
   });
 
   it("avoids floating point drift in sums and formats decimal separators", () => {
     expect(roundScore(0.1 + 0.2)).toBe(0.3);
-    expect(sumScores([0.1, 0.2, null, undefined])).toBe(0.3);
+    expect(roundScore(0.12344)).toBe(0.1234);
+    expect(roundScore(0.12345)).toBe(0.1235);
+    expect(sumScores([0.1, 0.2, 0.1234, null, undefined])).toBe(0.4234);
     expect(formatScoreInput(2.5, ",")).toBe("2,5");
     expect(formatScoreInput(2.5, ".")).toBe("2.5");
     expect(formatScoreInput(null, ",")).toBe("");

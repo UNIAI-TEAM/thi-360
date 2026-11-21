@@ -14,12 +14,13 @@ import {
   StatusChip,
 } from "@thi360/ui";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { ArrowLeft, TriangleAlert, WifiOff } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { usePermissions, useSession } from "@/features/session/session-provider";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
   defaultGradingApiDeps,
@@ -47,7 +48,12 @@ import {
   useReopenEssayGrade,
   useSaveEssayDraft,
 } from "../queries";
-import { formatScoreInput, parseScore, sumScores } from "../scoring";
+import {
+  formatScoreInput,
+  parseScore,
+  SCORE_NUMBER_FORMAT,
+  sumScores,
+} from "../scoring";
 import { GRADING_STATUS_TONE, shortAttemptCode } from "../status";
 import type { GradingItemDetailResponse, GradingQueueState } from "../types";
 import {
@@ -84,20 +90,49 @@ export function GradingItemView({ itemId, deps }: GradingItemViewProps) {
 
   const detailQuery = useGradingItemDetail(itemId, api);
   const examKindsQuery = useGradingExamKinds(api);
+  const [prevItemId, setPrevItemId] = useState(itemId);
   const [announcement, setAnnouncement] = useState("");
   const [justFinalized, setJustFinalized] = useState(false);
 
+  if (prevItemId !== itemId) {
+    setPrevItemId(itemId);
+    setJustFinalized(false);
+    setAnnouncement("");
+  }
+
+  const breadcrumbLabel = detailQuery.data
+    ? t("heading", {
+        code: shortAttemptCode(detailQuery.data.attemptId),
+        number: detailQuery.data.displayNo ?? 0,
+      })
+    : undefined;
+  useSetBreadcrumbLeaf(breadcrumbLabel);
+
+  const isOffline = detailQuery.fetchStatus === "paused" && detailQuery.isPending;
+
   let body;
-  if (detailQuery.isPending) {
+  if (isOffline) {
     body = (
-      <div className="flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
-        <Skeleton className="h-36" />
-        <div className="grid gap-4 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
-        </div>
+      <div className="flex flex-col gap-5">
+        <BackLink />
+        <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
+        <Card>
+          <EmptyState
+            icon={<WifiOff />}
+            title={t("offlineTitle")}
+            description={t("offlineDescription")}
+            headingLevel={2}
+            action={
+              <Button variant="secondary" onClick={() => void detailQuery.refetch()}>
+                {t("retry")}
+              </Button>
+            }
+          />
+        </Card>
       </div>
     );
+  } else if (detailQuery.isPending) {
+    body = <GradingItemSkeleton label={t("loading")} />;
   } else if (detailQuery.isError) {
     const notFound = getErrorStatus(detailQuery.error) === 404;
     body = (
@@ -142,6 +177,7 @@ export function GradingItemView({ itemId, deps }: GradingItemViewProps) {
             justFinalized={justFinalized}
             announce={setAnnouncement}
             onFinalized={() => setJustFinalized(true)}
+            onReopened={() => setJustFinalized(false)}
             onRefetchDetail={() => detailQuery.refetch()}
           />
         </div>
@@ -157,13 +193,25 @@ export function GradingItemView({ itemId, deps }: GradingItemViewProps) {
   );
 }
 
+export function GradingItemSkeleton({ label }: { label?: string }) {
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true" aria-label={label}>
+      <Skeleton className="h-36" />
+      <div className="grid gap-4 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <Skeleton className="h-96" />
+        <Skeleton className="h-96" />
+      </div>
+    </div>
+  );
+}
+
 function BackLink() {
   const t = useTranslations("grading.detail");
   return (
     <Link
       href="/grading"
       className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text",
+        "inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text pointer-coarse:min-h-11",
         focusRing,
       )}
     >
@@ -261,6 +309,7 @@ function ItemGradingRightColumn({
   justFinalized,
   announce,
   onFinalized,
+  onReopened,
   onRefetchDetail,
 }: {
   detail: GradingItemDetailResponse;
@@ -268,6 +317,7 @@ function ItemGradingRightColumn({
   justFinalized: boolean;
   announce: (message: string) => void;
   onFinalized: () => void;
+  onReopened: () => void;
   onRefetchDetail: () => Promise<unknown>;
 }) {
   const t = useTranslations("grading.detail");
@@ -317,6 +367,7 @@ function ItemGradingRightColumn({
     setReopenError(null);
     try {
       await reopenMutation.mutateAsync({ reason });
+      onReopened();
       setReopenOpen(false);
       const msg = t("reopen.done");
       announce(msg);
@@ -432,19 +483,36 @@ function OwnedDraftFormWorkspace({
   const [confirming, setConfirming] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isVersionConflict, setIsVersionConflict] = useState(false);
+  const [syncedVersion, setSyncedVersion] = useState<number | undefined>(
+    detail.activeGrade?.version,
+  );
 
   const confirmRef = useRef<HTMLDivElement>(null);
   const finalizeButtonRef = useRef<HTMLButtonElement>(null);
   const syncedVersionRef = useRef<number | undefined>(detail.activeGrade?.version);
 
-  // Sync form when detail reloads with a newer version from the server (e.g. after 412 conflict).
+  const incomingVersion = detail.activeGrade?.version;
+  if ((!formState.isDirty || isVersionConflict) && incomingVersion !== syncedVersion) {
+    setSyncedVersion(incomingVersion);
+  }
+  const staleServerNotice =
+    incomingVersion !== undefined &&
+    incomingVersion !== syncedVersion &&
+    formState.isDirty &&
+    !isVersionConflict;
+
+  // Sync form when detail reloads with a newer version while clean or resolving a 412 conflict.
   useEffect(() => {
-    const incomingVersion = detail.activeGrade?.version;
-    if (incomingVersion !== undefined && incomingVersion !== syncedVersionRef.current) {
-      syncedVersionRef.current = incomingVersion;
+    const serverVersion = detail.activeGrade?.version;
+    if (
+      serverVersion !== undefined &&
+      serverVersion !== syncedVersionRef.current &&
+      (!formState.isDirty || isVersionConflict)
+    ) {
+      syncedVersionRef.current = serverVersion;
       reset(toItemFormValues(detail, decimalSeparator));
     }
-  }, [detail, decimalSeparator, reset]);
+  }, [detail, decimalSeparator, formState.isDirty, isVersionConflict, reset]);
 
   useEffect(() => {
     if (confirming) confirmRef.current?.focus();
@@ -521,6 +589,7 @@ function OwnedDraftFormWorkspace({
         try {
           const updated = await saveDraftMutation.mutateAsync(toSaveDraftRequest(detail, values));
           syncedVersionRef.current = updated.version;
+          setSyncedVersion(updated.version);
           reset(toItemFormValues({ ...detail, activeGrade: updated }, decimalSeparator));
           const msg = t("draft.saved");
           announce(msg);
@@ -576,12 +645,14 @@ function OwnedDraftFormWorkspace({
         }
         try {
           const res = await finalizeMutation.mutateAsync(toFinalizeRequest(detail, values));
-          syncedVersionRef.current = res.grade?.version ?? syncedVersionRef.current;
+          const nextVersion = res.grade?.version ?? syncedVersionRef.current;
+          syncedVersionRef.current = nextVersion;
+          setSyncedVersion(nextVersion);
           onFinalized();
           const finalScore = res.grade?.points ?? parseScore(values.totalPoints);
           const msg = t("finish.done", {
-            score: format.number(Number.isFinite(finalScore) ? finalScore : 0),
-            max: format.number(detail.pointsMax ?? 0),
+            score: format.number(Number.isFinite(finalScore) ? finalScore : 0, SCORE_NUMBER_FORMAT),
+            max: format.number(detail.pointsMax ?? 0, SCORE_NUMBER_FORMAT),
           });
           announce(msg);
           notify.success(msg);
@@ -600,10 +671,15 @@ function OwnedDraftFormWorkspace({
     requestAnimationFrame(() => finalizeButtonRef.current?.focus());
   };
 
-  const onReloadDetail = () => {
+  const onReloadDetail = async () => {
     setServerError(null);
     setIsVersionConflict(false);
-    void onRefetchDetail();
+    const refetched = (await onRefetchDetail()) as { data?: GradingItemDetailResponse } | undefined;
+    const nextDetail = refetched?.data ?? detail;
+    const nextVersion = nextDetail.activeGrade?.version;
+    syncedVersionRef.current = nextVersion;
+    setSyncedVersion(nextVersion);
+    reset(toItemFormValues(nextDetail, decimalSeparator));
   };
 
   return (
@@ -619,12 +695,13 @@ function OwnedDraftFormWorkspace({
           finalizeButtonRef={finalizeButtonRef}
           serverError={serverError}
           isVersionConflict={isVersionConflict}
+          staleServerNotice={staleServerNotice}
           onCriterionChange={handleCriterionChange}
           onSaveDraft={() => void onSaveDraft()}
           onRequestFinalize={() => void onRequestFinalize()}
           onConfirmFinalize={() => void onConfirmFinalize()}
           onCancelConfirm={onCancelConfirm}
-          onReloadDetail={onReloadDetail}
+          onReloadDetail={() => void onReloadDetail()}
         />
       </form>
     </FormProvider>

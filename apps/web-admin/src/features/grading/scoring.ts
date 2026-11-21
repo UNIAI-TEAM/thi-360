@@ -1,5 +1,6 @@
-export const SCORE_DECIMALS = 2;
+export const SCORE_DECIMALS = 4;
 export const COMMENT_MAX = 2000;
+export const SCORE_NUMBER_FORMAT = { maximumFractionDigits: SCORE_DECIMALS } as const;
 
 const SCORE_PATTERN = new RegExp(`^\\d+([.,]\\d{1,${SCORE_DECIMALS}})?$`);
 
@@ -10,7 +11,7 @@ export function parseScore(value: string): number {
   return Number(trimmed.replace(",", "."));
 }
 
-/** Round to 2 decimal places so decimal additions like 0.1 + 0.2 stay exact. */
+/** Round to 4 decimal places so decimal additions like 0.1 + 0.2 stay exact. */
 export function roundScore(value: number): number {
   return Math.round(value * 10 ** SCORE_DECIMALS) / 10 ** SCORE_DECIMALS;
 }

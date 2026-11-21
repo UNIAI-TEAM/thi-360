@@ -8,7 +8,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useId, useRef, type Ref } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { criteriaInputTotal, type GradingItemFormValues } from "../grading-form";
-import { COMMENT_MAX } from "../scoring";
+import { COMMENT_MAX, SCORE_NUMBER_FORMAT } from "../scoring";
 import { GRADING_STATUS_TONE } from "../status";
 import type { EssayGradeView, GradingItemDetailResponse } from "../types";
 
@@ -37,7 +37,9 @@ export function EssayItemContentPanel({ detail }: { detail: GradingItemDetailRes
             {t("title", { number: detail.displayNo ?? 0 })}
           </h2>
           <p className="text-caption text-text-muted tabular-nums">
-            {t("maxPoints", { points: format.number(detail.pointsMax ?? 0) })}
+            {t("maxPoints", {
+              points: format.number(detail.pointsMax ?? 0, SCORE_NUMBER_FORMAT),
+            })}
           </p>
         </header>
 
@@ -45,7 +47,7 @@ export function EssayItemContentPanel({ detail }: { detail: GradingItemDetailRes
           <details open className="group rounded-lg border border-border bg-subtle">
             <summary
               className={cn(
-                "cursor-pointer rounded-lg px-4 py-2.5 text-label font-semibold text-text",
+                "cursor-pointer rounded-lg px-4 py-2.5 text-label font-semibold text-text pointer-coarse:min-h-11",
                 focusRing,
               )}
             >
@@ -97,7 +99,7 @@ export function EssayItemContentPanel({ detail }: { detail: GradingItemDetailRes
           <details open className="rounded-lg border border-border">
             <summary
               className={cn(
-                "cursor-pointer rounded-lg px-4 py-2.5 text-label font-semibold text-text",
+                "cursor-pointer rounded-lg px-4 py-2.5 text-label font-semibold text-text pointer-coarse:min-h-11",
                 focusRing,
               )}
             >
@@ -113,7 +115,7 @@ export function EssayItemContentPanel({ detail }: { detail: GradingItemDetailRes
           <details className="rounded-lg border border-border">
             <summary
               className={cn(
-                "cursor-pointer rounded-lg px-4 py-2.5 text-label font-semibold text-text",
+                "cursor-pointer rounded-lg px-4 py-2.5 text-label font-semibold text-text pointer-coarse:min-h-11",
                 focusRing,
               )}
             >
@@ -189,7 +191,7 @@ export function ClaimActionCard({
                     <span data-exam-content>{criterion.description}</span>
                   </span>
                   <span className="shrink-0 text-text-muted tabular-nums">
-                    {format.number(criterion.points ?? 0)}
+                    {format.number(criterion.points ?? 0, SCORE_NUMBER_FORMAT)}
                   </span>
                 </li>
               ))}
@@ -266,8 +268,8 @@ export function ReadOnlyGradingCard({
                   </dt>
                   <dd className="m-0 shrink-0 text-body font-medium text-text-muted tabular-nums">
                     {saved?.points != null
-                      ? `${format.number(saved.points)} / ${format.number(criterion.points ?? 0)}`
-                      : `— / ${format.number(criterion.points ?? 0)}`}
+                      ? `${format.number(saved.points, SCORE_NUMBER_FORMAT)} / ${format.number(criterion.points ?? 0, SCORE_NUMBER_FORMAT)}`
+                      : `— / ${format.number(criterion.points ?? 0, SCORE_NUMBER_FORMAT)}`}
                   </dd>
                 </div>
               );
@@ -290,6 +292,7 @@ export function ActiveDraftGradingForm({
   finalizeButtonRef,
   serverError,
   isVersionConflict,
+  staleServerNotice = false,
   onCriterionChange,
   onSaveDraft,
   onRequestFinalize,
@@ -306,6 +309,7 @@ export function ActiveDraftGradingForm({
   finalizeButtonRef: Ref<HTMLButtonElement>;
   serverError: string | null;
   isVersionConflict: boolean;
+  staleServerNotice?: boolean;
   onCriterionChange: (index: number, nextValue: string) => void;
   onSaveDraft: () => void;
   onRequestFinalize: () => void;
@@ -331,9 +335,9 @@ export function ActiveDraftGradingForm({
   const translateError = (key: string | undefined, max?: number) => {
     if (!key) return undefined;
     return validationT(key, {
-      max: format.number(max ?? pointsMax),
+      max: format.number(max ?? pointsMax, SCORE_NUMBER_FORMAT),
       limit: format.number(COMMENT_MAX),
-      sum: format.number(criteriaInputTotal(watchedCriteria)),
+      sum: format.number(criteriaInputTotal(watchedCriteria), SCORE_NUMBER_FORMAT),
     });
   };
 
@@ -347,7 +351,7 @@ export function ActiveDraftGradingForm({
             {t("rubric.title")}
           </h2>
           <p className="text-caption text-text-muted tabular-nums">
-            {t("rubric.max", { max: format.number(pointsMax) })}
+            {t("rubric.max", { max: format.number(pointsMax, SCORE_NUMBER_FORMAT) })}
           </p>
         </header>
 
@@ -383,11 +387,13 @@ export function ActiveDraftGradingForm({
                       className="w-28"
                     />
                     <span aria-hidden className="text-body text-text-muted tabular-nums">
-                      / {format.number(criterionMax)}
+                      / {format.number(criterionMax, SCORE_NUMBER_FORMAT)}
                     </span>
                   </div>
                   <p id={hintId} className="text-caption text-text-muted">
-                    {t("rubric.criterionHint", { max: format.number(criterionMax) })}
+                    {t("rubric.criterionHint", {
+                      max: format.number(criterionMax, SCORE_NUMBER_FORMAT),
+                    })}
                   </p>
                   {errorMsg && (
                     <p id={errorId} role="alert" className="text-caption text-danger">
@@ -401,8 +407,8 @@ export function ActiveDraftGradingForm({
               <span>{t("rubric.criteriaSum")}</span>
               <strong className="font-semibold tabular-nums">
                 {t("rubric.subtotalValue", {
-                  score: format.number(criteriaInputTotal(watchedCriteria)),
-                  max: format.number(pointsMax),
+                  score: format.number(criteriaInputTotal(watchedCriteria), SCORE_NUMBER_FORMAT),
+                  max: format.number(pointsMax, SCORE_NUMBER_FORMAT),
                 })}
               </strong>
             </p>
@@ -411,7 +417,9 @@ export function ActiveDraftGradingForm({
 
         <FormField
           label={t("rubric.totalPointsLabel")}
-          hint={t("rubric.totalPointsHint", { max: format.number(pointsMax) })}
+          hint={t("rubric.totalPointsHint", {
+            max: format.number(pointsMax, SCORE_NUMBER_FORMAT),
+          })}
           error={translateError(errors.totalPoints?.message, pointsMax)}
         >
           {(controlProps) => (
@@ -424,7 +432,7 @@ export function ActiveDraftGradingForm({
                 className="w-28"
               />
               <span aria-hidden className="text-body text-text-muted tabular-nums">
-                / {format.number(pointsMax)}
+                / {format.number(pointsMax, SCORE_NUMBER_FORMAT)}
               </span>
             </div>
           )}
@@ -457,6 +465,19 @@ export function ActiveDraftGradingForm({
                 <span>{t("reload")}</span>
               </Button>
             )}
+          </div>
+        )}
+
+        {staleServerNotice && !serverError && (
+          <div
+            role="status"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-caption text-warning"
+          >
+            <span>{t("staleNotice")}</span>
+            <Button type="button" variant="secondary" size="sm" onClick={onReloadDetail}>
+              <RefreshCw />
+              <span>{t("reload")}</span>
+            </Button>
           </div>
         )}
 
@@ -507,7 +528,7 @@ export function ActiveDraftGradingForm({
                 <p className="text-body text-text-secondary">
                   {t("finish.confirmDescription", {
                     score: watchedTotal || "0",
-                    max: format.number(pointsMax),
+                    max: format.number(pointsMax, SCORE_NUMBER_FORMAT),
                   })}
                 </p>
               </div>
@@ -577,8 +598,8 @@ export function FinalizedGradingCard({
           </h2>
           <p className="text-h3 font-bold text-text tabular-nums">
             {t("rubric.subtotalValue", {
-              score: format.number(active?.points ?? 0),
-              max: format.number(pointsMax),
+              score: format.number(active?.points ?? 0, SCORE_NUMBER_FORMAT),
+              max: format.number(pointsMax, SCORE_NUMBER_FORMAT),
             })}
           </p>
         </header>
@@ -597,8 +618,8 @@ export function FinalizedGradingCard({
                   </dt>
                   <dd className="m-0 shrink-0 font-semibold whitespace-nowrap text-text tabular-nums">
                     {t("rubric.subtotalValue", {
-                      score: format.number(saved?.points ?? 0),
-                      max: format.number(criterion.points ?? 0),
+                      score: format.number(saved?.points ?? 0, SCORE_NUMBER_FORMAT),
+                      max: format.number(criterion.points ?? 0, SCORE_NUMBER_FORMAT),
                     })}
                   </dd>
                 </div>
@@ -697,7 +718,7 @@ export function GradingHistoryCard({
                 </span>
                 <span className="text-body font-semibold text-text tabular-nums">
                   {entry.points != null
-                    ? `${format.number(entry.points)} / ${format.number(pointsMax)}`
+                    ? `${format.number(entry.points, SCORE_NUMBER_FORMAT)} / ${format.number(pointsMax, SCORE_NUMBER_FORMAT)}`
                     : "—"}
                 </span>
               </div>
@@ -710,7 +731,10 @@ export function GradingHistoryCard({
               )}
               {entry.reopenedReason && (
                 <p className="text-caption text-text-secondary">
-                  {t("reopenedReason", { reason: entry.reopenedReason })}
+                  {t.rich("reopenedReason", {
+                    reason: entry.reopenedReason,
+                    text: (chunks) => <span data-exam-content>{chunks}</span>,
+                  })}
                 </p>
               )}
             </li>

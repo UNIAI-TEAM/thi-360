@@ -28,6 +28,7 @@ import {
   PlusCircle,
   RefreshCw,
   TriangleAlert,
+  WifiOff,
 } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -106,6 +107,29 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
   const detailQuery = useAdminAttemptDetail(attemptId, api);
   const examKindsQuery = useAttemptExamKinds(api);
   const [announcement, setAnnouncement] = useState("");
+  const isOffline = detailQuery.fetchStatus === "paused" && detailQuery.isPending;
+
+  if (isOffline) {
+    return (
+      <div className="flex flex-col gap-5">
+        <BackLink label={t("backToList")} />
+        <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
+        <Card>
+          <EmptyState
+            icon={<WifiOff />}
+            title={t("offlineTitle")}
+            description={t("offlineDescription")}
+            headingLevel={2}
+            action={
+              <Button variant="secondary" onClick={() => void detailQuery.refetch()}>
+                {t("retry")}
+              </Button>
+            }
+          />
+        </Card>
+      </div>
+    );
+  }
 
   if (detailQuery.isPending) {
     return <AttemptDetailSkeleton label={t("loading")} />;
@@ -150,6 +174,7 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
     <div className="@container flex flex-col gap-5">
       <LiveStatus message={announcement} />
       <AttemptDetailContent
+        key={attempt.attemptId ?? attemptId}
         attempt={attempt}
         examKinds={examKindsQuery.data}
         api={api}
@@ -164,7 +189,7 @@ function BackLink({ label }: { label: string }) {
     <Link
       href="/attempts"
       className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text",
+        "inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text pointer-coarse:min-h-11",
         focusRing,
       )}
     >
@@ -251,7 +276,11 @@ function AttemptDetailContent({
           <div className="flex min-w-0 flex-col gap-1">
             <p className="font-semibold text-danger">{t("detail.alerts.gradingErrorTitle")}</p>
             <p className="text-text-secondary">
-              {attempt.gradingError || t("detail.alerts.gradingErrorDescription")}
+              {attempt.gradingError ? (
+                <span data-exam-content>{attempt.gradingError}</span>
+              ) : (
+                t("detail.alerts.gradingErrorDescription")
+              )}
             </p>
           </div>
         </div>
@@ -294,7 +323,9 @@ function AttemptDetailContent({
                 : t("detail.alerts.faultTitle")}
             </p>
             {attempt.faultReason && (
-              <p className="text-text-secondary">{attempt.faultReason}</p>
+              <p className="text-text-secondary" data-exam-content>
+                {attempt.faultReason}
+              </p>
             )}
           </div>
         </div>
@@ -495,7 +526,7 @@ function AttemptMetadataCard({
                 ? t("list.faultCompensated")
                 : t("list.faultFlag")}
               {attempt.faultReason && (
-                <span className="block font-normal text-text-secondary">
+                <span className="block font-normal text-text-secondary" data-exam-content>
                   {attempt.faultReason}
                 </span>
               )}
@@ -642,7 +673,9 @@ function AttemptPartsSection({
                 {part.generationTries != null ? format.number(part.generationTries) : "—"}
               </span>
               {part.generationError && (
-                <span className="text-caption text-danger">{part.generationError}</span>
+                <span className="text-caption text-danger" data-exam-content>
+                  {part.generationError}
+                </span>
               )}
             </div>
           );
@@ -682,7 +715,9 @@ function AttemptPartsSection({
             ]}
           >
             {part.generationError && (
-              <p className="text-caption font-medium text-danger">{part.generationError}</p>
+              <p className="text-caption font-medium text-danger" data-exam-content>
+                {part.generationError}
+              </p>
             )}
           </ListCard>
         );
@@ -944,7 +979,12 @@ function AttemptTimelineSection({
                       {detail.entries.map((entry, idx) => (
                         <span key={`${entry.key}-${idx}`}>
                           {idx > 0 && " · "}
-                          {entry.key}: {entry.value}
+                          {entry.labelKey ? t(`detail.eventFields.${entry.labelKey}`) : entry.key}:{" "}
+                          {entry.isExamContent ? (
+                            <span data-exam-content>{entry.value}</span>
+                          ) : (
+                            entry.value
+                          )}
                         </span>
                       ))}
                     </p>

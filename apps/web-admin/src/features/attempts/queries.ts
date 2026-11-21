@@ -1,7 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { GRADING_QUERY_KEYS } from "@/features/grading/keys";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
+import { getErrorStatus } from "@/lib/api/query-client";
 import { ATTEMPTS_QUERY_KEYS, defaultAttemptApiDeps, type AttemptApiDeps } from "./api";
 import type {
   CompensateAttemptRequest,
@@ -50,6 +52,12 @@ export function useRegradeAttempt(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.all });
+    },
+    onError: (error) => {
+      if (getErrorStatus(error) === 409) {
+        void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
+      }
     },
   });
 }
@@ -64,6 +72,12 @@ export function useFaultAttempt(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.all });
+    },
+    onError: (error) => {
+      if (getErrorStatus(error) === 409) {
+        void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
+      }
     },
   });
 }
@@ -84,6 +98,11 @@ export function useCompensateAttempt(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
+    },
+    onError: (error) => {
+      if (getErrorStatus(error) === 409) {
+        void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
+      }
     },
   });
 }

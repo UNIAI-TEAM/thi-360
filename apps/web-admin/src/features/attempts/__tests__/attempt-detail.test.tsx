@@ -1,7 +1,11 @@
+import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GRADING_QUERY_KEYS } from "@/features/grading/keys";
+import { SessionProvider } from "@/features/session/session-provider";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
+import { ATTEMPTS_QUERY_KEYS } from "../keys";
 import { AttemptDetailView } from "../components/attempt-detail-view";
 import {
   ATTEMPT_1_ID,
@@ -293,5 +297,223 @@ describe("AttemptDetailView", () => {
     });
     await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
     expect(screen.queryByRole("heading", { level: 2, name: "Xử lý lượt" })).not.toBeInTheDocument();
+  });
+
+  it("hiện trạng thái ngoại tuyến với nút Thử lại khi mất kết nối (R1-27)", async () => {
+    onlineManager.setOnline(false);
+    try {
+      renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+      expect(await screen.findByText("Không có kết nối")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Danh sách lượt thi" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+      expect(screen.queryByLabelText("Đang tải chi tiết lượt thi")).not.toBeInTheDocument();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("dịch nhãn event data, bọc free-text & lỗi trong [data-exam-content], và giữ chỉ số ô CLOZE (R1-12, R1-13, R1-28, R1-29)", async () => {
+    fakeApi.get(
+      "/api/v1/admin/attempts/{id}",
+      ok(
+        makeAttemptDetail({
+          state: "GRADING_ERROR",
+          gradingError: "NullPointer tại chấm câu 4",
+          faultFlag: "SYSTEM_FAULT",
+          faultReason: "Sập worker chấm tự động",
+          parts: [
+            makeAttemptPart({
+              partId: PART_1_ID,
+              partName: "Phần 1",
+              state: "GENERATION_FAILED",
+              generationError: "Không đủ câu hỏi ngân hàng",
+            }),
+          ],
+          events: [
+            {
+              id: "ev-1",
+              type: "GRADING_FAILED",
+              at: "2026-11-17T02:20:00Z",
+              partId: PART_1_ID,
+              data: {
+                partCode: "P1",
+                reason: "Hết thời gian xử lý",
+                unknownKey: "raw-val",
+              },
+            },
+          ],
+          items: [
+            makeAttemptItem({
+              itemId: "item-cloze",
+              partId: PART_1_ID,
+              ord: 1,
+              displayNo: 1,
+              questionType: "CLOZE",
+              answer: {
+                type: "CLOZE",
+                blanks: { b1: "", b2: "Hà Nội" },
+              },
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+    await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
+
+    // Free-text error/reason strings wrapped in data-exam-content
+    expect(screen.getByText("NullPointer tại chấm câu 4").closest("[data-exam-content]")).not.toBeNull();
+    for (const el of screen.getAllByText("Sập worker chấm tự động")) {
+      expect(el.closest("[data-exam-content]")).not.toBeNull();
+    }
+    for (const el of screen.getAllByText("Không đủ câu hỏi ngân hàng")) {
+      expect(el.closest("[data-exam-content]")).not.toBeNull();
+    }
+
+    // Event data localization + free-text isolation + unknown key fallback
+    const timeline = screen.getByRole("list");
+    expect(within(timeline).getByText(/Mã phần: P1/)).toBeInTheDocument();
+    const reasonValue = within(timeline).getByText("Hết thời gian xử lý");
+    expect(reasonValue.closest("[data-exam-content]")).not.toBeNull();
+    expect(within(timeline).getByText(/Lý do:/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/unknownKey: raw-val/)).toBeInTheDocument();
+
+    // CLOZE blank index preserved ("Ô 2:")
+    expect(screen.getByText("Ô 2:")).toBeInTheDocument();
+    expect(screen.getByText("Hà Nội").closest("[data-exam-content]")).not.toBeNull();
+  });
+
+  it("invalidate GRADING_QUERY_KEYS khi regrade/fault, invalidate detail khi gặp 409, và reset state khi đổi attemptId (R1-21, R1-24, R1-43)", async () => {
+    const OTHER_ATTEMPT_ID = "88888888-8888-4888-8888-888888888888";
+    const invalidateSpy = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    let faultShouldConflict = false;
+
+    fakeApi.get("/api/v1/admin/attempts/{id}", (req) => {
+      const pathParams = (req.options as { params?: { path?: { id?: string } } } | undefined)
+        ?.params?.path;
+      if (pathParams?.id === OTHER_ATTEMPT_ID) {
+        return ok(
+          makeAttemptDetail({
+            attemptId: OTHER_ATTEMPT_ID,
+            state: "SCORED",
+            parts: [
+              makeAttemptPart({ partId: PART_1_ID, partName: "Phần A" }),
+              makeAttemptPart({ partId: PART_3_ID, partName: "Phần B" }),
+            ],
+            items: [
+              makeAttemptItem({ itemId: "o-1", partId: PART_1_ID, displayNo: 1 }),
+              makeAttemptItem({ itemId: "o-2", partId: PART_3_ID, displayNo: 2 }),
+            ],
+          }),
+        );
+      }
+      return ok(
+        makeAttemptDetail({
+          attemptId: ATTEMPT_1_ID,
+          state: "GRADING_ERROR",
+          parts: [
+            makeAttemptPart({ partId: PART_1_ID, partName: "Phần 1" }),
+            makeAttemptPart({ partId: PART_3_ID, partName: "Phần 3" }),
+          ],
+          items: [
+            makeAttemptItem({ itemId: "i-1", partId: PART_1_ID, displayNo: 1 }),
+            makeAttemptItem({ itemId: "i-2", partId: PART_3_ID, displayNo: 2 }),
+          ],
+        }),
+      );
+    });
+    fakeApi.post("/api/v1/admin/attempts/{id}/regrade", ok(makeAttemptDetail({ state: "SCORED" })));
+    fakeApi.post("/api/v1/admin/attempts/{id}/fault", () =>
+      faultShouldConflict
+        ? fail(409, { code: "ATTEMPT_CONFLICT" })
+        : ok(makeAttemptDetail({ faultFlag: "SYSTEM_FAULT" })),
+    );
+
+    const { rerender } = renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+    await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
+
+    // Regrade -> invalidates GRADING_QUERY_KEYS.all
+    invalidateSpy.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Chấm lại" }));
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: GRADING_QUERY_KEYS.all });
+    });
+
+    // Chọn bộ lọc phần trước khi chuyển attemptId -> switching attemptId resets state via key
+    const partFilter = screen.getByRole("combobox", { name: "Lọc theo phần" });
+    await userEvent.click(partFilter);
+    await userEvent.click(screen.getByRole("option", { name: "Phần 3" }));
+
+    // Fault gặp 409 -> invalidates detail(ATTEMPT_1_ID)
+    faultShouldConflict = true;
+    invalidateSpy.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Đánh dấu hỏng" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/Lý do/), "Lỗi worker");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Đánh dấu lượt hỏng" }));
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ATTEMPTS_QUERY_KEYS.detail(ATTEMPT_1_ID),
+      });
+    });
+
+    // Đổi attemptId -> reset filter về "Tất cả phần"
+    const session = makeAttemptSession();
+    rerender(
+      <SessionProvider loadSession={async () => session}>
+        <AttemptDetailView attemptId={OTHER_ATTEMPT_ID} />
+      </SessionProvider>,
+    );
+    await screen.findByRole("heading", { level: 1, name: "Lượt 88888888" });
+    expect(screen.getByRole("combobox", { name: "Lọc theo phần" })).toHaveTextContent("Tất cả phần");
+  });
+
+  it("chặn Đánh dấu hỏng khi thiếu ATTEMPT.COMPENSATE trên lượt chưa hỏng, khi STARTING/ABORTED, và xử lý 404/500 Retry (R1-35, R1-37)", async () => {
+    // 1. Lượt IN_PROGRESS chưa hỏng + thiếu ATTEMPT.COMPENSATE -> ẩn Đánh dấu hỏng
+    fakeApi.get(
+      "/api/v1/admin/attempts/{id}",
+      ok(makeAttemptDetail({ state: "IN_PROGRESS", faultFlag: undefined })),
+    );
+    const { unmount } = renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />, {
+      session: makeAttemptSession({ permissions: ["ATTEMPT.VIEW", "GRADING.MODIFY"] }),
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
+    expect(screen.queryByRole("button", { name: "Đánh dấu hỏng" })).not.toBeInTheDocument();
+    unmount();
+
+    // 2. Có ATTEMPT.COMPENSATE nhưng state = ABORTED -> không cho Đánh dấu hỏng
+    fakeApi.get(
+      "/api/v1/admin/attempts/{id}",
+      ok(makeAttemptDetail({ state: "ABORTED", faultFlag: undefined })),
+    );
+    const { unmount: unmountAborted } = renderAttemptsUi(
+      <AttemptDetailView attemptId={ATTEMPT_1_ID} />,
+    );
+    await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
+    expect(screen.queryByRole("button", { name: "Đánh dấu hỏng" })).not.toBeInTheDocument();
+    unmountAborted();
+
+    // 3. 404 -> Không tìm thấy lượt thi
+    fakeApi.get("/api/v1/admin/attempts/{id}", fail(404, { code: "NOT_FOUND" }));
+    const { unmount: unmount404 } = renderAttemptsUi(
+      <AttemptDetailView attemptId={ATTEMPT_1_ID} />,
+    );
+    expect(await screen.findByText("Không tìm thấy lượt thi")).toBeInTheDocument();
+    unmount404();
+
+    // 4. 500 -> Thử lại tải lại thành công
+    let detailCalls = 0;
+    fakeApi.get("/api/v1/admin/attempts/{id}", () => {
+      detailCalls += 1;
+      if (detailCalls === 1) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok(makeAttemptDetail({ state: "SCORED" }));
+    });
+    renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+    expect(await screen.findByText("Không tải được lượt thi")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" }),
+    ).toBeInTheDocument();
   });
 });

@@ -1,5 +1,7 @@
+import { onlineManager, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installContainerWidth, PHONE_CONTENT_WIDTH } from "@/test/container-width";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
@@ -243,5 +245,71 @@ describe("GradingListView", () => {
     const link = await screen.findByRole("link", { name: "#ABCDEF12 · Câu 25" });
     expect(link).toHaveAttribute("href", `/grading/${ITEM_1_ID}`);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("ẩn danh sách cũ và phân trang khi ngoại tuyến, và Thử lại gọi lại cả list và counts (R1-26, R1-44)", async () => {
+    let qcRef: QueryClient | null = null;
+    function CaptureClient() {
+      const qc = useQueryClient();
+      useEffect(() => {
+        qcRef = qc;
+      }, [qc]);
+      return null;
+    }
+
+    let listCalls = 0;
+    let countsCalls = 0;
+    let failRequests = false;
+    fakeApi.get("/api/v1/admin/grading/items", () => {
+      listCalls += 1;
+      if (failRequests) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok({ items: [makeQueueItem()], page: 0, size: 20, totalItems: 30, totalPages: 2 });
+    });
+    fakeApi.get("/api/v1/admin/grading/items/counts", () => {
+      countsCalls += 1;
+      return ok(makeCounts());
+    });
+
+    renderGradingUi(
+      <>
+        <CaptureClient />
+        <GradingListView />
+      </>,
+    );
+
+    await screen.findByRole("link", { name: "#ABCDEF12 · Câu 25" });
+    expect(screen.getByRole("navigation", { name: "Phân trang hàng chờ chấm" })).toBeInTheDocument();
+
+    try {
+      onlineManager.setOnline(false);
+      await userEvent.click(screen.getByRole("radio", { name: /Đã chấm/ }));
+
+      expect(
+        await screen.findByText(
+          "Máy đang mất kết nối nên chưa tải được danh sách. Danh sách tự tải lại khi có mạng, hoặc bấm Thử lại.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("Mất kết nối mạng").length).toBeGreaterThanOrEqual(2);
+      expect(screen.queryByRole("link", { name: "#ABCDEF12 · Câu 25" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("navigation", { name: "Phân trang hàng chờ chấm" }),
+      ).not.toBeInTheDocument();
+      expect(qcRef).not.toBeNull();
+      failRequests = true;
+    } finally {
+      onlineManager.setOnline(true);
+    }
+
+    // Sau khi có mạng trở lại và gặp lỗi 500, bấm Thử lại phải gọi lại cả items lẫn counts (R1-44).
+    expect(await screen.findByText("Không tải được hàng chờ chấm")).toBeInTheDocument();
+    const prevList = listCalls;
+    const prevCounts = countsCalls;
+    failRequests = false;
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => {
+      expect(listCalls).toBeGreaterThan(prevList);
+      expect(countsCalls).toBeGreaterThan(prevCounts);
+    });
+    expect(await screen.findByRole("link", { name: "#ABCDEF12 · Câu 25" })).toBeInTheDocument();
   });
 });

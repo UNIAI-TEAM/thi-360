@@ -14,6 +14,7 @@ import {
   LiveStatus,
   PageHeader,
   Pagination,
+  Skeleton,
   StatusChip,
   Table,
   type TableCards,
@@ -79,8 +80,15 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
   const [announcedKey, setAnnouncedKey] = useState<string | null>(null);
   const userInputRef = useRef<HTMLInputElement>(null);
 
-  const items = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
-  const totalItems = listQuery.data?.totalItems ?? 0;
+  const isOffline =
+    listQuery.fetchStatus === "paused" &&
+    (listQuery.isPending || listQuery.isPlaceholderData);
+
+  const items = useMemo(
+    () => (isOffline ? [] : (listQuery.data?.items ?? [])),
+    [isOffline, listQuery.data],
+  );
+  const totalItems = isOffline ? 0 : (listQuery.data?.totalItems ?? 0);
   const totalPages = Math.max(1, listQuery.data?.totalPages ?? 1);
   const hasFilters = hasActiveAttemptFilters(filters);
 
@@ -101,10 +109,6 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
     setAnnouncedKey(filterKey);
     if (announcedKey !== null) setAnnouncement(t("list.filteredCount", { count: totalItems }));
   }
-
-  const isOffline =
-    listQuery.fetchStatus === "paused" &&
-    (listQuery.isPending || listQuery.isPlaceholderData);
 
   const kindLabel = useMemo(
     () => (code: string | undefined) => resolveExamKindLabel(code, examKindsQuery.data, uiLocale),
@@ -386,14 +390,16 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
         <LiveStatus message={announcement} />
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <p className="text-body font-medium text-text tabular-nums">
-            {listQuery.isLoading
-              ? t("list.loadingCount")
-              : listQuery.isError
-                ? t("list.errorCount")
-                : t.rich("list.filteredCountRich", {
-                    count: totalItems,
-                    strong: (chunks) => <strong className="font-semibold">{chunks}</strong>,
-                  })}
+            {isOffline
+              ? t("list.offlineTitle")
+              : listQuery.isLoading
+                ? t("list.loadingCount")
+                : listQuery.isError
+                  ? t("list.errorCount")
+                  : t.rich("list.filteredCountRich", {
+                      count: totalItems,
+                      strong: (chunks) => <strong className="font-semibold">{chunks}</strong>,
+                    })}
           </p>
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
         </div>
@@ -461,7 +467,7 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
           />
         </div>
 
-        {totalItems > 0 && (
+        {!isOffline && !listQuery.isError && totalItems > 0 && (
           <div className="border-t border-border px-4 py-3">
             <Pagination
               page={filters.page}
@@ -494,9 +500,9 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
 export function AttemptListSkeleton() {
   return (
     <div className="flex flex-col gap-5" aria-busy="true">
-      <div className="h-12 w-80 max-w-full animate-pulse rounded-lg bg-subtle" />
-      <div className="h-40 animate-pulse rounded-xl bg-subtle" />
-      <div className="h-96 animate-pulse rounded-xl bg-subtle" />
+      <Skeleton className="h-12 w-80 max-w-full" />
+      <Skeleton className="h-40" />
+      <Skeleton className="h-96" />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   LiveStatus,
   PageHeader,
   Pagination,
+  Skeleton,
   StatusChip,
   Table,
   type TableCards,
@@ -25,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultGradingApiDeps, resolveGradingErrorMessage, type GradingApiDeps } from "../api";
 import { useGradingCounts, useGradingExamKinds, useGradingItems } from "../queries";
+import { SCORE_NUMBER_FORMAT } from "../scoring";
 import { GRADING_STATUS_TONE, gradingItemHref, shortAttemptCode } from "../status";
 import type { GradingQueueItemView, GradingQueueState } from "../types";
 import { GradingFiltersBar, resolveExamKindLabel } from "./grading-filters";
@@ -72,8 +74,15 @@ export function GradingListView({ deps }: GradingListViewProps) {
   const [announcedKey, setAnnouncedKey] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const items = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
-  const totalItems = listQuery.data?.totalItems ?? 0;
+  const isOffline =
+    listQuery.fetchStatus === "paused" &&
+    (listQuery.isPending || listQuery.isPlaceholderData);
+
+  const items = useMemo(
+    () => (isOffline ? [] : (listQuery.data?.items ?? [])),
+    [isOffline, listQuery.data],
+  );
+  const totalItems = isOffline ? 0 : (listQuery.data?.totalItems ?? 0);
   const totalPages = Math.max(1, listQuery.data?.totalPages ?? 1);
   const hasFilters = hasActiveGradingFilters(filters);
 
@@ -94,10 +103,6 @@ export function GradingListView({ deps }: GradingListViewProps) {
     setAnnouncedKey(filterKey);
     if (announcedKey !== null) setAnnouncement(t("list.filteredCount", { count: totalItems }));
   }
-
-  const isOffline =
-    listQuery.fetchStatus === "paused" &&
-    (listQuery.isPending || listQuery.isPlaceholderData);
 
   const kindLabel = useMemo(
     () => (code: string | undefined) => resolveExamKindLabel(code, examKindsQuery.data, uiLocale),
@@ -294,14 +299,16 @@ export function GradingListView({ deps }: GradingListViewProps) {
         <LiveStatus message={announcement} />
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <p className="text-body font-medium text-text tabular-nums">
-            {listQuery.isLoading
-              ? t("list.loadingCount")
-              : listQuery.isError
-                ? t("list.errorCount")
-                : t.rich("list.filteredCountRich", {
-                    count: totalItems,
-                    strong: (chunks) => <strong className="font-semibold">{chunks}</strong>,
-                  })}
+            {isOffline
+              ? t("list.offlineTitle")
+              : listQuery.isLoading
+                ? t("list.loadingCount")
+                : listQuery.isError
+                  ? t("list.errorCount")
+                  : t.rich("list.filteredCountRich", {
+                      count: totalItems,
+                      strong: (chunks) => <strong className="font-semibold">{chunks}</strong>,
+                    })}
           </p>
           <p className="text-caption text-text-muted">{t("list.hint")}</p>
         </div>
@@ -325,7 +332,13 @@ export function GradingListView({ deps }: GradingListViewProps) {
                   description={t("list.offlineDescription")}
                   headingLevel={2}
                   action={
-                    <Button variant="secondary" onClick={() => void listQuery.refetch()}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void listQuery.refetch();
+                        void countsQuery.refetch();
+                      }}
+                    >
                       {t("list.retry")}
                     </Button>
                   }
@@ -337,7 +350,13 @@ export function GradingListView({ deps }: GradingListViewProps) {
                   description={resolveGradingErrorMessage(listQuery.error, tErrors)}
                   headingLevel={2}
                   action={
-                    <Button variant="secondary" onClick={() => void listQuery.refetch()}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void listQuery.refetch();
+                        void countsQuery.refetch();
+                      }}
+                    >
                       {t("list.retry")}
                     </Button>
                   }
@@ -369,7 +388,7 @@ export function GradingListView({ deps }: GradingListViewProps) {
           />
         </div>
 
-        {totalItems > 0 && (
+        {!isOffline && !listQuery.isError && totalItems > 0 && (
           <div className="border-t border-border px-4 py-3">
             <Pagination
               page={filters.page}
@@ -402,11 +421,14 @@ export function GradingListView({ deps }: GradingListViewProps) {
 function ScoreText({ item }: { item: GradingQueueItemView }) {
   const t = useTranslations("grading.list");
   const format = useFormatter();
-  const max = format.number(item.pointsMax ?? 0);
+  const max = format.number(item.pointsMax ?? 0, SCORE_NUMBER_FORMAT);
   if (item.state === "DONE" && item.earnedPoints !== undefined && item.earnedPoints !== null) {
     return (
       <span className="font-semibold whitespace-nowrap text-text tabular-nums">
-        {t("scoreValue", { score: format.number(item.earnedPoints), max })}
+        {t("scoreValue", {
+          score: format.number(item.earnedPoints, SCORE_NUMBER_FORMAT),
+          max,
+        })}
       </span>
     );
   }
@@ -443,9 +465,9 @@ function RowAction({
 export function GradingListSkeleton() {
   return (
     <div className="flex flex-col gap-5" aria-busy="true">
-      <div className="h-12 w-80 max-w-full animate-pulse rounded-lg bg-subtle" />
-      <div className="h-36 animate-pulse rounded-xl bg-subtle" />
-      <div className="h-96 animate-pulse rounded-xl bg-subtle" />
+      <Skeleton className="h-12 w-80 max-w-full" />
+      <Skeleton className="h-36" />
+      <Skeleton className="h-96" />
     </div>
   );
 }

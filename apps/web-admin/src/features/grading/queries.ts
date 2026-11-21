@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ATTEMPTS_QUERY_KEYS } from "@/features/attempts/keys";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
 import { defaultGradingApiDeps, GRADING_QUERY_KEYS, type GradingApiDeps } from "./api";
 import type {
@@ -71,6 +72,7 @@ export function useClaimGradingItem(
             }
           : old,
       );
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(itemId) });
       void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
     },
@@ -113,13 +115,15 @@ export function useFinalizeEssayGrade(
           ? {
               ...old,
               state: "DONE",
-              regrading: false,
+              regrading: result.attemptState === "SCORED" ? false : old.regrading,
               activeGrade: result.grade ?? old.activeGrade,
             }
           : old,
       );
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(itemId) });
       void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
+      void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.all });
     },
   });
 }
@@ -145,8 +149,10 @@ export function useReopenEssayGrade(
           history,
         };
       });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(itemId) });
       void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
       void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
+      void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.all });
     },
   });
 }
