@@ -1,7 +1,6 @@
 package vn.unicom.thi360.attempt.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -108,7 +107,6 @@ public class EssayGradingService {
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
     private final NamedParameterJdbcTemplate jdbc;
-    private final EntityManager entityManager;
     private final Clock clock;
 
     private record QueueRow(
@@ -143,7 +141,6 @@ public class EssayGradingService {
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
             NamedParameterJdbcTemplate jdbc,
-            EntityManager entityManager,
             Clock clock) {
         this.attemptRepository = Objects.requireNonNull(attemptRepository);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
@@ -156,7 +153,6 @@ public class EssayGradingService {
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider);
         this.auditRecorder = Objects.requireNonNull(auditRecorder);
         this.jdbc = Objects.requireNonNull(jdbc);
-        this.entityManager = Objects.requireNonNull(entityManager);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -169,7 +165,6 @@ public class EssayGradingService {
             String to,
             Integer page,
             Integer size) {
-        entityManager.flush();
         DateBound fromBound = AttemptDateFilter.parseBound(from, true);
         DateBound toBound = AttemptDateFilter.parseBound(to, false);
 
@@ -271,7 +266,6 @@ public class EssayGradingService {
 
     @Transactional(readOnly = true)
     public GradingQueueCountsResponse counts(String exam, String kind, String from, String to) {
-        entityManager.flush();
         DateBound fromBound = AttemptDateFilter.parseBound(from, true);
         DateBound toBound = AttemptDateFilter.parseBound(to, false);
 
@@ -320,11 +314,13 @@ public class EssayGradingService {
                 ? snapshots.get(new VersionKey(parentItem.getQuestionId(), parentItem.getQuestionVersionNo()))
                 : null;
 
-        String content = textOrNull(itemSnapshot, "content");
-        String passage = parentSnapshot != null ? textOrNull(parentSnapshot.path("body"), "passage") : null;
+        String content = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(itemSnapshot, "content"));
+        String passage = parentSnapshot != null
+                ? AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(parentSnapshot.path("body"), "passage"))
+                : null;
         JsonNode body = itemSnapshot != null ? itemSnapshot.path("body") : null;
-        String gradingGuide = textOrNull(body, "gradingGuide");
-        String sampleAnswer = textOrNull(body, "sampleAnswer");
+        String gradingGuide = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(body, "gradingGuide"));
+        String sampleAnswer = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(body, "sampleAnswer"));
         Integer wordLimit = intOrNull(body, "wordLimit");
         List<RubricCriterionView> rubric = parseRubric(body);
 
@@ -418,8 +414,8 @@ public class EssayGradingService {
             active.markSuperseded(newId, now);
             essayGradeRepository.saveAndFlush(active);
 
-            EssayGrade takeover = EssayGrade.claim(
-                    newId, itemId, actor.id(), item.getQuestionVersionNo(), now);
+            EssayGrade takeover = EssayGrade.takeover(
+                    newId, itemId, actor.id(), item.getQuestionVersionNo(), active, now);
             EssayGrade saved = essayGradeRepository.saveAndFlush(takeover);
             return toGradeView(saved, resolveActorName(actor), idleCutoff);
         }
@@ -449,13 +445,13 @@ public class EssayGradingService {
         if (!Objects.equals(active.getVersion(), request.expectedVersion())) {
             throw new VersionConflictException("VERSION_CONFLICT", null);
         }
-        if (request.points() != null && request.points().compareTo(BigDecimal.ZERO) < 0) {
+        if (request.points() != null && isInvalidEssayPoints(request.points(), item.getPointsMax())) {
             throw new BusinessRuleException("ESSAY_POINTS_OUT_OF_RANGE", null);
         }
         List<EssayCriterionScore> criteriaScores = toCriteriaScores(request.criteria());
         if (criteriaScores != null) {
             for (EssayCriterionScore c : criteriaScores) {
-                if (c.points() != null && c.points().compareTo(BigDecimal.ZERO) < 0) {
+                if (c.points() != null && isInvalidEssayPoints(c.points(), item.getPointsMax())) {
                     throw new BusinessRuleException("ESSAY_CRITERIA_INVALID", null);
                 }
             }
@@ -654,9 +650,7 @@ public class EssayGradingService {
 
     private void validateFinalizeScores(
             AttemptItem item, BigDecimal effectivePoints, List<EssayCriterionScore> effectiveCriteria) {
-        if (effectivePoints == null
-                || effectivePoints.compareTo(BigDecimal.ZERO) < 0
-                || effectivePoints.compareTo(item.getPointsMax()) > 0) {
+        if (effectivePoints == null || isInvalidEssayPoints(effectivePoints, item.getPointsMax())) {
             throw new BusinessRuleException("ESSAY_POINTS_OUT_OF_RANGE", null);
         }
 
@@ -689,7 +683,7 @@ public class EssayGradingService {
                 if (def == null || !seen.add(c.id())) {
                     throw new BusinessRuleException("ESSAY_CRITERIA_INVALID", null);
                 }
-                if (c.points().compareTo(BigDecimal.ZERO) < 0
+                if (isInvalidEssayPoints(c.points(), item.getPointsMax())
                         || (def.points() != null && c.points().compareTo(def.points()) > 0)) {
                     throw new BusinessRuleException("ESSAY_CRITERIA_INVALID", null);
                 }
@@ -708,7 +702,7 @@ public class EssayGradingService {
                 if (c == null || c.id() == null || c.id().isBlank() || c.points() == null) {
                     throw new BusinessRuleException("ESSAY_CRITERIA_INVALID", null);
                 }
-                if (!seen.add(c.id()) || c.points().compareTo(BigDecimal.ZERO) < 0) {
+                if (!seen.add(c.id()) || isInvalidEssayPoints(c.points(), item.getPointsMax())) {
                     throw new BusinessRuleException("ESSAY_CRITERIA_INVALID", null);
                 }
                 sum = sum.add(c.points());
@@ -717,6 +711,12 @@ public class EssayGradingService {
                 throw new BusinessRuleException("ESSAY_CRITERIA_SUM_MISMATCH", null);
             }
         }
+    }
+
+    private static boolean isInvalidEssayPoints(BigDecimal points, BigDecimal maxPoints) {
+        return points.compareTo(BigDecimal.ZERO) < 0
+                || points.compareTo(maxPoints) > 0
+                || points.stripTrailingZeros().scale() > 4;
     }
 
     static ItemOutcome resolveEssayOutcome(BigDecimal points, BigDecimal pointsMax) {
@@ -945,9 +945,10 @@ public class EssayGradingService {
         }
         List<EssayCriterionScore> list = new ArrayList<>(inputs.size());
         for (EssayCriterionInput in : inputs) {
-            if (in != null) {
-                list.add(new EssayCriterionScore(in.id(), in.points(), in.comment()));
+            if (in == null) {
+                throw new BusinessRuleException("ESSAY_CRITERIA_INVALID", null);
             }
+            list.add(new EssayCriterionScore(in.id(), in.points(), in.comment()));
         }
         return List.copyOf(list);
     }

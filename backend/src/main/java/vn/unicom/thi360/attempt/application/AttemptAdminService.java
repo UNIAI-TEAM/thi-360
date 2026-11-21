@@ -30,6 +30,7 @@ import vn.unicom.thi360.attempt.api.AdminAttemptDetailResponse.AdminAttemptItemV
 import vn.unicom.thi360.attempt.api.AdminAttemptDetailResponse.AdminAttemptPartView;
 import vn.unicom.thi360.attempt.api.AdminAttemptSummary;
 import vn.unicom.thi360.attempt.api.AttemptChoiceSummary;
+import vn.unicom.thi360.attempt.api.AttemptPosition;
 import vn.unicom.thi360.attempt.api.CompensateAttemptRequest;
 import vn.unicom.thi360.attempt.api.CompensateAttemptResponse;
 import vn.unicom.thi360.attempt.api.FaultAttemptRequest;
@@ -206,7 +207,7 @@ public class AttemptAdminService {
                         p.getDurationMinutes(),
                         p.getQuestionCountRequired(),
                         p.getMaxPoints(),
-                        p.getChoice(),
+                        AttemptChoiceViews.partChoice(p),
                         p.getChoiceConfirmedAt(),
                         p.getChoiceDeadlineAt(),
                         p.getStartedAt(),
@@ -241,7 +242,7 @@ public class AttemptAdminService {
                         i.isFlagged(),
                         i.getEarnedPoints(),
                         i.getOutcome(),
-                        i.getGradingDetail()))
+                        AttemptResultService.projectGradingDetail(i.getQuestionType(), i.getGradingDetail())))
                 .toList();
 
         return new AdminAttemptDetailResponse(
@@ -280,7 +281,7 @@ public class AttemptAdminService {
                 attempt.getGrantId(),
                 attempt.getEditSessionId(),
                 attempt.getEditSessionSeenAt(),
-                attempt.getLastPosition(),
+                toAttemptPosition(attempt.getLastPosition()),
                 attempt.getFaultFlag(),
                 attempt.getFaultReason(),
                 compensated,
@@ -548,6 +549,28 @@ public class AttemptAdminService {
             after.put("maxScore", attempt.getMaxScore());
         }
         return after;
+    }
+
+    private static AttemptPosition toAttemptPosition(Map<String, Object> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        UUID partId = parseUuidObject(raw.get("partId"));
+        UUID itemId = parseUuidObject(raw.get("itemId"));
+        if (partId == null && itemId == null) {
+            return null;
+        }
+        return new AttemptPosition(partId, itemId);
+    }
+
+    private static UUID parseUuidObject(Object value) {
+        if (value instanceof UUID u) {
+            return u;
+        }
+        if (value instanceof String s && !s.isBlank()) {
+            return parseUuidOrNull(s.trim());
+        }
+        return null;
     }
 
     private static UUID parseUuidOrNull(String raw) {

@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.attempt.api.EssayCriterionInput;
@@ -37,6 +38,7 @@ import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.EssayGrade;
+import vn.unicom.thi360.attempt.domain.EssayGradeState;
 import vn.unicom.thi360.attempt.domain.ItemOutcome;
 import vn.unicom.thi360.attempt.infrastructure.EssayGradeRepository;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
@@ -74,8 +76,41 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         assertThat(claimedA.path("graderName").asText()).isEqualTo("Giám khảo An");
         UUID firstGradeId = UUID.fromString(claimedA.path("id").asText());
 
-        // Exactly 30 minutes: must STILL be rejected with 409 GRADING_CLAIMED (AC-2)
+        // Exactly 30 minutes: must STILL be IN_PROGRESS (claimExpired=false) in list/counts/detail and reject takeover (AC-2, R1-13)
         mutableClock.advance(Duration.ofMinutes(30));
+        JsonNode inProgAt30 = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items")
+                                .param("state", "IN_PROGRESS")
+                                .param("exam", sub.examId().toString())
+                                .with(asUser(graderB, "grader.b", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(inProgAt30.path("items")).hasSize(1);
+        assertThat(inProgAt30.path("items").get(0).path("itemId").asText()).isEqualTo(sub.essayItemId().toString());
+        assertThat(inProgAt30.path("items").get(0).path("state").asText()).isEqualTo("IN_PROGRESS");
+        assertThat(inProgAt30.path("items").get(0).path("claimExpired").asBoolean()).isFalse();
+
+        JsonNode waitingAt30 = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items")
+                                .param("state", "WAITING")
+                                .param("exam", sub.examId().toString())
+                                .with(asUser(graderB, "grader.b", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(waitingAt30.path("items")).isEmpty();
+
+        JsonNode countsAt30 = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items/counts")
+                                .param("exam", sub.examId().toString())
+                                .with(asUser(graderB, "grader.b", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(countsAt30.path("waiting").asLong()).isEqualTo(0L);
+        assertThat(countsAt30.path("inProgress").asLong()).isEqualTo(1L);
+        assertThat(countsAt30.path("done").asLong()).isEqualTo(0L);
+        assertThat(countsAt30.path("total").asLong()).isEqualTo(1L);
+
+        JsonNode detailAt30 = json(performGetDetail(graderB, sub.essayItemId()));
+        assertThat(detailAt30.path("state").asText()).isEqualTo("IN_PROGRESS");
+        assertThat(detailAt30.path("activeGrade").path("claimExpired").asBoolean()).isFalse();
+
         MvcResult claimBAt30 = performClaim(graderB, sub.essayItemId());
         assertThat(claimBAt30.getResponse().getStatus()).isEqualTo(409);
         JsonNode conflictAt30 = json(claimBAt30);
@@ -85,8 +120,41 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         assertThat(conflictAt30.path("claimedAt").asText()).isNotBlank();
         assertThat(conflictAt30.path("lastActivityAt").asText()).isNotBlank();
 
-        // 30 minutes + 1 second: takeover succeeds and supersedes the stale draft
+        // 30 minutes + 1 second: queue/counts/detail move item back to WAITING (claimExpired=true) before takeover succeeds (R1-13)
         mutableClock.advance(Duration.ofSeconds(1));
+        JsonNode waitingAt30m1s = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items")
+                                .param("state", "WAITING")
+                                .param("exam", sub.examId().toString())
+                                .with(asUser(graderB, "grader.b", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(waitingAt30m1s.path("items")).hasSize(1);
+        assertThat(waitingAt30m1s.path("items").get(0).path("itemId").asText()).isEqualTo(sub.essayItemId().toString());
+        assertThat(waitingAt30m1s.path("items").get(0).path("state").asText()).isEqualTo("WAITING");
+        assertThat(waitingAt30m1s.path("items").get(0).path("claimExpired").asBoolean()).isTrue();
+
+        JsonNode inProgAt30m1s = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items")
+                                .param("state", "IN_PROGRESS")
+                                .param("exam", sub.examId().toString())
+                                .with(asUser(graderB, "grader.b", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(inProgAt30m1s.path("items")).isEmpty();
+
+        JsonNode countsAt30m1s = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items/counts")
+                                .param("exam", sub.examId().toString())
+                                .with(asUser(graderB, "grader.b", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(countsAt30m1s.path("waiting").asLong()).isEqualTo(1L);
+        assertThat(countsAt30m1s.path("inProgress").asLong()).isEqualTo(0L);
+        assertThat(countsAt30m1s.path("done").asLong()).isEqualTo(0L);
+        assertThat(countsAt30m1s.path("total").asLong()).isEqualTo(1L);
+
+        JsonNode detailAt30m1s = json(performGetDetail(graderB, sub.essayItemId()));
+        assertThat(detailAt30m1s.path("state").asText()).isEqualTo("WAITING");
+        assertThat(detailAt30m1s.path("activeGrade").path("claimExpired").asBoolean()).isTrue();
+
         MvcResult claimBAt30m1s = performClaim(graderB, sub.essayItemId());
         assertThat(claimBAt30m1s.getResponse().getStatus()).isEqualTo(200);
         JsonNode taken = json(claimBAt30m1s);
@@ -291,6 +359,32 @@ class EssayGradingIT extends AbstractAttemptDsIT {
             assertThat(missingCrit.getResponse().getStatus()).isEqualTo(422);
             assertThat(json(missingCrit).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
 
+            // Single-criterion rubric cap overflow while total sum equals maxPts -> 422 ESSAY_CRITERIA_INVALID (R1-21)
+            MvcResult singleCriterionOverflow = performFinalize(grader, sub.essayItemId(),
+                    new FinalizeEssayRequest(null, List.of(
+                            new EssayCriterionInput("c1", part1Max.add(new BigDecimal("0.01")), null),
+                            new EssayCriterionInput("c2", part2Max.subtract(new BigDecimal("0.01")), null)),
+                            maxPts, "Vượt trần 1 tiêu chí"));
+            assertThat(singleCriterionOverflow.getResponse().getStatus()).isEqualTo(422);
+            assertThat(json(singleCriterionOverflow).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
+
+            // Fractional scale > 4 -> 422 ESSAY_POINTS_OUT_OF_RANGE / ESSAY_CRITERIA_INVALID (R1-4)
+            MvcResult badScaleTotal = performFinalize(grader, sub.essayItemId(),
+                    new FinalizeEssayRequest(null, List.of(
+                            new EssayCriterionInput("c1", part1Max, null),
+                            new EssayCriterionInput("c2", part2Max, null)),
+                            new BigDecimal("1.12345"), "Quá 4 số thập phân"));
+            assertThat(badScaleTotal.getResponse().getStatus()).isEqualTo(422);
+            assertThat(json(badScaleTotal).path("code").asText()).isEqualTo("ESSAY_POINTS_OUT_OF_RANGE");
+
+            MvcResult badScaleCriterion = performFinalize(grader, sub.essayItemId(),
+                    new FinalizeEssayRequest(null, List.of(
+                            new EssayCriterionInput("c1", new BigDecimal("1.12345"), null),
+                            new EssayCriterionInput("c2", part2Max, null)),
+                            part2Max.add(new BigDecimal("1.12345")).setScale(2, java.math.RoundingMode.DOWN), "Tiêu chí quá 4 số lẻ"));
+            assertThat(badScaleCriterion.getResponse().getStatus()).isEqualTo(422);
+            assertThat(json(badScaleCriterion).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
+
             // 0 points with matching 0 criteria -> 200 WRONG, then reopen and test maxPts -> 200 CORRECT
             MvcResult zeroOk = performFinalize(grader, sub.essayItemId(),
                     new FinalizeEssayRequest(null, List.of(
@@ -474,9 +568,10 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         jdbc.update(
                 """
                 UPDATE identity.user_account
-                SET username = ?, username_normalized = ?, full_name = ?, email = ?, email_normalized = ?, phone = ?
+                SET code = ?, username = ?, username_normalized = ?, full_name = ?, email = ?, email_normalized = ?, phone = ?
                 WHERE id = ?
                 """,
+                "SV-SECRET-9988",
                 "secret.learner.username",
                 "secret.learner.username",
                 "Nguyễn Văn Bí Mật",
@@ -489,6 +584,20 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         EssaySubmission sub = submitSingleBcaEssay(student, "<p>Bài làm ẩn danh</p>");
         performClaim(grader, sub.essayItemId());
 
+        List<String> forbiddenIdentityKeys = List.of(
+                "userId",
+                "username",
+                "fullName",
+                "email",
+                "phone",
+                "studentCode",
+                "userCode",
+                "code",
+                "userFullName",
+                "userEmail",
+                "entitlementId",
+                "grantId");
+
         MvcResult listRes = mockMvc.perform(
                         get("/api/v1/admin/grading/items")
                                 .param("exam", sub.examId().toString())
@@ -499,7 +608,7 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         assertNoLearnerLeak(listJson, student);
         JsonNode firstItem = json(listRes).path("items").get(0);
         assertThat(firstItem.has("attemptId")).isTrue();
-        for (String forbiddenKey : List.of("userId", "username", "fullName", "email", "phone", "studentCode", "entitlementId", "grantId")) {
+        for (String forbiddenKey : forbiddenIdentityKeys) {
             assertThat(firstItem.has(forbiddenKey)).as("list item must not contain %s", forbiddenKey).isFalse();
         }
 
@@ -508,7 +617,7 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         String detailJson = detailRes.getResponse().getContentAsString();
         assertNoLearnerLeak(detailJson, student);
         JsonNode detailNode = json(detailRes);
-        for (String forbiddenKey : List.of("userId", "username", "fullName", "email", "phone", "studentCode", "entitlementId", "grantId")) {
+        for (String forbiddenKey : forbiddenIdentityKeys) {
             assertThat(detailNode.has(forbiddenKey)).as("detail must not contain %s", forbiddenKey).isFalse();
         }
     }
@@ -524,21 +633,46 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         int v2No = v1No + 1;
 
         var v1 = questionSourcePort.loadVersions(List.of(new VersionKey(essayItem.getQuestionId(), v1No))).getFirst();
-        ObjectNode v1Snap = v1.snapshot().deepCopy();
-        String expectedV1Content = v1Snap.path("content").asText();
-        String expectedV1Guide = v1Snap.path("body").path("gradingGuide").asText(null);
-        String expectedV1Sample = v1Snap.path("body").path("sampleAnswer").asText(null);
-        Integer expectedV1WordLimit = v1Snap.path("body").hasNonNull("wordLimit")
-                ? v1Snap.path("body").get("wordLimit").asInt()
-                : null;
+        ObjectNode origV1Snap = v1.snapshot().deepCopy();
+
+        UUID contentAssetId = UUID.randomUUID();
+        UUID passageAssetId = UUID.randomUUID();
+        UUID guideAssetId = UUID.randomUUID();
+        UUID sampleAssetId = UUID.randomUUID();
+
+        ObjectNode v1Snap = origV1Snap.deepCopy();
+        v1Snap.put("content", "<p>Đề bài v1 <img data-asset-id=\"" + contentAssetId + "\" alt=\"c\"></p>");
+        ObjectNode v1Body = (ObjectNode) v1Snap.path("body");
+        v1Body.put("gradingGuide", "<p>Hướng dẫn v1 <img data-asset-id=\"" + guideAssetId + "\" alt=\"g\"></p>");
+        v1Body.put("sampleAnswer", "<p>Bài mẫu v1 <img data-asset-id=\"" + sampleAssetId + "\" alt=\"s\"></p>");
+        v1Body.put("wordLimit", 350);
+        ArrayNode v1Rubric = objectMapper.createArrayNode();
+        v1Rubric.add(objectMapper.createObjectNode().put("id", "r1").put("description", "Nội dung").put("points", 10.0));
+        v1Rubric.add(objectMapper.createObjectNode().put("id", "r2").put("description", "Diễn đạt").put("points", 10.0));
+        v1Body.set("rubric", v1Rubric);
 
         ObjectNode v2Snap = v1Snap.deepCopy();
         v2Snap.put("content", "<p>ĐỀ BÀI V2 ĐÃ SỬA</p>");
         ((ObjectNode) v2Snap.path("body")).put("gradingGuide", "<p>HƯỚNG DẪN V2</p>");
         ((ObjectNode) v2Snap.path("body")).put("sampleAnswer", "<p>BÀI MẪU V2</p>");
         ((ObjectNode) v2Snap.path("body")).put("wordLimit", 999);
+        ArrayNode v2Rubric = objectMapper.createArrayNode();
+        v2Rubric.add(objectMapper.createObjectNode().put("id", "r2-only").put("description", "Rubric v2").put("points", 20.0));
+        ((ObjectNode) v2Snap.path("body")).set("rubric", v2Rubric);
+
+        UUID parentQuestionId = Ids.newId();
+        UUID parentAttemptItemId = Ids.newId();
+        UUID subjectItemId = jdbc.queryForObject(
+                "SELECT subject_item_id FROM questionbank.question WHERE id = ?",
+                UUID.class,
+                essayItem.getQuestionId());
 
         try {
+            jdbc.update(
+                    "UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = ?",
+                    objectMapper.writeValueAsString(v1Snap),
+                    essayItem.getQuestionId(),
+                    v1No);
             jdbc.update(
                     """
                     INSERT INTO questionbank.question_version (question_id, version_no, snapshot)
@@ -553,32 +687,107 @@ class EssayGradingIT extends AbstractAttemptDsIT {
                     v2No,
                     essayItem.getQuestionId());
 
+            jdbc.update(
+                    """
+                    INSERT INTO questionbank.question (id, code, type, status, subject_item_id, current_version_no, points)
+                    VALUES (?, ?, 'QUESTION_SET', 'READY', ?, 2, 20.0)
+                    """,
+                    parentQuestionId,
+                    "AT5-PARENT-SET-" + parentQuestionId,
+                    subjectItemId);
+            String parentV1Snap = """
+                    {
+                      "content": "<p>Set v1</p>",
+                      "points": 20.0,
+                      "body": {
+                        "type": "QUESTION_SET",
+                        "passage": "<p>Ngữ liệu v1 <img data-asset-id=\\"%s\\" alt=\\"p\\"></p>",
+                        "children": [{"id": "%s"}]
+                      }
+                    }
+                    """.formatted(passageAssetId, essayItem.getQuestionId());
+            String parentV2Snap = """
+                    {
+                      "content": "<p>Set v2</p>",
+                      "points": 20.0,
+                      "body": {
+                        "type": "QUESTION_SET",
+                        "passage": "<p>NGỮ LIỆU V2</p>",
+                        "children": [{"id": "%s"}]
+                      }
+                    }
+                    """.formatted(essayItem.getQuestionId());
+            jdbc.update(
+                    "INSERT INTO questionbank.question_version (question_id, version_no, snapshot) VALUES (?, 1, ?::jsonb), (?, 2, ?::jsonb)",
+                    parentQuestionId,
+                    parentV1Snap,
+                    parentQuestionId,
+                    parentV2Snap);
+
+            jdbc.update(
+                    """
+                    INSERT INTO attempt.attempt_item (
+                        id, attempt_id, part_id, subject_item_id, section_id, component_code, block_id,
+                        ord, display_no, unit_count, question_id, question_version_no, question_type,
+                        points_max, in_scope, answer_seq, flagged, version
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, -1, NULL, 1, ?, 1, 'QUESTION_SET', 20.0, true, 0, false, 0)
+                    """,
+                    parentAttemptItemId,
+                    essayItem.getAttemptId(),
+                    essayItem.getPartId(),
+                    essayItem.getSubjectItemId(),
+                    essayItem.getSectionId(),
+                    essayItem.getComponentCode(),
+                    essayItem.getBlockId(),
+                    parentQuestionId);
+            jdbc.update(
+                    "UPDATE attempt.attempt_item SET parent_item_id = ? WHERE id = ?",
+                    parentAttemptItemId,
+                    essayItem.getId());
+
             MvcResult detailRes = performGetDetail(grader, sub.essayItemId());
             assertThat(detailRes.getResponse().getStatus()).isEqualTo(200);
             JsonNode detail = json(detailRes);
             assertThat(detail.path("questionVersionNo").asInt()).isEqualTo(v1No);
-            assertThat(detail.path("content").asText()).isEqualTo(expectedV1Content);
-            assertThat(detail.path("content").asText()).doesNotContain("ĐỀ BÀI V2 ĐÃ SỬA");
-            if (expectedV1Guide != null) {
-                assertThat(detail.path("gradingGuide").asText()).isEqualTo(expectedV1Guide);
-            }
-            if (expectedV1Sample != null) {
-                assertThat(detail.path("sampleAnswer").asText()).isEqualTo(expectedV1Sample);
-            }
-            if (expectedV1WordLimit != null) {
-                assertThat(detail.path("wordLimit").asInt()).isEqualTo(expectedV1WordLimit);
-            }
-            assertThat(detail.path("answerHtml").asText()).contains("Một hai ba bốn năm");
+            assertThat(detail.path("content").asText())
+                    .contains("Đề bài v1")
+                    .contains("src=\"/api/v1/admin/question-assets/" + contentAssetId + "\"")
+                    .doesNotContain("ĐỀ BÀI V2 ĐÃ SỬA");
+            assertThat(detail.path("passage").asText())
+                    .contains("Ngữ liệu v1")
+                    .contains("src=\"/api/v1/admin/question-assets/" + passageAssetId + "\"")
+                    .doesNotContain("NGỮ LIỆU V2");
+            assertThat(detail.path("gradingGuide").asText())
+                    .contains("Hướng dẫn v1")
+                    .contains("src=\"/api/v1/admin/question-assets/" + guideAssetId + "\"")
+                    .doesNotContain("HƯỚNG DẪN V2");
+            assertThat(detail.path("sampleAnswer").asText())
+                    .contains("Bài mẫu v1")
+                    .contains("src=\"/api/v1/admin/question-assets/" + sampleAssetId + "\"")
+                    .doesNotContain("BÀI MẪU V2");
+            assertThat(detail.path("wordLimit").asInt()).isEqualTo(350);
             assertThat(detail.path("wordCount").asInt()).isEqualTo(5);
+            assertThat(detail.path("rubric")).hasSize(2);
+            assertThat(detail.path("rubric").get(0).path("id").asText()).isEqualTo("r1");
+            assertThat(detail.path("rubric").get(1).path("id").asText()).isEqualTo("r2");
         } finally {
+            jdbc.update("UPDATE attempt.attempt_item SET parent_item_id = NULL WHERE id = ?", essayItem.getId());
+            jdbc.update("DELETE FROM attempt.attempt_item WHERE id = ?", parentAttemptItemId);
             jdbc.update(
                     "UPDATE questionbank.question SET current_version_no = ? WHERE id = ?",
                     v1No,
                     essayItem.getQuestionId());
             jdbc.update(
+                    "UPDATE questionbank.question_version SET snapshot = ?::jsonb WHERE question_id = ? AND version_no = ?",
+                    objectMapper.writeValueAsString(origV1Snap),
+                    essayItem.getQuestionId(),
+                    v1No);
+            jdbc.update(
                     "DELETE FROM questionbank.question_version WHERE question_id = ? AND version_no = ?",
                     essayItem.getQuestionId(),
                     v2No);
+            AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, List.of(parentQuestionId));
         }
     }
 
@@ -651,7 +860,34 @@ class EssayGradingIT extends AbstractAttemptDsIT {
         UUID grader = createGrader("grader-cnt", "Giám khảo Đếm");
 
         EssaySubmission sub1 = submitSingleBcaEssay(student1, "<p>Đếm 1</p>");
+        mutableClock.advance(Duration.ofDays(2));
         EssaySubmission sub2 = submitSingleBcaEssay(student2, "<p>Đếm 2</p>");
+
+        Attempt att1 = attemptRepository.findById(sub1.attemptId()).orElseThrow();
+        Attempt att2 = attemptRepository.findById(sub2.attemptId()).orElseThrow();
+        String vnDate1 = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(att1.getFinishedAt());
+        String vnDate2 = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(att2.getFinishedAt());
+
+        // from/to date filter applies to /counts (R1-29)
+        JsonNode countsDay1 = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items/counts")
+                                .param("from", vnDate1)
+                                .param("to", vnDate1)
+                                .with(asUser(grader, "grader.cnt", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(countsDay1.path("waiting").asLong()).isEqualTo(1L);
+        assertThat(countsDay1.path("total").asLong()).isEqualTo(1L);
+
+        JsonNode countsDay2 = json(mockMvc.perform(
+                        get("/api/v1/admin/grading/items/counts")
+                                .param("from", att2.getFinishedAt().minusSeconds(60).toString())
+                                .param("to", vnDate2)
+                                .with(asUser(grader, "grader.cnt", Permissions.GRADING_VIEW)))
+                .andReturn());
+        assertThat(countsDay2.path("waiting").asLong()).isEqualTo(1L);
+        assertThat(countsDay2.path("total").asLong()).isEqualTo(1L);
 
         // Initially both WAITING
         JsonNode c1 = json(mockMvc.perform(
@@ -741,6 +977,170 @@ class EssayGradingIT extends AbstractAttemptDsIT {
                 String.class,
                 sub.essayItemId().toString());
         assertThat(reopenReasons).containsExactly("Cần rà soát lại");
+    }
+
+    @Test
+    void validationErrorsLocalizationAndDraftFinalize() throws Exception {
+        UUID student = createStudent("essay-val-student");
+        UUID graderA = createGrader("grader-val-a", "Giám khảo Kiểm Tra A");
+        UUID graderB = createGrader("grader-val-b", "Giám khảo Kiểm Tra B");
+
+        EssaySubmission sub = submitSingleBcaEssay(student, "<p>Bài làm kiểm tra validation</p>");
+        AttemptItem essayItem = attemptItemRepository.findById(sub.essayItemId()).orElseThrow();
+        AttemptItem scItem = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(sub.attemptId())
+                .stream()
+                .filter(i -> i.isInScope() && i.getQuestionType() == QuestionType.SINGLE_CHOICE)
+                .findFirst()
+                .orElseThrow();
+
+        // 1. Blank essay / non-essay claim -> 409 ESSAY_NOT_GRADABLE (R1-20)
+        MvcResult nonEssayClaim = performClaim(graderA, scItem.getId());
+        assertThat(nonEssayClaim.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(nonEssayClaim).path("code").asText()).isEqualTo("ESSAY_NOT_GRADABLE");
+
+        UUID blankStudent = createStudent("essay-blank-claim");
+        GrantOrderResult.Line blankGrant = grant(blankStudent, "DS-BCA-FULL-MINI", 2, List.of());
+        Attempt blankAttempt = startAndAwaitOpen(
+                blankStudent, UUID.randomUUID().toString(), blankGrant.entitlementId(), new PreChoiceInput("CA2", null));
+        UUID blankSession = claimSession(blankStudent, blankAttempt.getId());
+        List<AttemptPart> blankParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(blankAttempt.getId());
+        for (int idx = 0; idx < blankParts.size() - 1; idx++) {
+            assertThat(performFinishPart(blankStudent, blankAttempt.getId(), blankParts.get(idx).getId(),
+                    blankSession, new FinishPartRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
+        }
+        assertThat(performSubmit(blankStudent, blankAttempt.getId(), UUID.randomUUID().toString(),
+                blankSession, new SubmitAttemptRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
+        drainAllOutbox();
+        AttemptItem blankEssay = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(blankAttempt.getId())
+                .stream()
+                .filter(i -> i.getQuestionType() == QuestionType.ESSAY)
+                .findFirst()
+                .orElseThrow();
+        assertThat(blankEssay.getOutcome()).isEqualTo(ItemOutcome.BLANK);
+        MvcResult blankClaim = performClaim(graderA, blankEssay.getId());
+        assertThat(blankClaim.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(blankClaim).path("code").asText()).isEqualTo("ESSAY_NOT_GRADABLE");
+
+        // 2. Unclaimed PUT and POST /finalize -> 409 GRADING_NOT_CLAIMED (R1-20/21)
+        MvcResult unclaimedPut = performSaveDraft(
+                graderA, sub.essayItemId(), new SaveEssayDraftRequest(null, BigDecimal.ONE, "Chưa nhận", 0L));
+        assertThat(unclaimedPut.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(unclaimedPut).path("code").asText()).isEqualTo("GRADING_NOT_CLAIMED");
+
+        MvcResult unclaimedFinalize = performFinalize(
+                graderA, sub.essayItemId(), new FinalizeEssayRequest(null, null, BigDecimal.ONE, "Chưa nhận"));
+        assertThat(unclaimedFinalize.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json(unclaimedFinalize).path("code").asText()).isEqualTo("GRADING_NOT_CLAIMED");
+
+        // 3. Malformed scalar JSON on PUT -> 400 VALIDATION_FAILED (R1-1/2/3)
+        MvcResult badScalarJson = mockMvc.perform(
+                        put("/api/v1/admin/grading/items/{itemId}", sub.essayItemId())
+                                .with(asUser(graderA, "grader", Permissions.GRADING_MODIFY))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"points\":\"abc\",\"expectedVersion\":0}"))
+                .andReturn();
+        assertThat(badScalarJson.getResponse().getStatus()).isEqualTo(400);
+        assertThat(json(badScalarJson).path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        // 4. Claim item and test empty-body finalize before saving draft -> 422 ESSAY_POINTS_OUT_OF_RANGE (R1-21)
+        long v0 = json(performClaim(graderA, sub.essayItemId())).path("version").asLong();
+        MvcResult emptyFinalizeBeforeDraft = performFinalize(graderA, sub.essayItemId(), null);
+        assertThat(emptyFinalizeBeforeDraft.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(emptyFinalizeBeforeDraft).path("code").asText()).isEqualTo("ESSAY_POINTS_OUT_OF_RANGE");
+
+        // 5. saveDraft overflow / precision / null criterion guards (R1-4/5, R1-24/25)
+        MvcResult overflowDraft = performSaveDraft(
+                graderA, sub.essayItemId(), new SaveEssayDraftRequest(null, new BigDecimal("1000000"), "Tràn", v0));
+        assertThat(overflowDraft.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(overflowDraft).path("code").asText()).isEqualTo("ESSAY_POINTS_OUT_OF_RANGE");
+
+        MvcResult scaleDraft = performSaveDraft(
+                graderA, sub.essayItemId(), new SaveEssayDraftRequest(null, new BigDecimal("1.12345"), "Lẻ", v0));
+        assertThat(scaleDraft.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(scaleDraft).path("code").asText()).isEqualTo("ESSAY_POINTS_OUT_OF_RANGE");
+
+        MvcResult overflowCritDraft = performSaveDraft(
+                graderA,
+                sub.essayItemId(),
+                new SaveEssayDraftRequest(
+                        List.of(new EssayCriterionInput("k1", new BigDecimal("1000000"), null)),
+                        new BigDecimal("10.00"),
+                        null,
+                        v0));
+        assertThat(overflowCritDraft.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(overflowCritDraft).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
+
+        MvcResult nullCriterionPut = mockMvc.perform(
+                        put("/api/v1/admin/grading/items/{itemId}", sub.essayItemId())
+                                .with(asUser(graderA, "grader", Permissions.GRADING_MODIFY))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"criteria\":[null],\"points\":10,\"expectedVersion\":" + v0 + "}"))
+                .andReturn();
+        assertThat(nullCriterionPut.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(nullCriterionPut).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
+
+        MvcResult nullCriterionFin = mockMvc.perform(
+                        post("/api/v1/admin/grading/items/{itemId}/finalize", sub.essayItemId())
+                                .with(asUser(graderA, "grader", Permissions.GRADING_MODIFY))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"criteria\":[null],\"points\":10}"))
+                .andReturn();
+        assertThat(nullCriterionFin.getResponse().getStatus()).isEqualTo(422);
+        assertThat(json(nullCriterionFin).path("code").asText()).isEqualTo("ESSAY_CRITERIA_INVALID");
+
+        // 6. Save valid draft then finalize with empty body -> 200 using saved draft (R1-21)
+        MvcResult savedDraft = performSaveDraft(
+                graderA, sub.essayItemId(), new SaveEssayDraftRequest(null, new BigDecimal("14.50"), "Nháp chuẩn", v0));
+        assertThat(savedDraft.getResponse().getStatus()).isEqualTo(200);
+
+        MvcResult finalizedFromDraft = performFinalize(graderA, sub.essayItemId(), null);
+        assertThat(finalizedFromDraft.getResponse().getStatus()).isEqualTo(200);
+        JsonNode finJson = json(finalizedFromDraft);
+        assertThat(finJson.path("grade").path("state").asText()).isEqualTo("FINAL");
+        assertThat(new BigDecimal(finJson.path("grade").path("points").asText())).isEqualByComparingTo("14.50");
+        assertThat(finJson.path("grade").path("comment").asText()).isEqualTo("Nháp chuẩn");
+        assertThat(new BigDecimal(finJson.path("rawScore").asText())).isEqualByComparingTo("14.50");
+
+        // 7. Reopen then idle-expire takeover preserves reopenedReason (R1-22)
+        assertThat(performReopen(graderA, sub.essayItemId(), new ReopenEssayRequest("Phúc khảo giữ lý do"))
+                .getResponse().getStatus()).isEqualTo(200);
+        mutableClock.advance(Duration.ofMinutes(30).plusSeconds(1));
+        MvcResult takeover = performClaim(graderB, sub.essayItemId());
+        assertThat(takeover.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json(takeover).path("reopenedReason").asText()).isEqualTo("Phúc khảo giữ lý do");
+        EssayGrade takeoverEntity = essayGradeRepository.findByAttemptItemIdAndSupersededByIsNull(sub.essayItemId())
+                .orElseThrow();
+        assertThat(takeoverEntity.getState()).isEqualTo(EssayGradeState.DRAFT);
+        assertThat(takeoverEntity.getReopenedReason()).isEqualTo("Phúc khảo giữ lý do");
+
+        // 8. Localized INVALID_DATE_FILTER in Vietnamese & English without echoing raw input (R1-8/10)
+        for (String endpoint : List.of(
+                "/api/v1/admin/grading/items",
+                "/api/v1/admin/grading/items/counts",
+                "/api/v1/admin/attempts")) {
+            String perm = endpoint.contains("/attempts") ? Permissions.ATTEMPT_VIEW : Permissions.GRADING_VIEW;
+            MvcResult viDateErr = mockMvc.perform(
+                            get(endpoint)
+                                    .param("from", "not-a-date")
+                                    .with(asUser(graderA, "grader.i18n", perm)))
+                    .andReturn();
+            assertThat(viDateErr.getResponse().getStatus()).isEqualTo(422);
+            assertThat(viDateErr.getResponse().getContentAsString()).doesNotContain("not-a-date");
+            JsonNode viJson = json(viDateErr);
+            assertThat(viJson.path("code").asText()).isEqualTo("INVALID_DATE_FILTER");
+            assertThat(viJson.path("message").asText()).isEqualTo("Tham số lọc thời gian không đúng định dạng");
+
+            MvcResult enDateErr = mockMvc.perform(
+                            get(endpoint)
+                                    .param("from", "not-a-date")
+                                    .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                                    .with(asUser(graderA, "grader.i18n", perm)))
+                    .andReturn();
+            assertThat(enDateErr.getResponse().getStatus()).isEqualTo(422);
+            JsonNode enJson = json(enDateErr);
+            assertThat(enJson.path("code").asText()).isEqualTo("INVALID_DATE_FILTER");
+            assertThat(enJson.path("message").asText()).isEqualTo("Date filter parameter has an invalid format");
+        }
     }
 
     private record EssaySubmission(UUID examId, UUID attemptId, UUID essayItemId) {}
@@ -858,6 +1258,7 @@ class EssayGradingIT extends AbstractAttemptDsIT {
     private static void assertNoLearnerLeak(String rawJson, UUID studentId) {
         assertThat(rawJson)
                 .doesNotContain(studentId.toString())
+                .doesNotContain("SV-SECRET-9988")
                 .doesNotContain("secret.learner.username")
                 .doesNotContain("Nguyễn Văn Bí Mật")
                 .doesNotContain("secret.learner@thi360.test")

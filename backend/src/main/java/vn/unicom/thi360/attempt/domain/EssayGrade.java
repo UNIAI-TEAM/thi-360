@@ -111,6 +111,27 @@ public class EssayGrade {
         return new EssayGrade(id, attemptItemId, graderId, null, null, null, gradingGuideVersion, now, null);
     }
 
+    /** Creates an active {@code DRAFT} taking over an idle-expired draft, preserving any reopened reason. */
+    public static EssayGrade takeover(
+            UUID id,
+            UUID attemptItemId,
+            UUID graderId,
+            Integer gradingGuideVersion,
+            EssayGrade expired,
+            Instant now) {
+        Objects.requireNonNull(expired, "expired must not be null");
+        return new EssayGrade(
+                id,
+                attemptItemId,
+                graderId,
+                null,
+                null,
+                null,
+                gradingGuideVersion,
+                now,
+                expired.getReopenedReason());
+    }
+
     /** Creates a reopened active {@code DRAFT} claim prefilled with the previous finalized scores. */
     public static EssayGrade reopenFrom(
             UUID id,

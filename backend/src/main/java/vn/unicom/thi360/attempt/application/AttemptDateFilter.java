@@ -33,7 +33,7 @@ final class AttemptDateFilter {
                 }
                 return new DateBound(date.plusDays(1).atStartOfDay(DISPLAY_ZONE).toInstant(), true);
             } catch (DateTimeParseException ex) {
-                throw new BusinessRuleException("INVALID_DATE_FILTER", "Invalid date parameter: " + trimmed);
+                throw new BusinessRuleException("INVALID_DATE_FILTER", null);
             }
         }
     }

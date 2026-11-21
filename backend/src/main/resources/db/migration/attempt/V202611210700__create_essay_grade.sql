@@ -19,7 +19,14 @@ CREATE TABLE attempt.essay_grade (
     superseded_by uuid CONSTRAINT fk_essay_grade_superseded_by REFERENCES attempt.essay_grade (id) DEFERRABLE INITIALLY DEFERRED,
     version bigint NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT chk_essay_grade_state_fields CHECK (
+        (state = 'FINAL' AND points IS NOT NULL AND finalized_at IS NOT NULL)
+        OR (state = 'DRAFT' AND finalized_at IS NULL)
+    ),
+    CONSTRAINT chk_essay_grade_not_self_superseded CHECK (superseded_by IS NULL OR superseded_by <> id),
+    CONSTRAINT chk_essay_grade_activity_order CHECK (last_activity_at >= claimed_at),
+    CONSTRAINT chk_essay_grade_criteria_array CHECK (criteria IS NULL OR jsonb_typeof(criteria) = 'array')
 );
 
 CREATE UNIQUE INDEX uq_essay_grade_active_item
@@ -32,3 +39,7 @@ CREATE INDEX idx_essay_grade_item_history
 CREATE INDEX idx_essay_grade_active_state
     ON attempt.essay_grade (state, last_activity_at)
     WHERE superseded_by IS NULL;
+
+CREATE INDEX idx_essay_grade_superseded_by
+    ON attempt.essay_grade (superseded_by)
+    WHERE superseded_by IS NOT NULL;

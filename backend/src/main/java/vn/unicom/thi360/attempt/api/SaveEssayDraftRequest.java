@@ -9,7 +9,7 @@ import java.util.List;
 
 @Schema(name = "SaveEssayDraftRequest", description = "Lưu nháp điểm chấm tự luận kèm khóa lạc quan")
 public record SaveEssayDraftRequest(
-        @Valid List<EssayCriterionInput> criteria,
+        @Valid @Size(max = 50, message = "{validation.grading.criteria.size}") List<EssayCriterionInput> criteria,
         BigDecimal points,
         @Size(max = 10000, message = "{validation.grading.comment.size}") String comment,
         @NotNull(message = "{validation.grading.expectedVersion.notNull}") Long expectedVersion) {}

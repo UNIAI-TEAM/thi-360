@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +20,9 @@ import vn.unicom.thi360.shared.security.RequirePermission;
         name = "Admin Preview Trial",
         description = "Gia hạn, đọc đề làm thử không đáp án và chấm bài thử từ bản xem trước")
 @RestController
-@RequestMapping("/api/v1/admin/exams/{id}/preview/{previewId}")
+@RequestMapping(
+        value = "/api/v1/admin/exams/{id}/preview/{previewId}",
+        produces = MediaType.APPLICATION_JSON_VALUE)
 public class AdminPreviewGradingController {
 
     private final PreviewGradingService previewGradingService;
@@ -30,7 +33,9 @@ public class AdminPreviewGradingController {
 
     @PostMapping("/trial")
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Gia hạn TTL phiên xem trước theo công thức max(hiện tại, now + thời lượng + 30p)")
+    @Operation(
+            operationId = "extendAdminPreviewForTrial",
+            summary = "Gia hạn TTL phiên xem trước theo công thức max(hiện tại, now + thời lượng + 30p)")
     public PreviewTrialResponse extendForTrial(
             @PathVariable("id") UUID examId, @PathVariable("previewId") UUID previewId) {
         return previewGradingService.extendForTrial(examId, previewId);
@@ -38,15 +43,19 @@ public class AdminPreviewGradingController {
 
     @GetMapping("/paper")
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Đọc đề làm thử từ bản xem trước (đã lọc đáp án, giữ thứ tự câu/đáp án/âm thanh/đoạn)")
+    @Operation(
+            operationId = "getAdminPreviewPaper",
+            summary = "Đọc đề làm thử từ bản xem trước (đã lọc đáp án, giữ thứ tự câu/đáp án/âm thanh/đoạn)")
     public PreviewTrialPaperResponse getPaper(
             @PathVariable("id") UUID examId, @PathVariable("previewId") UUID previewId) {
         return previewGradingService.getPaper(examId, previewId);
     }
 
-    @PostMapping("/grade")
+    @PostMapping(value = "/grade", consumes = MediaType.APPLICATION_JSON_VALUE)
     @RequirePermission(Permissions.EXAM_VIEW)
-    @Operation(summary = "Chấm bài làm tạm trên bản xem trước bằng ItemGrader/ScoreAggregator, không lưu DB")
+    @Operation(
+            operationId = "gradeAdminPreview",
+            summary = "Chấm bài làm tạm trên bản xem trước bằng ItemGrader/ScoreAggregator, không lưu DB")
     public PreviewGradeResponse grade(
             @PathVariable("id") UUID examId,
             @PathVariable("previewId") UUID previewId,

@@ -1,6 +1,5 @@
 package vn.unicom.thi360.attempt.api;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,7 +94,9 @@ public class AdminAttemptExceptionAdvice {
     private static boolean isInvalidAnswerValueCause(Throwable ex) {
         Throwable cur = ex;
         while (cur != null) {
-            if (cur instanceof InvalidTypeIdException || cur instanceof InvalidFormatException) {
+            if (cur instanceof InvalidTypeIdException ite
+                    && ite.getBaseType() != null
+                    && AnswerValue.class.isAssignableFrom(ite.getBaseType().getRawClass())) {
                 return true;
             }
             if (cur instanceof MismatchedInputException mie) {

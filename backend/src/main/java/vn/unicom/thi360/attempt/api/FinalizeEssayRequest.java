@@ -9,6 +9,6 @@ import java.util.List;
 @Schema(name = "FinalizeEssayRequest", description = "Hoàn tất chấm câu tự luận (có thể gửi kèm điểm/tiêu chí/nhận xét cuối)")
 public record FinalizeEssayRequest(
         Long expectedVersion,
-        @Valid List<EssayCriterionInput> criteria,
+        @Valid @Size(max = 50, message = "{validation.grading.criteria.size}") List<EssayCriterionInput> criteria,
         BigDecimal points,
         @Size(max = 10000, message = "{validation.grading.comment.size}") String comment) {}

@@ -105,7 +105,8 @@ class AttemptOpenApiContractTest {
         for (String schemaName : ANSWER_SUBTYPE_SCHEMAS) {
             expectedAnswerRefs.add("#/components/schemas/" + schemaName);
         }
-        for (String ownerSchema : List.of("FinalAnswerChange", "AnswerChange", "AttemptItemView")) {
+        for (String ownerSchema :
+                List.of("FinalAnswerChange", "AnswerChange", "AttemptItemView", "AdminAttemptItemView")) {
             JsonNode answerProp = schemas.path(ownerSchema).path("properties").path("answer");
             assertThat(answerProp.isMissingNode()).isFalse();
             assertThat(answerProp.toString()).doesNotContain("AttemptQuestionBody");
@@ -511,9 +512,9 @@ class AttemptOpenApiContractTest {
                 "regradeAdminAttempt",
                 "faultAdminAttempt",
                 "compensateAdminAttempt",
-                "extendForTrial",
-                "getPaper",
-                "grade")) {
+                "extendAdminPreviewForTrial",
+                "getAdminPreviewPaper",
+                "gradeAdminPreview")) {
             extractOperationBlock(schemaDts, opId);
         }
 
@@ -531,6 +532,11 @@ class AttemptOpenApiContractTest {
                 "ReopenEssayRequest",
                 "GradingClaimedResponse",
                 "AdminAttemptSummary",
+                "AdminAttemptDetailResponse",
+                "AdminAttemptPartView",
+                "AdminAttemptEventView",
+                "AdminAttemptItemView",
+                "AttemptPosition",
                 "AdminAttemptActionResponse",
                 "FaultAttemptRequest",
                 "CompensateAttemptRequest",
@@ -553,6 +559,14 @@ class AttemptOpenApiContractTest {
                     .doesNotContain(": never")
                     .doesNotContain("Record<string, never>");
         }
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptDetailResponse"))
+                .contains("lastPosition?: components[\"schemas\"][\"AttemptPosition\"];");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptPartView"))
+                .contains("choice?: components[\"schemas\"][\"AttemptChoiceSummary\"];");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptItemView"))
+                .contains("gradingDetail?: components[\"schemas\"][\"ReviewGradingDetail\"];");
+        assertThat(extractComponentSchemaBlock(schemaDts, "AdminAttemptEventView"))
+                .contains("data?: {");
     }
 
     private static String extractComponentSchemaBlock(String schemaDts, String schemaName) {

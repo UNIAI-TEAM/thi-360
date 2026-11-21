@@ -967,7 +967,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Chấm bài làm tạm trên bản xem trước bằng ItemGrader/ScoreAggregator, không lưu DB */
-        post: operations["grade"];
+        post: operations["gradeAdminPreview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -982,7 +982,7 @@ export interface paths {
             cookie?: never;
         };
         /** Đọc đề làm thử từ bản xem trước (đã lọc đáp án, giữ thứ tự câu/đáp án/âm thanh/đoạn) */
-        get: operations["getPaper"];
+        get: operations["getAdminPreviewPaper"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1001,7 +1001,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Gia hạn TTL phiên xem trước theo công thức max(hiện tại, now + thời lượng + 30p) */
-        post: operations["extendForTrial"];
+        post: operations["extendAdminPreviewForTrial"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3320,9 +3320,7 @@ export interface components {
             /** Format: uuid */
             grantId?: string;
             items?: components["schemas"]["AdminAttemptItemView"][];
-            lastPosition?: {
-                [key: string]: Record<string, never>;
-            };
+            lastPosition?: components["schemas"]["AttemptPosition"];
             maxScore?: number;
             /** @enum {string} */
             navigationMode?: "SEQUENTIAL" | "FREE";
@@ -3353,7 +3351,7 @@ export interface components {
             /** Format: date-time */
             at?: string;
             data?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             /** Format: uuid */
             id?: string;
@@ -3374,9 +3372,7 @@ export interface components {
             displayNo?: number;
             earnedPoints?: number;
             flagged?: boolean;
-            gradingDetail?: {
-                [key: string]: Record<string, never>;
-            };
+            gradingDetail?: components["schemas"]["ReviewGradingDetail"];
             inScope?: boolean;
             /** Format: uuid */
             itemId?: string;
@@ -3399,9 +3395,7 @@ export interface components {
             unitCount?: number;
         };
         AdminAttemptPartView: {
-            choice?: {
-                [key: string]: Record<string, never>;
-            };
+            choice?: components["schemas"]["AttemptChoiceSummary"];
             /** Format: date-time */
             choiceConfirmedAt?: string;
             /** Format: date-time */
@@ -21072,7 +21066,7 @@ export interface operations {
             };
         };
     };
-    grade: {
+    gradeAdminPreview: {
         parameters: {
             query?: never;
             header?: never;
@@ -21094,7 +21088,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PreviewGradeResponse"];
+                    "application/json": components["schemas"]["PreviewGradeResponse"];
                 };
             };
             /** @description Bad Request */
@@ -21207,7 +21201,7 @@ export interface operations {
             };
         };
     };
-    getPaper: {
+    getAdminPreviewPaper: {
         parameters: {
             query?: never;
             header?: never;
@@ -21225,7 +21219,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PreviewTrialPaperResponse"];
+                    "application/json": components["schemas"]["PreviewTrialPaperResponse"];
                 };
             };
             /** @description Bad Request */
@@ -21338,7 +21332,7 @@ export interface operations {
             };
         };
     };
-    extendForTrial: {
+    extendAdminPreviewForTrial: {
         parameters: {
             query?: never;
             header?: never;
@@ -21356,7 +21350,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PreviewTrialResponse"];
+                    "application/json": components["schemas"]["PreviewTrialResponse"];
                 };
             };
             /** @description Bad Request */

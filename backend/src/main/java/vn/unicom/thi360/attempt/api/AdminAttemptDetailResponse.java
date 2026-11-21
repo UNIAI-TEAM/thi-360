@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import vn.unicom.thi360.attempt.api.AttemptReviewResponse.ReviewGradingDetail;
 import vn.unicom.thi360.attempt.domain.AbortReason;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
@@ -55,7 +56,7 @@ public record AdminAttemptDetailResponse(
         UUID grantId,
         UUID editSessionId,
         Instant editSessionSeenAt,
-        Map<String, Object> lastPosition,
+        AttemptPosition lastPosition,
         String faultFlag,
         String faultReason,
         boolean compensated,
@@ -75,7 +76,7 @@ public record AdminAttemptDetailResponse(
             Integer durationMinutes,
             Integer questionCountRequired,
             BigDecimal maxPoints,
-            Map<String, Object> choice,
+            AttemptChoiceSummary choice,
             Instant choiceConfirmedAt,
             Instant choiceDeadlineAt,
             Instant startedAt,
@@ -92,6 +93,7 @@ public record AdminAttemptDetailResponse(
             UUID sessionId,
             UUID partId,
             Instant at,
+            @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE)
             Map<String, Object> data) {}
 
     @Schema(name = "AdminAttemptItemView")
@@ -113,5 +115,5 @@ public record AdminAttemptDetailResponse(
             boolean flagged,
             BigDecimal earnedPoints,
             ItemOutcome outcome,
-            Map<String, Object> gradingDetail) {}
+            ReviewGradingDetail gradingDetail) {}
 }

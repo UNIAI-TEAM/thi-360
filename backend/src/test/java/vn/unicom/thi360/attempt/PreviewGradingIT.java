@@ -22,11 +22,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import vn.unicom.thi360.attempt.api.FinalAnswerChange;
+import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
+import vn.unicom.thi360.attempt.domain.AnswerValue;
+import vn.unicom.thi360.attempt.domain.Attempt;
+import vn.unicom.thi360.attempt.domain.AttemptItem;
+import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
+import vn.unicom.thi360.exam.ExamListingFixture;
 import vn.unicom.thi360.exam.spi.PreviewPaperPort;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.shared.outbox.OutboxRelay;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 
 /**
@@ -40,6 +50,7 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
 
     @Autowired private StringRedisTemplate redis;
     @Autowired private PreviewPaperPort previewPaperPort;
+    @Autowired private OutboxRelay outboxRelay;
 
     @Test
     void gradesPerQuestionAndStatement() throws Exception {
@@ -295,7 +306,17 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
                 """.formatted(subject.code()), 4);
         UUID previewId = generatePreview(examId);
 
-        // 1. Unknown AnswerValue discriminator -> HttpMessageNotReadableException -> 422 INVALID_ANSWER_FORMAT
+        // 0. Malformed JSON syntax -> 400 VALIDATION_FAILED (R1-3)
+        JsonNode malformedJson = json(mockMvc.perform(
+                        post("/api/v1/admin/exams/{id}/preview/{previewId}/grade", examId, previewId)
+                                .with(asUser(Permissions.EXAM_VIEW))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"answers\":{"))
+                .andExpect(status().isBadRequest())
+                .andReturn());
+        assertThat(malformedJson.path("code").asText()).isEqualTo("VALIDATION_FAILED");
+
+        // 1. Unknown AnswerValue discriminator -> HttpMessageNotReadableException -> 422 INVALID_ANSWER_FORMAT (vi + en)
         JsonNode badType = json(mockMvc.perform(
                         post("/api/v1/admin/exams/{id}/preview/{previewId}/grade", examId, previewId)
                                 .with(asUser(Permissions.EXAM_VIEW))
@@ -304,11 +325,37 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
                 .andExpect(status().isUnprocessableEntity())
                 .andReturn());
         assertThat(badType.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
+        assertThat(badType.path("message").asText()).isEqualTo("Định dạng câu trả lời không hợp lệ");
 
-        // 2. Non-existent option ID -> AnswerValueValidator -> 422 INVALID_ANSWER_FORMAT
+        JsonNode badTypeEn = json(mockMvc.perform(
+                        post("/api/v1/admin/exams/{id}/preview/{previewId}/grade", examId, previewId)
+                                .with(asUser(Permissions.EXAM_VIEW))
+                                .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"answers\":{\"" + qSingle + "\":{\"type\":\"NOT_A_TYPE\"}}}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andReturn());
+        assertThat(badTypeEn.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
+        assertThat(badTypeEn.path("message").asText()).isEqualTo("Submitted answer format is invalid");
+
+        // 2. Non-existent option ID -> AnswerValueValidator -> 422 INVALID_ANSWER_FORMAT (vi + en, R1-8/9)
         JsonNode badOption = gradeExpectStatus(
                 examId, previewId, Map.of(qSingle.toString(), Map.of("type", "SINGLE_CHOICE", "optionId", "non-existent")), 422);
         assertThat(badOption.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
+        assertThat(badOption.path("message").asText()).isEqualTo("Định dạng câu trả lời không hợp lệ");
+
+        JsonNode badOptionEn = json(mockMvc.perform(
+                        post("/api/v1/admin/exams/{id}/preview/{previewId}/grade", examId, previewId)
+                                .with(asUser(Permissions.EXAM_VIEW))
+                                .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                        "answers",
+                                        Map.of(qSingle.toString(), Map.of("type", "SINGLE_CHOICE", "optionId", "non-existent"))))))
+                .andExpect(status().isUnprocessableEntity())
+                .andReturn());
+        assertThat(badOptionEn.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
+        assertThat(badOptionEn.path("message").asText()).isEqualTo("Submitted answer format is invalid");
 
         // 3. Wrong AnswerValue subtype for question type -> 422 INVALID_ANSWER_FORMAT
         JsonNode mismatchType = gradeExpectStatus(
@@ -323,13 +370,28 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
                 422);
         assertThat(wrongEssayType.path("code").asText()).isEqualTo("INVALID_ANSWER_FORMAT");
 
-        // 5. Unknown questionId / parent QUESTION_SET root ID -> 422 PREVIEW_UNKNOWN_QUESTION
+        // 5. Unknown questionId / parent QUESTION_SET root ID -> 422 PREVIEW_UNKNOWN_QUESTION (vi + en, R1-8/9)
         JsonNode unknownQ = gradeExpectStatus(
                 examId,
                 previewId,
                 Map.of(UUID.randomUUID().toString(), Map.of("type", "SINGLE_CHOICE", "optionId", "a")),
                 422);
         assertThat(unknownQ.path("code").asText()).isEqualTo("PREVIEW_UNKNOWN_QUESTION");
+        assertThat(unknownQ.path("message").asText()).isEqualTo("Câu trả lời chứa mã câu hỏi không thuộc đề làm thử");
+
+        JsonNode unknownQEn = json(mockMvc.perform(
+                        post("/api/v1/admin/exams/{id}/preview/{previewId}/grade", examId, previewId)
+                                .with(asUser(Permissions.EXAM_VIEW))
+                                .header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(Map.of(
+                                        "answers",
+                                        Map.of(UUID.randomUUID().toString(), Map.of("type", "SINGLE_CHOICE", "optionId", "a"))))))
+                .andExpect(status().isUnprocessableEntity())
+                .andReturn());
+        assertThat(unknownQEn.path("code").asText()).isEqualTo("PREVIEW_UNKNOWN_QUESTION");
+        assertThat(unknownQEn.path("message").asText())
+                .isEqualTo("Submitted answer references a question that does not belong to this preview paper");
 
         JsonNode setRootRejected = gradeExpectStatus(
                 examId,
@@ -391,7 +453,33 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
     @Test
     void paperKeepsOrderAndHasNoAnswerKeys() throws Exception {
         Subject subject = createSubject();
-        insertSingleChoice(subject, true);
+        UUID qSingle = insertSingleChoice(subject, true);
+        UUID contentAssetId = UUID.randomUUID();
+        UUID optionAssetId = UUID.randomUUID();
+        String patchedScSnapshot = """
+                {
+                  "content": "<p>Single choice <img data-asset-id=\\"%s\\" alt=\\"prompt\\"></p>",
+                  "points": 1.0,
+                  "body": {
+                    "type": "SINGLE_CHOICE",
+                    "shuffleOptions": true,
+                    "options": [
+                      {"id": "a", "content": "<p>Opt A <img data-asset-id=\\"%s\\" alt=\\"opt\\"></p>", "correct": true},
+                      {"id": "b", "content": "B", "correct": false},
+                      {"id": "c", "content": "C", "correct": false},
+                      {"id": "d", "content": "D", "correct": false},
+                      {"id": "e", "content": "E", "correct": false},
+                      {"id": "f", "content": "F", "correct": false}
+                    ],
+                    "solution": "Option A is right"
+                  }
+                }
+                """.formatted(contentAssetId, optionAssetId);
+        jdbc.update(
+                "UPDATE questionbank.question_version SET snapshot = cast(? as jsonb) WHERE question_id = ? AND version_no = 1",
+                patchedScSnapshot,
+                qSingle);
+
         insertTrueFalsePerStatement(subject);
         insertClozeTwoBlanks(subject);
         insertMatchingNoReuse(subject);
@@ -430,10 +518,21 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
         List<String> actualOutline = extractResponseQuestionOutline(paperJson);
         assertThat(actualOutline).containsExactlyElementsOf(expectedOutline);
 
-        // Verify shuffled optionOrder is applied verbatim to body.options in SINGLE_CHOICE
+        // Verify shuffled optionOrder is applied verbatim to body.options in SINGLE_CHOICE and asset src is populated (R1-30)
         JsonNode scNode = paperJson.path("parts").get(0).path("blocks").get(0).path("items").get(0).path("question");
+        assertThat(scNode.path("content").asText())
+                .contains("src=\"/api/v1/admin/question-assets/" + contentAssetId + "\"");
         List<String> displayedOptionIds = new ArrayList<>();
-        scNode.path("body").path("options").forEach(o -> displayedOptionIds.add(o.path("id").asText()));
+        String optAContent = null;
+        for (JsonNode o : scNode.path("body").path("options")) {
+            displayedOptionIds.add(o.path("id").asText());
+            if ("a".equals(o.path("id").asText())) {
+                optAContent = o.path("content").asText();
+            }
+        }
+        assertThat(optAContent)
+                .isNotNull()
+                .contains("src=\"/api/v1/admin/question-assets/" + optionAssetId + "\"");
         List<String> expectedOrder = rawPaper.parts().getFirst().blocks().getFirst().items().getFirst().question().optionOrder();
         assertThat(displayedOptionIds).containsExactlyElementsOf(expectedOrder);
 
@@ -606,15 +705,77 @@ class PreviewGradingIT extends AbstractAttemptDsIT {
         UUID mcQuestion = insertMultipleChoicePartial(subject);
 
         UUID bcaExam = insertCustomExam("BCA", "SHARED", 60, """
-                [{"id":"p1","order":1,"name":"Part 1","questionCount":1,"participation":{"mode":"ALL"},
+                [{"id":"p1","order":1,"name":"Part 1","questionCount":1,"questionCountOnPaper":1,"questionCountRequired":1,"maxPoints":1,"participation":{"mode":"ALL","choose":null},
                   "sections":[{"id":"s1","subjectCode":"%s","questionCount":1,
-                    "blocks":[{"id":"b1","name":"MC","questionType":"MULTIPLE_CHOICE","questionCount":1}]}]}]
+                    "blocks":[{"id":"b1","name":"MC","questionType":"MULTIPLE_CHOICE","questionCount":1,"requiredPointsPerQuestion":1}]}],"options":[]}]
                 """.formatted(subject.code()), 1);
+        jdbc.update("UPDATE exam.exam SET max_score = 1.0 WHERE id = ?", bcaExam);
         UUID bcaPreview = generatePreview(bcaExam);
         JsonNode bcaRes = gradeOk(
                 bcaExam, bcaPreview, Map.of(mcQuestion.toString(), Map.of("type", "MULTIPLE_CHOICE", "optionIds", List.of("o1"))));
         assertThat(bcaRes.path("kindCode").asText()).isEqualTo("BCA");
         assertThat(bcaRes.path("rawScore").decimalValue()).isEqualByComparingTo("0.50");
+
+        // Compare preview grading output against a real graded attempt on the exact same question & answer (R1-12)
+        jdbc.update("UPDATE exam.exam SET has_unpublished_changes = true WHERE id = ?", bcaExam);
+        jdbc.update(
+                "INSERT INTO exam.exam_block_ref(id, exam_id, block_id, part_id, section_id, subject_item_id) VALUES (?, ?, 'b1', 'p1', 's1', ?)",
+                UUID.randomUUID(),
+                bcaExam,
+                subject.id());
+        ExamListingFixture.fill(jdbc, bcaExam);
+        JsonNode checked = json(mockMvc.perform(post("/api/v1/admin/exams/{id}/check", bcaExam)
+                        .with(asUser(Permissions.EXAM_MODIFY)))
+                .andExpect(status().isOk())
+                .andReturn());
+        var validPaths = objectMapper.createArrayNode();
+        checked.path("paths").forEach(p -> {
+            if ("VALID".equals(p.path("result").asText())) {
+                validPaths.add(p.path("pathId").asText());
+            }
+        });
+        assertThat(validPaths).as(checked.toString()).isNotEmpty();
+        long rev = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id = ?", Long.class, bcaExam);
+        ObjectNode pubBody = objectMapper.createObjectNode().put("expectedRevision", rev);
+        pubBody.set("pathIds", validPaths);
+        mockMvc.perform(post("/api/v1/admin/exams/{id}/publish", bcaExam)
+                        .with(asUser(Permissions.EXAM_PUBLISH))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pubBody.toString()))
+                .andExpect(status().isOk());
+
+        UUID student = createStudent("preview-compare-student");
+        GrantOrderResult.Line grant = AttemptTestFixtures.grantExam(
+                grantService, student, bcaExam, 1, List.of(), "SCORE_AND_ANSWERS", 1);
+        Attempt realAttempt = startAndAwaitOpen(student, UUID.randomUUID().toString(), grant.entitlementId(), null);
+        UUID sessionId = claimSession(student, realAttempt.getId());
+        AttemptItem realMcItem = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(realAttempt.getId())
+                .stream()
+                .filter(i -> i.getQuestionId().equals(mcQuestion))
+                .findFirst()
+                .orElseThrow();
+        assertThat(performSubmit(
+                student,
+                realAttempt.getId(),
+                UUID.randomUUID().toString(),
+                sessionId,
+                new SubmitAttemptRequest(List.of(
+                        new FinalAnswerChange(realMcItem.getId(), 1L, new AnswerValue.MultipleChoice(List.of("o1"))))))
+                .getResponse().getStatus()).isEqualTo(200);
+        int relayed;
+        do {
+            relayed = outboxRelay.relayBatch(500);
+        } while (relayed > 0);
+
+        Attempt scoredReal = attemptRepository.findById(realAttempt.getId()).orElseThrow();
+        AttemptItem scoredRealItem = attemptItemRepository.findById(realMcItem.getId()).orElseThrow();
+        assertThat(scoredReal.getState()).isEqualTo(AttemptState.SCORED);
+        assertThat(bcaRes.path("rawScore").decimalValue()).isEqualByComparingTo(scoredReal.getRawScore());
+        assertThat(bcaRes.path("maxScore").decimalValue()).isEqualByComparingTo(scoredReal.getMaxScore());
+        JsonNode previewItem = findGradedItem(bcaRes.path("items"), mcQuestion);
+        assertThat(previewItem.path("earnedPoints").decimalValue()).isEqualByComparingTo(scoredRealItem.getEarnedPoints());
+        assertThat(previewItem.path("outcome").asText()).isEqualTo(scoredRealItem.getOutcome().name());
 
         UUID hsaExam = insertCustomExam("HSA", "SHARED", 60, """
                 [{"id":"p1","order":1,"name":"Part 1","questionCount":1,"participation":{"mode":"ALL"},

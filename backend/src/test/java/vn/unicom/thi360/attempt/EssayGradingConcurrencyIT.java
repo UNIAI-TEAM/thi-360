@@ -28,6 +28,10 @@ import vn.unicom.thi360.attempt.domain.AttemptEventType;
 import vn.unicom.thi360.attempt.domain.AttemptItem;
 import vn.unicom.thi360.attempt.domain.AttemptPart;
 import vn.unicom.thi360.attempt.domain.AttemptState;
+import vn.unicom.thi360.attempt.domain.EssayGrade;
+import vn.unicom.thi360.attempt.domain.EssayGradeState;
+import vn.unicom.thi360.attempt.domain.ItemOutcome;
+import vn.unicom.thi360.attempt.infrastructure.EssayGradeRepository;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
@@ -37,6 +41,7 @@ import vn.unicom.thi360.shared.outbox.OutboxRelay;
 class EssayGradingConcurrencyIT extends AbstractAttemptDsIT {
 
     @Autowired private OutboxRelay outboxRelay;
+    @Autowired private EssayGradeRepository essayGradeRepository;
 
     @BeforeEach
     void drainBefore() {
@@ -203,7 +208,35 @@ class EssayGradingConcurrencyIT extends AbstractAttemptDsIT {
             MvcResult rFin = finFut.get();
             // Reopen acquires the lock either before finalize (reopen 200 -> finalize 200) or after finalize (finalize 409 -> reopen 200)
             assertThat(rReopen.getResponse().getStatus()).isEqualTo(200);
-            assertThat(rFin.getResponse().getStatus()).isIn(200, 409);
+            int finStatus = rFin.getResponse().getStatus();
+            assertThat(finStatus).isIn(200, 409);
+
+            Integer activeRowsAfterRace = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM attempt.essay_grade WHERE attempt_item_id = ? AND superseded_by IS NULL",
+                    Integer.class,
+                    sub.essayItemId());
+            assertThat(activeRowsAfterRace).isEqualTo(1);
+
+            EssayGrade activeGrade = essayGradeRepository
+                    .findByAttemptItemIdAndSupersededByIsNull(sub.essayItemId())
+                    .orElseThrow();
+            AttemptItem reloadedItem = attemptItemRepository.findById(sub.essayItemId()).orElseThrow();
+            Attempt reloadedAttempt = attemptRepository.findById(sub.attemptId()).orElseThrow();
+
+            if (finStatus == 409) {
+                assertThat(json(rFin).path("code").asText()).isEqualTo("ESSAY_ALREADY_FINALIZED");
+                assertThat(activeGrade.getState()).isEqualTo(EssayGradeState.DRAFT);
+                assertThat(reloadedItem.getOutcome()).isEqualTo(ItemOutcome.PENDING_REVIEW);
+                assertThat(reloadedAttempt.getState()).isEqualTo(AttemptState.PENDING_REVIEW);
+                assertThat(reloadedAttempt.isRegrading()).isTrue();
+            } else {
+                assertThat(activeGrade.getState()).isEqualTo(EssayGradeState.FINAL);
+                assertThat(activeGrade.getPoints()).isEqualByComparingTo("15.00");
+                assertThat(reloadedItem.getEarnedPoints()).isEqualByComparingTo("15.00");
+                assertThat(reloadedAttempt.getState()).isEqualTo(AttemptState.SCORED);
+                assertThat(reloadedAttempt.isRegrading()).isFalse();
+                assertThat(reloadedAttempt.getRawScore()).isEqualByComparingTo("15.00");
+            }
         } finally {
             pool.shutdownNow();
         }

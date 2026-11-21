@@ -8,15 +8,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.attempt.api.AttemptQuestionBody;
@@ -70,8 +66,6 @@ import vn.unicom.thi360.shared.api.BusinessRuleException;
  */
 @Service
 public class PreviewGradingService {
-
-    private static final String ADMIN_ASSET_PREFIX = "/api/v1/admin/question-assets/";
 
     private final PreviewPaperPort previewPaperPort;
     private final QuestionSourcePort questionSourcePort;
@@ -185,9 +179,7 @@ public class PreviewGradingService {
 
         for (UUID questionId : submittedAnswers.keySet()) {
             if (!leafById.containsKey(questionId)) {
-                throw new BusinessRuleException(
-                        "PREVIEW_UNKNOWN_QUESTION",
-                        "Question " + questionId + " is not a gradable item of preview " + previewId);
+                throw new BusinessRuleException("PREVIEW_UNKNOWN_QUESTION", null);
             }
         }
 
@@ -210,9 +202,7 @@ public class PreviewGradingService {
                 AnswerValueValidator.ValidationResult validation =
                         answerValueValidator.validate(type, snapshot, submitted);
                 if (!validation.valid()) {
-                    throw new BusinessRuleException(
-                            "INVALID_ANSWER_FORMAT",
-                            "Invalid answer format for question " + q.questionId());
+                    throw new BusinessRuleException("INVALID_ANSWER_FORMAT", null);
                 }
                 normalized = validation.normalized();
             }
@@ -373,8 +363,8 @@ public class PreviewGradingService {
         Version version = requireVersion(versionMap, new VersionKey(set.questionId(), set.versionNo()));
         JsonNode snapshot = version.snapshot();
         JsonNode body = snapshot.path("body");
-        String content = ensureAdminImgSrc(textOrNull(snapshot, "content"));
-        String passage = ensureAdminImgSrc(textOrNull(body, "passage"));
+        String content = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(snapshot, "content"));
+        String passage = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(body, "passage"));
         Integer blankNumberStart = intOrNull(body, "blankNumberStart");
         List<PreviewPaperAttachmentView> attachments = mapAttachments(set.attachments());
         List<PreviewPaperQuestionView> children = set.children() == null
@@ -395,7 +385,7 @@ public class PreviewGradingService {
         Version version = requireVersion(versionMap, new VersionKey(q.questionId(), q.versionNo()));
         JsonNode snapshot = version.snapshot();
         QuestionType type = QuestionType.valueOf(q.type());
-        String content = ensureAdminImgSrc(textOrNull(snapshot, "content"));
+        String content = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(snapshot, "content"));
         AttemptQuestionBody body = projectQuestionBody(type, snapshot, q.optionOrder());
         List<String> optionOrder = q.optionOrder() == null ? null : List.copyOf(q.optionOrder());
         List<PreviewPaperAttachmentView> attachments = mapAttachments(q.attachments());
@@ -417,7 +407,8 @@ public class PreviewGradingService {
             return List.of();
         }
         return attachments.stream()
-                .map(a -> new PreviewPaperAttachmentView(a.id(), a.name(), a.mime(), ADMIN_ASSET_PREFIX + a.id()))
+                .map(a -> new PreviewPaperAttachmentView(
+                        a.id(), a.name(), a.mime(), AdminHtmlAssetHelper.ADMIN_ASSET_PREFIX + a.id()))
                 .toList();
     }
 
@@ -439,7 +430,7 @@ public class PreviewGradingService {
                     textOrNull(body, "inputHint"),
                     textOrNull(body, "answerFormat"));
             case CLOZE -> {
-                String passage = ensureAdminImgSrc(textOrNull(body, "passage"));
+                String passage = AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(body, "passage"));
                 List<ClozeBlankView> blanks = new ArrayList<>();
                 JsonNode rawBlanks = body.path("blanks");
                 if (rawBlanks.isArray()) {
@@ -451,7 +442,7 @@ public class PreviewGradingService {
             }
             case QUESTION_SET -> new AttemptQuestionBody.QuestionSet(
                     QuestionType.QUESTION_SET,
-                    ensureAdminImgSrc(textOrNull(body, "passage")),
+                    AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(body, "passage")),
                     intOrNull(body, "blankNumberStart"));
             case TRUE_FALSE -> {
                 List<StatementView> statements = new ArrayList<>();
@@ -460,7 +451,7 @@ public class PreviewGradingService {
                     for (JsonNode s : rawStatements) {
                         statements.add(new StatementView(
                                 textOrNull(s, "id"),
-                                ensureAdminImgSrc(textOrNull(s, "content"))));
+                                AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(s, "content"))));
                     }
                 }
                 yield new AttemptQuestionBody.TrueFalse(QuestionType.TRUE_FALSE, statements);
@@ -483,7 +474,8 @@ public class PreviewGradingService {
         }
         List<OptionView> list = new ArrayList<>(arrayNode.size());
         for (JsonNode opt : arrayNode) {
-            list.add(new OptionView(textOrNull(opt, "id"), ensureAdminImgSrc(textOrNull(opt, "content"))));
+            list.add(new OptionView(
+                    textOrNull(opt, "id"), AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(opt, "content"))));
         }
         return list;
     }
@@ -494,7 +486,8 @@ public class PreviewGradingService {
         }
         List<SideView> list = new ArrayList<>(arrayNode.size());
         for (JsonNode item : arrayNode) {
-            list.add(new SideView(textOrNull(item, "id"), ensureAdminImgSrc(textOrNull(item, "content"))));
+            list.add(new SideView(
+                    textOrNull(item, "id"), AdminHtmlAssetHelper.ensureAdminImgSrc(textOrNull(item, "content"))));
         }
         return list;
     }
@@ -519,34 +512,6 @@ public class PreviewGradingService {
         }
         reordered.addAll(byId.values());
         return reordered;
-    }
-
-    private static String ensureAdminImgSrc(String html) {
-        if (html == null || html.isEmpty() || !html.toLowerCase(Locale.ROOT).contains("data-asset-id")) {
-            return html;
-        }
-        Document doc = Jsoup.parseBodyFragment(html);
-        doc.outputSettings(new Document.OutputSettings().prettyPrint(false));
-        for (Element img : doc.select("img[data-asset-id]")) {
-            if (img.attr("src").trim().isEmpty()) {
-                UUID assetId = parseUuidOrNull(img.attr("data-asset-id").trim());
-                if (assetId != null) {
-                    img.attr("src", ADMIN_ASSET_PREFIX + assetId);
-                }
-            }
-        }
-        return doc.body().html();
-    }
-
-    private static UUID parseUuidOrNull(String candidate) {
-        if (candidate.isEmpty()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(candidate);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
     }
 
     private static Version requireVersion(Map<VersionKey, Version> versionMap, VersionKey key) {

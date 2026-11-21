@@ -189,10 +189,7 @@
             "type" : "array"
           },
           "lastPosition" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
-            "type" : "object"
+            "$ref" : "#/components/schemas/AttemptPosition"
           },
           "maxScore" : {
             "type" : "number"
@@ -270,9 +267,7 @@
             "type" : "string"
           },
           "data" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : true,
             "type" : "object"
           },
           "id" : {
@@ -332,10 +327,7 @@
             "type" : "boolean"
           },
           "gradingDetail" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
-            "type" : "object"
+            "$ref" : "#/components/schemas/ReviewGradingDetail"
           },
           "inScope" : {
             "type" : "boolean"
@@ -385,10 +377,7 @@
       "AdminAttemptPartView" : {
         "properties" : {
           "choice" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
-            "type" : "object"
+            "$ref" : "#/components/schemas/AttemptChoiceSummary"
           },
           "choiceConfirmedAt" : {
             "format" : "date-time",
@@ -5967,6 +5956,8 @@
             "type" : "string"
           },
           "id" : {
+            "maxLength" : 100,
+            "minLength" : 0,
             "type" : "string"
           },
           "points" : {
@@ -9127,6 +9118,8 @@
             "items" : {
               "$ref" : "#/components/schemas/EssayCriterionInput"
             },
+            "maxItems" : 50,
+            "minItems" : 0,
             "type" : "array"
           },
           "expectedVersion" : {
@@ -14943,6 +14936,8 @@
             "items" : {
               "$ref" : "#/components/schemas/EssayCriterionInput"
             },
+            "maxItems" : 50,
+            "minItems" : 0,
             "type" : "array"
           },
           "expectedVersion" : {
@@ -28622,7 +28617,7 @@
     },
     "/api/v1/admin/exams/{id}/preview/{previewId}/grade" : {
       "post" : {
-        "operationId" : "grade",
+        "operationId" : "gradeAdminPreview",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -28653,7 +28648,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PreviewGradeResponse"
                 }
@@ -28788,7 +28783,7 @@
     },
     "/api/v1/admin/exams/{id}/preview/{previewId}/paper" : {
       "get" : {
-        "operationId" : "getPaper",
+        "operationId" : "getAdminPreviewPaper",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -28809,7 +28804,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PreviewTrialPaperResponse"
                 }
@@ -28944,7 +28939,7 @@
     },
     "/api/v1/admin/exams/{id}/preview/{previewId}/trial" : {
       "post" : {
-        "operationId" : "extendForTrial",
+        "operationId" : "extendAdminPreviewForTrial",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -28965,7 +28960,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PreviewTrialResponse"
                 }

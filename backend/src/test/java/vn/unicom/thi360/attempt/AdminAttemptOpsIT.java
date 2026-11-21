@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import vn.unicom.thi360.attempt.api.AnswerChange;
+import vn.unicom.thi360.attempt.api.AttemptPosition;
 import vn.unicom.thi360.attempt.api.CompensateAttemptRequest;
 import vn.unicom.thi360.attempt.api.FaultAttemptRequest;
 import vn.unicom.thi360.attempt.api.FinalizeEssayRequest;
@@ -28,7 +30,6 @@ import vn.unicom.thi360.attempt.api.FinishPartRequest;
 import vn.unicom.thi360.attempt.api.SaveAnswersRequest;
 import vn.unicom.thi360.attempt.api.StartAttemptRequest.PreChoiceInput;
 import vn.unicom.thi360.attempt.api.SubmitAttemptRequest;
-import vn.unicom.thi360.attempt.api.AnswerChange;
 import vn.unicom.thi360.attempt.domain.AnswerValue;
 import vn.unicom.thi360.attempt.domain.Attempt;
 import vn.unicom.thi360.attempt.domain.AttemptEventType;
@@ -38,11 +39,14 @@ import vn.unicom.thi360.attempt.domain.AttemptState;
 import vn.unicom.thi360.attempt.domain.EndReason;
 import vn.unicom.thi360.attempt.domain.EssayGrade;
 import vn.unicom.thi360.attempt.domain.EssayGradeState;
+import vn.unicom.thi360.attempt.domain.ItemOutcome;
 import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.attempt.infrastructure.EssayGradeRepository;
 import vn.unicom.thi360.commerce.entitlement.application.EntitlementGrantService;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
+import vn.unicom.thi360.questionbank.spi.QuestionSourcePort.VersionKey;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
 
@@ -51,6 +55,7 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
     @Autowired private OutboxRelay outboxRelay;
     @Autowired private EssayGradeRepository essayGradeRepository;
     @Autowired private EntitlementGrantService entitlementGrantService;
+    @Autowired private QuestionSourcePort questionSourcePort;
 
     @BeforeEach
     void drainBefore() {
@@ -71,18 +76,55 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
                 .filter(i -> i.getQuestionType() == QuestionType.ESSAY)
                 .findFirst()
                 .orElseThrow();
+        AttemptItem scItem = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(attempt.getId())
+                .stream()
+                .filter(i -> i.isInScope() && i.getQuestionType() == QuestionType.SINGLE_CHOICE)
+                .findFirst()
+                .orElseThrow();
+        JsonNode scSnap = questionSourcePort
+                .loadVersions(List.of(new VersionKey(scItem.getQuestionId(), scItem.getQuestionVersionNo())))
+                .getFirst()
+                .snapshot();
+        String correctOptId = null;
+        for (JsonNode opt : scSnap.path("body").path("options")) {
+            if (opt.path("correct").asBoolean(false)) {
+                correctOptId = opt.path("id").asText();
+                break;
+            }
+        }
+        assertThat(correctOptId).isNotBlank();
+        BigDecimal objectivePoints = scItem.getPointsMax();
 
-        List<FinalAnswerChange> essayAnswer = List.of(
-                new FinalAnswerChange(essayItem.getId(), 1L, new AnswerValue.Essay("<p>Bài tự luận đã chấm</p>", 5)));
+        FinalAnswerChange essayChange = new FinalAnswerChange(
+                essayItem.getId(), 1L, new AnswerValue.Essay("<p>Bài tự luận đã chấm</p>", 5));
+        FinalAnswerChange scChange = new FinalAnswerChange(
+                scItem.getId(), 1L, new AnswerValue.SingleChoice(correctOptId));
+        List<FinalAnswerChange> allFinals = List.of(essayChange, scChange);
+
         for (int idx = 0; idx < parts.size() - 1; idx++) {
             AttemptPart p = parts.get(idx);
-            List<FinalAnswerChange> finals = p.getId().equals(essayItem.getPartId()) ? essayAnswer : List.of();
+            List<FinalAnswerChange> finals = new java.util.ArrayList<>();
+            if (p.getId().equals(essayItem.getPartId())) {
+                finals.add(essayChange);
+            }
+            if (p.getId().equals(scItem.getPartId())) {
+                finals.add(scChange);
+            }
             assertThat(performFinishPart(student, attempt.getId(), p.getId(), sessionId,
                     new FinishPartRequest(finals)).getResponse().getStatus()).isEqualTo(200);
         }
+        AttemptPart lastPart = parts.getLast();
+        List<FinalAnswerChange> submitFinals = allFinals.stream()
+                .filter(fc -> (fc.itemId().equals(essayItem.getId()) && lastPart.getId().equals(essayItem.getPartId()))
+                        || (fc.itemId().equals(scItem.getId()) && lastPart.getId().equals(scItem.getPartId())))
+                .toList();
         assertThat(performSubmit(student, attempt.getId(), UUID.randomUUID().toString(), sessionId,
-                new SubmitAttemptRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
+                new SubmitAttemptRequest(submitFinals)).getResponse().getStatus()).isEqualTo(200);
         drainAllOutbox();
+
+        AttemptItem gradedScBefore = attemptItemRepository.findById(scItem.getId()).orElseThrow();
+        assertThat(gradedScBefore.getOutcome()).isEqualTo(ItemOutcome.CORRECT);
+        assertThat(gradedScBefore.getEarnedPoints()).isEqualByComparingTo(objectivePoints);
 
         // Grade & finalize essay
         assertThat(mockMvc.perform(post("/api/v1/admin/grading/items/{id}/claim", essayItem.getId())
@@ -98,13 +140,14 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
         EssayGrade beforeRegrade = essayGradeRepository.findByAttemptItemIdAndSupersededByIsNull(essayItem.getId())
                 .orElseThrow();
 
-        // Simulate GRADING_ERROR AND wipe attempt_item earned_points to prove FINAL essay_grade restoration
+        // Simulate GRADING_ERROR AND wipe BOTH essay AND objective item grading columns to prove full regrade + FINAL essay restoration
         jdbc.update(
                 "UPDATE attempt.attempt SET state = 'GRADING_ERROR', grading_error = 'Simulated error', raw_score = NULL, display_score = NULL WHERE id = ?",
                 attempt.getId());
         jdbc.update(
-                "UPDATE attempt.attempt_item SET earned_points = NULL, outcome = NULL, grading_detail = NULL WHERE id = ?",
-                essayItem.getId());
+                "UPDATE attempt.attempt_item SET earned_points = NULL, outcome = NULL, grading_detail = NULL WHERE id IN (?, ?)",
+                essayItem.getId(),
+                scItem.getId());
 
         MvcResult res = mockMvc.perform(
                         post("/api/v1/admin/attempts/{id}/regrade", attempt.getId())
@@ -112,12 +155,18 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
                 .andReturn();
         assertThat(res.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = json(res);
+        BigDecimal expectedTotal = objectivePoints.add(new BigDecimal("19.50"));
         assertThat(body.path("state").asText()).isEqualTo("SCORED");
-        assertThat(new BigDecimal(body.path("rawScore").asText())).isEqualByComparingTo("19.50");
+        assertThat(new BigDecimal(body.path("rawScore").asText())).isEqualByComparingTo(expectedTotal);
 
         Attempt reloaded = attemptRepository.findById(attempt.getId()).orElseThrow();
         assertThat(reloaded.getState()).isEqualTo(AttemptState.SCORED);
         assertThat(reloaded.getGradingError()).isNull();
+        assertThat(reloaded.getRawScore()).isEqualByComparingTo(expectedTotal);
+
+        AttemptItem regradedScItem = attemptItemRepository.findById(scItem.getId()).orElseThrow();
+        assertThat(regradedScItem.getOutcome()).isEqualTo(ItemOutcome.CORRECT);
+        assertThat(regradedScItem.getEarnedPoints()).isEqualByComparingTo(objectivePoints);
 
         EssayGrade afterRegrade = essayGradeRepository.findByAttemptItemIdAndSupersededByIsNull(essayItem.getId())
                 .orElseThrow();
@@ -127,6 +176,7 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
 
         AttemptItem restoredItem = attemptItemRepository.findById(essayItem.getId()).orElseThrow();
         assertThat(restoredItem.getEarnedPoints()).isEqualByComparingTo("19.50");
+        assertThat(restoredItem.getOutcome()).isEqualTo(ItemOutcome.PARTIAL);
         assertThat(attemptEventRepository.existsByAttemptIdAndType(attempt.getId(), AttemptEventType.REGRADED))
                 .isTrue();
 
@@ -221,6 +271,12 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
         drainAllOutbox();
         Attempt scored = attemptRepository.findById(attempt.getId()).orElseThrow();
         assertThat(scored.getState()).isEqualTo(AttemptState.SCORED);
+
+        List<String> faultAuditReasons = jdbc.queryForList(
+                "SELECT reason FROM audit.audit_event WHERE module = 'attempt' AND action = 'ATTEMPT_FAULT_MARKED' AND target_id = ?",
+                String.class,
+                attempt.getId().toString());
+        assertThat(faultAuditReasons).containsExactly("Lỗi sinh đề phần 3 kéo dài");
 
         // Student result displays fault notice
         MvcResult studentResult = mockMvc.perform(
@@ -534,7 +590,7 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
                 new SaveAnswersRequest(
                         List.of(new AnswerChange(scItem.getId(), 1L, new AnswerValue.SingleChoice(chosenOption))),
                         List.of(),
-                        null)).getResponse().getStatus()).isEqualTo(200);
+                        new AttemptPosition(parts.get(0).getId(), scItem.getId()))).getResponse().getStatus()).isEqualTo(200);
 
         assertThat(performSubmit(student, attempt.getId(), UUID.randomUUID().toString(), sessionId,
                 new SubmitAttemptRequest(List.of())).getResponse().getStatus()).isEqualTo(200);
@@ -576,6 +632,8 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
         assertThat(detailRes.getResponse().getStatus()).isEqualTo(200);
         JsonNode detail = json(detailRes);
         assertThat(detail.path("username").asText()).isEqualTo(username);
+        assertThat(detail.path("lastPosition").path("partId").asText()).isEqualTo(parts.get(0).getId().toString());
+        assertThat(detail.path("lastPosition").path("itemId").asText()).isEqualTo(scItem.getId().toString());
         assertThat(detail.path("parts").size()).isEqualTo(1);
         assertThat(detail.path("events")).extracting(e -> e.path("type").asText())
                 .contains("STARTED", "SESSION_CLAIMED", "SUBMITTED", "GRADED");
@@ -591,6 +649,7 @@ class AdminAttemptOpsIT extends AbstractAttemptDsIT {
         assertThat(matchedItem.path("answerSeq").asLong()).isEqualTo(1L);
         assertThat(matchedItem.path("answerReceivedAt").asText()).isNotBlank();
         assertThat(matchedItem.path("answer").path("optionId").asText()).isEqualTo(chosenOption);
+        assertThat(matchedItem.path("gradingDetail").path("selectedOptionId").asText()).isEqualTo(chosenOption);
 
         drainAllOutbox();
         Integer viewedAudit = jdbc.queryForObject(
