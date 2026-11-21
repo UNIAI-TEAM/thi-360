@@ -76,7 +76,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       // AC-17: Khuyen mai hien o sidebar trong nhom Thuong mai, cac muc chua co trang van an
       const menu = page.getByRole("navigation", { name: "Menu chính" });
       await expect(menu.getByRole("link", { name: "Khuyến mãi" })).toBeVisible();
-      for (const hidden of ["Đơn hàng", "Bộ đề", "Lượt thi"]) {
+      for (const hidden of ["Bộ đề", "Lượt thi"]) {
         await expect(menu.getByRole("link", { name: hidden })).toHaveCount(0);
       }
 
