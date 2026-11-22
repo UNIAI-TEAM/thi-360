@@ -87,7 +87,30 @@ describe("web-student RootLayout /login SSR appearance", () => {
       RequestInit & { next?: { revalidate?: number; tags?: string[] } },
     ];
     expect(request.url).toMatch(/\/api\/v1\/appearance$/);
-    expect(init.next).toEqual({ revalidate: 60, tags: ["appearance"] });
+    expect(init.cache).toBe("no-store");
+    expect(init.next).toBeUndefined();
+  });
+
+  it("phản ánh ngay lập tức màu tùy chỉnh mới lưu ở lần render kế tiếp mà không bị giữ cache 60 giây", async () => {
+    let currentPrimary = "#0f3c6e";
+    let currentAccent = "#00b4a6";
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        palette: { presetId: "custom", custom: { primary: currentPrimary, accent: currentAccent } },
+        mode: "light",
+        version: 8,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const firstHtml = renderToStaticMarkup(await RootLayout({ children: <LoginPage /> }));
+    expect(firstHtml).toContain("--color-primary-600: #0f3c6e;");
+
+    currentPrimary = "#4f46e5";
+    currentAccent = "#06b6d4";
+    const secondHtml = renderToStaticMarkup(await RootLayout({ children: <LoginPage /> }));
+    expect(secondHtml).toContain("--color-primary-600: #4f46e5;");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("HTML máy chủ của /login nhúng màu chính của bộ phối màu đã lưu", async () => {

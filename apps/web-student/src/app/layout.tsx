@@ -43,7 +43,7 @@ async function loadAppearance(): Promise<AppearanceConfig> {
     const client = createApiClient(apiBase, {
       fetch: (request) =>
         fetch(request, {
-          next: { revalidate: 60, tags: ["appearance"] },
+          cache: "no-store",
           signal: AbortSignal.timeout(2000),
         }),
     });
