@@ -1030,7 +1030,11 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
           await waitAdminSettled(page);
           await expectMatrixClean(page, "fa4-attempts-list", cell, {
             allowLanguage,
-            elementOverflow: overflowOpts,
+            elementOverflow: {
+              ...overflowOpts,
+              // attempt-list-view.tsx:177 truncates long learner usernames via span.truncate (tracked as P2 follow-up per AD-180 3=B)
+              ignore: "pre,input,textarea,select,.katex-display,span.truncate",
+            },
           });
 
           await page.goto(`${ADMIN_URL}/attempts/${submitted.attemptId}`);

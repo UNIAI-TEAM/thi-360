@@ -7,12 +7,14 @@ import {
   continueToReviewInUi,
   countBySubject,
   createExamInUi,
+  ensureListingFilledInUi,
   examCode,
   expectStructureQuestions,
   expectValidPaths,
   expectWellFormedPaper,
   getExam,
   getStructure,
+  openEditorTab,
   openPreviewTab,
   pathWithChoice,
   publishInUi,
@@ -207,6 +209,11 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   await saveStructureInUi(page, id);
   const restoredLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id)!;
   expect(restoredLy.blocks?.find((block) => block.questionType === "QUESTION_SET")).toMatchObject({ setCount: 1, setSize: 3, questionCount: 3 });
+
+  // Điền thông tin bán trước khi chạy Kiểm tra môn và Kiểm tra toàn bài (phản hồi `/check` luôn đính kèm `listingCheck`).
+  await ensureListingFilledInUi(page, id);
+  await openEditorTab(page, "Cấu trúc và ma trận", /\/exams\/[^/]+\/structure/);
+  await expectStructureQuestions(page, /^150(\D|$)/);
 
   // Kiểm tra riêng từng môn bằng nút "Kiểm tra môn": mỗi môn không lỗi chặn và hiện "Đã kiểm tra" trong danh sách.
   for (const { code } of PART3_SUBJECTS) {

@@ -114,27 +114,32 @@ async function waitForSettled(page: Page): Promise<void> {
 }
 
 async function ensurePlayerActiveSession(page: Page, attemptId: string): Promise<void> {
-  await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(attemptId)}`);
-  const takeoverHeading = page.getByRole("heading", {
-    name: /Lượt thi đã được tiếp tục ở thiết bị khác|opened in another tab/i,
-  });
-  const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
+  const isSessionPost = (res: { url(): string; request(): { method(): string } }) =>
+    res.url().includes(`/api/v1/me/attempts/${encodeURIComponent(attemptId)}/session`) &&
+    res.request().method() === "POST";
 
-  for (let i = 0; i < 4; i += 1) {
-    await Promise.race([
-      fieldset.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined),
-      takeoverHeading.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined),
-    ]);
-    if (await takeoverHeading.isVisible()) {
-      await page.getByRole("button", { name: /Tiếp tục tại đây|Continue here/i }).click();
-      await expect(takeoverHeading).toBeHidden({ timeout: 15_000 });
-    }
-    if (await fieldset.isVisible()) {
-      break;
-    }
+  const initialSessionPromise = page.waitForResponse(isSessionPost, { timeout: 25_000 });
+  await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(attemptId)}`);
+  const initialSessionRes = await initialSessionPromise;
+
+  const takeoverBtn = page.getByRole("button", { name: /Tiếp tục tại đây|Continue here/i });
+  if (initialSessionRes.status() === 409 || (await takeoverBtn.isVisible())) {
+    await expect(takeoverBtn).toBeVisible({ timeout: 15_000 });
+    const takeoverSessionPromise = page.waitForResponse(
+      (res) => isSessionPost(res) && res.status() === 200,
+      { timeout: 25_000 },
+    );
+    await takeoverBtn.click();
+    await takeoverSessionPromise;
+    await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15_000 });
+  } else {
+    expect(initialSessionRes.status(), `POST /session failed: ${initialSessionRes.status()}`).toBe(200);
   }
+
+  const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
   await expect(fieldset).toBeVisible({ timeout: 20_000 });
   await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 15_000 });
+  await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15_000 });
 }
 
 test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
@@ -361,7 +366,11 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
             await waitForSettled(page);
             await expectMatrixClean(page, "qa-admin-attempts", cell, {
               allowLanguage: await buildAllowLanguage(page),
-              elementOverflow: adminOverflow,
+              elementOverflow: {
+                ...adminOverflow,
+                // attempt-list-view.tsx:177 truncates long learner usernames via span.truncate (tracked as P2 follow-up per AD-180 3=B)
+                ignore: "pre,input,textarea,select,.katex-display,span.truncate",
+              },
             });
           } finally {
             await adminCtx.close();

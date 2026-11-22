@@ -708,7 +708,7 @@ export async function continueToReviewInUi(page: Page, examId: string): Promise<
   ]);
   expect(response.status(), await response.text()).toBe(200);
   const check = (await response.json()) as CheckResult;
-  if (blockingCodes(check).length === 0) await page.waitForURL(/\/exams\/[^/]+\/review/);
+  if (blockingCodes(check.groups ?? []).length === 0) await page.waitForURL(/\/exams\/[^/]+\/review/);
   return check;
 }
 
@@ -787,19 +787,10 @@ export async function switchPathInUi(
 }
 
 /**
- * Điền tối thiểu thông tin bán (FB yêu cầu đủ giá, số lượt và mô tả trước khi công bố) nếu còn trống rồi công bố ở trang
- * Phiên bản và công bố: nút "Công bố", hộp thoại, "Công bố N đường lựa chọn". Trả phản hồi của máy chủ (đã khẳng
- * định 200).
- *
- * `expectedPaths` (tên ô chọn của từng đường, ví dụ `/^Q[DĐ]01 ·/`): trước khi bấm, hộp thoại phải liệt kê đúng ngần ấy
- * đường, đều đã chọn, kèm dòng "Sẽ công bố N / N đường lựa chọn" và nút "Công bố N đường lựa chọn". Các khẳng định này
- * dùng thời hạn expect (không phải SOLVER_TIMEOUT_MS) nên hộp thoại 0 đường hỏng ngay thay vì chờ phản hồi công bố.
+ * Điền tối thiểu thông tin bán (FB yêu cầu đủ giá, số lượt và mô tả trước khi công bố) nếu còn trống rồi bấm "Lưu"
+ * (nút Lưu nằm ngoài `<form aria-label="Thông tin bán">` nên tìm ở cấp trang).
  */
-export async function publishInUi(
-  page: Page,
-  examId: string,
-  expectedPaths?: RegExp[],
-): Promise<{ version: number; publishedPathIds: string[] }> {
+export async function ensureListingFilledInUi(page: Page, examId: string): Promise<void> {
   await openEditorTab(page, "Thông tin bán", /\/exams\/[^/]+\/listing/);
   const listingForm = page.getByRole("form", { name: "Thông tin bán" });
   await expect(listingForm).toBeVisible();
@@ -821,7 +812,7 @@ export async function publishInUi(
     await descriptionInput.fill("Đề thi luyện tập chuẩn bị kỳ thi.");
     shouldSave = true;
   }
-  const saveListing = listingForm.getByRole("button", { name: "Lưu", exact: true });
+  const saveListing = page.getByRole("button", { name: "Lưu", exact: true });
   if (shouldSave || (await saveListing.isEnabled())) {
     await expect(saveListing).toBeEnabled();
     const [savedListing, refreshedExam] = await Promise.all([
@@ -833,6 +824,23 @@ export async function publishInUi(
     expect(refreshedExam.status(), await refreshedExam.text()).toBe(200);
     await expect(saveListing).toBeDisabled();
   }
+}
+
+/**
+ * Điền tối thiểu thông tin bán (FB yêu cầu đủ giá, số lượt và mô tả trước khi công bố) nếu còn trống rồi công bố ở trang
+ * Phiên bản và công bố: nút "Công bố", hộp thoại, "Công bố N đường lựa chọn". Trả phản hồi của máy chủ (đã khẳng
+ * định 200).
+ *
+ * `expectedPaths` (tên ô chọn của từng đường, ví dụ `/^Q[DĐ]01 ·/`): trước khi bấm, hộp thoại phải liệt kê đúng ngần ấy
+ * đường, đều đã chọn, kèm dòng "Sẽ công bố N / N đường lựa chọn" và nút "Công bố N đường lựa chọn". Các khẳng định này
+ * dùng thời hạn expect (không phải SOLVER_TIMEOUT_MS) nên hộp thoại 0 đường hỏng ngay thay vì chờ phản hồi công bố.
+ */
+export async function publishInUi(
+  page: Page,
+  examId: string,
+  expectedPaths?: RegExp[],
+): Promise<{ version: number; publishedPathIds: string[] }> {
+  await ensureListingFilledInUi(page, examId);
 
   await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
   await page.getByRole("button", { name: "Công bố", exact: true }).click();

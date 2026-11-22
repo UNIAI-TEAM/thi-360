@@ -128,7 +128,7 @@ test.describe("QA Core Flow — AC-7: Hoàn tiền toàn bộ thu hồi lượt 
 
       // 5. Truy cập thẳng `/prepare/[entitlementId]` -> cảnh báo hết lượt, nút bắt đầu bị khóa, API trả 409 NO_ATTEMPTS_LEFT
       await studentPage.goto(`${WEB_URL}/prepare/${encodeURIComponent(ownedBefore.entitlementId)}`);
-      await expect(studentPage.getByRole("alert")).toContainText("Bạn đã dùng hết lượt của bài này.");
+      await expect(studentPage.locator('main [role="alert"]')).toContainText("Bạn đã dùng hết lượt của bài này.");
       await expect(studentPage.getByRole("button", { name: "Bắt đầu bài thi" })).toBeDisabled();
 
       const xsrf = readXsrfCookie(await studentCtx.cookies(WEB_URL));

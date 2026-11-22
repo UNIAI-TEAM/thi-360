@@ -83,7 +83,7 @@ jobs:
           # (thi360.security.session.max-per-user, default 5): the suite logs
           # `platform` in more times than that and the oldest session is evicted.
           THI360_SECURITY_SESSION_MAXPERUSER: "50"
-        run: pnpm --filter @thi360/e2e test -- --shard=${{ matrix.shard }}/3
+        run: pnpm --filter @thi360/e2e test --shard=${{ matrix.shard }}/3
       - uses: actions/upload-artifact@v4
         if: always()
         with:

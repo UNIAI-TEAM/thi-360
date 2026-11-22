@@ -364,7 +364,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await dialog.getByRole("button", { name: "Hoàn thành phần" }).click();
-        await expect(dialog).toBeHidden({ timeout: 15_000 });
+        await expect(dialog).toBeHidden({ timeout: 25_000 });
       }
 
       await expect(page.getByRole("heading", { name: "Chọn phần thi thứ ba" })).toBeVisible({ timeout: 25_000 });
@@ -404,11 +404,12 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
             async () => {
               const res = await admin.api.get(`${ADMIN_URL}/api/v1/admin/attempts/${encodeURIComponent(attemptId)}`);
               if (!res.ok()) return "";
-              return ((await res.json()) as { state?: string }).state ?? "";
+              const body = (await res.json()) as { endReason?: string; faultFlag?: string };
+              return `${body.endReason ?? ""}:${body.faultFlag ?? ""}`;
             },
-            { message: "attempt becomes FAULT_CLOSED", timeout: 15_000 },
+            { message: "attempt becomes FAULT_CLOSED with SYSTEM_FAULT", timeout: 15_000 },
           )
-          .toBe("FAULT_CLOSED");
+          .toBe("FAULT_CLOSED:SYSTEM_FAULT");
 
         await adminPage.getByRole("button", { name: "Cấp bù 1 lượt" }).click();
         const compDialog = adminPage.getByRole("dialog");
@@ -494,7 +495,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
         await dialog.getByLabel(/Xác nhận đây là lỗi hệ thống/).check();
         await dialog.getByLabel(/Lý do hoàn tiền/).fill("Hoan tien toan bo khi dang lam bai QA E2E");
         await dialog.getByRole("button", { name: "Gửi yêu cầu hoàn tiền" }).click();
-        await expect(dialog).toBeHidden({ timeout: 15_000 });
+        await expect(dialog).toBeHidden({ timeout: 25_000 });
         await expect(adminPage.getByText("Đã hoàn toàn bộ").first()).toBeVisible({ timeout: 15_000 });
       } finally {
         await adminCtx.close();

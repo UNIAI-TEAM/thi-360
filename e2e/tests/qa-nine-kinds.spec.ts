@@ -293,11 +293,20 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         await expect(audioRegion).toBeVisible({ timeout: 20_000 });
         await expect(page.locator("audio[controls]")).toHaveCount(0);
         await expect(audioRegion.getByRole("slider")).toHaveCount(0);
-        await expect(audioRegion.getByText(/Còn 2\/2 lần nghe/)).toBeVisible();
-
         for (let playNo = 1; playNo <= 2; playNo += 1) {
+          const expectedBadge = playNo === 1 ? "Còn 2/2 lần nghe" : "Còn 1/2 lần nghe";
+          await expect(audioRegion.getByText(expectedBadge, { exact: true })).toBeVisible({ timeout: 15_000 });
+
           const playBtn = audioRegion.getByRole("button", { name: /^Nghe$/ });
           await expect(playBtn).toBeEnabled({ timeout: 10_000 });
+
+          const playStartPromise = page.waitForResponse(
+            (res) =>
+              res.url().includes(`/attempts/${attemptId}/audio/`) &&
+              res.url().endsWith("/plays") &&
+              res.request().method() === "POST",
+            { timeout: 30_000 },
+          );
           const endPromise = page.waitForResponse(
             (res) =>
               res.url().includes(`/attempts/${attemptId}/audio/`) &&
@@ -305,23 +314,42 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
               res.request().method() === "POST",
             { timeout: 90_000 },
           );
+
           await playBtn.click();
-          const resumeBtn = audioRegion.getByRole("button", { name: "Phát lại" });
+          const playStartRes = await playStartPromise;
+          expect(playStartRes.status(), `audio start #${playNo} failed: ${playStartRes.status()}`).toBe(200);
+
+          const autoplayBlockedNotice = audioRegion.getByText(/Trình duyệt chặn tự động phát/);
           const settled = await Promise.race([
             endPromise.then((res) => ({ kind: "ended" as const, res })),
-            resumeBtn.waitFor({ state: "visible", timeout: 10_000 }).then(() => ({ kind: "resume" as const })),
+            autoplayBlockedNotice.waitFor({ state: "visible", timeout: 10_000 }).then(
+              () => ({ kind: "autoplay_blocked" as const }),
+              () => ({ kind: "no_autoplay_block" as const }),
+            ),
           ]);
+
           let endRes: Awaited<typeof endPromise>;
-          if (settled.kind === "resume") {
-            await resumeBtn.click();
-            endRes = await endPromise;
-          } else {
+          if (settled.kind === "ended") {
             endRes = settled.res;
+          } else {
+            if (settled.kind === "autoplay_blocked") {
+              const resumeBtn = audioRegion.getByRole("button", { name: "Phát lại" });
+              await expect(resumeBtn).toBeVisible({ timeout: 5_000 });
+              await resumeBtn.click();
+            }
+            endRes = await endPromise;
           }
-          expect(endRes.ok(), `audio end #${playNo} failed: ${endRes.status()}`).toBe(true);
+          expect(endRes.status(), `audio end #${playNo} failed: ${endRes.status()}`).toBe(200);
+
+          if (playNo === 1) {
+            await expect(audioRegion.getByText("Còn 1/2 lần nghe", { exact: true })).toBeVisible({ timeout: 15_000 });
+          }
         }
 
-        await expect(audioRegion.getByText(/Đã hết lượt nghe \(0\/2\)/)).toBeVisible({ timeout: 15_000 });
+        await expect(audioRegion.getByText("Đã hết lượt nghe (0/2)", { exact: true })).toBeVisible({ timeout: 15_000 });
+        await expect(audioRegion.getByText("Bạn đã dùng hết số lần nghe cho tệp audio này.", { exact: true })).toBeVisible({
+          timeout: 15_000,
+        });
         await expect(audioRegion.getByRole("button", { name: /^Nghe$/ })).toBeDisabled({ timeout: 15_000 });
 
         await completeAttemptToScored(page, attemptId, admin);
