@@ -48,8 +48,8 @@ class ExamAudioPerfIT extends AbstractIntegrationTest {
         byte[] audioSha256 = MessageDigest.getInstance("SHA-256").digest(audioStub);
         jdbc.update("INSERT INTO questionbank.question_asset(id,kind,object_key,file_name,mime,size,sha256) "
                 + "VALUES (?,'ATTACHMENT',?,'a.mp3','audio/mpeg',?,?)", audio, audioKey, audioStub.length, audioSha256);
+        storage.put(audioKey, audioStub, "audio/mpeg");
         try {
-            storage.put(audioKey, audioStub, "audio/mpeg");
             // Pool with decoys on both sides of the audio filter.
             for (int i = 0; i < 300; i++) single(subjectId, i % 2 == 0 ? audio : null);
             for (int i = 0; i < 30; i++) set(subjectId, 4, audio);
@@ -82,7 +82,7 @@ class ExamAudioPerfIT extends AbstractIntegrationTest {
             long start = System.nanoTime();
             JsonNode result = mapper.readTree(mockMvc.perform(post("/api/v1/admin/exams/" + exam + "/check")
                             .with(asUser(Permissions.EXAM_MODIFY))).andExpect(status().isOk())
-                    .andReturn().getResponse().getContentAsString());
+                    .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
             long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
             System.out.println("PERF BE-17 audio-filtered 75-question check ms=" + elapsed
                     + " status=" + result.path("status").asText() + " codes=" + result.path("groups").findValuesAsText("code"));
@@ -108,7 +108,11 @@ class ExamAudioPerfIT extends AbstractIntegrationTest {
             assertThat(picks.get("sets10")).noneMatch(this::hasAudio);
             assertThat(elapsed).isLessThan(30_000);
         } finally {
-            storage.delete(audioKey);
+            try {
+                storage.delete(audioKey);
+            } catch (RuntimeException ignored) {
+                // Keep any failure from the test body unmasked
+            }
         }
     }
 

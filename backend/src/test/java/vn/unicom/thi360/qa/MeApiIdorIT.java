@@ -57,7 +57,6 @@ import vn.unicom.thi360.commerce.entitlement.application.GrantLine;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderCommand;
 import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.commerce.order.domain.OrderState;
-import vn.unicom.thi360.commerce.order.domain.PaymentMethod;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.identity.spi.Permissions;
@@ -122,27 +121,43 @@ class MeApiIdorIT extends AbstractIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        for (UUID orderId : createdOrderIds) {
-            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        try {
+            for (UUID orderId : createdOrderIds) {
+                CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+            }
+            createdOrderIds.clear();
+        } finally {
+            try {
+                for (UUID userId : createdUserIds) {
+                    jdbc.update(
+                            "DELETE FROM attempt.attempt_audio_play WHERE attempt_id IN (SELECT id FROM attempt.attempt WHERE user_id = ?)",
+                            userId);
+                    AttemptTestFixtures.cleanupUser(jdbc, userId);
+                }
+                createdUserIds.clear();
+            } finally {
+                try {
+                    AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, createdQuestions);
+                    createdQuestions.clear();
+                } finally {
+                    try {
+                        for (UUID assetId : createdAssets) {
+                            jdbc.update("DELETE FROM questionbank.question_asset WHERE id = ?", assetId);
+                        }
+                        createdAssets.clear();
+                    } finally {
+                        try {
+                            for (String key : createdObjectKeys) {
+                                objectStorage.delete(key);
+                            }
+                            createdObjectKeys.clear();
+                        } finally {
+                            jdbc.update("DELETE FROM shared.idempotency_key WHERE key LIKE 'qa-idor-%'");
+                        }
+                    }
+                }
+            }
         }
-        createdOrderIds.clear();
-        for (UUID userId : createdUserIds) {
-            jdbc.update(
-                    "DELETE FROM attempt.attempt_audio_play WHERE attempt_id IN (SELECT id FROM attempt.attempt WHERE user_id = ?)",
-                    userId);
-            AttemptTestFixtures.cleanupUser(jdbc, userId);
-        }
-        createdUserIds.clear();
-        AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, createdQuestions);
-        createdQuestions.clear();
-        for (UUID assetId : createdAssets) {
-            jdbc.update("DELETE FROM questionbank.question_asset WHERE id = ?", assetId);
-        }
-        createdAssets.clear();
-        for (String key : createdObjectKeys) {
-            objectStorage.delete(key);
-        }
-        createdObjectKeys.clear();
     }
 
     @Test
@@ -351,21 +366,50 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                 aliceOrderCode,
                 alicePendingOrderCode,
                 alice.username(),
+                alice.fullName(),
                 ALICE_SENTINEL_ANSWER,
                 aliceActiveAttemptId.toString(),
                 aliceScoredAttemptId.toString(),
-                aliceEntitlementId.toString());
+                aliceAudioAttemptId.toString(),
+                aliceEntitlementId.toString(),
+                anhGrant.entitlementId().toString(),
+                aliceAudioAssetId.toString(),
+                alicePlayId.toString(),
+                promptAssetId.toString(),
+                solutionAssetId.toString(),
+                scoredSessionId.toString(),
+                aliceSessionId.toString(),
+                aliceAudioSessionId.toString());
+
+        // Parity baselines against random nonexistent IDs/codes
+        String randomOrder404Code = objectMapper.readTree(
+                        mockMvc.perform(get("/api/v1/me/orders/{code}", "DH000000000000").with(asStudent(bob)))
+                                .andExpect(status().isNotFound())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString(StandardCharsets.UTF_8))
+                .path("code").asText();
+        assertThat(randomOrder404Code).isEqualTo("ORDER_NOT_FOUND");
+        String randomAttempt404Code = objectMapper.readTree(
+                        mockMvc.perform(get("/api/v1/me/attempts/{attemptId}", UUID.randomUUID()).with(asStudent(bob)))
+                                .andExpect(status().isNotFound())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString(StandardCharsets.UTF_8))
+                .path("code").asText();
+        assertThat(randomAttempt404Code).isEqualTo("NOT_FOUND");
 
         // Orders
-        assertBobGets404NoLeak(get("/api/v1/me/orders/{code}", aliceOrderCode), bob, forbiddenSubstrings);
-        assertBobGets404NoLeak(get("/api/v1/me/orders/{code}", alicePendingOrderCode), bob, forbiddenSubstrings);
-        assertBobGets404NoLeak(post("/api/v1/me/orders/{code}/pay", alicePendingOrderCode), bob, forbiddenSubstrings);
-        assertBobGets404NoLeak(post("/api/v1/me/orders/{code}/cancel", alicePendingOrderCode), bob, forbiddenSubstrings);
+        assertBobGets404NoLeak(get("/api/v1/me/orders/{code}", aliceOrderCode), bob, randomOrder404Code, forbiddenSubstrings);
+        assertBobGets404NoLeak(get("/api/v1/me/orders/{code}", alicePendingOrderCode), bob, randomOrder404Code, forbiddenSubstrings);
+        assertBobGets404NoLeak(post("/api/v1/me/orders/{code}/pay", alicePendingOrderCode), bob, randomOrder404Code, forbiddenSubstrings);
+        assertBobGets404NoLeak(post("/api/v1/me/orders/{code}/cancel", alicePendingOrderCode), bob, randomOrder404Code, forbiddenSubstrings);
 
         // Entitlement prepare & start
         assertBobGets404NoLeak(
                 get("/api/v1/me/entitlements/{entitlementId}/prepare", aliceEntitlementId),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts")
@@ -373,10 +417,11 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new StartAttemptRequest(aliceEntitlementId, null))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
 
         // Active attempt read, save answers, session takeover & heartbeat
-        assertBobGets404NoLeak(get("/api/v1/me/attempts/{attemptId}", aliceActiveAttemptId), bob, forbiddenSubstrings);
+        assertBobGets404NoLeak(get("/api/v1/me/attempts/{attemptId}", aliceActiveAttemptId), bob, randomAttempt404Code, forbiddenSubstrings);
         assertBobGets404NoLeak(
                 put("/api/v1/me/attempts/{attemptId}/answers", aliceActiveAttemptId)
                         .header("X-Attempt-Session", aliceSessionId.toString())
@@ -387,17 +432,20 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                                 null,
                                 null))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts/{attemptId}/session", aliceActiveAttemptId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ClaimSessionRequest(UUID.randomUUID(), true))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts/{attemptId}/heartbeat", aliceActiveAttemptId)
                         .header("X-Attempt-Session", aliceSessionId.toString()),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
 
         // Part finish (while openPart is OPEN)
@@ -407,6 +455,7 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new FinishPartRequest(List.of()))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
 
         // Advance Alice's active attempt so choicePart enters AWAITING_CHOICE, then check Bob -> 404 on /choice & /retry
@@ -433,6 +482,7 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ConfirmPartChoiceRequest("ANH", null))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts/{attemptId}/parts/{partId}/retry",
@@ -442,9 +492,10 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RetryPartRequest("bob-retry"))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
 
-        // Submit, result, review, assets, solution-assets
+        // Submit, result, review, assets (including audio asset), solution-assets
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts/{attemptId}/submit", aliceActiveAttemptId)
                         .header("Idempotency-Key", "bob-sub-" + UUID.randomUUID())
@@ -452,19 +503,39 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SubmitAttemptRequest(List.of()))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
-                get("/api/v1/me/attempts/{attemptId}/result", aliceScoredAttemptId), bob, forbiddenSubstrings);
+                get("/api/v1/me/attempts/{attemptId}/result", aliceScoredAttemptId),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
         assertBobGets404NoLeak(
-                get("/api/v1/me/attempts/{attemptId}/review", aliceScoredAttemptId), bob, forbiddenSubstrings);
+                get("/api/v1/me/attempts/{attemptId}/review", aliceScoredAttemptId),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
         assertBobGets404NoLeak(
                 get("/api/v1/me/attempts/{attemptId}/assets/{assetId}", aliceActiveAttemptId, promptAssetId),
                 bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                get("/api/v1/me/attempts/{attemptId}/assets/{assetId}", aliceAudioAttemptId, aliceAudioAssetId),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                get("/api/v1/me/attempts/{attemptId}/assets/{assetId}", aliceAudioAttemptId, aliceAudioAssetId)
+                        .param("playId", alicePlayId.toString()),
+                bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 get("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
                         aliceScoredAttemptId, solutionAssetId),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
 
         // Audio endpoints (plays, resume, progress, end)
@@ -475,12 +546,14 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new StartAudioPlayRequest("bob-req"))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume",
                         aliceAudioAttemptId, aliceAudioAssetId, alicePlayId)
                         .header("X-Attempt-Session", aliceAudioSessionId.toString()),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
@@ -489,15 +562,24 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AudioProgressRequest(1_000L))),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
         assertBobGets404NoLeak(
                 post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end",
                         aliceAudioAttemptId, aliceAudioAssetId, alicePlayId)
                         .header("X-Attempt-Session", aliceAudioSessionId.toString()),
                 bob,
+                randomAttempt404Code,
                 forbiddenSubstrings);
 
-        // Prove Alice's own calls on those exact pending order, choice, audio, and takeover resources succeed
+        // Verify post-attack integrity of Alice's active attempt: ALICE_SENTINEL_ANSWER & aliceSessionId remained intact
+        assertAliceAttemptIntegrity(alice, aliceActiveAttemptId, shortAnswerItem.getId(), aliceSessionId);
+
+        // Prove Alice's own calls on those exact pending order, choice, audio, heartbeat, and takeover resources succeed
+        mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/heartbeat", aliceActiveAttemptId)
+                        .with(asStudent(alice))
+                        .header("X-Attempt-Session", aliceSessionId.toString()))
+                .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/me/orders/{code}/pay", alicePendingOrderCode).with(asStudent(alice)))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
@@ -605,14 +687,184 @@ class MeApiIdorIT extends AbstractIntegrationTest {
                 aliceScoredAttemptId.toString(),
                 aliceOrderCode,
                 alice.username());
+
+        // ================= MIXED-TENANT IDOR: Bob owns his own attempt, supplies Alice's sub-resource IDs =================
+        AttemptTestFixtures.bindJdbc(jdbc);
+        GrantOrderResult.Line bobGrant = AttemptTestFixtures.grantExam(
+                grantService, bob.id(), hsaFullMiniId, 2, List.of(), "FULL_SOLUTION", hsaServing.version().versionNo());
+        Attempt bobAttempt = startAttempt(bob, bobGrant.entitlementId(), null);
+        UUID bobAttemptId = bobAttempt.getId();
+        UUID bobSessionId = claimSession(bob, bobAttemptId, null, false);
+        List<AttemptPart> bobParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(bobAttemptId);
+
+        // Bob's attemptId + Alice's itemId in PUT /answers -> REJECTED NOT_IN_SCOPE (never mutates Alice's item)
+        String mixedSaveRaw = mockMvc.perform(put("/api/v1/me/attempts/{attemptId}/answers", bobAttemptId)
+                        .with(asStudent(bob))
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SaveAnswersRequest(
+                                List.of(new AnswerChange(
+                                        shortAnswerItem.getId(), 99L, new AnswerValue.ShortAnswer("bob-mixed-tamper"))),
+                                null,
+                                null))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        JsonNode mixedSaveNode = objectMapper.readTree(mixedSaveRaw);
+        assertThat(mixedSaveNode.path("results").get(0).path("status").asText()).isEqualTo("REJECTED");
+        assertThat(mixedSaveNode.path("results").get(0).path("reason").asText()).isEqualTo("NOT_IN_SCOPE");
+        for (String secret : forbiddenSubstrings) {
+            assertThat(mixedSaveRaw).doesNotContain(secret);
+        }
+
+        // Bob's attemptId + Alice's partIds (/finish, /choice, /retry) -> 404 NOT_FOUND
+        assertBobGets404NoLeak(
+                post("/api/v1/me/attempts/{attemptId}/parts/{partId}/finish", bobAttemptId, openPart.getId())
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new FinishPartRequest(List.of()))),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                post("/api/v1/me/attempts/{attemptId}/parts/{partId}/choice", bobAttemptId, choicePart.getId())
+                        .header("Idempotency-Key", "bob-mx-ch-" + UUID.randomUUID())
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ConfirmPartChoiceRequest("ANH", null))),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                post("/api/v1/me/attempts/{attemptId}/parts/{partId}/retry", bobAttemptId, choicePart.getId())
+                        .header("Idempotency-Key", "bob-mx-ret-" + UUID.randomUUID())
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RetryPartRequest("bob-mixed-retry"))),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+
+        // Bob's attemptId + Alice's prompt/audio asset IDs & audio playId -> 404 NOT_FOUND
+        assertBobGets404NoLeak(
+                get("/api/v1/me/attempts/{attemptId}/assets/{assetId}", bobAttemptId, promptAssetId),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                get("/api/v1/me/attempts/{attemptId}/assets/{assetId}", bobAttemptId, aliceAudioAssetId),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays", bobAttemptId, aliceAudioAssetId)
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new StartAudioPlayRequest("bob-mx-play"))),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume",
+                        bobAttemptId, aliceAudioAssetId, alicePlayId)
+                        .header("X-Attempt-Session", bobSessionId.toString()),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+                        bobAttemptId, aliceAudioAssetId, alicePlayId)
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AudioProgressRequest(500L))),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+        assertBobGets404NoLeak(
+                post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end",
+                        bobAttemptId, aliceAudioAssetId, alicePlayId)
+                        .header("X-Attempt-Session", bobSessionId.toString()),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+
+        // Score Bob's attempt (FULL_SOLUTION) and verify Bob's SCORED attemptId + Alice's solutionAssetId -> 404 NOT_FOUND
+        mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+                        bobAttemptId, bobParts.get(0).getId())
+                        .with(asStudent(bob))
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new FinishPartRequest(List.of()))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+                        bobAttemptId, bobParts.get(1).getId())
+                        .with(asStudent(bob))
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new FinishPartRequest(List.of()))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+                        bobAttemptId, bobParts.get(2).getId())
+                        .with(asStudent(bob))
+                        .header("Idempotency-Key", "bob-fin-ch-" + UUID.randomUUID())
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ConfirmPartChoiceRequest("ANH", null))))
+                .andExpect(status().isAccepted());
+        awaitPartState(bobParts.get(2).getId(), PartState.OPEN);
+        mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/submit", bobAttemptId)
+                        .with(asStudent(bob))
+                        .header("Idempotency-Key", "bob-fin-sub-" + UUID.randomUUID())
+                        .header("X-Attempt-Session", bobSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SubmitAttemptRequest(List.of()))))
+                .andExpect(status().isOk());
+        outboxRelay.relayBatch(500);
+
+        assertBobGets404NoLeak(
+                get("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}", bobAttemptId, solutionAssetId),
+                bob,
+                randomAttempt404Code,
+                forbiddenSubstrings);
+
+        // Re-confirm Alice's sentinel answer was never overwritten by Bob's mixed-tenant save probe
+        UUID currentAliceSession = attemptRepository.findById(aliceActiveAttemptId).orElseThrow().getEditSessionId();
+        assertAliceAttemptIntegrity(alice, aliceActiveAttemptId, shortAnswerItem.getId(), currentAliceSession);
+    }
+
+    private void assertAliceAttemptIntegrity(
+            Student alice, UUID attemptId, UUID shortAnswerItemId, UUID expectedSessionId) throws Exception {
+        String aliceStateRaw = mockMvc.perform(get("/api/v1/me/attempts/{attemptId}", attemptId)
+                        .with(asStudent(alice)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        JsonNode aliceStateNode = objectMapper.readTree(aliceStateRaw);
+        String savedText = null;
+        for (JsonNode part : aliceStateNode.path("parts")) {
+            for (JsonNode item : part.path("items")) {
+                if (shortAnswerItemId.toString().equals(item.path("itemId").asText())) {
+                    savedText = item.path("answer").path("text").asText(null);
+                }
+            }
+        }
+        assertThat(savedText).isEqualTo(ALICE_SENTINEL_ANSWER);
+        assertThat(attemptRepository.findById(attemptId).orElseThrow().getEditSessionId())
+                .isEqualTo(expectedSessionId);
     }
 
     private void assertBobGets404NoLeak(
-            MockHttpServletRequestBuilder request, Student bob, List<String> forbiddenSubstrings) throws Exception {
+            MockHttpServletRequestBuilder request,
+            Student bob,
+            String expectedCode,
+            List<String> forbiddenSubstrings) throws Exception {
         MvcResult res = mockMvc.perform(request.with(asStudent(bob)))
                 .andExpect(status().isNotFound())
                 .andReturn();
         String body = res.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(body).path("code").asText()).isEqualTo(expectedCode);
         for (String secret : forbiddenSubstrings) {
             assertThat(body).as("Bob 404 response must not leak %s", secret).doesNotContain(secret);
         }
@@ -736,8 +988,18 @@ class MeApiIdorIT extends AbstractIntegrationTest {
         long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
         while (System.nanoTime() < deadline) {
             Attempt attempt = attemptRepository.findById(attemptId).orElse(null);
-            if (attempt != null && attempt.getState() == target) {
-                return attempt;
+            if (attempt != null) {
+                if (attempt.getState() == target) {
+                    return attempt;
+                }
+                if (attempt.getState() == AttemptState.ABORTED || attempt.getState() == AttemptState.GRADING_ERROR) {
+                    throw new AssertionError("Attempt " + attemptId + " entered terminal failure state "
+                            + attempt.getState() + " while waiting for " + target
+                            + " (abortReason=" + attempt.getAbortReason()
+                            + ", gradingError=" + attempt.getGradingError()
+                            + ", faultFlag=" + attempt.getFaultFlag()
+                            + ", faultReason=" + attempt.getFaultReason() + ")");
+                }
             }
             Thread.sleep(25);
         }
@@ -748,8 +1010,16 @@ class MeApiIdorIT extends AbstractIntegrationTest {
         long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
         while (System.nanoTime() < deadline) {
             AttemptPart part = attemptPartRepository.findById(partId).orElse(null);
-            if (part != null && part.getState() == target) {
-                return part;
+            if (part != null) {
+                if (part.getState() == target) {
+                    return part;
+                }
+                if (part.getState() == PartState.GENERATION_FAILED) {
+                    throw new AssertionError("Part " + partId + " entered terminal failure state "
+                            + part.getState() + " while waiting for " + target
+                            + " (generationTries=" + part.getGenerationTries()
+                            + ", generationError=" + part.getGenerationError() + ")");
+                }
             }
             Thread.sleep(25);
         }

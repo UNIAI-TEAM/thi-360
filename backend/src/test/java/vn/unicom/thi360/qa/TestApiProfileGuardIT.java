@@ -3,7 +3,10 @@ package vn.unicom.thi360.qa;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import vn.unicom.thi360.AbstractIntegrationTest;
+import vn.unicom.thi360.attempt.application.AudioFileProbe;
 import vn.unicom.thi360.attempt.testsupport.E2eAudioFaultController;
 import vn.unicom.thi360.identity.spi.Permissions;
 import vn.unicom.thi360.shared.security.AuthCookieService;
@@ -74,6 +79,8 @@ class TestApiProfileGuardIT extends AbstractIntegrationTest {
             // Anonymous
             expect404NotFound(get(path));
             expect404NotFound(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(put(path).contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(patch(path).contentType(MediaType.APPLICATION_JSON).content("{}"));
             expect404NotFound(delete(path));
 
             // Bad Bearer / Basic credentials
@@ -81,6 +88,10 @@ class TestApiProfileGuardIT extends AbstractIntegrationTest {
                 expect404NotFound(get(path).header(HttpHeaders.AUTHORIZATION, authorization));
                 expect404NotFound(post(path).header(HttpHeaders.AUTHORIZATION, authorization)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"advanceSeconds\":3600}"));
+                expect404NotFound(put(path).header(HttpHeaders.AUTHORIZATION, authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"));
+                expect404NotFound(patch(path).header(HttpHeaders.AUTHORIZATION, authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"));
                 expect404NotFound(delete(path).header(HttpHeaders.AUTHORIZATION, authorization));
             }
 
@@ -88,20 +99,32 @@ class TestApiProfileGuardIT extends AbstractIntegrationTest {
             expect404NotFound(get(path).cookie(staleAccess, staleRefresh));
             expect404NotFound(post(path).cookie(staleAccess, staleRefresh)
                     .contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(put(path).cookie(staleAccess, staleRefresh)
+                    .contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(patch(path).cookie(staleAccess, staleRefresh)
+                    .contentType(MediaType.APPLICATION_JSON).content("{}"));
             expect404NotFound(delete(path).cookie(staleAccess, staleRefresh));
 
             // Valid student / user principal
             expect404NotFound(get(path).with(asUser()));
             expect404NotFound(post(path).with(asUser()).contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(put(path).with(asUser()).contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(patch(path).with(asUser()).contentType(MediaType.APPLICATION_JSON).content("{}"));
             expect404NotFound(delete(path).with(asUser()));
 
             // Valid admin / platform admin principal
             expect404NotFound(get(path).with(asUser(Permissions.EXAM_VIEW)));
             expect404NotFound(post(path).with(asUser(Permissions.EXAM_VIEW))
                     .contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(put(path).with(asUser(Permissions.EXAM_VIEW))
+                    .contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(patch(path).with(asUser(Permissions.EXAM_VIEW))
+                    .contentType(MediaType.APPLICATION_JSON).content("{}"));
             expect404NotFound(delete(path).with(asUser(Permissions.EXAM_VIEW)));
             expect404NotFound(get(path).with(asPlatformAdmin()));
             expect404NotFound(post(path).with(asPlatformAdmin()).contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(put(path).with(asPlatformAdmin()).contentType(MediaType.APPLICATION_JSON).content("{}"));
+            expect404NotFound(patch(path).with(asPlatformAdmin()).contentType(MediaType.APPLICATION_JSON).content("{}"));
             expect404NotFound(delete(path).with(asPlatformAdmin()));
         }
     }
@@ -123,6 +146,8 @@ class TestApiProfileGuardIT extends AbstractIntegrationTest {
         assertThat(context.getBeanNamesForType(TestClockController.class)).isEmpty();
         assertThat(context.getBeanNamesForType(mailTestControllerClass)).isEmpty();
         assertThat(context.getBeanNamesForType(E2eAudioFaultController.class)).isEmpty();
+        assertThat(context.getBeanNamesForType(E2eAudioFaultController.E2eAudioFaultProbe.class)).isEmpty();
+        assertThat(context.getBean(AudioFileProbe.class)).isInstanceOf(AudioFileProbe.DefaultAudioFileProbe.class);
         assertThat(context.getBeanNamesForType(MutableClock.class)).isEmpty();
         assertThat(context.getBean(Clock.class)).isNotInstanceOf(MutableClock.class);
     }
@@ -170,11 +195,27 @@ class TestApiProfileGuardIT extends AbstractIntegrationTest {
 
         assertThat(allPaths)
                 .noneMatch(p -> p.startsWith("/api/v1/test") || p.startsWith("/mock-vnpay"));
+
+        JsonNode schemas = root.path("components").path("schemas");
+        assertThat(schemas.isObject()).isTrue();
+        List<String> allSchemas = new ArrayList<>();
+        schemas.fieldNames().forEachRemaining(allSchemas::add);
+        assertThat(allSchemas)
+                .as("OpenAPI components.schemas must be non-empty so schema exclusion check is non-vacuous")
+                .isNotEmpty();
+        assertThat(allSchemas)
+                .noneMatch(name -> {
+                    String lower = name.toLowerCase(Locale.ROOT);
+                    return lower.contains("testclock")
+                            || lower.contains("audiofault")
+                            || lower.contains("mockvnpay");
+                });
     }
 
     private void expect404NotFound(MockHttpServletRequestBuilder request) throws Exception {
         mockMvc.perform(request)
                 .andExpect(status().isNotFound())
+                .andExpect(header().doesNotExist(HttpHeaders.WWW_AUTHENTICATE))
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 

@@ -2,6 +2,7 @@ package vn.unicom.thi360.qa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
@@ -47,6 +49,8 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
     private static final String IP_LOGIN_A = "203.0.113.210";
     private static final String IP_LOGIN_B = "203.0.113.211";
     private static final String IP_CSRF = "203.0.113.212";
+    private static final String IP_SPOOF_UNTRUSTED = "203.0.113.213";
+    private static final String IP_HEAD_AUTH = "203.0.113.214";
 
     private static final List<String> OWNED_IPS = List.of(
             IP_STOREFRONT_A,
@@ -61,7 +65,9 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
             IP_RESET_B,
             IP_LOGIN_A,
             IP_LOGIN_B,
-            IP_CSRF);
+            IP_CSRF,
+            IP_SPOOF_UNTRUSTED,
+            IP_HEAD_AUTH);
 
     private static final List<String> BUCKET_PREFIXES = List.of(
             RateLimitFilter.PUBLIC_KEY_PREFIX,
@@ -95,9 +101,18 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        clearOwnedRedisKeys();
-        if (fixtures != null) {
-            fixtures.cleanup();
+        try {
+            clearOwnedRedisKeys();
+        } finally {
+            try {
+                jdbc.update(
+                        "DELETE FROM commerce.payment_event WHERE payment_id IS NULL AND raw ->> '_clientIp' = ?",
+                        IP_VNPAY);
+            } finally {
+                if (fixtures != null) {
+                    fixtures.cleanup();
+                }
+            }
         }
     }
 
@@ -116,28 +131,104 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
         var product = fixtures.insertOnSaleProduct("HSA", 150_000L, 3);
         String detailPath = "/api/v1/public/storefront/products/" + product.code();
 
-        // Spread 120 calls across /products, /filters, and /products/{code} for ordinary IP A
-        for (int i = 1; i <= 40; i++) {
+        // Spread 120 calls across GET /products, anonymous HEAD /products (401 in SecurityConfig, still counted by RateLimitFilter),
+        // GET /filters, and GET /products/{code} for ordinary IP A
+        for (int i = 1; i <= 30; i++) {
             performPublicGet("/api/v1/public/storefront/products", IP_STOREFRONT_A).andExpect(status().isOk());
+            performPublicHead("/api/v1/public/storefront/products", IP_STOREFRONT_A).andExpect(status().isUnauthorized());
             performPublicGet("/api/v1/public/storefront/filters", IP_STOREFRONT_A).andExpect(status().isOk());
             performPublicGet(detailPath, IP_STOREFRONT_A).andExpect(status().isOk());
         }
 
-        // 121st request from IP A returns 429 RATE_LIMITED with Retry-After header
-        performPublicGet("/api/v1/public/storefront/products", IP_STOREFRONT_A)
+        // 121st GET and 122nd HEAD from IP A return 429 RATE_LIMITED with positive integer Retry-After header
+        MvcResult rateLimitedGet = performPublicGet("/api/v1/public/storefront/products", IP_STOREFRONT_A)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(rateLimitedGet);
 
-        // Distinct client IP B still gets 200
+        MvcResult rateLimitedHead = performPublicHead("/api/v1/public/storefront/products", IP_STOREFRONT_A)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(rateLimitedHead);
+
+        // Authenticated HEAD shares and enforces the exact 120/min bucket with GET (returning 200 up to 120, 429 at 121)
+        for (int i = 1; i <= 120; i++) {
+            mockMvc.perform(head("/api/v1/public/storefront/products")
+                            .with(asUser())
+                            .with(req -> {
+                                req.setRemoteAddr(IP_HEAD_AUTH);
+                                return req;
+                            }))
+                    .andExpect(status().isOk());
+        }
+        MvcResult authHeadLimited = mockMvc.perform(head("/api/v1/public/storefront/products")
+                        .with(asUser())
+                        .with(req -> {
+                            req.setRemoteAddr(IP_HEAD_AUTH);
+                            return req;
+                        }))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(authHeadLimited);
+        MvcResult sharedGetLimited = performPublicGet("/api/v1/public/storefront/products", IP_HEAD_AUTH)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(sharedGetLimited);
+
+        // Distinct client IP B still gets 200 across GET & authenticated HEAD
         performPublicGet("/api/v1/public/storefront/products", IP_STOREFRONT_B).andExpect(status().isOk());
+        mockMvc.perform(head("/api/v1/public/storefront/products")
+                        .with(asUser())
+                        .with(req -> {
+                            req.setRemoteAddr(IP_STOREFRONT_B);
+                            return req;
+                        }))
+                .andExpect(status().isOk());
         performPublicGet("/api/v1/public/storefront/filters", IP_STOREFRONT_B).andExpect(status().isOk());
         performPublicGet(detailPath, IP_STOREFRONT_B).andExpect(status().isOk());
 
-        // Exempt IP (inside 198.51.100.240/28) exceeds 120 without 429
-        for (int i = 1; i <= 130; i++) {
+        // Exempt IP (inside 198.51.100.240/28) exceeds 120 across GET and HEAD without 429
+        for (int i = 1; i <= 125; i++) {
             performPublicGet("/api/v1/public/storefront/products", IP_EXEMPT).andExpect(status().isOk());
         }
+        for (int i = 1; i <= 10; i++) {
+            mockMvc.perform(head("/api/v1/public/storefront/products")
+                            .with(asUser())
+                            .with(req -> {
+                                req.setRemoteAddr(IP_EXEMPT);
+                                return req;
+                            }))
+                    .andExpect(status().isOk());
+        }
+        assertThat(redisTemplate.hasKey(RateLimitFilter.PUBLIC_KEY_PREFIX + IP_EXEMPT)).isFalse();
+
+        // Untrusted remoteAddr spoofing X-Forwarded-For with IP_EXEMPT still hits 429 at 121
+        for (int i = 1; i <= 120; i++) {
+            mockMvc.perform(get("/api/v1/public/storefront/products")
+                            .header("X-Forwarded-For", IP_EXEMPT)
+                            .with(req -> {
+                                req.setRemoteAddr(IP_SPOOF_UNTRUSTED);
+                                return req;
+                            }))
+                    .andExpect(status().isOk());
+        }
+        MvcResult spoofedRateLimited = mockMvc.perform(get("/api/v1/public/storefront/products")
+                        .header("X-Forwarded-For", IP_EXEMPT)
+                        .with(req -> {
+                            req.setRemoteAddr(IP_SPOOF_UNTRUSTED);
+                            return req;
+                        }))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(spoofedRateLimited);
         assertThat(redisTemplate.hasKey(RateLimitFilter.PUBLIC_KEY_PREFIX + IP_EXEMPT)).isFalse();
     }
 
@@ -163,14 +254,16 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
             assertThat(res.getResponse().getStatus()).as("vnpay return #%d", i).isNotEqualTo(429);
         }
 
-        mockMvc.perform(get("/api/v1/public/payments/vnpay/return")
+        MvcResult returnLimited = mockMvc.perform(get("/api/v1/public/payments/vnpay/return")
                         .with(req -> {
                             req.setRemoteAddr(IP_VNPAY);
                             return req;
                         }))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(returnLimited);
     }
 
     @Test
@@ -186,7 +279,7 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                     .andExpect(status().isBadRequest());
         }
 
-        mockMvc.perform(post("/api/v1/auth/register")
+        MvcResult regLimited = mockMvc.perform(post("/api/v1/auth/register")
                         .with(req -> {
                             req.setRemoteAddr(IP_REGISTER_A);
                             return req;
@@ -195,7 +288,9 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .content("{}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(regLimited);
 
         // Distinct IP is unaffected
         mockMvc.perform(post("/api/v1/auth/register")
@@ -221,7 +316,7 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                     .andExpect(status().isAccepted());
         }
 
-        mockMvc.perform(post("/api/v1/auth/password/forgot")
+        MvcResult forgotLimited = mockMvc.perform(post("/api/v1/auth/password/forgot")
                         .with(req -> {
                             req.setRemoteAddr(IP_FORGOT_A);
                             return req;
@@ -230,7 +325,9 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .content("{\"email\":\"nobody@thi360-test.example\"}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(forgotLimited);
 
         mockMvc.perform(post("/api/v1/auth/password/forgot")
                         .with(req -> {
@@ -252,7 +349,7 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                     .andExpect(status().isUnprocessableEntity());
         }
 
-        mockMvc.perform(post("/api/v1/auth/password/reset")
+        MvcResult resetLimited = mockMvc.perform(post("/api/v1/auth/password/reset")
                         .with(req -> {
                             req.setRemoteAddr(IP_RESET_A);
                             return req;
@@ -261,7 +358,9 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .content("{\"token\":\"no-such-token\",\"newPassword\":\"Valid@1234\"}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(resetLimited);
 
         mockMvc.perform(post("/api/v1/auth/password/reset")
                         .with(req -> {
@@ -286,7 +385,7 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                     .andExpect(status().isBadRequest());
         }
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult loginLimited = mockMvc.perform(post("/api/v1/auth/login")
                         .with(req -> {
                             req.setRemoteAddr(IP_LOGIN_A);
                             return req;
@@ -295,7 +394,9 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .content("{}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(loginLimited);
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .with(req -> {
@@ -305,6 +406,30 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+
+        // IP_EXEMPT is ONLY exempt on public GET/HEAD storefront routes, NEVER on /api/v1/auth/login
+        for (int i = 1; i <= 20; i++) {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(req -> {
+                                req.setRemoteAddr(IP_EXEMPT);
+                                return req;
+                            })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest());
+        }
+        MvcResult exemptLoginLimited = mockMvc.perform(post("/api/v1/auth/login")
+                        .with(req -> {
+                            req.setRemoteAddr(IP_EXEMPT);
+                            return req;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        assertRetryAfterAtLeastOne(exemptLoginLimited);
     }
 
     @Test
@@ -332,6 +457,25 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .content("{\"email\":\"nobody@thi360-test.example\"}"))
                 .andExpect(status().isAccepted());
 
+        mockMvc.perform(post("/api/v1/auth/password/reset")
+                        .with(req -> {
+                            req.setRemoteAddr(IP_CSRF);
+                            return req;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"no-such-token\",\"newPassword\":\"Valid@1234\"}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(req -> {
+                            req.setRemoteAddr(IP_CSRF);
+                            return req;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
         // With stale session cookies and NO X-XSRF-TOKEN header: never rejected with 403 CSRF_INVALID
         mockMvc.perform(post("/api/v1/auth/register")
                         .with(req -> {
@@ -354,6 +498,27 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                         .content("{\"email\":\"nobody@thi360-test.example\"}"))
                 .andExpect(status().isAccepted());
 
+        mockMvc.perform(post("/api/v1/auth/password/reset")
+                        .with(req -> {
+                            req.setRemoteAddr(IP_CSRF);
+                            return req;
+                        })
+                        .cookie(staleAccess, staleRefresh)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"no-such-token\",\"newPassword\":\"Valid@1234\"}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(req -> {
+                            req.setRemoteAddr(IP_CSRF);
+                            return req;
+                        })
+                        .cookie(staleAccess, staleRefresh)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
         // Protected POST with stale session cookie (refresh_token triggers CsrfFilter without invalid-JWT 401 first)
         // and no XSRF token IS rejected with 403 CSRF_INVALID
         mockMvc.perform(post("/api/v1/me/orders")
@@ -368,11 +533,24 @@ class PublicRateLimitIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("CSRF_INVALID"));
     }
 
-    private org.springframework.test.web.servlet.ResultActions performPublicGet(String path, String remoteIp)
-            throws Exception {
+    private ResultActions performPublicGet(String path, String remoteIp) throws Exception {
         return mockMvc.perform(get(path).with(req -> {
             req.setRemoteAddr(remoteIp);
             return req;
         }));
+    }
+
+    private ResultActions performPublicHead(String path, String remoteIp) throws Exception {
+        return mockMvc.perform(head(path).with(req -> {
+            req.setRemoteAddr(remoteIp);
+            return req;
+        }));
+    }
+
+    private static void assertRetryAfterAtLeastOne(MvcResult result) {
+        String header = result.getResponse().getHeader("Retry-After");
+        assertThat(header).as("Retry-After header").isNotBlank();
+        long seconds = Long.parseLong(header.trim());
+        assertThat(seconds).isGreaterThanOrEqualTo(1L);
     }
 }

@@ -6,15 +6,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -33,6 +35,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.unicom.thi360.AbstractIntegrationTest;
 import vn.unicom.thi360.attempt.AttemptTestFixtures;
 import vn.unicom.thi360.attempt.api.AnswerChange;
+import vn.unicom.thi360.attempt.api.AttemptAudioController.AudioProgressRequest;
+import vn.unicom.thi360.attempt.api.AttemptAudioController.StartAudioPlayRequest;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.ConfirmPartChoiceRequest;
 import vn.unicom.thi360.attempt.api.AttemptChoiceController.RetryPartRequest;
 import vn.unicom.thi360.attempt.api.FinishPartRequest;
@@ -56,8 +60,17 @@ import vn.unicom.thi360.commerce.entitlement.application.GrantOrderResult;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
 import vn.unicom.thi360.exam.spi.PublishedExamPort;
 import vn.unicom.thi360.identity.spi.Permissions;
+import vn.unicom.thi360.questionbank.api.BulkQuestionStatusRequest;
+import vn.unicom.thi360.questionbank.api.SaveQuestionRequest;
+import vn.unicom.thi360.questionbank.domain.QuestionAsset;
+import vn.unicom.thi360.questionbank.domain.QuestionAssetKind;
+import vn.unicom.thi360.questionbank.domain.QuestionBody;
+import vn.unicom.thi360.questionbank.infrastructure.QuestionAssetRepository;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
+import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.outbox.OutboxRelay;
+import vn.unicom.thi360.shared.security.RateLimitFilter;
+import vn.unicom.thi360.shared.storage.ObjectStorage;
 import vn.unicom.thi360.support.ForbiddenKeysAssert;
 import vn.unicom.thi360.support.PublishedExamSetSupport;
 
@@ -68,6 +81,17 @@ import vn.unicom.thi360.support.PublishedExamSetSupport;
 class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
 
     private static final String PUBLIC_CLIENT_IP = "203.0.113.220";
+    private static final Set<String> REVIEW_SCORE_AND_ANSWERS_FORBIDDEN_KEYS = Set.of(
+            "solution", "essayFeedback", "comment", "criteria",
+            "gradingGuide", "rubric", "sampleAnswer", "commonMistakes",
+            "scoreTable", "trueFalseTable",
+            "knowledge", "knowledgeItemIds", "mapId", "mapIds", "mapidIds",
+            "levelItemId", "difficulty", "difficultyCode");
+    private static final Set<String> REVIEW_FULL_SOLUTION_FORBIDDEN_KEYS = Set.of(
+            "gradingGuide", "rubric", "sampleAnswer", "commonMistakes",
+            "scoreTable", "trueFalseTable", "exactFraction",
+            "knowledge", "knowledgeItemIds", "mapId", "mapIds", "mapidIds",
+            "levelItemId", "difficulty", "difficultyCode");
 
     @DynamicPropertySource
     static void dsDatabase(DynamicPropertyRegistry registry) {
@@ -77,6 +101,7 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
     @Autowired private ApplicationContext context;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private StringRedisTemplate redisTemplate;
     @Autowired private BundleDevDataBuilder bundleDevDataBuilder;
     @Autowired private EntitlementGrantService grantService;
     @Autowired private PublishedExamPort publishedExamPort;
@@ -84,10 +109,15 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
     @Autowired private AttemptPartRepository attemptPartRepository;
     @Autowired private AttemptItemRepository attemptItemRepository;
     @Autowired private AttemptAudioPlayRepository attemptAudioPlayRepository;
+    @Autowired private QuestionAssetRepository questionAssetRepository;
+    @Autowired private ObjectStorage objectStorage;
     @Autowired private OutboxRelay outboxRelay;
 
     private final List<UUID> createdUserIds = new ArrayList<>();
     private final List<UUID> createdOrderIds = new ArrayList<>();
+    private final List<UUID> createdQuestions = new ArrayList<>();
+    private final List<UUID> createdAssets = new ArrayList<>();
+    private final List<String> createdObjectKeys = new ArrayList<>();
 
     @BeforeEach
     void setUpDsAndStorefront() throws Exception {
@@ -106,17 +136,47 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        for (UUID orderId : createdOrderIds) {
-            CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+        try {
+            for (UUID orderId : createdOrderIds) {
+                CommerceTestFixtures.deleteStubOrder(jdbc, orderId);
+            }
+            createdOrderIds.clear();
+        } finally {
+            try {
+                for (UUID userId : createdUserIds) {
+                    jdbc.update(
+                            "DELETE FROM attempt.attempt_audio_play WHERE attempt_id IN (SELECT id FROM attempt.attempt WHERE user_id = ?)",
+                            userId);
+                    AttemptTestFixtures.cleanupUser(jdbc, userId);
+                }
+                createdUserIds.clear();
+            } finally {
+                try {
+                    AttemptTestFixtures.cleanupSyntheticQuestions(jdbc, createdQuestions);
+                    createdQuestions.clear();
+                } finally {
+                    try {
+                        for (UUID assetId : createdAssets) {
+                            jdbc.update("DELETE FROM questionbank.question_asset WHERE id = ?", assetId);
+                        }
+                        createdAssets.clear();
+                    } finally {
+                        try {
+                            for (String key : createdObjectKeys) {
+                                objectStorage.delete(key);
+                            }
+                            createdObjectKeys.clear();
+                        } finally {
+                            try {
+                                jdbc.update("DELETE FROM shared.idempotency_key WHERE key LIKE 'fk-sol-%'");
+                            } finally {
+                                redisTemplate.delete(RateLimitFilter.PUBLIC_KEY_PREFIX + PUBLIC_CLIENT_IP);
+                            }
+                        }
+                    }
+                }
+            }
         }
-        createdOrderIds.clear();
-        for (UUID userId : createdUserIds) {
-            jdbc.update(
-                    "DELETE FROM attempt.attempt_audio_play WHERE attempt_id IN (SELECT id FROM attempt.attempt WHERE user_id = ?)",
-                    userId);
-            AttemptTestFixtures.cleanupUser(jdbc, userId);
-        }
-        createdUserIds.clear();
     }
 
     @Test
@@ -188,6 +248,18 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(myExamsJson);
 
         JsonNode productForOrder = objectMapper.readTree(publicGet("/api/v1/public/storefront/products/DS-HSA-PART-MATH-MINI"));
+        String priceQuoteJson = mockMvc.perform(post("/api/v1/me/price-quote")
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("code", "DS-HSA-PART-MATH-MINI"))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(priceQuoteJson).path("productCode").asText())
+                .isEqualTo("DS-HSA-PART-MATH-MINI");
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(priceQuoteJson);
+
         String createOrderRaw = mockMvc.perform(post("/api/v1/me/orders")
                         .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
                         .header("Idempotency-Key", "fk-ord-" + UUID.randomUUID())
@@ -234,6 +306,15 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
                 .getContentAsString(StandardCharsets.UTF_8);
         assertThat(objectMapper.readTree(payOrderJson).path("paymentUrl").asText()).isNotBlank();
         ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(payOrderJson);
+
+        String cancelOrderJson = mockMvc.perform(post("/api/v1/me/orders/{code}/cancel", orderCode)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(cancelOrderJson).path("state").asText()).isEqualTo("CANCELLED");
+        ForbiddenKeysAssert.assertNoStorefrontForbiddenKeys(cancelOrderJson);
     }
 
     @Test
@@ -241,7 +322,12 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         StudentAccount student = createVerifiedStudent("fk-attempt");
         Set<QuestionType> observedTypes = new LinkedHashSet<>();
 
-        // A. Multi-part DS-HSA-FULL-MINI: prepare, start, state, solution-assets=404, finish, choice, retry, submit, result, review
+        // Non-vacuous solution-asset fixture: real stored image linked to a ready question's solution HTML
+        byte[] solutionBytes = "FK-SOLUTION-PNG".getBytes(StandardCharsets.UTF_8);
+        UUID linkedSolAssetId = saveSolutionAsset("fk-sol.png", "image/png", solutionBytes);
+        UUID solQuestionId = createReadyQuestionWithSolutionAsset(linkedSolAssetId);
+
+        // A. Multi-part DS-HSA-FULL-MINI (SCORE_AND_ANSWERS): prepare, start, state, finish, choice, retry, submit, result, review, policy gate
         GrantOrderResult.Line hsaGrant = grantExam(student.id(), "DS-HSA-FULL-MINI", 3, "SCORE_AND_ANSWERS");
         String prepareJson = mockMvc.perform(get("/api/v1/me/entitlements/{entitlementId}/prepare", hsaGrant.entitlementId())
                         .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
@@ -264,15 +350,6 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         UUID hsaAttemptId = UUID.fromString(objectMapper.readTree(startHsaJson).path("attemptId").asText());
         awaitAttemptState(hsaAttemptId, AttemptState.IN_PROGRESS);
 
-        // IN_PROGRESS solution-assets MUST return 404
-        UUID sampleSolutionAssetId = jdbc.queryForObject(
-                "SELECT id FROM questionbank.question_asset WHERE kind = 'IMAGE' ORDER BY created_at LIMIT 1",
-                UUID.class);
-        mockMvc.perform(get("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
-                        hsaAttemptId, sampleSolutionAssetId != null ? sampleSolutionAssetId : UUID.randomUUID())
-                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
-                .andExpect(status().isNotFound());
-
         String hsaStateJson = getAttemptState(student, hsaAttemptId);
         JsonNode hsaStateNode = objectMapper.readTree(hsaStateJson);
         assertThat(hsaStateNode.path("parts").get(0).path("items")).isNotEmpty();
@@ -280,11 +357,30 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(hsaStateJson);
 
         UUID hsaSessionId = claimSession(student, hsaAttemptId);
+        String heartbeatJson = mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/heartbeat", hsaAttemptId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .header("X-Attempt-Session", hsaSessionId.toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(heartbeatJson).path("state").asText()).isEqualTo("IN_PROGRESS");
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(heartbeatJson);
+
         List<AttemptPart> hsaParts = attemptPartRepository.findByAttemptIdOrderByOrdAsc(hsaAttemptId);
         assertThat(hsaParts).hasSize(3);
+        List<AttemptItem> hsaPart0Items = attemptItemRepository.findByPartIdOrderByOrdAsc(hsaParts.get(0).getId());
+        AttemptItem hsaLinkedTarget = hsaPart0Items.stream()
+                .filter(i -> i.getQuestionType() == QuestionType.SINGLE_CHOICE)
+                .findFirst()
+                .orElseThrow();
+        jdbc.update(
+                "UPDATE attempt.attempt_item SET question_id = ?, question_version_no = 1, option_order = '[\"o1\",\"o2\"]'::jsonb WHERE id = ?",
+                solQuestionId,
+                hsaLinkedTarget.getId());
 
         // Save ShortAnswer on Part 0
-        AttemptItem hsaShort = attemptItemRepository.findByPartIdOrderByOrdAsc(hsaParts.get(0).getId()).stream()
+        AttemptItem hsaShort = hsaPart0Items.stream()
                 .filter(i -> i.getQuestionType() == QuestionType.SHORT_ANSWER)
                 .findFirst()
                 .orElseThrow();
@@ -369,16 +465,80 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
-        JsonNode reviewNode = objectMapper.readTree(reviewJson);
+        JsonNode reviewNode = strictJsonMapper().readTree(reviewJson);
         assertThat(reviewNode.path("items")).isNotEmpty();
         ForbiddenKeysAssert.assertNoForbiddenKeys(
                 reviewNode,
-                Set.of(
-                        "solution", "essayFeedback", "comment", "criteria",
-                        "gradingGuide", "rubric", "sampleAnswer", "commonMistakes",
-                        "knowledge", "knowledgeItemIds", "mapId", "mapIds", "mapidIds",
-                        "levelItemId", "difficulty", "difficultyCode"),
+                REVIEW_SCORE_AND_ANSWERS_FORBIDDEN_KEYS,
+                ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_SCOPED_KEYS,
                 "review-score-and-answers");
+
+        // SCORE_AND_ANSWERS policy gate: even after SCORED and even for a genuinely linked solution asset, /solution-assets MUST 404
+        mockMvc.perform(get("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
+                        hsaAttemptId, linkedSolAssetId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
+                .andExpect(status().isNotFound());
+
+        // A2. Non-vacuous IN_PROGRESS -> 404 vs SCORED -> 200 proof on FULL_SOLUTION attempt (DS-HSA-PART-MATH-MINI)
+        Attempt fullSolAttempt = startAttemptForExam(student, "DS-HSA-PART-MATH-MINI", "FULL_SOLUTION");
+        AttemptItem fullSolTarget = attemptItemRepository.findByAttemptIdOrderByPartIdAscOrdAsc(fullSolAttempt.getId())
+                .stream()
+                .filter(i -> i.getQuestionType() == QuestionType.SINGLE_CHOICE)
+                .findFirst()
+                .orElseThrow();
+        jdbc.update(
+                "UPDATE attempt.attempt_item SET question_id = ?, question_version_no = 1, option_order = '[\"o1\",\"o2\"]'::jsonb WHERE id = ?",
+                solQuestionId,
+                fullSolTarget.getId());
+
+        // While IN_PROGRESS, linked solution asset MUST return 404
+        mockMvc.perform(get("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
+                        fullSolAttempt.getId(), linkedSolAssetId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
+                .andExpect(status().isNotFound());
+
+        UUID fullSolSessionId = claimSession(student, fullSolAttempt.getId());
+        mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/submit", fullSolAttempt.getId())
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .header("Idempotency-Key", "fk-full-sub-" + UUID.randomUUID())
+                        .header("X-Attempt-Session", fullSolSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new SubmitAttemptRequest(List.of()))))
+                .andExpect(status().isOk());
+        outboxRelay.relayBatch(500);
+
+        String fullSolResultJson = mockMvc.perform(get("/api/v1/me/attempts/{attemptId}/result", fullSolAttempt.getId())
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(fullSolResultJson).path("state").asText()).isEqualTo("SCORED");
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(fullSolResultJson);
+
+        // Same attempt & linked solution asset after SCORED MUST return 200 with exact stored bytes
+        assertThat(mockMvc.perform(get("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
+                        fullSolAttempt.getId(), linkedSolAssetId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsByteArray())
+                .isEqualTo(solutionBytes);
+
+        String fullSolReviewJson = mockMvc.perform(get("/api/v1/me/attempts/{attemptId}/review", fullSolAttempt.getId())
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        JsonNode fullSolReviewNode = strictJsonMapper().readTree(fullSolReviewJson);
+        assertThat(fullSolReviewNode.path("items")).isNotEmpty();
+        ForbiddenKeysAssert.assertNoForbiddenKeys(
+                fullSolReviewNode,
+                REVIEW_FULL_SOLUTION_FORBIDDEN_KEYS,
+                ForbiddenKeysAssert.ATTEMPT_FORBIDDEN_SCOPED_KEYS,
+                "review-full-solution");
 
         // B. DS-VSAT-ANH: TRUE_FALSE (statements[]), MATCHING (save answer.pairs), CLOZE, QUESTION_SET
         Attempt vsatAttempt = startAttemptForExam(student, "DS-VSAT-ANH", "SCORE_AND_ANSWERS");
@@ -445,7 +605,7 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         collectObservedQuestionTypes(bcaNode, observedTypes);
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(bcaStateJson);
 
-        // E. DS-HSCA-ANH-MINI: Audio attempt state (audioPolicy, audioPlays[], attachments[])
+        // E. DS-HSCA-ANH-MINI: Audio attempt state & audio play lifecycle (/plays, /resume, /progress, /end)
         Attempt audioAttempt = startAttemptForExam(student, "DS-HSCA-ANH-MINI", "SCORE_AND_ANSWERS");
         String audioStateJson = getAttemptState(student, audioAttempt.getId());
         JsonNode audioNode = objectMapper.readTree(audioStateJson);
@@ -455,10 +615,59 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         assertThat(plays).isNotEmpty();
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(audioStateJson);
 
+        UUID audioSessionId = claimSession(student, audioAttempt.getId());
+        UUID audioAssetId = plays.getFirst().getAssetId();
+        String openPlayJson = mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays",
+                        audioAttempt.getId(), audioAssetId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .header("X-Attempt-Session", audioSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new StartAudioPlayRequest("fk-audio-req-1"))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        UUID audioPlayId = UUID.fromString(objectMapper.readTree(openPlayJson).path("playId").asText());
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(openPlayJson);
+
+        String resumePlayJson = mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume",
+                        audioAttempt.getId(), audioAssetId, audioPlayId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .header("X-Attempt-Session", audioSessionId.toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(resumePlayJson);
+
+        String progressPlayJson = mockMvc.perform(put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+                        audioAttempt.getId(), audioAssetId, audioPlayId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .header("X-Attempt-Session", audioSessionId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AudioProgressRequest(0L))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(progressPlayJson);
+
+        String endPlayJson = mockMvc.perform(post("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end",
+                        audioAttempt.getId(), audioAssetId, audioPlayId)
+                        .with(AttemptTestFixtures.asExamUser(student.id(), student.username()))
+                        .header("X-Attempt-Session", audioSessionId.toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(endPlayJson);
+
         // Assert ALL 8 QuestionTypes were genuinely observed and scanned (non-vacuous coverage)
         assertThat(observedTypes).containsExactlyInAnyOrder(QuestionType.values());
 
-        // F. Admin preview paper endpoint: GET /api/v1/admin/exams/{examId}/preview/{previewId}/paper
+        // F. Admin trial preview endpoints: POST .../trial, GET .../paper, and POST .../grade
+        // (Note: POST /api/v1/admin/exams/{id}/preview is the exam-authoring preview that intentionally includes
+        // answer keys, solutions, rubric, and difficulty/knowledge metadata for EXAM_VIEW editors.)
         UUID vsatExamId = AttemptTestFixtures.dsExamId(jdbc, "DS-VSAT-ANH");
         String previewCreateRaw = mockMvc.perform(post("/api/v1/admin/exams/{id}/preview", vsatExamId)
                         .with(asUser(Permissions.EXAM_VIEW))
@@ -472,6 +681,16 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         assertThat(previewCreateNode.path("status").asText()).isEqualTo("GENERATED");
         UUID previewId = UUID.fromString(previewCreateNode.path("previewId").asText());
 
+        String previewTrialJson = mockMvc.perform(post("/api/v1/admin/exams/{id}/preview/{previewId}/trial",
+                        vsatExamId, previewId)
+                        .with(asUser(Permissions.EXAM_VIEW)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(previewTrialJson).path("expiresAt").asText()).isNotBlank();
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(previewTrialJson);
+
         String previewPaperJson = mockMvc.perform(get("/api/v1/admin/exams/{id}/preview/{previewId}/paper",
                         vsatExamId, previewId)
                         .with(asUser(Permissions.EXAM_VIEW)))
@@ -484,6 +703,18 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         assertThat(previewPaperNode.path("parts").get(0).path("blocks")).isNotEmpty();
         assertThat(previewPaperNode.path("parts").get(0).path("blocks").get(0).path("items")).isNotEmpty();
         ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(previewPaperJson);
+
+        String previewGradeJson = mockMvc.perform(post("/api/v1/admin/exams/{id}/preview/{previewId}/grade",
+                        vsatExamId, previewId)
+                        .with(asUser(Permissions.EXAM_VIEW))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{}}"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        assertThat(objectMapper.readTree(previewGradeJson).path("items")).isNotEmpty();
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(previewGradeJson);
 
         // Also verify GET /api/v1/me/attempts history contains no attempt-forbidden keys
         String historyJson = mockMvc.perform(get("/api/v1/me/attempts")
@@ -582,6 +813,7 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
+        ForbiddenKeysAssert.assertNoAttemptForbiddenKeys(raw);
         return UUID.fromString(objectMapper.readTree(raw).path("sessionId").asText());
     }
 
@@ -614,8 +846,18 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
         while (System.nanoTime() < deadline) {
             Attempt attempt = attemptRepository.findById(attemptId).orElse(null);
-            if (attempt != null && attempt.getState() == target) {
-                return attempt;
+            if (attempt != null) {
+                if (attempt.getState() == target) {
+                    return attempt;
+                }
+                if (attempt.getState() == AttemptState.ABORTED || attempt.getState() == AttemptState.GRADING_ERROR) {
+                    throw new AssertionError("Attempt " + attemptId + " entered terminal failure state "
+                            + attempt.getState() + " while waiting for " + target
+                            + " (abortReason=" + attempt.getAbortReason()
+                            + ", gradingError=" + attempt.getGradingError()
+                            + ", faultFlag=" + attempt.getFaultFlag()
+                            + ", faultReason=" + attempt.getFaultReason() + ")");
+                }
             }
             Thread.sleep(25);
         }
@@ -626,12 +868,80 @@ class StudentApiForbiddenKeysIT extends AbstractIntegrationTest {
         long deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
         while (System.nanoTime() < deadline) {
             AttemptPart part = attemptPartRepository.findById(partId).orElse(null);
-            if (part != null && part.getState() == target) {
-                return part;
+            if (part != null) {
+                if (part.getState() == target) {
+                    return part;
+                }
+                if (part.getState() == PartState.GENERATION_FAILED) {
+                    throw new AssertionError("Part " + partId + " entered terminal failure state "
+                            + part.getState() + " while waiting for " + target
+                            + " (generationTries=" + part.getGenerationTries()
+                            + ", generationError=" + part.getGenerationError() + ")");
+                }
             }
             Thread.sleep(25);
         }
         throw new AssertionError("Timed out waiting for part " + partId + " to reach " + target);
+    }
+
+    private ObjectMapper strictJsonMapper() {
+        return objectMapper.copy()
+                .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    }
+
+    private UUID saveSolutionAsset(String fileName, String mime, byte[] bytes) throws Exception {
+        UUID id = Ids.newId();
+        String objectKey = "questions/qa-fk/" + id + "-" + fileName;
+        objectStorage.put(objectKey, bytes, mime);
+        createdObjectKeys.add(objectKey);
+        byte[] sha256 = MessageDigest.getInstance("SHA-256").digest(bytes);
+        questionAssetRepository.saveAndFlush(new QuestionAsset(
+                id, QuestionAssetKind.IMAGE, objectKey, fileName, mime, bytes.length, sha256, 8, 8, Ids.newId(), Instant.now()));
+        createdAssets.add(id);
+        return id;
+    }
+
+    private UUID createReadyQuestionWithSolutionAsset(UUID solutionAssetId) throws Exception {
+        SaveQuestionRequest req = new SaveQuestionRequest(
+                QuestionType.SINGLE_CHOICE,
+                "TOAN",
+                "G12",
+                "NB",
+                null,
+                null,
+                java.math.BigDecimal.ONE,
+                List.of(),
+                List.of(),
+                "<p>Prompt</p>",
+                "<p>Solution <img data-asset-id=\"" + solutionAssetId + "\"></p>",
+                List.of(),
+                List.of(),
+                new QuestionBody.SingleChoiceBody(
+                        QuestionType.SINGLE_CHOICE,
+                        List.of(
+                                new QuestionBody.ChoiceOption("o1", "<p>A</p>", true),
+                                new QuestionBody.ChoiceOption("o2", "<p>B</p>", false)),
+                        false),
+                "QA-FK-" + UUID.randomUUID().toString().substring(0, 8));
+        MvcResult created = mockMvc.perform(post("/api/v1/admin/questions")
+                        .with(asUser(Ids.newId(), "q-author-fk", Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", "fk-sol-cr-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andReturn();
+        assertThat(created.getResponse().getStatus()).isBetween(200, 201);
+        UUID qId = UUID.fromString(
+                objectMapper.readTree(created.getResponse().getContentAsString()).path("summary").path("id").asText());
+        createdQuestions.add(qId);
+
+        mockMvc.perform(post("/api/v1/admin/questions/bulk/ready")
+                        .with(asUser(Ids.newId(), "q-author-fk", Permissions.QUESTION_MODIFY))
+                        .header("Idempotency-Key", "fk-sol-rd-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new BulkQuestionStatusRequest(List.of(qId)))))
+                .andExpect(status().isOk());
+        return qId;
     }
 
     private static void collectObservedQuestionTypes(JsonNode stateNode, Set<QuestionType> observedTypes) {
