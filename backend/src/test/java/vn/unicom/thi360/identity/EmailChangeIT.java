@@ -94,6 +94,12 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private ControlledClock clock;
 
+    @Autowired
+    private vn.unicom.thi360.identity.application.EmailCodeService emailCodeService;
+
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager txManager;
+
     private SelfRegistrationSupport support;
     private MailOutbox mailOutbox;
 
@@ -118,7 +124,24 @@ class EmailChangeIT extends AbstractKeycloakIntegrationTest {
         String username = "change." + suffix;
         String email = "change." + suffix + "@thi360.vn";
         support.register(support.body(username, email), SelfRegistrationSupport.freshIp()).andExpect(status().isCreated());
-        return new Account(support.accountId(username), username, email);
+        Account account = new Account(support.accountId(username), username, email);
+        jdbcTemplate.update("UPDATE identity.user_account SET email_verified_at = NULL WHERE id = ?", account.id());
+        var userRes = KEYCLOAK.getKeycloakAdminClient().realm("thi-360").users().get(account.id().toString());
+        var rep = userRes.toRepresentation();
+        rep.setEmailVerified(false);
+        userRes.update(rep);
+        jdbcTemplate.update("DELETE FROM shared.email_message WHERE lower(to_email) = ?", account.email().toLowerCase());
+        new org.springframework.transaction.support.TransactionTemplate(txManager).executeWithoutResult(s -> {
+            String otp = emailCodeService.issue(account.id(), vn.unicom.thi360.identity.domain.EmailCodePurpose.VERIFY, account.email());
+            mailQueue.enqueue(
+                    MailKind.EMAIL_VERIFY,
+                    account.email(),
+                    "vi",
+                    Map.of("fullName", "Nguyễn Văn An", "code", otp),
+                    account.id());
+        });
+        Mockito.clearInvocations(mailQueue);
+        return account;
     }
 
     private String newEmail() {

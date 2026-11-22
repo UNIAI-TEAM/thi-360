@@ -2,6 +2,9 @@ import type { components } from "@thi360/api-client";
 import { ApiStatusError, createBrowserApiClient, toApiStatusError } from "@/lib/api/client";
 
 export type RegisterRequest = components["schemas"]["RegisterRequest"];
+export type RegisterStartResponse = components["schemas"]["RegisterStartResponse"];
+export type RegisterResendRequest = components["schemas"]["RegisterResendRequest"];
+export type RegisterVerifyRequest = components["schemas"]["RegisterVerifyRequest"];
 export type RegisterResponse = components["schemas"]["RegisterResponse"];
 export type ProfileResponse = components["schemas"]["ProfileResponse"];
 export type ProfileUpdateRequest = components["schemas"]["ProfileUpdateRequest"];
@@ -41,11 +44,36 @@ function toEmailCodeStatusError(status: number, error: unknown): EmailCodeStatus
   });
 }
 
-export async function registerAccount(body: RegisterRequest): Promise<RegisterResponse> {
+export async function startRegistration(body: RegisterRequest): Promise<RegisterStartResponse> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/auth/register", { body });
   if (!response.ok || !data) {
+    if (response.status === 429) {
+      throw toEmailCodeStatusError(response.status, error);
+    }
     throw toApiStatusError(response.status, error);
+  }
+  return data;
+}
+
+export async function resendRegistrationCode(registrationId: string): Promise<RegisterStartResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/auth/register/resend", {
+    body: { registrationId },
+  });
+  if (!response.ok || !data) {
+    throw toEmailCodeStatusError(response.status, error);
+  }
+  return data;
+}
+
+export async function verifyRegistration(registrationId: string, code: string): Promise<RegisterResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/auth/register/verify", {
+    body: { registrationId, code },
+  });
+  if (!response.ok || !data) {
+    throw toEmailCodeStatusError(response.status, error);
   }
   return data;
 }

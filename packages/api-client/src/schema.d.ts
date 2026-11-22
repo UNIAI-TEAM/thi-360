@@ -2554,10 +2554,47 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Tự đăng ký tài khoản học viên
-         * @description Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.
+         * Bước 1 tự đăng ký học viên: kiểm tra thông tin và gửi mã OTP 6 chữ số qua email
+         * @description Công khai. Chưa tạo tài khoản trong identity hay Keycloak; xếp thư mã OTP xác minh email.
          */
-        post: operations["register"];
+        post: operations["startRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/register/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi lại mã OTP 6 chữ số cho phiên tự đăng ký đang chờ */
+        post: operations["resendRegistrationCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/register/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bước 2 tự đăng ký học viên: xác nhận mã OTP email, tạo tài khoản và mở phiên đăng nhập
+         * @description Công khai. Tạo tài khoản đã xác minh email trong identity và Keycloak, đặt cookie HttpOnly.
+         */
+        post: operations["verifyRegistration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10483,6 +10520,11 @@ export interface components {
              */
             password: string;
             /**
+             * Format: uuid
+             * @description Mã phiên đăng ký đang chờ (khi học viên quay lại sửa thông tin ở Bước 1)
+             */
+            registrationId?: string;
+            /**
              * @description Phiên bản điều khoản đã hiển thị cho người dùng, lưu đúng giá trị gửi lên
              * @example 2026-11
              */
@@ -10493,6 +10535,14 @@ export interface components {
              */
             username: string;
         };
+        /** @description Yêu cầu gửi lại mã OTP cho phiên đăng ký đang chờ */
+        RegisterResendRequest: {
+            /**
+             * Format: uuid
+             * @description Mã phiên đăng ký chờ xác minh
+             */
+            registrationId: string;
+        };
         /** @description Kết quả đăng ký: phiên đã được tạo (cookie HttpOnly) */
         RegisterResponse: {
             /**
@@ -10500,6 +10550,38 @@ export interface components {
              * @example http://localhost:3000/home
              */
             redirectTo: string;
+        };
+        /** @description Kết quả khởi tạo hoặc gửi lại mã OTP cho phiên tự đăng ký */
+        RegisterStartResponse: {
+            /**
+             * @description Địa chỉ email nhận mã OTP xác minh
+             * @example an@thi360.vn
+             */
+            email: string;
+            /**
+             * Format: uuid
+             * @description Mã phiên đăng ký chờ xác minh OTP
+             */
+            registrationId: string;
+            /**
+             * Format: int64
+             * @description Số giây cần chờ trước khi được phép gửi lại mã OTP
+             * @example 60
+             */
+            resendAfterSeconds: number;
+        };
+        /** @description Yêu cầu xác nhận mã OTP 6 chữ số và hoàn tất tạo tài khoản học viên */
+        RegisterVerifyRequest: {
+            /**
+             * @description Mã OTP 6 chữ số gửi qua email
+             * @example 123456
+             */
+            code: string;
+            /**
+             * Format: uuid
+             * @description Mã phiên đăng ký chờ xác minh
+             */
+            registrationId: string;
         };
         /** @description Mở lại bản chấm tự luận đã hoàn tất để chấm lại */
         ReopenEssayRequest: {
@@ -36190,7 +36272,7 @@ export interface operations {
             };
         };
     };
-    register: {
+    startRegistration: {
         parameters: {
             query?: never;
             header?: never;
@@ -36203,13 +36285,145 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
-            201: {
+            /** @description Đã tạo phiên đăng ký chờ và xếp thư mã OTP */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RegisterResponse"];
+                    "application/json": components["schemas"]["RegisterStartResponse"];
+                };
+            };
+            /** @description Dữ liệu không hợp lệ (VALIDATION_FAILED) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Trùng tên đăng nhập hoặc email (USERNAME_TAKEN, EMAIL_TAKEN) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Gửi quá nhanh hoặc quá giới hạn mỗi ngày: kèm Retry-After và retryAfter */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resendRegistrationCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterResendRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã cấp mã OTP mới và xếp thư */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterStartResponse"];
                 };
             };
             /** @description Bad Request */
@@ -36275,13 +36489,145 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Phiên đăng ký đã hết hạn hoặc hoàn tất (EMAIL_CODE_EXPIRED) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Chưa đủ 60 giây hoặc quá 5 mã trong 24 giờ: kèm Retry-After và retryAfter */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verifyRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã tạo tài khoản học viên và mở phiên đăng nhập */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Trùng tên đăng nhập hoặc email (USERNAME_TAKEN, EMAIL_TAKEN) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
                 };
             };
             /** @description Too Many Requests */

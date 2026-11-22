@@ -104,8 +104,7 @@ test.describe("QA Core Flow — AC-4: Guest đăng ký, mua và hoàn thành DS-
     await fillRegisterForm(page, account);
     await page.getByRole("button", { name: "Đăng ký" }).click();
 
-    await expect(page).toHaveURL(/\/verify-email/, { timeout: 20_000 });
-    await expect(page.getByRole("heading", { name: "Xác minh email" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Xác minh email", level: 1 })).toBeVisible({ timeout: 20_000 });
 
     const verifyMail = await waitForMail(account.email, "EMAIL_VERIFY");
     const otp = readOtp(verifyMail);

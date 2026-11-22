@@ -104,14 +104,23 @@ class OpenApiExportIT extends AbstractIntegrationTest {
         assertThat(columnKey.path("type")).extracting(JsonNode::asText).containsExactly("string", "null");
         assertThat(columnKey.path("enum").get(columnKey.path("enum").size() - 1).isNull()).isTrue();
 
-        // ID-1 (UNI-2710): đăng ký, xác minh và đổi email; hợp đồng lỗi mà FS-2 dùng (retryAfter, remainingAttempts).
+        // ID-1 (UNI-2710) & UNI-2773: đăng ký 2 bước OTP, xác minh và đổi email; hợp đồng lỗi (retryAfter, remainingAttempts).
         assertThat(root.at("/paths/~1api~1v1~1auth~1register/post").isMissingNode()).isFalse();
+        assertThat(root.at("/paths/~1api~1v1~1auth~1register~1resend/post").isMissingNode()).isFalse();
+        assertThat(root.at("/paths/~1api~1v1~1auth~1register~1verify/post").isMissingNode()).isFalse();
         JsonNode registerProps = schemas.path("RegisterRequest").path("properties");
         for (String property : List.of(
-                "username", "fullName", "email", "password", "acceptTerms", "termsVersion", "callbackUrl")) {
+                "registrationId", "username", "fullName", "email", "password", "acceptTerms", "termsVersion", "callbackUrl")) {
             assertThat(registerProps.has(property)).as("RegisterRequest.%s", property).isTrue();
         }
         assertThat(registerProps.path("password").path("format").asText()).isEqualTo("password");
+        JsonNode registerStartProps = schemas.path("RegisterStartResponse").path("properties");
+        for (String property : List.of("registrationId", "email", "resendAfterSeconds")) {
+            assertThat(registerStartProps.has(property)).as("RegisterStartResponse.%s", property).isTrue();
+        }
+        assertThat(schemas.path("RegisterResendRequest").path("properties").has("registrationId")).isTrue();
+        assertThat(schemas.path("RegisterVerifyRequest").path("properties").has("registrationId")).isTrue();
+        assertThat(schemas.path("RegisterVerifyRequest").path("properties").has("code")).isTrue();
         assertThat(schemas.path("RegisterResponse").path("properties").has("redirectTo")).isTrue();
         JsonNode changeProps = schemas.path("EmailCodeChangeRequest").path("properties");
         assertThat(changeProps.has("newEmail")).isTrue();

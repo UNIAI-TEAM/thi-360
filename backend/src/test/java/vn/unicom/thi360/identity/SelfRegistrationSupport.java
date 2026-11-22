@@ -90,8 +90,74 @@ final class SelfRegistrationSupport {
         }
     }
 
+    private static final java.util.regex.Pattern SIX_DIGITS =
+            java.util.regex.Pattern.compile("(?<!\\d)(\\d{6})(?!\\d)");
+
     ResultActions register(Map<String, Object> body, String ip, Cookie... cookies) throws Exception {
+        Object rawEmail = body.get("email");
+        if (rawEmail != null && !String.valueOf(rawEmail).isBlank()) {
+            jdbc.update(
+                    "UPDATE identity.pending_registration_send SET created_at = created_at - interval '61 seconds'"
+                            + " WHERE email_normalized = ?",
+                    String.valueOf(rawEmail).trim().toLowerCase());
+        }
+        ResultActions start = startRegistration(body, ip, cookies);
+        var startResult = start.andReturn();
+        if (startResult.getResponse().getStatus() != 200) {
+            return start;
+        }
+        UUID registrationId = UUID.fromString(objectMapper
+                .readTree(startResult.getResponse().getContentAsString())
+                .path("registrationId")
+                .asText());
+        String otp = latestVerifyCode(String.valueOf(body.get("email")));
+        return verifyRegistration(registrationId, otp, ip, cookies);
+    }
+
+    ResultActions startRegistration(Map<String, Object> body, String ip, Cookie... cookies) throws Exception {
         return mockMvc.perform(request(body, ip, cookies));
+    }
+
+    ResultActions resendRegistration(UUID registrationId, String ip, Cookie... cookies) throws Exception {
+        ips.add(ip);
+        MockHttpServletRequestBuilder builder = MockMvcRequestBuilders.post("/api/v1/auth/register/resend")
+                .header(ClientIpResolver.X_FORWARDED_FOR, ip)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("registrationId", registrationId)));
+        if (cookies != null && cookies.length > 0) {
+            builder.cookie(cookies);
+        }
+        return mockMvc.perform(builder);
+    }
+
+    ResultActions verifyRegistration(UUID registrationId, String code, String ip, Cookie... cookies) throws Exception {
+        return mockMvc.perform(verifyRequest(registrationId, code, ip, cookies));
+    }
+
+    MockHttpServletRequestBuilder verifyRequest(UUID registrationId, String code, String ip, Cookie... cookies)
+            throws Exception {
+        ips.add(ip);
+        MockHttpServletRequestBuilder builder = MockMvcRequestBuilders.post("/api/v1/auth/register/verify")
+                .header(ClientIpResolver.X_FORWARDED_FOR, ip)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("registrationId", registrationId, "code", code)));
+        if (cookies != null && cookies.length > 0) {
+            builder.cookie(cookies);
+        }
+        return builder;
+    }
+
+    String latestVerifyCode(String email) {
+        String text = jdbc.queryForObject(
+                "SELECT text FROM shared.email_message WHERE lower(to_email) = ? AND kind = 'EMAIL_VERIFY'"
+                        + " ORDER BY created_at DESC, id DESC LIMIT 1",
+                String.class,
+                email.trim().toLowerCase());
+        var matcher = SIX_DIGITS.matcher(text == null ? "" : text);
+        if (!matcher.find()) {
+            throw new IllegalStateException("No 6-digit OTP found in EMAIL_VERIFY mail for " + email);
+        }
+        return matcher.group(1);
     }
 
     MockHttpServletRequestBuilder request(Map<String, Object> body, String ip, Cookie... cookies) throws Exception {
@@ -136,6 +202,7 @@ final class SelfRegistrationSupport {
 
     void cleanup() {
         for (String username : usernames) {
+            jdbc.update("DELETE FROM identity.pending_registration WHERE username_normalized = ?", username);
             for (UUID id : jdbc.queryForList(
                     "SELECT id FROM identity.user_account WHERE username_normalized = ?", UUID.class, username)) {
                 deleteAccountRows(id);
@@ -149,6 +216,7 @@ final class SelfRegistrationSupport {
             });
         }
         for (String email : emails) {
+            jdbc.update("DELETE FROM identity.pending_registration WHERE email_normalized = ?", email);
             jdbc.update("DELETE FROM shared.email_message WHERE lower(to_email) = ?", email);
         }
         for (String ip : ips) {

@@ -15169,6 +15169,11 @@
             "minLength" : 0,
             "type" : "string"
           },
+          "registrationId" : {
+            "description" : "Mã phiên đăng ký đang chờ (khi học viên quay lại sửa thông tin ở Bước 1)",
+            "format" : "uuid",
+            "type" : "string"
+          },
           "termsVersion" : {
             "description" : "Phiên bản điều khoản đã hiển thị cho người dùng, lưu đúng giá trị gửi lên",
             "example" : "2026-11",
@@ -15187,6 +15192,18 @@
         "required" : [ "acceptTerms", "email", "fullName", "password", "termsVersion", "username" ],
         "type" : "object"
       },
+      "RegisterResendRequest" : {
+        "description" : "Yêu cầu gửi lại mã OTP cho phiên đăng ký đang chờ",
+        "properties" : {
+          "registrationId" : {
+            "description" : "Mã phiên đăng ký chờ xác minh",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "registrationId" ],
+        "type" : "object"
+      },
       "RegisterResponse" : {
         "description" : "Kết quả đăng ký: phiên đã được tạo (cookie HttpOnly)",
         "properties" : {
@@ -15197,6 +15214,48 @@
           }
         },
         "required" : [ "redirectTo" ],
+        "type" : "object"
+      },
+      "RegisterStartResponse" : {
+        "description" : "Kết quả khởi tạo hoặc gửi lại mã OTP cho phiên tự đăng ký",
+        "properties" : {
+          "email" : {
+            "description" : "Địa chỉ email nhận mã OTP xác minh",
+            "example" : "an@thi360.vn",
+            "type" : "string"
+          },
+          "registrationId" : {
+            "description" : "Mã phiên đăng ký chờ xác minh OTP",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "resendAfterSeconds" : {
+            "description" : "Số giây cần chờ trước khi được phép gửi lại mã OTP",
+            "example" : 60,
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "email", "registrationId", "resendAfterSeconds" ],
+        "type" : "object"
+      },
+      "RegisterVerifyRequest" : {
+        "description" : "Yêu cầu xác nhận mã OTP 6 chữ số và hoàn tất tạo tài khoản học viên",
+        "properties" : {
+          "code" : {
+            "description" : "Mã OTP 6 chữ số gửi qua email",
+            "example" : 123456,
+            "maxLength" : 16,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "registrationId" : {
+            "description" : "Mã phiên đăng ký chờ xác minh",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "registrationId" ],
         "type" : "object"
       },
       "ReopenEssayRequest" : {
@@ -46955,8 +47014,8 @@
     },
     "/api/v1/auth/register" : {
       "post" : {
-        "description" : "Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.",
-        "operationId" : "register",
+        "description" : "Công khai. Chưa tạo tài khoản trong identity hay Keycloak; xếp thư mã OTP xác minh email.",
+        "operationId" : "startRegistration",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -46968,15 +47027,164 @@
           "required" : true
         },
         "responses" : {
-          "201" : {
+          "200" : {
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/RegisterResponse"
+                  "$ref" : "#/components/schemas/RegisterStartResponse"
                 }
               }
             },
-            "description" : "Created"
+            "description" : "Đã tạo phiên đăng ký chờ và xếp thư mã OTP"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Dữ liệu không hợp lệ (VALIDATION_FAILED)"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Trùng tên đăng nhập hoặc email (USERNAME_TAKEN, EMAIL_TAKEN)"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "Gửi quá nhanh hoặc quá giới hạn mỗi ngày: kèm Retry-After và retryAfter"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Bước 1 tự đăng ký học viên: kiểm tra thông tin và gửi mã OTP 6 chữ số qua email",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/register/resend" : {
+      "post" : {
+        "operationId" : "resendRegistrationCode",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterResendRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RegisterStartResponse"
+                }
+              }
+            },
+            "description" : "Đã cấp mã OTP mới và xếp thư"
           },
           "400" : {
             "content" : {
@@ -47050,13 +47258,163 @@
           },
           "422" : {
             "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "Phiên đăng ký đã hết hạn hoặc hoàn tất (EMAIL_CODE_EXPIRED)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "Chưa đủ 60 giây hoặc quá 5 mã trong 24 giờ: kèm Retry-After và retryAfter"
+          },
+          "500" : {
+            "content" : {
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiError"
                 }
               }
             },
-            "description" : "Unprocessable Entity"
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Gửi lại mã OTP 6 chữ số cho phiên tự đăng ký đang chờ",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/register/verify" : {
+      "post" : {
+        "description" : "Công khai. Tạo tài khoản đã xác minh email trong identity và Keycloak, đặt cookie HttpOnly.",
+        "operationId" : "verifyRegistration",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterVerifyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RegisterResponse"
+                }
+              }
+            },
+            "description" : "Đã tạo tài khoản học viên và mở phiên đăng nhập"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Trùng tên đăng nhập hoặc email (USERNAME_TAKEN, EMAIL_TAKEN)"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED"
           },
           "429" : {
             "content" : {
@@ -47099,7 +47457,7 @@
             "description" : "Bad Gateway"
           }
         },
-        "summary" : "Tự đăng ký tài khoản học viên",
+        "summary" : "Bước 2 tự đăng ký học viên: xác nhận mã OTP email, tạo tài khoản và mở phiên đăng nhập",
         "tags" : [ "Auth" ]
       }
     },

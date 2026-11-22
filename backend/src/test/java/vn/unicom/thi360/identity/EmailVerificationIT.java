@@ -80,6 +80,15 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
     @Autowired
     private KeycloakIdentityClient keycloakClient;
 
+    @Autowired
+    private vn.unicom.thi360.identity.application.EmailCodeService emailCodeService;
+
+    @Autowired
+    private vn.unicom.thi360.shared.mail.MailQueue mailQueue;
+
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager txManager;
+
     private SelfRegistrationSupport support;
     private MailOutbox mailOutbox;
 
@@ -104,7 +113,27 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
         String username = "verify." + suffix;
         String email = "verify." + suffix + "@thi360.vn";
         support.register(support.body(username, email), SelfRegistrationSupport.freshIp()).andExpect(status().isCreated());
-        return new Account(support.accountId(username), username, email);
+        Account account = new Account(support.accountId(username), username, email);
+        makeUnverifiedWithFreshCode(account);
+        return account;
+    }
+
+    private void makeUnverifiedWithFreshCode(Account account) {
+        jdbcTemplate.update("UPDATE identity.user_account SET email_verified_at = NULL WHERE id = ?", account.id());
+        var userRes = KEYCLOAK.getKeycloakAdminClient().realm("thi-360").users().get(account.id().toString());
+        var rep = userRes.toRepresentation();
+        rep.setEmailVerified(false);
+        userRes.update(rep);
+        jdbcTemplate.update("DELETE FROM shared.email_message WHERE lower(to_email) = ?", account.email().toLowerCase());
+        new org.springframework.transaction.support.TransactionTemplate(txManager).executeWithoutResult(s -> {
+            String otp = emailCodeService.issue(account.id(), EmailCodePurpose.VERIFY, account.email());
+            mailQueue.enqueue(
+                    MailKind.EMAIL_VERIFY,
+                    account.email(),
+                    "vi",
+                    Map.of("fullName", "Nguyễn Văn An", "code", otp),
+                    account.id());
+        });
     }
 
     private String latestCode(Account account) {
@@ -444,6 +473,7 @@ class EmailVerificationIT extends AbstractKeycloakIntegrationTest {
         assertThat(access).isNotNull();
         assertThat(xsrf).isNotNull();
         Account account = new Account(support.accountId(username), username, email);
+        makeUnverifiedWithFreshCode(account);
         String code = latestCode(account);
 
         // Không có tiêu đề XSRF: bị chặn, mã chưa bị đụng tới.

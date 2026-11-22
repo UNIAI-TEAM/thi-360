@@ -386,13 +386,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     /** POST route matched using the same decoded segments as MVC. */
     static final class RegistrationRoute {
-        private static final List<String> SEGMENTS = List.of("api", "v1", "auth", "register");
+        private static final List<String> START = List.of("api", "v1", "auth", "register");
+        private static final List<String> RESEND = List.of("api", "v1", "auth", "register", "resend");
+        private static final List<String> VERIFY = List.of("api", "v1", "auth", "register", "verify");
 
         private RegistrationRoute() {}
 
         static boolean matches(HttpServletRequest request) {
-            return "POST".equalsIgnoreCase(request.getMethod())
-                    && SEGMENTS.equals(decodedSegments(request));
+            if (!"POST".equalsIgnoreCase(request.getMethod())) {
+                return false;
+            }
+            List<String> segments = decodedSegments(request);
+            return START.equals(segments) || RESEND.equals(segments) || VERIFY.equals(segments);
         }
     }
 

@@ -22,15 +22,16 @@ import vn.unicom.thi360.shared.web.LocaleConfig;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
 
 /**
- * Hợp đồng lỗi của API mã OTP email mà FS-2 dùng (plan ID-1), cho riêng {@link MeEmailController}; không sửa
- * {@code ApiError} và {@code GlobalExceptionHandler} (plan B2):
+ * Hợp đồng lỗi của API mã OTP email mà FS-2 dùng (plan ID-1, UNI-2773), cho {@link MeEmailController} và các đường dẫn
+ * OTP đăng ký trên {@link AuthController}; không sửa {@code ApiError} và {@code GlobalExceptionHandler} (plan B2):
  * <ul>
  *   <li>429 {@code RATE_LIMITED}: header {@code Retry-After} và trường {@code retryAfter} (giây);</li>
  *   <li>422 {@code EMAIL_CODE_INVALID}: trường {@code remainingAttempts};</li>
- *   <li>503: Keycloak lỗi lúc đồng bộ email ở {@code /change/confirm}.</li>
+ *   <li>503: Keycloak lỗi lúc đồng bộ email ở {@code /me/email/change/confirm} (chỉ áp cho {@link MeEmailController},
+ *       còn {@link AuthController} giữ nguyên 502 từ {@code GlobalExceptionHandler}).</li>
  * </ul>
  */
-@RestControllerAdvice(assignableTypes = {MeEmailController.class})
+@RestControllerAdvice(assignableTypes = {MeEmailController.class, AuthController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class EmailCodeExceptionHandler {
 
@@ -49,29 +50,46 @@ public class EmailCodeExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfter))
-                .body(body("RATE_LIMITED", request, retryAfter, null));
+                .body(buildErrorBody(messageSource, "RATE_LIMITED", request, retryAfter, null));
     }
 
     @ExceptionHandler(EmailCodeInvalidException.class)
-    public ResponseEntity<EmailCodeErrorResponse> handleInvalid(EmailCodeInvalidException ex, HttpServletRequest request) {
+    public ResponseEntity<EmailCodeErrorResponse> handleInvalid(
+            EmailCodeInvalidException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body("EMAIL_CODE_INVALID", request, null, ex.getRemainingAttempts()));
+                .body(buildErrorBody(messageSource, "EMAIL_CODE_INVALID", request, null, ex.getRemainingAttempts()));
     }
 
-    @ExceptionHandler(ExternalServiceException.class)
-    public ResponseEntity<EmailCodeErrorResponse> handleIdentityProviderFailure(
-            ExternalServiceException ex, HttpServletRequest request) {
-        log.atError()
-                .setCause(ex)
-                .addKeyValue("code", ex.getCode())
-                .log("Identity provider failure while handling an email code request");
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body(ex.getCode(), request, null, null));
+    @RestControllerAdvice(assignableTypes = {MeEmailController.class})
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public static class MeEmailProviderExceptionHandler {
+
+        private final MessageSource messageSource;
+
+        public MeEmailProviderExceptionHandler(MessageSource messageSource) {
+            this.messageSource = messageSource;
+        }
+
+        @ExceptionHandler(ExternalServiceException.class)
+        public ResponseEntity<EmailCodeErrorResponse> handleIdentityProviderFailure(
+                ExternalServiceException ex, HttpServletRequest request) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("code", ex.getCode())
+                    .log("Identity provider failure while handling an email code request");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(buildErrorBody(messageSource, ex.getCode(), request, null, null));
+        }
     }
 
-    private EmailCodeErrorResponse body(String code, HttpServletRequest request, Long retryAfter, Integer remaining) {
+    static EmailCodeErrorResponse buildErrorBody(
+            MessageSource messageSource,
+            String code,
+            HttpServletRequest request,
+            Long retryAfter,
+            Integer remaining) {
         Locale locale = LocaleConfig.resolveLocale(request);
         String message = messageSource.getMessage(code, null, code, locale);
         return new EmailCodeErrorResponse(code, message, List.of(), resolveTraceId(request), retryAfter, remaining);

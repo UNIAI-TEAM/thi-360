@@ -116,7 +116,7 @@
     "register": {
       "backHome": "Trang chủ",
       "continueNote": "Sau khi đăng ký, bạn quay lại bước bạn đang làm dở.",
-      "emailHint": "Dùng để liên hệ và khôi phục tài khoản. Bạn sẽ nhận mã xác minh sau khi đăng ký.",
+      "emailHint": "Dùng để liên hệ và khôi phục tài khoản. Bạn sẽ nhận mã xác minh 6 chữ số để hoàn tất đăng ký.",
       "emailInvalid": "Email chưa đúng định dạng.",
       "emailLabel": "Email",
       "emailPlaceholder": "Nhập email của bạn",
@@ -138,6 +138,30 @@
         "subtitle": "Tự đăng ký tài khoản học viên bằng tên đăng nhập và mật khẩu của bạn. Không cần chọn lớp hay đơn vị."
       },
       "loginLink": "Đăng nhập",
+      "otp": {
+        "alerts": {
+          "codeExpired": "Mã này không còn dùng được. Bấm Gửi lại mã để nhận mã mới.",
+          "generic": "Không xác minh được mã. Vui lòng thử lại.",
+          "rateLimited": "Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.",
+          "resendFailed": "Không gửi được mã mới. Vui lòng thử lại."
+        },
+        "backToEdit": "Quay lại sửa thông tin",
+        "codeInvalid": "Mã chưa đúng. Bạn còn {count} lần thử.",
+        "codeLabel": "Mã xác minh",
+        "codePlaceholder": "6 chữ số",
+        "codeRequired": "Vui lòng nhập mã gồm 6 chữ số.",
+        "codeResent": "Đã gửi mã mới. Mã cũ không còn dùng được.",
+        "cooldownEnd": "Bạn có thể gửi lại mã bây giờ.",
+        "cooldownStart": "Có thể gửi lại mã sau {time}.",
+        "dailyLimit": "Bạn đã gửi lại mã quá số lần cho phép. Thử lại sau {time}.",
+        "footnote": "Tài khoản chỉ được tạo sau khi bạn xác minh mã 6 chữ số. Mã có hiệu lực trong 10 phút.",
+        "notReceived": "Chưa nhận được mã?",
+        "resend": "Gửi lại mã",
+        "resendIn": "Gửi lại mã sau {time}",
+        "sentTo": "Chúng tôi đã gửi mã 6 chữ số tới <strong>{email}</strong>. Nhập mã bên dưới để tạo tài khoản.",
+        "submit": "Xác minh",
+        "title": "Xác minh email"
+      },
       "password": {
         "hide": "Ẩn mật khẩu",
         "ruleDigit": "Có ít nhất một chữ số",
