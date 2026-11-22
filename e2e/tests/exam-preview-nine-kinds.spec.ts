@@ -40,7 +40,7 @@ interface TargetExamKind {
 
 const NINE_EXAM_KINDS: readonly TargetExamKind[] = [
   { kind: "HSA", code: "DS-HSA-SUBJECT-TOAN-MINI" },
-  { kind: "QDA", code: "DS-QDA-PART-SCIENCE-MINI" },
+  { kind: "QDA", code: "DS-QDA-PART-SCIENCE-MINI", pathChoice: /Q[DĐ]01/i },
   { kind: "BCA", code: "DS-BCA-FULL-MINI", pathChoice: /CA1/i },
   { kind: "VACT", code: "DS-VACT-SUBJECT-TOAN-MINI" },
   { kind: "SP2E", code: "DS-SP2E-MATH-2026-MINI" },
@@ -58,7 +58,11 @@ const MATRIX_ALLOW_LANGUAGE: RegExp[] = [
   /^Thi\s*360$/,
 ];
 
-const MATRIX_OVERFLOW_OPTS = { scope: "main", allowAccessibleScroller: true } as const;
+const MATRIX_OVERFLOW_OPTS = {
+  scope: "main",
+  allowAccessibleScroller: true,
+  ignore: "pre,input,textarea,select,.katex-display,nav ul.overflow-x-auto",
+} as const;
 
 async function findExamByCode(admin: AdminApi, code: string): Promise<AdminExamListItem> {
   const res = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams?q=${encodeURIComponent(code)}&size=20`);
@@ -121,6 +125,7 @@ async function countRenderedQuestions(panel: Locator): Promise<number> {
     if (!match) continue;
     const from = Number(match[1]);
     const to = match[2] ? Number(match[2]) : from;
+    expect(to, `Dai cau khong hop le: ${text.trim()}`).toBeGreaterThanOrEqual(from);
     total += to - from + 1;
   }
   return total;
@@ -135,7 +140,12 @@ async function generateExamPreview(
   await page.goto(`${ADMIN_URL}/exams/${examId}/review`);
   const panel = await openPreviewTabForLocale(page, lang);
   if (pathChoice) {
-    await selectPathInUi(page, panel, pathChoice);
+    if (lang === "en") {
+      await panel.getByRole("combobox", { name: "Choice path" }).click();
+      await page.getByRole("option", { name: pathChoice }).click();
+    } else {
+      await selectPathInUi(page, panel, pathChoice);
+    }
   }
   const genButton = panel.getByRole("button", {
     name: /^(Sinh đề xem trước|Sinh đề thử mới|Generate preview paper|Generate a new trial paper)$/,
@@ -147,7 +157,9 @@ async function generateExamPreview(
   expectWellFormedPaper(result);
   expect(result.paper.totalQuestions).toBeGreaterThan(0);
 
-  await expect(panel.locator("[data-exam-content]").first()).toBeVisible({ timeout: 20_000 });
+  await expect(panel.getByRole("heading", { name: /^(?:Câu|Questions?)\s+\d+/ }).first()).toBeVisible({
+    timeout: 20_000,
+  });
   await waitPreviewSettled(page);
   return { panel, totalQuestions: result.paper.totalQuestions, previewId: result.previewId ?? null };
 }
@@ -170,7 +182,7 @@ test.describe("FA-5: đề xem trước qua @thi360/ui/question cho 9 kỳ thi v
           entry.pathChoice,
         );
 
-        await expect(panel.getByText(`${totalQuestions} câu`, { exact: false }).first()).toBeVisible();
+        await expect(panel.getByText(new RegExp(`(^|\\D)${totalQuestions}\\s+câu(?:\\b|$)`)).first()).toBeVisible();
         await expandAllBlocks(panel);
         expect(await countRenderedQuestions(panel), `${entry.kind} (${entry.code}): so cau hien thi`).toBe(
           totalQuestions,
@@ -191,17 +203,46 @@ test.describe("FA-5: đề xem trước qua @thi360/ui/question cho 9 kỳ thi v
           await expect(tryButton).toBeEnabled();
           const [trialPage] = await Promise.all([context.waitForEvent("page"), tryButton.click()]);
           const trialErrors = trackPageErrors(trialPage);
+          const forbiddenTrialRequests: string[] = [];
+          trialPage.on("request", (req) => {
+            const url = req.url();
+            if (
+              url.includes("/attempts/") ||
+              url.includes("/play-log") ||
+              url.includes("/audio/plays") ||
+              (req.method() !== "GET" && url.includes("audio"))
+            ) {
+              forbiddenTrialRequests.push(`${req.method()} ${url}`);
+            }
+          });
           try {
             await trialPage.waitForLoadState("domcontentloaded");
             await expect(trialPage).toHaveURL(new RegExp(`/exams/${exam.id}/preview/.+/try`));
+            await expect(
+              trialPage.getByRole("group", { name: /^Trình phát audio(?: chung)? · Câu \d+/ }).first(),
+            ).toBeVisible({ timeout: 20_000 });
             const regions = trialPage.getByRole("region", { name: "Trình phát audio" });
             await expect(regions.first()).toBeVisible({ timeout: 20_000 });
-            await expect(regions.first().getByText("Còn 2/2 lần nghe")).toBeVisible();
+            const firstRegion = regions.first();
+            await expect(firstRegion.getByText("Còn 2/2 lần nghe")).toBeVisible();
             await expect(trialPage.locator('input[type="range"]')).toHaveCount(0);
             await expect(trialPage.getByRole("slider")).toHaveCount(0);
-            const firstAudio = regions.first().locator("audio");
+            const firstAudio = firstRegion.locator("audio");
             await expect(firstAudio).toHaveAttribute("preload", "none");
             expect(await firstAudio.getAttribute("controls")).toBeNull();
+
+            const [assetResponse] = await Promise.all([
+              trialPage.waitForResponse(
+                (res) =>
+                  res.url().includes("/api/v1/admin/question-assets/") && res.request().method() === "GET",
+                { timeout: 20_000 },
+              ),
+              firstRegion.getByRole("button", { name: "Nghe" }).click(),
+            ]);
+            expect([200, 206]).toContain(assetResponse.status());
+            await expect(firstRegion.getByText("Còn 1/2 lần nghe")).toBeVisible();
+            await expect(firstAudio).toHaveAttribute("src", /\/api\/v1\/admin\/question-assets\//);
+            expect(forbiddenTrialRequests, `HSCA trial unexpected requests: ${forbiddenTrialRequests.join("; ")}`).toEqual([]);
             expect(trialErrors, `HSCA trial console errors: ${trialErrors.join("; ")}`).toEqual([]);
           } finally {
             await trialPage.close();
@@ -265,6 +306,11 @@ test.describe("FA-5: đề xem trước qua @thi360/ui/question cho 9 kỳ thi v
             const trialErrors = trackPageErrors(trialPage);
             try {
               await trialPage.waitForLoadState("domcontentloaded");
+              await expect(
+                trialPage.getByRole("group", {
+                  name: /^(?:Trình phát audio(?: chung)?|Shared audio player|Audio player) · /,
+                }).first(),
+              ).toBeVisible({ timeout: 20_000 });
               await expect(
                 trialPage.getByRole("region", { name: /^(?:Trình phát audio|Audio player)$/ }).first(),
               ).toBeVisible({ timeout: 20_000 });
