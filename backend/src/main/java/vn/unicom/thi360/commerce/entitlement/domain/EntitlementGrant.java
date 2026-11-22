@@ -49,6 +49,9 @@ public class EntitlementGrant {
     @Column(name = "compensation_attempt_id", updatable = false)
     private UUID compensationAttemptId;
 
+    @Column(name = "class_assignment_id", updatable = false)
+    private UUID classAssignmentId;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "option_codes", nullable = false, updatable = false, columnDefinition = "text[]")
     private String[] optionCodes;
@@ -129,6 +132,31 @@ public class EntitlementGrant {
         grant.compensationAttemptId = attemptId;
         grant.reason = reason;
         return grant;
+    }
+
+    /** Class exam assignment grant (UNI-2774, C12). */
+    public static EntitlementGrant classAssignment(
+            UUID id,
+            UUID entitlementId,
+            UUID classAssignmentId,
+            UUID examId,
+            List<String> optionCodes,
+            int attempts,
+            Map<String, Object> benefits,
+            String resultView,
+            int examVersionNo,
+            Instant grantedAt,
+            String grantedBy,
+            String note) {
+        EntitlementGrant grant = new EntitlementGrant(id, entitlementId, GrantSource.CLASS, examId, optionCodes,
+                attempts, benefits, resultView, examVersionNo, grantedAt, grantedBy);
+        grant.classAssignmentId = classAssignmentId;
+        grant.reason = note;
+        return grant;
+    }
+
+    public UUID getClassAssignmentId() {
+        return classAssignmentId;
     }
 
     public UUID getId() {

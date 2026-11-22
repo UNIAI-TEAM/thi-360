@@ -184,6 +184,8 @@ function makeDeps(overrides: Partial<ClassesApiDeps> = {}): Partial<ClassesApiDe
       userId,
       transferredAt: "2026-11-14T00:00:00Z",
     })),
+    listClassExamAssignments: vi.fn<ClassesApiDeps["listClassExamAssignments"]>(async () => []),
+    listAssignableClassExams: vi.fn<ClassesApiDeps["listAssignableClassExams"]>(async () => []),
     ...overrides,
   };
 }

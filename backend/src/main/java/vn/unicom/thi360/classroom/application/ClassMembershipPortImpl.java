@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import vn.unicom.thi360.classroom.domain.ClassStatus;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberHistoryRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassRoomRepository;
+import vn.unicom.thi360.classroom.spi.ClassMembersAdded;
 import vn.unicom.thi360.identity.spi.ClassMembershipPort;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.api.ConflictException;
@@ -48,6 +50,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
     private final AuditRecorder auditRecorder;
     private final AppMessages messages;
     private final ClassService classService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ClassMembershipPortImpl(
             ClassRoomRepository classRoomRepository,
@@ -65,7 +68,29 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
                 classMemberLock,
                 classService,
                 auditRecorder,
-                AppMessages.defaultInstance());
+                AppMessages.defaultInstance(),
+                event -> {});
+    }
+
+    public ClassMembershipPortImpl(
+            ClassRoomRepository classRoomRepository,
+            ClassMemberRepository classMemberRepository,
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
+            ClassService classService,
+            AuditRecorder auditRecorder,
+            AppMessages messages) {
+        this(
+                classRoomRepository,
+                classMemberRepository,
+                classMemberHistoryRepository,
+                userDirectory,
+                classMemberLock,
+                classService,
+                auditRecorder,
+                messages,
+                event -> {});
     }
 
     @Autowired
@@ -77,7 +102,8 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
             ClassMemberLock classMemberLock,
             ClassService classService,
             AuditRecorder auditRecorder,
-            AppMessages messages) {
+            AppMessages messages,
+            ApplicationEventPublisher eventPublisher) {
         this.classRoomRepository = classRoomRepository;
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
@@ -86,6 +112,7 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
         this.auditRecorder = auditRecorder;
         this.classService = classService;
         this.messages = messages;
+        this.eventPublisher = eventPublisher == null ? (event -> {}) : eventPublisher;
     }
 
     @Override
@@ -188,6 +215,8 @@ public class ClassMembershipPortImpl implements ClassMembershipPort {
                         .target(TARGET_TYPE_CLASS, classRoom.getId().toString(), classRoom.getCode())
                         .after(after)
                         .build());
+                eventPublisher.publishEvent(
+                        new ClassMembersAdded(classRoom.getId(), List.of(userId), actorId, occurredAt));
             }
         }
     }

@@ -86,13 +86,33 @@ public class ExamAccessReadRepository {
     /** Every purchase entitlement of the account (source {@code PURCHASE}, no source reference), oldest first. */
     public List<EntitlementRow> findPurchaseEntitlements(UUID userId) {
         return jdbc.query("""
-                SELECT id, exam_id, attempts_total, attempts_used, attempts_reserved, attempts_revoked
+                SELECT id, exam_id, source, source_ref, attempts_total, attempts_used, attempts_reserved, attempts_revoked
                 FROM commerce.entitlement
                 WHERE user_id = ? AND source = 'PURCHASE' AND source_ref IS NULL
                 ORDER BY created_at, id
-                """, (rs, row) -> new EntitlementRow(rs.getObject("id", UUID.class),
-                rs.getObject("exam_id", UUID.class), rs.getInt("attempts_total"), rs.getInt("attempts_used"),
-                rs.getInt("attempts_reserved"), rs.getInt("attempts_revoked")), userId);
+                """, (rs, row) -> entitlementRow(rs), userId);
+    }
+
+    /** Every purchase or class entitlement of the account (TM 12, UNI-2774), oldest first. */
+    public List<EntitlementRow> findEntitlements(UUID userId) {
+        return jdbc.query("""
+                SELECT id, exam_id, source, source_ref, attempts_total, attempts_used, attempts_reserved, attempts_revoked
+                FROM commerce.entitlement
+                WHERE user_id = ? AND source IN ('PURCHASE', 'CLASS')
+                ORDER BY created_at, id
+                """, (rs, row) -> entitlementRow(rs), userId);
+    }
+
+    private static EntitlementRow entitlementRow(java.sql.ResultSet rs) throws SQLException {
+        return new EntitlementRow(
+                rs.getObject("id", UUID.class),
+                rs.getObject("exam_id", UUID.class),
+                rs.getString("source"),
+                rs.getObject("source_ref", UUID.class),
+                rs.getInt("attempts_total"),
+                rs.getInt("attempts_used"),
+                rs.getInt("attempts_reserved"),
+                rs.getInt("attempts_revoked"));
     }
 
     /**
@@ -170,8 +190,25 @@ public class ExamAccessReadRepository {
     public record GrantOptions(boolean usable, Set<String> optionCodes) {
     }
 
-    public record EntitlementRow(UUID id, UUID examId, int attemptsTotal, int attemptsUsed, int attemptsReserved,
-                                 int attemptsRevoked) {
+    public record EntitlementRow(
+            UUID id,
+            UUID examId,
+            String source,
+            UUID sourceRef,
+            int attemptsTotal,
+            int attemptsUsed,
+            int attemptsReserved,
+            int attemptsRevoked) {
+
+        public EntitlementRow(
+                UUID id,
+                UUID examId,
+                int attemptsTotal,
+                int attemptsUsed,
+                int attemptsReserved,
+                int attemptsRevoked) {
+            this(id, examId, "PURCHASE", null, attemptsTotal, attemptsUsed, attemptsReserved, attemptsRevoked);
+        }
 
         public int attemptsLeft() {
             return attemptsTotal - attemptsUsed - attemptsReserved - attemptsRevoked;

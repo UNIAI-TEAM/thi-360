@@ -1089,6 +1089,95 @@
         "required" : [ "mode", "palette", "version" ],
         "type" : "object"
       },
+      "AssignClassExamsRequest" : {
+        "description" : "Yêu cầu giao một hoặc nhiều bài thi cho lớp học (UNI-2774)",
+        "properties" : {
+          "attemptsGranted" : {
+            "format" : "int32",
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "autoGrantNewMembers" : {
+            "description" : "Tự động cấp cho học viên vào lớp sau; mặc định true",
+            "type" : "boolean"
+          },
+          "examIds" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "note" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : [ "string", "null" ]
+          },
+          "resultView" : {
+            "enum" : [ "SCORE", "SCORE_AND_ANSWERS", "FULL_SOLUTION" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "attemptsGranted", "examIds", "resultView" ],
+        "type" : "object"
+      },
+      "AssignClassExamsResponse" : {
+        "description" : "Kết quả giao bài thi cho lớp học (UNI-2774)",
+        "properties" : {
+          "assignments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ClassExamAssignmentItem"
+            },
+            "type" : "array"
+          },
+          "totalGrantsCreated" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "assignments", "totalGrantsCreated" ],
+        "type" : "object"
+      },
+      "AssignableExamItem" : {
+        "description" : "Bài thi đang xuất bản có thể chọn giao cho lớp học (UNI-2774)",
+        "properties" : {
+          "activeInClass" : {
+            "type" : "boolean"
+          },
+          "buildMode" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "defaultResultView" : {
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKind" : {
+            "$ref" : "#/components/schemas/ExamKindRef"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "scopeLabel" : {
+            "$ref" : "#/components/schemas/LocalizedName"
+          },
+          "versionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "activeInClass", "buildMode", "code", "defaultResultView", "examId", "examKind", "name", "scope", "versionNo" ],
+        "type" : "object"
+      },
       "AttemptAttachmentView" : {
         "properties" : {
           "assetId" : {
@@ -4900,6 +4989,99 @@
           }
         },
         "required" : [ "code", "createdAt", "id", "memberCount", "name", "status", "updatedAt", "version" ],
+        "type" : "object"
+      },
+      "ClassExamAssignmentItem" : {
+        "description" : "Một đợt giao bài thi cho lớp học (UNI-2774)",
+        "properties" : {
+          "assignedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "assignedBy" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "assignedByUsername" : {
+            "type" : [ "string", "null" ]
+          },
+          "attemptsGranted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "autoGrantNewMembers" : {
+            "type" : "boolean"
+          },
+          "classId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examCode" : {
+            "type" : "string"
+          },
+          "examId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "examKind" : {
+            "$ref" : "#/components/schemas/ExamKindRef"
+          },
+          "examName" : {
+            "type" : "string"
+          },
+          "examVersionNo" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "grantedMembersCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "note" : {
+            "type" : [ "string", "null" ]
+          },
+          "resultView" : {
+            "type" : "string"
+          },
+          "revokeReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "revokedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "revokedBy" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "revokedByUsername" : {
+            "type" : [ "string", "null" ]
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "REVOKED" ],
+            "type" : "string"
+          },
+          "totalAttemptsLeft" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalAttemptsRevoked" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalAttemptsUsed" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "assignedAt", "assignedBy", "attemptsGranted", "autoGrantNewMembers", "classId", "examCode", "examId", "examKind", "examName", "examVersionNo", "grantedMembersCount", "id", "resultView", "scope", "status", "totalAttemptsLeft", "totalAttemptsRevoked", "totalAttemptsUsed" ],
         "type" : "object"
       },
       "ClassMemberResponse" : {
@@ -10163,7 +10345,7 @@
             "type" : "string"
           },
           "source" : {
-            "enum" : [ "PURCHASE", "COMPENSATION" ],
+            "enum" : [ "PURCHASE", "COMPENSATION", "CLASS" ],
             "type" : "string"
           }
         },
@@ -11134,7 +11316,7 @@
         "type" : "object"
       },
       "MyExamCard" : {
-        "description" : "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12, 16.4): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId)",
+        "description" : "Thẻ một bài thi trong \"Bài thi của tôi\" (TM 12, 16.4, UNI-2774): một quyền dùng nguồn mua hoặc lớp học, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId)",
         "properties" : {
           "actions" : {
             "description" : "Nút của thẻ theo TM 12, nút chính đứng đầu",
@@ -11174,6 +11356,15 @@
               "$ref" : "#/components/schemas/MyExamBundleRef"
             },
             "type" : [ "array", "null" ]
+          },
+          "classId" : {
+            "description" : "ID lớp học khi source = CLASS",
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "className" : {
+            "description" : "Tên lớp học khi source = CLASS",
+            "type" : [ "string", "null" ]
           },
           "code" : {
             "description" : "Mã sản phẩm, cũng là mã bài thi",
@@ -11240,6 +11431,10 @@
               "type" : "null"
             } ],
             "description" : "Tên phần (PART) hoặc môn (SUBJECT); null với FULL"
+          },
+          "source" : {
+            "description" : "Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền",
+            "type" : [ "string", "null" ]
           },
           "state" : {
             "description" : "Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)",
@@ -15504,6 +15699,31 @@
         },
         "type" : "object"
       },
+      "RevokeClassExamAssignmentRequest" : {
+        "description" : "Yêu cầu thu hồi đợt giao bài thi cho lớp (UNI-2774)",
+        "properties" : {
+          "reason" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "RevokeClassExamAssignmentResponse" : {
+        "description" : "Kết quả thu hồi đợt giao bài thi cho lớp (UNI-2774)",
+        "properties" : {
+          "assignment" : {
+            "$ref" : "#/components/schemas/ClassExamAssignmentItem"
+          },
+          "attemptsRevoked" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "assignment", "attemptsRevoked" ],
+        "type" : "object"
+      },
       "RoleDetailResponse" : {
         "description" : "Chi tiết vai trò kèm danh sách quyền",
         "properties" : {
@@ -16880,6 +17100,16 @@
           }
         },
         "required" : [ "version" ],
+        "type" : "object"
+      },
+      "UpdateClassExamAssignmentRequest" : {
+        "description" : "Cập nhật cấu hình tự động cấp thành viên mới của đợt giao bài (UNI-2774)",
+        "properties" : {
+          "autoGrantNewMembers" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "autoGrantNewMembers" ],
         "type" : "object"
       },
       "UpdateClassRequest" : {
@@ -25304,6 +25534,803 @@
           }
         },
         "summary" : "Tạo lớp học mới",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{classId}/assignable-exams" : {
+      "get" : {
+        "operationId" : "listAssignableExams",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "classId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AssignableExamItem"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách các bài thi đang xuất bản có thể giao cho lớp học",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{classId}/exam-assignments" : {
+      "get" : {
+        "operationId" : "listAssignments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "classId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ClassExamAssignmentItem"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Danh sách các đợt giao bài thi của lớp học",
+        "tags" : [ "Admin Classes" ]
+      },
+      "post" : {
+        "operationId" : "assignExams",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "classId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Khóa chống gửi trùng (bắt buộc)",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssignClassExamsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssignClassExamsResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Giao một hoặc nhiều bài thi đang xuất bản cho lớp học",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{classId}/exam-assignments/{assignmentId}" : {
+      "patch" : {
+        "operationId" : "updateAssignment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "classId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assignmentId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateClassExamAssignmentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClassExamAssignmentItem"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Cập nhật cấu hình tự động cấp thành viên mới của đợt giao bài",
+        "tags" : [ "Admin Classes" ]
+      }
+    },
+    "/api/v1/admin/classes/{classId}/exam-assignments/{assignmentId}/revoke" : {
+      "post" : {
+        "operationId" : "revokeAssignment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "classId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "assignmentId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RevokeClassExamAssignmentRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RevokeClassExamAssignmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Thu hồi đợt giao bài thi của lớp và thu hồi các lượt chưa dùng",
         "tags" : [ "Admin Classes" ]
       }
     },
@@ -55121,6 +56148,9 @@
   }, {
     "description" : "Chuẩn bị, bắt đầu và đọc trạng thái lượt thi",
     "name" : "Attempts"
+  }, {
+    "description" : "Quản lý lớp học và giao bài thi theo lớp",
+    "name" : "Admin Classes"
   }, {
     "description" : "Ngân hàng câu hỏi: lưu, trạng thái, tìm kiếm",
     "name" : "Admin Question Bank"

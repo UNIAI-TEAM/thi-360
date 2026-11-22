@@ -273,4 +273,51 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
     expect(screen.getByText("Kỳ thi riêng").closest("[data-exam-content]")).toBeNull();
     expect(screen.getByText("Tư duy định lượng")).toHaveAttribute("data-exam-content");
   });
+
+  it("9. UNI-2774 thẻ Bài theo lớp (source = CLASS): hiện chip lớp, ẩn Mua thêm/Mua lại và không hiện ghi chú ngừng bán", () => {
+    const first = renderWithProviders(
+      <MyExamCard
+        card={makeCard({
+          entitlementId: "ent-cls-1",
+          source: "CLASS",
+          classId: "cls-1",
+          className: "Lớp HSA 12A1",
+          saleState: "DISCONTINUED",
+          state: "CAN_START",
+          attemptsLeft: 2,
+          actions: ["START", "BUY_MORE"],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Bài theo lớp · Lớp HSA 12A1")).toBeInTheDocument();
+    expect(screen.queryByText("Đã mua")).toBeNull();
+    expect(screen.getByRole("link", { name: "Bắt đầu" })).toHaveAttribute("href", "/prepare/ent-cls-1");
+    expect(screen.queryByRole("link", { name: /Mua/ })).toBeNull();
+    expect(screen.queryByText(/Bài thi đã ngừng bán/)).toBeNull();
+    first.unmount();
+
+    renderWithProviders(
+      <MyExamCard
+        card={makeCard({
+          entitlementId: "ent-cls-2",
+          source: "CLASS",
+          classId: "cls-1",
+          className: null,
+          saleState: "DISCONTINUED",
+          state: "EXHAUSTED",
+          attemptsLeft: 0,
+          resultAttemptId: "att-cls-done",
+          actions: ["VIEW_RESULT", "HISTORY", "REBUY"],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Bài theo lớp")).toBeInTheDocument();
+    expect(
+      screen.getByText("Đã hết lượt được giao cho bài thi này. Kết quả và lịch sử vẫn xem được."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Mua/ })).toBeNull();
+    expect(screen.queryByText(/Bài thi đã ngừng bán/)).toBeNull();
+  });
 });

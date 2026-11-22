@@ -41,6 +41,44 @@ public interface EntitlementRepository extends JpaRepository<Entitlement, UUID> 
             """)
     Optional<Entitlement> lockPurchase(@Param("userId") UUID userId, @Param("examId") UUID examId);
 
+    @Modifying
+    @Query(value = """
+            INSERT INTO commerce.entitlement
+                (id, user_id, exam_id, source, source_ref, attempts_total, attempts_used, attempts_reserved,
+                 attempts_revoked, created_at, updated_at, version)
+            VALUES (:id, :userId, :examId, 'CLASS', :classId, 0, 0, 0, 0, :now, :now, 0)
+            ON CONFLICT ON CONSTRAINT uq_entitlement_scope DO NOTHING
+            """, nativeQuery = true)
+    int insertClassIfAbsent(
+            @Param("id") UUID id,
+            @Param("userId") UUID userId,
+            @Param("examId") UUID examId,
+            @Param("classId") UUID classId,
+            @Param("now") Instant now);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT e FROM Entitlement e
+            WHERE e.userId = :userId AND e.examId = :examId
+              AND e.source = vn.unicom.thi360.commerce.entitlement.domain.EntitlementSource.CLASS
+              AND e.sourceRef = :classId
+            """)
+    Optional<Entitlement> lockClass(
+            @Param("userId") UUID userId,
+            @Param("examId") UUID examId,
+            @Param("classId") UUID classId);
+
+    @Query("""
+            SELECT e.id FROM Entitlement e
+            WHERE e.userId = :userId
+              AND e.source = vn.unicom.thi360.commerce.entitlement.domain.EntitlementSource.CLASS
+              AND e.sourceRef = :classId
+            ORDER BY e.id ASC
+            """)
+    List<UUID> findClassEntitlementIdsByUserAndClass(
+            @Param("userId") UUID userId,
+            @Param("classId") UUID classId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Entitlement e WHERE e.id = :id")
     Optional<Entitlement> lockById(@Param("id") UUID id);

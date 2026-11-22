@@ -28,6 +28,23 @@ public interface EntitlementGrantRepository extends JpaRepository<EntitlementGra
      * Oldest grant of the entitlement (lowest {@code seq}, E21) that still has an attempt to give, locked; the
      * entitlement row is already locked (B2 order).
      */
+    Optional<EntitlementGrant> findByClassAssignmentIdAndEntitlementId(UUID classAssignmentId, UUID entitlementId);
+
+    @Query("""
+            SELECT g.id FROM EntitlementGrant g
+            WHERE g.classAssignmentId = :classAssignmentId
+            ORDER BY g.entitlementId ASC, g.seq ASC
+            """)
+    List<UUID> findIdsByClassAssignmentId(@Param("classAssignmentId") UUID classAssignmentId);
+
+    @Query("""
+            SELECT g.id FROM EntitlementGrant g
+            WHERE g.entitlementId = :entitlementId
+              AND g.kind = vn.unicom.thi360.commerce.spi.GrantSource.CLASS
+            ORDER BY g.seq ASC
+            """)
+    List<UUID> findClassGrantIdsByEntitlementId(@Param("entitlementId") UUID entitlementId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT g FROM EntitlementGrant g

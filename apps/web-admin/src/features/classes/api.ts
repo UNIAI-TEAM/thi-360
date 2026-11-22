@@ -17,6 +17,17 @@ export type UserCurrentClass = components["schemas"]["UserCurrentClassResponse"]
 export type UserClassHistory = components["schemas"]["UserClassHistoryResponse"];
 export type PageResponseClassSummary = components["schemas"]["PageResponseClassSummaryResponse"];
 export type PageResponseClassMember = components["schemas"]["PageResponseClassMemberResponse"];
+export type ClassExamAssignmentItem = components["schemas"]["ClassExamAssignmentItem"];
+export type AssignableExamItem = components["schemas"]["AssignableExamItem"];
+export type AssignClassExamsRequest = components["schemas"]["AssignClassExamsRequest"];
+export type AssignClassExamsResponse = components["schemas"]["AssignClassExamsResponse"];
+export type UpdateClassExamAssignmentRequest =
+  components["schemas"]["UpdateClassExamAssignmentRequest"];
+export type RevokeClassExamAssignmentRequest =
+  components["schemas"]["RevokeClassExamAssignmentRequest"];
+export type RevokeClassExamAssignmentResponse =
+  components["schemas"]["RevokeClassExamAssignmentResponse"];
+export type ClassExamResultView = AssignClassExamsRequest["resultView"];
 export type ClassStatus = ClassSummary["status"];
 export type ClassMemberHistoryAction = UserClassHistory["action"];
 
@@ -31,6 +42,8 @@ export const CLASSES_QUERY_KEYS = {
   detail: (id: string) => ["classes", "detail", id] as const,
   membersRoot: (id: string) => ["classes", "members", id] as const,
   members: (id: string, query: ListClassMembersQuery) => ["classes", "members", id, query] as const,
+  examAssignments: (id: string) => ["classes", "exam-assignments", id] as const,
+  assignableExams: (id: string) => ["classes", "assignable-exams", id] as const,
   userClasses: (userId: string) => ["classes", "user", userId] as const,
 };
 
@@ -203,6 +216,86 @@ export async function transferClassMember(
   return data;
 }
 
+export async function listClassExamAssignments(
+  classId: string,
+): Promise<ClassExamAssignmentItem[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET(
+    "/api/v1/admin/classes/{classId}/exam-assignments",
+    {
+      params: { path: { classId } },
+    },
+  );
+  if (!response.ok || !data) throw toClassesApiError(response.status, error);
+  return data;
+}
+
+export async function listAssignableClassExams(classId: string): Promise<AssignableExamItem[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET(
+    "/api/v1/admin/classes/{classId}/assignable-exams",
+    {
+      params: { path: { classId } },
+    },
+  );
+  if (!response.ok || !data) throw toClassesApiError(response.status, error);
+  return data;
+}
+
+export async function assignClassExams(
+  classId: string,
+  body: AssignClassExamsRequest,
+  idempotencyKey: string = crypto.randomUUID(),
+): Promise<AssignClassExamsResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST(
+    "/api/v1/admin/classes/{classId}/exam-assignments",
+    {
+      params: {
+        path: { classId },
+        header: { "Idempotency-Key": idempotencyKey },
+      },
+      body,
+    },
+  );
+  if (!response.ok || !data) throw toClassesApiError(response.status, error);
+  return data;
+}
+
+export async function updateClassExamAssignment(
+  classId: string,
+  assignmentId: string,
+  body: UpdateClassExamAssignmentRequest,
+): Promise<ClassExamAssignmentItem> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PATCH(
+    "/api/v1/admin/classes/{classId}/exam-assignments/{assignmentId}",
+    {
+      params: { path: { classId, assignmentId } },
+      body,
+    },
+  );
+  if (!response.ok || !data) throw toClassesApiError(response.status, error);
+  return data;
+}
+
+export async function revokeClassExamAssignment(
+  classId: string,
+  assignmentId: string,
+  body: RevokeClassExamAssignmentRequest = {},
+): Promise<RevokeClassExamAssignmentResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST(
+    "/api/v1/admin/classes/{classId}/exam-assignments/{assignmentId}/revoke",
+    {
+      params: { path: { classId, assignmentId } },
+      body,
+    },
+  );
+  if (!response.ok || !data) throw toClassesApiError(response.status, error);
+  return data;
+}
+
 export async function getUserClasses(userId: string): Promise<UserClassesResponse> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/users/{id}/classes", {
@@ -224,6 +317,11 @@ export interface ClassesApiDeps {
   addClassMembers: typeof addClassMembers;
   removeClassMember: typeof removeClassMember;
   transferClassMember: typeof transferClassMember;
+  listClassExamAssignments: typeof listClassExamAssignments;
+  listAssignableClassExams: typeof listAssignableClassExams;
+  assignClassExams: typeof assignClassExams;
+  updateClassExamAssignment: typeof updateClassExamAssignment;
+  revokeClassExamAssignment: typeof revokeClassExamAssignment;
   getUserClasses: typeof getUserClasses;
 }
 
@@ -239,5 +337,10 @@ export const defaultClassesApiDeps: ClassesApiDeps = {
   addClassMembers,
   removeClassMember,
   transferClassMember,
+  listClassExamAssignments,
+  listAssignableClassExams,
+  assignClassExams,
+  updateClassExamAssignment,
+  revokeClassExamAssignment,
   getUserClasses,
 };

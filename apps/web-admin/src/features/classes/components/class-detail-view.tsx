@@ -60,6 +60,7 @@ import {
   ClassActionDialogs,
   useClassActionController,
 } from "./class-action-dialogs";
+import { ClassExamAssignmentsSection } from "./class-exam-assignments-section";
 import { ClassFormDialog } from "./class-form-dialog";
 import { TransferMemberDialog } from "./transfer-member-dialog";
 
@@ -210,6 +211,7 @@ function ClassDetailContent({
   function refreshClassAndMembers() {
     void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.detail(classId) });
     void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.membersRoot(classId) });
+    void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.examAssignments(classId) });
     void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.lists() });
     void queryClient.invalidateQueries({ queryKey: CLASSES_QUERY_KEYS.options() });
   }
@@ -619,6 +621,13 @@ function ClassDetailContent({
           {t("members.footnote")}
         </p>
       </Card>
+
+      <ClassExamAssignmentsSection
+        classId={classDetail.id}
+        classCode={classDetail.code}
+        isActive={isActive}
+        deps={deps}
+      />
 
       <ClassFormDialog
         open={editOpen}
