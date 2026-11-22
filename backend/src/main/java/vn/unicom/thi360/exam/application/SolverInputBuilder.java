@@ -84,6 +84,7 @@ public class SolverInputBuilder {
         private final java.util.Set<GroupQuota> setRowGroups;
         private final int fetchLimit;
         private final Map<GroupQuota, List<PathCandidate>> cache = new HashMap<>();
+        private final Map<QuestionSourcePort.Filter, List<QuestionSourcePort.Candidate>> rawCache = new HashMap<>();
         private final Map<QuestionSourcePort.VersionKey, QuestionSourcePort.Candidate> loaded = new LinkedHashMap<>();
 
         private SolverCandidates(QuestionSourcePort source, Map<GroupQuota, QuestionSourcePort.Filter> filters,
@@ -99,14 +100,18 @@ public class SolverInputBuilder {
             return cache.computeIfAbsent(group, this::fetch);
         }
 
+        private List<QuestionSourcePort.Candidate> rawCandidates(QuestionSourcePort.Filter filter) {
+            return rawCache.computeIfAbsent(filter, f -> List.copyOf(source.findCandidates(f, fetchLimit)));
+        }
+
         private List<PathCandidate> fetch(GroupQuota group) {
             var filter = filters.get(group);
             if (filter == null || filter.subjectId() == null) return List.of();
-            List<QuestionSourcePort.Candidate> candidates = source.findCandidates(filter, fetchLimit);
+            List<QuestionSourcePort.Candidate> candidates = rawCandidates(filter);
             List<PathCandidate> result = new ArrayList<>(candidates.size());
             boolean setRow = setRowGroups.contains(group);
             for (var candidate : candidates) {
-                loaded.put(new QuestionSourcePort.VersionKey(candidate.questionId(), candidate.versionNo()), candidate);
+                loaded.putIfAbsent(new QuestionSourcePort.VersionKey(candidate.questionId(), candidate.versionNo()), candidate);
                 result.add(toPathCandidate(candidate, setRow));
             }
             return List.copyOf(result);

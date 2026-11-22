@@ -479,6 +479,7 @@ final class Prep {
         int[][][] capUse = new int[nG][][];
         int[][] capBlock = new int[nG][];
         int rCount = reqs.size();
+        boolean[] matched = new boolean[rCount];
         for (int g = 0; g < nG; g++) {
             ResolvedGroup rg = groups.get(g);
             List<PathCandidate> pool = candidatesByGroup.get(g);
@@ -499,7 +500,7 @@ final class Prep {
                 units[g][i] = c.units().size();
                 int[] vec = contrib[g][i];
                 usable[g][i] = usableFor(rg.group(), c, vec, reqs, subjectBlocks, dimsArr,
-                        reqFrom[g], reqTo[g], sectionOf[g], slotBlocks[g], deadlineCheck);
+                        reqFrom[g], reqTo[g], sectionOf[g], slotBlocks[g], deadlineCheck, matched);
                 capBlock[g][i] = -1;
                 capUse[g][i] = capUse(caps, c, sectionOf[g], TopicAssignments.scopeId(rg.group()));
                 for (int k = 0; usable[g][i] && k < capUse[g][i].length; k++) {
@@ -587,7 +588,7 @@ final class Prep {
      */
     private static boolean usableFor(GroupQuota group, PathCandidate c, int[] vec,
             List<Requirement> reqs, int[][] subjectBlocks, int[][] dims, int reqFrom, int reqTo,
-            int sectionIdx, int[] slotBlock, Runnable deadlineCheck) {
+            int sectionIdx, int[] slotBlock, Runnable deadlineCheck, boolean[] matched) {
         List<CountingUnit> us = c.units();
         if (us.isEmpty()) {
             return false;
@@ -628,11 +629,18 @@ final class Prep {
             }
         }
         // khóa duy nhất bên trong ứng viên: questionId trùng childId, hoặc hai childId giống nhau
-        Set<String> seen = new HashSet<>();
-        seen.add(c.questionId());
-        for (CountingUnit u : us) {
-            if (u.childId() != null && !seen.add(u.childId())) {
+        if (us.size() == 1) {
+            String childId = us.getFirst().childId();
+            if (childId != null && childId.equals(c.questionId())) {
                 return false;
+            }
+        } else {
+            Set<String> seen = new HashSet<>(us.size() * 2);
+            seen.add(c.questionId());
+            for (CountingUnit u : us) {
+                if (u.childId() != null && !seen.add(u.childId())) {
+                    return false;
+                }
             }
         }
         // vector đóng góp + phủ các phân hoạch áp dụng cho nhóm này
@@ -643,7 +651,9 @@ final class Prep {
                 if ((scans++ & 0x3FF) == 0) {
                     deadlineCheck.run();
                 }
-                if (reqs.get(r).matcher().test(u)) {
+                boolean hit = reqs.get(r).matcher().test(u);
+                matched[r] = hit;
+                if (hit) {
                     vec[r]++;
                 }
             }
@@ -659,7 +669,7 @@ final class Prep {
                     if ((scans++ & 0x3FF) == 0) {
                         deadlineCheck.run();
                     }
-                    if (reqs.get(r).quota() > 0 && reqs.get(r).matcher().test(u)) {
+                    if (reqs.get(r).quota() > 0 && matched[r]) {
                         covered = true;
                         break;
                     }

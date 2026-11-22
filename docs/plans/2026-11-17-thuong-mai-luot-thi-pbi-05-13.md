@@ -5919,7 +5919,7 @@ Số mục trỏ vào TM, LT, BE, 2B. Tên có ghi "(mới)" là thứ task sẽ
 | Rủi ro | Dấu hiệu | Xử lý |
 |---|---|---|
 | G0 trễ (đợt 2 chưa về `develop`) | Không tạo được `integration/dot-3` | Chờ. Không tách từ `integration/dot-2` (M.Trường chốt ngày 2026-11-17). |
-| Sinh đề chậm với ngân hàng lớn | Số đo `perf` của EX-2 vượt 30 giây, hoặc nhiều lượt `GENERATION_TIMEOUT` | Sinh đề đã chạy nền nên người dùng chỉ chờ lâu hơn. Advisor báo M.Trường kèm số đo; không tự tăng hạn quá 60 giây. |
+| Sinh đề chậm với ngân hàng lớn | Số đo `perf` của EX-2 vượt 30 giây, hoặc nhiều lượt `GENERATION_TIMEOUT` | **Đã xử lý ở `UNI-2771` (2026-11-22):** tối ưu `PathSearch` (bảng cận trên `suffixTopic`, ghi nhớ `FeasibleSig`, khử đối xứng cặp thành viên `memberProfile`/`cleanIdentityPartition`), `Prep`, `TopicQuota`, `SolverInputBuilder` và `QuestionSourceAdapter`; `PaperGenerationPerfIT` (`>= 2.000` câu/khối, 3 seed) đạt `worst = 1.723 ms` (chuẩn) và `1.667 ms` (có quy tắc `MAPID MATRIX`), `ExamCheckPerfIT` đạt `1.170 ms` / `2.553 ms`. |
 | Hàng sinh đề nghẽn khi nhiều người bắt đầu cùng lúc | Nhiều lượt `GENERATION_BUSY` | Tăng số luồng hoặc độ dài hàng qua cấu hình; đo lại trong QA. |
 | VNPAY sandbox khác tài liệu | VP-1 thấy chữ ký hoặc mã khác | VP-1 ghi vào TM và `vectors.json`; CM-3b theo đó. CM-3b đã để các điểm này sau cấu hình. |
 | Không có G2 trước QA | VP-1, VP-2 chưa chạy | Advisor xin M.Trường duyệt yêu cầu thay đổi tách VP-1, VP-2 khỏi đợt (mẫu số còn 136). QA chạy với cổng giả lập. VP thành việc riêng sau đợt. Không đưa về `develop` với `THI360_VNPAY_MODE=SANDBOX` mặc định. |
