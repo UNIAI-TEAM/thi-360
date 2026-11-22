@@ -64,12 +64,12 @@ public record MyExamCard(
         @Schema(description = "Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền",
                 types = {"string", "null"},
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-        String source,
-        @Schema(description = "ID lớp học khi source = CLASS",
+        String entitlementSource,
+        @Schema(description = "ID lớp học khi entitlementSource = CLASS",
                 types = {"string", "null"},
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         UUID classId,
-        @Schema(description = "Tên lớp học khi source = CLASS",
+        @Schema(description = "Tên lớp học khi entitlementSource = CLASS",
                 types = {"string", "null"},
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         String className) {

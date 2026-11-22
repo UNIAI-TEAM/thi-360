@@ -106,7 +106,7 @@ export function MyExamCard({
       : card.state;
 
   const hasAction = (action: MyExamCardData["actions"][number]) => card.actions.includes(action);
-  const isClassAssigned = card.source === "CLASS";
+  const isClassAssigned = card.entitlementSource === "CLASS";
   const className = card.className?.trim() ?? "";
   const canContinue = hasAction("CONTINUE") && Boolean(card.activeAttemptId);
   const canStart = hasAction("START") && Boolean(card.entitlementId);

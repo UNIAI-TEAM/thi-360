@@ -283,7 +283,7 @@ class ClassExamAssignmentIT extends AbstractIntegrationTest {
         assertThat(s1Cards).hasSize(1);
         JsonNode s1Card = s1Cards.get(0);
         UUID s1EntitlementId = UUID.fromString(s1Card.path("entitlementId").asText());
-        assertThat(s1Card.path("source").asText()).isEqualTo("CLASS");
+        assertThat(s1Card.path("entitlementSource").asText()).isEqualTo("CLASS");
         assertThat(s1Card.path("classId").asText()).isEqualTo(sourceClassId.toString());
         assertThat(s1Card.path("className").asText()).isEqualTo("Lớp HSA Mùa Xuân");
         assertThat(s1Card.path("attemptsLeft").asInt()).isEqualTo(3);

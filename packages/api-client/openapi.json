@@ -11358,12 +11358,12 @@
             "type" : [ "array", "null" ]
           },
           "classId" : {
-            "description" : "ID lớp học khi source = CLASS",
+            "description" : "ID lớp học khi entitlementSource = CLASS",
             "format" : "uuid",
             "type" : [ "string", "null" ]
           },
           "className" : {
-            "description" : "Tên lớp học khi source = CLASS",
+            "description" : "Tên lớp học khi entitlementSource = CLASS",
             "type" : [ "string", "null" ]
           },
           "code" : {
@@ -11385,6 +11385,10 @@
           "entitlementId" : {
             "description" : "Quyền dùng; trống ở thẻ \"Đang kiểm tra\" của đơn chưa cấp quyền",
             "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "entitlementSource" : {
+            "description" : "Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền",
             "type" : [ "string", "null" ]
           },
           "examKind" : {
@@ -11431,10 +11435,6 @@
               "type" : "null"
             } ],
             "description" : "Tên phần (PART) hoặc môn (SUBJECT); null với FULL"
-          },
-          "source" : {
-            "description" : "Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền",
-            "type" : [ "string", "null" ]
           },
           "state" : {
             "description" : "Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)",

@@ -89,7 +89,9 @@ test.describe("Giao bài thi theo lớp học (UNI-2774)", () => {
         name: new RegExp(`Giao bài thi cho lớp ${classCode}`),
       });
       await assignDialog.getByLabel("Tìm bài thi").fill(exam.code);
-      await assignDialog.getByRole("checkbox", { name: new RegExp(exam.code) }).check();
+      await assignDialog
+        .getByRole("checkbox", { name: new RegExp(`(?:^|\\s)${exam.code}\\s·`) })
+        .check();
       const attemptsInput = assignDialog.getByLabel(/Số lượt mỗi học viên/);
       await attemptsInput.fill("2");
       await assignDialog.getByLabel("Ghi chú đợt giao").fill("Bài tập lớp E2E");
@@ -99,7 +101,7 @@ test.describe("Giao bài thi theo lớp học (UNI-2774)", () => {
       const assignmentsTable = adminPage.getByRole("table", {
         name: "Danh sách đợt giao bài thi cho lớp",
       });
-      await expect(assignmentsTable.getByText(exam.code)).toBeVisible();
+      await expect(assignmentsTable.getByText(`${exam.code} ·`)).toBeVisible();
       await expect(assignmentsTable.getByText("Đang hiệu lực")).toBeVisible();
       await expect(assignmentsTable.getByText("1 HV · đã dùng 0, còn 2")).toBeVisible();
 
@@ -118,7 +120,7 @@ test.describe("Giao bài thi theo lớp học (UNI-2774)", () => {
       await expect(studentPage.getByText("2 lượt")).toBeVisible();
 
       // 4. Admin thu hồi đợt giao -> học viên chưa làm lượt nào nên thẻ rỗng ẩn khỏi /home
-      await adminPage
+      await assignmentsTable
         .getByRole("button", { name: `Thu hồi đợt giao bài ${exam.code}` })
         .click();
       const revokeDialog = adminPage.getByRole("dialog", { name: "Thu hồi đợt giao bài thi" });

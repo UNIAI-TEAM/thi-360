@@ -8644,10 +8644,10 @@ export interface components {
             bundles?: components["schemas"]["MyExamBundleRef"][] | null;
             /**
              * Format: uuid
-             * @description ID lớp học khi source = CLASS
+             * @description ID lớp học khi entitlementSource = CLASS
              */
             classId?: string | null;
-            /** @description Tên lớp học khi source = CLASS */
+            /** @description Tên lớp học khi entitlementSource = CLASS */
             className?: string | null;
             /** @description Mã sản phẩm, cũng là mã bài thi */
             code: string;
@@ -8660,6 +8660,8 @@ export interface components {
              * @description Quyền dùng; trống ở thẻ "Đang kiểm tra" của đơn chưa cấp quyền
              */
             entitlementId?: string | null;
+            /** @description Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền */
+            entitlementSource?: string | null;
             examKind: components["schemas"]["ExamKindRef"];
             /** @description Hình thức (E4): FULL, PART hay SUBJECT */
             format: string;
@@ -8683,8 +8685,6 @@ export interface components {
             saleState: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE";
             /** @description Tên phần (PART) hoặc môn (SUBJECT); null với FULL */
             scopeLabel?: components["schemas"]["LocalizedName"] | null;
-            /** @description Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền */
-            source?: string | null;
             /**
              * @description Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)
              * @enum {string}

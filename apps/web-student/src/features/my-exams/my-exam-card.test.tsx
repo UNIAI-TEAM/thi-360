@@ -274,12 +274,12 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
     expect(screen.getByText("Tư duy định lượng")).toHaveAttribute("data-exam-content");
   });
 
-  it("9. UNI-2774 thẻ Bài theo lớp (source = CLASS): hiện chip lớp, ẩn Mua thêm/Mua lại và không hiện ghi chú ngừng bán", () => {
+  it("9. UNI-2774 thẻ Bài theo lớp (entitlementSource = CLASS): hiện chip lớp, ẩn Mua thêm/Mua lại và không hiện ghi chú ngừng bán", () => {
     const first = renderWithProviders(
       <MyExamCard
         card={makeCard({
           entitlementId: "ent-cls-1",
-          source: "CLASS",
+          entitlementSource: "CLASS",
           classId: "cls-1",
           className: "Lớp HSA 12A1",
           saleState: "DISCONTINUED",
@@ -301,7 +301,7 @@ describe("MyExamCard · 8 tình huống TM 12 và AC-16", () => {
       <MyExamCard
         card={makeCard({
           entitlementId: "ent-cls-2",
-          source: "CLASS",
+          entitlementSource: "CLASS",
           classId: "cls-1",
           className: null,
           saleState: "DISCONTINUED",
