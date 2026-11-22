@@ -1,12 +1,20 @@
 "use client";
 
 import { Button, Card, cn, focusRing, StatusChip } from "@thi360/ui";
-import { Question, type AnswerValue as KitAnswerValue, type EssayEditorProps } from "@thi360/ui/question";
+import {
+  Question,
+  QuestionSet,
+  type AnswerValue as KitAnswerValue,
+  type AudioClosedReason,
+  type ChildQuestionProps,
+  type EssayEditorProps,
+  type KitQuestionOf,
+  type QuestionBody as KitQuestionBody,
+} from "@thi360/ui/question";
 import { AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
-import { PreviewAudioList } from "../components/exam-preview-audio";
 import {
   buildSetAnswerValue,
   isTrialLeafAnswered,
@@ -14,9 +22,14 @@ import {
   sliceTrialPartSegments,
   toKitTrialQuestion,
   toKitTrialSet,
-  toTrialAttachments,
   trialPartKey,
 } from "./mappers";
+import {
+  filterTrialAudioAttachments,
+  TrialAudioList,
+  useTrialAudioRegistry,
+  type TrialAudioRegistry,
+} from "./trial-audio";
 import { TrialEssayEditor } from "./trial-essay-editor";
 import type {
   PreviewTrialBlock,
@@ -40,6 +53,8 @@ export interface TrialPaperViewProps {
   submitError: string | null;
   initialExpiresAt?: string | null;
   focusHeadingKey?: number;
+  audioRegistry?: TrialAudioRegistry;
+  audioClosedReason?: AudioClosedReason | null;
 }
 
 export function TrialPaperView({
@@ -52,11 +67,18 @@ export function TrialPaperView({
   submitError,
   initialExpiresAt,
   focusHeadingKey = 0,
+  audioRegistry,
+  audioClosedReason = null,
 }: TrialPaperViewProps) {
   const t = useTranslations("exams.trial");
-  const tPreview = useTranslations("exams.preview");
   const format = useFormatter();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const { registry: fallbackAudioRegistry } = useTrialAudioRegistry(
+    audioRegistry ? undefined : paper,
+    focusHeadingKey,
+  );
+  const resolvedAudioRegistry = audioRegistry ?? fallbackAudioRegistry;
+  const stopAllAudio = resolvedAudioRegistry.stopAll;
 
   useEffect(() => {
     if (focusHeadingKey > 0) {
@@ -79,6 +101,22 @@ export function TrialPaperView({
   }, [sortedParts, selectedPartId]);
   const activePart = activePartIndex >= 0 ? sortedParts[activePartIndex]! : null;
   const activePartKey = activePart ? trialPartKey(activePart, activePartIndex) : null;
+
+  const prevPartKeyRef = useRef<string | null>(activePartKey);
+  useEffect(() => {
+    if (prevPartKeyRef.current !== null && prevPartKeyRef.current !== activePartKey) {
+      stopAllAudio();
+    }
+    prevPartKeyRef.current = activePartKey;
+  }, [activePartKey, stopAllAudio]);
+
+  const prevSubmittingRef = useRef(false);
+  useEffect(() => {
+    if (submitting && !prevSubmittingRef.current) {
+      stopAllAudio();
+    }
+    prevSubmittingRef.current = submitting;
+  }, [submitting, stopAllAudio]);
 
   const leafDescriptors = useMemo(() => listPaperLeafQuestions(paper), [paper]);
   const leavesByPartId = useMemo(() => {
@@ -261,8 +299,10 @@ export function TrialPaperView({
               partKey={activePartKey}
               answers={answers}
               onAnswerChange={onAnswerChange}
+              audioRegistry={resolvedAudioRegistry}
+              audioDisabled={submitting}
+              audioClosedReason={audioClosedReason}
               t={t}
-              tPreview={tPreview}
             />
           ) : (
             <Card>
@@ -369,15 +409,19 @@ function TrialPartBody({
   partKey,
   answers,
   onAnswerChange,
+  audioRegistry,
+  audioDisabled,
+  audioClosedReason,
   t,
-  tPreview,
 }: {
   part: PreviewTrialPart;
   partKey: string;
   answers: Readonly<Record<string, KitAnswerValue>>;
   onAnswerChange: (questionId: string, value: KitAnswerValue) => void;
+  audioRegistry: TrialAudioRegistry;
+  audioDisabled: boolean;
+  audioClosedReason: AudioClosedReason | null;
   t: ReturnType<typeof useTranslations<"exams.trial">>;
-  tPreview: ReturnType<typeof useTranslations<"exams.preview">>;
 }) {
   const format = useFormatter();
   const segments = useMemo(() => sliceTrialPartSegments(part), [part]);
@@ -422,9 +466,13 @@ function TrialPartBody({
               <TrialBlockView
                 key={`${block.blockId ?? bIdx}-${idx}`}
                 block={block}
+                ownerPrefix={`${partKey}:seg-${slice.segment.code ?? idx}:${block.blockId ?? bIdx}`}
                 answers={answers}
                 onAnswerChange={onAnswerChange}
-                tPreview={tPreview}
+                audioRegistry={audioRegistry}
+                audioDisabled={audioDisabled}
+                audioClosedReason={audioClosedReason}
+                t={t}
               />
             ))}
           </div>
@@ -434,9 +482,13 @@ function TrialPartBody({
           <TrialBlockView
             key={block.blockId ?? idx}
             block={block}
+            ownerPrefix={`${partKey}:noseg:${block.blockId ?? idx}`}
             answers={answers}
             onAnswerChange={onAnswerChange}
-            tPreview={tPreview}
+            audioRegistry={audioRegistry}
+            audioDisabled={audioDisabled}
+            audioClosedReason={audioClosedReason}
+            t={t}
           />
         ))
       )}
@@ -446,14 +498,22 @@ function TrialPartBody({
 
 function TrialBlockView({
   block,
+  ownerPrefix,
   answers,
   onAnswerChange,
-  tPreview,
+  audioRegistry,
+  audioDisabled,
+  audioClosedReason,
+  t,
 }: {
   block: PreviewTrialBlock;
+  ownerPrefix: string;
   answers: Readonly<Record<string, KitAnswerValue>>;
   onAnswerChange: (questionId: string, value: KitAnswerValue) => void;
-  tPreview: ReturnType<typeof useTranslations<"exams.preview">>;
+  audioRegistry: TrialAudioRegistry;
+  audioDisabled: boolean;
+  audioClosedReason: AudioClosedReason | null;
+  t: ReturnType<typeof useTranslations<"exams.trial">>;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -470,9 +530,13 @@ function TrialBlockView({
               : item.question?.questionId ?? `q-${idx}`
           }
           item={item}
+          ownerPrefix={`${ownerPrefix}:item-${idx}`}
           answers={answers}
           onAnswerChange={onAnswerChange}
-          tPreview={tPreview}
+          audioRegistry={audioRegistry}
+          audioDisabled={audioDisabled}
+          audioClosedReason={audioClosedReason}
+          t={t}
         />
       ))}
     </div>
@@ -481,23 +545,43 @@ function TrialBlockView({
 
 function TrialItemView({
   item,
+  ownerPrefix,
   answers,
   onAnswerChange,
-  tPreview,
+  audioRegistry,
+  audioDisabled,
+  audioClosedReason,
+  t,
 }: {
   item: PreviewTrialItem;
+  ownerPrefix: string;
   answers: Readonly<Record<string, KitAnswerValue>>;
   onAnswerChange: (questionId: string, value: KitAnswerValue) => void;
-  tPreview: ReturnType<typeof useTranslations<"exams.preview">>;
+  audioRegistry: TrialAudioRegistry;
+  audioDisabled: boolean;
+  audioClosedReason: AudioClosedReason | null;
+  t: ReturnType<typeof useTranslations<"exams.trial">>;
 }) {
   if (item.kind === "SET" && item.set) {
     const setItem = item.set;
     const setChildren = setItem.children ?? [];
     const { setQuestion, childQuestions } = toKitTrialSet(setItem);
-    const setAttachments = toTrialAttachments(setItem.attachments);
-    const childNumbers = setChildren.map((c) => c.number ?? 0).filter((n) => n > 0);
-    const firstNo = childNumbers.length > 0 ? Math.min(...childNumbers) : 1;
-    const lastNo = childNumbers.length > 0 ? Math.max(...childNumbers) : firstNo;
+    const childById = new Map<string, PreviewTrialQuestion>();
+    for (const child of setChildren) {
+      if (child.questionId) childById.set(child.questionId, child);
+    }
+
+    const setNumbers = setChildren
+      .map((child) => child.number)
+      .filter((num): num is number => typeof num === "number" && num > 0);
+    const setFirst = setNumbers.length > 0 ? Math.min(...setNumbers) : null;
+    const setLast = setNumbers.length > 0 ? Math.max(...setNumbers) : null;
+    const setRangeName =
+      setFirst !== null && setLast !== null
+        ? setFirst === setLast
+          ? t("audio.forQuestion", { number: setFirst })
+          : t("audio.forSet", { first: setFirst, last: setLast })
+        : t("audio.setFallback");
 
     const setValue = buildSetAnswerValue(setChildren, answers);
 
@@ -506,32 +590,22 @@ function TrialItemView({
         id={`trial-question-${setItem.questionId ?? ""}`}
         className="scroll-mt-28 flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
       >
-        {setAttachments.length > 0 && (
-          <PreviewAudioList
-            attachments={setAttachments}
-            name={tPreview("audio.forSet", { first: firstNo, last: lastNo })}
-          />
-        )}
-        {setChildren.map((child: PreviewTrialQuestion) => {
-          const cAtt = toTrialAttachments(child.attachments);
-          if (cAtt.length === 0) return null;
-          return (
-            <PreviewAudioList
-              key={child.questionId}
-              attachments={cAtt}
-              name={tPreview("audio.forQuestion", { number: child.number ?? 1 })}
-            />
-          );
-        })}
-        <Question
-          question={setQuestion}
+        <TrialAudioList
+          attachments={setItem.attachments}
+          registry={audioRegistry}
+          ownerKey={`${ownerPrefix}:set-${setItem.questionId ?? "0"}`}
+          contextLabel={t("audio.setLabel", { name: setRangeName })}
+          groupLabel={t("audio.setGroup", { name: setRangeName })}
+          disabled={audioDisabled}
+          closedReason={audioClosedReason}
+        />
+        <QuestionSet
+          question={setQuestion as KitQuestionOf<Extract<KitQuestionBody, { type: "QUESTION_SET" }>>}
           mode="answer"
           headingLevel={3}
           value={setValue}
-          renderEditor={renderTrialEssayEditor}
           onChange={(next) => {
-            if (!next || typeof next !== "object" || !("children" in next)) return;
-            const childrenMap = (next as { children?: Record<string, KitAnswerValue> }).children ?? {};
+            const childrenMap = next?.children ?? {};
             for (const child of setChildren) {
               const cid = child.questionId;
               if (!cid) continue;
@@ -541,9 +615,41 @@ function TrialItemView({
               }
             }
           }}
+          renderQuestion={(childProps: ChildQuestionProps) => {
+            const child = childById.get(childProps.question.id);
+            const hasChildAudio = filterTrialAudioAttachments(child?.attachments).length > 0;
+            const childNumber = child?.number ?? childProps.question.displayNo;
+            const childName = t("audio.forQuestion", { number: childNumber });
+            const childQuestionEl = (
+              <Question
+                question={childProps.question}
+                mode={childProps.mode}
+                value={childProps.value}
+                onChange={childProps.onChange}
+                review={childProps.review}
+                headingLevel={childProps.headingLevel}
+                renderEditor={renderTrialEssayEditor}
+              />
+            );
+            if (!hasChildAudio) return childQuestionEl;
+            return (
+              <div className="flex flex-col gap-3">
+                <TrialAudioList
+                  attachments={child?.attachments}
+                  registry={audioRegistry}
+                  ownerKey={`${ownerPrefix}:child-${childProps.question.id}`}
+                  contextLabel={t("audio.questionLabel", { name: childName })}
+                  groupLabel={t("audio.group", { name: childName })}
+                  disabled={audioDisabled}
+                  closedReason={audioClosedReason}
+                />
+                {childQuestionEl}
+              </div>
+            );
+          }}
         >
           {childQuestions}
-        </Question>
+        </QuestionSet>
       </div>
     );
   }
@@ -552,19 +658,23 @@ function TrialItemView({
     const q = item.question;
     const qId = q.questionId ?? "";
     const kitQuestion = toKitTrialQuestion(q);
-    const attachments = toTrialAttachments(q.attachments);
+    const qNumber = q.number ?? kitQuestion.displayNo;
+    const qName = t("audio.forQuestion", { number: qNumber });
 
     return (
       <div
         id={`trial-question-${qId}`}
         className="scroll-mt-28 flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
       >
-        {attachments.length > 0 && (
-          <PreviewAudioList
-            attachments={attachments}
-            name={tPreview("audio.forQuestion", { number: q.number ?? 1 })}
-          />
-        )}
+        <TrialAudioList
+          attachments={q.attachments}
+          registry={audioRegistry}
+          ownerKey={`${ownerPrefix}:q-${qId}`}
+          contextLabel={t("audio.questionLabel", { name: qName })}
+          groupLabel={t("audio.group", { name: qName })}
+          disabled={audioDisabled}
+          closedReason={audioClosedReason}
+        />
         <Question
           question={kitQuestion}
           mode="answer"

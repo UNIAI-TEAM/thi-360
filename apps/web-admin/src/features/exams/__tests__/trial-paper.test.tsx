@@ -221,6 +221,10 @@ afterEach(() => {
 
 describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try)", () => {
   it("AC-26 & AC-30: chỉ gọi GET .../paper trước khi nộp, không rò đáp án/rubric, không có đồng hồ đếm ngược", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
     const server = new FakeServer().on("GET", PAPER_PATH, {
       status: 200,
       body: buildTrialPaperFixture(),
@@ -245,9 +249,15 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     expect(screen.queryByText(/Tiêu chí chấm/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Đáp án đúng/)).not.toBeInTheDocument();
 
-    // Audio đính kèm trỏ đúng /api/v1/admin/question-assets/...
-    const audioEl = document.querySelector("audio");
-    expect(audioEl?.getAttribute("src")).toContain("/api/v1/admin/question-assets/asset-audio-1");
+    // Audio đính kèm dùng AttemptAudioPlayer (preload="none"), bấm Nghe trỏ đúng /api/v1/admin/question-assets/...
+    const audioRegion = screen.getByRole("region", { name: "Trình phát audio" });
+    const audioEl = audioRegion.querySelector("audio");
+    expect(audioEl).toHaveAttribute("preload", "none");
+    await user.click(within(audioRegion).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => {
+      expect(audioEl?.getAttribute("src")).toContain("/api/v1/admin/question-assets/asset-audio-1");
+    });
+    expect(server.requests).toHaveLength(1);
   });
 
   it("AC-20, AC-24, AC-25: chuyển phần tự do, rời trang cảnh báo beforeunload & ConfirmDialog, nộp đủ & giữ nguyên khi lỗi, AC-19 & AC-22 kết quả", async () => {

@@ -18,6 +18,7 @@ import {
   type PreviewTrialApiDeps,
 } from "./api";
 import { toApiTrialAnswers } from "./mappers";
+import { useTrialAudioRegistry } from "./trial-audio";
 import { TrialPaperView } from "./trial-paper-view";
 import { TrialResultView } from "./trial-result-view";
 import type { PreviewGradeResponse } from "./types";
@@ -90,6 +91,12 @@ function PreviewTrialSession({
     queryFn: ({ signal }) => deps.getPreviewTrialPaper({ examId, previewId, signal }),
     retry: false,
   });
+
+  const {
+    registry: audioRegistry,
+    stopAll: stopTrialAudio,
+    reset: resetTrialAudio,
+  } = useTrialAudioRegistry(paperQuery.data, retakeFocusCount);
 
   const isExpiredOnLoad =
     paperQuery.isError &&
@@ -273,6 +280,7 @@ function PreviewTrialSession({
         answers={answers}
         focusHeadingOnMount={focusResultHeading}
         onRetake={() => {
+          resetTrialAudio();
           setGradeResult(null);
           setAnswers({});
           setSubmitErrorMsg(null);
@@ -304,6 +312,7 @@ function PreviewTrialSession({
         submitError={submitErrorMsg}
         initialExpiresAt={initialExpiresAt}
         focusHeadingKey={retakeFocusCount}
+        audioRegistry={audioRegistry}
       />
 
       <ConfirmDialog
@@ -318,6 +327,7 @@ function PreviewTrialSession({
         cancelLabel={t("leaveDialog.cancel")}
         onConfirm={() => {
           if (!pendingLeaveHref) return;
+          stopTrialAudio();
           leaveBypassRef.current = true;
           const href = pendingLeaveHref;
           setPendingLeaveHref(null);

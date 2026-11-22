@@ -30,7 +30,7 @@ export function QuestionFrame({
   question: KitQuestion;
   children: ReactNode;
 
-  headingLevel?: 1 | 2 | 3;
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
   flagged?: boolean;
   onToggleFlag?: () => void;
   /** Chế độ review: chip kết quả của câu. */
@@ -44,7 +44,7 @@ export function QuestionFrame({
   className?: string;
 }) {
   const strings = useUiStrings().question;
-  const HeadingTag = `h${headingLevel}` as "h1" | "h2" | "h3";
+  const HeadingTag = `h${headingLevel}` as const;
   const type = question.body.type;
   const flagLabel = flagged ? strings.flagRemove : strings.flagForReview;
   return (
