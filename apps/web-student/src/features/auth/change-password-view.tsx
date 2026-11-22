@@ -28,6 +28,7 @@ import {
   SESSION_QUERY_KEY,
   type SessionLoader,
 } from "@/features/session/api";
+import { AuthPageStage } from "@/features/auth/auth-backdrop";
 import { ApiStatusError } from "@/lib/api/client";
 import { adminUrl, webUrl } from "@/lib/env";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
@@ -36,7 +37,7 @@ import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
  * Màn hẹp: thẻ bám mép trên (cao hơn màn hình nên căn giữa chỉ làm thẻ nhảy khi nội dung tải xong); từ `md` căn giữa.
  * Khung chờ và biểu mẫu dùng chung hai lớp này để vị trí và đệm của thẻ không đổi giữa hai trạng thái.
  */
-const PAGE_CLASS = "flex min-h-screen items-start justify-center bg-page p-4 sm:p-6 md:items-center";
+const PAGE_CLASS = "flex-row items-start justify-center md:items-center";
 const CARD_CLASS =
   "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
 
@@ -227,7 +228,7 @@ export function ChangePasswordView({
       </div>
     );
     return (
-      <main className={PAGE_CLASS}>
+      <AuthPageStage className={PAGE_CLASS}>
         <div role="status" aria-label={common("loading")} className={CARD_CLASS}>
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 rounded-lg" />
@@ -248,13 +249,13 @@ export function ChangePasswordView({
           </div>
           <Skeleton className="h-15 w-full sm:h-10" />
         </div>
-      </main>
+      </AuthPageStage>
     );
   }
 
   if (sessionQuery.isError || !sessionQuery.data) {
     return (
-      <main className={PAGE_CLASS}>
+      <AuthPageStage className={PAGE_CLASS}>
         <div className="w-full max-w-[480px] rounded-2xl border border-border bg-surface p-8 shadow-xl">
           <EmptyState
             icon={<TriangleAlert />}
@@ -263,7 +264,7 @@ export function ChangePasswordView({
             action={<Button onClick={() => void sessionQuery.refetch()}>{common("retry")}</Button>}
           />
         </div>
-      </main>
+      </AuthPageStage>
     );
   }
 
@@ -282,7 +283,7 @@ export function ChangePasswordView({
   };
 
   return (
-    <main className={PAGE_CLASS}>
+    <AuthPageStage className={PAGE_CLASS}>
       <div className={CARD_CLASS}>
         <div className="flex items-center gap-3">
           <span
@@ -434,6 +435,6 @@ export function ChangePasswordView({
           </button>
         </p>
       </div>
-    </main>
+    </AuthPageStage>
   );
 }

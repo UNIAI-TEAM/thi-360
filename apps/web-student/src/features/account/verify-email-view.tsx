@@ -30,10 +30,10 @@ import {
   verifyEmailCode,
 } from "@/features/account/api";
 import { cooldownAnnouncement, formatClock, LONG_COOLDOWN_SECONDS, useCooldown } from "@/features/account/cooldown";
+import { AuthPageStage } from "@/features/auth/auth-backdrop";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 
-const PAGE_CLASS = "flex min-h-screen flex-col items-center gap-4 bg-page p-4 sm:p-6 md:justify-center";
 const CARD_CLASS =
   "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
 
@@ -173,7 +173,7 @@ export function VerifyEmailView({
 
   if (profileQuery.isLoading) {
     return (
-      <main className={PAGE_CLASS}>
+      <AuthPageStage>
         {header}
         <div role="status" aria-label={common("loading")} className={CARD_CLASS}>
           <div className="flex flex-col gap-1.5">
@@ -188,13 +188,13 @@ export function VerifyEmailView({
           <Skeleton className="h-11 w-full rounded-lg" />
           <Skeleton className="h-12 w-full rounded-lg" />
         </div>
-      </main>
+      </AuthPageStage>
     );
   }
 
   if (profileQuery.isError || !profileQuery.data) {
     return (
-      <main className={PAGE_CLASS}>
+      <AuthPageStage>
         {header}
         <div className={CARD_CLASS}>
           <EmptyState
@@ -205,7 +205,7 @@ export function VerifyEmailView({
             action={<Button onClick={() => void profileQuery.refetch()}>{common("retry")}</Button>}
           />
         </div>
-      </main>
+      </AuthPageStage>
     );
   }
 
@@ -214,7 +214,7 @@ export function VerifyEmailView({
   // Tài khoản đã xác minh (mở lại trang): trạng thái đã xác minh + lối đi tiếp (quyết định tạm của plan).
   if (profile.emailVerified || verified) {
     return (
-      <main className={PAGE_CLASS}>
+      <AuthPageStage>
         {header}
         <div className={CARD_CLASS}>
           <div className="flex flex-col gap-1.5">
@@ -231,12 +231,12 @@ export function VerifyEmailView({
             <Link href={continueUrl}>{t("continue")}</Link>
           </Button>
         </div>
-      </main>
+      </AuthPageStage>
     );
   }
 
   return (
-    <main className={PAGE_CLASS}>
+    <AuthPageStage>
       {header}
       <div className={CARD_CLASS}>
         <div className="flex flex-col gap-1.5">
@@ -345,6 +345,6 @@ export function VerifyEmailView({
           })}
         </p>
       </div>
-    </main>
+    </AuthPageStage>
   );
 }
