@@ -415,10 +415,33 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       const today = await testClockDayIso();
       await statusGroup.locator("label").filter({ hasText: /^Chờ chấm/ }).click();
       await expect(statusGroup.getByRole("radio", { name: /^Chờ chấm/ })).toBeChecked();
+      const filteredResPromise = page.waitForResponse((r) => {
+        if (r.request().method() !== "GET") return false;
+        const url = new URL(r.url());
+        return (
+          url.pathname === "/api/v1/admin/grading/items" &&
+          url.searchParams.get("state") === "WAITING" &&
+          url.searchParams.get("exam") === "BCA" &&
+          url.searchParams.get("from") === today &&
+          url.searchParams.get("to") === today
+        );
+      });
       await page.getByLabel("Bài thi").fill("BCA");
       await page.getByLabel("Từ ngày").fill(today);
       await page.getByLabel("Đến ngày").fill(today);
+      const filteredRes = await filteredResPromise;
+      expect(filteredRes.ok()).toBe(true);
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname.endsWith("/grading") &&
+          url.searchParams.get("state") === "WAITING" &&
+          url.searchParams.get("exam") === "BCA" &&
+          url.searchParams.get("from") === today &&
+          url.searchParams.get("to") === today,
+      );
+      await expect(table).not.toHaveAttribute("aria-busy", "true");
       await expect(targetRow).toBeVisible();
+      await expect(targetRow).toHaveAttribute("href", new RegExp(`/grading/${submitted.itemId}$`));
 
       // Mở chi tiết chấm và xác nhận nội dung + ẩn danh
       await targetRow.click();

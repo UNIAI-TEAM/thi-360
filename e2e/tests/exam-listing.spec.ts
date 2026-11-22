@@ -315,13 +315,15 @@ test.describe("FA-1: tab Thông tin bán", () => {
       await page.getByRole("button", { name: "Đăng nhập" }).click();
       await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
 
-      // Menu: Bài thi hiện, các mục của đợt 3 chưa có trang (kể cả Bộ đề cùng quyền EXAM.VIEW) không lọt ra.
+      // Menu: Bài thi và Bộ đề (cùng quyền EXAM.VIEW, thuộc nhóm Thương mại) hiện; các mục không có quyền vẫn ẩn.
       const menu = page.getByRole("navigation", { name: "Menu chính" });
       await expect(menu.getByRole("link", { name: "Bài thi" })).toBeVisible();
-      for (const hidden of ["Bộ đề", "Khuyến mãi", "Đơn hàng", "Lượt thi"]) {
+      await expect(menu.getByRole("link", { name: "Bộ đề" })).toBeVisible();
+      await expect(menu.getByText("Thương mại", { exact: true })).toBeVisible();
+      for (const hidden of ["Khuyến mãi", "Đơn hàng", "Lượt thi"]) {
         await expect(menu.getByRole("link", { name: hidden })).toHaveCount(0);
       }
-      for (const group of ["Thương mại", "Học viên"]) await expect(menu.getByText(group, { exact: true })).toHaveCount(0);
+      await expect(menu.getByText("Học viên", { exact: true })).toHaveCount(0);
 
       await page.goto(`${ADMIN_URL}/exams/${examId}/listing`);
       await expect(listingForm(page)).toBeVisible();

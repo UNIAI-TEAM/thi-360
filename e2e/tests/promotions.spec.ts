@@ -73,11 +73,10 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
     try {
       await page.goto(`${ADMIN_URL}/promotions`);
 
-      // AC-17: Khuyen mai hien o sidebar trong nhom Thuong mai, cac muc chua co trang van an
+      // Menu chính của platform admin hiện đầy đủ các mục Thương mại (Khuyến mãi, Bộ đề, Đơn hàng) và Lượt thi.
       const menu = page.getByRole("navigation", { name: "Menu chính" });
-      await expect(menu.getByRole("link", { name: "Khuyến mãi" })).toBeVisible();
-      for (const hidden of ["Bộ đề", "Lượt thi"]) {
-        await expect(menu.getByRole("link", { name: hidden })).toHaveCount(0);
+      for (const visible of ["Khuyến mãi", "Bộ đề", "Đơn hàng", "Lượt thi"]) {
+        await expect(menu.getByRole("link", { name: visible })).toBeVisible();
       }
 
       await page.getByRole("tab", { name: "Mã ưu đãi" }).click();

@@ -83,6 +83,6 @@ test("THPTQG Tiếng Anh: tạo, sinh thử 40 câu, sáu nhóm đúng dải câ
 
   await expect(panel.getByText(/^40 câu · 10 điểm/)).toBeVisible();
   for (const group of ENGLISH_GROUPS) {
-    await expect(panel.getByRole("heading", { name: new RegExp(`câu ${group.first}–${group.last}(\\D|$)`) })).toBeVisible();
+    await expect(panel.getByRole("heading", { level: 4, name: new RegExp(`câu ${group.first}–${group.last}(\\D|$)`) })).toBeVisible();
   }
 });
