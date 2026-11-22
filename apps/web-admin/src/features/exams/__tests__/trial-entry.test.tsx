@@ -285,4 +285,96 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
     expect(disabledBtn2).toHaveAccessibleDescription("Chưa có đề thử để làm");
     expect(screen.getByText("Chưa có đề thử để làm")).toBeInTheDocument();
   });
+
+  it("R2-8, R2-10, R2-13: lỗi cũ và trạng thái loading của previewId cũ không chặn hoặc đè lên preview mới", async () => {
+    const user = userEvent.setup();
+    const previewId2 = "44444444-4444-4444-4444-444444444444";
+    const trialPath2 = `${PREVIEW_PATH}/${previewId2}/trial`;
+    const openSpy = vi.fn(() => ({ opener: window, closed: false } as unknown as Window));
+    vi.stubGlobal("open", openSpy);
+
+    const server = new FakeServer()
+      .on(
+        "POST",
+        PREVIEW_PATH,
+        { status: 200, body: generatedPreviewBody() },
+        { status: 200, body: generatedPreviewBody({ previewId: previewId2 }) },
+      )
+      .on("POST", TRIAL_PATH, { status: 410, body: { code: "PREVIEW_EXPIRED" } })
+      .on("POST", trialPath2, { status: 200, body: { expiresAt: new Date(Date.now() + 60_000).toISOString() } })
+      .hold("POST", TRIAL_PATH);
+
+    renderPanel(server);
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    await user.click(await screen.findByRole("button", { name: "Làm thử như học viên" }));
+    expect(server.calls("POST", TRIAL_PATH)).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Sinh đề thử mới" }));
+    const newTryButton = await screen.findByRole("button", { name: "Làm thử như học viên" });
+    // Loading spinner scoped theo previewId nên đề mới không bị khóa khi preview cũ đang chờ.
+    expect(newTryButton).not.toHaveAttribute("aria-busy", "true");
+
+    server.release("POST", TRIAL_PATH);
+    await waitFor(() => expect(server.calls("POST", TRIAL_PATH)).toHaveLength(1));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(newTryButton);
+    await waitFor(() => expect(openSpy).toHaveBeenCalledTimes(1));
+    expect(openSpy).toHaveBeenCalledWith(expect.stringContaining(`/preview/${previewId2}/try`), "_blank");
+  });
+
+  it("R2-9: unmount giữa chừng khi POST .../trial đang chờ không mở tab sau khi resolved", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.fn(() => ({ opener: window, closed: false } as unknown as Window));
+    vi.stubGlobal("open", openSpy);
+
+    const server = new FakeServer()
+      .on("POST", PREVIEW_PATH, { status: 200, body: generatedPreviewBody() })
+      .on("POST", TRIAL_PATH, { status: 200, body: { expiresAt: new Date(Date.now() + 60_000).toISOString() } })
+      .hold("POST", TRIAL_PATH);
+
+    const view = renderPanel(server);
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    await user.click(await screen.findByRole("button", { name: "Làm thử như học viên" }));
+    expect(server.calls("POST", TRIAL_PATH)).toHaveLength(1);
+
+    view.unmount();
+    server.release("POST", TRIAL_PATH);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it("R2-11, R2-12, R2-37: xử lý popup.closed / window.open throw, re-announce và trả focus về nút Làm thử", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("open", vi.fn(() => ({ closed: true } as unknown as Window)));
+
+    const server = new FakeServer()
+      .on("POST", PREVIEW_PATH, { status: 200, body: generatedPreviewBody() })
+      .on("POST", TRIAL_PATH, { status: 200, body: { expiresAt: new Date(Date.now() + 60_000).toISOString() } })
+      .on("POST", TRIAL_PATH, { status: 200, body: { expiresAt: new Date(Date.now() + 60_000).toISOString() } });
+
+    renderPanel(server);
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    const tryButton = await screen.findByRole("button", { name: "Làm thử như học viên" });
+    await user.click(tryButton);
+    const link1 = await screen.findByRole("link", { name: "Mở đề làm thử trong tab mới" });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Trình duyệt đã chặn cửa sổ bật lên. Hãy bấm liên kết để mở đề làm thử.",
+    );
+
+    // Clicking fallback link removes link and restores focus to tryButton.
+    await user.click(link1);
+    expect(screen.queryByRole("link", { name: "Mở đề làm thử trong tab mới" })).not.toBeInTheDocument();
+    expect(tryButton).toHaveFocus();
+
+    // window.open throws on repeat click -> vẫn hiện link dự phòng + thông báo LiveStatus.
+    vi.stubGlobal("open", vi.fn(() => {
+      throw new Error("popup blocked");
+    }));
+    await user.click(tryButton);
+    expect(await screen.findByRole("link", { name: "Mở đề làm thử trong tab mới" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Trình duyệt đã chặn cửa sổ bật lên. Hãy bấm liên kết để mở đề làm thử.",
+    );
+  });
 });

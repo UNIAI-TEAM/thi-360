@@ -57,6 +57,7 @@ export function useRegradeAttempt(
     onError: (error) => {
       if (getErrorStatus(error) === 409) {
         void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
+        void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
       }
     },
   });
@@ -77,6 +78,7 @@ export function useFaultAttempt(
     onError: (error) => {
       if (getErrorStatus(error) === 409) {
         void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
+        void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
       }
     },
   });
@@ -102,6 +104,7 @@ export function useCompensateAttempt(
     onError: (error) => {
       if (getErrorStatus(error) === 409) {
         void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(attemptId) });
+        void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
       }
     },
   });

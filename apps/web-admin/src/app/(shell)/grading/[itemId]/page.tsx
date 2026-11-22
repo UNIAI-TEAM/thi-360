@@ -16,9 +16,10 @@ export default async function GradingItemPage({
 }: {
   params: Promise<{ itemId: string }>;
 }) {
+  const t = await getTranslations("grading");
   const { itemId } = await params;
   return (
-    <Suspense fallback={<GradingItemSkeleton />}>
+    <Suspense fallback={<GradingItemSkeleton label={t("detail.loading")} />}>
       <GradingItemView itemId={itemId} />
     </Suspense>
   );

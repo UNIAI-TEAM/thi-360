@@ -287,6 +287,7 @@ export function ActiveDraftGradingForm({
   decimalSeparator,
   savingDraft,
   finalizing,
+  reloading = false,
   confirming,
   confirmRef,
   finalizeButtonRef,
@@ -304,6 +305,7 @@ export function ActiveDraftGradingForm({
   decimalSeparator: string;
   savingDraft: boolean;
   finalizing: boolean;
+  reloading?: boolean;
   confirming: boolean;
   confirmRef: Ref<HTMLDivElement>;
   finalizeButtonRef: Ref<HTMLButtonElement>;
@@ -459,8 +461,14 @@ export function ActiveDraftGradingForm({
             className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-caption text-danger"
           >
             <span>{serverError}</span>
-            {isVersionConflict && (
-              <Button type="button" variant="secondary" size="sm" onClick={onReloadDetail}>
+            {isVersionConflict && !staleServerNotice && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={reloading}
+                onClick={onReloadDetail}
+              >
                 <RefreshCw />
                 <span>{t("reload")}</span>
               </Button>
@@ -468,13 +476,16 @@ export function ActiveDraftGradingForm({
           </div>
         )}
 
-        {staleServerNotice && !serverError && (
-          <div
-            role="status"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-caption text-warning"
-          >
+        {staleServerNotice && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-caption text-warning">
             <span>{t("staleNotice")}</span>
-            <Button type="button" variant="secondary" size="sm" onClick={onReloadDetail}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={reloading}
+              onClick={onReloadDetail}
+            >
               <RefreshCw />
               <span>{t("reload")}</span>
             </Button>

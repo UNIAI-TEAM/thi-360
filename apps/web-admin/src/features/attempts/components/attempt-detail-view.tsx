@@ -42,7 +42,9 @@ import {
   extractEventDetailInfo,
   formatChoiceSummary,
   hasAttemptScore,
+  isIsoTimestamp,
   isKnownAbortReason,
+  isKnownAttemptState,
   isKnownCloseReason,
   isKnownEndReason,
   isKnownEventType,
@@ -121,7 +123,13 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
             description={t("offlineDescription")}
             headingLevel={2}
             action={
-              <Button variant="secondary" onClick={() => void detailQuery.refetch()}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void detailQuery.refetch();
+                  void examKindsQuery.refetch();
+                }}
+              >
                 {t("retry")}
               </Button>
             }
@@ -157,7 +165,13 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
                   <Link href="/attempts">{t("backToList")}</Link>
                 </Button>
               ) : (
-                <Button variant="secondary" onClick={() => void detailQuery.refetch()}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    void detailQuery.refetch();
+                    void examKindsQuery.refetch();
+                  }}
+                >
                   {t("retry")}
                 </Button>
               )
@@ -913,6 +927,44 @@ function AttemptActionsAside({
   );
 }
 
+function formatEventFieldValue(
+  key: string,
+  value: string,
+  t: ReturnType<typeof useTranslations<"attempts">>,
+  format: ReturnType<typeof useFormatter>,
+): string {
+  if ((key === "state" || key === "fromState" || key === "toState") && isKnownAttemptState(value)) {
+    return t(`status.${value}`);
+  }
+  if (key === "endReason" && isKnownEndReason(value)) {
+    return t(`endReason.${value}`);
+  }
+  if (key === "closeReason" && isKnownCloseReason(value)) {
+    return t(`closeReason.${value}`);
+  }
+  if (key === "abortReason" && isKnownAbortReason(value)) {
+    return t(`abortReason.${value}`);
+  }
+  if (
+    (key === "reclaimed" || key === "pendingReview" || key === "regrading" || key === "compensated") &&
+    (value === "true" || value === "false")
+  ) {
+    return t(value === "true" ? "detail.booleanYes" : "detail.booleanNo");
+  }
+  if (
+    (key === "startedAt" ||
+      key === "finishedAt" ||
+      key === "closedAt" ||
+      key === "deadlineAt" ||
+      key === "finalizedAt" ||
+      key === "submittedAt") &&
+    isIsoTimestamp(value)
+  ) {
+    return format.dateTime(new Date(value), "dateTime");
+  }
+  return value;
+}
+
 function AttemptTimelineSection({
   events,
   partNameById,
@@ -976,17 +1028,20 @@ function AttemptTimelineSection({
                     <p className="text-caption wrap-anywhere text-text-secondary">
                       {detail.partName && <span data-exam-content>{detail.partName}</span>}
                       {detail.partName && detail.entries.length > 0 && " · "}
-                      {detail.entries.map((entry, idx) => (
-                        <span key={`${entry.key}-${idx}`}>
-                          {idx > 0 && " · "}
-                          {entry.labelKey ? t(`detail.eventFields.${entry.labelKey}`) : entry.key}:{" "}
-                          {entry.isExamContent ? (
-                            <span data-exam-content>{entry.value}</span>
-                          ) : (
-                            entry.value
-                          )}
-                        </span>
-                      ))}
+                      {detail.entries.map((entry, idx) => {
+                        const displayValue = formatEventFieldValue(entry.key, entry.value, t, format);
+                        return (
+                          <span key={`${entry.key}-${idx}`}>
+                            {idx > 0 && " · "}
+                            {entry.labelKey ? t(`detail.eventFields.${entry.labelKey}`) : entry.key}:{" "}
+                            {entry.isExamContent ? (
+                              <span data-exam-content>{displayValue}</span>
+                            ) : (
+                              displayValue
+                            )}
+                          </span>
+                        );
+                      })}
                     </p>
                   )}
                 </div>

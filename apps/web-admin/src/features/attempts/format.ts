@@ -2,17 +2,20 @@ import { pickName } from "@thi360/web-kit/i18n";
 import { isValidCalendarDate } from "@/features/grading/scoring";
 import {
   ATTEMPT_EVENT_TYPES,
+  ATTEMPT_STATES,
   type AdminAttemptDetailResponse,
   type AdminAttemptEventView,
   type AdminAttemptItemView,
   type AdminAttemptSummary,
   type AttemptChoiceSummary,
   type AttemptEventType,
+  type AttemptState,
   type ExamKindCatalogOption,
 } from "./types";
 
 export { isValidCalendarDate };
 
+const KNOWN_ATTEMPT_STATES = new Set<string>(ATTEMPT_STATES);
 const KNOWN_SCOPES = new Set(["FULL", "PART", "SUBJECT", "REVIEW"]);
 const KNOWN_EVENT_TYPES = new Set<string>(ATTEMPT_EVENT_TYPES);
 const KNOWN_END_REASONS = new Set(["SUBMITTED", "TIME_UP", "CHOICE_TIMEOUT", "FAULT_CLOSED"]);
@@ -44,6 +47,17 @@ export function resolveExamKindLabel(
   const found = examKinds?.find((kind) => kind.code === code);
   if (!found) return code;
   return pickName({ nameVi: found.nameVi, nameEn: found.nameEn }, uiLocale) || code;
+}
+
+export function isKnownAttemptState(state: string | undefined): state is AttemptState {
+  return Boolean(state && KNOWN_ATTEMPT_STATES.has(state));
+}
+
+export function isIsoTimestamp(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+    return false;
+  }
+  return !Number.isNaN(Date.parse(value));
 }
 
 export function isKnownScope(scope: string | undefined): scope is "FULL" | "PART" | "SUBJECT" | "REVIEW" {
@@ -118,15 +132,42 @@ export function formatChoiceSummary(choice: AttemptChoiceSummary | undefined): s
 
 const ESSAY_PREVIEW_MAX = 160;
 
+const NAMED_HTML_ENTITIES: Readonly<Record<string, string>> = {
+  nbsp: " ",
+  lt: "<",
+  gt: ">",
+  quot: "\"",
+  apos: "'",
+  amp: "&",
+  mdash: "—",
+  ndash: "–",
+  hellip: "…",
+};
+
+function decodeHtmlEntity(match: string, entity: string): string {
+  if (entity.startsWith("#x") || entity.startsWith("#X")) {
+    const code = Number.parseInt(entity.slice(2), 16);
+    if (code === 0xa0) return " ";
+    if (Number.isFinite(code) && code >= 1 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
+      return String.fromCodePoint(code);
+    }
+    return match;
+  }
+  if (entity.startsWith("#")) {
+    const code = Number.parseInt(entity.slice(1), 10);
+    if (code === 0xa0) return " ";
+    if (Number.isFinite(code) && code >= 1 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
+      return String.fromCodePoint(code);
+    }
+    return match;
+  }
+  return NAMED_HTML_ENTITIES[entity.toLowerCase()] ?? match;
+}
+
 export function stripHtmlToPlainText(html: string): string {
   return html
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, "\"")
-    .replace(/(?:&#39;|&#039;|&apos;)/gi, "'")
-    .replace(/&amp;/gi, "&")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, decodeHtmlEntity)
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -167,12 +208,14 @@ export function parseAttemptAnswerDisplay(item: AdminAttemptItemView): Formatted
     }
     case "CLOZE": {
       const entries = Object.entries(answer.blanks ?? {})
-        .map(([, val], idx) =>
-          typeof val === "string" && val.trim().length > 0
-            ? { index: idx + 1, value: val.trim() }
-            : null,
-        )
-        .filter((entry): entry is { index: number; value: string } => entry !== null);
+        .map(([key, val], idx) => {
+          if (typeof val !== "string" || val.trim().length === 0) return null;
+          const m = /^(?:b|blank[_-]?)?(\d+)$/i.exec(key.trim());
+          const index = m ? Number(m[1]) : idx + 1;
+          return { index: Number.isFinite(index) && index > 0 ? index : idx + 1, value: val.trim() };
+        })
+        .filter((entry): entry is { index: number; value: string } => entry !== null)
+        .sort((a, b) => a.index - b.index);
       return entries.length > 0 ? { kind: "cloze", entries } : { kind: "blank" };
     }
     case "TRUE_FALSE": {
@@ -195,9 +238,10 @@ export function parseAttemptAnswerDisplay(item: AdminAttemptItemView): Formatted
       if (!plain && wordCount === 0) {
         return { kind: "blank" };
       }
+      const codePoints = Array.from(plain);
       const preview =
-        plain.length > ESSAY_PREVIEW_MAX
-          ? `${plain.slice(0, ESSAY_PREVIEW_MAX - 1).trimEnd()}…`
+        codePoints.length > ESSAY_PREVIEW_MAX
+          ? `${codePoints.slice(0, ESSAY_PREVIEW_MAX - 1).join("").trimEnd()}…`
           : plain;
       return { kind: "essay", wordCount, preview };
     }
@@ -207,12 +251,16 @@ export function parseAttemptAnswerDisplay(item: AdminAttemptItemView): Formatted
 }
 
 export const KNOWN_EVENT_FIELD_KEYS = [
+  "abortReason",
   "adminId",
   "assetId",
   "attemptId",
   "attemptNo",
   "closeReason",
   "closedAt",
+  "comment",
+  "compensated",
+  "deadlineAt",
   "detail",
   "durationSec",
   "endReason",
@@ -224,6 +272,7 @@ export const KNOWN_EVENT_FIELD_KEYS = [
   "examVersionNo",
   "faultReason",
   "finalAnswers",
+  "finalizedAt",
   "finishedAt",
   "fromState",
   "generationTries",
@@ -242,10 +291,13 @@ export const KNOWN_EVENT_FIELD_KEYS = [
   "questionId",
   "reason",
   "reclaimed",
+  "regrading",
+  "reopenedReason",
   "seq",
   "sessionId",
   "startedAt",
   "state",
+  "submittedAt",
   "toState",
   "totalScore",
   "tries",
@@ -263,6 +315,8 @@ const FREE_TEXT_EVENT_DATA_KEYS: ReadonlySet<string> = new Set([
   "path",
   "faultReason",
   "gradingError",
+  "reopenedReason",
+  "comment",
 ]);
 
 export interface EventDetailEntry {

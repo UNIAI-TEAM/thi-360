@@ -183,6 +183,12 @@ describe("GradingItemView word count & content isolation", () => {
     const { container } = renderGradingUi(<GradingItemSkeleton label="Loading item" />, {
       locale: "en",
     });
+    expect(container.querySelector(".\\@container")).not.toBeNull();
     expect(container.querySelector('[aria-busy="true"][aria-label="Loading item"]')).not.toBeNull();
+
+    fakeApi.pending("/api/v1/admin/grading/items/{itemId}");
+    const pendingView = renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />, { locale: "en" });
+    expect(pendingView.container.querySelector(".\\@container")).not.toBeNull();
+    expect(pendingView.container.querySelector('[aria-busy="true"][aria-label="Loading essay item"]')).not.toBeNull();
   });
 });

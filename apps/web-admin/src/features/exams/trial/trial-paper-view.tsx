@@ -226,11 +226,14 @@ export function TrialPaperView({
                 key={pId}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setSelectedPartId(pId)}
+                onClick={() => {
+                  pendingScrollRef.current = null;
+                  setSelectedPartId(pId);
+                }}
                 className={cn(
                   "inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-2 rounded-lg border px-3.5 py-2 text-label font-medium transition-colors motion-reduce:transition-none",
                   isSelected
-                    ? "border-2 border-primary-600 bg-primary-50 text-primary-text"
+                    ? "border-primary-600 bg-primary-50 text-primary-text ring-1 ring-inset ring-primary-600"
                     : "border-border bg-surface text-text-secondary hover:bg-subtle hover:text-text",
                   focusRing,
                 )}
@@ -274,6 +277,7 @@ export function TrialPaperView({
                 variant="secondary"
                 disabled={activePartIndex <= 0}
                 onClick={() => {
+                  pendingScrollRef.current = null;
                   const prevIdx = activePartIndex - 1;
                   const prev = sortedParts[prevIdx];
                   if (prev) setSelectedPartId(trialPartKey(prev, prevIdx));
@@ -287,6 +291,7 @@ export function TrialPaperView({
                 variant="secondary"
                 disabled={activePartIndex < 0 || activePartIndex >= sortedParts.length - 1}
                 onClick={() => {
+                  pendingScrollRef.current = null;
                   const nextIdx = activePartIndex + 1;
                   const next = sortedParts[nextIdx];
                   if (next) setSelectedPartId(trialPartKey(next, nextIdx));

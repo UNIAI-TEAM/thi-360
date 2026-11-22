@@ -1,5 +1,5 @@
 import { onlineManager } from "@tanstack/react-query";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Link from "next/link";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -465,6 +465,7 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Đề làm thử đã hết hạn");
+    await waitFor(() => expect(alert).toHaveFocus());
     expect(within(alert).getByRole("link", { name: "Quay lại sinh đề thử mới" })).toHaveAttribute(
       "href",
       `/exams/${EXAM_ID}/review?tab=preview`,
@@ -656,6 +657,7 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
 
     const toolbar = screen.getByRole("toolbar", { name: "Thanh định dạng bài viết" });
     const buttons = within(toolbar).getAllByRole("button");
+    await waitFor(() => expect(buttons[0]).not.toHaveAttribute("aria-disabled", "true"));
     expect(buttons.filter((btn) => btn.tabIndex === 0)).toHaveLength(1);
     expect(buttons.every((btn) => !btn.hasAttribute("disabled"))).toBe(true);
 
@@ -663,5 +665,98 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     expect(buttons[0]).toHaveFocus();
     await user.keyboard("{ArrowRight}");
     expect(buttons[1]).toHaveFocus();
+
+    // R2-30: phím tắt kèm Alt/Ctrl/Meta/Shift không cướp roving focus trong toolbar.
+    await user.keyboard("{Alt>}{ArrowLeft}{/Alt}");
+    expect(buttons[1]).toHaveFocus();
+
+    // R2-12: nút định dạng đang bật có border-primary-600 (tương phản cao) và nút tắt có border-transparent.
+    await user.click(buttons[0]!);
+    await waitFor(() => expect(buttons[0]).toHaveAttribute("aria-pressed", "true"));
+    expect(buttons[0]!.className).toContain("border-primary-600");
+    expect(buttons[1]!.className).toContain("border-transparent");
+
+    // R2-31: mousedown trên nút aria-disabled bị preventDefault để không cướp focus khỏi trình soạn.
+    const disabledUndoBtn = buttons[4]!;
+    expect(disabledUndoBtn).toHaveAttribute("aria-disabled", "true");
+    const downEvent = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    expect(fireEvent(disabledUndoBtn, downEvent)).toBe(false);
+    expect(downEvent.defaultPrevented).toBe(true);
+  });
+
+  it("R2-18 & R2-38: nút chuyển phần dùng border đều (ring-1) và bấm tab thủ công xóa pendingScrollRef", async () => {
+    const user = userEvent.setup();
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy;
+
+    const server = new FakeServer().on("GET", PAPER_PATH, {
+      status: 200,
+      body: buildTrialPaperFixture(),
+    });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+
+    const partNav = screen.getByRole("navigation", { name: "Chuyển phần đề thi" });
+    const partTabs = within(partNav).getAllByRole("button");
+    expect(partTabs[0]!.className).toContain("border ");
+    expect(partTabs[0]!.className).toContain("ring-1");
+    expect(partTabs[0]!.className).not.toContain("border-2");
+
+    // Chuyển phần thủ công -> không cuộn vào phần trước đó và đánh dấu lại pendingScroll = null.
+    await user.click(partTabs[1]!);
+    expect(await screen.findByText("Viết đoạn văn ngắn về tinh thần tự học.")).toBeInTheDocument();
+    expect(scrollSpy).not.toHaveBeenCalled();
+
+    const paletteNav = screen.getByRole("complementary", { name: "Bảng điều hướng câu hỏi" });
+    await user.click(within(paletteNav).getByRole("button", { name: /Câu 1/ }));
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
+    await user.click(partTabs[1]!);
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("R2-29, R2-33, R2-34, R2-35, R2-36: nộp bài khi ngoại tuyến vẫn chạy vào lỗi, target khác _self và mailto bỏ qua ConfirmDialog, Làm lại reset leaveBypassRef", async () => {
+    const user = userEvent.setup();
+    const server = new FakeServer()
+      .on("GET", PAPER_PATH, { status: 200, body: buildTrialPaperFixture() })
+      .on(
+        "POST",
+        GRADE_PATH,
+        { status: 500, body: { code: "INTERNAL_ERROR" } },
+        { status: 200, body: buildPendingGradeFixture() },
+      );
+    server.install();
+
+    renderWithProviders(
+      <>
+        <Link href="/exams" target=" _BLANK ">Tab mới</Link>
+        <a href="mailto:support@thi360.test">Hỗ trợ</a>
+        <Link href="/exams">Danh sách bài thi</Link>
+        <PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />
+      </>,
+    );
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+
+    // R2-33 & R2-34: target=" _BLANK " và non-http mailto không kích hoạt ConfirmDialog rời trang.
+    await user.click(screen.getByText("Tab mới"));
+    await user.click(screen.getByText("Hỗ trợ"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // R2-29: networkMode: "always" -> bấm nộp khi offline vẫn gọi POST /grade và báo alert lỗi.
+    onlineManager.setOnline(false);
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(server.calls("POST", GRADE_PATH)).toHaveLength(1);
+    onlineManager.setOnline(true);
+
+    // R2-35 & R2-36: nộp thành công -> Làm lại đề này reset leaveBypassRef để ConfirmDialog chặn rời trang trở lại.
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+    await screen.findByRole("heading", { level: 1, name: "Kết quả làm thử" });
+    await user.click(screen.getByRole("button", { name: "Làm lại đề này" }));
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+
+    await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 });

@@ -312,4 +312,28 @@ describe("GradingListView", () => {
     });
     expect(await screen.findByRole("link", { name: "#ABCDEF12 · Câu 25" })).toBeInTheDocument();
   });
+
+  it("hiển thị tối đa 4 chữ số thập phân cho câu DONE ở danh sách (R2-27)", async () => {
+    fakeApi.get(
+      "/api/v1/admin/grading/items",
+      ok({
+        items: [
+          makeQueueItem({
+            state: "DONE",
+            earnedPoints: 3.1234,
+            pointsMax: 10,
+            graderName: "Giám khảo B",
+          }),
+        ],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      }),
+    );
+    fakeApi.get("/api/v1/admin/grading/items/counts", ok(makeCounts({ done: 1, total: 1 })));
+
+    renderGradingUi(<GradingListView />);
+    expect(await screen.findByText("3,1234 / 10")).toBeInTheDocument();
+  });
 });

@@ -4,7 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GRADING_QUERY_KEYS } from "@/features/grading/keys";
 import { SessionProvider } from "@/features/session/session-provider";
+import viMessages from "@/messages/vi.json";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
+import { renderWithProviders } from "@/test/render";
 import { ATTEMPTS_QUERY_KEYS } from "../keys";
 import { AttemptDetailView } from "../components/attempt-detail-view";
 import {
@@ -299,10 +301,23 @@ describe("AttemptDetailView", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Xử lý lượt" })).not.toBeInTheDocument();
   });
 
-  it("hiện trạng thái ngoại tuyến với nút Thử lại khi mất kết nối (R1-27)", async () => {
+  it("hiện trạng thái ngoại tuyến với nút Thử lại và Thử lại gọi lại detail + examKinds (R1-27, R2-29)", async () => {
+    let catalogCalls = 0;
+    let detailCalls = 0;
+    let failInitial = false;
+    fakeApi.get("/api/v1/catalog/options", () => {
+      catalogCalls += 1;
+      return failInitial ? fail(500, { code: "INTERNAL_ERROR" }) : ok(ATTEMPT_EXAM_KIND_FIXTURES);
+    });
+    fakeApi.get("/api/v1/admin/attempts/{id}", () => {
+      detailCalls += 1;
+      return failInitial ? fail(500, { code: "INTERNAL_ERROR" }) : ok(makeAttemptDetail({ state: "SCORED" }));
+    });
+
     onlineManager.setOnline(false);
+    let unmount!: () => void;
     try {
-      renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+      unmount = renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />).unmount;
       expect(await screen.findByText("Không có kết nối")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Danh sách lượt thi" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
@@ -310,9 +325,22 @@ describe("AttemptDetailView", () => {
     } finally {
       onlineManager.setOnline(true);
     }
+    unmount();
+
+    failInitial = true;
+    renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+    expect(await screen.findByText("Không tải được lượt thi")).toBeInTheDocument();
+    expect(detailCalls).toBe(1);
+    expect(catalogCalls).toBe(1);
+
+    failInitial = false;
+    await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
+    expect(detailCalls).toBe(2);
+    expect(catalogCalls).toBe(2);
   });
 
-  it("dịch nhãn event data, bọc free-text & lỗi trong [data-exam-content], và giữ chỉ số ô CLOZE (R1-12, R1-13, R1-28, R1-29)", async () => {
+  it("dịch nhãn & giá trị cấu trúc trong dòng sự kiện, tách partId/partCode và giữ chỉ số CLOZE (R1-12, R1-13, R1-28, R1-29, R2-15)", async () => {
     fakeApi.get(
       "/api/v1/admin/attempts/{id}",
       ok(
@@ -336,8 +364,19 @@ describe("AttemptDetailView", () => {
               at: "2026-11-17T02:20:00Z",
               partId: PART_1_ID,
               data: {
+                partId: "part-raw-1",
                 partCode: "P1",
+                fromState: "GRADING",
+                toState: "GRADING_ERROR",
+                endReason: "SUBMITTED",
+                closeReason: "FINISHED",
+                abortReason: "AUDIO_ASSET_MISSING",
+                reclaimed: true,
+                compensated: false,
+                submittedAt: "2026-11-17T02:19:00Z",
                 reason: "Hết thời gian xử lý",
+                reopenedReason: "Phúc khảo lần 1",
+                comment: "Ghi chú giám khảo",
                 unknownKey: "raw-val",
               },
             },
@@ -371,12 +410,23 @@ describe("AttemptDetailView", () => {
       expect(el.closest("[data-exam-content]")).not.toBeNull();
     }
 
-    // Event data localization + free-text isolation + unknown key fallback
+    // Event data localization + structured enum/boolean/ISO formatting + free-text isolation
     const timeline = screen.getByRole("list");
+    expect(within(timeline).getByText(/ID phần: part-raw-1/)).toBeInTheDocument();
     expect(within(timeline).getByText(/Mã phần: P1/)).toBeInTheDocument();
-    const reasonValue = within(timeline).getByText("Hết thời gian xử lý");
-    expect(reasonValue.closest("[data-exam-content]")).not.toBeNull();
-    expect(within(timeline).getByText(/Lý do:/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Từ trạng thái: Đang chấm/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Sang trạng thái: Lỗi chấm/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Lý do kết thúc: Nộp bài/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Lý do đóng: Hoàn thành phần/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Lý do hủy: Thiếu tệp audio/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Thu hồi phiên: Có/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Đã cấp bù: Không/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Nộp lúc:/)).toBeInTheDocument();
+    expect(within(timeline).getByText(/Nộp lúc:/)).not.toHaveTextContent("2026-11-17T02:19:00Z");
+
+    for (const isolated of ["Hết thời gian xử lý", "Phúc khảo lần 1", "Ghi chú giám khảo"]) {
+      expect(within(timeline).getByText(isolated).closest("[data-exam-content]")).not.toBeNull();
+    }
     expect(within(timeline).getByText(/unknownKey: raw-val/)).toBeInTheDocument();
 
     // CLOZE blank index preserved ("Ô 2:")
@@ -384,34 +434,36 @@ describe("AttemptDetailView", () => {
     expect(screen.getByText("Hà Nội").closest("[data-exam-content]")).not.toBeNull();
   });
 
-  it("invalidate GRADING_QUERY_KEYS khi regrade/fault, invalidate detail khi gặp 409, và reset state khi đổi attemptId (R1-21, R1-24, R1-43)", async () => {
+  it("invalidate GRADING_QUERY_KEYS khi regrade/fault, invalidate detail+lists khi 409 (regrade/fault/compensate), và reset khi đổi attemptId ấm cache (R1-21, R1-24, R1-43, R2-24, R2-25)", async () => {
     const OTHER_ATTEMPT_ID = "88888888-8888-4888-8888-888888888888";
     const invalidateSpy = vi.spyOn(QueryClient.prototype, "invalidateQueries");
-    let faultShouldConflict = false;
+    let conflictOn: "none" | "regrade" | "fault" | "compensate" = "none";
+
+    const otherAttemptFixture = makeAttemptDetail({
+      attemptId: OTHER_ATTEMPT_ID,
+      state: "SCORED",
+      parts: [
+        makeAttemptPart({ partId: PART_1_ID, partName: "Phần A" }),
+        makeAttemptPart({ partId: PART_3_ID, partName: "Phần B" }),
+      ],
+      items: [
+        makeAttemptItem({ itemId: "o-1", partId: PART_1_ID, displayNo: 1 }),
+        makeAttemptItem({ itemId: "o-2", partId: PART_3_ID, displayNo: 2 }),
+      ],
+    });
 
     fakeApi.get("/api/v1/admin/attempts/{id}", (req) => {
       const pathParams = (req.options as { params?: { path?: { id?: string } } } | undefined)
         ?.params?.path;
       if (pathParams?.id === OTHER_ATTEMPT_ID) {
-        return ok(
-          makeAttemptDetail({
-            attemptId: OTHER_ATTEMPT_ID,
-            state: "SCORED",
-            parts: [
-              makeAttemptPart({ partId: PART_1_ID, partName: "Phần A" }),
-              makeAttemptPart({ partId: PART_3_ID, partName: "Phần B" }),
-            ],
-            items: [
-              makeAttemptItem({ itemId: "o-1", partId: PART_1_ID, displayNo: 1 }),
-              makeAttemptItem({ itemId: "o-2", partId: PART_3_ID, displayNo: 2 }),
-            ],
-          }),
-        );
+        return new Promise(() => {}); // Giữ pending để chứng minh dữ liệu lấy trực tiếp từ warm cache
       }
       return ok(
         makeAttemptDetail({
           attemptId: ATTEMPT_1_ID,
           state: "GRADING_ERROR",
+          faultFlag: conflictOn === "compensate" ? "SYSTEM_FAULT" : undefined,
+          compensated: false,
           parts: [
             makeAttemptPart({ partId: PART_1_ID, partName: "Phần 1" }),
             makeAttemptPart({ partId: PART_3_ID, partName: "Phần 3" }),
@@ -423,43 +475,92 @@ describe("AttemptDetailView", () => {
         }),
       );
     });
-    fakeApi.post("/api/v1/admin/attempts/{id}/regrade", ok(makeAttemptDetail({ state: "SCORED" })));
+    fakeApi.post("/api/v1/admin/attempts/{id}/regrade", () =>
+      conflictOn === "regrade"
+        ? fail(409, { code: "ATTEMPT_CONFLICT" })
+        : ok(makeAttemptDetail({ state: "SCORED" })),
+    );
     fakeApi.post("/api/v1/admin/attempts/{id}/fault", () =>
-      faultShouldConflict
+      conflictOn === "fault"
         ? fail(409, { code: "ATTEMPT_CONFLICT" })
         : ok(makeAttemptDetail({ faultFlag: "SYSTEM_FAULT" })),
     );
+    fakeApi.post("/api/v1/admin/attempts/{id}/compensate", () =>
+      fail(409, { code: "GRANT_REFUNDED" }),
+    );
 
-    const { rerender } = renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(ATTEMPTS_QUERY_KEYS.detail(OTHER_ATTEMPT_ID), otherAttemptFixture);
+    const session = makeAttemptSession();
+
+    const { rerender } = renderWithProviders(
+      <SessionProvider loadSession={async () => session}>
+        <AttemptDetailView attemptId={ATTEMPT_1_ID} />
+      </SessionProvider>,
+      { client: queryClient, locale: "vi", messages: viMessages },
+    );
     await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
 
-    // Regrade -> invalidates GRADING_QUERY_KEYS.all
+    // 1. Regrade thành công -> invalidates GRADING_QUERY_KEYS.all
     invalidateSpy.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Chấm lại" }));
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: GRADING_QUERY_KEYS.all });
     });
 
-    // Chọn bộ lọc phần trước khi chuyển attemptId -> switching attemptId resets state via key
+    // 2. Regrade gặp 409 -> invalidates detail + lists()
+    conflictOn = "regrade";
+    invalidateSpy.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Chấm lại" }));
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.detail(ATTEMPT_1_ID) });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
+    });
+
+    // 3. Fault thành công -> invalidates GRADING_QUERY_KEYS.all
+    conflictOn = "none";
+    invalidateSpy.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Đánh dấu hỏng" }));
+    const faultOkDialog = await screen.findByRole("dialog");
+    await userEvent.type(within(faultOkDialog).getByLabelText(/Lý do/), "Lỗi hệ thống");
+    await userEvent.click(within(faultOkDialog).getByRole("button", { name: "Đánh dấu lượt hỏng" }));
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: GRADING_QUERY_KEYS.all });
+    });
+
+    // 4. Fault gặp 409 -> invalidates detail + lists()
+    conflictOn = "fault";
+    invalidateSpy.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Đánh dấu hỏng" }));
+    const faultConflictDialog = await screen.findByRole("dialog");
+    await userEvent.type(within(faultConflictDialog).getByLabelText(/Lý do/), "Lỗi worker");
+    await userEvent.click(within(faultConflictDialog).getByRole("button", { name: "Đánh dấu lượt hỏng" }));
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.detail(ATTEMPT_1_ID) });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
+    });
+    await userEvent.click(within(faultConflictDialog).getByRole("button", { name: "Hủy" }));
+
+    // 5. Compensate gặp 409 -> invalidates detail + lists()
+    conflictOn = "compensate";
+    await queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.detail(ATTEMPT_1_ID) });
+    const compBtn = await screen.findByRole("button", { name: "Cấp bù 1 lượt" });
+    invalidateSpy.mockClear();
+    await userEvent.click(compBtn);
+    const compDialog = await screen.findByRole("dialog");
+    await userEvent.type(within(compDialog).getByLabelText(/Lý do/), "Hoàn lượt");
+    await userEvent.click(within(compDialog).getByRole("button", { name: "Cấp bù 1 lượt" }));
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.detail(ATTEMPT_1_ID) });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ATTEMPTS_QUERY_KEYS.lists() });
+    });
+    await userEvent.click(within(compDialog).getByRole("button", { name: "Hủy" }));
+
+    // 6. Đổi từ attemptId cũ (đang chọn Phần 3) sang OTHER_ATTEMPT_ID đã warm cache -> reset ngay về "Tất cả phần"
     const partFilter = screen.getByRole("combobox", { name: "Lọc theo phần" });
     await userEvent.click(partFilter);
     await userEvent.click(screen.getByRole("option", { name: "Phần 3" }));
 
-    // Fault gặp 409 -> invalidates detail(ATTEMPT_1_ID)
-    faultShouldConflict = true;
-    invalidateSpy.mockClear();
-    await userEvent.click(screen.getByRole("button", { name: "Đánh dấu hỏng" }));
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.type(within(dialog).getByLabelText(/Lý do/), "Lỗi worker");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Đánh dấu lượt hỏng" }));
-    await waitFor(() => {
-      expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ATTEMPTS_QUERY_KEYS.detail(ATTEMPT_1_ID),
-      });
-    });
-
-    // Đổi attemptId -> reset filter về "Tất cả phần"
-    const session = makeAttemptSession();
     rerender(
       <SessionProvider loadSession={async () => session}>
         <AttemptDetailView attemptId={OTHER_ATTEMPT_ID} />
@@ -469,7 +570,7 @@ describe("AttemptDetailView", () => {
     expect(screen.getByRole("combobox", { name: "Lọc theo phần" })).toHaveTextContent("Tất cả phần");
   });
 
-  it("chặn Đánh dấu hỏng khi thiếu ATTEMPT.COMPENSATE trên lượt chưa hỏng, khi STARTING/ABORTED, và xử lý 404/500 Retry (R1-35, R1-37)", async () => {
+  it("chặn Đánh dấu hỏng khi thiếu ATTEMPT.COMPENSATE trên lượt chưa hỏng, khi STARTING/ABORTED, và xử lý 404/500 Retry (R1-35, R1-37, R2-42)", async () => {
     // 1. Lượt IN_PROGRESS chưa hỏng + thiếu ATTEMPT.COMPENSATE -> ẩn Đánh dấu hỏng
     fakeApi.get(
       "/api/v1/admin/attempts/{id}",
@@ -482,17 +583,17 @@ describe("AttemptDetailView", () => {
     expect(screen.queryByRole("button", { name: "Đánh dấu hỏng" })).not.toBeInTheDocument();
     unmount();
 
-    // 2. Có ATTEMPT.COMPENSATE nhưng state = ABORTED -> không cho Đánh dấu hỏng
-    fakeApi.get(
-      "/api/v1/admin/attempts/{id}",
-      ok(makeAttemptDetail({ state: "ABORTED", faultFlag: undefined })),
-    );
-    const { unmount: unmountAborted } = renderAttemptsUi(
-      <AttemptDetailView attemptId={ATTEMPT_1_ID} />,
-    );
-    await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
-    expect(screen.queryByRole("button", { name: "Đánh dấu hỏng" })).not.toBeInTheDocument();
-    unmountAborted();
+    // 2. Có ATTEMPT.COMPENSATE nhưng state = ABORTED hoặc STARTING -> không cho Đánh dấu hỏng
+    for (const blockedState of ["ABORTED", "STARTING"] as const) {
+      fakeApi.get(
+        "/api/v1/admin/attempts/{id}",
+        ok(makeAttemptDetail({ state: blockedState, faultFlag: undefined })),
+      );
+      const view = renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
+      await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
+      expect(screen.queryByRole("button", { name: "Đánh dấu hỏng" })).not.toBeInTheDocument();
+      view.unmount();
+    }
 
     // 3. 404 -> Không tìm thấy lượt thi
     fakeApi.get("/api/v1/admin/attempts/{id}", fail(404, { code: "NOT_FOUND" }));

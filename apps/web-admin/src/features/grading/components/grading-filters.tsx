@@ -194,7 +194,7 @@ export function GradingFiltersBar({
                     />
                     <span
                       className={cn(
-                        "relative flex h-10 items-center gap-2 rounded-md px-3 text-label font-medium whitespace-nowrap text-text-muted pointer-coarse:min-h-11 sm:px-3.5",
+                        "relative flex h-10 items-center gap-2 rounded-md px-3 text-label font-medium whitespace-nowrap text-text-muted pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center sm:px-3.5",
                         "transition-colors duration-150 motion-reduce:transition-none hover:text-text",
                         "peer-checked:bg-surface peer-checked:text-primary-text peer-checked:shadow-sm",
                         "after:pointer-events-none after:absolute after:inset-x-2.5 after:bottom-1 peer-checked:after:border-b-2 peer-checked:after:border-current sm:after:inset-x-3",

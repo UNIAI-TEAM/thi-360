@@ -94,6 +94,7 @@ export function ExamPreviewPanel({
   const [trialErrorCode, setTrialErrorCode] = useState<string | null>(null);
   const [blockedTrialHref, setBlockedTrialHref] = useState<string | null>(null);
   const activePreviewIdRef = useRef<string | null>(null);
+  const tryButtonRef = useRef<HTMLButtonElement>(null);
 
   const extendTrial = useMutation({
     mutationFn: (previewId: string) =>
@@ -105,8 +106,13 @@ export function ExamPreviewPanel({
         setTrialExpires({ previewId, expiresAt: res.expiresAt });
       }
       const href = trialPageHref(exam.id, previewId, res.expiresAt ?? null);
-      const popup = window.open(href, "_blank");
-      if (!popup) {
+      let popup: Window | null = null;
+      try {
+        popup = window.open(href, "_blank");
+      } catch {
+        popup = null;
+      }
+      if (!popup || popup.closed) {
         setBlockedTrialHref(href);
         setLiveMessage(t("trial.popupBlocked"));
         return;
@@ -119,7 +125,8 @@ export function ExamPreviewPanel({
       setBlockedTrialHref(null);
       setLiveMessage(t("trial.liveOpened"));
     },
-    onError: (error) => {
+    onError: (error, previewId) => {
+      if (activePreviewIdRef.current !== previewId) return;
       const code = errorCodeOf(error) ?? "GENERIC";
       setTrialErrorCode(code);
       setLiveMessage(code === "PREVIEW_EXPIRED" ? t("trial.expiredError") : t("trial.genericError"));
@@ -269,6 +276,9 @@ export function ExamPreviewPanel({
   const shown = data?.status === "GENERATED" ? data : null;
   useEffect(() => {
     activePreviewIdRef.current = !generate.isPending && shown?.previewId ? shown.previewId : null;
+    return () => {
+      activePreviewIdRef.current = null;
+    };
   }, [generate.isPending, shown?.previewId]);
   const extendedExpiresAt =
     shown?.previewId && trialExpires?.previewId === shown.previewId
@@ -363,6 +373,7 @@ export function ExamPreviewPanel({
     body = <PreviewFailure exam={exam} result={data} label={resultLabel} onShowCheck={onShowCheck} />;
   } else {
     const canStartTrial = data.previewId !== null;
+    const isExtendingCurrent = extendTrial.isPending && extendTrial.variables === data.previewId;
     body = (
       <div className="flex flex-col gap-4">
         <Card padding="md" className="flex flex-col gap-3">
@@ -393,15 +404,18 @@ export function ExamPreviewPanel({
                 {original ? t("order.showShuffled") : t("order.showOriginal")}
               </Button>
               <Button
+                ref={tryButtonRef}
                 type="button"
                 variant="primary"
                 size="sm"
                 disabled={!canStartTrial}
-                loading={extendTrial.isPending}
+                loading={isExtendingCurrent}
                 aria-describedby={!canStartTrial ? trialUnavailableId : undefined}
                 onClick={() => {
-                  if (!data.previewId || extendTrial.isPending) return;
+                  if (!data.previewId || isExtendingCurrent) return;
                   setBlockedTrialHref(null);
+                  setTrialErrorCode(null);
+                  setLiveMessage("");
                   extendTrial.mutate(data.previewId);
                 }}
               >
@@ -425,7 +439,10 @@ export function ExamPreviewPanel({
                 href={blockedTrialHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setBlockedTrialHref(null)}
+                onClick={() => {
+                  setBlockedTrialHref(null);
+                  tryButtonRef.current?.focus();
+                }}
                 className={cn(
                   "inline-flex min-h-8 items-center rounded-sm font-semibold text-primary-text underline pointer-coarse:min-h-11",
                   focusRing,

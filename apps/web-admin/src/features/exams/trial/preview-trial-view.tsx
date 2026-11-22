@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, Skeleton } from "@thi360/ui";
+import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, Skeleton, cn, focusRing } from "@thi360/ui";
 import type { AnswerValue as KitAnswerValue } from "@thi360/ui/question";
 import { ArrowLeft, Clock, TriangleAlert, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -78,6 +78,19 @@ function PreviewTrialSession({
   const [focusResultHeading, setFocusResultHeading] = useState(false);
   const [retakeFocusCount, setRetakeFocusCount] = useState(0);
   const leaveBypassRef = useRef(false);
+  const expiredAlertRef = useRef<HTMLDivElement>(null);
+  const prevExpiredOnSubmitRef = useRef(false);
+
+  useEffect(() => {
+    leaveBypassRef.current = false;
+  }, [examId, previewId, initialExpiresAt]);
+
+  useEffect(() => {
+    if (expiredOnSubmit && !prevExpiredOnSubmitRef.current) {
+      expiredAlertRef.current?.focus();
+    }
+    prevExpiredOnSubmitRef.current = expiredOnSubmit;
+  }, [expiredOnSubmit]);
 
   const paperQuery = useQuery({
     queryKey: PREVIEW_TRIAL_QUERY_KEYS.paper(examId, previewId),
@@ -86,6 +99,7 @@ function PreviewTrialSession({
   });
 
   const gradeMutation = useMutation({
+    networkMode: "always",
     mutationFn: async () => {
       if (!paperQuery.data) {
         throw new Error("Trial paper is not loaded");
@@ -96,6 +110,7 @@ function PreviewTrialSession({
     onSuccess: (result) => {
       setSubmitErrorMsg(null);
       setExpiredOnSubmit(false);
+      setPendingLeaveHref(null);
       setFocusResultHeading(true);
       setGradeResult(result);
       announce(t("live.graded"));
@@ -132,7 +147,8 @@ function PreviewTrialSession({
       if (!(target instanceof Element)) return;
       const anchor = target.closest("a[href]");
       if (!(anchor instanceof HTMLAnchorElement)) return;
-      if (anchor.hasAttribute("download") || anchor.target === "_blank") return;
+      const targetAttr = anchor.getAttribute("target")?.trim().toLowerCase();
+      if (anchor.hasAttribute("download") || (targetAttr && targetAttr !== "_self")) return;
       const raw = anchor.getAttribute("href");
       if (!raw || raw.startsWith("#")) return;
       let url: URL;
@@ -141,6 +157,7 @@ function PreviewTrialSession({
       } catch {
         return;
       }
+      if (url.protocol !== "http:" && url.protocol !== "https:") return;
       if (url.origin !== window.location.origin) return;
       const next = `${url.pathname}${url.search}${url.hash}`;
       if (url.pathname === window.location.pathname && url.search === window.location.search) return;
@@ -161,7 +178,7 @@ function PreviewTrialSession({
   if (isExpiredOnLoad || expiredOnSubmit) {
     return (
       <Card>
-        <div role="alert">
+        <div ref={expiredAlertRef} role="alert" tabIndex={-1} className={cn("rounded-xl", focusRing)}>
           <EmptyState
             headingLevel={1}
             icon={<Clock />}
@@ -258,6 +275,8 @@ function PreviewTrialSession({
           setGradeResult(null);
           setAnswers({});
           setSubmitErrorMsg(null);
+          setPendingLeaveHref(null);
+          leaveBypassRef.current = false;
           setFocusResultHeading(false);
           setRetakeFocusCount((count) => count + 1);
           announce(t("live.retake"));

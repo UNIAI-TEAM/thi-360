@@ -6,6 +6,7 @@ import {
   extractClozeResultEntries,
   sliceTrialPartSegments,
   toApiTrialAnswers,
+  toKitTrialQuestion,
   trialPartKey,
 } from "../trial/mappers";
 import type { PreviewGradeResponse, PreviewTrialPaperResponse, PreviewTrialPart } from "../trial/types";
@@ -232,5 +233,30 @@ describe("trial mappers (R1-4, R1-5, R1-14, R1-17, R1-33, R1-38, R1-39)", () => 
     expect(extractClozeResultEntries(undefined, { b1: "", b2: "Paris" })).toEqual([
       { index: 2, value: "Paris" },
     ]);
+  });
+
+  it("toKitTrialQuestion giữ optionOrder khi có và bỏ qua khi rỗng (R2-41)", () => {
+    const withOrder = toKitTrialQuestion({
+      questionId: "q-1",
+      number: 1,
+      type: "SINGLE_CHOICE",
+      optionOrder: ["o2", "o1"],
+      body: {
+        type: "SINGLE_CHOICE",
+        options: [
+          { id: "o1", content: "A" },
+          { id: "o2", content: "B" },
+        ],
+      } as never,
+    });
+    expect(withOrder.optionOrder).toEqual(["o2", "o1"]);
+
+    const emptyOrder = toKitTrialQuestion({
+      questionId: "q-2",
+      number: 2,
+      type: "SINGLE_CHOICE",
+      optionOrder: [],
+    });
+    expect(emptyOrder.optionOrder).toBeUndefined();
   });
 });

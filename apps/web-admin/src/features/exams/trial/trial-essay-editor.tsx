@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, focusRingInset } from "@thi360/ui";
+import { IconButton, cn, focusRingInset } from "@thi360/ui";
 import type { EssayEditorProps } from "@thi360/ui/question";
 import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -86,10 +86,6 @@ export function TrialEssayEditor({
           italic: false,
           bulletList: false,
           orderedList: false,
-          canBold: false,
-          canItalic: false,
-          canBulletList: false,
-          canOrderedList: false,
           canUndo: false,
           canRedo: false,
           isEmpty: true,
@@ -100,10 +96,6 @@ export function TrialEssayEditor({
         italic: ed.isActive("italic"),
         bulletList: ed.isActive("bulletList"),
         orderedList: ed.isActive("orderedList"),
-        canBold: ed.can().toggleBold(),
-        canItalic: ed.can().toggleItalic(),
-        canBulletList: ed.can().toggleBulletList(),
-        canOrderedList: ed.can().toggleOrderedList(),
         canUndo: ed.can().undo(),
         canRedo: ed.can().redo(),
         isEmpty: ed.isEmpty,
@@ -158,6 +150,7 @@ export function TrialEssayEditor({
   const showPlaceholder = toolbarState?.isEmpty ?? value.trim().length === 0;
 
   function onToolbarKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const buttons = Array.from(toolbarRef.current?.querySelectorAll("button") ?? []);
     if (buttons.length === 0) return;
     const current = buttons.indexOf(event.target as HTMLButtonElement);
@@ -197,7 +190,7 @@ export function TrialEssayEditor({
       label: t("bold"),
       icon: <Bold className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.bold ?? false,
-      disabled: readOnly || !(toolbarState?.canBold ?? false),
+      disabled: readOnly || !editor?.can().toggleBold(),
       onClick: () => editor?.chain().focus().toggleBold().run(),
     },
     {
@@ -205,7 +198,7 @@ export function TrialEssayEditor({
       label: t("italic"),
       icon: <Italic className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.italic ?? false,
-      disabled: readOnly || !(toolbarState?.canItalic ?? false),
+      disabled: readOnly || !editor?.can().toggleItalic(),
       onClick: () => editor?.chain().focus().toggleItalic().run(),
     },
     {
@@ -213,7 +206,7 @@ export function TrialEssayEditor({
       label: t("bulletList"),
       icon: <List className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.bulletList ?? false,
-      disabled: readOnly || !(toolbarState?.canBulletList ?? false),
+      disabled: readOnly || !editor?.can().toggleBulletList(),
       onClick: () => editor?.chain().focus().toggleBulletList().run(),
     },
     {
@@ -221,7 +214,7 @@ export function TrialEssayEditor({
       label: t("orderedList"),
       icon: <ListOrdered className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.orderedList ?? false,
-      disabled: readOnly || !(toolbarState?.canOrderedList ?? false),
+      disabled: readOnly || !editor?.can().toggleOrderedList(),
       onClick: () => editor?.chain().focus().toggleOrderedList().run(),
     },
   ];
@@ -244,14 +237,22 @@ export function TrialEssayEditor({
   ];
 
   const renderToolbarButton = (btn: ToolbarButton, index: number) => (
-    <button
+    <IconButton
       key={btn.key}
       type="button"
+      size="md"
+      icon={btn.icon}
+      tooltip={btn.label}
       aria-label={btn.label}
       aria-pressed={btn.pressed}
       aria-disabled={btn.disabled || undefined}
       tabIndex={index === tabStop ? 0 : -1}
       onFocus={() => setTabStop(index)}
+      onMouseDown={(event) => {
+        if (btn.disabled) {
+          event.preventDefault();
+        }
+      }}
       onClick={(event) => {
         if (btn.disabled) {
           event.preventDefault();
@@ -260,14 +261,14 @@ export function TrialEssayEditor({
         btn.onClick();
       }}
       className={cn(
-        "inline-flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+        "border text-text-secondary transition-colors motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:min-w-11",
         "hover:bg-subtle aria-disabled:cursor-not-allowed aria-disabled:opacity-45 aria-disabled:hover:bg-transparent",
-        btn.pressed && "bg-primary-100 text-primary-800",
+        btn.pressed
+          ? "border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100"
+          : "border-transparent",
         focusRingInset,
       )}
-    >
-      {btn.icon}
-    </button>
+    />
   );
 
   return (

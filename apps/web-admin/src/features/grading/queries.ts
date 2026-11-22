@@ -73,8 +73,8 @@ export function useClaimGradingItem(
           : old,
       );
       void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(itemId) });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.countsRoot() });
     },
   });
 }
@@ -96,8 +96,8 @@ export function useSaveEssayDraft(
             }
           : old,
       );
-      void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.countsRoot() });
     },
   });
 }
@@ -121,8 +121,8 @@ export function useFinalizeEssayGrade(
           : old,
       );
       void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(itemId) });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.countsRoot() });
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.all });
     },
   });
@@ -150,8 +150,8 @@ export function useReopenEssayGrade(
         };
       });
       void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.detail(itemId) });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "list"] });
-      void queryClient.invalidateQueries({ queryKey: ["grading", "counts"] });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: GRADING_QUERY_KEYS.countsRoot() });
       void queryClient.invalidateQueries({ queryKey: ATTEMPTS_QUERY_KEYS.all });
     },
   });
