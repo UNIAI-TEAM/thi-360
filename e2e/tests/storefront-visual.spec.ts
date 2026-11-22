@@ -49,19 +49,29 @@ function waitForDsData(): Promise<void> {
 
 /** Mã bài đầu danh mục công khai sau khi DS xong. */
 function firstProductCode(): Promise<string> {
-  firstProduct ??= (async () => {
-    await waitForDsData();
-    const api = await playwrightRequest.newContext();
-    try {
-      const response = await api.get(`${API_URL}/api/v1/public/storefront/products?size=12`);
-      expect(response.status(), "cần dữ liệu DS và bảng chiếu đã dựng").toBe(200);
-      const page = (await response.json()) as { items: Array<{ code: string }> };
-      expect(page.items.length, "DS phải công bố ít nhất một bài đang bán").toBeGreaterThan(0);
-      return page.items[0]!.code;
-    } finally {
-      await api.dispose();
-    }
-  })();
+  if (!firstProduct) {
+    // CM-6/FB seeded bundle DS-BO-SP2E-3MON sorts ahead of DS exams on a fresh DB, so pick the first EXAM (productType === "EXAM").
+    const promise = (async () => {
+      await waitForDsData();
+      const api = await playwrightRequest.newContext();
+      try {
+        const response = await api.get(`${API_URL}/api/v1/public/storefront/products?size=12`);
+        expect(response.status(), "cần dữ liệu DS và bảng chiếu đã dựng").toBe(200);
+        const page = (await response.json()) as { items: Array<{ code: string; productType?: string }> };
+        const firstExam = page.items.find((item) => item.productType === "EXAM");
+        expect(firstExam, "DS phải công bố ít nhất một bài đang bán").toBeDefined();
+        return firstExam!.code;
+      } finally {
+        await api.dispose();
+      }
+    })().catch((err) => {
+      if (firstProduct === promise) {
+        firstProduct = undefined;
+      }
+      throw err;
+    });
+    firstProduct = promise;
+  }
   return firstProduct;
 }
 
