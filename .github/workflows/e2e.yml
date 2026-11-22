@@ -69,6 +69,7 @@ jobs:
         env:
           E2E_BACKEND_CMD: java -jar target/thi360-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=api,worker,dev,e2e
           E2E_USE_BUILT: "1"
+          THI360_S3_ENDPOINT: "http://localhost:9360"
           # Passed through playwright.config.ts to the spawned backend: raises
           # the per-IP login rate limit (thi360.security.rate-limit.login-per-ip-limit)
           # so the suite's platform logins cannot trip RateLimitFilter.

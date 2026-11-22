@@ -69,7 +69,7 @@ test.describe("QA Core Flow — AC-5: Admin tạo voucher 100% và student nhậ
 
       // 1. Admin UI mở `/promotions` -> tab `Mã ưu đãi` -> `Tạo voucher` (`/promotions/new?kind=VOUCHER`)
       await adminPage.goto(`${ADMIN_URL}/promotions`);
-      await expect(adminPage.getByRole("heading", { name: "Khuyến mãi" })).toBeVisible();
+      await expect(adminPage.getByRole("heading", { name: "Khuyến mãi", exact: true })).toBeVisible();
       await adminPage.getByRole("tab", { name: "Mã ưu đãi" }).click();
       await adminPage.locator("main").getByRole("link", { name: "Tạo voucher" }).first().click();
       await expect(adminPage).toHaveURL(/\/promotions\/new\?kind=VOUCHER/);

@@ -37,5 +37,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm exec turbo run test --filter=!@thi360/e2e --concurrency=1
       - run: pnpm build
