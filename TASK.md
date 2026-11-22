@@ -271,7 +271,7 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 | FA-4 | UNI-2741 | Web admin: hàng chờ chấm thật, vận hành lượt, làm thử như học viên (phần web) | AT-5, FA-1, FS-4, FS-5, FS-6 |  | 3 | merge PR #182 (`a6ef4908`) |
 | FA-5 | UNI-2742 | Web admin: màn Sinh thử dùng giao diện câu hỏi chung, audio khi làm thử | FA-4, FS-7 |  | 2 | merge PR #183 (`28bd7da2`) |
 | LP | UNI-2743 | Web admin: tab Hồ sơ học tập nối Quyền sử dụng và Lịch sử lượt thi | CM-4b, AT-4, FA-1 |  | 2 | merge PR #175 (`7bf21d7c`) |
-| QA | UNI-2744 | E2E đầu cuối, kiểm thử bảo mật, tài liệu | C-0, C-0b, ML, TS, FU, EX-1, EX-2, FS-4, VP-1, CM-4a, DS, ID-1, ID-2, CM-1, FA-1, AT-1, CM-2, CM-4b, FS-1, FS-2, AT-2a, AT-3, CM-3a, FA-2, AT-2b, AT-4, AT-6, AT-8, CM-3b, CM-5, CM-6, FS-3, AT-5, AT-7, LP, FS-5, FS-6, FA-3, FB, FA-4, VP-2, FS-7, FA-5 |  | 4 | đang làm (bro) |
+| QA | UNI-2744 | E2E đầu cuối, kiểm thử bảo mật, tài liệu | C-0, C-0b, ML, TS, FU, EX-1, EX-2, FS-4, VP-1, CM-4a, DS, ID-1, ID-2, CM-1, FA-1, AT-1, CM-2, CM-4b, FS-1, FS-2, AT-2a, AT-3, CM-3a, FA-2, AT-2b, AT-4, AT-6, AT-8, CM-3b, CM-5, CM-6, FS-3, AT-5, AT-7, LP, FS-5, FS-6, FA-3, FB, FA-4, VP-2, FS-7, FA-5 |  | 4 | merge PR #184 (`3c5f95d8`), hoàn tất 138/138 điểm Đợt 3 |
 
 **Ngoài plan (không tính vào 138 điểm):** lỗi UI/UX khi thiết lập HSA, uniworkos UNI-1695 (BA giao M.Trường ngày 2026-11-19, M.Trường yêu cầu mở luồng sửa song song). Issue cha UniAI **UNI-2749**. Xong thì merge vào `integration/dot-3`, rồi cherry-pick sang nhánh hotfix từ `develop`, PR vào `develop` và dựng lại bản demo.
 
