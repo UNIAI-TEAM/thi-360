@@ -1,5 +1,5 @@
 import { onlineManager } from "@tanstack/react-query";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Link from "next/link";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -210,7 +210,7 @@ function buildPendingGradeFixture(): PreviewGradeResponse {
 beforeEach(() => {
   onlineManager.setOnline(true);
   routerMock.push.mockReset();
-  Element.prototype.scrollIntoView = vi.fn();
+  vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -398,6 +398,7 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Đề làm thử đã hết hạn");
+    await waitFor(() => expect(alert).toHaveFocus());
     expect(within(alert).getByRole("link", { name: "Quay lại sinh đề thử mới" })).toHaveAttribute(
       "href",
       `/exams/${EXAM_ID}/review?tab=preview`,
@@ -422,8 +423,7 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
 
   it("Palette: bấm vào số câu ở phần khác tự chuyển phần và gọi scrollIntoView", async () => {
     const user = userEvent.setup();
-    const scrollSpy = vi.fn();
-    Element.prototype.scrollIntoView = scrollSpy;
+    const scrollSpy = vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
 
     const matchMediaMock = vi.fn().mockImplementation((query: string) => ({
       matches: query === "(prefers-reduced-motion: reduce)",
@@ -670,11 +670,15 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     await user.keyboard("{Alt>}{ArrowLeft}{/Alt}");
     expect(buttons[1]).toHaveFocus();
 
-    // R2-12: nút định dạng đang bật có border-primary-600 (tương phản cao) và nút tắt có border-transparent.
+    // R3-7 & R3-8: không trộn focus-visible:outline-hidden với focus-visible:outline-3; nút bật dùng ::after, nút tắt không dùng border-transparent.
+    for (const btn of buttons) {
+      expect(btn.className).toContain("focus-visible:outline-hidden");
+      expect(btn.className).not.toContain("focus-visible:outline-3");
+    }
     await user.click(buttons[0]!);
     await waitFor(() => expect(buttons[0]).toHaveAttribute("aria-pressed", "true"));
-    expect(buttons[0]!.className).toContain("border-primary-600");
-    expect(buttons[1]!.className).toContain("border-transparent");
+    expect(buttons[0]!.className).toContain("after:border-primary-600");
+    expect(buttons[1]!.className).not.toContain("border-transparent");
 
     // R2-31: mousedown trên nút aria-disabled bị preventDefault để không cướp focus khỏi trình soạn.
     const disabledUndoBtn = buttons[4]!;
@@ -684,14 +688,52 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     expect(downEvent.defaultPrevented).toBe(true);
   });
 
-  it("R2-18 & R2-38: nút chuyển phần dùng border đều (ring-1) và bấm tab thủ công xóa pendingScrollRef", async () => {
+  it("R3-9, R3-20 & R3-22: nút chuyển phần dùng border + ::after (không ring-inset) và 3 thao tác chuyển phần thủ công xóa pendingScrollRef", async () => {
     const user = userEvent.setup();
-    const scrollSpy = vi.fn();
-    Element.prototype.scrollIntoView = scrollSpy;
+    const scrollSpy = vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
+
+    const threePartPaper = buildTrialPaperFixture();
+    threePartPaper.parts!.push({
+      partId: "part-3",
+      name: "Phần 3 · Đọc hiểu",
+      order: 3,
+      durationMinutes: 30,
+      firstNumber: 4,
+      lastNumber: 4,
+      points: 2,
+      blocks: [
+        {
+          blockId: "blk-3",
+          name: "Khối 3",
+          questionType: "SINGLE_CHOICE",
+          firstNumber: 4,
+          lastNumber: 4,
+          questionCount: 1,
+          items: [
+            {
+              kind: "QUESTION",
+              question: {
+                number: 4,
+                questionId: "q-sc-4",
+                code: "C4",
+                versionNo: 1,
+                type: "SINGLE_CHOICE",
+                content: "<p>Câu hỏi phần 3?</p>",
+                points: 2,
+                body: {
+                  type: "SINGLE_CHOICE",
+                  options: [{ id: "opt-3a", content: "<p>Phương án A</p>" }],
+                } as never,
+              },
+            },
+          ],
+        },
+      ],
+    });
 
     const server = new FakeServer().on("GET", PAPER_PATH, {
       status: 200,
-      body: buildTrialPaperFixture(),
+      body: threePartPaper,
     });
     server.install();
 
@@ -701,39 +743,75 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     const partNav = screen.getByRole("navigation", { name: "Chuyển phần đề thi" });
     const partTabs = within(partNav).getAllByRole("button");
     expect(partTabs[0]!.className).toContain("border ");
-    expect(partTabs[0]!.className).toContain("ring-1");
+    expect(partTabs[0]!.className).toContain("border-primary-600");
+    expect(partTabs[0]!.className).toContain("after:border-b-2");
+    expect(partTabs[0]!.className).not.toContain("ring-inset");
     expect(partTabs[0]!.className).not.toContain("border-2");
 
-    // Chuyển phần thủ công -> không cuộn vào phần trước đó và đánh dấu lại pendingScroll = null.
-    await user.click(partTabs[1]!);
+    const paletteNav = screen.getByRole("complementary", { name: "Bảng điều hướng câu hỏi" });
+    const q4Btn = within(paletteNav).getByRole("button", { name: /Câu 4/ });
+
+    // 1. Batch palette (target part-3) + tab click thủ công (part-2) -> tới part-3 không tự cuộn.
+    act(() => {
+      fireEvent.click(q4Btn);
+      fireEvent.click(partTabs[1]!);
+    });
     expect(await screen.findByText("Viết đoạn văn ngắn về tinh thần tự học.")).toBeInTheDocument();
+    await user.click(partTabs[2]!);
+    expect(await screen.findByText("Câu hỏi phần 3?")).toBeInTheDocument();
     expect(scrollSpy).not.toHaveBeenCalled();
 
-    const paletteNav = screen.getByRole("complementary", { name: "Bảng điều hướng câu hỏi" });
+    // 2. Từ part-1: batch palette (target part-3) + Phần tiếp theo (part-2) -> tới part-3 không tự cuộn.
+    await user.click(partTabs[0]!);
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+    act(() => {
+      fireEvent.click(q4Btn);
+      fireEvent.click(screen.getByRole("button", { name: "Phần tiếp theo" }));
+    });
+    await screen.findByText("Viết đoạn văn ngắn về tinh thần tự học.");
+    await user.click(partTabs[2]!);
+    await screen.findByText("Câu hỏi phần 3?");
+    expect(scrollSpy).not.toHaveBeenCalled();
+
+    // 3. Từ part-2: batch palette (target part-3) + Phần trước (part-1) -> tới part-3 không tự cuộn.
+    await user.click(partTabs[1]!);
+    await screen.findByText("Viết đoạn văn ngắn về tinh thần tự học.");
+    act(() => {
+      fireEvent.click(q4Btn);
+      fireEvent.click(screen.getByRole("button", { name: "Phần trước" }));
+    });
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+    await user.click(partTabs[2]!);
+    await screen.findByText("Câu hỏi phần 3?");
+    expect(scrollSpy).not.toHaveBeenCalled();
+
+    // 4. Bấm palette Câu 1 bình thường (không ngắt) -> cuộn 1 lần.
     await user.click(within(paletteNav).getByRole("button", { name: /Câu 1/ }));
     await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
-    await user.click(partTabs[1]!);
-    expect(scrollSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("R2-29, R2-33, R2-34, R2-35, R2-36: nộp bài khi ngoại tuyến vẫn chạy vào lỗi, target khác _self và mailto bỏ qua ConfirmDialog, Làm lại reset leaveBypassRef", async () => {
+  it("R2-29, R2-33..R2-36, R3-15, R3-16, R3-20: offline submit, target/mailto, đóng dialog khi nộp xong, Làm lại và đổi prop re-arm leave guard", async () => {
     const user = userEvent.setup();
+    const previewId2 = "66666666-6666-4666-8666-666666666666";
+    const paperPath2 = `${EXAM_PATH}/preview/${previewId2}/paper`;
     const server = new FakeServer()
       .on("GET", PAPER_PATH, { status: 200, body: buildTrialPaperFixture() })
+      .on("GET", paperPath2, { status: 200, body: { ...buildTrialPaperFixture(), previewId: previewId2 } })
       .on(
         "POST",
         GRADE_PATH,
         { status: 500, body: { code: "INTERNAL_ERROR" } },
         { status: 200, body: buildPendingGradeFixture() },
+        { status: 200, body: buildPendingGradeFixture() },
       );
     server.install();
 
-    renderWithProviders(
+    const view = renderWithProviders(
       <>
         <Link href="/exams" target=" _BLANK ">Tab mới</Link>
         <a href="mailto:support@thi360.test">Hỗ trợ</a>
         <Link href="/exams">Danh sách bài thi</Link>
-        <PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />
+        <PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} initialExpiresAt="2026-11-22T10:00:00Z" />
       </>,
     );
     await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
@@ -743,19 +821,87 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     await user.click(screen.getByText("Hỗ trợ"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    // R2-29: networkMode: "always" -> bấm nộp khi offline vẫn gọi POST /grade và báo alert lỗi.
-    onlineManager.setOnline(false);
-    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(server.calls("POST", GRADE_PATH)).toHaveLength(1);
-    onlineManager.setOnline(true);
+    // R2-29 & R3-20: networkMode: "always" + try/finally bảo vệ onlineManager.
+    try {
+      onlineManager.setOnline(false);
+      await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(server.calls("POST", GRADE_PATH)).toHaveLength(1);
+    } finally {
+      onlineManager.setOnline(true);
+    }
 
-    // R2-35 & R2-36: nộp thành công -> Làm lại đề này reset leaveBypassRef để ConfirmDialog chặn rời trang trở lại.
+    // R3-15/R3-16: Bấm Bỏ trên ConfirmDialog -> đặt leaveBypassRef = true (beforeunload không chặn).
+    await user.click(screen.getByRole("button", { name: "Về Xem trước" }));
+    const leaveDialog1 = await screen.findByRole("dialog");
+    await user.click(within(leaveDialog1).getByRole("button", { name: "Bỏ" }));
+    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/review?tab=preview`);
+    const bypassedUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(bypassedUnload);
+    expect(bypassedUnload.defaultPrevented).toBe(false);
+
+    // Nộp thành công -> Làm lại đề này phải reset leaveBypassRef = false (re-arm cả beforeunload & ConfirmDialog).
     await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
     await screen.findByRole("heading", { level: 1, name: "Kết quả làm thử" });
     await user.click(screen.getByRole("button", { name: "Làm lại đề này" }));
     await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
 
+    const rearmedUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(rearmedUnload);
+    expect(rearmedUnload.defaultPrevented).toBe(true);
+
+    await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
+    const rearmedDialog = await screen.findByRole("dialog");
+    await user.click(within(rearmedDialog).getByRole("button", { name: "Ở lại" }));
+
+    // Mở ConfirmDialog khi POST /grade đang held -> khi POST xong phải tự đóng dialog (pendingLeaveHref = null).
+    server.hold("POST", GRADE_PATH);
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+    await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    server.release("POST", GRADE_PATH);
+    await screen.findByRole("heading", { level: 1, name: "Kết quả làm thử" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Quay lại làm bài, bấm Bỏ để arm leaveBypassRef = true rồi đổi prop initialExpiresAt -> re-arm leave guard.
+    await user.click(screen.getByRole("button", { name: "Làm lại đề này" }));
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+    await user.click(screen.getByRole("button", { name: "Về Xem trước" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Bỏ" }));
+    const bypassedUnload2 = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(bypassedUnload2);
+    expect(bypassedUnload2.defaultPrevented).toBe(false);
+
+    view.rerender(
+      <>
+        <Link href="/exams" target=" _BLANK ">Tab mới</Link>
+        <a href="mailto:support@thi360.test">Hỗ trợ</a>
+        <Link href="/exams">Danh sách bài thi</Link>
+        <PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} initialExpiresAt="2026-11-22T12:00:00Z" />
+      </>,
+    );
+    await waitFor(() => {
+      const ev = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(true);
+    });
+    await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
+    const propRearmedDialog = await screen.findByRole("dialog");
+    await user.click(within(propRearmedDialog).getByRole("button", { name: "Bỏ" }));
+
+    // Đổi previewId cũng re-arm leave guard sạch.
+    view.rerender(
+      <>
+        <Link href="/exams" target=" _BLANK ">Tab mới</Link>
+        <a href="mailto:support@thi360.test">Hỗ trợ</a>
+        <Link href="/exams">Danh sách bài thi</Link>
+        <PreviewTrialView examId={EXAM_ID} previewId={previewId2} initialExpiresAt="2026-11-22T12:00:00Z" />
+      </>,
+    );
+    await screen.findByText("Thủ đô của Việt Nam là thành phố nào?");
+    const preview2Unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(preview2Unload);
+    expect(preview2Unload.defaultPrevented).toBe(true);
     await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });

@@ -423,7 +423,13 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
                   description={t("list.offlineDescription")}
                   headingLevel={2}
                   action={
-                    <Button variant="secondary" onClick={() => void listQuery.refetch()}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void listQuery.refetch();
+                        void examKindsQuery.refetch();
+                      }}
+                    >
                       {t("list.retry")}
                     </Button>
                   }
@@ -435,7 +441,13 @@ export function AttemptListView({ deps }: AttemptListViewProps) {
                   description={resolveAttemptErrorMessage(listQuery.error, tErrors)}
                   headingLevel={2}
                   action={
-                    <Button variant="secondary" onClick={() => void listQuery.refetch()}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void listQuery.refetch();
+                        void examKindsQuery.refetch();
+                      }}
+                    >
                       {t("list.retry")}
                     </Button>
                   }

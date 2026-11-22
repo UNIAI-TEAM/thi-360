@@ -1,6 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { mapExamDetail } from "../api-mapping";
 import { ExamPreviewPanel } from "../components/exam-preview-panel";
@@ -117,7 +118,12 @@ function renderPanel(server: FakeServer) {
   );
 }
 
+beforeEach(() => {
+  onlineManager.setOnline(true);
+});
+
 afterEach(() => {
+  onlineManager.setOnline(true);
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -286,12 +292,17 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
     expect(screen.getByText("Chưa có đề thử để làm")).toBeInTheDocument();
   });
 
-  it("R2-8, R2-10, R2-13: lỗi cũ và trạng thái loading của previewId cũ không chặn hoặc đè lên preview mới", async () => {
+  it("R2-8, R2-10, R2-13, R3-14: lỗi cũ và trạng thái loading của previewId cũ không chặn hoặc đè lên preview mới", async () => {
     const user = userEvent.setup();
     const previewId2 = "44444444-4444-4444-4444-444444444444";
     const trialPath2 = `${PREVIEW_PATH}/${previewId2}/trial`;
     const openSpy = vi.fn(() => ({ opener: window, closed: false } as unknown as Window));
     vi.stubGlobal("open", openSpy);
+
+    let mark410HandlerRan!: () => void;
+    const handler410Ran = new Promise<void>((resolve) => {
+      mark410HandlerRan = resolve;
+    });
 
     const server = new FakeServer()
       .on(
@@ -300,7 +311,10 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
         { status: 200, body: generatedPreviewBody() },
         { status: 200, body: generatedPreviewBody({ previewId: previewId2 }) },
       )
-      .on("POST", TRIAL_PATH, { status: 410, body: { code: "PREVIEW_EXPIRED" } })
+      .on("POST", TRIAL_PATH, () => {
+        mark410HandlerRan();
+        return { status: 410, body: { code: "PREVIEW_EXPIRED" } };
+      })
       .on("POST", trialPath2, { status: 200, body: { expiresAt: new Date(Date.now() + 60_000).toISOString() } })
       .hold("POST", TRIAL_PATH);
 
@@ -315,8 +329,12 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
     expect(newTryButton).not.toHaveAttribute("aria-busy", "true");
 
     server.release("POST", TRIAL_PATH);
-    await waitFor(() => expect(server.calls("POST", TRIAL_PATH)).toHaveLength(1));
+    await handler410Ran;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).not.toHaveTextContent("Đề thử đã hết hạn");
 
     await user.click(newTryButton);
     await waitFor(() => expect(openSpy).toHaveBeenCalledTimes(1));
@@ -344,7 +362,7 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
     expect(openSpy).not.toHaveBeenCalled();
   });
 
-  it("R2-11, R2-12, R2-37: xử lý popup.closed / window.open throw, re-announce và trả focus về nút Làm thử", async () => {
+  it("R2-11, R2-13, R2-37, R3-21: xử lý popup.closed / window.open throw, xóa status khi chờ và re-announce, trả focus về nút Làm thử", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("open", vi.fn(() => ({ closed: true } as unknown as Window)));
 
@@ -367,14 +385,45 @@ describe("Nút Làm thử như học viên trong Xem trước (AC-17, AC-34)", (
     expect(screen.queryByRole("link", { name: "Mở đề làm thử trong tab mới" })).not.toBeInTheDocument();
     expect(tryButton).toHaveFocus();
 
-    // window.open throws on repeat click -> vẫn hiện link dự phòng + thông báo LiveStatus.
+    // Giữ POST thứ 2 để xác minh LiveStatus được xóa trắng trong lúc đang chờ trước khi re-announce (R3-21).
+    server.hold("POST", TRIAL_PATH);
     vi.stubGlobal("open", vi.fn(() => {
       throw new Error("popup blocked");
     }));
     await user.click(tryButton);
+    expect(server.calls("POST", TRIAL_PATH)).toHaveLength(2);
+    expect(screen.getByRole("status")).toHaveTextContent("");
+
+    server.release("POST", TRIAL_PATH);
     expect(await screen.findByRole("link", { name: "Mở đề làm thử trong tab mới" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Trình duyệt đã chặn cửa sổ bật lên. Hãy bấm liên kết để mở đề làm thử.",
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Trình duyệt đã chặn cửa sổ bật lên. Hãy bấm liên kết để mở đề làm thử.",
+      ),
     );
+  });
+
+  it("R3-13: bấm Làm thử như học viên khi ngoại tuyến (networkMode: always) báo role=alert thay vì kẹt spinner", async () => {
+    const user = userEvent.setup();
+    const server = new FakeServer()
+      .on("POST", PREVIEW_PATH, { status: 200, body: generatedPreviewBody() })
+      .on("POST", TRIAL_PATH, () => {
+        throw new TypeError("Failed to fetch");
+      });
+
+    renderPanel(server);
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    const tryButton = await screen.findByRole("button", { name: "Làm thử như học viên" });
+
+    try {
+      onlineManager.setOnline(false);
+      await user.click(tryButton);
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Không mở được phiên làm thử. Hãy thử lại.",
+      );
+      expect(tryButton).not.toHaveAttribute("aria-busy", "true");
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 });

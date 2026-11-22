@@ -16,6 +16,12 @@ describe("attempts format helpers", () => {
     expect(
       stripHtmlToPlainText("<p>X&#160;Y &#xA0; Z &#65; &#x42; &mdash; &ndash; &hellip; &amp;#65;</p>"),
     ).toBe("X Y Z A B — – … &#65;");
+    expect(
+      stripHtmlToPlainText("<p>&constructor; &#1; &#127; &#x85; &#38;</p>"),
+    ).toBe("&constructor; &#1; &#127; &#x85; &");
+    expect(
+      stripHtmlToPlainText("<p>&amp;constructor; &#x110000; &#xd800;</p>"),
+    ).toBe("&constructor; &#x110000; &#xd800;");
   });
 
   it("preserves original 1-based CLOZE blank indices including absent b1 and guards malformed blanks (R1-12, R1-13, R1-15, R2-20)", () => {

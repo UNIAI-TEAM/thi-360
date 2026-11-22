@@ -13,9 +13,10 @@ export default async function AttemptDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t = await getTranslations("attempts");
   const { id } = await params;
   return (
-    <Suspense fallback={<AttemptDetailSkeleton />}>
+    <Suspense fallback={<AttemptDetailSkeleton label={t("detail.loading")} />}>
       <AttemptDetailView attemptId={id} />
     </Suspense>
   );

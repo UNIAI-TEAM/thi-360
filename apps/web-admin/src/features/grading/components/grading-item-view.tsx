@@ -318,6 +318,18 @@ function SummaryItem({
   );
 }
 
+function rightColumnViewKey(
+  detail: GradingItemDetailResponse,
+  canModify: boolean,
+  currentUserId: string | null,
+): string {
+  if (isItemFinalized(detail)) return "finalized";
+  if (!canModify) return "noPermission";
+  if (isItemOwnedDraft(detail, currentUserId)) return `owned:${detail.activeGrade?.id ?? "none"}`;
+  if (isItemClaimedByOther(detail, currentUserId)) return "claimedByOther";
+  return "claimable";
+}
+
 function ItemGradingRightColumn({
   detail,
   api,
@@ -350,6 +362,7 @@ function ItemGradingRightColumn({
   const [claimAlert, setClaimAlert] = useState<string | null>(null);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
+  const [reloadFocusKey, setReloadFocusKey] = useState<string | null>(null);
 
   const finalized = isItemFinalized(detail);
   const ownedDraft = canModify && isItemOwnedDraft(detail, currentUserId);
@@ -360,6 +373,50 @@ function ItemGradingRightColumn({
     Boolean(detail.activeGrade?.claimExpired) &&
     Boolean(detail.activeGrade?.graderId) &&
     detail.activeGrade?.graderId !== currentUserId;
+
+  const rightViewKey = rightColumnViewKey(detail, canModify, currentUserId);
+  const rightMountedRef = useRef(true);
+  const prevRightViewKeyRef = useRef(rightViewKey);
+
+  useEffect(() => {
+    rightMountedRef.current = true;
+    return () => {
+      rightMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const prevKey = prevRightViewKeyRef.current;
+    prevRightViewKeyRef.current = rightViewKey;
+    if (reloadFocusKey !== null && prevKey === reloadFocusKey && rightViewKey !== reloadFocusKey) {
+      setReloadFocusKey(null);
+    }
+  }, [reloadFocusKey, rightViewKey]);
+
+  async function handleReloadFromOwnedDraft() {
+    const originKey = rightViewKey;
+    const res = (await onRefetchDetail()) as
+      | {
+          data?: GradingItemDetailResponse;
+          isError?: boolean;
+          error?: unknown;
+          fetchStatus?: string;
+        }
+      | undefined;
+    if (
+      rightMountedRef.current &&
+      res &&
+      !res.isError &&
+      res.data &&
+      res.fetchStatus !== "paused"
+    ) {
+      const nextKey = rightColumnViewKey(res.data, canModify, currentUserId);
+      if (nextKey !== originKey) {
+        setReloadFocusKey(nextKey);
+      }
+    }
+    return res;
+  }
 
   async function handleClaim() {
     setClaimAlert(null);
@@ -398,7 +455,7 @@ function ItemGradingRightColumn({
       <FinalizedGradingCard
         detail={detail}
         canModify={canModify}
-        focusOnMount={justFinalized}
+        focusOnMount={justFinalized || reloadFocusKey === "finalized"}
         onOpenReopen={() => {
           setReopenError(null);
           setReopenOpen(true);
@@ -406,21 +463,34 @@ function ItemGradingRightColumn({
       />
     );
   } else if (!canModify) {
-    primaryCard = <ReadOnlyGradingCard detail={detail} reason="noPermission" />;
+    primaryCard = (
+      <ReadOnlyGradingCard
+        detail={detail}
+        reason="noPermission"
+        focusOnMount={reloadFocusKey === "noPermission"}
+      />
+    );
   } else if (ownedDraft) {
     primaryCard = (
       <OwnedDraftFormWorkspace
         key={`${itemId}-${detail.activeGrade?.id ?? "none"}`}
         detail={detail}
         api={api}
+        focusOnMount={reloadFocusKey === rightViewKey}
         announce={announce}
         onFinalized={onFinalized}
         onRefetchDetail={onRefetchDetail}
+        onReloadRefetch={handleReloadFromOwnedDraft}
       />
     );
   } else if (claimedByOther) {
     primaryCard = (
-      <ReadOnlyGradingCard detail={detail} reason="claimedByOther" alertMessage={claimAlert} />
+      <ReadOnlyGradingCard
+        detail={detail}
+        reason="claimedByOther"
+        alertMessage={claimAlert}
+        focusOnMount={reloadFocusKey === "claimedByOther"}
+      />
     );
   } else {
     primaryCard = (
@@ -429,6 +499,7 @@ function ItemGradingRightColumn({
         isTakeover={isTakeover}
         claiming={claimMutation.isPending}
         alertMessage={claimAlert}
+        focusOnMount={reloadFocusKey === "claimable"}
         onClaim={() => void handleClaim()}
       />
     );
@@ -479,15 +550,19 @@ function withSyncedVersion(
 function OwnedDraftFormWorkspace({
   detail,
   api,
+  focusOnMount = false,
   announce,
   onFinalized,
   onRefetchDetail,
+  onReloadRefetch,
 }: {
   detail: GradingItemDetailResponse;
   api: GradingApiDeps;
+  focusOnMount?: boolean;
   announce: (message: string) => void;
   onFinalized: () => void;
   onRefetchDetail: () => Promise<unknown>;
+  onReloadRefetch: () => Promise<unknown>;
 }) {
   const t = useTranslations("grading.detail");
   const tErrors = useTranslations("grading.errors");
@@ -513,7 +588,6 @@ function OwnedDraftFormWorkspace({
   const [reloading, setReloading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isVersionConflict, setIsVersionConflict] = useState(false);
-  const [pendingConflictSync, setPendingConflictSync] = useState(false);
   const [syncedVersion, setSyncedVersion] = useState<number | undefined>(
     detail.activeGrade?.version,
   );
@@ -521,21 +595,49 @@ function OwnedDraftFormWorkspace({
   const confirmRef = useRef<HTMLDivElement>(null);
   const finalizeButtonRef = useRef<HTMLButtonElement>(null);
   const syncedVersionRef = useRef<number | undefined>(detail.activeGrade?.version);
-  const pendingConflictSyncRef = useRef(false);
+  const mountedRef = useRef(true);
+  const rafRef = useRef<number | null>(null);
   const prevStaleNoticeRef = useRef(false);
 
-  const incomingVersion = detail.activeGrade?.version;
-  if ((!formState.isDirty || pendingConflictSync) && incomingVersion !== syncedVersion) {
-    setSyncedVersion(incomingVersion);
-    if (pendingConflictSync) {
-      setPendingConflictSync(false);
+  const scheduleFocus = useCallback((fn: () => void) => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
     }
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (mountedRef.current) {
+        fn();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!focusOnMount) return;
+    const targetField =
+      (detail.rubric?.length ?? 0) > 0 ? ("criteria.0" as const) : ("totalPoints" as const);
+    scheduleFocus(() => setFocus(targetField));
+  }, [focusOnMount, detail.rubric, scheduleFocus, setFocus]);
+
+  const incomingVersion = detail.activeGrade?.version;
+  if (!formState.isDirty && incomingVersion !== syncedVersion) {
+    setSyncedVersion(incomingVersion);
   }
   const staleServerNotice =
     incomingVersion !== undefined &&
+    syncedVersion !== undefined &&
     incomingVersion !== syncedVersion &&
-    formState.isDirty &&
-    !pendingConflictSync;
+    formState.isDirty;
 
   useEffect(() => {
     if (staleServerNotice && !prevStaleNoticeRef.current) {
@@ -544,16 +646,15 @@ function OwnedDraftFormWorkspace({
     prevStaleNoticeRef.current = staleServerNotice;
   }, [announce, staleServerNotice, t]);
 
-  // Sync form when detail reloads with a newer version while clean or resolving a one-shot 412 conflict.
+  // Sync form when detail reloads with a newer version while clean.
   useEffect(() => {
     const serverVersion = detail.activeGrade?.version;
     if (
       serverVersion !== undefined &&
-      (serverVersion !== syncedVersionRef.current || pendingConflictSyncRef.current) &&
-      (!formState.isDirty || pendingConflictSyncRef.current)
+      serverVersion !== syncedVersionRef.current &&
+      !formState.isDirty
     ) {
       syncedVersionRef.current = serverVersion;
-      pendingConflictSyncRef.current = false;
       reset(toItemFormValues(detail, decimalSeparator));
     }
   }, [detail, decimalSeparator, formState.isDirty, reset]);
@@ -613,40 +714,52 @@ function OwnedDraftFormWorkspace({
 
       if (code === "VERSION_CONFLICT" || status === 412) {
         setIsVersionConflict(true);
-        pendingConflictSyncRef.current = true;
-        setPendingConflictSync(true);
         void Promise.resolve(onRefetchDetail()).then((res) => {
-          const refetched = res as { isError?: boolean; fetchStatus?: string } | undefined;
-          if (refetched?.isError || refetched?.fetchStatus === "paused") {
-            pendingConflictSyncRef.current = false;
-            setPendingConflictSync(false);
+          const refetched = res as
+            | {
+                data?: GradingItemDetailResponse;
+                isError?: boolean;
+                fetchStatus?: string;
+              }
+            | undefined;
+          if (
+            !mountedRef.current ||
+            !refetched ||
+            refetched.isError ||
+            !refetched.data ||
+            refetched.fetchStatus === "paused"
+          ) {
+            return;
           }
+          const nextDetail = refetched.data;
+          const nextVersion = nextDetail.activeGrade?.version;
+          syncedVersionRef.current = nextVersion;
+          setSyncedVersion(nextVersion);
+          reset(toItemFormValues(nextDetail, decimalSeparator));
         });
         return;
       }
       setIsVersionConflict(false);
-      pendingConflictSyncRef.current = false;
-      setPendingConflictSync(false);
       if (code === "GRADING_CLAIMED" || code === "ESSAY_ALREADY_FINALIZED" || status === 409) {
         void onRefetchDetail();
       }
     },
-    [announce, onRefetchDetail, tErrors],
+    [announce, decimalSeparator, onRefetchDetail, reset, tErrors],
   );
 
   const onSaveDraft = () =>
     handleSubmit(
       async (values) => {
+        if (reloading) return;
         setServerError(null);
         setIsVersionConflict(false);
-        setPendingConflictSync(false);
-        pendingConflictSyncRef.current = false;
         setConfirming(false);
         try {
           const versionedDetail = withSyncedVersion(detail, syncedVersionRef.current);
           const updated = await saveDraftMutation.mutateAsync(
             toSaveDraftRequest(versionedDetail, values),
           );
+          if (!mountedRef.current) return;
           syncedVersionRef.current = updated.version;
           setSyncedVersion(updated.version);
           reset(toItemFormValues({ ...detail, activeGrade: updated }, decimalSeparator));
@@ -654,7 +767,9 @@ function OwnedDraftFormWorkspace({
           announce(msg);
           notify.success(msg);
         } catch (error) {
-          handleMutationError(error);
+          if (mountedRef.current) {
+            handleMutationError(error);
+          }
         }
       },
       (errors) => {
@@ -667,10 +782,9 @@ function OwnedDraftFormWorkspace({
   const onRequestFinalize = () =>
     handleSubmit(
       (values) => {
+        if (reloading) return;
         setServerError(null);
         setIsVersionConflict(false);
-        setPendingConflictSync(false);
-        pendingConflictSyncRef.current = false;
         const issues = findFinalizeIssues(detail, values);
         if (issues.length > 0) {
           for (const issue of issues) {
@@ -693,10 +807,9 @@ function OwnedDraftFormWorkspace({
   const onConfirmFinalize = () =>
     handleSubmit(
       async (values) => {
+        if (reloading) return;
         setServerError(null);
         setIsVersionConflict(false);
-        setPendingConflictSync(false);
-        pendingConflictSyncRef.current = false;
         const issues = findFinalizeIssues(detail, values);
         if (issues.length > 0) {
           for (const issue of issues) {
@@ -711,6 +824,7 @@ function OwnedDraftFormWorkspace({
           const res = await finalizeMutation.mutateAsync(
             toFinalizeRequest(versionedDetail, values),
           );
+          if (!mountedRef.current) return;
           const nextVersion = res.grade?.version ?? syncedVersionRef.current;
           syncedVersionRef.current = nextVersion;
           setSyncedVersion(nextVersion);
@@ -723,7 +837,9 @@ function OwnedDraftFormWorkspace({
           announce(msg);
           notify.success(msg);
         } catch (error) {
-          handleMutationError(error);
+          if (mountedRef.current) {
+            handleMutationError(error);
+          }
         }
       },
       (errors) => {
@@ -734,14 +850,14 @@ function OwnedDraftFormWorkspace({
 
   const onCancelConfirm = () => {
     setConfirming(false);
-    requestAnimationFrame(() => finalizeButtonRef.current?.focus());
+    scheduleFocus(() => finalizeButtonRef.current?.focus());
   };
 
   const onReloadDetail = async () => {
-    if (reloading) return;
+    if (reloading || saveDraftMutation.isPending || finalizeMutation.isPending) return;
     setReloading(true);
     try {
-      const refetched = (await onRefetchDetail()) as
+      const refetched = (await onReloadRefetch()) as
         | {
             data?: GradingItemDetailResponse;
             isError?: boolean;
@@ -749,6 +865,7 @@ function OwnedDraftFormWorkspace({
             fetchStatus?: string;
           }
         | undefined;
+      if (!mountedRef.current) return;
       if (!refetched || refetched.isError || !refetched.data || refetched.fetchStatus === "paused") {
         const msg =
           refetched?.fetchStatus === "paused"
@@ -761,9 +878,7 @@ function OwnedDraftFormWorkspace({
       const nextDetail = refetched.data;
       const nextVersion = nextDetail.activeGrade?.version;
       syncedVersionRef.current = nextVersion;
-      pendingConflictSyncRef.current = false;
       setSyncedVersion(nextVersion);
-      setPendingConflictSync(false);
       setServerError(null);
       setIsVersionConflict(false);
       setConfirming(false);
@@ -771,9 +886,11 @@ function OwnedDraftFormWorkspace({
       announce("");
       const targetField =
         (nextDetail.rubric?.length ?? 0) > 0 ? ("criteria.0" as const) : ("totalPoints" as const);
-      requestAnimationFrame(() => setFocus(targetField));
+      scheduleFocus(() => setFocus(targetField));
     } finally {
-      setReloading(false);
+      if (mountedRef.current) {
+        setReloading(false);
+      }
     }
   };
 

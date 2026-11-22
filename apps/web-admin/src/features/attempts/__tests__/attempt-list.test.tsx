@@ -265,4 +265,40 @@ describe("AttemptListView", () => {
     const { container } = renderAttemptsUi(<AttemptListSkeleton />);
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
+
+  it("phục hồi cả danh sách lẫn nhãn loại kỳ thi từ /api/v1/catalog/options khi bấm Thử lại sau lỗi kép (R3-18)", async () => {
+    let listCalls = 0;
+    let catalogCalls = 0;
+    let outage = true;
+
+    fakeApi.get("/api/v1/catalog/options", () => {
+      catalogCalls += 1;
+      if (outage) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok(ATTEMPT_EXAM_KIND_FIXTURES);
+    });
+    fakeApi.get("/api/v1/admin/attempts", () => {
+      listCalls += 1;
+      if (outage) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok({
+        items: [makeAttemptSummary({ examName: "Đề HSA phục hồi", examKindCode: "HSA", scope: "FULL" })],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      });
+    });
+
+    renderAttemptsUi(<AttemptListView />, { locale: "en" });
+    expect(await screen.findByText("Could not load attempts")).toBeInTheDocument();
+    expect(listCalls).toBe(1);
+    expect(catalogCalls).toBe(1);
+
+    outage = false;
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const table = await screen.findByRole("table", { name: "Attempts list" });
+    expect(await within(table).findByText("Đề HSA phục hồi")).toBeInTheDocument();
+    expect(await within(table).findByText("VNU Hanoi Aptitude Test (HSA) · Full exam")).toBeInTheDocument();
+    expect(listCalls).toBe(2);
+    expect(catalogCalls).toBe(2);
+  });
 });

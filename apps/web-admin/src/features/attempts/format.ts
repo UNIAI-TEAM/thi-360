@@ -132,36 +132,41 @@ export function formatChoiceSummary(choice: AttemptChoiceSummary | undefined): s
 
 const ESSAY_PREVIEW_MAX = 160;
 
-const NAMED_HTML_ENTITIES: Readonly<Record<string, string>> = {
-  nbsp: " ",
-  lt: "<",
-  gt: ">",
-  quot: "\"",
-  apos: "'",
-  amp: "&",
-  mdash: "—",
-  ndash: "–",
-  hellip: "…",
-};
+const NAMED_HTML_ENTITIES: ReadonlyMap<string, string> = new Map([
+  ["nbsp", " "],
+  ["lt", "<"],
+  ["gt", ">"],
+  ["quot", "\""],
+  ["apos", "'"],
+  ["amp", "&"],
+  ["mdash", "—"],
+  ["ndash", "–"],
+  ["hellip", "…"],
+]);
+
+function decodeNumericHtmlEntity(match: string, raw: string, radix: 10 | 16): string {
+  const code = Number.parseInt(raw, radix);
+  if (code === 0xa0) return " ";
+  if (
+    Number.isFinite(code) &&
+    code >= 0x20 &&
+    code <= 0x10ffff &&
+    (code < 0x7f || code > 0x9f) &&
+    (code < 0xd800 || code > 0xdfff)
+  ) {
+    return String.fromCodePoint(code);
+  }
+  return match;
+}
 
 function decodeHtmlEntity(match: string, entity: string): string {
   if (entity.startsWith("#x") || entity.startsWith("#X")) {
-    const code = Number.parseInt(entity.slice(2), 16);
-    if (code === 0xa0) return " ";
-    if (Number.isFinite(code) && code >= 1 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
-      return String.fromCodePoint(code);
-    }
-    return match;
+    return decodeNumericHtmlEntity(match, entity.slice(2), 16);
   }
   if (entity.startsWith("#")) {
-    const code = Number.parseInt(entity.slice(1), 10);
-    if (code === 0xa0) return " ";
-    if (Number.isFinite(code) && code >= 1 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
-      return String.fromCodePoint(code);
-    }
-    return match;
+    return decodeNumericHtmlEntity(match, entity.slice(1), 10);
   }
-  return NAMED_HTML_ENTITIES[entity.toLowerCase()] ?? match;
+  return NAMED_HTML_ENTITIES.get(entity.toLowerCase()) ?? match;
 }
 
 export function stripHtmlToPlainText(html: string): string {

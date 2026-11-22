@@ -1,6 +1,6 @@
 "use client";
 
-import { IconButton, cn, focusRingInset } from "@thi360/ui";
+import { IconButton, cn } from "@thi360/ui";
 import type { EssayEditorProps } from "@thi360/ui/question";
 import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -261,12 +261,10 @@ export function TrialEssayEditor({
         btn.onClick();
       }}
       className={cn(
-        "border text-text-secondary transition-colors motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+        "text-text-secondary transition-colors motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:min-w-11",
         "hover:bg-subtle aria-disabled:cursor-not-allowed aria-disabled:opacity-45 aria-disabled:hover:bg-transparent",
-        btn.pressed
-          ? "border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100"
-          : "border-transparent",
-        focusRingInset,
+        btn.pressed &&
+          "relative bg-primary-100 text-primary-800 hover:bg-primary-100 after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border-2 after:border-primary-600",
       )}
     />
   );

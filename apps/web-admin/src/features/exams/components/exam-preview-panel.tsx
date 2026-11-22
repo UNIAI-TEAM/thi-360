@@ -97,6 +97,7 @@ export function ExamPreviewPanel({
   const tryButtonRef = useRef<HTMLButtonElement>(null);
 
   const extendTrial = useMutation({
+    networkMode: "always",
     mutationFn: (previewId: string) =>
       trialDeps.extendPreviewForTrial({ examId: exam.id, previewId }),
     onSuccess: (res, previewId) => {

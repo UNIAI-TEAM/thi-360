@@ -1,6 +1,7 @@
 import { onlineManager, QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GRADING_QUERY_KEYS } from "@/features/grading/keys";
 import { SessionProvider } from "@/features/session/session-provider";
@@ -21,6 +22,13 @@ import {
   renderAttemptsUi,
 } from "./attempt-fixtures";
 
+vi.mock("next-intl/server", async () => {
+  const { createTranslator } = await import("next-intl");
+  return {
+    getTranslations: async (namespace: string) =>
+      createTranslator({ locale: "vi", messages: viMessages, namespace: namespace as "attempts" }),
+  };
+});
 vi.mock("@/lib/api/client", async () => {
   const fake = await import("@/test/fake-api");
   return { createBrowserApiClient: fake.fakeBrowserApiClient };
@@ -616,5 +624,16 @@ describe("AttemptDetailView", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" }),
     ).toBeInTheDocument();
+  });
+
+  it("AttemptDetailPage truyền label={t('detail.loading')} cho Suspense fallback (R3-24)", async () => {
+    const { default: AttemptDetailPage } = await import("@/app/(shell)/attempts/[id]/page");
+    const element = (await AttemptDetailPage({
+      params: Promise.resolve({ id: ATTEMPT_1_ID }),
+    })) as ReactElement<{ fallback: ReactElement }>;
+    const { container } = renderAttemptsUi(element.props.fallback);
+    expect(
+      container.querySelector('[aria-busy="true"][aria-label="Đang tải chi tiết lượt thi"]'),
+    ).not.toBeNull();
   });
 });

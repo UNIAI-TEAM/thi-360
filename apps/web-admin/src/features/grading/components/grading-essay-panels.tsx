@@ -137,24 +137,36 @@ export function ClaimActionCard({
   isTakeover,
   claiming,
   alertMessage,
+  focusOnMount = false,
   onClaim,
 }: {
   detail: GradingItemDetailResponse;
   isTakeover: boolean;
   claiming: boolean;
   alertMessage: string | null;
+  focusOnMount?: boolean;
   onClaim: () => void;
 }) {
   const t = useTranslations("grading.detail.claim");
   const format = useFormatter();
   const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const rubric = detail.rubric ?? [];
+
+  useEffect(() => {
+    if (focusOnMount) headingRef.current?.focus();
+  }, [focusOnMount]);
 
   return (
     <section aria-labelledby={headingId} className="min-w-0">
       <Card padding="none" className="flex flex-col gap-4 p-4 sm:p-5">
         <header className="flex flex-col gap-1">
-          <h2 id={headingId} className="text-h3 font-bold text-text">
+          <h2
+            ref={headingRef}
+            id={headingId}
+            tabIndex={focusOnMount ? -1 : undefined}
+            className={cn("w-fit rounded-sm text-h3 font-bold text-text", focusRing)}
+          >
             {isTakeover ? t("takeoverTitle") : t("title")}
           </h2>
           <p className="text-body text-text-secondary">
@@ -208,16 +220,23 @@ export function ReadOnlyGradingCard({
   detail,
   reason,
   alertMessage,
+  focusOnMount = false,
 }: {
   detail: GradingItemDetailResponse;
   reason: "claimedByOther" | "noPermission";
   alertMessage?: string | null;
+  focusOnMount?: boolean;
 }) {
   const t = useTranslations("grading.detail");
   const format = useFormatter();
   const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const active = detail.activeGrade;
   const rubric = detail.rubric ?? [];
+
+  useEffect(() => {
+    if (focusOnMount) headingRef.current?.focus();
+  }, [focusOnMount]);
 
   return (
     <section aria-labelledby={headingId} className="min-w-0">
@@ -225,7 +244,12 @@ export function ReadOnlyGradingCard({
         <header className="flex items-start gap-2.5">
           <Lock aria-hidden className="mt-0.5 size-5 shrink-0 text-text-muted" />
           <div className="flex flex-col gap-1">
-            <h2 id={headingId} className="text-h3 font-bold text-text">
+            <h2
+              ref={headingRef}
+              id={headingId}
+              tabIndex={focusOnMount ? -1 : undefined}
+              className={cn("w-fit rounded-sm text-h3 font-bold text-text", focusRing)}
+            >
               {reason === "claimedByOther" ? t("claim.heldTitle") : t("readOnlyTitle")}
             </h2>
             <p className="text-body text-text-secondary">
@@ -501,7 +525,7 @@ export function ActiveDraftGradingForm({
               type="button"
               variant="secondary"
               loading={savingDraft}
-              disabled={finalizing}
+              disabled={finalizing || reloading}
               onClick={onSaveDraft}
             >
               <Save />
@@ -510,7 +534,7 @@ export function ActiveDraftGradingForm({
             <Button
               ref={finalizeButtonRef}
               type="button"
-              disabled={savingDraft || finalizing}
+              disabled={savingDraft || finalizing || reloading}
               onClick={onRequestFinalize}
             >
               <CircleCheckBig />
@@ -549,7 +573,7 @@ export function ActiveDraftGradingForm({
                 type="button"
                 variant="secondary"
                 size="sm"
-                disabled={finalizing}
+                disabled={finalizing || reloading}
                 onClick={onCancelConfirm}
               >
                 {t("finish.cancel")}
@@ -558,6 +582,7 @@ export function ActiveDraftGradingForm({
                 type="button"
                 size="sm"
                 loading={finalizing}
+                disabled={reloading}
                 onClick={onConfirmFinalize}
               >
                 {t("finish.confirm")}

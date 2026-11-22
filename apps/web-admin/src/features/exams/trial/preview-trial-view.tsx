@@ -79,24 +79,29 @@ function PreviewTrialSession({
   const [retakeFocusCount, setRetakeFocusCount] = useState(0);
   const leaveBypassRef = useRef(false);
   const expiredAlertRef = useRef<HTMLDivElement>(null);
-  const prevExpiredOnSubmitRef = useRef(false);
+  const prevExpiredRef = useRef(false);
 
   useEffect(() => {
     leaveBypassRef.current = false;
   }, [examId, previewId, initialExpiresAt]);
-
-  useEffect(() => {
-    if (expiredOnSubmit && !prevExpiredOnSubmitRef.current) {
-      expiredAlertRef.current?.focus();
-    }
-    prevExpiredOnSubmitRef.current = expiredOnSubmit;
-  }, [expiredOnSubmit]);
 
   const paperQuery = useQuery({
     queryKey: PREVIEW_TRIAL_QUERY_KEYS.paper(examId, previewId),
     queryFn: ({ signal }) => deps.getPreviewTrialPaper({ examId, previewId, signal }),
     retry: false,
   });
+
+  const isExpiredOnLoad =
+    paperQuery.isError &&
+    (getErrorStatus(paperQuery.error) === 410 || errorCodeOf(paperQuery.error) === "PREVIEW_EXPIRED");
+  const isExpired = isExpiredOnLoad || expiredOnSubmit;
+
+  useEffect(() => {
+    if (isExpired && !prevExpiredRef.current) {
+      expiredAlertRef.current?.focus();
+    }
+    prevExpiredRef.current = isExpired;
+  }, [isExpired]);
 
   const gradeMutation = useMutation({
     networkMode: "always",
@@ -171,11 +176,7 @@ function PreviewTrialSession({
 
   const backHref = reviewPreviewHref(examId);
 
-  const isExpiredOnLoad =
-    paperQuery.isError &&
-    (getErrorStatus(paperQuery.error) === 410 || errorCodeOf(paperQuery.error) === "PREVIEW_EXPIRED");
-
-  if (isExpiredOnLoad || expiredOnSubmit) {
+  if (isExpired) {
     return (
       <Card>
         <div ref={expiredAlertRef} role="alert" tabIndex={-1} className={cn("rounded-xl", focusRing)}>

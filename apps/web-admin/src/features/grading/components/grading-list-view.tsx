@@ -337,6 +337,7 @@ export function GradingListView({ deps }: GradingListViewProps) {
                       onClick={() => {
                         void listQuery.refetch();
                         void countsQuery.refetch();
+                        void examKindsQuery.refetch();
                       }}
                     >
                       {t("list.retry")}
@@ -355,6 +356,7 @@ export function GradingListView({ deps }: GradingListViewProps) {
                       onClick={() => {
                         void listQuery.refetch();
                         void countsQuery.refetch();
+                        void examKindsQuery.refetch();
                       }}
                     >
                       {t("list.retry")}

@@ -231,9 +231,9 @@ export function TrialPaperView({
                   setSelectedPartId(pId);
                 }}
                 className={cn(
-                  "inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-2 rounded-lg border px-3.5 py-2 text-label font-medium transition-colors motion-reduce:transition-none",
+                  "relative inline-flex min-h-10 pointer-coarse:min-h-11 items-center gap-2 rounded-lg border px-3.5 py-2 text-label font-medium transition-colors motion-reduce:transition-none",
                   isSelected
-                    ? "border-primary-600 bg-primary-50 text-primary-text ring-1 ring-inset ring-primary-600"
+                    ? "border-primary-600 bg-primary-50 text-primary-text after:pointer-events-none after:absolute after:inset-x-2.5 after:bottom-1 after:border-b-2 after:border-current"
                     : "border-border bg-surface text-text-secondary hover:bg-subtle hover:text-text",
                   focusRing,
                 )}

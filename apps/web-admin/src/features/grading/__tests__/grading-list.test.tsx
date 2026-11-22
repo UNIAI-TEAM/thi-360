@@ -336,4 +336,51 @@ describe("GradingListView", () => {
     renderGradingUi(<GradingListView />);
     expect(await screen.findByText("3,1234 / 10")).toBeInTheDocument();
   });
+
+  it("phục hồi cả danh sách, counts lẫn nhãn + dropdown loại kỳ thi từ /api/v1/catalog/options khi bấm Thử lại sau lỗi kép (R3-18)", async () => {
+    let listCalls = 0;
+    let countsCalls = 0;
+    let catalogCalls = 0;
+    let outage = true;
+
+    fakeApi.get("/api/v1/catalog/options", () => {
+      catalogCalls += 1;
+      if (outage) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok(EXAM_KIND_CATALOG_FIXTURES);
+    });
+    fakeApi.get("/api/v1/admin/grading/items", () => {
+      listCalls += 1;
+      if (outage) return fail(500, { code: "INTERNAL_ERROR" });
+      return ok({
+        items: [makeQueueItem({ examName: "Đề BCA phục hồi", examKindCode: "BCA" })],
+        page: 0,
+        size: 20,
+        totalItems: 1,
+        totalPages: 1,
+      });
+    });
+    fakeApi.get("/api/v1/admin/grading/items/counts", () => {
+      countsCalls += 1;
+      return outage ? fail(500, { code: "INTERNAL_ERROR" }) : ok(makeCounts({ waiting: 1, total: 1 }));
+    });
+
+    renderGradingUi(<GradingListView />, { locale: "en" });
+    expect(await screen.findByText("Could not load grading queue")).toBeInTheDocument();
+    expect(listCalls).toBe(1);
+    expect(countsCalls).toBe(1);
+    expect(catalogCalls).toBe(1);
+
+    outage = false;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const table = await screen.findByRole("table", { name: "Essay grading queue" });
+    expect(await within(table).findByText("Đề BCA phục hồi")).toBeInTheDocument();
+    expect(await within(table).findByText("Public Security Admission (BCA)")).toBeInTheDocument();
+    expect(listCalls).toBe(2);
+    expect(countsCalls).toBe(2);
+    expect(catalogCalls).toBe(2);
+
+    // Dropdown Exam type cũng được nạp lại sau Retry.
+    await userEvent.click(screen.getByRole("combobox", { name: "Exam type" }));
+    expect(await screen.findByRole("option", { name: "Public Security Admission (BCA)" })).toBeInTheDocument();
+  });
 });
