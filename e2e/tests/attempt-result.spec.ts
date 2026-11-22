@@ -343,7 +343,7 @@ async function publishReviewListingVersion(
       expectedRevision: listing.revision,
       summary: `Đề ôn 1 câu minh họa ảnh lời giải ${RUN_ID}`,
       description: `Đề ôn kiểm thử AC-23 ảnh lời giải ${RUN_ID}`,
-      listPriceVnd: Math.max(10_000, listing.minPriceVnd ?? 5_000),
+      listPriceVnd: Math.max(10_000, listing.minPriceVnd ?? 10_000),
       attemptsGranted: 5,
       benefitAiExplanation: false,
       benefitStrengthWeakness: false,

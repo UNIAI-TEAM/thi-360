@@ -297,9 +297,9 @@ class PriceCalculatorTest {
                 new PropertySourcesPlaceholdersResolver(defaultSources));
         CommercePricingProperties boundDefault = defaultBinder
                 .bind("thi360.commerce", CommercePricingProperties.class).get();
-        assertThat(boundDefault.vnpayMinAmount()).isEqualTo(5_000L);
+        assertThat(boundDefault.vnpayMinAmount()).isEqualTo(10_000L);
 
-        for (long override : List.of(10_000L, 0L)) {
+        for (long override : List.of(5_000L, 0L)) {
             MutablePropertySources customSources = new MutablePropertySources();
             customSources.addFirst(new MapPropertySource("override", Map.of("THI360_VNPAY_MIN_AMOUNT", override)));
             customSources.addLast(yamlSources.getFirst());

@@ -42,11 +42,12 @@ class ExamListingCheckTest {
     void minimumPriceComesFromTheConfiguredVariable() {
         var unset = new Binder(new MapConfigurationPropertySource(Map.of()))
                 .bindOrCreate("thi360.exam.listing", ExamListingProperties.class);
-        assertThat(unset.minPriceVnd()).as("code default (production)").isEqualTo(5000);
-        var sandbox = new Binder(new MapConfigurationPropertySource(Map.of("thi360.exam.listing.min-price-vnd", "10000")))
+        assertThat(unset.minPriceVnd()).as("code default (VNPAY 10.000 VND)").isEqualTo(10_000);
+        assertThat(codes(unset.minPriceVnd(), 9999L)).containsExactly("LISTING_PRICE_BELOW_MIN");
+        var overridden = new Binder(new MapConfigurationPropertySource(Map.of("thi360.exam.listing.min-price-vnd", "5000")))
                 .bindOrCreate("thi360.exam.listing", ExamListingProperties.class);
-        assertThat(sandbox.minPriceVnd()).isEqualTo(10_000);
-        assertThat(codes(sandbox.minPriceVnd(), 9999L)).containsExactly("LISTING_PRICE_BELOW_MIN");
+        assertThat(overridden.minPriceVnd()).isEqualTo(5_000);
+        assertThat(codes(overridden.minPriceVnd(), 4999L)).containsExactly("LISTING_PRICE_BELOW_MIN");
     }
 
     @Test
