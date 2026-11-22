@@ -7,12 +7,14 @@ import {
   continueToReviewInUi,
   countBySubject,
   createExamInUi,
+  ensureListingFilledInUi,
   examCode,
   expectStructureQuestions,
   expectValidPaths,
   expectWellFormedPaper,
   getExam,
   getStructure,
+  openEditorTab,
   openPreviewTab,
   pathWithChoice,
   publishInUi,
@@ -104,79 +106,114 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
     const section = pool.find((item) => item.subjectCode === code)!;
     expect(Boolean(section.matrix), `mẫu QDA_FULL: môn ${name} khai chỉ tiêu khối lớp`).toBe(matrix);
     await nav.getByRole("button", { name: new RegExp(`^${name}`) }).click();
-    await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
+    const header = page.getByTestId("subject-form-header");
+    await expect(header.getByRole("heading", { level: 2, name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
     // Số câu của mục không còn ô riêng (UNI-2753): dòng "N câu" ngay dưới tiêu đề môn nêu số câu của mục.
     await expect(
-      page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }).locator("xpath=..").getByText(new RegExp(`^${count} câu`)),
+      header.getByRole("heading", { level: 2, name: new RegExp(`^Môn ${name}`) }).locator("xpath=..").getByText(new RegExp(`^${count} câu`)),
       `môn ${name}`,
     ).toBeVisible();
-    // Mẫu không khai chỉ tiêu dạng trả lời: màn nói rõ cho cả sáu môn.
-    await expect(page.getByText("Môn không kiểm soát số câu theo dạng trả lời."), `môn ${name}`).toBeVisible();
-    if (matrix) {
-      // Môn khai chỉ tiêu khối lớp (và độ khó nếu có): khối "Khối lớp và độ khó" hiện ma trận với đúng số của mẫu.
-      await expect(page.getByRole("heading", { name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
-      await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toHaveCount(0);
-      const region = page.getByRole("region", { name: "Ma trận phân bổ" });
-      await expect(region, `môn ${name}`).toBeVisible();
-      // Bảng "Theo khối lớp" có bốn ô: Lớp 10, 11, 12 và "Liên lớp". Ba ô lớp theo tên ô, ô "Liên lớp" bằng giá trị của mẫu (0 nếu mẫu không khai).
-      const byGrade = section.matrix!.byGrade!;
-      // Mã khối trong mẫu: G10/G11/G12; ô "Liên lớp" là GRADE_MIXED (mẫu không khai thì 0).
-      const gradeItems = byGrade.filter((item) => /^G\d+$/.test(item.code));
-      const mixedValue = String(byGrade.find((item) => item.code === "GRADE_MIXED")?.value ?? 0);
-      const gradeTable = region.getByRole("table", { name: "Theo khối lớp" });
-      const gradeInputs = gradeTable.getByRole("textbox", { name: /^Lớp \d+ · số câu/ });
-      await expect(gradeInputs, `môn ${name}: chỉ tiêu theo khối lớp`).toHaveCount(gradeItems.length);
-      for (const item of gradeItems) {
-        const grade = item.code.replace(/^G(RADE_)?/, "");
-        await expect(
-          gradeTable.getByRole("textbox", { name: new RegExp(`^Lớp ${grade} · số câu`) }),
-          `môn ${name}: khối lớp ${grade}`,
-        ).toHaveValue(String(item.value));
-      }
-      await expect(gradeTable.getByRole("textbox", { name: /^Liên lớp · số câu/ }), `môn ${name}: liên lớp`).toHaveValue(mixedValue);
-      // Độ khó: chỉ Hóa và Sử khai; các số khác 0 trên màn là đúng các số khác 0 của mẫu (ô không khai hiện 0).
-      const difficultyValues = (section.matrix!.byDifficulty ?? []).map((item) => String(item.value)).filter((value) => value !== "0").sort();
-      const difficultyInputs = region.getByRole("table", { name: "Theo độ khó" }).getByRole("textbox");
-      const shown = (await difficultyInputs.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).filter(
-        (value) => value !== "0",
-      );
-      expect(shown.sort(), `môn ${name}: chỉ tiêu theo độ khó`).toEqual(difficultyValues);
-    } else {
-      await expect(page.getByText("Môn không kiểm soát phân bổ khối lớp và độ khó."), `môn ${name}`).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
-      await expect(page.getByRole("region", { name: "Ma trận phân bổ" }), `môn ${name}`).toHaveCount(0);
-    }
-    // Nhóm lấy câu: mẫu khai đúng các nhóm trên (tên, số câu), tổng bằng số câu của mục; màn có đúng từng dòng và không thừa dòng.
+    await expect(header.getByText(`${count} / ${count} câu`), `môn ${name}: đã phân bổ`).toBeVisible();
+    await expect(header.getByText("Khớp số câu của môn"), `môn ${name}`).toBeVisible();
+
     expect(
       (section.blocks ?? []).map((block) => [block.name, block.questionCount]),
       `mẫu QDA_FULL: nhóm lấy câu của ${name}`,
     ).toEqual(groups.map((group) => [group.name, group.questions]));
     expect(groups.reduce((total, group) => total + group.questions, 0), `môn ${name}: tổng số câu của các nhóm`).toBe(count);
-    const groupTable = page.getByRole("region", { name: `Các nhóm lấy câu của ${name}` }).getByRole("table", { name: `Các nhóm lấy câu của ${name}` });
-    // Một dòng tiêu đề cột và mỗi nhóm một dòng.
-    await expect(groupTable.getByRole("row"), `môn ${name}: số dòng nhóm`).toHaveCount(groups.length + 1);
-    for (const group of groups) {
-      const row = groupTable.getByRole("row").filter({ has: page.getByRole("rowheader", { name: group.name, exact: true }) });
-      const questionsText = group.sets
-        ? `${group.sets.count} chùm × ${group.sets.size} câu con = ${group.questions} câu`
-        : `${group.questions} câu`;
-      // Các ô của dòng theo thứ tự: Dạng trả lời, Số câu, Tỷ lệ, Phạm vi nguồn, Thao tác.
-      await expect(row.getByRole("cell").nth(1), `môn ${name}: nhóm ${group.name}, số câu`).toHaveText(questionsText);
-      await expect(row.getByRole("cell").nth(2), `môn ${name}: nhóm ${group.name}, tỷ lệ`).toHaveText(`${Math.round((group.questions * 100) / count)}%`);
+
+    if (matrix) {
+      // Năm môn Khoa học/Xã hội (FTM MT): Cấu trúc câu, Khối lớp và độ khó, Phạm vi và chỉ tiêu chủ đề.
+      await expect(page.locator('[data-form-kind="MATRIX"]'), `môn ${name}: biểu mẫu MT`).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" }), `môn ${name}`).toBeVisible();
+      await expect(page.getByRole("button", { name: /Thêm nhóm/ }), `môn ${name}`).toHaveCount(0);
+
+      const singleGroup = groups.find((group) => !group.sets && group.name !== "Trả lời ngắn");
+      const setGroup = groups.find((group) => group.sets !== undefined);
+      const fillGroup = groups.find((group) => group.name === "Trả lời ngắn");
+      const expectedChoice = (singleGroup?.questions ?? 0) + (setGroup?.questions ?? 0);
+      await expect(page.getByRole("textbox", { name: "Trắc nghiệm", exact: true }), `môn ${name}: Trắc nghiệm`).toHaveValue(String(expectedChoice));
+      await expect(page.getByRole("textbox", { name: "Số chùm", exact: true }), `môn ${name}: Số chùm`).toHaveValue(String(setGroup!.sets!.count));
+      await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true }), `môn ${name}: Trắc nghiệm đơn`).toHaveValue(
+        String(singleGroup!.questions),
+      );
+      if (fillGroup) {
+        await expect(page.getByRole("textbox", { name: "Điền đáp án", exact: true }), `môn ${name}: Điền đáp án`).toHaveValue(
+          String(fillGroup.questions),
+        );
+      } else {
+        await expect(page.getByRole("textbox", { name: "Điền đáp án", exact: true }), `môn ${name}: không có Điền đáp án`).toHaveCount(0);
+      }
+
+      // Khối lớp và độ khó (MT): Khối lớp khai đủ 25/25 và Bắt buộc; Độ khó hiện các mức của mẫu (trống nếu chưa khai).
+      await expect(page.getByRole("heading", { level: 3, name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
+      const gradeField = page.locator('[data-form-field="GRADE"]');
+      await expect(gradeField, `môn ${name}: khối lớp`).toBeVisible();
+      await expect(gradeField.locator('[data-enforcement-mode="DECLARED_REQUIRED"]')).toHaveText("Bắt buộc");
+      await expect(gradeField.getByText(`Đã khai ${count}/${count}`), `môn ${name}: tổng khối lớp`).toBeVisible();
+      const byGrade = section.matrix!.byGrade!;
+      const gradeItems = byGrade.filter((item) => /^G\d+$/.test(item.code));
+      for (const item of gradeItems) {
+        const grade = item.code.replace(/^G(RADE_)?/, "");
+        await expect(gradeField.getByLabel(`Lớp ${grade}`, { exact: true }), `môn ${name}: khối lớp ${grade}`).toHaveValue(String(item.value));
+      }
+      await expect(gradeField.getByLabel("Liên lớp", { exact: true }), `môn ${name}: không có Liên lớp`).toHaveCount(0);
+
+      const difficultyField = page.locator('[data-form-field="DIFFICULTY"]');
+      await expect(difficultyField, `môn ${name}: độ khó`).toBeVisible();
+      const difficultyValues = (section.matrix!.byDifficulty ?? []).map((item) => String(item.value)).filter((value) => value !== "0").sort();
+      await expect(difficultyField.locator('[data-enforcement-mode="DECLARED_REQUIRED"]')).toHaveText(
+        difficultyValues.length > 0 ? "Bắt buộc" : "Chưa khai báo",
+      );
+      const difficultyInputs = difficultyField.getByRole("textbox");
+      const shown = (await difficultyInputs.evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).filter(
+        (value) => value !== "" && value !== "0",
+      );
+      expect(shown.sort(), `môn ${name}: chỉ tiêu theo độ khó`).toEqual(difficultyValues);
+      await expect(page.getByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" }), `môn ${name}`).toBeVisible();
+    } else {
+      // Tiếng Anh (FTM DS): Danh sách dòng lấy câu 10 dòng khớp mẫu + Phân bổ đối chiếu chưa khai báo.
+      await expect(page.locator('[data-subject-form="ROWS"]'), `môn ${name}: biểu mẫu DS`).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3, name: "Các dòng lấy câu" }), `môn ${name}`).toBeVisible();
+      await expect(page.locator("[data-form-row]"), `môn ${name}: số dòng nhóm`).toHaveCount(groups.length);
+      for (const [index, group] of groups.entries()) {
+        const block = section.blocks![index]!;
+        const row = page.locator(`[data-form-row="${block.id}"]`);
+        await expect(row.locator("[data-exam-content]"), `môn ${name}: tên dòng ${group.name}`).toHaveText(group.name);
+        const questionsText = group.sets
+          ? `${group.sets.count} chùm × ${group.sets.size} (${group.questions} câu)`
+          : `${group.questions} câu`;
+        await expect(row.getByRole("cell").nth(1), `môn ${name}: nhóm ${group.name}, số câu`).toContainText(questionsText);
+      }
+      const refBlock = page.locator("[data-reference-block]");
+      await refBlock.locator("summary").click();
+      await expect(refBlock.locator('[data-reference-dimension="GRADE"]')).toContainText("Chưa khai báo");
+      await expect(refBlock.locator('[data-reference-dimension="DIFFICULTY"]')).toContainText("Chưa khai báo");
     }
   }
 
-  // Sửa một giá trị của môn Vật lí (tên nhóm lấy câu) rồi lưu.
+  // Sửa một giá trị của môn Vật lí trên MT (Số chùm 1 -> 2, lưu PUT 200 và kiểm tra API, rồi trả về 1 để kiểm tra/công bố chuẩn mẫu).
   const ly = pool.find((section) => section.subjectCode === "LY")!;
-  const lyBlock = ly.blocks![0]!;
   await nav.getByRole("button", { name: new RegExp(`^${SUBJECT_NAME.LY}`) }).click();
-  await page.getByRole("button", { name: `Mở nhóm ${lyBlock.name}` }).click();
-  const renamed = `${lyBlock.name} Vật lí 2B`;
-  await page.getByRole("textbox", { name: /^Tên nhóm/ }).fill(renamed);
+  const setsInput = page.getByRole("textbox", { name: "Số chùm", exact: true });
+  await setsInput.fill("2");
+  await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true })).toHaveValue("18");
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
   await saveStructureInUi(page, id);
-  const savedLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id);
-  expect(savedLy?.blocks?.[0]?.name).toBe(renamed);
+  const savedLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id)!;
+  expect(savedLy.blocks?.find((block) => block.questionType === "QUESTION_SET")).toMatchObject({ setCount: 2, setSize: 3, questionCount: 6 });
+  expect(savedLy.blocks?.find((block) => block.questionType === "SINGLE_CHOICE")).toMatchObject({ questionCount: 18 });
+
+  await setsInput.fill("1");
+  await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true })).toHaveValue("21");
+  await saveStructureInUi(page, id);
+  const restoredLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id)!;
+  expect(restoredLy.blocks?.find((block) => block.questionType === "QUESTION_SET")).toMatchObject({ setCount: 1, setSize: 3, questionCount: 3 });
+
+  // Điền thông tin bán trước khi chạy Kiểm tra môn và Kiểm tra toàn bài (phản hồi `/check` luôn đính kèm `listingCheck`).
+  await ensureListingFilledInUi(page, id);
+  await openEditorTab(page, "Cấu trúc và ma trận", /\/exams\/[^/]+\/structure/);
+  await expectStructureQuestions(page, /^150(\D|$)/);
 
   // Kiểm tra riêng từng môn bằng nút "Kiểm tra môn": mỗi môn không lỗi chặn và hiện "Đã kiểm tra" trong danh sách.
   for (const { code } of PART3_SUBJECTS) {

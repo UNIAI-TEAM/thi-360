@@ -60,17 +60,19 @@ test("H-SCA Toán cả môn: tạo, dòng khóa, kiểm tra, sinh thử, công b
   expect(blocks[2]!.map((block) => [block.questionType, block.questionCount])).toEqual([["SHORT_ANSWER", 10]]);
   await expectStructureQuestions(page, /40/);
 
-  // Dòng lấy câu bị mẫu khóa: chip "Mẫu đã khóa dòng", ô số, ô loại, cách lấy chỉ đọc; nút xóa nhóm tắt (H42).
+  // Dòng lấy câu bị mẫu khóa trên Danh sách dòng (FTM R-7, H42): lý do khóa chữ, ô số câu chỉ đọc,
+  // cách lấy khóa, dạng câu chỉ đọc ở [data-template-facts], không có nút xóa nhóm.
   const firstBlock = allSections(structure).flatMap((section) => section.blocks ?? [])[0]!;
   await openBlockInUi(page, id, firstBlock.id!, firstBlock.name);
-  await expect(page.getByText("Mẫu đã khóa dòng")).toBeVisible();
+  const rowEditor = page.locator(`[data-form-row-editor="${firstBlock.id}"]`);
+  await expect(rowEditor).toBeVisible();
+  await expect(rowEditor.locator('[data-lock-reason="rowCounts"]')).toHaveText("Theo mẫu đề chuẩn, không đổi số lượng");
   const countCell = blockCountCell(page);
   await expect(countCell).toHaveJSProperty("readOnly", true);
   await expect(countCell).toHaveValue("20");
-  const typeCell = page.getByRole("textbox", { name: /^Loại câu hỏi/ });
-  await expect(typeCell).toHaveJSProperty("readOnly", true);
-  await expect(typeCell).toHaveValue("Một đáp án");
-  await expect(page.getByRole("button", { name: /^Xóa nhóm / })).toBeDisabled();
+  await expect(countCell).toHaveAccessibleDescription(/Theo mẫu đề chuẩn, không đổi số lượng/);
+  await expect(rowEditor.locator("[data-template-facts]")).toContainText("Một đáp án");
+  await expect(page.getByRole("button", { name: /^Xóa nhóm / })).toHaveCount(0);
   // Nhóm do mẫu khóa không cho đổi cách lấy câu.
   await expect(page.getByRole("radio", { name: /^Câu chùm/ })).toBeDisabled();
 

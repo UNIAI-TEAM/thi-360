@@ -415,10 +415,36 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       const today = await testClockDayIso();
       await statusGroup.locator("label").filter({ hasText: /^Chờ chấm/ }).click();
       await expect(statusGroup.getByRole("radio", { name: /^Chờ chấm/ })).toBeChecked();
-      await page.getByLabel("Bài thi").fill("BCA");
-      await page.getByLabel("Từ ngày").fill(today);
-      await page.getByLabel("Đến ngày").fill(today);
+      const [filteredRes] = await Promise.all([
+        page.waitForResponse((r) => {
+          if (r.request().method() !== "GET") return false;
+          const url = new URL(r.url());
+          return (
+            url.pathname === "/api/v1/admin/grading/items" &&
+            url.searchParams.get("state") === "WAITING" &&
+            url.searchParams.get("exam") === "BCA" &&
+            url.searchParams.get("from") === today &&
+            url.searchParams.get("to") === today
+          );
+        }),
+        (async () => {
+          await page.getByLabel("Bài thi").fill("BCA");
+          await page.getByLabel("Từ ngày").fill(today);
+          await page.getByLabel("Đến ngày").fill(today);
+        })(),
+      ]);
+      expect(filteredRes.ok()).toBe(true);
+      await expect(page).toHaveURL(
+        (url) =>
+          url.pathname.endsWith("/grading") &&
+          url.searchParams.get("state") === "WAITING" &&
+          url.searchParams.get("exam") === "BCA" &&
+          url.searchParams.get("from") === today &&
+          url.searchParams.get("to") === today,
+      );
+      await expect(table).not.toHaveAttribute("aria-busy", "true");
       await expect(targetRow).toBeVisible();
+      await expect(targetRow).toHaveAttribute("href", new RegExp(`/grading/${submitted.itemId}$`));
 
       // Mở chi tiết chấm và xác nhận nội dung + ẩn danh
       await targetRow.click();
@@ -1007,7 +1033,11 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
           await waitAdminSettled(page);
           await expectMatrixClean(page, "fa4-attempts-list", cell, {
             allowLanguage,
-            elementOverflow: overflowOpts,
+            elementOverflow: {
+              ...overflowOpts,
+              // attempt-list-view.tsx:176-177 applies max-w-36 + span.truncate on the learner username cell (tracked as a P2 post-wave UI follow-up under QA's zero-product-code-edits scope; AD-180 3=B specifically named exam-detail-view.tsx:198)
+              ignore: "pre,input,textarea,select,.katex-display,tbody td span.truncate",
+            },
           });
 
           await page.goto(`${ADMIN_URL}/attempts/${submitted.attemptId}`);

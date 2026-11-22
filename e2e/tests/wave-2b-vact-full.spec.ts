@@ -5,12 +5,14 @@ import {
   continueToReviewInUi,
   countBySubject,
   createExamInUi,
+  ensureListingFilledInUi,
   examCode,
   expectStructureQuestions,
   expectValidPaths,
   expectWellFormedPaper,
   generateInUi,
   getExam,
+  openEditorTab,
   publishInUi,
   renameFirstBlockAndSaveInUi,
   SCENARIO_TIMEOUT_MS,
@@ -35,6 +37,11 @@ test("V-ACT toàn bài: tạo, kiểm tra đạt, đề thử 120 câu, công b�
   // Bước 2: mở, sửa tên một nhóm (số câu của mẫu V-ACT bị khóa), lưu.
   await expectStructureQuestions(page, /^120(\D|$)/);
   await renameFirstBlockAndSaveInUi(page, admin, id);
+
+  // Điền thông tin bán trước khi Kiểm tra toàn bài để `listingCheck` không báo lỗi `LISTING_*_MISSING` trong `blockingCodes(check)`.
+  await ensureListingFilledInUi(page, id);
+  await openEditorTab(page, "Cấu trúc và ma trận", /\/exams\/[^/]+\/structure/);
+  await expectStructureQuestions(page, /^120(\D|$)/);
 
   // Kiểm tra đạt: không lỗi chặn; cảnh báo phân bố tham khảo (DISTRIBUTION_DEVIATION) không chặn.
   const check = await continueToReviewInUi(page, id);
