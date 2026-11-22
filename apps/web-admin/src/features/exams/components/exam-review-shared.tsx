@@ -66,12 +66,23 @@ export function richNodes(
     if (isValidElement(node)) {
       keyedValues[slot] = node.key == null ? cloneElement(node, { key: slot }) : node;
     } else if (Array.isArray(node)) {
-      keyedValues[slot] = <Fragment key={slot}>{node}</Fragment>;
+      const keyedItems = node.map((item, idx) =>
+        isValidElement(item) && item.key == null ? cloneElement(item, { key: `${slot}-${idx}` }) : item,
+      );
+      keyedValues[slot] = <Fragment key={slot}>{keyedItems}</Fragment>;
     } else {
       keyedValues[slot] = node;
     }
   }
-  return t.rich(key, keyedValues as RichTranslationValues);
+  const rendered = t.rich(key, keyedValues as RichTranslationValues);
+  if (!Array.isArray(rendered)) return rendered;
+  return rendered.map((part, index) =>
+    isValidElement(part)
+      ? cloneElement(part, { key: `rich-${index}` })
+      : Array.isArray(part)
+        ? <Fragment key={`rich-${index}`}>{part}</Fragment>
+        : part,
+  );
 }
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */

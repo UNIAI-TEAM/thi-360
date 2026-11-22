@@ -458,7 +458,24 @@ function PreviewItemView({
         <Badge className="whitespace-normal wrap-anywhere">{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
       </div>
       <PreviewAudioList attachments={item.attachments} name={t("audio.forSet", { first: setFirst, last: setLast })} />
-      {item.passage ? (
+      {item.simulated && !item.passage ? (
+        <>
+          <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
+          <ol className="flex flex-col gap-2">
+            {item.children.map((child, childIndex) => (
+              <li key={child.questionId}>
+                <PreviewQuestionCard
+                  question={child}
+                  compact
+                  original={original}
+                  level={clampHeadingLevel(level + 1)}
+                  blank={blankStart === undefined ? undefined : blankStart + childIndex}
+                />
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : (
         <QuestionSet
           question={
             {
@@ -466,7 +483,7 @@ function PreviewItemView({
               displayNo: setFirst || 1,
               body: {
                 type: "QUESTION_SET",
-                passage: item.passage,
+                passage: item.passage ?? "",
                 blankNumberStart: blankStart ?? item.blankNumberStart,
                 childIds: item.children.map((child) => child.questionId),
               },
@@ -500,23 +517,6 @@ function PreviewItemView({
         >
           {childKits}
         </QuestionSet>
-      ) : (
-        <>
-          <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
-          <ol className="flex flex-col gap-2">
-            {item.children.map((child, childIndex) => (
-              <li key={child.questionId}>
-                <PreviewQuestionCard
-                  question={child}
-                  compact
-                  original={original}
-                  level={clampHeadingLevel(level + 1)}
-                  blank={blankStart === undefined ? undefined : blankStart + childIndex}
-                />
-              </li>
-            ))}
-          </ol>
-        </>
       )}
     </article>
   );
@@ -564,7 +564,7 @@ function PreviewQuestionCard({
 
   return (
     <article
-      aria-labelledby={headingId}
+      aria-labelledby={question.simulated ? headingId : undefined}
       className={compact ? "flex flex-col gap-2" : "flex flex-col gap-2 rounded-md border border-border p-3"}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">

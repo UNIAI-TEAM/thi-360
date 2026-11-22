@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { screen, waitFor, within } from "@testing-library/react";
+import { createElement } from "react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createTranslator } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { ExamPreviewPaper } from "../components/exam-preview-paper";
+import { richNodes } from "../components/exam-review-shared";
 import type { PreviewBlock, PreviewItem, PreviewPaper, PreviewQuestion } from "../review-types";
 import { byTextContent } from "./text-content";
 
@@ -298,9 +301,12 @@ describe("tám dạng câu", () => {
       expect(input).toHaveAttribute("readonly");
     }
 
-    // 1. SINGLE_CHOICE + solution + optionOrder (Đà Nẵng trước Hà Nội).
+    // 1. SINGLE_CHOICE + solution + optionOrder (Đà Nẵng trước Hà Nội) + 1 landmark region duy nhất (R1-2).
     const q1Heading = screen.getByRole("heading", { name: "Câu 1" });
     const q1Article = q1Heading.closest("article")!;
+    expect(q1Article).not.toHaveAttribute("aria-labelledby");
+    expect(within(q1Article).getAllByRole("region", { name: "Câu 1" })).toHaveLength(1);
+    expect(q1Article.querySelector('section[aria-labelledby="q-1-title"]')).not.toBeNull();
     expect(within(q1Article).getByText("Đáp án đúng")).toBeInTheDocument();
     expect(within(q1Article).getByText("Lời giải")).toBeInTheDocument();
     expect(within(q1Article).getByText("Giải thích: Hà Nội là thủ đô.")).toBeInTheDocument();
@@ -370,11 +376,11 @@ describe("tám dạng câu", () => {
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
-  it("hỗ trợ fallback khi question.body === null, rubric rỗng và câu mô phỏng (simulated)", () => {
+  it("hỗ trợ fallback khi question.body === null, rubric rỗng, câu/bộ mô phỏng (simulated) và bộ audio-only thực (R1-3, R1-17, R1-29)", () => {
     const paper: PreviewPaper = {
-      totalQuestions: 4,
-      totalPoints: 4,
-      totalMinutes: 30,
+      totalQuestions: 7,
+      totalPoints: 7,
+      totalMinutes: 45,
       sharedDuration: false,
       hasManualGrading: true,
       subjects: [],
@@ -385,10 +391,10 @@ describe("tám dạng câu", () => {
           partId: "p-fb",
           name: "Phần fallback",
           order: 1,
-          durationMinutes: 30,
+          durationMinutes: 45,
           firstNumber: 1,
-          lastNumber: 4,
-          points: 4,
+          lastNumber: 7,
+          points: 7,
           maxPoints: null,
           blocks: [
             makeBlock(
@@ -436,7 +442,61 @@ describe("tám dạng câu", () => {
                   body: null,
                 }),
               },
-            ]),
+              {
+                kind: "SET",
+                setId: "set-sim-1",
+                code: "SET-SIM",
+                version: 1,
+                simulated: true,
+                passage: null,
+                children: [
+                  makeQuestion(5, {
+                    questionId: "q-sim-child-5",
+                    code: "SIM-C5",
+                    type: "SHORT_ANSWER",
+                    simulated: true,
+                    content: null,
+                    body: null,
+                  }),
+                ],
+              },
+            ], { questionType: "CLOZE", setCount: 1, setSize: 1, firstNumber: 4, lastNumber: 5, questionCount: 2 }),
+            makeBlock("blk-audio-only-set", "Nhóm bộ chỉ có audio", [
+              {
+                kind: "SET",
+                setId: "set-audio-only",
+                code: "SET-AUDIO-ONLY",
+                version: 1,
+                simulated: false,
+                passage: null,
+                attachments: [{ id: "aud-only-1", name: "audio-only.mp3", mime: "audio/mpeg" }],
+                children: [
+                  makeQuestion(6, {
+                    questionId: "q-aud-6",
+                    code: "AUD-C6",
+                    type: "SINGLE_CHOICE",
+                    content: "<p>Câu nghe thuộc bộ không ngữ liệu</p>",
+                    body: {
+                      type: "SINGLE_CHOICE",
+                      options: [
+                        { id: "ao-a", content: "<p>Phương án X</p>", correct: true },
+                        { id: "ao-b", content: "<p>Phương án Y</p>", correct: false },
+                      ],
+                    },
+                  }),
+                  makeQuestion(7, {
+                    questionId: "q-aud-7",
+                    code: "AUD-C7",
+                    type: "SINGLE_CHOICE",
+                    content: "<p>Câu nghe thứ hai</p>",
+                    body: {
+                      type: "SINGLE_CHOICE",
+                      options: [{ id: "ao-c", content: "<p>Phương án Z</p>", correct: true }],
+                    },
+                  }),
+                ],
+              },
+            ], { setCount: 1, setSize: 2, firstNumber: 6, lastNumber: 7, questionCount: 2 }),
           ],
         },
       ],
@@ -445,9 +505,103 @@ describe("tám dạng câu", () => {
     renderWithProviders(<ExamPreviewPaper paper={paper} />);
 
     expect(screen.getByText("99")).toBeInTheDocument();
-    expect(screen.getByText("Mệnh đề 1")).toBeInTheDocument();
+    // R1-29: TRUE_FALSE body === null fallback kiểm tra cột Đáp án và Đúng / Sai khớp opt.correct.
+    const tfFallbackArticle = screen.getByRole("heading", { name: "Câu 2" }).closest("article")!;
+    expect(within(tfFallbackArticle).getByRole("columnheader", { name: "Đáp án" })).toBeInTheDocument();
+    expect(within(tfFallbackArticle).getByText("Mệnh đề 1")).toBeInTheDocument();
+    expect(within(tfFallbackArticle).getByText("Đúng")).toBeInTheDocument();
+    expect(within(tfFallbackArticle).getByText("Mệnh đề 2")).toBeInTheDocument();
+    expect(within(tfFallbackArticle).getByText("Sai")).toBeInTheDocument();
+
     expect(screen.getByText("Câu chưa có tiêu chí chấm.")).toBeInTheDocument();
-    expect(screen.getByText(/Câu của nguồn mô phỏng/)).toBeInTheDocument();
+    const simQ4Article = screen.getByRole("heading", { name: "Câu 4" }).closest("article")!;
+    expect(simQ4Article).toHaveAttribute("aria-labelledby", "preview-q-q-4");
+    expect(within(simQ4Article).getByText(/Câu của nguồn mô phỏng/)).toBeInTheDocument();
+
+    // R1-17: nhánh else cho SET mô phỏng (simulated: true, passage: null) có câu con điền khuyết.
+    const simSetArticle = document.getElementById("preview-set-set-sim-1")!.closest("article")!;
+    expect(within(simSetArticle).getByText(/Ngữ liệu của bộ mô phỏng/)).toBeInTheDocument();
+    const simChildHeading = within(simSetArticle).getByRole("heading", { level: 6, name: "Câu 5" });
+    const simChildArticle = simChildHeading.closest("article")!;
+    expect(within(simChildArticle).getByText("SIM-C5 · v1")).toBeInTheDocument();
+    expect(within(simChildArticle).getByText("Tối đa 1 điểm")).toBeInTheDocument();
+    expect(within(simChildArticle).getByText(/Câu 5 → chỗ trống \(5\)/)).toBeInTheDocument();
+
+    // R1-3: SET thật chỉ có audio (simulated: false, passage: null) dùng <QuestionSet> và KHÔNG hiện simulatedPassage.
+    const realAudioSetArticle = document.getElementById("preview-set-set-audio-only")!.closest("article")!;
+    expect(within(realAudioSetArticle).queryByText(/Ngữ liệu của bộ mô phỏng/)).not.toBeInTheDocument();
+    expect(within(realAudioSetArticle).getByRole("group", { name: "Trình phát audio · câu 6–7" })).toBeInTheDocument();
+    expect(within(realAudioSetArticle).getByRole("heading", { level: 5, name: "Ngữ liệu chung cho câu 6–7" })).toBeInTheDocument();
+    expect(within(realAudioSetArticle).getByRole("heading", { level: 6, name: "Câu 6" })).toBeInTheDocument();
+    expect(within(realAudioSetArticle).getByText("Phương án X")).toBeInTheDocument();
+  });
+
+  it("R1-18: CLOZE có question.content === body.passage chỉ render ngữ liệu đúng 1 lần", () => {
+    const sharedPassage = "<p>Khí hậu Việt Nam mang tính [[b1]] ẩm gió mùa.</p>";
+    const paper: PreviewPaper = {
+      totalQuestions: 1,
+      totalPoints: 1,
+      totalMinutes: 15,
+      sharedDuration: false,
+      hasManualGrading: false,
+      subjects: [],
+      checks: [],
+      knowledgeStats: [],
+      parts: [
+        {
+          partId: "p-clz",
+          name: "Phần điền khuyết",
+          order: 1,
+          durationMinutes: 15,
+          firstNumber: 1,
+          lastNumber: 1,
+          points: 1,
+          maxPoints: null,
+          blocks: [
+            makeBlock("blk-clz", "Khối điền khuyết", [
+              {
+                kind: "QUESTION",
+                question: makeQuestion(1, {
+                  type: "CLOZE",
+                  content: sharedPassage,
+                  body: {
+                    type: "CLOZE",
+                    passage: sharedPassage,
+                    blanks: [{ id: "b1", answers: ["nhiệt đới"], points: 1 }],
+                  },
+                }),
+              },
+            ]),
+          ],
+        },
+      ],
+    };
+
+    renderWithProviders(<ExamPreviewPaper paper={paper} />);
+
+    expect(screen.getAllByText(/Khí hậu Việt Nam mang tính/)).toHaveLength(1);
+    expect(screen.getByText("nhiệt đới")).toBeInTheDocument();
+  });
+
+  it("R1-28: richNodes gắn key ổn định cho mảng chứa phần tử chưa có key và placeholder lặp lại mà không cảnh báo console.error", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t = createTranslator({
+      locale: "vi",
+      messages: {
+        demo: {
+          repeated: "Đầu {slot} giữa {slot} cuối",
+        },
+      },
+      namespace: "demo",
+    });
+
+    const node = richNodes(t as unknown as Parameters<typeof richNodes>[0], "repeated", {
+      slot: [createElement("span", null, "Mục A"), <span key="custom">Mục B</span>],
+    });
+
+    const { container } = render(<p>{node}</p>);
+    expect(container.textContent).toBe("Đầu Mục AMục B giữa Mục AMục B cuối");
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it("original={true} đảo lại thứ tự câu, số câu và thứ tự phương án / cột phải MATCHING theo authored order", () => {
