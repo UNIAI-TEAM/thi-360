@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { PreviewTrialView } from "../trial/preview-trial-view";
+import { useTrialAudioRegistry } from "../trial/trial-audio";
+import { TrialPaperView } from "../trial/trial-paper-view";
 import type { PreviewGradeResponse, PreviewTrialPaperResponse } from "../trial/types";
 import { EXAM_ID, EXAM_PATH, FakeServer } from "./fake-exams-server";
 
@@ -323,23 +325,48 @@ describe("hai lần nghe", () => {
     expect(await screen.findByText("Choose the synonym.")).toBeInTheDocument();
     expect(pauseSpy).toHaveBeenCalled();
 
-    // Quay lại Phần 1 -> số lượt nghe còn lại vẫn là 1/2 (không bị reset về 2/2).
+    // Chuyển lại Phần 1 -> số lượt nghe còn lại vẫn là 1/2 (không bị reset về 2/2), hoàn thành lượt 2 -> khóa 0/2.
     await user.click(screen.getByRole("button", { name: /Phần 1 · Nghe hiểu/ }));
     await screen.findByText("Listen to the announcement.");
     const restoredRegion = screen.getAllByRole("region", { name: "Trình phát audio" })[0]!;
     expect(within(restoredRegion).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
     expect(within(restoredRegion).getByRole("button", { name: "Nghe" })).toBeEnabled();
 
-    // Nộp bài -> Làm lại đề này reset về 2/2.
+    await user.click(within(restoredRegion).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(restoredRegion).getByText("Còn 0/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(restoredRegion.querySelector("audio")!, new Event("ended"));
+    });
+    const exhaustedBtn = await within(restoredRegion).findByRole("button", { name: "Nghe" });
+    expect(exhaustedBtn).toBeDisabled();
+    expect(within(restoredRegion).getByText("Đã hết lượt nghe (0/2)")).toBeInTheDocument();
+
+    // Nộp bài -> Làm lại đề này reset về 2/2 và phát trọn vẹn 2 lượt mới (R1-15).
     await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
     await screen.findByRole("heading", { level: 1, name: "Kết quả làm thử" });
     await user.click(screen.getByRole("button", { name: "Làm lại đề này" }));
     await screen.findByText("Listen to the announcement.");
     const resetRegion = screen.getAllByRole("region", { name: "Trình phát audio" })[0]!;
+    const resetAudio = resetRegion.querySelector("audio")!;
     expect(within(resetRegion).getByText("Còn 2/2 lần nghe")).toBeInTheDocument();
+
+    await user.click(within(resetRegion).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(resetRegion).getByText("Còn 1/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(resetAudio, new Event("ended"));
+    });
+    await waitFor(() => expect(within(resetRegion).getByRole("button", { name: "Nghe" })).toBeEnabled());
+
+    await user.click(within(resetRegion).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(resetRegion).getByText("Còn 0/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(resetAudio, new Event("ended"));
+    });
+    expect(await within(resetRegion).findByRole("button", { name: "Nghe" })).toBeDisabled();
+    expect(within(resetRegion).getByText("Đã hết lượt nghe (0/2)")).toBeInTheDocument();
   });
 
-  it("phát tệp thứ hai trên cùng phần tự dừng tệp đang phát không trừ lượt; nộp bài và unmount đều dừng phát (pause)", async () => {
+  it("phát tệp thứ hai trên cùng phần tự dừng tệp đang phát không trừ lượt; đang nộp bài khóa tạm (không báo đã nộp) và unmount dừng phát", async () => {
     const user = userEvent.setup();
     const { pauseSpy } = mockMediaElements();
     const server = new FakeServer()
@@ -367,11 +394,13 @@ describe("hai lần nghe", () => {
     expect(within(q1Region).getByRole("button", { name: "Phát lại" })).toBeEnabled();
     expect(within(q1Region).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
 
-    // Khi đang nộp bài (pending), trình phát đóng với closedReason="SUBMITTED" và dừng audio.
+    // Khi đang nộp bài (pending), dừng audio và khóa trình phát bằng disabled={submitting} (KHÔNG báo đã nộp trước HTTP 200).
     pauseSpy.mockClear();
     await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
     await waitFor(() => expect(pauseSpy).toHaveBeenCalled());
-    expect(within(setRegion).getByText("Bài thi đã nộp, audio đã dừng phát.")).toBeInTheDocument();
+    expect(within(setRegion).getByRole("button", { name: "Nghe" })).toBeDisabled();
+    expect(within(setRegion).getByText("Trình phát audio đang tạm khóa.")).toBeInTheDocument();
+    expect(screen.queryByText("Bài thi đã nộp, audio đã dừng phát.")).not.toBeInTheDocument();
 
     server.release("POST", GRADE_PATH);
     await screen.findByRole("heading", { level: 1, name: "Kết quả làm thử" });
@@ -385,6 +414,370 @@ describe("hai lần nghe", () => {
     pauseSpy.mockClear();
     view.unmount();
     expect(pauseSpy).toHaveBeenCalled();
+  });
+
+  it("R1-11: POST /grade trả lỗi 500 mở khóa lại trình phát và cho phát lại không tốn thêm lượt", async () => {
+    const user = userEvent.setup();
+    const { pauseSpy } = mockMediaElements();
+    const server = new FakeServer()
+      .on("GET", PAPER_PATH, { status: 200, body: buildAudioTrialPaper() })
+      .on("POST", GRADE_PATH, { status: 500, body: { code: "INTERNAL_ERROR" } })
+      .hold("POST", GRADE_PATH);
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Listen to the announcement.");
+
+    const q1Region = screen.getAllByRole("region", { name: "Trình phát audio" })[0]!;
+    await user.click(within(q1Region).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(q1Region).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(q1Region).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+
+    pauseSpy.mockClear();
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+    await waitFor(() => expect(pauseSpy).toHaveBeenCalled());
+    expect(within(q1Region).getByRole("button", { name: "Nghe" })).toBeDisabled();
+    expect(within(q1Region).getByText("Trình phát audio đang tạm khóa.")).toBeInTheDocument();
+    expect(screen.queryByText("Bài thi đã nộp, audio đã dừng phát.")).not.toBeInTheDocument();
+
+    server.release("POST", GRADE_PATH);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Không chấm được bài làm thử");
+
+    const resumeBtn = within(q1Region).getByRole("button", { name: "Phát lại" });
+    expect(resumeBtn).toBeEnabled();
+    expect(within(q1Region).queryByText("Trình phát audio đang tạm khóa.")).not.toBeInTheDocument();
+
+    await user.click(resumeBtn);
+    await waitFor(() => expect(within(q1Region).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(q1Region).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+  });
+
+  it("R1-16: xác nhận rời trang (Về Xem trước -> Bỏ) dừng phát audio đang chạy", async () => {
+    const user = userEvent.setup();
+    const { pauseSpy } = mockMediaElements();
+    const server = new FakeServer().on("GET", PAPER_PATH, {
+      status: 200,
+      body: buildAudioTrialPaper(),
+    });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Listen to the announcement.");
+
+    const q1Region = screen.getAllByRole("region", { name: "Trình phát audio" })[0]!;
+    await user.click(within(q1Region).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(q1Region).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+
+    pauseSpy.mockClear();
+    await user.click(screen.getByRole("button", { name: "Về Xem trước" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ" }));
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/review?tab=preview`);
+  });
+
+  it("R1-5/R1-6/R1-7: shallow-clone paper không tạo lại adapter, gọi reset() độc lập reset lượt nghe và đổi previewId không rò state", async () => {
+    const user = userEvent.setup();
+    mockMediaElements();
+
+    function RegistryHarness({
+      paper,
+      epoch = 0,
+    }: {
+      paper: PreviewTrialPaperResponse;
+      epoch?: number;
+    }) {
+      const { registry, reset } = useTrialAudioRegistry(paper, epoch);
+      return (
+        <div>
+          <button type="button" onClick={reset}>
+            Reset registry only
+          </button>
+          <TrialPaperView
+            paper={paper}
+            answers={{}}
+            onAnswerChange={() => {}}
+            onSubmit={() => {}}
+            onRequestLeave={() => {}}
+            submitting={false}
+            submitError={null}
+            audioRegistry={registry}
+          />
+        </div>
+      );
+    }
+
+    const basePaper = buildAudioTrialPaper();
+    const view = renderWithProviders(<RegistryHarness paper={basePaper} />);
+    await screen.findByText("Listen to the announcement.");
+
+    const q1Group = () => screen.getByRole("group", { name: "Trình phát audio · Câu 1" });
+    await user.click(within(q1Group()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(q1Group()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument());
+
+    // Shallow-clone paper (reference mới, cùng previewId và assetIds): adapter giữ nguyên, ended thành công không AUDIO_PLAY_STALE.
+    view.rerender(<RegistryHarness paper={{ ...basePaper }} />);
+    expect(within(q1Group()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent(q1Group().querySelector("audio")!, new Event("ended"));
+    });
+    await waitFor(() => expect(within(q1Group()).getByRole("button", { name: "Nghe" })).toBeEnabled());
+    expect(within(q1Group()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+    expect(within(q1Group()).queryByText(/Không phát được|thử lại/i)).not.toBeInTheDocument();
+
+    // Dùng hết lượt 2 -> bị khóa 0/2 -> gọi reset() mà không tăng external epoch -> nghe lại được 2 lần mới.
+    await user.click(within(q1Group()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(q1Group()).getByText("Còn 0/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(q1Group().querySelector("audio")!, new Event("ended"));
+    });
+    expect(await within(q1Group()).findByRole("button", { name: "Nghe" })).toBeDisabled();
+    expect(within(q1Group()).getByText("Đã hết lượt nghe (0/2)")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset registry only" }));
+    await waitFor(() => expect(within(q1Group()).getByText("Còn 2/2 lần nghe")).toBeInTheDocument());
+    expect(within(q1Group()).getByRole("button", { name: "Nghe" })).toBeEnabled();
+
+    await user.click(within(q1Group()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(q1Group()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(q1Group().querySelector("audio")!, new Event("ended"));
+    });
+    await user.click(within(q1Group()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(q1Group()).getByText("Còn 0/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(q1Group().querySelector("audio")!, new Event("ended"));
+    });
+    expect(await within(q1Group()).findByText("Đã hết lượt nghe (0/2)")).toBeInTheDocument();
+
+    // Đổi previewId mà không unmount -> state cũ không rò sang preview mới.
+    view.rerender(<RegistryHarness paper={{ ...basePaper, previewId: "88888888-8888-4888-8888-888888888888" }} />);
+    await waitFor(() => expect(within(q1Group()).getByText("Còn 2/2 lần nghe")).toBeInTheDocument());
+    expect(within(q1Group()).getByRole("button", { name: "Nghe" })).toBeEnabled();
+
+    // TrialPaperView standalone (không truyền audioRegistry) dùng focusHeadingKey cho fallbackAudioRegistry.
+    const standalone = renderWithProviders(
+      <TrialPaperView
+        paper={basePaper}
+        answers={{}}
+        onAnswerChange={() => {}}
+        onSubmit={() => {}}
+        onRequestLeave={() => {}}
+        submitting={false}
+        submitError={null}
+        focusHeadingKey={0}
+      />,
+    );
+    const standaloneGroups = screen.getAllByRole("group", { name: "Trình phát audio · Câu 1" });
+    const standaloneQ1 = standaloneGroups[1]!;
+    await user.click(within(standaloneQ1).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(standaloneQ1).getByText("Còn 1/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(standaloneQ1.querySelector("audio")!, new Event("ended"));
+    });
+    await user.click(within(standaloneQ1).getByRole("button", { name: "Nghe" }));
+    await act(async () => {
+      fireEvent(standaloneQ1.querySelector("audio")!, new Event("ended"));
+    });
+    expect(await within(standaloneQ1).findByText("Đã hết lượt nghe (0/2)")).toBeInTheDocument();
+
+    standalone.rerender(
+      <TrialPaperView
+        paper={basePaper}
+        answers={{}}
+        onAnswerChange={() => {}}
+        onSubmit={() => {}}
+        onRequestLeave={() => {}}
+        submitting={false}
+        submitError={null}
+        focusHeadingKey={1}
+      />,
+    );
+    await waitFor(() => expect(within(standaloneQ1).getByText("Còn 2/2 lần nghe")).toBeInTheDocument());
+    await user.click(within(standaloneQ1).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(standaloneQ1).getByText("Còn 1/2 lần nghe")).toBeInTheDocument());
+  });
+
+  it("R1-8/R1-9: cùng assetId gắn ở hai phân đoạn (hoặc trùng tệp) vẫn chặn phát đồng thời và dùng chung 2 lượt nghe", async () => {
+    const user = userEvent.setup();
+    const { pauseSpy } = mockMediaElements();
+    const splitPaper: PreviewTrialPaperResponse = {
+      examId: EXAM_ID,
+      previewId: PREVIEW_ID,
+      parts: [
+        {
+          partId: "part-split",
+          name: "Phần phân đoạn",
+          order: 1,
+          firstNumber: 1,
+          lastNumber: 2,
+          points: 2,
+          displaySegments: [
+            { code: "SEG_1", name: "Phân đoạn 1", fromPosition: 1, toPosition: 1 },
+            { code: "SEG_2", name: "Phân đoạn 2", fromPosition: 2, toPosition: 2 },
+          ],
+          blocks: [
+            {
+              blockId: "blk-split",
+              name: "Khối đọc nghe tách đoạn",
+              questionType: "SINGLE_CHOICE",
+              firstNumber: 1,
+              lastNumber: 2,
+              questionCount: 2,
+              items: [
+                {
+                  kind: "SET",
+                  set: {
+                    questionId: "set-split",
+                    passage: "<p>Ngữ liệu chung chia hai đoạn.</p>",
+                    attachments: [{ id: "asset-shared", name: "shared-cue.mp3", mime: "audio/mpeg" }],
+                    children: [
+                      {
+                        number: 1,
+                        questionId: "q-split-1",
+                        type: "SINGLE_CHOICE",
+                        content: "<p>Câu đoạn 1</p>",
+                        points: 1,
+                        body: { type: "SINGLE_CHOICE", options: [{ id: "a", content: "<p>A</p>" }] } as never,
+                      },
+                      {
+                        number: 2,
+                        questionId: "q-split-2",
+                        type: "SINGLE_CHOICE",
+                        content: "<p>Câu đoạn 2</p>",
+                        points: 1,
+                        body: { type: "SINGLE_CHOICE", options: [{ id: "b", content: "<p>B</p>" }] } as never,
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const server = new FakeServer().on("GET", PAPER_PATH, { status: 200, body: splitPaper });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Câu đoạn 1");
+
+    const regions = screen.getAllByRole("region", { name: "Trình phát audio" });
+    expect(regions).toHaveLength(2);
+    const firstInstance = regions[0]!;
+    const secondInstance = regions[1]!;
+
+    await user.click(within(firstInstance).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(firstInstance).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(secondInstance).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+
+    pauseSpy.mockClear();
+    await user.click(within(secondInstance).getByRole("button", { name: "Phát lại" }));
+    await waitFor(() => expect(within(secondInstance).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(within(firstInstance).getByRole("button", { name: "Phát lại" })).toBeEnabled();
+    expect(within(firstInstance).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+  });
+
+  it("R1-10: ngắt A bằng B, sang Phần 2 rồi quay lại Phần 1 không tự phát ping-pong và Phát lại hoạt động cả khi 0/2 lượt thứ hai", async () => {
+    const user = userEvent.setup();
+    const { playSpy } = mockMediaElements();
+    const server = new FakeServer().on("GET", PAPER_PATH, {
+      status: 200,
+      body: buildAudioTrialPaper(),
+    });
+    server.install();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Listen to the announcement.");
+
+    const getA = () => screen.getByRole("group", { name: "Trình phát audio · Câu 1" });
+    const getB = () => screen.getByRole("group", { name: "Trình phát audio chung · Câu 2–3" });
+
+    // Đưa A sang lượt 2 (0/2 đang phát), rồi ngắt A bằng B.
+    await user.click(within(getA()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(getA()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent(getA().querySelector("audio")!, new Event("ended"));
+    });
+    await user.click(within(getA()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(getA()).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(getA()).getByText("Còn 0/2 lần nghe")).toBeInTheDocument();
+
+    await user.click(within(getB()).getByRole("button", { name: "Nghe" }));
+    await waitFor(() => expect(within(getB()).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(getA()).getByRole("button", { name: "Phát lại" })).toBeEnabled();
+
+    // Chuyển sang Phần 2 rồi quay lại Phần 1: không tự gọi play() (không ping-pong stopSignals).
+    await user.click(screen.getByRole("button", { name: /Phần 2 · Đọc hiểu/ }));
+    await screen.findByText("Choose the synonym.");
+
+    playSpy.mockClear();
+    await user.click(screen.getByRole("button", { name: /Phần 1 · Nghe hiểu/ }));
+    await screen.findByText("Listen to the announcement.");
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(within(getA()).getByRole("button", { name: "Phát lại" })).toBeEnabled();
+    expect(within(getA()).getByText("Còn 0/2 lần nghe")).toBeInTheDocument();
+    expect(within(getB()).getByRole("button", { name: "Phát lại" })).toBeEnabled();
+    expect(within(getB()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+
+    // Bấm Phát lại trên B: tiếp tục phát không trừ thêm lượt (vẫn 1/2).
+    await user.click(within(getB()).getByRole("button", { name: "Phát lại" }));
+    await waitFor(() => expect(within(getB()).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(getB()).getByText("Còn 1/2 lần nghe")).toBeInTheDocument();
+
+    // Bấm Phát lại trên A (đang 0/2 lượt 2): phát tiếp được, kết thúc mới khóa 0/2.
+    await user.click(within(getA()).getByRole("button", { name: "Phát lại" }));
+    await waitFor(() => expect(within(getA()).getByRole("button", { name: "Đang phát…" })).toBeDisabled());
+    expect(within(getB()).getByRole("button", { name: "Phát lại" })).toBeEnabled();
+    await act(async () => {
+      fireEvent(getA().querySelector("audio")!, new Event("ended"));
+    });
+    expect(await within(getA()).findByText("Đã hết lượt nghe (0/2)")).toBeInTheDocument();
+    expect(within(getA()).getByRole("button", { name: "Nghe" })).toBeDisabled();
+  });
+
+  it("R1-12/R1-13: nhãn ngữ cảnh và tên nhóm role=group riêng biệt cho từng câu, bộ và câu con (vi & en), câu con đứng sau ngữ liệu", async () => {
+    mockMediaElements();
+    const server = new FakeServer().on("GET", PAPER_PATH, {
+      status: 200,
+      body: buildAudioTrialPaper(),
+    });
+    server.install();
+
+    const viView = renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    await screen.findByText("Listen to the announcement.");
+
+    const q1Group = screen.getByRole("group", { name: "Trình phát audio · Câu 1" });
+    const setGroup = screen.getByRole("group", { name: "Trình phát audio chung · Câu 2–3" });
+    const childGroup = screen.getByRole("group", { name: "Trình phát audio · Câu 2" });
+    expect(within(q1Group).getByText("Audio · Câu 1")).toBeInTheDocument();
+    expect(within(setGroup).getByText("Audio chung · Câu 2–3")).toBeInTheDocument();
+    expect(within(childGroup).getByText("Audio · Câu 2")).toBeInTheDocument();
+
+    const passage = screen.getByText("Listen to the conversation and answer questions 2–3.");
+    expect(setGroup.compareDocumentPosition(passage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(passage.compareDocumentPosition(childGroup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    viView.unmount();
+
+    renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />, {
+      locale: "en",
+      messages: en,
+    });
+    await screen.findByText("Listen to the announcement.");
+
+    const enQ1 = screen.getByRole("group", { name: "Audio player · Question 1" });
+    const enSet = screen.getByRole("group", { name: "Shared audio player · Questions 2–3" });
+    const enChild = screen.getByRole("group", { name: "Audio player · Question 2" });
+    expect(within(enQ1).getByText("Audio · Question 1")).toBeInTheDocument();
+    expect(within(enSet).getByText("Shared audio · Questions 2–3")).toBeInTheDocument();
+    expect(within(enChild).getByText("Audio · Question 2")).toBeInTheDocument();
   });
 
   it("hỗ trợ tiếng Anh đầy đủ qua UiStringsProvider", async () => {

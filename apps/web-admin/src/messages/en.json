@@ -7740,6 +7740,16 @@
       }
     },
     "trial": {
+      "audio": {
+        "fileOf": "File {index, number}/{total, number}",
+        "forQuestion": "Question {number, number}",
+        "forSet": "Questions {first, number}–{last, number}",
+        "group": "Audio player · {name}",
+        "questionLabel": "Audio · {name}",
+        "setFallback": "Question set",
+        "setGroup": "Shared audio player · {name}",
+        "setLabel": "Shared audio · {name}"
+      },
       "backToPreview": "Back to Preview",
       "editor": {
         "bold": "Bold",
