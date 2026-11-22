@@ -1,22 +1,217 @@
 "use client";
 
-import { Badge, Button, cn, focusRing, StatusChip } from "@thi360/ui";
-import { Check, ListOrdered, PenLine, X } from "lucide-react";
+import { Badge, Button, StatusChip } from "@thi360/ui";
+import {
+  Question,
+  QuestionSet,
+  type ChildQuestionProps,
+  type ChoiceOption,
+  type ClozeBlank,
+  type EssayCriterion,
+  type KitQuestion,
+  type KitQuestionOf,
+  type QuestionBody as KitQuestionBody,
+  type QuestionReview,
+  type TrueFalseStatement,
+} from "@thi360/ui/question";
+import { ListOrdered, PenLine } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
-import { RichTextView } from "@/components/rich-text";
+import { Fragment, useMemo, useState } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { PreviewBlock, PreviewDisplaySegment, PreviewItem, PreviewPaper, PreviewPart, PreviewQuestion } from "../review-types";
 import { audioAttachments, PreviewAudioList } from "./exam-preview-audio";
-import { useLookup } from "./exam-review-shared";
+import { ExamName, richNodes, useLookup } from "./exam-review-shared";
 
 /** Số mục (câu hoặc bộ) hiện sẵn của mỗi khối; phần còn lại mở bằng "Hiện tất cả". */
 const VISIBLE_ITEMS = 3;
-const OPTION_KEYS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
+function clampHeadingLevel(level: number): HeadingLevel {
+  return Math.min(6, Math.max(1, level)) as HeadingLevel;
+}
 
 /** Số câu hiện trên đề: số đã đảo của đề thật, hoặc vị trí gốc khi xem thứ tự gốc (K12). */
 function displayNumber(question: PreviewQuestion, original: boolean): number {
   return original ? (question.originalNumber ?? question.number) : question.number;
+}
+
+function resolveOptionOrder(question: PreviewQuestion, original: boolean): string[] | undefined {
+  const order = original ? question.originalOptionOrder : question.optionOrder;
+  return order && order.length > 0 ? order : undefined;
+}
+
+function resolveEssayRubric(question: PreviewQuestion): EssayCriterion[] | null {
+  if (question.rubric !== null) return question.rubric;
+  if (question.body?.type === "ESSAY") return question.body.rubric;
+  return null;
+}
+
+function buildKitQuestion(question: PreviewQuestion, original: boolean): KitQuestion {
+  const number = displayNumber(question, original);
+  const optionOrder = resolveOptionOrder(question, original);
+  const rawBody = question.body;
+
+  let body: KitQuestionBody;
+  let stem: string | undefined = question.content ?? undefined;
+
+  switch (question.type) {
+    case "SINGLE_CHOICE": {
+      const sourceOptions =
+        rawBody?.type === "SINGLE_CHOICE" ? rawBody.options : (question.options ?? []);
+      const options: ChoiceOption[] = sourceOptions.map((opt) => ({
+        id: opt.id,
+        content: opt.content,
+        correct: opt.correct ?? question.options?.find((fallback) => fallback.id === opt.id)?.correct,
+      }));
+      body = {
+        type: "SINGLE_CHOICE",
+        options,
+        ...(rawBody?.type === "SINGLE_CHOICE" && rawBody.shuffleOptions !== undefined
+          ? { shuffleOptions: rawBody.shuffleOptions }
+          : {}),
+      };
+      break;
+    }
+    case "MULTIPLE_CHOICE": {
+      const sourceOptions =
+        rawBody?.type === "MULTIPLE_CHOICE" ? rawBody.options : (question.options ?? []);
+      const options: ChoiceOption[] = sourceOptions.map((opt) => ({
+        id: opt.id,
+        content: opt.content,
+        correct: opt.correct ?? question.options?.find((fallback) => fallback.id === opt.id)?.correct,
+      }));
+      body = {
+        type: "MULTIPLE_CHOICE",
+        options,
+        ...(rawBody?.type === "MULTIPLE_CHOICE"
+          ? {
+              scoringRule: rawBody.scoringRule,
+              ...(rawBody.shuffleOptions !== undefined ? { shuffleOptions: rawBody.shuffleOptions } : {}),
+            }
+          : {}),
+      };
+      break;
+    }
+    case "SHORT_ANSWER": {
+      const answers =
+        rawBody?.type === "SHORT_ANSWER" && rawBody.answers.length > 0
+          ? rawBody.answers
+          : question.answer
+            ? [question.answer]
+            : [];
+      body = {
+        type: "SHORT_ANSWER",
+        answers,
+        inputHint: rawBody?.type === "SHORT_ANSWER" ? rawBody.inputHint : null,
+        answerFormat: rawBody?.type === "SHORT_ANSWER" ? (rawBody.answerFormat ?? null) : null,
+      };
+      break;
+    }
+    case "CLOZE": {
+      const passage = rawBody?.type === "CLOZE" ? rawBody.passage : (question.content ?? "");
+      const blanks: ClozeBlank[] =
+        rawBody?.type === "CLOZE"
+          ? rawBody.blanks.map((blank) => ({
+              id: blank.id,
+              answers: blank.answers,
+              points: blank.points,
+            }))
+          : question.answer
+            ? [{ id: "blank-1", answers: [question.answer] }]
+            : [];
+      body = { type: "CLOZE", passage, blanks };
+      if (!question.content || question.content === passage) {
+        stem = undefined;
+      }
+      break;
+    }
+    case "TRUE_FALSE": {
+      const statements: TrueFalseStatement[] =
+        rawBody?.type === "TRUE_FALSE"
+          ? rawBody.statements.map((statement) => ({
+              id: statement.id,
+              content: statement.content,
+              answer: statement.answer,
+              points: statement.points ?? null,
+            }))
+          : (question.options ?? []).map((opt) => ({
+              id: opt.id,
+              content: opt.content,
+              answer: opt.correct,
+              points: null,
+            }));
+      body = {
+        type: "TRUE_FALSE",
+        statements,
+        ...(rawBody?.type === "TRUE_FALSE"
+          ? { scoringMethod: rawBody.scoringMethod, scoreTable: rawBody.scoreTable }
+          : {}),
+      };
+      break;
+    }
+    case "MATCHING": {
+      body =
+        rawBody?.type === "MATCHING"
+          ? {
+              type: "MATCHING",
+              left: rawBody.left,
+              right: rawBody.right,
+              pairs: rawBody.pairs,
+              reuseRight: rawBody.reuseRight,
+            }
+          : { type: "MATCHING", left: [], right: [], pairs: [], reuseRight: false };
+      break;
+    }
+    case "ESSAY": {
+      const rubric = resolveEssayRubric(question) ?? [];
+      body =
+        rawBody?.type === "ESSAY"
+          ? {
+              type: "ESSAY",
+              gradingGuide: rawBody.gradingGuide,
+              rubric,
+              sampleAnswer: rawBody.sampleAnswer,
+              wordLimit: rawBody.wordLimit,
+            }
+          : {
+              type: "ESSAY",
+              rubric,
+            };
+      break;
+    }
+    case "QUESTION_SET":
+    default: {
+      body =
+        rawBody?.type === "QUESTION_SET"
+          ? {
+              type: "QUESTION_SET",
+              passage: rawBody.passage,
+              blankNumberStart: rawBody.blankNumberStart,
+              childIds: rawBody.childIds,
+            }
+          : { type: "QUESTION_SET", passage: question.content ?? "" };
+      break;
+    }
+  }
+
+  return {
+    id: question.questionId,
+    displayNo: number,
+    points: question.points,
+    stem,
+    body,
+    optionOrder,
+  };
+}
+
+function buildQuestionReview(question: PreviewQuestion): QuestionReview {
+  return {
+    showAnswers: true,
+    solutionHtml: question.solution,
+    max: question.points,
+    ...(question.type === "ESSAY" ? { outcome: "BLANK" as const } : {}),
+  };
 }
 
 export interface SegmentSlice {
@@ -95,7 +290,7 @@ export function ExamPreviewPaper({ paper, original = false }: { paper: PreviewPa
       {paper.parts.map((part) => (
         <section key={part.partId} aria-labelledby={`preview-part-${part.partId}`} className="flex flex-col gap-4">
           <h3 id={`preview-part-${part.partId}`} className="text-title font-semibold text-text">
-            {part.name}{" "}
+            <ExamName>{part.name}</ExamName>{" "}
             <span className="font-normal text-text-muted">
               ·{" "}
               {t("partRange", {
@@ -129,7 +324,7 @@ function PreviewPartBody({ part, original }: { part: PreviewPart; original: bool
     return (
       <section key={segment.code} aria-labelledby={headingId} className="flex flex-col gap-3">
         <h4 id={headingId} className="text-label font-semibold text-text">
-          {segment.name}{" "}
+          <ExamName>{segment.name}</ExamName>{" "}
           <span className="font-normal text-text-muted">
             ·{" "}
             {t("segmentRange", {
@@ -152,7 +347,12 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
   const t = useTranslations("exams.preview");
   const lookup = useLookup();
   const [expanded, setExpanded] = useState(false);
-  const name = `${lookup.subject(block.subjectCode)} · ${block.blockName}`;
+  // Tên khối do mẫu đặt là nội dung đề: nằm trong `ExamName`, tên môn theo danh mục ở ngoài.
+  const name = (
+    <Fragment key="block-name">
+      {lookup.subject(block.subjectCode)} · <ExamName>{block.blockName}</ExamName>
+    </Fragment>
+  );
   const items = useMemo(
     () =>
       original
@@ -176,7 +376,7 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
       <Heading className="flex flex-wrap items-center gap-x-2 gap-y-1 text-label font-semibold text-text">
         <span>
-          {t("blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
+          {richNodes(t, "blockHeading", { block: name })} <span className="font-normal text-text-muted">· {range}</span>
         </span>
         {block.manualGrading && <Badge>{t("manualGrading")}</Badge>}
       </Heading>
@@ -224,14 +424,29 @@ function PreviewItemView({
   level?: number;
 }) {
   const t = useTranslations("exams.preview");
-  if (item.kind === "QUESTION") return <QuestionArticle question={item.question} original={original} level={Math.min(level, 6)} />;
+  if (item.kind === "QUESTION") {
+    return (
+      <PreviewQuestionCard
+        question={item.question}
+        original={original}
+        level={clampHeadingLevel(level)}
+      />
+    );
+  }
+
   // Bài đọc điền: chỗ trống của ngữ liệu mang số của câu con đầu, câu con thứ n ứng với chỗ trống thứ n (spec 3.4).
   const blankStart = cloze && item.children[0] ? displayNumber(item.children[0], original) : undefined;
   const headingId = `preview-set-${scope}${item.setId}`;
   const setNumbers = item.children.map((child) => displayNumber(child, original));
   const setFirst = setNumbers[0] ?? 0;
   const setLast = setNumbers[setNumbers.length - 1] ?? 0;
-  const SetHeading = `h${Math.min(level, 6)}` as "h5" | "h6";
+  const setHeadingLevel = clampHeadingLevel(level);
+  const SetHeading = `h${setHeadingLevel}` as const;
+
+  const setKitId = scope ? `${scope}-${item.setId}` : item.setId;
+  const childById = new Map(item.children.map((child) => [child.questionId, child]));
+  const childKits = item.children.map((child) => buildKitQuestion(child, original));
+
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-border p-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -243,67 +458,121 @@ function PreviewItemView({
         <Badge className="whitespace-normal wrap-anywhere">{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
       </div>
       <PreviewAudioList attachments={item.attachments} name={t("audio.forSet", { first: setFirst, last: setLast })} />
-      {item.passage ? (
-        <blockquote className="rounded-md border-s-4 border-border bg-subtle px-3 py-2 text-body text-text">
-          <RichTextView html={item.passage} blankNumberStart={blankStart ?? item.blankNumberStart} />
-        </blockquote>
+      {item.simulated && !item.passage ? (
+        <>
+          <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
+          <ol className="flex flex-col gap-2">
+            {item.children.map((child, childIndex) => (
+              <li key={child.questionId}>
+                <PreviewQuestionCard
+                  question={child}
+                  compact
+                  original={original}
+                  level={clampHeadingLevel(level + 1)}
+                  blank={blankStart === undefined ? undefined : blankStart + childIndex}
+                />
+              </li>
+            ))}
+          </ol>
+        </>
       ) : (
-        <p className="text-body text-text-muted italic">{t("simulatedPassage")}</p>
+        <QuestionSet
+          question={
+            {
+              id: setKitId,
+              displayNo: setFirst || 1,
+              body: {
+                type: "QUESTION_SET",
+                passage: item.passage ?? "",
+                blankNumberStart: blankStart ?? item.blankNumberStart,
+                childIds: item.children.map((child) => child.questionId),
+              },
+            } satisfies KitQuestionOf<Extract<KitQuestionBody, { type: "QUESTION_SET" }>>
+          }
+          mode="review"
+          review={{
+            showAnswers: true,
+            children: Object.fromEntries(
+              item.children.map((child) => [child.questionId, buildQuestionReview(child)]),
+            ),
+          }}
+          blankNumberStart={blankStart ?? item.blankNumberStart}
+          headingLevel={setHeadingLevel}
+          renderQuestion={(childProps: ChildQuestionProps) => {
+            const child = childById.get(childProps.question.id);
+            if (!child) return null;
+            const childIndex = item.children.indexOf(child);
+            return (
+              <PreviewQuestionCard
+                question={child}
+                kitQuestion={childProps.question}
+                review={childProps.review ?? buildQuestionReview(child)}
+                compact
+                original={original}
+                level={childProps.headingLevel ?? clampHeadingLevel(level + 1)}
+                blank={blankStart === undefined ? undefined : blankStart + childIndex}
+              />
+            );
+          }}
+        >
+          {childKits}
+        </QuestionSet>
       )}
-      <ol className="flex flex-col gap-2">
-        {item.children.map((child) => (
-          <li key={child.questionId}>
-            <QuestionArticle
-              question={child}
-              compact
-              original={original}
-              level={Math.min(level + 1, 6)}
-              blank={blankStart === undefined ? undefined : blankStart + item.children.indexOf(child)}
-            />
-          </li>
-        ))}
-      </ol>
     </article>
   );
 }
 
-function QuestionArticle({
+function PreviewQuestionCard({
   question,
+  kitQuestion: providedKit,
+  review: providedReview,
   compact = false,
   original = false,
   blank,
   level,
 }: {
   question: PreviewQuestion;
+  kitQuestion?: KitQuestion;
+  review?: QuestionReview;
   compact?: boolean;
   original?: boolean;
-  /** Mức tiêu đề: mặc định h5 cho câu đứng một mình, h6 cho câu con của bộ. */
-  level?: number;
   /** Số hiện ở chỗ trống của ngữ liệu mà câu con này điền (bài đọc điền); bỏ trống với câu thường. */
   blank?: number;
+  /** Mức tiêu đề: mặc định h5 cho câu đứng một mình, h6 cho câu con của bộ. */
+  level?: HeadingLevel;
 }) {
   const t = useTranslations("exams.preview");
   const types = useTranslations("content.questionType");
   const format = useFormatter();
   const lookup = useLookup();
-  const headingId = `preview-q-${question.questionId}`;
-  const isTrueFalse = question.type === "TRUE_FALSE";
-  const Heading = `h${Math.min(level ?? (compact ? 6 : 5), 6)}` as "h5" | "h6";
+
+  const resolvedLevel = clampHeadingLevel(level ?? (compact ? 6 : 5));
   const number = displayNumber(question, original);
-  // Xem thứ tự gốc: phương án theo thứ tự lúc soạn (`originalOptionOrder`); không có thì giữ thứ tự đang hiện.
-  const options =
-    original && question.options && question.originalOptionOrder
-      ? [...question.options].sort(
-          (a, b) => (question.originalOptionOrder ?? []).indexOf(a.id) - (question.originalOptionOrder ?? []).indexOf(b.id),
-        )
-      : question.options;
+  const kitQuestion = useMemo(
+    () => providedKit ?? buildKitQuestion(question, original),
+    [providedKit, question, original],
+  );
+  const review = useMemo(
+    () => providedReview ?? buildQuestionReview(question),
+    [providedReview, question],
+  );
+  const rubric = question.type === "ESSAY" ? resolveEssayRubric(question) : null;
+  const SimulatedHeading = `h${resolvedLevel}` as const;
+  const headingId = question.simulated
+    ? `preview-q-${question.questionId}`
+    : `${kitQuestion.id}-title`;
 
   return (
-    <article aria-labelledby={headingId} className={compact ? "flex flex-col gap-2" : "flex flex-col gap-2 rounded-md border border-border p-3"}>
+    <article
+      aria-labelledby={question.simulated ? headingId : undefined}
+      className={compact ? "flex flex-col gap-2" : "flex flex-col gap-2 rounded-md border border-border p-3"}
+    >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Heading id={headingId} className="font-semibold text-text">
-          {t("questionNumber", { number })}
-        </Heading>
+        {question.simulated && (
+          <SimulatedHeading id={headingId} className="font-semibold text-text">
+            {t("questionNumber", { number })}
+          </SimulatedHeading>
+        )}
         {/* "Có audio" đứng ngay sau số câu như bản vẽ `SinhThuAudio2B` (V-8). */}
         {audioAttachments(question.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
         {/* R-112: điểm tối đa của câu (chip thông tin, như bản vẽ `SinhThuVact2B`). */}
@@ -311,12 +580,16 @@ function QuestionArticle({
           {t("questionPoints", { points: format.number(question.points, DISPLAY_NUMBER_FORMAT), value: question.points })}
         </StatusChip>
         {/* Mã câu dài được xuống dòng (V-7): hàng đã wrap, chip không giữ nowrap. */}
-        <Badge className="whitespace-normal wrap-anywhere">{question.version !== null ? `${question.code} · v${question.version}` : question.code}</Badge>
-        <Badge>{types(question.type)}</Badge>
+        <Badge className="whitespace-normal wrap-anywhere">
+          {question.version !== null ? `${question.code} · v${question.version}` : question.code}
+        </Badge>
+        {question.simulated && <Badge>{types(question.type)}</Badge>}
         <Badge>{lookup.grade(question.gradeCode)}</Badge>
         <Badge>{lookup.difficulty(question.difficultyCode)}</Badge>
         {question.knowledge && (
-          <Badge className="whitespace-normal wrap-anywhere">{`${question.knowledge.code} · ${question.knowledge.name}`}</Badge>
+          <Badge className="whitespace-normal wrap-anywhere">
+            {question.knowledge.code} · <ExamName>{question.knowledge.name}</ExamName>
+          </Badge>
         )}
       </div>
       <PreviewAudioList attachments={question.attachments} name={t("audio.forQuestion", { number })} />
@@ -328,63 +601,32 @@ function QuestionArticle({
       {question.simulated ? (
         <p className="text-body text-text-muted italic">{t("simulatedQuestion")}</p>
       ) : (
-        <RichTextView html={question.content ?? ""} className="text-body text-text" />
+        <Question
+          question={kitQuestion}
+          mode="review"
+          value={null}
+          review={review}
+          headingLevel={resolvedLevel}
+        />
       )}
-      {options && (
-        <ol className="flex flex-col gap-1.5">
-          {options.map((option, index) => {
-            const marked = isTrueFalse || option.correct;
-            return (
-              <li
-                key={option.id}
-                className={`flex min-h-10 items-center gap-2.5 rounded-md border px-3 py-1.5 text-body ${
-                  option.correct && !isTrueFalse ? "border-primary-600 bg-primary-50" : "border-border"
-                }`}
-              >
-                <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-subtle text-caption font-semibold">
-                  {OPTION_KEYS[index] ?? index + 1}
-                </span>
-                <RichTextView html={option.content} className="min-w-0 flex-1 text-text" />
-                {marked && (
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1 text-caption font-medium ${
-                      option.correct ? "text-primary-text" : "text-text-secondary"
-                    }`}
-                  >
-                    {option.correct ? <Check aria-hidden className="size-3.5" /> : <X aria-hidden className="size-3.5" />}
-                    {isTrueFalse ? (option.correct ? t("trueLabel") : t("falseLabel")) : t("correct")}
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {question.answer && (
-        <p className="flex items-center gap-1.5 text-body text-primary-text">
-          <Check aria-hidden className="size-4 shrink-0" />
-          {t("answer", { answer: question.answer })}
-        </p>
-      )}
-      {question.rubric && (
+      {!question.simulated && rubric !== null && (
         <div className="flex flex-col gap-1 rounded-md bg-subtle px-3 py-2 text-body">
           <span className="font-medium text-text">{t("rubricTitle")}</span>
-          {question.rubric.length === 0 ? (
+          {rubric.length === 0 ? (
             <span className="text-text-secondary">{t("rubricEmpty")}</span>
           ) : (
             <ul className="flex flex-col gap-0.5 text-text-secondary">
-              {question.rubric.map((criterion) => (
-                <li key={criterion.id}>{t("rubricItem", { description: criterion.description, points: criterion.points })}</li>
+              {rubric.map((criterion) => (
+                <li key={criterion.id}>
+                  {richNodes(t, "rubricItem", {
+                    description: <ExamName>{criterion.description}</ExamName>,
+                    points: criterion.points,
+                  })}
+                </li>
               ))}
             </ul>
           )}
         </div>
-      )}
-      {question.solution && (
-        <details className="rounded-md bg-subtle px-3 py-2 text-body">
-          <summary className={cn("cursor-pointer rounded-sm font-medium text-text", focusRing)}>{t("solution")}</summary>
-          <RichTextView html={question.solution} className="mt-1.5 text-text-secondary" />
-        </details>
       )}
     </article>
   );

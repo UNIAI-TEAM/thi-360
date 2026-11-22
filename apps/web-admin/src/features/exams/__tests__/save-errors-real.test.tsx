@@ -123,4 +123,51 @@ describe("lưu thông tin chung, nhánh thật", () => {
     expect(await screen.findByText(/Thông tin bài thi có giá trị không hợp lệ/)).toBeInTheDocument();
     expect(screen.queryByText(/Không lưu được thông tin chung/)).not.toBeInTheDocument();
   });
+
+  async function changeCodeAndSave(published = false) {
+    const user = userEvent.setup();
+    if (published) {
+      new FakeServer()
+        .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ servingVersion: 1 }) })
+        .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })
+        .on("GET", STRUCTURE_PATH, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [FIXED_PART] } })
+        .on("PATCH", EXAM_PATH, { status: 409, body: { code: "EXAM_CODE_TAKEN", message: "taken" } })
+        .install();
+    }
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}`);
+    renderWithProviders(<ExamGeneralView examId={EXAM_ID} />);
+    const code = await screen.findByRole("textbox", { name: /Mã bài thi/ });
+    await user.clear(code);
+    await user.type(code, "HSA-DUPLICATE");
+    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    return { code };
+  }
+
+  it("409 EXAM_CODE_TAKEN trên bài nháp: báo lỗi và focus vào ô Mã", async () => {
+    server.on("PATCH", EXAM_PATH, { status: 409, body: { code: "EXAM_CODE_TAKEN", message: "taken" } });
+    const { code } = await changeCodeAndSave(false);
+
+    expect(await screen.findByText("Mã bài thi đã được dùng. Nhập mã khác.")).toBeInTheDocument();
+    expect(code).toBeInvalid();
+    expect(code).toHaveFocus();
+    expect(screen.queryByText(/Không lưu được thông tin chung/)).not.toBeInTheDocument();
+  });
+
+  it("409 EXAM_CODE_TAKEN trên bài đã công bố (lockScope): vẫn báo lỗi và focus vào ô Mã", async () => {
+    const { code } = await changeCodeAndSave(true);
+
+    expect(await screen.findByText("Mã bài thi đã được dùng. Nhập mã khác.")).toBeInTheDocument();
+    expect(code).toBeInvalid();
+    expect(code).toHaveFocus();
+    expect(screen.queryByText(/Không lưu được thông tin chung/)).not.toBeInTheDocument();
+  });
+
+  it("409 không phải EXAM_CODE_TAKEN trên bài nháp: không gán nhầm vào ô Mã", async () => {
+    server.on("PATCH", EXAM_PATH, { status: 409, body: { code: "EXAM_STRUCTURE_REPLACE_CONFIRM", message: "confirm" } });
+    const { code } = await changeCodeAndSave(false);
+
+    expect(await screen.findByText(/Không lưu được thông tin chung/)).toBeInTheDocument();
+    expect(code).not.toBeInvalid();
+    expect(screen.queryByText("Mã bài thi đã được dùng. Nhập mã khác.")).not.toBeInTheDocument();
+  });
 });

@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
 import {
   type Apportionment,
+  type BlockIssue,
   combinedGrid,
   computeAllocation,
   convertMatrixMode,
@@ -14,6 +15,7 @@ import {
   gridToCells,
   hasCompetencyDimension,
   type MatrixAxes,
+  type MatrixDimension,
   toDimension,
   validateBlock,
 } from "../matrix";
@@ -49,6 +51,13 @@ export interface BlockMatrixEditorProps {
    * Mặc định `true`.
    */
   declared?: boolean;
+  /** Chiều hiện ở riêng từng chiều; mặc định cả lớp và độ khó. Chiều không hiện giữ nguyên dữ liệu và không tính vào cảnh báo tổng (FTM R-11). */
+  dimensions?: readonly ("GRADE" | "DIFFICULTY")[];
+  /**
+   * Dạng gọn của Danh sách dòng (FTM R-13): riêng từng chiều theo câu, không có lựa chọn Kết hợp/Riêng, Số câu/Tỷ lệ, mức áp dụng,
+   * đơn vị đếm và phân bổ theo năng lực; chiều không còn ô nào ghi mảng rỗng. Mặc định `false`: hành vi của màn nhóm (MD).
+   */
+  compact?: boolean;
 }
 
 const CELL_INPUT = "h-9 w-16 px-2";
@@ -67,6 +76,8 @@ export function BlockMatrixEditor({
   available,
   availableState,
   declared = true,
+  dimensions = ["GRADE", "DIFFICULTY"],
+  compact = false,
 }: BlockMatrixEditorProps) {
   const t = useTranslations("exams.matrix");
   const format = useFormatter();
@@ -82,6 +93,13 @@ export function BlockMatrixEditor({
         (issue) => issue.code === "PERCENT_TOTAL" || issue.code === "ALLOCATION_TOTAL" || issue.code === "INVALID_VALUE",
       )
     : [];
+  // Ô Tổng của chân bảng theo cùng kết luận với thanh phân bổ và dòng thông báo (cùng `issues`): vượt hoặc thiếu, còn lại giữ nguyên.
+  const totalState = (dimension: MatrixDimension): TotalState | undefined => {
+    const issue = issues.find((item) => (item.code === "PERCENT_TOTAL" || item.code === "ALLOCATION_TOTAL") && item.dimension === dimension);
+    if (issue?.code === "PERCENT_TOTAL") return issue.actual > 100 ? "over" : "under";
+    if (issue?.code === "ALLOCATION_TOTAL") return issue.actual > issue.expected ? "over" : "under";
+    return undefined;
+  };
   const number = (value: number) => format.number(value, DISPLAY_NUMBER_FORMAT);
   const questionBasis = (matrix.basis ?? "QUESTION") === "QUESTION";
   const gradeEnforcement: QuotaEnforcement = matrix.gradeEnforcement ?? "REQUIRED";
@@ -134,8 +152,12 @@ export function BlockMatrixEditor({
     const codes = dimension === "byGrade" ? axes.grades : axes.difficulties;
     const values = dimensionValues(matrix[dimension], codes);
     values[index] = value;
-    onChange({ ...matrix, [dimension]: toDimension(values, codes) });
+    onChange({ ...matrix, [dimension]: compact && values.every((item) => item === 0) ? [] : toDimension(values, codes) });
   };
+  const shownIssue = (issue: BlockIssue) =>
+    !("dimension" in issue) ||
+    issue.dimension === "COMBINED" ||
+    (issue.dimension === "COMPETENCY" ? !compact : dimensions.includes(issue.dimension));
 
   const competencyOn = hasCompetencyDimension(matrix);
   const competencyName = (code: string) => competencies.find((item) => item.code === code)?.name ?? code;
@@ -160,11 +182,46 @@ export function BlockMatrixEditor({
   const totalText = (value: number) => (percent ? t("percentValue", { value: number(value) }) : number(value));
   const input = combinedGrid(matrix, axes);
 
+  // Cùng một danh sách báo lỗi cho cả hai nhánh: cơ sở không phải câu vẫn bị chặn lưu khi tổng % lệch, nên lỗi phải hiện.
+  const issueMessages = issues
+    .filter(shownIssue)
+    .map((issue) => {
+      const dimension =
+        "dimension" in issue && issue.dimension !== "COMBINED"
+          ? issue.dimension === "GRADE"
+            ? t("byGradeCaption")
+            : issue.dimension === "COMPETENCY"
+              ? t("byCompetencyCaption")
+              : t("byDifficultyCaption")
+          : null;
+      if (issue.code === "INVALID_VALUE") return { text: t("issues.invalidValue"), over: false };
+      if (issue.code === "PERCENT_TOTAL") {
+        return {
+          text: t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) }),
+          over: issue.actual > 100,
+        };
+      }
+      if (issue.code === "ALLOCATION_TOTAL") {
+        return {
+          text: t("issues.allocationTotal", {
+            dimension: dimension ?? t("matrixName"),
+            actual: issue.actual,
+            expected: issue.expected,
+          }),
+          over: issue.actual > issue.expected,
+        };
+      }
+      return { text: "", over: false };
+    })
+    .filter((item) => item.text.length > 0);
+
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-4">
       <h3 id={titleId} className="text-title font-semibold text-text">
         {t("title")}
       </h3>
+      {!compact && (
+        <>
       <div className="flex flex-wrap gap-x-6 gap-y-3">
         <ChoiceCardGroup
           variant="pill"
@@ -217,6 +274,8 @@ export function BlockMatrixEditor({
           <p className="text-label text-text-secondary">{t("basisFixed", { unit: t("basisQUESTION") })}</p>
         )}
       </div>
+        </>
+      )}
       {switched && (
         <p role="status" className="flex items-start gap-2 rounded-md border border-info/30 bg-info-bg px-3 py-2 text-body text-info">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -275,7 +334,7 @@ export function BlockMatrixEditor({
                 {axes.difficulties.map((difficulty, column) => (
                   <TotalCell key={difficulty}>{totalText(allocation.inputColumnTotals[column] ?? 0)}</TotalCell>
                 ))}
-                <TotalCell strong last>{totalText(allocation.inputTotal)}</TotalCell>
+                <TotalCell strong last state={totalState("COMBINED")}>{totalText(allocation.inputTotal)}</TotalCell>
               </tr>
             </tfoot>
           </MatrixTable>
@@ -331,21 +390,23 @@ export function BlockMatrixEditor({
                 { key: "byGrade", codes: axes.grades, label: labels.grade, conversion: allocation.gradeConversion },
                 { key: "byDifficulty", codes: axes.difficulties, label: labels.difficulty, conversion: allocation.difficultyConversion },
               ] as const
-            ).map((dimension) => {
+            ).filter((dimension) => dimensions.includes(dimension.key === "byGrade" ? "GRADE" : "DIFFICULTY")).map((dimension) => {
               const values = dimensionValues(matrix[dimension.key], dimension.codes);
               const counts = dimension.key === "byGrade" ? allocation.byGrade : allocation.byDifficulty;
               const inputTotal = dimension.key === "byGrade" ? allocation.inputGradeTotal : allocation.inputDifficultyTotal;
               const countTotal = dimension.key === "byGrade" ? allocation.gradeTotal : allocation.difficultyTotal;
               return (
                 <div key={dimension.key} className="flex min-w-0 flex-col gap-2">
-                <EnforcementToggle
-                  legend={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
-                  name={`${block.id}-${dimension.key}-enforcement`}
-                  value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
-                  basis={matrix.basis}
-                  undeclared={hsaMatrixUndeclared(matrix, dimension.key === "byGrade" ? "grade" : "difficulty")}
-                  onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
-                />
+                {!compact && (
+                  <EnforcementToggle
+                    legend={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
+                    name={`${block.id}-${dimension.key}-enforcement`}
+                    value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}
+                    basis={matrix.basis}
+                    undeclared={hsaMatrixUndeclared(matrix, dimension.key === "byGrade" ? "grade" : "difficulty")}
+                    onChange={(value) => setEnforcement(dimension.key === "byGrade" ? "grade" : "difficulty", value)}
+                  />
+                )}
                 <MatrixTable
                   caption={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
                   captionVisible
@@ -399,7 +460,7 @@ export function BlockMatrixEditor({
                   <tfoot>
                     <tr>
                       <RowHead footer>{t("total")}</RowHead>
-                      <TotalCell strong>{totalText(inputTotal)}</TotalCell>
+                      <TotalCell strong state={totalState(dimension.key === "byGrade" ? "GRADE" : "DIFFICULTY")}>{totalText(inputTotal)}</TotalCell>
                       {percent && <TotalCell strong>{t("questionsValue", { count: countTotal })}</TotalCell>}
                     </tr>
                   </tfoot>
@@ -412,7 +473,7 @@ export function BlockMatrixEditor({
         </>
       )}
 
-      {(competencies.length > 0 || competencyOn) && (
+      {!compact && (competencies.length > 0 || competencyOn) && (
         <section aria-label={t("byCompetencyCaption")} className="flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <Switch
@@ -489,7 +550,7 @@ export function BlockMatrixEditor({
               <tfoot>
                 <tr>
                   <RowHead footer>{t("total")}</RowHead>
-                  <TotalCell strong>{totalText(allocation.competency.inputTotal)}</TotalCell>
+                  <TotalCell strong state={totalState("COMPETENCY")}>{totalText(allocation.competency.inputTotal)}</TotalCell>
                   {percent && <TotalCell strong>{t("questionsValue", { count: allocation.competency.total })}</TotalCell>}
                 </tr>
               </tfoot>
@@ -505,45 +566,30 @@ export function BlockMatrixEditor({
             ...(matrix.mode === "COMBINED"
               ? [{ label: null, total: allocation.total, pending: referenceOnly && allocation.total === 0 }]
               : [
-                  { label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 },
-                  { label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 },
+                  ...(dimensions.includes("GRADE") ? [{ label: t("byGradeCaption"), total: allocation.gradeTotal, pending: gradeEnforcement === "REFERENCE" && allocation.gradeTotal === 0 }] : []),
+                  ...(dimensions.includes("DIFFICULTY") ? [{ label: t("byDifficultyCaption"), total: allocation.difficultyTotal, pending: difficultyEnforcement === "REFERENCE" && allocation.difficultyTotal === 0 }] : []),
                 ]),
-            ...(allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
+            ...(!compact && allocation.competency ? [{ label: t("byCompetencyCaption"), total: allocation.competency.total }] : []),
           ]}
-          messages={issues.map((issue) => {
-            const dimension =
-              "dimension" in issue && issue.dimension !== "COMBINED"
-                ? issue.dimension === "GRADE"
-                  ? t("byGradeCaption")
-                  : issue.dimension === "COMPETENCY"
-                    ? t("byCompetencyCaption")
-                    : t("byDifficultyCaption")
-                : null;
-            if (issue.code === "INVALID_VALUE") return { text: t("issues.invalidValue"), over: false };
-            if (issue.code === "PERCENT_TOTAL") {
-              return {
-                text: t("issues.percentTotal", { dimension: dimension ?? t("matrixName"), value: number(issue.actual) }),
-                over: issue.actual > 100,
-              };
-            }
-            if (issue.code === "ALLOCATION_TOTAL") {
-              return {
-                text: t("issues.allocationTotal", {
-                  dimension: dimension ?? t("matrixName"),
-                  actual: issue.actual,
-                  expected: issue.expected,
-                }),
-                over: issue.actual > issue.expected,
-              };
-            }
-            return { text: "", over: false };
-          })}
+          messages={issueMessages}
           declared={declared}
         />
       ) : (
-        <p className="text-body text-text-secondary">
-          {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
-        </p>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-body text-text-secondary">
+            {t("basisTotal", { total: number(allocation.inputTotal), unit: t(`basis${matrix.basis}`) })}
+          </p>
+          {issueMessages.length > 0 && (
+            <ul className="flex flex-col gap-1">
+              {issueMessages.map((message, index) => (
+                <li key={`${index}-${message.text}`} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
+                  <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  {message.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </section>
   );
@@ -610,16 +656,38 @@ function RowHead({ children, footer = false }: { children: ReactNode; footer?: b
   );
 }
 
-function TotalCell({ children, strong = false, last = false }: { children: ReactNode; strong?: boolean; last?: boolean }) {
+type TotalState = "over" | "under";
+
+function TotalCell({
+  children,
+  strong = false,
+  last = false,
+  state,
+}: {
+  children: ReactNode;
+  strong?: boolean;
+  last?: boolean;
+  /** Ô Tổng của chân bảng khi tổng lệch số câu của khối: cùng màu với thanh phân bổ, kèm biểu tượng và chữ (không chỉ màu). */
+  state?: TotalState;
+}) {
+  const t = useTranslations("exams.matrix");
   return (
     <td
+      data-state={state}
       className={cn(
         "border-b border-border px-2 py-1.5 text-right whitespace-nowrap",
         strong && "font-semibold",
         last && "sticky right-0 z-1 border-l bg-surface pr-4",
+        state === "over" && "border-danger bg-danger-bg text-danger",
+        state === "under" && "border-warning bg-warning-bg text-warning",
       )}
     >
-      <output>{children}</output>
+      <output className="inline-flex items-center justify-end gap-1">
+        {state && <TriangleAlert aria-hidden className="size-3.5 shrink-0" />}
+        {state && <span className="sr-only">{t(state === "over" ? "totalOver" : "totalUnder")}</span>}
+        {state && " "}
+        {children}
+      </output>
     </td>
   );
 }
@@ -762,8 +830,8 @@ function AllocationStatus({
         </p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {messages.map((message) => (
-            <li key={message.text} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
+          {messages.map((message, index) => (
+            <li key={`${index}-${message.text}`} className={cn("flex items-start gap-1.5 text-body", message.over ? "text-danger" : "text-warning")}>
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
               {message.text}
             </li>

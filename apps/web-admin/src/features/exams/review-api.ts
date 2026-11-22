@@ -1,10 +1,10 @@
 import type { ApiError, components, FieldError } from "@thi360/api-client";
-import type { MultipleChoiceRule, PersonRef, TrueFalseMethod } from "@/features/content/types";
+import type { PersonRef } from "@/features/content/types";
 import { QUESTION_TYPES, type QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { ApiStatusError } from "@/lib/api/query-client";
-import { mapExamDetail, mapSectionStates } from "./api-mapping";
+import { mapExamDetail, mapParts, mapSectionStates } from "./api-mapping";
 import type {
   BlockCheck,
   BlockCheckResult,
@@ -26,6 +26,8 @@ import type {
   ExamVersionList,
   ExamVersionRow,
   ExamWorkingCopy,
+  ListingCheckGroup,
+  ListingCheckIssue,
   GeneratePreviewRequest,
   PathCheck,
   PathCheckResult,
@@ -52,17 +54,7 @@ import type {
   SubjectCheck,
 } from "./review-types";
 import { CHECK_GROUPS, CHECK_ISSUE_CODES } from "./review-types";
-import type {
-  AnswerQuotas,
-  BlockMatrix,
-  ChoiceGroup,
-  ExamDetail,
-  ExamPart,
-  ExamPartOption,
-  ExamSection,
-  ExamVersion,
-  QuestionBlock,
-} from "./types";
+import type { ExamDetail, ExamVersion } from "./types";
 
 /**
  * API của Kiểm tra cấu hình, Kiểm tra kỹ, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11): gọi API thật qua
@@ -122,7 +114,7 @@ export function errorCodeOf(error: unknown): string | undefined {
 
 /**
  * Lý do của 409 `CHECK_REQUIRED` khi công bố: backend gửi trong `fieldErrors[0]` ({field: "reason", code: lý do};
- * spec 5.2 — NO_CHECK, STRUCTURE_CHANGED, CONFIG_CHANGED, SOURCE_CHANGED, PATH_NOT_VALID, ...). `null` khi không phải
+ * spec 5.2 — NO_CHECK, STRUCTURE_CHANGED, CONFIG_CHANGED, SOURCE_CHANGED, RULES_CHANGED, PATH_NOT_VALID, ...). `null` khi không phải
  * lỗi đó; `"UNKNOWN"` khi thiếu lý do.
  */
 export function checkRequiredReason(error: unknown): string | null {
@@ -245,7 +237,7 @@ async function getExamVersionReal({
   return {
     examId: data.examId ?? examId,
     row: data.row ? mapVersionRow({ ...data.row, version }) : emptyVersionRow(version),
-    parts: (data.parts ?? []).map(mapPart),
+    parts: mapParts(data.parts),
   };
 }
 
@@ -360,13 +352,6 @@ type ApiPreviewCheck = Schema["ExamPreviewCheck"];
 type ApiPreviewSubjectAllocation = Schema["ExamPreviewSubjectAllocation"];
 type ApiPreviewKnowledgeStat = Schema["ExamPreviewKnowledgeStat"];
 type ApiPathRef = Schema["ExamPreviewPathRef"];
-type ApiPart = Schema["ExamPart"];
-type ApiPartOption = Schema["ExamPartOption"];
-type ApiSection = Schema["ExamSection"];
-type ApiBlock = Schema["QuestionBlock"];
-type ApiMatrix = Schema["BlockMatrix"];
-type ApiKnowledgeScope = Schema["KnowledgeScope"];
-type ApiAnswerQuotas = Schema["AnswerQuotas"];
 type ApiCheckSummary = Schema["ExamCheckSummary"];
 
 const ISSUE_CODES: Record<string, true> = Object.fromEntries(CHECK_ISSUE_CODES.map((code) => [code, true]));
@@ -394,6 +379,7 @@ const INVALID_REASONS: Record<string, true> = {
   STRUCTURE_CHANGED: true,
   CONFIG_CHANGED: true,
   SOURCE_CHANGED: true,
+  RULES_CHANGED: true,
 };
 const PREVIEW_CHECK_CODES: Record<string, true> = {
   NO_DUPLICATES: true,
@@ -597,6 +583,34 @@ function mapGroup(group: ApiCheckGroup): CheckGroupResult {
   };
 }
 
+type ApiListingCheckGroup = Schema["ExamListingCheckGroup"];
+type ApiListingCheckIssue = Schema["ExamListingCheckIssue"];
+
+function mapListingIssue(issue: ApiListingCheckIssue): ListingCheckIssue {
+  const code = issue.code ?? "";
+  return {
+    key: issue.key ?? `LISTING:${code}`,
+    code,
+    severity: issue.severity === "WARNING" ? "WARNING" : "ERROR",
+    field: issue.field ?? null,
+    minPriceVnd: issue.minPriceVnd ?? null,
+  };
+}
+
+/** Nhóm "Thông tin bán" của máy chủ (`listingCheck`, `ExamListing.checkIssues`); `null` khi máy chủ không gửi. */
+export function mapListingCheck(group: ApiListingCheckGroup | undefined | null): ListingCheckGroup | null {
+  if (!group) return null;
+  return {
+    status: group.status === "PASS" || group.status === "WARN" ? group.status : "FAIL",
+    issues: (group.issues ?? []).map(mapListingIssue),
+  };
+}
+
+/** Vấn đề tính riêng của `ExamListing.checkIssues` (không có nhóm bọc). */
+export function mapListingCheckIssues(issues: readonly ApiListingCheckIssue[] | undefined): ListingCheckIssue[] {
+  return (issues ?? []).map(mapListingIssue);
+}
+
 function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
   return {
     examId: result.examId ?? "",
@@ -614,6 +628,7 @@ function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
     issueCount: result.issueCount ?? 0,
     paths: (result.paths ?? []).map(mapCheckPath),
     groups: (result.groups ?? []).map(mapGroup),
+    listingCheck: mapListingCheck(result.listingCheck),
     partCount: result.partCount ?? 0,
     totalPoints: result.totalPoints ?? 0,
     printedQuestions: result.printedQuestions ?? 0,
@@ -827,6 +842,8 @@ function mapCompliance(row: Schema["ExamPreviewCompliance"]): PreviewCompliance 
     basis: basis.startsWith("POINTS") ? "POINTS" : basis.startsWith("PROMPT") ? "PROMPT" : "QUESTION",
     independent: basis.endsWith("_INDEPENDENT"),
     note: row.note ?? null,
+    originalRequired: row.originalRequired ?? null,
+    topicName: row.topicName ?? null,
   };
 }
 
@@ -837,6 +854,7 @@ function mapPreviewResult(examId: string, result: ApiPreviewResult): PreviewResu
     version: result.version ?? null,
     seed: result.seed ?? 0,
     generatedAt: result.generatedAt ?? "",
+    expiresAt: result.expiresAt ?? null,
   };
   if (result.status === "GENERATED" && result.paper) {
     return {
@@ -929,128 +947,5 @@ function mapCheckSummary(summary: ApiCheckSummary | undefined): ExamWorkingCopy[
       status === "VALID" || status === "INVALID" || status === "NEEDS_RECHECK" ? status : "UNCHECKED",
     issueCount: summary?.issueCount ?? 0,
     checkedAt: summary?.checkedAt ?? null,
-  };
-}
-
-/* ---------- Cấu trúc (chi tiết phiên bản, discontinue trả về) ---------- */
-
-function mapKnowledgeScope(scope: ApiKnowledgeScope | undefined): ExamSection["knowledgeScope"] {
-  if (!scope) return null;
-  return {
-    nodeIds: scope.nodeIds ?? [],
-    ...(scope.competencyCodes !== undefined ? { competencyCodes: scope.competencyCodes } : {}),
-  };
-}
-
-function mapMatrix(matrix: ApiMatrix | undefined): BlockMatrix | null {
-  if (!matrix) return null;
-  const values = (items: { code?: string; value?: number }[] | undefined) =>
-    (items ?? []).map((item) => ({ code: item.code ?? "", value: item.value ?? 0 }));
-  return {
-    mode: matrix.mode === "SEPARATE" ? "SEPARATE" : "COMBINED",
-    unit: matrix.unit === "PERCENT" ? "PERCENT" : "COUNT",
-    cells: (matrix.cells ?? []).map((cell) => ({
-      gradeCode: cell.gradeCode ?? "",
-      difficultyCode: cell.difficultyCode ?? "",
-      value: cell.value ?? 0,
-    })),
-    byGrade: values(matrix.byGrade),
-    byDifficulty: values(matrix.byDifficulty),
-    ...(matrix.byCompetency !== undefined ? { byCompetency: values(matrix.byCompetency) } : {}),
-  };
-}
-
-function mapBlock(block: ApiBlock): QuestionBlock {
-  return {
-    id: block.id ?? "",
-    name: block.name ?? "",
-    questionType: questionTypeOf(block.questionType),
-    questionCount: block.questionCount ?? null,
-    setCount: block.setCount ?? null,
-    setSize: block.setSize ?? null,
-    requiredPointsPerQuestion: block.requiredPointsPerQuestion ?? null,
-    knowledgeScope: mapKnowledgeScope(block.knowledgeScope),
-    tagCodes: block.tagCodes ?? [],
-    matrix: mapMatrix(block.matrix),
-    childAnswerType: questionTypeOf(block.childAnswerType),
-    templateGroupCode: block.templateGroupCode ?? null,
-    answerTypeLocked: block.answerTypeLocked ?? false,
-    ...(block.expectedScoring !== undefined
-      ? {
-          expectedScoring: {
-            ...(block.expectedScoring.trueFalseMethod !== undefined
-              ? { trueFalseMethod: block.expectedScoring.trueFalseMethod as TrueFalseMethod }
-              : {}),
-            ...(block.expectedScoring.trueFalseTable !== undefined
-              ? { trueFalseTable: block.expectedScoring.trueFalseTable }
-              : {}),
-            ...(block.expectedScoring.multipleChoiceRule !== undefined
-              ? { multipleChoiceRule: block.expectedScoring.multipleChoiceRule as MultipleChoiceRule }
-              : {}),
-          },
-        }
-      : {}),
-  };
-}
-
-function mapSection(section: ApiSection): ExamSection {
-  return {
-    id: section.id ?? "",
-    subjectCode: section.subjectCode ?? "",
-    questionCount: section.questionCount ?? null,
-    knowledgeScope: mapKnowledgeScope(section.knowledgeScope),
-    answerQuotas: mapAnswerQuotas(section.answerQuotas),
-    matrix: mapMatrix(section.matrix),
-    choiceGroup:
-      section.choiceGroup === "NATURAL" || section.choiceGroup === "SOCIAL"
-        ? (section.choiceGroup as ChoiceGroup)
-        : null,
-    blocks: (section.blocks ?? []).map(mapBlock),
-  };
-}
-
-function mapAnswerQuotas(quotas: ApiAnswerQuotas | undefined): AnswerQuotas | null {
-  if (!quotas) return null;
-  return {
-    unit: quotas.unit === "PERCENT" ? "PERCENT" : "COUNT",
-    items: (quotas.items ?? [])
-      .map((item) => ({ answerType: questionTypeOf(item.answerType), value: item.value ?? 0 }))
-      .filter((item): item is { answerType: QuestionType; value: number } => item.answerType !== null),
-  };
-}
-
-function mapOption(option: ApiPartOption): ExamPartOption {
-  return {
-    id: option.id ?? "",
-    kind:
-      option.kind !== undefined && CHOICE_KINDS[option.kind ?? ""]
-        ? option.kind
-        : "SUBJECT",
-    code: option.code ?? "",
-    ...(option.name !== undefined ? { name: option.name } : {}),
-    sections: (option.sections ?? []).map(mapSection),
-    chooseSubjects: option.chooseSubjects ?? null,
-    countsByPick: option.countsByPick ?? null,
-    ...(option.expertConfirmed !== undefined ? { expertConfirmed: option.expertConfirmed } : {}),
-  };
-}
-
-function mapPart(part: ApiPart): ExamPart {
-  return {
-    id: part.id ?? "",
-    order: part.order ?? 0,
-    name: part.name ?? "",
-    durationMinutes: part.durationMinutes ?? null,
-    questionCount: part.questionCount ?? 0,
-    questionCountOnPaper: part.questionCountOnPaper ?? part.questionCount ?? 0,
-    questionCountRequired: part.questionCountRequired ?? part.questionCount ?? 0,
-    participation: {
-      mode: part.participation?.mode === "CHOICE" ? "CHOICE" : "ALL",
-      choose: part.participation?.choose ?? null,
-    },
-    ...(part.maxPoints !== undefined ? { maxPoints: part.maxPoints } : {}),
-    mode: part.options !== undefined && part.options.length > 0 ? "CHOICE" : "FIXED",
-    sections: (part.sections ?? []).map(mapSection),
-    options: (part.options ?? []).map(mapOption),
   };
 }

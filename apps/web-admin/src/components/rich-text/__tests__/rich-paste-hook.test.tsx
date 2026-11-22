@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { RichTextEditor } from "../rich-text-editor";
-import type * as Sanitize from "../sanitize";
+import type * as Sanitize from "@thi360/ui/rich-text";
 
 // Đếm số lần chạy bộ lọc: `onRichPaste` phải chạy trước lần lọc do việc dán gây ra (spec 4.10).
 const sanitizeCalls = vi.hoisted(() => ({ count: 0 }));
-vi.mock("../sanitize", async (importOriginal) => {
+vi.mock("@thi360/ui/rich-text", async (importOriginal) => {
   const actual = await importOriginal<typeof Sanitize>();
   return {
     ...actual,

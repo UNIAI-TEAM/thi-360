@@ -8,7 +8,6 @@ import katex from "katex";
 import "katex/contrib/mhchem";
 import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import "../../math-render";
 import { DisplayToggle } from "../math/display-toggle";
 import type { InsertDialogProps } from "../registry";
 import { InsertDialogShell } from "../shared/insert-dialog-shell";

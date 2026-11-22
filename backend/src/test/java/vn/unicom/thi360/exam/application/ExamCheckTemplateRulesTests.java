@@ -97,13 +97,17 @@ class ExamCheckTemplateRulesTests {
         exam.applyTemplate("VAN_STANDARD", null, null, null, null, null, UUID.randomUUID(), clock.instant());
         ExamTemplate standard = template(false, true, "{\"parts\":[]}");
         when(standard.getCode()).thenReturn("VAN_STANDARD");
-        when(templates.findBestMatch("THPTQG", "SUBJECT", null, "VAN", null)).thenReturn(standard);
+        TemplateFactsStubs.standard(templates, "THPTQG", "VAN", "VAN_STANDARD", standard);
         subject("VAN", 1);
         JsonNode result = check(exam, document(oneBlock("VAN", 1))).result();
         assertThat(result.path("status").asText()).isEqualTo("VALID");
-        org.mockito.Mockito.verify(templates, org.mockito.Mockito.times(1))
+        // FU-BE15-R1-5: one keyed projection of the subject's templates; the loaded row is that row, so no second read,
+        // no structure JSON (no lock is on), and no entity-returning lookup at all.
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.times(1)).findSubjectStandardFacts("THPTQG", "VAN");
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findCheckFacts(any());
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).readStructure(any());
+        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never())
                 .findBestMatch(any(), any(), any(), any(), any());
-        org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findProvenance(any());
         org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findDefault(any(), any(), any(), any(), any());
         org.mockito.Mockito.verify(templates, org.mockito.Mockito.never()).findActive(any());
     }
@@ -432,7 +436,7 @@ class ExamCheckTemplateRulesTests {
     void examWithoutFixedCountsMayChangeTheLogicCount() throws Exception {
         Exam exam = fullExam("VACT_PART_LOGIC");
         ExamTemplate loaded = template(false, true, LOCKED_TEMPLATE);
-        when(templates.findProvenance("VACT_PART_LOGIC")).thenReturn(loaded);
+        TemplateFactsStubs.provenance(templates, "VACT_PART_LOGIC", loaded);
         subject("SCIENTIFIC_THINKING", 0);
         JsonNode result = check(exam, document(lockedBase("10", "\"questionCount\":10",
                 "{\"code\":\"NB\",\"value\":1},{\"code\":\"TH\",\"value\":4},{\"code\":\"VD\",\"value\":7}"))).result();
@@ -443,7 +447,7 @@ class ExamCheckTemplateRulesTests {
     void fixedCountExamFailsTheCheckThroughTheChecker() throws Exception {
         Exam exam = fullExam("VACT_FULL");
         ExamTemplate loaded = template(true, true, LOCKED_TEMPLATE);
-        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        TemplateFactsStubs.provenance(templates, "VACT_FULL", loaded);
         subject("SCIENTIFIC_THINKING", 0);
         JsonNode result = check(exam, document(lockedBase("10", "\"questionCount\":10",
                 "{\"code\":\"NB\",\"value\":1},{\"code\":\"TH\",\"value\":4},{\"code\":\"VD\",\"value\":7}"))).result();
@@ -456,7 +460,7 @@ class ExamCheckTemplateRulesTests {
     void lockedSectionIsIncompleteInSectionStatesAndTheOtherSectionIsNot() throws Exception {
         Exam exam = fullExam("VACT_FULL");
         ExamTemplate loaded = template(true, true, LOCKED_TEMPLATE);
-        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        TemplateFactsStubs.provenance(templates, "VACT_FULL", loaded);
         subject("SCIENTIFIC_THINKING", 30);
         subject("OTHER", 30);
         // The second section has its own subject, hence its own unit: a lock must not spill into it.
@@ -474,7 +478,7 @@ class ExamCheckTemplateRulesTests {
     void sectionScopedCheckOfASiblingInTheSameUnitStillReportsTheCommonLock() throws Exception {
         Exam exam = fullExam("VACT_FULL");
         ExamTemplate loaded = template(true, true, LOCKED_TEMPLATE);
-        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        TemplateFactsStubs.provenance(templates, "VACT_FULL", loaded);
         subject("SCIENTIFIC_THINKING", 30);
         ExamStructureDocument edited = document(lockedBase("10", "\"questionCount\":10", SAME_DIFFICULTY));
 
@@ -497,7 +501,7 @@ class ExamCheckTemplateRulesTests {
     void competencyRemovedFromALogicCopyIsLocatedReportedByTheReasoningScopeAndIncompleteInTheStates() throws Exception {
         Exam exam = fullExam("VACT_FULL");
         ExamTemplate loaded = template(true, true, SIGNED_TEMPLATE);
-        when(templates.findProvenance("VACT_FULL")).thenReturn(loaded);
+        TemplateFactsStubs.provenance(templates, "VACT_FULL", loaded);
         subject("SCIENTIFIC_THINKING", 30);
         String[] ids = new String[2];
         ExamStructureDocument copy = duplicateAndEdit(tree -> {
@@ -688,7 +692,7 @@ class ExamCheckTemplateRulesTests {
 
     private void standardTemplate(boolean publishable) {
         ExamTemplate standard = template(false, publishable, "{\"parts\":[]}");
-        when(templates.findBestMatch("THPTQG", "SUBJECT", null, "VAN", null)).thenReturn(standard);
+        TemplateFactsStubs.standard(templates, "THPTQG", "VAN", "VAN_STANDARD", standard);
     }
 
     private ExamTemplate template(boolean fixedCounts, boolean publishable, String structure) {

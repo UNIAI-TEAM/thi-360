@@ -43,9 +43,10 @@ public class ExamPreviewStore {
         this.mapper = mapper;
     }
 
+    /** @param publishedPathIds {@code published_path_ids} of a version snapshot; empty for the working copy */
     public record Snapshot(UUID id, String code, String timing, Integer durationMinutes,
                            String practiceScoring, BigDecimal maxScore, JsonNode parts, Exam exam,
-                           JsonNode publishedCombinations) {}
+                           JsonNode publishedCombinations, List<String> publishedPathIds) {}
 
     @Transactional(readOnly = true)
     public Snapshot load(UUID id) {
@@ -55,21 +56,30 @@ public class ExamPreviewStore {
         ObjectNode parts = ((ObjectNode) structure.getParts()).deepCopy();
         if (structure.getExamQuotas() != null) parts.set("examQuotas", structure.getExamQuotas().deepCopy());
         return new Snapshot(exam.getId(), exam.getCode(), exam.getTiming(), exam.getDurationMinutes(),
-                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam, null);
+                exam.getPracticeScoring(), exam.getMaxScore(), parts, exam, null, List.of());
     }
 
     /** Reconstruct the checker inputs from the immutable published configuration and structure. */
     @Transactional(readOnly = true)
     public Snapshot loadVersion(UUID id, int version, String pathId) {
-        return loadVersionSnapshot(id, version, pathId, null);
+        return loadVersionSnapshot(id, version, pathId, null, true);
     }
 
     @Transactional(readOnly = true)
     public Snapshot loadVersionForSection(UUID id, int version, String sectionId) {
-        return loadVersionSnapshot(id, version, null, sectionId);
+        return loadVersionSnapshot(id, version, null, sectionId, true);
     }
 
-    private Snapshot loadVersionSnapshot(UUID id, int version, String pathId, String sectionId) {
+    /**
+     * Reads the immutable snapshot of one published version for generation. No path is asked for, so the published
+     * path check does not apply; a missing version is {@code VERSION_NOT_FOUND}.
+     */
+    @Transactional(readOnly = true)
+    public Snapshot loadVersion(UUID id, int version) {
+        return loadVersionSnapshot(id, version, null, null, false);
+    }
+
+    private Snapshot loadVersionSnapshot(UUID id, int version, String pathId, String sectionId, boolean requirePath) {
         var rows = jdbc.query("select config::text, parts::text, published_path_ids from exam.exam_version "
                         + "where exam_id = ? and version_no = ?",
                 (rs, n) -> new VersionRow(rs.getString(1), rs.getString(2),
@@ -84,8 +94,8 @@ public class ExamPreviewStore {
             if (parts instanceof ObjectNode object && config.has("examQuotas")) {
                 object.set("examQuotas", config.path("examQuotas").deepCopy());
             }
-            boolean published = sectionId == null ? rows.getFirst().paths().contains(pathId)
-                    : publishedSection(parts, config, rows.getFirst().paths(), sectionId);
+            boolean published = !requirePath || (sectionId == null ? rows.getFirst().paths().contains(pathId)
+                    : publishedSection(parts, config, rows.getFirst().paths(), sectionId));
             if (!published) throw new NotFoundException("PATH_NOT_FOUND", "Exam version path not found");
             Integer duration = integer(config, "durationMinutes");
             BigDecimal max = decimal(config, "maxScore");
@@ -106,7 +116,7 @@ public class ExamPreviewStore {
             for (JsonNode part : parts.path("parts")) questionCount += part.path("questionCount").asInt();
             exam.applyStructureSummary(questionCount, false, false, 0);
             return new Snapshot(id, exam.getCode(), timing, duration, scoring, max, parts, exam,
-                    config.path("combinations"));
+                    config.path("combinations"), rows.getFirst().paths());
         } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
             throw new IllegalStateException("Invalid exam version snapshot", ex);
         }

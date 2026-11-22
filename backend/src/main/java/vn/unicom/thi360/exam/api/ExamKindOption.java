@@ -28,7 +28,7 @@ public record ExamKindOption(
         @Schema(description = "Cách tính điểm luyện tập: RAW | LINEAR",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         String practiceScoring,
-        @Schema(description = "Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng)")
+        @Schema(description = "Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng)", implementation = ExamTrueFalseScoring.class)
         JsonNode trueFalseScoring,
         @Schema(description = "Quy tắc đa lựa chọn: ALL_OR_NOTHING | PARTIAL")
         String multipleChoiceRule,

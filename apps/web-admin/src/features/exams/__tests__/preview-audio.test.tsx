@@ -116,7 +116,8 @@ describe("trình phát audio trong đề xem trước", () => {
     const player = await screen.findByRole("group", { name: "Trình phát audio · câu 3–5" });
     const article = player.closest("article");
     expect(article).not.toBeNull();
-    expect(within(article!).getAllByRole("group")).toHaveLength(1);
+    expect(within(article!).getAllByRole("group", { name: /^Trình phát audio/ })).toHaveLength(1);
+    expect(article!.querySelectorAll("audio")).toHaveLength(1);
     const passage = within(article!).getByText("Passage of s1");
     expect(player.compareDocumentPosition(passage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -459,9 +460,12 @@ describe("hàng tiêu đề câu trong đề thử (V-7, V-8)", () => {
   it("chip 'Có audio' đứng ngay sau số câu, trước chip điểm và mã câu; chùm đặt chip ngay sau tên bộ", () => {
     renderPaper(listening);
 
-    const questionRow = screen.getByRole("heading", { name: "Câu 1" }).parentElement;
-    expect(questionRow?.children[1]).toHaveTextContent("Có audio");
-    expect(questionRow?.children[2]).toHaveTextContent(/điểm/);
+    const questionArticle = screen.getByRole("heading", { name: "Câu 1" }).closest("article");
+    expect(questionArticle).not.toBeNull();
+    const metadataRow = questionArticle!.firstElementChild;
+    expect(metadataRow?.children[0]).toHaveTextContent("Có audio");
+    expect(metadataRow?.children[1]).toHaveTextContent(/điểm/);
+    expect(metadataRow?.children[2]).toHaveTextContent("Q1 · v1");
 
     const setRow = screen.getByRole("heading", { name: "Bộ 1 · 3 câu liền nhau" }).parentElement;
     expect(setRow?.children[1]).toHaveTextContent("Có audio");

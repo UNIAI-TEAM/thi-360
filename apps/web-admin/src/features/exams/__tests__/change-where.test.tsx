@@ -83,7 +83,9 @@ describe("màn Phiên bản: vị trí thay đổi", () => {
   it("in tên phần, môn, khối từ cấu trúc; id không còn thì chữ chung; không bao giờ in đường dẫn thô hay id", async () => {
     renderWithProviders(<ExamVersionsView examId={EXAM_ID} />);
 
-    expect(await screen.findByText("Part 1 · MATH · Choice · Tên")).toBeInTheDocument();
+    expect(
+      await screen.findByText((_, element) => element?.tagName === "SPAN" && element.textContent === "Part 1 · MATH · Choice · Tên"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Phần · Môn · Khối · Số câu")).toBeInTheDocument();
     expect(screen.getByText("Cấu hình bài thi · Thời lượng")).toBeInTheDocument();
     expect(screen.queryByText(/parts\/|9f1c2d3e|sections|blk-1/)).not.toBeInTheDocument();

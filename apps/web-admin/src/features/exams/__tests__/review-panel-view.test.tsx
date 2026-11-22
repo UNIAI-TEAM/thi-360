@@ -32,6 +32,7 @@ const reviewTemplate = {
   publishable: true,
   fixedCounts: false,
   structure: { parts: [] },
+  parts: [],
 };
 
 interface SentBlock {
@@ -73,7 +74,7 @@ function boot(block: Record<string, unknown> = {}, templatesStatus = 200, sectio
     sections: [{ ...base, blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 10, requiredPointsPerQuestion: 1, ...block }], ...section }],
   };
   return new FakeServer()
-    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW", ...exam }) })
+    .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ questionCount: 10, templateCode: "T_REVIEW", buildMode: "REVIEW", ...exam }) })
     .on("GET", "/api/v1/admin/exam-templates", templatesStatus === 200 ? { status: 200, body: [reviewTemplate] } : { status: templatesStatus, body: { code: "BOOM" } })
     .on("GET", STRUCTURE, { status: 200, body: { examId: EXAM_ID, revision: 7, parts: [part] } })
     .on("PUT", STRUCTURE, { status: 200, body: examDetailWire({ revision: 8 }) })
@@ -226,11 +227,12 @@ describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", 
     expect(section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
   });
 
-  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, Số câu của mục cũng chỉ đọc", async () => {
+  it("đối chứng: bài ôn có hai nhóm vẽ màn môn thường, không có ô Số câu của mục", async () => {
     const group = (id: string) => ({ id, name: id, questionType: "SINGLE_CHOICE", questionCount: 5, requiredPointsPerQuestion: 1 });
     boot({}, 200, { blocks: [group("blk-1"), group("blk-2")], matrix: percentMatrix, topicQuotas: [topic] });
     open();
-    expect(await screen.findByRole("textbox", { name: "Số câu của mục" })).toHaveAttribute("readonly");
+    await screen.findByRole("heading", { name: /^Môn / });
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /^Số lượng/ })).not.toBeInTheDocument();
   });
 });

@@ -3,14 +3,15 @@
 import { Chip, cn, focusRing } from "@thi360/ui";
 import { Info } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import type { QuotaBasis, QuotaEnforcement } from "../types";
 import { canRequire } from "../allocation";
 import { hsaFixedEnforcement, useHsaExam } from "../hsa-enforcement";
+import { richNodes } from "./exam-review-shared";
 
 export interface EnforcementToggleProps {
   /** Tên bảng đứng trước nhãn, để đọc màn hình phân biệt các nhóm radio cùng trang. */
-  legend: string;
+  legend: ReactNode;
   name: string;
   value: QuotaEnforcement;
   onChange: (value: QuotaEnforcement) => void;
@@ -28,7 +29,7 @@ export interface EnforcementToggleProps {
 /**
  * Nhãn "Bắt buộc" hoặc "Tham khảo" của một bảng phân bổ (K9, H21). Bắt buộc: bộ giải chỉ dùng phân bố này. Tham khảo: chỉ
  * đối chiếu khi sinh thử. Nút "Bắt buộc" bị khóa khi đơn vị không phải câu hoặc chỉ tiêu trải nhiều môn. Kỳ thi HSA sinh đề
- * luôn theo ma trận nên không có nút: chỉ chip chữ với lý do.
+ * luôn theo ma trận nên không có nút: mức Bắt buộc cố định không hiện gì (đã là mặc định), mức Tham khảo cố định giữ chip kèm lý do.
  */
 export function EnforcementToggle({
   legend,
@@ -43,6 +44,7 @@ export function EnforcementToggle({
 }: EnforcementToggleProps) {
   const t = useTranslations("exams.allocation.enforcement");
   const reasonId = useId();
+  const legendId = useId();
   const hsaExam = useHsaExam();
   const basisLocked = !canRequire(basis);
   const reason = lockRequiredReason ?? (basisLocked ? t("basisLocked") : null);
@@ -50,10 +52,25 @@ export function EnforcementToggle({
   // Chiều chưa khai báo vẫn ở Tham khảo trong bản nháp (R1-2): chip khớp bản nháp thay vì mức Bắt buộc công thức.
   const fixed = hsaExam ? (expertPending || undeclared ? "REFERENCE" : hsaFixedEnforcement(basis, requiredLocked)) : undefined;
 
+  // HSA cố định Bắt buộc là mặc định của kỳ thi: không hiện chip hay chú thích; giá trị trong bản nháp vẫn REQUIRED.
+  if (fixed === "REQUIRED") return null;
   if (fixed !== undefined) {
-    const caption = fixed === "REQUIRED" ? t("fixedRequired") : expertPending ? t("expertPending") : (reason ?? (undeclared ? t("undeclared") : null));
+    const caption = expertPending ? t("expertPending") : (reason ?? (undeclared ? t("undeclared") : null));
+    const plainLegend = typeof legend === "string";
     return (
-      <div role="group" aria-label={t("legend", { name: legend })} aria-describedby={caption ? reasonId : undefined} data-fixed={fixed} className="flex min-w-0 flex-col gap-1">
+      <div
+        role="group"
+        aria-label={plainLegend ? t("legend", { name: legend }) : undefined}
+        aria-labelledby={plainLegend ? undefined : legendId}
+        aria-describedby={caption ? reasonId : undefined}
+        data-fixed={fixed}
+        className="flex min-w-0 flex-col gap-1"
+      >
+        {!plainLegend && (
+          <span id={legendId} className="sr-only">
+            {richNodes(t, "legend", { name: legend })}
+          </span>
+        )}
         <Chip variant="tag" className="w-fit">
           {t(fixed)}
         </Chip>
@@ -72,7 +89,7 @@ export function EnforcementToggle({
   ];
   return (
     <fieldset className="flex min-w-0 flex-col gap-1" disabled={disabled} aria-describedby={requiredLocked ? reasonId : undefined}>
-      <legend className="sr-only">{t("legend", { name: legend })}</legend>
+      <legend className="sr-only">{richNodes(t, "legend", { name: legend })}</legend>
       <div className="inline-flex w-fit rounded-md border border-border bg-subtle p-0.5">
         {options.map((option) => {
           const checked = option.value === value;

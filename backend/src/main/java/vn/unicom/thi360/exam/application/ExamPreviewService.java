@@ -23,6 +23,7 @@ import vn.unicom.thi360.exam.domain.solver.*;
 import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
+import vn.unicom.thi360.shared.api.NotFoundException;
 
 /** Seeded generation for one requested path, using serving question snapshots only. */
 @Service
@@ -49,33 +50,50 @@ public class ExamPreviewService {
         this.attachmentPort = attachmentPort;
     }
 
-    public PreviewResult generate(UUID id, GeneratePreviewRequest request) {
+    /** Normalized preview request: the controller derives path and subjects from the explicit target. */
+    public record Command(String pathId, long seed, Integer version, List<String> subjectCodes, PreviewTarget target,
+                          UUID basePreviewId, List<String> regeneratePartIds) {
+    }
+
+    public PreviewResult generate(UUID id, Command request) {
         PreviewSnapshotStore.Snapshot base = request.basePreviewId() == null ? null
                 : previewSnapshots.find(request.basePreviewId());
         if (request.basePreviewId() != null && (base == null || !id.equals(base.examId())
                 || !java.util.Objects.equals(request.version(), base.version()))) {
             throw new PreviewExpiredException();
         }
-        boolean sectionRequest = request.target() != null && "SECTION".equals(request.target().kind());
+        boolean sectionRequest = "SECTION".equals(request.target().kind());
         var snapshot = request.version() == null ? store.load(id)
                 : sectionRequest ? store.loadVersionForSection(id, request.version(), request.target().sectionId())
                 : store.loadVersion(id, request.version(), request.pathId());
         ExamStructureDocument sourceDocument = new ExamStructureCodec(mapper).read(snapshot.parts());
         ExamStructureDocument document = sourceDocument;
-        PreviewSectionTarget.Selection sectionTarget = request.target() != null && "SECTION".equals(request.target().kind())
+        PreviewSectionTarget.Selection sectionTarget = sectionRequest
                 ? PreviewSectionTarget.select(document, request.target().sectionId(), request.target().sectionQuestionCount())
                 : null;
         if (sectionTarget != null) document = sectionTarget.document();
-        var selectedIds = new java.util.HashSet<>(List.of(request.pathId().split("\\+", -1)));
         ExamStructureDocument validationDocument = request.version() == null ? document
                 : PreviewPublishedCombinations.project(document, snapshot.publishedCombinations());
         var combinations = ExamCheckUnitCombinations.forStructure(catalog, snapshot.exam().getKindItemId(), validationDocument);
-        List<ObjectNode> draftIssues = new ExamCheckRules(mapper, snapshot.exam(), validationDocument, combinations,
-                ExamCheckUnitCombinations.topicParents(catalog, validationDocument)).unrepresentable()
-                .stream().filter(issue -> {
-                    String optionId = issue.path("optionId").asText(null);
-                    return optionId == null || selectedIds.contains(optionId);
-                }).toList();
+        List<ObjectNode> draftIssues = new ArrayList<>();
+        // ADV:CR-4:21: the ambiguity rule belongs to the draft check boundary. A draft with a stored id that equals the
+        // "{option}:blocks" holder name of any option previews no path; a frozen version previews as it was published.
+        if (request.version() == null) {
+            ExamStoredIdCollision.find(validationDocument)
+                    .ifPresent(storedId -> draftIssues.add(ExamStoredIdCollision.issue(mapper, storedId)));
+        }
+        // An option belongs to (partId, optionId): an option of another part may share the id (a generated "partId:CODE"
+        // option and an authored one), so neither the issue filter nor the masking below may match the bare id.
+        java.util.Set<ChosenOption> chosen = selectedOptions(document, request.pathId());
+        if (draftIssues.isEmpty()) {
+            new ExamCheckRules(mapper, snapshot.exam(), validationDocument, combinations,
+                    ExamCheckUnitCombinations.topicParents(catalog, validationDocument)).unrepresentable()
+                    .stream().filter(issue -> {
+                        String optionId = issue.path("optionId").asText(null);
+                        return optionId == null
+                                || chosen.contains(new ChosenOption(issue.path("partId").asText(null), optionId));
+                    }).forEach(draftIssues::add);
+        }
         if (!draftIssues.isEmpty()) {
             PathRef path = PreviewPathResolver.resolveDraft(document, request.pathId(), request.subjectCodes());
             return new PreviewResult(id, path, request.version(), request.seed(), Instant.now(clock), "FAILED", null,
@@ -86,7 +104,7 @@ public class ExamPreviewService {
         SolverInputBuilder.SolverInput input;
         try {
             ExamStructureDocument solverDocument = validationDocument;
-            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(solverDocument, request.pathId()));
+            input = builder.build(snapshot.exam().getKindItemId(), maskUnselectedOptions(solverDocument, chosen));
         } catch (IllegalArgumentException ex) {
             throw new BusinessRuleException("EXAM_STRUCTURE_INVALID");
         }
@@ -96,7 +114,7 @@ public class ExamPreviewService {
                 || resolved.path().picks().stream().flatMap(List::stream)
                         .flatMap(pick -> pick.resolvedSections().stream())
                         .anyMatch(section -> !section.groups().isEmpty());
-        if (!hasSelectedGroups && request.target() != null) {
+        if (!hasSelectedGroups) {
             ObjectNode issue = mapper.createObjectNode();
             issue.put("key", "INFO_MISSING");
             issue.put("code", "INFO_MISSING");
@@ -104,20 +122,6 @@ public class ExamPreviewService {
             issue.put("group", "STRUCTURE");
             return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
                     "FAILED", null, "INVALID", List.of(previewIssue(issue, request.pathId())), null, null, null);
-        }
-        if (request.target() == null) {
-            PathResult selectedPath = new PathResult(resolved.path(), SolveStatus.VALID, null, null,
-                    null, List.of(), List.of(), null);
-            List<ObjectNode> staticIssues = ExamCheckRules.issuesForPath(mapper, snapshot.exam(),
-                    document, selectedPath);
-            if (staticIssues.stream().anyMatch(issue -> !"WARNING".equals(issue.path("severity").asText()))) {
-                String reason = staticIssues.stream().anyMatch(issue -> "ERROR".equals(issue.path("severity").asText()))
-                        ? "INVALID" : "UNCONFIRMED";
-                return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                        "FAILED", null, reason,
-                        staticIssues.stream().map(issue -> previewIssue(issue, request.pathId())).toList(),
-                        null, null, null);
-            }
         }
         PreviewPartIndex partIndex = new PreviewPartIndex(document);
         PreviewRegeneration.Selection regeneration = base == null ? null
@@ -174,10 +178,10 @@ public class ExamPreviewService {
         PreviewPaper paper = PreviewPaperOrdering.order(paperBuilder.build(snapshot, document, actualPath),
                 document, request.seed(), mapper, regeneration == null ? Map.of() : regeneration.retained());
         if (sectionTarget != null) paper = segmentsOfCompletePartsOnly(paper, sourceDocument);
-        // H40 rule 3 holds for every complete segmented part, whatever the request shape (explicit target, legacy
-        // pathId/seed, a section that generated the whole part). A partial projection carries no segments, see above.
+        // H40 rule 3 holds for every complete segmented part, whatever the target (EXAM, PATH, or a section that
+        // generated the whole part). A partial projection carries no segments, see above.
         List<PreviewIssue> totals = new ArrayList<>();
-        if (request.target() != null && sectionTarget == null) {
+        if (sectionTarget == null) {
             totals.addAll(previewPartTotals(document, paper, request.pathId()));
         }
         totals.addAll(previewSegmentTotals(paper, paperBuilder.unitFacts(), request.pathId()));
@@ -213,13 +217,32 @@ public class ExamPreviewService {
         Map<String, PreviewSnapshotStore.PartSnapshot> selectedParts = new HashMap<>(
                 PreviewSnapshotAssembler.assemble(partIndex, generatedGroups, candidates, versions, generatedDropped,
                         actualPath, paper));
-        if (regeneration != null) selectedParts.putAll(regeneration.retained());
+        if (regeneration != null) {
+            // A retained part keeps its picks and option order but is saved with the presentation of the paper just
+            // returned: an earlier part regenerated at another length moves its numbers, and the timing is the new one.
+            Map<String, PreviewPart> finalParts = new HashMap<>();
+            for (PreviewPart part : paper.parts()) finalParts.put(part.partId(), part);
+            regeneration.retained().forEach((partId, kept) -> selectedParts.put(partId, new PreviewSnapshotStore.PartSnapshot(
+                    kept.groups(), kept.candidates(), kept.versions(), kept.droppedQuestions(),
+                    finalParts.getOrDefault(partId, kept.presentation()), kept.allocations())));
+        }
         List<Compliance> compliance = PreviewCompliance.evaluate(document, actualPath, groups, candidates, allDropped, knowledge);
+        // BS 9: the trial extension reads the duration from here, never from the draft. SHARED is the exam's own
+        // duration; PER_PART (or a SHARED exam with none) is the sum of the parts this path generated.
+        int generatedPartMinutes = selectedParts.values().stream().filter(part -> part.presentation() != null)
+                .mapToInt(part -> part.presentation().durationMinutes() == null ? 0
+                        : part.presentation().durationMinutes()).sum();
+        int trialMinutes = "SHARED".equals(snapshot.timing()) && snapshot.durationMinutes() != null
+                ? snapshot.durationMinutes() : generatedPartMinutes;
+        String kindCode = snapshot.exam().getKindItemId() == null ? null
+                : catalog.findItem(snapshot.exam().getKindItemId()).map(CatalogItemView::code).orElse(null);
+        Instant generatedAt = Instant.now(clock);
         UUID previewId = previewSnapshots.save(new PreviewSnapshotStore.Snapshot(id, request.version(),
-                request.seed(), selectedParts));
+                request.seed(), selectedParts, kindCode, snapshot.timing(), trialMinutes));
         store.recordPreview(id, snapshot.code(), request.pathId(), request.seed(), keys);
-        return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), Instant.now(clock),
-                "GENERATED", paper, null, null, previewId, compliance, droppedQuestions);
+        return new PreviewResult(id, resolved.pathRef(), request.version(), request.seed(), generatedAt,
+                "GENERATED", paper, null, null, previewId, compliance, droppedQuestions,
+                generatedAt.plus(PreviewSnapshotStore.TTL));
     }
 
 
@@ -385,14 +408,26 @@ public class ExamPreviewService {
                 .map(TopicAssignment::quotaId).distinct().toList();
     }
 
+    /**
+     * The (part, option) pairs the requested path takes from the draft. A path that does not exist selects nothing here:
+     * the resolver reports it with the rest of the request.
+     */
+    private static java.util.Set<ChosenOption> selectedOptions(ExamStructureDocument document, String pathId) {
+        try {
+            return new java.util.HashSet<>(PreviewPathResolver.selectedOptions(document, pathId));
+        } catch (NotFoundException ex) {
+            return java.util.Set.of();
+        }
+    }
+
     /** Keep unrelated incomplete draft options from preventing the requested path being built. */
-    private static ExamStructureDocument maskUnselectedOptions(ExamStructureDocument document, String pathId) {
-        var selected = new java.util.HashSet<>(List.of(pathId.split("\\+", -1)));
+    private static ExamStructureDocument maskUnselectedOptions(ExamStructureDocument document,
+                                                              java.util.Set<ChosenOption> selected) {
         List<ExamPart> parts = new ArrayList<>(document.parts().size());
         for (ExamPart part : document.parts()) {
             List<ExamPartOption> options = new ArrayList<>(part.options().size());
             for (ExamPartOption option : part.options()) {
-                options.add(selected.contains(option.id()) ? option
+                options.add(selected.contains(new ChosenOption(part.id(), option.id())) ? option
                         : new ExamPartOption(option.id(), OptionKind.SUBJECT, option.code(), option.name(),
                                 null, null, List.of(), List.of(), option.expertConfirmed()));
             }

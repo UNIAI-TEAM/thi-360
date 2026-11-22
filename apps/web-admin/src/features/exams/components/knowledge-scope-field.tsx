@@ -145,7 +145,12 @@ export function KnowledgeScopeField({
                 icon={<CircleMinus />}
                 className="size-8"
                 aria-label={t("remove", { code: ref.code, name: ref.name })}
-                onClick={() => onChange(withNodeIds(value, (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId), blockLevel))}
+                onClick={() => {
+                  const rest = (value?.nodeIds ?? []).filter((id) => id !== ref.nodeId);
+                  // Bỏ chip cuối thì dữ liệu về phạm vi của môn (nodeIds rỗng): giao diện về "Toàn môn" theo, không kẹt ở "Theo chủ đề" trống.
+                  if (rest.length === 0) setTopicMode(false);
+                  onChange(withNodeIds(value, rest, blockLevel));
+                }}
               />
             </span>
           ))}
@@ -214,8 +219,8 @@ export interface MapidModeFieldProps {
 }
 
 /**
- * Phạm vi kiến thức của môn HSA dùng ma trận (UNI-1704 v2): "Toàn bài (không giới hạn MAPID)" hoặc "Theo ma trận MAPID".
- * Toàn bài giữ quy tắc trong bản nháp nhưng không áp dụng. Thay cho `KnowledgeScopeField` ở các môn này.
+ * Phạm vi kiến thức của môn HSA dùng ma trận (UNI-1704 v2): "Không giới hạn MAPID" hoặc "Theo ma trận MAPID".
+ * Chế độ Không giới hạn MAPID giữ quy tắc trong bản nháp nhưng không áp dụng. Thay cho `KnowledgeScopeField` ở các môn này.
  */
 export function MapidModeField({ mode, onModeChange, ruleCount, invalidCount, anchor }: MapidModeFieldProps) {
   const t = useTranslations("exams.mapidRules.mode");

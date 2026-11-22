@@ -129,7 +129,7 @@ describe("nhóm lấy câu của môn HSA dùng ma trận MAPID", () => {
     renderEditor(makeSection({ mapidMode: undefined, mapidRules: undefined }));
     expect(scopeField()).not.toBeInTheDocument();
     expect(quotaTable()).not.toBeInTheDocument();
-    expect(within(screen.getByTestId("mapid-group-rules")).getByText("Môn đang ở chế độ Toàn bài: không giới hạn MAPID cho nhóm này.")).toBeInTheDocument();
+    expect(within(screen.getByTestId("mapid-group-rules")).getByText("Môn đang ở chế độ Không giới hạn MAPID: không giới hạn MAPID cho nhóm này.")).toBeInTheDocument();
   });
 
   it("nút Mở bảng Quy tắc MAPID chuyển sang màn môn", async () => {

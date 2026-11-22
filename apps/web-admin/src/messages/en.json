@@ -82,6 +82,337 @@
     "warningsOk": "Colors look good. Button text achieves at least 4.5:1 contrast.",
     "whiteText": "White text"
   },
+  "attempts": {
+    "abortReason": {
+      "AUDIO_ASSET_INVALID": "Invalid audio asset",
+      "AUDIO_ASSET_MISSING": "Missing audio asset",
+      "GENERATION_BUSY": "Generation queue busy",
+      "GENERATION_FAILED": "Paper generation failed",
+      "GENERATION_TIMEOUT": "Paper generation timed out",
+      "STALE_STARTING": "Startup interrupted"
+    },
+    "closeReason": {
+      "ATTEMPT_SUBMITTED": "Attempt submitted",
+      "CHOICE_TIMEOUT": "Choice timed out",
+      "FAULT_CLOSED": "Closed due to system fault",
+      "FINISHED": "Part finished",
+      "TIME_UP": "Time up"
+    },
+    "detail": {
+      "actions": {
+        "alreadyCompensated": "1 attempt compensated",
+        "compensateButton": "Compensate 1 attempt",
+        "compensateDescription": "Only available for fault-marked attempts, once per attempt. Requires a reason.",
+        "compensateHeading": "Compensate 1 attempt",
+        "compensateSuccess": "Compensated 1 attempt for {code}.",
+        "faultAlreadyMarked": "This attempt has already been marked as a system fault.",
+        "faultButton": "Mark fault",
+        "faultDescription": "Closes the attempt if still open due to a system fault, marking unfinished parts as skipped. Requires a reason.",
+        "faultHeading": "Mark system fault",
+        "faultNotAllowed": "Cannot mark fault while attempt is starting or aborted.",
+        "faultSuccess": "Marked attempt {code} as system fault.",
+        "permissionFootnote": "Actions depend on permissions: Regrade requires GRADING.MODIFY; Mark fault and Compensate require ATTEMPT.COMPENSATE.",
+        "regradeButton": "Regrade",
+        "regradeDescription": "Only available when the attempt is in Grading error state. Regrades using the same answers and question snapshots; finalized essay scores are preserved.",
+        "regradeHeading": "Regrade",
+        "regradeSuccess": "Regraded attempt {code}.",
+        "title": "Attempt actions"
+      },
+      "alerts": {
+        "faultCompensatedTitle": "Attempt marked as system fault and 1 attempt compensated.",
+        "faultTitle": "Attempt marked as system fault.",
+        "gradingErrorDescription": "Automatic grading failed. Use Regrade to run the grading pipeline again.",
+        "gradingErrorTitle": "Attempt is in Grading error state.",
+        "partFailedDescription": "The attempt does not auto-close on generation errors. If unrecoverable, mark fault to close the attempt and compensate 1 attempt.",
+        "partFailedTitle": "Part <part>{names}</part> failed to generate ({tries} attempts)."
+      },
+      "answers": {
+        "allParts": "All parts",
+        "answer": "Answer",
+        "blank": "Blank",
+        "clozeBlank": "Blank {index}:",
+        "empty": "No answers match the selected filter.",
+        "essaySummary": "{words} words",
+        "false": "False",
+        "part": "Part",
+        "partFilter": "Filter by part",
+        "questionLabel": "Question {number}",
+        "questionNo": "Question",
+        "questionType": "Type",
+        "receivedAt": "Received at",
+        "seq": "Save seq",
+        "true": "True"
+      },
+      "answersAriaLabel": "Final answers for attempt {code}",
+      "answersSummary": "{total} issued questions · {answered} answered",
+      "answersTitle": "Final answers received by server",
+      "backToList": "Attempts list",
+      "booleanNo": "No",
+      "booleanYes": "Yes",
+      "errorTitle": "Could not load attempt",
+      "eventFields": {
+        "abortReason": "Abort reason",
+        "adminId": "Admin",
+        "assetId": "Asset",
+        "attemptId": "Attempt ID",
+        "attemptNo": "Attempt no.",
+        "closeReason": "Close reason",
+        "closedAt": "Closed at",
+        "comment": "Comment",
+        "compensated": "Compensated",
+        "deadlineAt": "Deadline",
+        "detail": "Detail",
+        "durationSec": "Duration (sec)",
+        "endReason": "End reason",
+        "entitlementId": "Entitlement ID",
+        "error": "Error",
+        "essayGradeId": "Essay grade ID",
+        "examCode": "Exam code",
+        "examId": "Exam ID",
+        "examVersionNo": "Exam version",
+        "faultReason": "Fault reason",
+        "finalAnswers": "Final answers",
+        "finalizedAt": "Finalized at",
+        "finishedAt": "Finished at",
+        "fromState": "From state",
+        "generationTries": "Generation tries",
+        "graderId": "Grader",
+        "gradingError": "Grading error",
+        "grantId": "Grant ID",
+        "itemId": "Item ID",
+        "message": "Message",
+        "ord": "Part order",
+        "partCode": "Part code",
+        "partId": "Part ID",
+        "path": "Path",
+        "pendingReview": "Pending review",
+        "points": "Points",
+        "previousSessionId": "Previous session",
+        "questionId": "Question ID",
+        "reason": "Reason",
+        "reclaimed": "Session reclaimed",
+        "regrading": "Regrading",
+        "reopenedReason": "Reopen reason",
+        "seq": "Save seq",
+        "sessionId": "Session ID",
+        "startedAt": "Started at",
+        "state": "State",
+        "submittedAt": "Submitted at",
+        "toState": "To state",
+        "totalScore": "Total score",
+        "tries": "Tries",
+        "versionNo": "Version"
+      },
+      "eventsCount": "{count, number} events",
+      "eventsEmpty": "No events recorded yet.",
+      "eventsTitle": "Event timeline",
+      "fields": {
+        "attemptNo": "Attempt no.",
+        "choices": "Confirmed choices",
+        "deadlineAt": "Deadline",
+        "editSession": "Active edit session",
+        "exam": "Exam",
+        "faultStatus": "Fault status",
+        "finishedAt": "Finished",
+        "gradedAt": "Graded at",
+        "learner": "Learner",
+        "resultView": "Result visibility",
+        "score": "Score",
+        "seenAt": "active at {time}",
+        "startedAt": "Started",
+        "timing": "Timing & navigation",
+        "version": "published v{version}"
+      },
+      "heading": "Attempt {code}",
+      "infoTitle": "Attempt details",
+      "loading": "Loading attempt details",
+      "notFoundDescription": "The requested attempt does not exist or has been removed.",
+      "notFoundTitle": "Attempt not found",
+      "offlineDescription": "Check your internet connection and try again.",
+      "offlineTitle": "No connection",
+      "parts": {
+        "choiceLabel": "Chosen: {choice}",
+        "closeReason": "Close reason",
+        "closedAt": "Closed at",
+        "deadlineAt": "Deadline",
+        "durationMinutes": "{count} min",
+        "generationTries": "Generation tries",
+        "maxPoints": "max {points} pts",
+        "part": "Part",
+        "questionCount": "{count} questions",
+        "startedAt": "Opened at",
+        "state": "State"
+      },
+      "partsAriaLabel": "Parts of attempt {code}",
+      "partsEmpty": "No part records found for this attempt.",
+      "partsTitle": "Parts & deadlines",
+      "retry": "Retry",
+      "sessionBadge": "Session {code}",
+      "title": "Attempt details"
+    },
+    "dialogs": {
+      "compensate": {
+        "confirm": "Compensate 1 attempt",
+        "description": "The compensated attempt inherits the grant of attempt {code}. Each faulted attempt can only be compensated once.",
+        "reasonLabel": "Reason",
+        "reasonPlaceholder": "Enter reason for compensating 1 attempt...",
+        "reasonRequired": "Enter a reason for compensation.",
+        "successToast": "Compensated 1 attempt for {code}.",
+        "title": "Compensate 1 attempt for {user}?"
+      },
+      "fault": {
+        "attemptNo": "attempt {no}",
+        "confirmClosed": "Mark fault",
+        "confirmOpen": "Mark fault & close attempt",
+        "descriptionClosed": "Marks the attempt as a system fault. The learner sees a system fault notice and becomes eligible for 1 compensated attempt.",
+        "descriptionOpen": "If still open, the attempt closes immediately as a system fault. Unfinished parts are skipped (0 points); finished parts are still graded.",
+        "examLabel": "Exam",
+        "failedPartLabel": "Failed part",
+        "learnerLabel": "Learner",
+        "reasonLabel": "Reason",
+        "reasonPlaceholder": "Enter reason for marking system fault...",
+        "reasonRequired": "Enter a reason for marking fault.",
+        "successToast": "Marked attempt {code} as fault.",
+        "title": "Mark attempt {code} as fault?"
+      }
+    },
+    "endReason": {
+      "CHOICE_TIMEOUT": "Choice timed out",
+      "FAULT_CLOSED": "Closed due to system fault",
+      "SUBMITTED": "Submitted",
+      "TIME_UP": "Time up"
+    },
+    "errors": {
+      "ALREADY_COMPENSATED": "This attempt has already been compensated.",
+      "ATTEMPT_ALREADY_FAULTED": "This attempt is already marked as a system fault.",
+      "ATTEMPT_FAULT_NOT_ALLOWED": "Cannot mark a system fault for an attempt in its current state.",
+      "ATTEMPT_NOT_FAULTED": "Only fault-marked attempts can be compensated.",
+      "ATTEMPT_NOT_GRADING_ERROR": "Only attempts in Grading error state can be regraded.",
+      "CONFLICT": "State conflict occurred. Please refresh and try again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Could not process the request. Please try again.",
+      "GRANT_REFUNDED": "Cannot compensate: the grant used by this attempt has already been fully refunded.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Missing idempotency key for compensation request.",
+      "IDEMPOTENCY_KEY_REUSED": "The idempotency key was already used with a different request.",
+      "INTERNAL_ERROR": "Temporary system error. Please try again later.",
+      "INVALID_DATE_FILTER": "Invalid date filter range.",
+      "NETWORK": "Cannot connect to server. Check your connection and try again.",
+      "NOT_FOUND": "Requested attempt not found.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "VALIDATION_FAILED": "Submitted input is invalid. Please review and try again."
+    },
+    "events": {
+      "CHOICE_CONFIRMED": "Choice confirmed",
+      "CHOICE_TIMEOUT": "Choice timed out",
+      "COMPENSATED": "Compensated 1 attempt",
+      "GENERATION_FAILED": "Generation failed",
+      "GRADED": "Graded",
+      "GRADING_FAILED": "Grading failed",
+      "PART_CLOSED": "Part closed",
+      "PART_OPENED": "Part opened",
+      "REGRADED": "Regraded",
+      "SAVE_REJECTED": "Save rejected",
+      "SESSION_CLAIMED": "Session claimed",
+      "SESSION_TAKEN_OVER": "Session taken over",
+      "STARTED": "Attempt started",
+      "SUBMITTED": "Submitted",
+      "TIME_UP": "Time up"
+    },
+    "filters": {
+      "activeLabel": "Active filters",
+      "ariaLabel": "Attempt filters",
+      "chip": "{label}: {value}",
+      "clearAll": "Clear all filters",
+      "examSearch": "Exam",
+      "examSearchPlaceholder": "Exam name or UUID",
+      "from": "From date",
+      "remove": "Remove {label} filter",
+      "statusAll": "All",
+      "statusLegend": "Status",
+      "to": "To date",
+      "userSearch": "Learner",
+      "userSearchPlaceholder": "Username or UUID"
+    },
+    "list": {
+      "description": "Inspect learner attempts and event timelines. Regrade failed attempts, mark system faults, and issue compensation.",
+      "emptyDescription": "Attempts will appear here once learners start taking exams.",
+      "emptyFilteredDescription": "Try changing the status, learner/exam query, or date range.",
+      "emptyFilteredTitle": "No attempts match your filters",
+      "emptyTitle": "No attempts yet",
+      "errorCount": "Could not load attempt count",
+      "errorTitle": "Could not load attempts",
+      "faultCompensated": "Faulted · compensated",
+      "faultFlag": "System fault",
+      "filteredCount": "{count, number} attempts matching filters",
+      "filteredCountRich": "<strong>{count, number}</strong> attempts matching filters",
+      "hint": "Most recently started first",
+      "loadingCount": "Loading attempts...",
+      "offlineDescription": "Check your internet connection and try again.",
+      "offlineTitle": "No connection",
+      "paginationNav": "Attempts list pagination",
+      "paginationNext": "Next",
+      "paginationPage": "Page {page}",
+      "paginationPrevious": "Previous",
+      "paginationRange": "{from}–{to} of {total}",
+      "paginationRowsPerPage": "Rows per page",
+      "regrading": "Regrading",
+      "retry": "Retry",
+      "scoreValue": "{score} / {max}",
+      "table": {
+        "actions": "Actions",
+        "attemptNo": "Attempt",
+        "code": "Attempt code",
+        "exam": "Exam",
+        "finishedAt": "Finished",
+        "learner": "Learner",
+        "score": "Score",
+        "startedAt": "Started",
+        "status": "Status"
+      },
+      "tableAriaLabel": "Attempts list",
+      "title": "Attempts",
+      "viewAria": "View attempt {code} by {user}",
+      "viewTooltip": "View attempt & timeline"
+    },
+    "navigationMode": {
+      "FREE": "Free navigation",
+      "SEQUENTIAL": "Sequential"
+    },
+    "partState": {
+      "AWAITING_CHOICE": "Awaiting choice",
+      "CLOSED": "Closed",
+      "GENERATING": "Generating",
+      "GENERATION_FAILED": "Generation failed",
+      "OPEN": "Open",
+      "PENDING": "Pending",
+      "SKIPPED": "Skipped"
+    },
+    "resultView": {
+      "FULL": "Score, answers & solutions",
+      "FULL_SOLUTION": "Score, answers & solutions",
+      "SCORE": "Score only",
+      "SCORE_AND_ANSWERS": "Score & answers"
+    },
+    "scope": {
+      "FULL": "Full exam",
+      "PART": "By part",
+      "REVIEW": "Review",
+      "SUBJECT": "By subject"
+    },
+    "status": {
+      "ABORTED": "Aborted",
+      "GRADING": "Grading",
+      "GRADING_ERROR": "Grading error",
+      "IN_PROGRESS": "In progress",
+      "PENDING_REVIEW": "Awaiting grading",
+      "SCORED": "Scored",
+      "STARTING": "Preparing"
+    },
+    "timing": {
+      "PER_PART": "Per-part timing",
+      "SHARED": "Shared timer"
+    }
+  },
   "catalog": {
     "addGroup": "Add catalog",
     "addValue": "Add value",
@@ -237,7 +568,7 @@
       "CATALOG_GROUP_SYSTEM": "Cannot edit, deactivate, or delete a system catalog.",
       "CATALOG_ITEM_IN_USE": "Cannot complete action because the catalog value is currently in use.",
       "CATALOG_ITEM_NOT_FOUND": "Catalog node was not found (it may have been deleted before confirmation).",
-      "CATALOG_ITEM_SYSTEM": "Cannot change code or delete a system value.",
+      "CATALOG_ITEM_SYSTEM": "Cannot change the code, deactivate, move, or delete a system value.",
       "CATALOG_LEVELS_LOCKED": "Cannot add or remove levels when the catalog already has values.",
       "CATALOG_NODE_HAS_CHILDREN": "Cannot delete a node that still has child nodes.",
       "CATALOG_PARENT_INACTIVE": "Cannot add or move a node under an inactive parent.",
@@ -383,6 +714,7 @@
       "saveAndAddMore": "Save and add another",
       "statusLabel": "Status",
       "subtitle": "General settings",
+      "systemHint": "System value: only the name can be edited.",
       "updateSuccess": "Updated value {code}."
     },
     "itemsErrorDescription": "Could not load values. Please try again.",
@@ -452,7 +784,6 @@
     },
     "systemBadge": "System",
     "systemGroupHint": "System catalog: cannot be edited or deleted. Values inside can still be managed.",
-    "systemItemLocked": "System value: cannot be deleted.",
     "systemSection": "System",
     "title": "General settings",
     "tree": {
@@ -1270,7 +1601,9 @@
   },
   "nav": {
     "groups": {
+      "commerce": "Commerce",
       "content": "Content",
+      "learners": "Students",
       "overview": "Overview",
       "system": "System",
       "users": "Users"
@@ -1311,6 +1644,22 @@
       "grading": {
         "description": "Attempts with essay questions to grade or already scored",
         "label": "Essay grading"
+      },
+      "attempts": {
+        "description": "Student attempts: status, scores and operations",
+        "label": "Attempts"
+      },
+      "bundles": {
+        "description": "Bundles of exams, pricing and publishing",
+        "label": "Bundles"
+      },
+      "orders": {
+        "description": "Orders, buyers, refunds and reconciliation",
+        "label": "Orders"
+      },
+      "promotions": {
+        "description": "Promotions and vouchers by exam or exam kind",
+        "label": "Promotions"
       }
     }
   },
@@ -1318,6 +1667,528 @@
     "description": "The page you opened does not exist or has been moved.",
     "eyebrow": "ERROR 404",
     "title": "Page not found"
+  },
+  "orders": {
+    "attention": {
+      "activeFilter": "Filtering by attention bucket",
+      "clearFilter": "Clear attention filter",
+      "countLabel": "{count, plural, one {# order} other {# orders}}",
+      "emptyCalm": "No orders need attention. Payment and entitlement fulfillment are healthy.",
+      "kinds": {
+        "DUPLICATE_UNREFUNDED": "Unrefunded excess payment",
+        "LATE_SUCCESS_PENDING": "Late success pending review",
+        "NEEDS_REVIEW": "Needs manual review",
+        "PAID_UNFULFILLED": "Paid but unfulfilled",
+        "PAYMENT_UNKNOWN_OVER_24H": "Unknown payment over 24h",
+        "REFUND_UNKNOWN": "Unknown refund status"
+      },
+      "title": "Orders needing attention"
+    },
+    "auditActions": {
+      "DOUBLE_CHARGE_REPLACED_ORDER": "Replaced duplicate payment order",
+      "ENTITLEMENT_GRANTED": "Granted entitlement",
+      "ENTITLEMENT_REVOKED": "Revoked entitlement",
+      "ORDER_CANCELLED": "Cancelled order",
+      "ORDER_CREATED": "Created order",
+      "ORDER_EXPIRED": "Order expired",
+      "ORDER_FULFILLED_MANUALLY": "Continued fulfillment manually",
+      "ORDER_PAYMENT_CREATED": "Created payment attempt",
+      "ORDER_REFUNDED_BEFORE_FULFILLMENT": "Refunded order before fulfillment",
+      "ORDER_REPLACED": "Replaced order",
+      "PAYMENT_EXCESS_RECEIVED": "Recorded excess payment",
+      "PAYMENT_LATE_SUCCESS_ACCEPTED": "Accepted late-success payment",
+      "PAYMENT_LATE_SUCCESS_PENDING": "Late-success payment pending review",
+      "PAYMENT_LATE_SUCCESS_REJECTED": "Rejected late-success and refunded",
+      "PAYMENT_NEEDS_REVIEW": "Flagged order for review",
+      "PAYMENT_SUCCEEDED": "Payment succeeded",
+      "REFUND_FAILED": "Refund failed",
+      "REFUND_RECORDED_MANUALLY": "Recorded manual refund",
+      "REFUND_REQUESTED": "Requested refund",
+      "REFUND_SUCCEEDED": "Refund succeeded"
+    },
+    "bundle": {
+      "badge": "Bundle",
+      "itemsCount": "{count, plural, one {# exam} other {# exams}}"
+    },
+    "buyers": {
+      "colAttempts": "Remaining attempts",
+      "colLastPaid": "Last paid at",
+      "colLatestOrder": "Latest order",
+      "colOrders": "Paid orders",
+      "colPaidAmount": "Total paid",
+      "colUser": "Buyer",
+      "description": "Distinct paying accounts and remaining attempts per exam",
+      "emptyDescription": "No buyers have completed a payment for this exam yet.",
+      "emptyTitle": "No buyers yet",
+      "errorDescription": "Could not load the buyer list for this exam.",
+      "errorTitle": "Failed to load buyers",
+      "examLabel": "Exam",
+      "examLoadError": "Could not load the exam list.",
+      "examPlaceholder": "Select an exam to view buyers",
+      "latestOrderLink": "View order",
+      "latestOrderLinkAria": "View order {code} for {username}",
+      "openExamLink": "Open exam page",
+      "paidCount": "{count, plural, one {# paid order} other {# paid orders}}",
+      "retry": "Retry",
+      "selectExamDescription": "Choose an exam above to see distinct paying accounts, total paid amount, and remaining attempts.",
+      "selectExamTitle": "Select an exam",
+      "summaryNote": "Buyer count counts distinct accounts with at least one fulfilled order.",
+      "summaryTotalBuyers": "Distinct buyers",
+      "tableLabel": "Exam buyers table",
+      "title": "Exam buyers",
+      "totalItems": "{total, plural, one {Total # buyer} other {Total # buyers}}"
+    },
+    "columns": {
+      "actions": "Actions",
+      "amount": "Amount",
+      "buyer": "Buyer",
+      "code": "Order code",
+      "createdAt": "Created at",
+      "exam": "Exam / Product",
+      "paidAt": "Paid at",
+      "paymentStatus": "Payment",
+      "refundStatus": "Refund",
+      "state": "Order state",
+      "timestamps": "Timestamps"
+    },
+    "description": "Monitor orders, review late-success payments, recover fulfillment, and issue refunds",
+    "detail": {
+      "actions": {
+        "continueFulfill": "Continue fulfillment",
+        "markRefundFailed": "Mark failed",
+        "queryRefund": "Query VNPAY",
+        "queryRefundAria": "Query VNPAY refund ({id})",
+        "refund": "Refund",
+        "refundAria": "Refund payment #{seq} ({txnRef})",
+        "refundPendingTooltip": "A refund is already in progress",
+        "reviewLateSuccess": "Review late success",
+        "reviewLateSuccessAria": "Review late success payment #{seq} ({txnRef})",
+        "viewBuyerOrders": "View buyer orders"
+      },
+      "banners": {
+        "lateSuccessPendingBody": "{count, plural, one {# payment} other {# payments}} settled after order expiration. Please decide whether to grant attempts or refund the buyer.",
+        "lateSuccessPendingTitle": "Late success payment pending review",
+        "needsReviewBody": "This order is flagged for manual review: {reason}.",
+        "needsReviewTitle": "Order needs review",
+        "paidUnfulfilledBody": "Payment has settled but entitlement fulfillment did not complete. Continue fulfillment to grant attempts.",
+        "paidUnfulfilledTitle": "Paid but unfulfilled",
+        "replacedByOrder": "This order has been superseded by order {code}."
+      },
+      "bundleItems": {
+        "attempts": "Attempts granted",
+        "empty": "No included exams recorded for this order.",
+        "exam": "Exam",
+        "position": "Position",
+        "resultView": "Result view",
+        "resultViews": {
+          "FULL": "Full",
+          "FULL_SOLUTION": "Score, answers and solutions",
+          "SCORE": "Score only",
+          "SCORE_AND_ANSWERS": "Score and answers"
+        },
+        "title": "Included exams in bundle",
+        "version": "Version",
+        "versionValue": "v{version}"
+      },
+      "codeLabel": "Order code",
+      "errorDescription": "Could not load the order details.",
+      "errorTitle": "Failed to load order",
+      "grants": {
+        "code": "Entitlement code",
+        "createdAt": "Granted at",
+        "empty": "No entitlements have been granted for this order yet.",
+        "expiresAt": "Expires at",
+        "remaining": "Remaining / total",
+        "revokeReason": "Revoke reason",
+        "revokedAt": "Revoked at",
+        "status": "Status",
+        "title": "Granted entitlements"
+      },
+      "history": {
+        "actorLearner": "Learner",
+        "actorPlatform": "Platform admin",
+        "actorSystem": "System",
+        "actorUnknown": "Unknown",
+        "actorVnpayIpn": "VNPAY IPN",
+        "actorVnpayQueryDr": "VNPAY QueryDR",
+        "amountPrefix": "Amount: {amount}",
+        "colActor": "Actor",
+        "colDetail": "Details",
+        "colTime": "Time",
+        "colType": "Source",
+        "decisionPrefix": "Decision: {decision}",
+        "empty": "No history or audit entries for this order yet.",
+        "evidencePrefix": "Evidence ref: {evidence}",
+        "manualRefPrefix": "External ref: {ref}",
+        "reasonPrefix": "Reason: {reason}",
+        "sourceAudit": "Audit log",
+        "sourceOrder": "Order history",
+        "stateTransition": "{from} → {to}",
+        "title": "Processing history & audit log",
+        "txnPrefix": "Transaction: {txn}"
+      },
+      "loading": "Loading order details...",
+      "notFoundDescription": "No order matched this code, or you do not have access to view it.",
+      "notFoundTitle": "Order not found",
+      "offlineDescription": "Network connection is offline. Reconnect and retry.",
+      "offlineTitle": "Offline",
+      "payments": {
+        "action": "Action",
+        "amount": "Amount",
+        "bankCode": "Bank",
+        "classification": "Classification",
+        "empty": "No payment transactions recorded for this order.",
+        "gatewayCode": "Gateway code",
+        "gatewayMessage": "Gateway message",
+        "lateSuccessDecision": "Late-success decision",
+        "lateSuccessResolution": "Late-success resolution",
+        "noAction": "None",
+        "payDate": "Paid time",
+        "reconcileAt": "Reconciled at",
+        "status": "Status",
+        "title": "Payment transactions",
+        "txnRef": "Txn ref",
+        "vnpayTxnNo": "VNPAY txn no"
+      },
+      "refunds": {
+        "action": "Action",
+        "amount": "Refund amount",
+        "completedAt": "Completed at",
+        "createdAt": "Requested at",
+        "empty": "No refund requests recorded for this order.",
+        "errorMessage": "Gateway error / note",
+        "externalRef": "External ref",
+        "id": "Request ID",
+        "kind": "Method",
+        "paymentRef": "Payment ref",
+        "reason": "Reason",
+        "status": "Status",
+        "title": "Refund history"
+      },
+      "retry": "Retry",
+      "snapshot": {
+        "attemptsGranted": "Attempts granted",
+        "buyer": "Buyer",
+        "createdAt": "Created at",
+        "expiresAt": "Payment expires at",
+        "fulfilledAt": "Fulfilled at",
+        "fulfillmentError": "Last fulfillment error",
+        "fulfillmentTries": "Fulfillment tries",
+        "listPrice": "List price",
+        "none": "None",
+        "options": "Options",
+        "paidAt": "Paid at",
+        "paymentMethod": "Payment method",
+        "pricing": "Pricing breakdown",
+        "product": "Product / Exam",
+        "productCode": "Product code",
+        "promotionDiscount": "Promotion discount",
+        "title": "Order snapshot",
+        "totalDue": "Amount due",
+        "username": "Username",
+        "voucherCode": "Voucher code",
+        "voucherDiscount": "Voucher discount"
+      },
+      "title": "Order {code}"
+    },
+    "dialogs": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "close": "Close",
+      "continueFulfill": {
+        "attemptsSummary": "{attempts, plural, one {Attempts to grant: # attempt} other {Attempts to grant: # attempts}}",
+        "confirm": "Confirm fulfillment",
+        "conflictError": "Cannot continue fulfillment for this order in its current state.",
+        "description": "Order {code} has been paid successfully. Continue granting exam <exam>{productName}</exam> to account {username}? The user will not be charged again.",
+        "descriptionPrefix": "Order {code} will grant {attempts, plural, one {# attempt} other {# attempts}} for",
+        "reasonLabel": "Reason for manual fulfillment",
+        "reasonPlaceholder": "For example: Verified VNPAY settlement succeeded, granting remaining attempts...",
+        "reasonRequired": "Please enter a reason to continue fulfillment.",
+        "successToast": "Fulfilled order {code} successfully.",
+        "title": "Continue fulfillment for this order?"
+      },
+      "lateSuccess": {
+        "acceptHint": "Grant exam attempts if no replacement order exists and the buyer still wants access.",
+        "acceptOption": "Accept payment and grant attempts",
+        "alreadyResolvedError": "This late-success payment has already been resolved. Order data has been refreshed.",
+        "confirm": "Confirm decision",
+        "decisionLabel": "Resolution decision",
+        "description": "This payment settled after the order expired. Choose whether to grant attempts or refund the buyer.",
+        "evidenceLabel": "Reconciliation / evidence ref",
+        "evidencePlaceholder": "For example: VNPAY-DS-20261121-001",
+        "evidenceRequired": "Please enter a reconciliation or evidence reference.",
+        "paymentInfo": "Payment {txnRef} · Amount {amount}",
+        "reasonLabel": "Resolution reason",
+        "reasonPlaceholder": "Document reconciliation findings and decision rationale...",
+        "reasonRequired": "Please enter a resolution reason.",
+        "refundHint": "Reject entitlement grant for this late payment and start refund immediately.",
+        "refundOption": "Reject fulfillment and refund",
+        "resolvedNotice": "This late-success payment is already resolved: {resolution}.",
+        "successAcceptToast": "Accepted late-success payment and granted attempts.",
+        "successRefundToast": "Rejected late-success payment and initiated refund.",
+        "title": "Review late-success payment"
+      },
+      "refund": {
+        "amountExceeded": "Refund amount exceeds the remaining refundable balance on this payment.",
+        "amountHint": "Maximum refundable: {remaining}",
+        "amountInvalid": "Refund amount must be a positive integer of at least 1 VND.",
+        "amountLabel": "Refund amount (VND)",
+        "description": "Issue a refund only after verifying a system error or valid excess payment.",
+        "descriptionProcessing": "This refund request is currently processing at VNPAY. You can query the gateway for an updated status.",
+        "descriptionUnknown": "This refund request has not received a final status from VNPAY. Query VNPAY first, or mark it failed after verifying.",
+        "excessNoticeBody": "This is an excess or duplicate payment on the same order. It did not grant extra attempts; refunding this excess amount keeps the buyer's exam access active and existing granted attempts are not revoked.",
+        "excessNoticeTitle": "Excess payment requiring refund",
+        "externalRefLabel": "External transfer / receipt reference",
+        "externalRefPlaceholder": "For example: VNPAY-TRANSFER-20261121-01",
+        "externalRefRequired": "Please enter an external bank transfer or receipt reference.",
+        "kindApi": "Automatic refund via VNPAY",
+        "kindApiHint": "Submit a refund request directly through the VNPAY gateway.",
+        "kindLabel": "Refund method",
+        "kindManual": "Record manual refund",
+        "kindManualDisabledHint": "Available only after at least one API refund has failed and no active refund exists.",
+        "kindManualHint": "Use only after an API refund failed and finance transferred money manually.",
+        "manualStep2Confirm": "Confirm manual refund record",
+        "manualStep2Summary": "Amount {amount} · External ref {externalRef}",
+        "manualStep2Title": "Confirm manual refund recording",
+        "manualStep2Warning": "This marks the payment as manually refunded outside the gateway and updates the order state. This action cannot be automatically undone.",
+        "markFailedConfirm": "Confirm mark failed",
+        "markFailedReasonLabel": "Reason for marking failed",
+        "markFailedReasonPlaceholder": "Document findings from the VNPAY merchant portal...",
+        "markFailedSuccessToast": "Marked refund request as failed.",
+        "markFailedTitle": "Mark refund as failed",
+        "noRemainingBody": "The remaining refundable amount on this payment is 0. No further refund requests can be submitted.",
+        "noRemainingTitle": "No refundable balance remaining",
+        "openMarkFailed": "Mark failed manually",
+        "processingNoticeBody": "An API refund request is currently in progress. Query VNPAY to check for the latest gateway result.",
+        "processingNoticeTitle": "Refund request in progress",
+        "processingRefundId": "Refund request ID: {id}",
+        "queryAction": "Query VNPAY status",
+        "querySuccessToast": "Refreshed refund status from VNPAY.",
+        "reasonLabel": "Refund reason",
+        "reasonPlaceholder": "Document why this payment is being refunded...",
+        "reasonRequired": "Please enter a refund reason.",
+        "submitApi": "Submit refund request",
+        "submitManualNext": "Continue to confirmation",
+        "successToast": "Refund request processed for payment {txnRef}.",
+        "summaryAlreadyRefunded": "Already refunded",
+        "summaryPaymentAmount": "Payment amount",
+        "summaryRemaining": "Remaining refundable",
+        "summaryTxnRef": "Transaction ref",
+        "title": "Refund payment",
+        "titleManual": "Record manual refund",
+        "titleProcessing": "Track processing refund request",
+        "titleResolveUnknown": "Resolve unknown refund request",
+        "unknownNoticeBody": "This refund request is in an unknown state. Query VNPAY first, or mark it failed after verifying on the merchant portal.",
+        "unknownNoticeTitle": "Refund status is unknown",
+        "unknownRefundId": "Refund request ID: {id}",
+        "verifiedSystemErrorHint": "Confirm only when the refund is caused by a verified system error or excess payment.",
+        "verifiedSystemErrorLabel": "Confirm this is a verified system error or excess payment",
+        "verifiedSystemErrorRequired": "You must verify this is a system error before requesting a refund."
+      },
+      "submitting": "Processing..."
+    },
+    "errors": {
+      "CONFLICT": "Record state changed concurrently. Refresh and try again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Something went wrong while processing the request.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Missing idempotency key for this operation.",
+      "IDEMPOTENCY_KEY_REUSED": "Idempotency key was reused with different input. Refresh order details before retrying.",
+      "INTERNAL_ERROR": "Temporary server failure. Please try again shortly.",
+      "INVALID_TIME_RANGE": "Invalid time range selected.",
+      "LATE_SUCCESS_ALREADY_RESOLVED": "This late-success payment has already been resolved.",
+      "NETWORK": "Could not reach the server. Check your connection and try again.",
+      "NOT_FOUND": "Requested record was not found.",
+      "ORDER_NOT_FOUND": "Order not found.",
+      "ORDER_PAYMENT_NOT_FOUND": "Payment transaction was not found on this order.",
+      "ORDER_RECOVERY_NOT_ALLOWED": "This order cannot be manually fulfilled in its current state.",
+      "RATE_LIMITED": "Too many requests. Wait a moment and try again.",
+      "REFUND_ACTIVE_EXISTS": "An active refund request already exists for this payment.",
+      "REFUND_AMOUNT_EXCEEDED": "Refund amount exceeds the remaining refundable amount.",
+      "REFUND_EXTERNAL_REF_REQUIRED": "External reference is required when recording a manual refund.",
+      "REFUND_MANUAL_REQUIRES_FAILED_API": "Manual refund is only allowed after an API refund has failed.",
+      "REFUND_NOT_FOUND": "Refund request was not found.",
+      "REFUND_NOT_UNKNOWN": "Refund request is no longer in an unknown state.",
+      "REFUND_PAYMENT_NOT_SUCCEEDED": "Only succeeded payments can be refunded.",
+      "REFUND_QUERY_NOT_ALLOWED": "This refund request cannot be queried in its current state.",
+      "REFUND_SYSTEM_ERROR_NOT_VERIFIED": "A verified system error confirmation is required to refund.",
+      "VALIDATION_FAILED": "Please review the highlighted fields and try again."
+    },
+    "excessReasons": {
+      "AFTER_COUNTED": "Duplicate payment captured after order was already counted",
+      "REJECTED_AFTER_RECONCILE": "Late-success payment rejected during reconciliation"
+    },
+    "filters": {
+      "clear": "Reset",
+      "exam": "Exam",
+      "examAll": "All exams",
+      "from": "From date",
+      "loadingExams": "Loading exams...",
+      "paymentMethod": "Method",
+      "paymentMethodAll": "All methods",
+      "paymentStatus": "Payment",
+      "paymentStatusAll": "All payment statuses",
+      "refresh": "Refresh",
+      "refundStatus": "Refund",
+      "refundStatusAll": "All refund statuses",
+      "searchLabel": "Search orders",
+      "searchPlaceholder": "Search order code, username, full name, or txn ref...",
+      "to": "To date"
+    },
+    "grantStatuses": {
+      "ACTIVE": "Active",
+      "EXHAUSTED": "Exhausted",
+      "REVOKED": "Revoked"
+    },
+    "historyReasons": {
+      "AFTER_COUNTED": "{hasDetail, select, yes {Duplicate payment after counted settlement ({detail})} other {Duplicate payment after counted settlement}}",
+      "AUTO_EXCESS": "{hasDetail, select, yes {Automatically classified excess payment ({detail})} other {Automatically classified excess payment}}",
+      "AUTO_EXCESS_AFTER_COUNTED": "{hasDetail, select, yes {Automatically classified excess payment ({detail})} other {Automatically classified excess payment}}",
+      "CANCELLED_BY_USER": "{hasDetail, select, yes {Cancelled by learner ({detail})} other {Cancelled by learner}}",
+      "DOUBLE_CHARGE_REPLACED_ORDER": "{hasDetail, select, yes {Duplicate payment on superseded order ({detail})} other {Duplicate payment on superseded order}}",
+      "EXCESS_AFTER_COUNTED": "{hasDetail, select, yes {Excess payment received after counted settlement ({detail})} other {Excess payment received after counted settlement}}",
+      "FREE_ORDER_PAID": "{hasDetail, select, yes {Free order, payment confirmed automatically ({detail})} other {Free order, payment confirmed automatically}}",
+      "FULFILLED": "{hasDetail, select, yes {Entitlements granted ({detail})} other {Entitlements granted}}",
+      "LATE_PAYMENT_RECLAIMED": "{hasDetail, select, yes {Payment settled after order expiry or cancellation ({detail})} other {Payment settled after order expiry or cancellation}}",
+      "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": "{hasDetail, select, yes {Late payment caused duplicate charge on superseded order ({detail})} other {Late payment caused duplicate charge on superseded order}}",
+      "LATE_PAYMENT_REPLACED_RECLAIMED": "{hasDetail, select, yes {Settled late payment on superseded order as additional purchase ({detail})} other {Settled late payment on superseded order as additional purchase}}",
+      "LATE_SUCCESS_ACCEPTED": "{hasDetail, select, yes {Accepted late-success payment ({detail})} other {Accepted late-success payment}}",
+      "LATE_SUCCESS_ON_FAILED_PAYMENT": "{hasDetail, select, yes {Late-success signal on failed payment ({detail})} other {Late-success signal on failed payment}}",
+      "LATE_SUCCESS_PENDING_REVIEW": "{hasDetail, select, yes {Late-success payment on failed attempt, pending review ({detail})} other {Late-success payment on failed attempt, pending review}}",
+      "LATE_SUCCESS_REJECTED": "{hasDetail, select, yes {Rejected late-success payment for refund ({detail})} other {Rejected late-success payment for refund}}",
+      "MANUAL_RECOVERY": "{hasDetail, select, yes {Manual fulfillment recovery ({detail})} other {Manual fulfillment recovery}}",
+      "ORDER_CANCELLED": "{hasDetail, select, yes {Order cancelled ({detail})} other {Order cancelled}}",
+      "ORDER_CREATED": "{hasDetail, select, yes {Order created ({detail})} other {Order created}}",
+      "ORDER_EXPIRED": "{hasDetail, select, yes {Order expired ({detail})} other {Order expired}}",
+      "ORDER_FULFILLED": "{hasDetail, select, yes {Order fulfilled ({detail})} other {Order fulfilled}}",
+      "ORDER_REFUNDED": "{hasDetail, select, yes {Order refunded ({detail})} other {Order refunded}}",
+      "ORDER_REPLACED": "{hasDetail, select, yes {Order superseded ({detail})} other {Order superseded}}",
+      "PAYMENT_ATTEMPT_CREATED": "{hasDetail, select, yes {Created payment attempt ({detail})} other {Created payment attempt}}",
+      "PAYMENT_FAILED": "{hasDetail, select, yes {Payment attempt failed ({detail})} other {Payment attempt failed}}",
+      "PAYMENT_SUCCEEDED": "{hasDetail, select, yes {Payment succeeded ({detail})} other {Payment succeeded}}",
+      "REFUNDED": "{hasDetail, select, yes {Order refunded ({detail})} other {Order refunded}}",
+      "REFUNDED_BEFORE_FULFILLMENT": "{hasDetail, select, yes {Refunded before entitlement fulfillment ({detail})} other {Refunded before entitlement fulfillment}}",
+      "REFUND_LATE_SUCCESS_AFTER_FAILED": "{hasDetail, select, yes {Refund initiated after late-success retry failure ({detail})} other {Refund initiated after late-success retry failure}}",
+      "REFUND_QUERY_SUCCEEDED_AFTER_FAILED": "{hasDetail, select, yes {VNPAY query confirmed refund succeeded ({detail})} other {VNPAY query confirmed refund succeeded}}",
+      "REFUND_REJECTED_09": "{hasDetail, select, yes {VNPAY rejected refund request (code 09: {detail})} other {VNPAY rejected refund request (code 09)}}",
+      "REFUND_SUCCEEDED_QUERY_MISMATCH": "{hasDetail, select, yes {VNPAY query surfaced refund status mismatch ({detail})} other {VNPAY query surfaced refund status mismatch}}",
+      "REPLACED_BY": "{hasDetail, select, yes {Superseded by new order ({detail})} other {Superseded by new order}}",
+      "REUSE_PENDING_PAYMENT": "{hasDetail, select, yes {Created retry payment attempt on pending order ({detail})} other {Created retry payment attempt on pending order}}",
+      "VNPAY_QUERYDR_AMOUNT_MISMATCH": "{hasDetail, select, yes {VNPAY QueryDR amount mismatch ({detail})} other {VNPAY QueryDR amount mismatch}}",
+      "VNPAY_QUERYDR_STATUS": "{hasDetail, select, yes {VNPAY QueryDR status requires review ({detail})} other {VNPAY QueryDR status requires review}}",
+      "VNPAY_QUERYDR_TXN_REF_MISMATCH": "{hasDetail, select, yes {VNPAY QueryDR txn ref mismatch ({detail})} other {VNPAY QueryDR txn ref mismatch}}"
+    },
+    "lateSuccessResolutions": {
+      "ACCEPTED": "Accepted & fulfilled",
+      "AUTO_EXCESS": "Auto-marked excess",
+      "PENDING": "Pending review",
+      "REJECTED": "Rejected & refunded"
+    },
+    "list": {
+      "attentionCountTag": "{count, plural, one {# attention flag} other {# attention flags}}",
+      "cardAccount": "Account: {username}",
+      "cardCreated": "Created: {date}",
+      "cardNotPaid": "Unpaid",
+      "cardPaid": "Paid: {date}",
+      "emptyDescription": "No orders have been placed yet.",
+      "emptyTitle": "No orders yet",
+      "errorDescription": "Could not load the order list. Please try again.",
+      "errorTitle": "Failed to load orders",
+      "filteredEmptyDescription": "No orders match the active search term or filter criteria.",
+      "filteredEmptyTitle": "No matching orders",
+      "loading": "Loading orders...",
+      "needsReviewTag": "Needs review",
+      "offlineDescription": "Your device is offline, so order loading is paused.",
+      "offlineTitle": "Offline",
+      "retry": "Retry",
+      "tableLabel": "Orders list table",
+      "totalItems": "{total, plural, one {Total # order} other {Total # orders}}"
+    },
+    "meta": {
+      "buyersTitle": "Exam buyers · Thi 360",
+      "detailTitle": "Order {code} · Thi 360",
+      "listTitle": "Orders · Thi 360"
+    },
+    "nav": {
+      "backToOrders": "Back to orders",
+      "buyers": "Exam buyers",
+      "openBundle": "Open bundle",
+      "openExam": "Open exam",
+      "orders": "Orders",
+      "viewOrder": "View details",
+      "viewOrderTransactions": "View order {code} transactions"
+    },
+    "paymentClassifications": {
+      "COUNTED": "Counted for order",
+      "EXCESS": "Excess (refundable)",
+      "EXCESS_REFUNDED": "Excess (refunded)",
+      "PENDING_RECONCILE": "Pending reconcile",
+      "UNPAID": "Unpaid"
+    },
+    "paymentMethods": {
+      "FREE": "Free",
+      "VNPAY": "VNPAY"
+    },
+    "paymentStatuses": {
+      "CREATED": "Created",
+      "EXPIRED": "Expired",
+      "FAILED": "Failed",
+      "FREE": "Free",
+      "LATE_SUCCESS": "Late success",
+      "PENDING": "Pending",
+      "SUCCEEDED": "Succeeded",
+      "UNKNOWN": "Unknown"
+    },
+    "reconciliation": {
+      "generatedAt": "Generated at {time}",
+      "latestDate": "Latest reconciliation date: {date}",
+      "notRunYet": "Daily reconciliation has not run yet",
+      "offlineError": "You are offline; could not load the latest reconciliation report.",
+      "paidUnfulfilled": "Paid unfulfilled",
+      "pendingLateSuccess": "Pending late success",
+      "retry": "Retry",
+      "title": "Daily payment reconciliation",
+      "triggerHint": "Reports are generated automatically by the end-of-day reconciliation job.",
+      "unavailableError": "Could not load the latest reconciliation report.",
+      "unknownPayment": "Unknown payment over 24h",
+      "unrefundedExcess": "Unrefunded excess payment"
+    },
+    "refundKinds": {
+      "API": "API (VNPAY)",
+      "MANUAL": "Manual record"
+    },
+    "refundRowStatuses": {
+      "FAILED": "Failed",
+      "PROCESSING": "Processing",
+      "SUCCEEDED": "Succeeded",
+      "UNKNOWN": "Unknown"
+    },
+    "refundStatuses": {
+      "FULL": "Full refund",
+      "IN_PROGRESS": "In progress",
+      "NONE": "None",
+      "PARTIAL": "Partial refund",
+      "UNKNOWN": "Unknown"
+    },
+    "reviewReasons": {
+      "DUPLICATE_UNREFUNDED": "Duplicate unrefunded payment detected",
+      "FULFILLMENT_EXHAUSTED": "Fulfillment retries exhausted without completing",
+      "LATE_SUCCESS_PENDING": "Late-success payment requires review",
+      "PAYMENT_UNKNOWN_OVER_24H": "Payment remained unknown past 24 hours",
+      "REFUND_UNKNOWN": "Refund status remains unknown"
+    },
+    "states": {
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired",
+      "FULFILLED": "Fulfilled",
+      "PAID": "Paid · Unfulfilled",
+      "PENDING_PAYMENT": "Pending payment",
+      "REFUNDED": "Refunded",
+      "REPLACED": "Replaced"
+    },
+    "statusFallback": {
+      "unknown": "Unknown"
+    },
+    "title": "Orders"
   },
   "rbac": {
     "access": {
@@ -1805,13 +2676,25 @@
     },
     "auditActions": {
       "AUTHZ_BULK_APPLIED": "Bulk authorization applied",
+      "BUNDLE_CREATED": "Bundle created",
+      "BUNDLE_DISCONTINUED": "Bundle discontinued",
+      "BUNDLE_PUBLISHED": "Bundle published",
+      "BUNDLE_UPDATED": "Bundle updated",
       "CLASS_MEMBER_ADDED": "Added to class",
       "CLASS_MEMBER_REMOVED": "Removed from class",
       "CLASS_MEMBER_TRANSFERRED": "Transferred class",
+      "ENTITLEMENT_REVOKED": "Entitlement revoked",
       "LOGIN": "Sign in",
       "LOGIN_FAILED": "Failed sign-in",
       "LOGOUT": "Sign out",
+      "ORDER_FULFILLED_MANUALLY": "Manually fulfilled order",
       "PASSWORD_CHANGED": "Password changed",
+      "PAYMENT_LATE_SUCCESS_ACCEPTED": "Late-success payment accepted",
+      "PAYMENT_LATE_SUCCESS_REJECTED": "Late-success payment moved to refund",
+      "REFUND_FAILED": "Refund failed",
+      "REFUND_RECORDED_MANUALLY": "Refund recorded manually",
+      "REFUND_REQUESTED": "Refund requested",
+      "REFUND_SUCCEEDED": "Refund succeeded",
       "SESSION_REVOKED": "Session revoked",
       "USER_ACTIVATED": "Account activated",
       "USER_CREATED": "Account created",
@@ -2033,17 +2916,35 @@
       "title": "Change history"
     },
     "learning": {
+      "attemptNumber": "Attempt #{number}",
+      "attemptStatuses": {
+        "GRADING": "Grading",
+        "GRADING_ERROR": "Grading error",
+        "IN_PROGRESS": "In progress",
+        "PENDING_REVIEW": "Awaiting grading",
+        "SCORED": "Scored"
+      },
+      "attemptsTable": {
+        "ariaLabel": "Student exam attempt history",
+        "columns": {
+          "attempt": "Attempt",
+          "exam": "Exam",
+          "score": "Score",
+          "startedAt": "Started at",
+          "status": "Status"
+        }
+      },
       "blocks": {
         "assessments": {
           "description": "Student competency assessment results will appear here once the exam module is connected.",
           "title": "Competency assessments"
         },
         "attempts": {
-          "description": "Student exam attempts and submissions will appear here once the exam module is connected.",
+          "description": "This student has no exam attempts yet.",
           "title": "Exam attempt history"
         },
         "entitlements": {
-          "description": "Student exam entitlements and packages will appear here once the exam module is connected.",
+          "description": "This student has no exam entitlements yet.",
           "title": "Entitlements & exam packages"
         },
         "practice": {
@@ -2056,6 +2957,24 @@
         }
       },
       "emptyTitle": "No data yet",
+      "entitlementStatuses": {
+        "ACTIVE": "Active",
+        "EXHAUSTED": "Exhausted",
+        "IN_USE": "In use",
+        "REVOKED": "Revoked"
+      },
+      "entitlementsTable": {
+        "ariaLabel": "Student exam entitlements",
+        "columns": {
+          "attemptsLeft": "Remaining",
+          "attemptsTotal": "Granted",
+          "attemptsUsed": "Used",
+          "exam": "Exam",
+          "status": "Status"
+        },
+        "reservedLabel": "Reserved",
+        "revokedLabel": "Revoked"
+      },
       "errorDescription": "Could not load learning profile. Please try again.",
       "errorTitle": "Could not load learning profile",
       "tabLabel": "Learning profile"
@@ -2144,12 +3063,6 @@
       "usernameRequired": "Please enter a username.",
       "usernameReserved": "This username is reserved by the system."
     }
-  },
-  "mockData": {
-    "title": "Sample data.",
-    "description": "This screen is not connected to the backend yet; changes last until you reload the page.",
-    "placeholderTitle": "Screen in progress",
-    "placeholderDescription": "The {screen} screen is being built in the mockup round."
   },
   "content": {
     "questionType": {
@@ -3844,7 +4757,10 @@
       "close": "Close",
       "partChange": "{before} → {after}",
       "partNone": "none yet",
-      "partWithMeta": "{name} · {meta}"
+      "partWithMeta": "{name} · {meta}",
+      "typeAny": "Question type not set",
+      "typeChange": "{type}: {from, number} → {to, plural, one {# question} other {# questions}}",
+      "typeNew": "{type}: {count, plural, one {# question} other {# questions}}"
     },
     "structure": {
       "title": "Structure and matrix",
@@ -3967,7 +4883,9 @@
           "blockRemoved": "Removed group {name} from {subject}.",
           "blockRenamed": "Renamed group {from} to {to}.",
           "blockSettings": "{name}: group settings changed.",
+          "blocksReordered": "{subject}: group order changed.",
           "empty": "not set",
+          "partAdded": "Added part {name}.",
           "partNumber": {
             "durationMinutes": "{part}: duration {from} → {to}.",
             "maxPoints": "{part}: maximum points {from} → {to}.",
@@ -3975,10 +4893,14 @@
             "questionCountOnPaper": "{part}: questions on paper {from} → {to}.",
             "questionCountRequired": "{part}: questions to answer {from} → {to}."
           },
+          "partRemoved": "Removed part {name}.",
           "partRenamed": "Renamed part {from} to {to}.",
           "partSettings": "{part}: part settings changed.",
+          "sectionAdded": "Added subject {subject}.",
           "sectionCount": "{subject}: questions {from} → {to}.",
-          "sectionSettings": "{subject}: subject targets changed."
+          "sectionRemoved": "Removed subject {subject}.",
+          "sectionSettings": "{subject}: subject targets changed.",
+          "structureChanged": "Order or other settings of the structure changed."
         },
         "changesIntro": "Unsaved changes:",
         "changesMore": "and {count, plural, one {# more change} other {# more changes}}.",
@@ -4404,10 +5326,7 @@
         "matches": "Matches the subject's question count",
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
-          "label": "Questions in this subject",
-          "hint": "The question count comes from the overview; the part and its groups must match.",
-          "locked": "Template locks the count",
-          "lockedHint": "The template keeps the question count of each subject. The allocation inside the subject can still be edited."
+          "locked": "Template locks the count"
         },
         "totalChange": {
           "grades": "Grades: {values}",
@@ -4556,6 +5475,160 @@
         }
       }
     },
+    "listing": {
+      "buyersLink": "Buyers",
+      "loading": "Loading listing",
+      "errorTitle": "Could not load the listing",
+      "errorDescription": "Check your connection and try again.",
+      "retry": "Try again",
+      "formLabel": "Listing",
+      "updatedAt": "Last edited: {time}",
+      "effectNote": "Price, attempts and benefits only take effect when published again. Editing the listing does not require a new configuration check.",
+      "readOnly": "You can only view the listing. Editing needs permission to modify exams.",
+      "save": "Save",
+      "saved": "Listing saved.",
+      "counter": "{count, number} / {max, number} characters",
+      "currency": "VND",
+      "sections": {
+        "intro": "Introduction",
+        "price": "Price and attempts",
+        "benefit": "Benefits after purchase",
+        "result": "Result view"
+      },
+      "fields": {
+        "summary": "Short description on the card",
+        "description": "Description",
+        "objectives": "Objectives",
+        "audience": "Suitable audience",
+        "price": "List price",
+        "attempts": "Attempts per purchase",
+        "benefitNote": "Limits of the benefits"
+      },
+      "hints": {
+        "description": "Required to publish. Shown on the detail page; the same field as Description in the Details tab.",
+        "price": "Required to publish. Taxes and fees included. Greater than 0{hasMin, select, yes { and not below {min} VND (the payment gateway minimum)} other {}}.",
+        "attempts": "Required to publish. From {min, number} to {max, number}. Buying again adds to the attempts left."
+      },
+      "cover": {
+        "label": "Cover image",
+        "alt": "Exam cover image",
+        "uploading": "Uploading the image",
+        "current": "Selected cover image",
+        "none": "No cover image",
+        "choose": "Choose image",
+        "replace": "Replace image",
+        "remove": "Remove image",
+        "hint": "JPG, PNG or WEBP · up to {max, number} MB · short side at least 480 px, at most 4,096 × 4,096 px. Without an image the card uses a default one (only a warning when publishing).",
+        "keep": "The current image is kept.",
+        "errors": {
+          "type": "File {name} is not a supported format. Choose a JPG, PNG or WEBP image.",
+          "tooLarge": "The image is larger than {max, number} MB. Choose a smaller image.",
+          "empty": "File {name} is empty. Choose another file.",
+          "dimensionsSmall": "The short side of the image is below 480 px. Choose a larger image.",
+          "dimensionsLarge": "The image is wider or taller than 4,096 px. Choose a smaller image.",
+          "corrupt": "File {name} is damaged or cannot be read completely. Choose another file.",
+          "forbidden": "You do not have permission to change the cover image.",
+          "generic": "Could not upload the image. Try again."
+        }
+      },
+      "benefit": {
+        "legend": "Includes",
+        "items": {
+          "benefitAiExplanation": {
+            "label": "AI explanations",
+            "description": "Students ask the AI why an answer is right or wrong once results are available."
+          },
+          "benefitStrengthWeakness": {
+            "label": "Strengths and weaknesses review",
+            "description": "Summary by part, subject and knowledge area of the attempt."
+          },
+          "benefitPractice": {
+            "label": "Extra practice",
+            "description": "A question set on the knowledge areas that are still weak."
+          }
+        }
+      },
+      "result": {
+        "legend": "After grading, students can see",
+        "options": {
+          "SCORE": {
+            "label": "Score only",
+            "description": "Total score, and scores by part and subject."
+          },
+          "SCORE_AND_ANSWERS": {
+            "label": "Score and answers",
+            "description": "Adds the correct answer of each question."
+          },
+          "FULL_SOLUTION": {
+            "label": "Score, answers and solutions",
+            "description": "Adds the detailed solution of each question."
+          }
+        },
+        "note": "Results and history stay available. For exams with essay questions, the total score appears once a grader has finished grading."
+      },
+      "validation": {
+        "summaryMax": "The short description can have at most {max, number} characters.",
+        "descriptionMax": "The description can have at most {max, number} characters.",
+        "objectivesMax": "The objectives can have at most {max, number} characters.",
+        "audienceMax": "The audience can have at most {max, number} characters.",
+        "benefitNoteMax": "The limits can have at most {max, number} characters.",
+        "priceInvalid": "The price is a whole number of 0 VND or more.",
+        "attemptsRange": "Attempts from {min, number} to {max, number}.",
+        "tooLong": "At most {max, number} characters.",
+        "fieldInvalid": "This value is not valid."
+      },
+      "errors": {
+        "coverNotFound": "The selected cover image can no longer be used. Choose the image again, then save.",
+        "invalid": "The listing is not valid. Check the fields, then save.",
+        "saveFailed": "Could not save the listing. Try again."
+      },
+      "conflict": {
+        "title": "Someone else just edited this exam. The latest version has been loaded.",
+        "description": "Your changes were not saved. Review the fields and enter the changes again.",
+        "lastEdit": "Last edited: {time}.",
+        "dismiss": "Dismiss notice"
+      },
+      "strip": {
+        "title": "On sale: {price} · Changes when published",
+        "detail": "The working copy differs from the version on sale in: {fields}.{hasVersion, select, yes { Students keep buying v{version} until you publish again.} other { Students keep buying the version on sale until you publish again.}}",
+        "compare": "Compare with {hasVersion, select, yes {v{version}} other {the version on sale}}",
+        "money": "{amount} VND",
+        "empty": "not set",
+        "fields": {
+          "listPriceVnd": "price ({from} → {to})",
+          "attemptsGranted": "attempts ({from} → {to})",
+          "resultView": "result view",
+          "benefits": "benefits",
+          "description": "description",
+          "summary": "short description",
+          "objectives": "objectives",
+          "audience": "audience",
+          "coverAssetId": "cover image"
+        }
+      },
+      "preview": {
+        "title": "Card preview",
+        "description": "As students see it in the catalog after publishing. Uses the list price, before promotions.",
+        "money": "{amount} VND",
+        "noPrice": "No price yet",
+        "meta": "{questions, number} questions · {minutes, number} minutes{hasAttempts, select, yes { · {attempts, number} attempts} other {}}",
+        "buy": "Buy exam",
+        "detail": "View details",
+        "serving": "On sale{hasVersion, select, yes { (v{version})} other {}}",
+        "servingNone": "On sale",
+        "notPublished": "Not published",
+        "afterPublish": "After publishing",
+        "compareValue": "{price}{hasAttempts, select, yes { · {attempts, number} attempts} other {}}"
+      },
+      "check": {
+        "title": "Listing check",
+        "ready": "Price, attempts and description are enough to publish",
+        "hasCover": "Has a cover image",
+        "errorPrefix": "Error: ",
+        "warningPrefix": "Warning: ",
+        "toReview": "See it in the Check tab"
+      }
+    },
     "review": {
       "title": "Check and preview",
       "tabs": {
@@ -4571,7 +5644,8 @@
       "staleReason": {
         "STRUCTURE_CHANGED": "The exam structure changed after this check. Check again before publishing.",
         "CONFIG_CHANGED": "The exam configuration changed after this check. Check again before publishing.",
-        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing."
+        "SOURCE_CHANGED": "The question source changed after this check. Check again before publishing.",
+        "RULES_CHANGED": "The check rules changed after this check. Run the check on the whole exam again before publishing."
       },
       "runError": "The check could not run. Try again.",
       "live": {
@@ -4660,7 +5734,7 @@
         "title": "{path}: results for each subject set the learner can pick",
         "summary": "{total, plural, one {# case} other {# cases}}: {valid, number} valid, {invalid, number} invalid, {unconfirmed, number} unconfirmed.",
         "rule": "Learners pick {choose, number} subjects. Two subjects of the same group (natural or social) get {high, number} questions each and the other subject gets {low, number}. When all {choose, number} subjects are in one group, one of them gets {low, number}: that subject set has {choose, number} splits and every split is checked.",
-        "tableLabel": "Check results for each subject set of {path}",
+        "tableLabel": "Check results for each subject set",
         "empty": "This path has no subject choice yet",
         "columns": {
           "subjects": "Subjects and questions per subject",
@@ -4672,6 +5746,8 @@
         "affected": "Affected codes:",
         "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
         "codeGroup": "Code {code}",
+        "listingBlocked": "Cannot publish yet: the listing has {count, plural, one {# error} other {# errors}}.",
+        "listingUnconfirmed": "Not conclusive: the listing could not be checked.",
         "counters": {
           "errors": "Errors",
           "sections": "Subjects checked",
@@ -4711,6 +5787,74 @@
         "warningsTitle": "Warnings · do not block publishing ({count, number})",
         "wholeExam": "Whole exam"
       },
+      "listing": {
+        "title": "Listing",
+        "description": "Checked separately against the working copy when the tab opens, not from the saved configuration check. Publishing checks it again.",
+        "edit": "Edit listing",
+        "detailLink": "See details",
+        "status": {
+          "PASS": "Passed",
+          "WARN": "{count, plural, one {# warning} other {# warnings}}",
+          "FAIL": "{count, plural, one {# error} other {# errors}}"
+        },
+        "rowStatus": {
+          "pass": "Passed",
+          "error": "Error",
+          "warning": "Warning"
+        },
+        "rows": {
+          "price": {
+            "name": "List price",
+            "pass": "A price that can be published is set."
+          },
+          "attempts": {
+            "name": "Attempts per purchase",
+            "pass": "Attempts per purchase are set."
+          },
+          "description": {
+            "name": "Description",
+            "pass": "A description is set; it shows on the detail page."
+          },
+          "cover": {
+            "name": "Cover image",
+            "pass": "A cover image is set."
+          }
+        },
+        "tilePass": "Price, attempts, description and cover image passed.",
+        "unavailableTitle": "Could not compute the Listing group",
+        "unavailable": "Could not load the listing check result.",
+        "retry": "Try again",
+        "issue": {
+          "LISTING_PRICE_MISSING": "The list price is not set.",
+          "LISTING_PRICE_ZERO": "The list price must be above 0 VND. An exam is only free through a voucher.",
+          "LISTING_PRICE_BELOW_MIN": "The list price is below the payment gateway minimum{hasMin, select, yes { of {min} VND} other {}}.",
+          "LISTING_ATTEMPTS_MISSING": "Attempts per purchase are not set.",
+          "LISTING_DESCRIPTION_MISSING": "There is no description.",
+          "LISTING_COVER_MISSING": "There is no cover image; the card uses a default one. Does not block publishing.",
+          "UNKNOWN": "The listing is not ready to publish."
+        }
+      },
+      "manual": {
+        "title": "Manually graded questions",
+        "tag": "Warning · does not block publishing",
+        "description": "This exam has essay questions. The total score appears once a grader has finished grading.",
+        "caption": "Parts, subjects and blocks with essay questions",
+        "columns": {
+          "part": "Part",
+          "subject": "Subject",
+          "block": "Block",
+          "paths": "Choice path",
+          "location": "Location"
+        },
+        "badge": "Manual grading",
+        "allPaths": "Every choice path",
+        "openAria": "Open block {block} in Structure and matrix",
+        "openTooltip": "Open block",
+        "notes": {
+          "queue": "Essay questions with an answer go to the essay grading queue; an empty essay scores 0.",
+          "source": "A source question without grading instructions or criteria is still a blocking error (Source group)."
+        }
+      },
       "groups": {
         "title": "Check groups",
         "passed": "Passed",
@@ -4740,7 +5884,7 @@
         "title": "Details by block",
         "description": "Matching source is counted before resolving overlaps between quotas, so enough source per row does not guarantee a paper.",
         "tabsLabel": "Choice path",
-        "tableLabel": "Details by block for {path}",
+        "tableLabel": "Details by block",
         "empty": "This path has no question block yet",
         "part": "Part {order, number}",
         "requiredSets": "{questions, number} ({sets, number} sets × {size, number})",
@@ -4805,7 +5949,7 @@
         "DISTRIBUTION_DEVIATION": "{block}: the reference distribution{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
         "EXAM_QUOTA_DEVIATION": "The reference exam quota{hasBucket, select, yes { {bucket}} other {}} deviates: reference {required, number}, actual {available, number}.",
         "ITEM_SHAPE_SHORTAGE": "Block {block}: the bank {hasCount, select, yes {has only {available, number} questions} other {does not have enough questions}} {shapeKind, select, MATCHING {with a matching structure of {left, number} left items – {right, number} right options} STATEMENTS {with exactly {statements, number} statements} other {of the required shape}}{hasCount, select, yes {; the block needs {required, number}} other {}}.",
-        "MANUAL_GRADING_REQUIRED": "Block {block} has essay questions: its points are only available after manual grading.",
+        "MANUAL_GRADING_REQUIRED": "Block {block} has manually graded questions. The total score appears once a grader has finished grading.",
         "OMITTED_GROUPS_PRESENT": "Block {block} is temporarily skipped: the exam's maximum score already excludes it.",
         "QUESTION_NOT_PLAYABLE": "Block {block}: question {codes} is missing an answer key or a scoring rule, or refers to a resource that no longer exists.",
         "REQUIRED_BASIS_UNSUPPORTED": "{block}: a required distribution counts questions only; the question-part or point units are for reference distributions.",
@@ -4823,8 +5967,12 @@
         "OMITTED_BLOCK_LOCKED": "Block {block}: a group omitted by the template is not in V1 and cannot be turned back on. Turn this group off.",
         "SCALE_INCLUDES_EXCLUDED_PART": "{hasExcluded, select, yes {The scale is {required, number}, the total points of the exam are {available, number}. The {excluded, number}-point difference equals the points of the omitted part {part}. Set the scale to {available, number}.} other {The scale includes the points of the omitted part {part}.}}",
         "DISPLAY_SEGMENT_MISMATCH": "{part}: {hasSegment, select, yes {segment {segment}} other {a segment}} {dimension, select, COMMANDS {has {available, number} commands while {required, number} are declared} POINTS {has {available, number} points while {required, number} are declared} other {differs from its declared value}}.",
+        "SECTION_SET_COUNT_RANGE": "Subject {subject}: the number of sets must be 1 to 2, with 3 sub-questions per set.",
+        "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required.",
+        "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the item with this id, then check again.",
         "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} other {Rules {rules} conflict and cannot all hold.}}",
-        "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule."
+        "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule.",
+        "STATEMENT_POINTS_UNEVEN": "Block {block}: question {codes} awards unequal points to its True/False statements, while a block scored per statement needs every statement to carry the same points. Replace this question."
       },
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -4886,7 +6034,19 @@
             "section": "Subjects"
           },
           "config": "Exam settings",
+          "listing": "Listing",
           "field": {
+            "audience": "Suitable audience",
+            "attemptsGranted": "Attempts per purchase",
+            "benefitAiExplanation": "Benefit: AI explanations",
+            "benefitNote": "Limits of the benefits",
+            "benefitPractice": "Benefit: extra practice",
+            "benefitStrengthWeakness": "Benefit: strengths and weaknesses review",
+            "coverAssetId": "Cover image",
+            "listPriceVnd": "List price",
+            "objectives": "Objectives",
+            "resultView": "Result view",
+            "summary": "Short description on the card",
             "answerQuotas": "Answer-type targets",
             "childAnswerType": "Sub-question type",
             "choiceGroup": "Subject group",
@@ -4981,6 +6141,7 @@
       "tabs": {
         "general": "Details",
         "structure": "Structure and matrix",
+        "listing": "Listing",
         "review": "Check and preview",
         "versions": "Versions and publishing"
       },
@@ -5234,6 +6395,7 @@
         "requiredNone": "—",
         "requiredAtLeast": "at least {value}",
         "requiredDropped": "{value} (subject dropped {count, plural, one {# question} other {# questions}})",
+        "requiredOriginal": "{value} ({original}, dropped {count, plural, one {# question} other {# questions}})",
         "result": {
           "MISSING_LABEL": "Missing label",
           "OK": "Met",
@@ -5244,6 +6406,7 @@
         "scope": {
           "EXAM": "Whole exam"
         },
+        "structureUnavailable": "The exam structure could not be loaded, so reference topic rows cannot be compared yet.",
         "tableLabel": "Required and actual values of the trial paper",
         "title": "Required / Actual / Difference",
         "unit": {
@@ -5265,8 +6428,10 @@
         "showShuffled": "Show shuffled order"
       },
       "originalOrderNote": "Showing the original order: questions as the solver picked them, options as authored. The real paper uses the order shuffled by the seed.",
-      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · kept for {minutes, number} minutes · questions are logged as preview, no attempt is used",
+      "resultMeta": "{questions, plural, one {# question} other {# questions}} · seed {seed} · {retention} · questions are logged as preview, no attempt is used",
       "resultTitle": "Trial paper · {label}",
+      "retention": "kept for {minutes, number} minutes{state, select, left { ({left, number} min left)} expired { (expired)} other {}}",
+      "retentionExtended": "extended until {time}{state, select, left { ({left, number} min left)} expired { (expired)} other {}}",
       "scope": {
         "count": "Questions in the subject",
         "countOption": "{count, number} questions{full, select, yes {} other { (1 dropped)}}",
@@ -5280,6 +6445,15 @@
         "section": "Subject",
         "sectionOption": "{subject} · {part}",
         "sectionWithCount": "{name} · {count, number} questions"
+      },
+      "trial": {
+        "button": "Try as student",
+        "expiredError": "The trial paper has expired. Generate a new preview to try as student.",
+        "genericError": "Could not start the trial session. Please try again.",
+        "liveOpened": "Opened the trial session in a new tab.",
+        "popupBlocked": "Your browser blocked the new tab. Use the link to open the trial session.",
+        "popupBlockedLink": "Open trial session in a new tab",
+        "unavailable": "No trial paper available"
       }
     },
     "publish": {
@@ -5295,12 +6469,22 @@
         "noteMax": "The note can have at most {max, number} characters."
       },
       "errors": {
+        "PUBLISH_ALL_PATHS_REQUIRED": "This exam has choices made after the attempt starts, so every path must be published at once.",
+        "allPaths": {
+          "PATH_SERVING_INVALID": "{path}: serving but no longer valid. Fix the configuration, then check again.",
+          "PATH_SERVING_MISSING_FROM_CHECK": "{path}: serving but missing from the latest check. Check the configuration again.",
+          "PATH_VALID_NOT_SELECTED": "{path}: valid but not selected. Select this path to publish.",
+          "unknownPath": "A choice path"
+        },
+        "listing": "The listing is not ready to publish:",
+        "listingLink": "Edit listing",
         "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
         "checkRequired": {
           "NO_CHECK": "The exam has not been checked yet. Check the configuration, then publish.",
           "STRUCTURE_CHANGED": "The exam structure changed after the last check. Check again, then publish.",
           "CONFIG_CHANGED": "The exam configuration changed after the last check. Check again, then publish.",
           "SOURCE_CHANGED": "The question source changed after the last check. Check again, then publish.",
+          "RULES_CHANGED": "The check rules were updated after the latest check. Check the whole exam again, then publish.",
           "PATH_NOT_VALID": "A choice path is no longer valid. Check the configuration again, then publish.",
           "UNKNOWN": "The configuration must be checked again before publishing."
         },
@@ -5338,6 +6522,8 @@
       "description": "Enter the information, the part structure and the subject combinations. Question blocks and matrices come next.",
       "backToList": "Exam list",
       "formAriaLabel": "Create exam",
+      "backToStructure": "Back to structure",
+      "editing": "Editing exam {code}. Save and continue to return to the Structure and matrix step.",
       "cancel": "Cancel",
       "submit": "Save and continue",
       "success": "Exam {code} created.",
@@ -5613,11 +6799,18 @@
         "durationHintPrefilled": "Prefilled from the template; you can edit it.",
         "durationHintPartCut": "A by-part exam does not take the whole-subject duration.",
         "durationHintEmpty": "This subject's template leaves the duration empty.",
+        "buildModeChange": {
+          "title": "Change how the exam is built?",
+          "description": "Changing how the exam is built recreates the structure as for a new exam. The current structure, matrix and question groups will be replaced.",
+          "confirm": "Recreate structure",
+          "cancel": "Go back"
+        },
         "buildModeLegend": "How to build the exam",
         "buildModeStandard": "Use the {kind} subject structure",
         "buildModeStandardHint": "Loads the full subject structure from the default template.",
         "buildModeReview": "Set up a review exam",
         "buildModeReviewHint": "One part, one subject: enter the question count, duration and score scale.",
+        "buildModePublished": "This exam has a published version; to change how it is built, create a new exam",
         "labelFull": "{kind} · Full exam",
         "labelPart": "{kind} · Part {scope}",
         "labelSubject": "{kind} · Subject {subject}",
@@ -5651,6 +6844,8 @@
       "overview": {
         "title": "Overview structure",
         "description": "Numbers come from the default template “{template}”; edit them right on the row. Changing a number here does not reload the template.",
+        "descriptionReview": "Numbers come from the {template}; edit them right on the row. Changing a number here does not reload the template.",
+        "reviewTemplate": "{kind} review template",
         "descriptionNoTemplate": "No default template: enter the question counts, durations and points of the parts right on the row.",
         "noTemplate": "There is no default template for this choice. You can still create the exam: its structure holds only the parts in the table, with no groups yet.",
         "regionLabel": "Exam structure overview table",
@@ -5669,7 +6864,8 @@
           "blockPoints": "Max points",
           "commands": "Prompts",
           "partRows": "Part and source rows",
-          "percentExamCustom": "Share of the exam"
+          "percentExamCustom": "Share of the exam",
+          "maxScore": "Maximum score"
         },
         "cell": {
           "questionCount": "Questions of {name}",
@@ -5744,6 +6940,8 @@
       "meterExact": "{allocated, number} of {count, number} questions, matches",
       "over": "{count, plural, one {Over by # question} other {Over by # questions}}",
       "under": "{count, plural, one {Short by # question} other {Short by # questions}}",
+      "totalOver": "over",
+      "totalUnder": "short",
       "matches": "Matches the block's question count",
       "issues": {
         "invalidValue": "The matrix has negative values or non-whole question counts.",
@@ -5911,7 +7109,7 @@
       "editAria": "Edit rule: {sentence}",
       "empty": "No rules yet. Positions you do not declare are drawn at random from the exam structure.",
       "group": {
-        "allMode": "The subject is set to Whole exam: this group has no MAPID limit.",
+        "allMode": "The subject is set to No MAPID limit: this group has no MAPID limit.",
         "managed": "The group's knowledge scope and topic quotas are set by the subject's MAPID rules.",
         "none": "No MAPID rule applies to this group yet.",
         "open": "Open the MAPID rules table",
@@ -5928,7 +7126,7 @@
       },
       "limit": "The limit of {max, number} rules is reached.",
       "mode": {
-        "all": "Whole exam (no MAPID limit)",
+        "all": "No MAPID limit",
         "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",
         "legend": "Knowledge scope",
         "matrix": "By MAPID matrix",
@@ -6020,7 +7218,6 @@
         "REQUIRED": "Required",
         "REFERENCE": "Reference",
         "basisLocked": "A required distribution must count questions. Change the unit to questions first.",
-        "fixedRequired": "HSA exam: papers are always generated from the matrix",
         "expertPending": "Waiting for expert confirmation: the English grade split is for reference only.",
         "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply.",
         "undeclared": "This distribution is not declared, so it does not constrain generation."
@@ -6240,183 +7437,623 @@
         "cancel": "Cancel",
         "submit": "Add branch"
       }
+    },
+    "subjectForm": {
+      "common": {
+        "blocked": "Fix the remaining errors before saving or checking.",
+        "countPercent": {
+          "count": "Questions",
+          "invalidNumber": "Enter a non-negative number.",
+          "percent": "Percent (%)",
+          "preview": "{percent, number}% of {total, plural, one {# question} other {# questions}} = {count, plural, one {# question} other {# questions}}",
+          "setNotWhole": "This percentage gives {count, plural, one {# question} other {# questions}}, which cannot be split into sets of {size, plural, one {# question} other {# questions}}",
+          "share": "{percent, number}%"
+        },
+        "enforcement": {
+          "apply": "Apply when generating",
+          "legend": "Enforcement of {name}",
+          "notDeclared": "Not declared",
+          "reference": "Reference",
+          "referenceOnly": "For comparison only",
+          "required": "Required"
+        },
+        "fullFormNotice": "This subject uses the full setup because it has settings the compact form cannot show.",
+        "lock": {
+          "answerType": "The question type is set by the template and cannot change",
+          "multiSubject": "A quota across several subjects is for comparison only",
+          "omitted": "This group is omitted by the template and cannot be turned back on",
+          "promptBasis": "A distribution by prompt is for comparison only",
+          "rowCounts": "Standard exam template: the quantity cannot change",
+          "rowHasConditions": "This row has its own conditions; remove them before splitting",
+          "rowNoSetSize": "This row has no fixed set size",
+          "rowOmitted": "This row is temporarily skipped",
+          "templateTotal": "The section total comes from the template and cannot change"
+        }
+      },
+      "matrix": {
+        "distribution": {
+          "addCondition": "Add condition",
+          "conditionMenu": "Extra conditions",
+          "declared": "Declared {declared, number}/{total, number}",
+          "difficulty": "Difficulty",
+          "grade": "Grade",
+          "gradeCondition": "Grade",
+          "hint": "Leave a cell empty when you do not need to control it.",
+          "percentAria": "Percentage of {label}",
+          "percentNeeds100": "Total {total, number}%, needs 100%",
+          "percentTotal": "Total {total, number}%",
+          "title": "Grade and difficulty"
+        },
+        "errors": {
+          "choiceBelowChildren": "Fewer than the sub-questions of the sets ({children, number})",
+          "percentTotal": "Total {total}%, needs 100%",
+          "setMin": "At least 1 set",
+          "setRange": "Sets must be between {min, number} and {max, number}",
+          "shortAnswerMin": "At least {min, plural, one {# fill-in answer} other {# fill-in answers}} needed"
+        },
+        "hsa": {
+          "allocationCount": "MAPID allocated: {allocated, number} / {total, plural, one {# question} other {# questions}} · remaining free: {free, plural, one {# question} other {# questions}}",
+          "allocationOver": "Exceeds the subject total by {over, plural, one {# question} other {# questions}}",
+          "allocationUnknown": "MAPID allocated: {allocated, plural, one {# question} other {# questions}}",
+          "gradeOptionalHint": "Optional for this subject.",
+          "material": {
+            "add": "Add source material condition",
+            "hint": "Material tag conditions apply only to the question set group.",
+            "remove": "Remove source material condition",
+            "title": "Source material condition"
+          },
+          "notApplied": "Not applied",
+          "orderNote": "Topic row order is for declaration only and does not fix question positions in the exam.",
+          "roleScopeLabel": "Source scope",
+          "strandTitle": "{subject} knowledge strands"
+        },
+        "scope": {
+          "addQuota": "Add topic quota",
+          "addQuotaHint": "Opens the table of minimum questions per topic.",
+          "hint": "Limit where the questions come from, by MAPID.",
+          "title": "Scope and topic quotas"
+        },
+        "setSource": {
+          "add": "Add condition",
+          "added": "Added",
+          "empty": "No condition: the sets follow the scope of the subject.",
+          "groupName": "Question sets",
+          "hint": "MAPID and tags for the question sets only; single questions are not affected.",
+          "kind": {
+            "MAPID": "MAPID",
+            "TAGS": "Source tags"
+          },
+          "kindHint": {
+            "MAPID": "Only take sets under these MAPIDs",
+            "TAGS": "Filter sets by tag, for example the kind of passage"
+          },
+          "menuLabel": "Conditions of the set source",
+          "remove": "Remove",
+          "removeAria": "Remove the {kind} condition of the set source",
+          "title": "Set source"
+        },
+        "structure": {
+          "children": "Sub-questions in sets",
+          "childrenHint": "Total number of sub-questions; whole sets are chosen automatically",
+          "choice": "Multiple choice",
+          "choiceHint": "Includes the sub-questions of the sets",
+          "choiceTotal": "Multiple choice (with sub-questions)",
+          "choiceTotalHint": "Calculated: single questions plus sub-questions",
+          "fill": "Fill-in answer",
+          "fillMin": "At least {min, number}",
+          "hint": "Enter the number of questions of each kind. Single questions are calculated.",
+          "setSize": "{size, number} sub-questions per set",
+          "sets": "Number of sets",
+          "single": "Single questions",
+          "singleAuto": "Single questions",
+          "singleAutoHint": "Calculated: multiple choice minus the sub-questions of the sets",
+          "title": "Question structure"
+        }
+      },
+      "rows": {
+        "editor": {
+          "close": "Back to the list",
+          "conditions": {
+            "difficulty": {
+              "hint": "Difficulty distribution by the row question count",
+              "label": "Difficulty"
+            },
+            "grade": {
+              "hint": "Grade distribution by the row question count",
+              "label": "Grade"
+            },
+            "positions": {
+              "hint": "Knowledge-node condition for each child position of a set",
+              "label": "By child position",
+              "template": "Set by the template; this condition cannot be added",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "scope": {
+              "hint": "Only take questions under the selected knowledge nodes",
+              "label": "Knowledge nodes (filter)"
+            },
+            "slots": {
+              "hint": "Own tags or knowledge nodes for each set",
+              "label": "Conditions per set",
+              "unavailable": "Only for fixed-size set rows"
+            },
+            "topicQuotas": {
+              "hint": "Minimum questions per knowledge node, inside the row question count",
+              "label": "Allocation by knowledge node"
+            }
+          },
+          "countNotWhole": "{count, plural, one {# question} other {# questions}} cannot be divided into sets of {size, number}",
+          "facts": {
+            "formats": "answer format {formats}",
+            "line": "From the template: {facts}",
+            "matching": "matching {left, number} left, {right, number} right choices",
+            "options": "{count, plural, one {# option} other {# options}}",
+            "points": "{count, plural, one {{points} point per question} other {{points} points per question}}",
+            "rule": {
+              "ALL_OR_NOTHING": "all correct or nothing",
+              "PARTIAL": "partial credit"
+            },
+            "statements": "{count, plural, one {# statement} other {# statements}}",
+            "trueFalseTable": "points by number of correct statements {table}"
+          },
+          "lockedList": "Row locks",
+          "position": "Row {position, number} of {total, number}",
+          "quantityPercent": "Row question count",
+          "split": "Split row",
+          "title": "Edit row: {name}",
+          "untitled": "Untitled"
+        },
+        "notice": {
+          "ESSAY_SKIPPED": "Essay – skipped for now. This part has nothing to edit."
+        },
+        "reference": {
+          "caption": "{dimension} distribution of {subject}",
+          "cellAria": "{dimension}: {label}, question count",
+          "cellPercentAria": "{dimension}: {label}, percentage",
+          "combined": {
+            "back": "Remove combined table",
+            "backDifficulties": "By difficulty: {values}",
+            "backGrades": "By grade: {values}",
+            "cancel": "Cancel",
+            "caption": "Combined Grade × Difficulty table",
+            "cellAria": "{grade} × {difficulty}: question count",
+            "cellPercentAria": "{grade} × {difficulty}: percentage",
+            "confirm": "Confirm conversion",
+            "gradeHeader": "Grade",
+            "percentError": "Total percentage is {total, number}%, needs 100%",
+            "previewBackEmpty": "The combined table has no numbers yet, so both separate dimensions will start empty. Nothing is saved until you confirm.",
+            "previewBackHint": "Totals by grade and by difficulty of the current combined table. Nothing is saved until you confirm.",
+            "previewBackTitle": "Preview: back to separate dimensions",
+            "previewCaption": "Data that will move to the combined table",
+            "previewEmpty": "There are no numbers to convert, so the combined table starts empty. Nothing is saved until you confirm.",
+            "previewHint": "The numbers of the two dimensions are spread over the cells by the product of their shares. Nothing is saved until you confirm.",
+            "previewTitle": "Preview: to the combined table",
+            "title": "Combined Grade × Difficulty",
+            "total": "Total {total, number}/{count, number} questions",
+            "totalNoCount": "Total {total, number} questions",
+            "totalPercent": "Total {total, number}%"
+          },
+          "conditions": {
+            "add": "Add condition",
+            "addAria": "Add a condition to the reference allocation",
+            "added": "Added",
+            "combined": {
+              "hint": "One table for both dimensions; preview the data to move, then confirm",
+              "label": "Combined Grade × Difficulty"
+            },
+            "menuLabel": "Reference allocation conditions"
+          },
+          "declared": "Declared {total, number}/{count, number} questions",
+          "declaredNoTotal": "Declared {total, number} questions",
+          "declaredPercent": "Declared {total, number}%",
+          "difficultyTitle": "Difficulty",
+          "dimensionTitle": "{dimension} of {subject}",
+          "gradeTitle": "Grade",
+          "hint": "Enforcement follows the exam kind",
+          "percent": "Percentage (%)",
+          "percentTotal": "Total percentage is {total, number}%, needs 100%",
+          "questions": "Questions",
+          "quotas": {
+            "basis": {
+              "POINTS": "Unit: points",
+              "PROMPT": "Unit: prompts",
+              "QUESTION": "Unit: questions"
+            },
+            "denominator": "Denominator: {subject} · {count, number} prompts",
+            "difficulty": "difficulty",
+            "entryTitle": "{dimension} distribution",
+            "grade": "grade",
+            "percentValue": "{label}: {value, number}%",
+            "title": "Whole-subject distribution: {subject}",
+            "unclassified": "Unclassified",
+            "unclassifiedValue": "Unclassified: {count, number} prompts",
+            "value": "{label}: {value, number}"
+          },
+          "resolved": "Resolved questions",
+          "resolvedValue": "{count, number} questions",
+          "title": "Reference allocation",
+          "unit": {
+            "count": "Questions",
+            "legend": "Entry unit",
+            "percent": "Percentage"
+          }
+        },
+        "split": {
+          "apply": "Split",
+          "cancel": "Cancel",
+          "childAria": "{unit, select, set {Sets of child row {index, number}} other {Questions of child row {index, number}}}",
+          "childSets": "sets, {size, number} questions each ({count, number} questions)",
+          "childSingle": "questions",
+          "errors": {
+            "notPositive": "Child row {index, number} needs at least {unit, select, set {1 set} other {1 question}}",
+            "total": "The child rows add up to {total, number}, the parent row has {unit, select, set {{units, number} sets} other {{units, number} questions}}"
+          },
+          "hint": "The parent row ({unit, select, set {{units, number} sets} other {{units, number} questions}}) is replaced by the child rows; the first child keeps the parent row identity. The audio requirement of the section does not change.",
+          "partsLabel": "Number of rows after the split",
+          "partsOption": "{count, number} rows",
+          "title": "Split row {name}"
+        },
+        "table": {
+          "caption": "Question rows of {subject}",
+          "columns": {
+            "actions": "Actions",
+            "conditions": "Conditions",
+            "name": "Name",
+            "order": "Order",
+            "quantity": "Quantity"
+          },
+          "conditions": {
+            "difficulty": "Difficulty",
+            "grade": "Grade",
+            "none": "None",
+            "positions": "By position: {count, number}",
+            "scope": "Knowledge nodes: {count, number}",
+            "slots": "Per set: {count, number}",
+            "tags": "Tags: {count, number}",
+            "topicQuotas": "Node allocation: {count, plural, one {# row} other {# rows}}"
+          },
+          "countsLocked": "Quantity locked by the template",
+          "edit": "Edit",
+          "editAria": "Edit row {name}",
+          "empty": "This subject has no question rows.",
+          "figures": {
+            "plainPoints": "{count, plural, one {# question} other {# questions}} · {points, plural, one {# point} other {# points}}",
+            "trueFalse": "{count, plural, one {# true/false question} other {# true/false questions}}{hasStatements, select, yes { · {statements, plural, one {# statement} other {# statements}}} other {}}{hasPoints, select, yes { · {points, number} point scale} other {}}"
+          },
+          "kind": {
+            "set": "Set",
+            "setOf": "Set · {type}",
+            "single": "Single",
+            "singleOf": "Single · {type}"
+          },
+          "quantity": {
+            "flexible": "{count, plural, one {# question} other {# questions}} (flexible-size set)",
+            "sets": "{sets, plural, one {# set} other {# sets}} × {size, number} ({count, plural, one {# question} other {# questions}})",
+            "single": "{count, plural, one {# question} other {# questions}}"
+          },
+          "range": "Q{from, number}{same, select, yes {} other {–{to, number}}}",
+          "slot": "Set {index, number}{hasTags, select, yes {: {tags}} other {}}{nodes, plural, =0 {} other { · nodes {nodes, number}}}",
+          "slotsLabel": "Conditions per set of {name}",
+          "title": "Question rows",
+          "untitled": "Untitled"
+        }
+      }
+    },
+    "trial": {
+      "audio": {
+        "fileOf": "File {index, number}/{total, number}",
+        "forQuestion": "Question {number, number}",
+        "forSet": "Questions {first, number}–{last, number}",
+        "group": "Audio player · {name}",
+        "questionLabel": "Audio · {name}",
+        "setFallback": "Question set",
+        "setGroup": "Shared audio player · {name}",
+        "setLabel": "Shared audio · {name}"
+      },
+      "backToPreview": "Back to Preview",
+      "editor": {
+        "bold": "Bold",
+        "bulletList": "Bulleted list",
+        "italic": "Italic",
+        "orderedList": "Numbered list",
+        "redo": "Redo",
+        "toolbarLabel": "Essay formatting toolbar",
+        "undo": "Undo"
+      },
+      "emptyPaper": "This trial paper has no questions.",
+      "error": {
+        "description": "Could not load the trial paper. Try reloading or go back to Preview.",
+        "retry": "Retry",
+        "title": "Could not load trial paper"
+      },
+      "expired": {
+        "backAction": "Back to generate a new preview",
+        "description": "This preview paper has expired and can no longer be taken or graded.",
+        "title": "Trial session expired"
+      },
+      "leaveDialog": {
+        "cancel": "Stay",
+        "confirm": "Discard",
+        "description": "Your trial answers will be lost on leave because trial runs are not saved.",
+        "title": "Leave this trial run?"
+      },
+      "live": {
+        "graded": "Trial submission graded.",
+        "retake": "Cleared previous answers to retake the trial."
+      },
+      "loading": "Loading trial paper",
+      "modeBadge": "Trial mode",
+      "nextPart": "Next part",
+      "offline": {
+        "description": "You are offline, so the trial paper could not load. It reloads automatically when back online, or press Retry.",
+        "title": "No network connection"
+      },
+      "palette": {
+        "ariaLabel": "Question navigation",
+        "count": "{answered}/{total}",
+        "itemAnswered": "Question {number} · answered",
+        "itemUnanswered": "Question {number} · unanswered",
+        "title": "Questions"
+      },
+      "partFallback": "Part {order}",
+      "partNavAriaLabel": "Exam parts navigation",
+      "partPoints": "{points} pts",
+      "partRange": "Q{first}–{last}",
+      "previousPart": "Previous part",
+      "progress": "{answered}/{total} answered",
+      "referenceDuration": "Exam duration reference: {minutes} min",
+      "result": {
+        "backToPreview": "Back to Preview",
+        "blank": "Blank",
+        "clozeItem": "Blank {index}:",
+        "columns": {
+          "answer": "Your answer",
+          "outcome": "Outcome",
+          "points": "Score",
+          "question": "Question",
+          "type": "Type"
+        },
+        "empty": "No graded questions returned.",
+        "essayWords": "{count} words",
+        "heading": "Trial results",
+        "notRecordedBadge": "Not saved to attempt history",
+        "outcome": {
+          "BLANK": "Blank",
+          "CORRECT": "Correct",
+          "PARTIAL": "Partial",
+          "PENDING_REVIEW": "Awaiting grading",
+          "WRONG": "Wrong"
+        },
+        "partEssayOnlyPending": "Essay awaiting grading",
+        "partPendingSummary": "{earned} / {max} objective · essay pending",
+        "partsTitle": "Score by part",
+        "pointsPair": "{earned} / {max}",
+        "questionLabel": "Question {number}",
+        "retakeButton": "Retake this trial",
+        "scoreLabel": "Trial score",
+        "scoreNote": "Server-computed score for this trial submission.",
+        "scorePendingCell": "Awaiting grading",
+        "scorePendingNote": "Exam contains ungraded essay questions; score covers objective items only.",
+        "scorePendingSummary": "{earned} / {max} objective · essay awaiting grading",
+        "scoreValue": "{score} / {max}",
+        "statBlank": "{count} blank",
+        "statCorrect": "{count} correct",
+        "statPartial": "{count} partial",
+        "statPending": "{count} pending",
+        "statWrong": "{count} wrong",
+        "statementPrefix": "{letter})",
+        "statsTitle": "Question summary",
+        "tableAriaLabel": "Per-question trial results",
+        "tableTitle": "Per-question breakdown",
+        "tfFalse": "False",
+        "tfTrue": "True"
+      },
+      "retentionNotice": "Preview kept until {time}",
+      "retrySubmit": "Retry",
+      "submitButton": "Submit & Grade",
+      "submitError": "Could not grade your trial submission. Your answers remain intact; please retry.",
+      "title": "Try as student",
+      "untimedNotice": "Untimed · Not recorded and does not consume attempts",
+      "versionBadge": "Published v{version}"
     }
   },
   "grading": {
-    "status": {
-      "GRADING": "Awaiting grading",
-      "SCORED": "Scored"
-    },
-    "filters": {
-      "ariaLabel": "Filter attempts to grade",
-      "statusLegend": "Status",
-      "statusAll": "All",
-      "search": "Search",
-      "searchPlaceholder": "Learner name, learner code or exam code",
-      "kind": "Exam type",
-      "exam": "Exam",
-      "grader": "Grader",
-      "all": "All",
-      "graderUnassigned": "No grader yet",
-      "examOption": "{code} · {name}",
-      "chip": "{label}: {value}",
-      "activeLabel": "Active filters",
-      "remove": "Remove filter {label}",
-      "clearAll": "Clear all filters"
-    },
-    "list": {
-      "title": "Essay grading",
-      "description": "Attempts with essay questions, waiting for grading or already scored. Objective questions were scored on submission.",
-      "filteredCount": "{count, plural, one {# attempt matches} other {# attempts match}} the filters",
-      "filteredCountRich": "<strong>{count, number}</strong> {count, plural, one {attempt matches} other {attempts match}} the filters",
-      "loadingCount": "Loading attempts…",
-      "errorCount": "Attempt count unavailable",
-      "hint": "Oldest submissions first",
-      "tableAriaLabel": "Attempts to grade matching the filters",
-      "table": {
-        "learner": "Learner",
-        "exam": "Exam",
-        "submittedAt": "Submitted",
-        "progress": "Essays",
-        "score": "Score",
-        "grader": "Grader",
-        "status": "Status",
-        "actions": "Actions"
-      },
-      "progress": "{graded, number}/{count, number} graded",
-      "noGrader": "None yet",
-      "score": {
-        "total": "{score}/{max}",
-        "parts": "Objective {objective} + essays {essay}",
-        "objective": "Objective {score}/{max}",
-        "essayPending": "Essays not scored yet"
-      },
-      "actions": {
-        "gradeAria": "Grade the attempt of {name}",
-        "gradeTooltip": "Grade",
-        "viewAria": "View the grading result of {name}",
-        "viewTooltip": "View result"
-      },
-      "sortBy": "Sort by",
-      "ascending": "ascending",
-      "descending": "descending",
-      "errorTitle": "Could not load attempts",
-      "errorDescription": "Check your connection and try again.",
-      "retry": "Try again",
-      "emptyTitle": "No attempts to grade",
-      "emptyDescription": "Attempts with essay questions appear here once learners submit them.",
-      "emptyFilteredTitle": "No attempts match the filters",
-      "emptyFilteredDescription": "Change or remove some filters to see more attempts.",
-      "paginationNav": "Attempt list pagination",
-      "paginationPrevious": "Previous",
-      "paginationNext": "Next",
-      "paginationRowsPerPage": "Rows per page",
-      "paginationPage": "Page {page}",
-      "paginationRange": "Showing {from}–{to} of {total}"
-    },
     "detail": {
-      "title": "Grade attempt",
-      "loading": "Loading attempt",
-      "notFoundTitle": "Attempt not found",
-      "notFoundDescription": "The attempt does not exist or has been removed.",
-      "errorTitle": "Could not load the attempt",
-      "errorDescription": "Check your connection and try again.",
-      "retry": "Try again",
       "backToList": "Back to grading list",
-      "emptyTitle": "This attempt has no essay questions",
-      "emptyDescription": "Nothing needs manual grading. The attempt score is the objective score.",
-      "heading": "Attempt of {name}",
-      "subheading": "{code} · {examCode} · {examName}",
-      "formLabel": "Grade the attempt of {name}",
-      "essayLabel": "{part} · Question {number}",
-      "summary": {
-        "kind": "Exam type",
-        "submittedAt": "Submitted",
-        "grader": "Grader",
-        "gradedAt": "Graded",
-        "essays": "Essays"
-      },
-      "navigator": {
-        "label": "Essay questions in this attempt",
-        "score": "{score}/{max}",
-        "state": {
-          "complete": "fully scored",
-          "partial": "partly scored",
-          "empty": "not scored",
-          "error": "has invalid scores"
-        }
-      },
-      "question": {
-        "meta": "{code} · {points} points",
-        "source": {
-          "BANK": "Prompt and rubric from the question bank",
-          "ATTEMPT": "Prompt and rubric saved with the attempt"
-        },
-        "passage": "Reading passage ({code})",
-        "prompt": "Prompt",
-        "answer": "Learner answer",
-        "wordCount": "{count, plural, one {# word} other {# words}}",
-        "wordCountWithLimit": "{count, plural, one {# word} other {# words}} · about {limit, number} suggested",
-        "noAnswer": "The learner left this question blank.",
-        "sampleAnswer": "Suggested answer"
-      },
-      "rubric": {
-        "title": "Rubric",
-        "max": "Up to {max} points",
-        "legend": "Rubric scores for {label}",
-        "criterion": "{index}. {description}",
-        "criterionHint": "Up to {max} points; use a comma or a dot for decimals.",
-        "subtotal": "Question score",
-        "subtotalValue": "{score}/{max}",
-        "comment": "Comment",
-        "commentHint": "Optional. The learner sees it once the attempt is scored.",
-        "noComment": "No comment.",
-        "previous": "Previous question",
-        "next": "Next question"
-      },
-      "validation": {
-        "invalid": "Enter a non-negative number with at most two decimals (for example 1.5).",
-        "tooHigh": "The score cannot exceed {max}.",
-        "required": "Enter a score for this criterion before finishing.",
-        "commentMax": "Comments can be at most {limit} characters.",
-        "summary": "Some fields need fixing. Moved to the first one.",
-        "missing": "{count, plural, one {# criterion has} other {# criteria have}} no score yet. Moved to the first one."
-      },
-      "totals": {
-        "objective": "Objective (scored on submission)",
-        "noObjective": "No objective part",
-        "essayDraft": "Essays (running total)",
-        "totalDraft": "Total (running total)",
-        "value": "{score}/{max}"
+      "claim": {
+        "action": "Claim to grade",
+        "anotherGrader": "another grader",
+        "description": "Claim this item to lock grading for 30 minutes and enter scores.",
+        "done": "Claimed item for grading.",
+        "heldDescription": "This item is currently claimed by {name}.",
+        "heldTitle": "Currently claimed by another grader",
+        "lastActivity": "Last activity: {time}",
+        "rubricPreview": "Grading rubric",
+        "takeoverAction": "Take over grading",
+        "takeoverDescription": "The previous claim by {name} has been inactive for over 30 minutes. You can take over grading.",
+        "takeoverTitle": "Take over grading",
+        "title": "Claim to grade"
       },
       "draft": {
+        "hint": "Save a draft to keep your claim and continue later.",
         "save": "Save draft",
         "saved": "Draft scores saved.",
-        "unsaved": "You have unsaved scores.",
-        "hint": "Save a draft to continue later; the attempt stays in Awaiting grading."
+        "unsaved": "You have unsaved changes."
       },
+      "errorTitle": "Could not load essay item",
       "finish": {
-        "action": "Finish grading",
-        "confirmTitle": "Finish grading the attempt of {name}?",
-        "confirmDescription": "Attempt total: objective {objective} + essays {essay} = {total}/{max}. The attempt moves to Scored.",
-        "confirmDescriptionEssayOnly": "Attempt total: {total}/{max}. The attempt moves to Scored.",
+        "action": "Finalize grade",
         "cancel": "Keep grading",
-        "confirm": "Confirm and finish",
-        "done": "Finished grading the attempt of {name}. Total {score}/{max}."
+        "confirm": "Confirm and finalize",
+        "confirmDescription": "Finalize score {score}/{max} for this essay item and recalculate the attempt score?",
+        "confirmTitle": "Finalize essay grade?",
+        "done": "Finalized grade: {score}/{max}."
+      },
+      "heading": "Grade #{code} · Question {number}",
+      "history": {
+        "finalizedAt": "Finalized at: {time}",
+        "reopenedReason": "Reopen reason: <text>{reason}</text>",
+        "states": {
+          "DRAFT": "Draft",
+          "FINAL": "Finalized"
+        },
+        "title": "Grading history",
+        "unknownGrader": "Grader"
+      },
+      "loading": "Loading essay item",
+      "notFoundDescription": "This essay item does not exist or is not eligible for grading.",
+      "notFoundTitle": "Essay item not found",
+      "offlineDescription": "Check your internet connection and try again.",
+      "offlineTitle": "No connection",
+      "question": {
+        "answer": "Learner answer",
+        "belowWordLimit": "Below minimum word count",
+        "gradingGuide": "Grading guide",
+        "maxPoints": "Max {points} points",
+        "noAnswer": "The learner left this question blank.",
+        "passage": "Reading passage",
+        "prompt": "Prompt",
+        "sampleAnswer": "Suggested answer",
+        "title": "Question {number}",
+        "wordCount": "{count, plural, one {# word} other {# words}}",
+        "wordCountWithLimit": "{count, number} / min {limit, plural, one {# word} other {# words}}"
+      },
+      "readOnlyDescription": "Read-only view (GRADING.MODIFY permission is required to claim, grade, or reopen).",
+      "readOnlyTitle": "Read-only mode",
+      "regrading": "Regrading",
+      "reload": "Reload data",
+      "reopen": {
+        "action": "Reopen for regrading",
+        "cancel": "Cancel",
+        "confirm": "Confirm reopen",
+        "description": "Reopen this grade for regrading. The student keeps seeing the previous score with a Regrading badge until you finalize again.",
+        "done": "Reopened grade for regrading.",
+        "reasonLabel": "Reason for reopening",
+        "title": "Reopen grade?"
       },
       "result": {
-        "title": "Scored",
-        "essay": "Essays",
-        "total": "Total"
+        "title": "Finalized score"
       },
-      "errors": {
-        "ATTEMPT_ALREADY_SCORED": "This attempt is already scored and cannot be saved. Reload to see the result.",
-        "GRADING_INCOMPLETE": "Some criteria have no score yet.",
-        "SCORE_OUT_OF_RANGE": "A score is outside the allowed range of its criterion.",
-        "UNKNOWN_QUESTION": "A question or its rubric has changed. Reload and grade again.",
-        "NOT_FOUND": "Attempt not found.",
-        "generic": "Could not save the scores. Try again."
+      "retry": "Try again",
+      "rubric": {
+        "comment": "Comment",
+        "commentHint": "Optional. Visible to the learner once graded.",
+        "criteriaSum": "Criteria sum",
+        "criterionHint": "Up to {max} points; use a comma or dot for decimals.",
+        "criterionPrefix": "Criterion {index}.",
+        "legend": "Criterion scores",
+        "max": "Up to {max} points",
+        "noComment": "No comment.",
+        "subtotalValue": "{score} / {max}",
+        "title": "Grading",
+        "totalPointsHint": "From 0 to {max} points; when rubric criteria exist, must equal their sum.",
+        "totalPointsLabel": "Total question score"
+      },
+      "staleNotice": "The server grading item has changed. Click Reload data to fetch the latest version before saving or finalizing.",
+      "summary": {
+        "attemptCode": "Attempt code",
+        "gradedAt": "Finalized",
+        "grader": "Grader",
+        "kind": "Exam type",
+        "submittedAt": "Submitted"
+      },
+      "title": "Grade essay item",
+      "validation": {
+        "commentMax": "Comments can be at most {limit} characters.",
+        "criteriaSumMismatch": "Criteria sum ({sum}) does not match the entered question score.",
+        "invalid": "Enter a non-negative number with at most four decimals (for example 1.5).",
+        "required": "Enter a score before finalizing.",
+        "summary": "Some score fields need fixing. Moved to the first one.",
+        "tooHigh": "The score cannot exceed {max}."
       }
+    },
+    "errors": {
+      "CONFLICT": "Action conflicts with current state. Please reload.",
+      "ESSAY_ALREADY_FINALIZED": "This essay item has already been finalized.",
+      "ESSAY_CRITERIA_INVALID": "Criterion scores are invalid or do not match the rubric.",
+      "ESSAY_CRITERIA_SUM_MISMATCH": "Sum of criterion scores must equal the total essay points.",
+      "ESSAY_NOT_FINALIZED": "This essay item has not been finalized and cannot be reopened.",
+      "ESSAY_NOT_GRADABLE": "This item is no longer eligible for manual grading.",
+      "ESSAY_POINTS_OUT_OF_RANGE": "Points must be between 0 and the question maximum points.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Could not complete the request. Please try again.",
+      "GRADING_CLAIMED": "This essay item is currently claimed by another grader.",
+      "GRADING_CLAIMED_BY": "This essay item is currently claimed by {name}.",
+      "GRADING_ITEM_NOT_FOUND": "Essay grading item was not found.",
+      "GRADING_NOT_CLAIMED": "You must claim the item before saving or finalizing.",
+      "INTERNAL_ERROR": "Temporary system error. Please try again later.",
+      "INVALID_DATE_FILTER": "Invalid date filter range.",
+      "NETWORK": "Cannot reach the server. Check your network and try again.",
+      "NOT_FOUND": "The requested resource was not found.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "VALIDATION_FAILED": "Submitted data is invalid. Please review the form.",
+      "VERSION_CONFLICT": "This grade was updated elsewhere. Latest data has been reloaded."
+    },
+    "filters": {
+      "activeLabel": "Active filters",
+      "all": "All",
+      "ariaLabel": "Filter essay grading queue",
+      "chip": "{label}: {value}",
+      "clearAll": "Clear all filters",
+      "examSearch": "Exam",
+      "examSearchPlaceholder": "Exam name or UUID",
+      "from": "From date",
+      "kind": "Exam type",
+      "remove": "Remove filter {label}",
+      "statusAll": "All",
+      "statusLegend": "Status",
+      "to": "To date"
+    },
+    "list": {
+      "actions": {
+        "gradeAria": "Grade #{code} · Question {number}",
+        "gradeTooltip": "Grade",
+        "viewAria": "View grading result #{code} · Question {number}",
+        "viewTooltip": "View result"
+      },
+      "description": "Anonymous queue of essay questions to grade. Learners are identified only by attempt code.",
+      "emptyDescription": "Answered essay questions appear here once learners submit attempts.",
+      "emptyFilteredDescription": "Try changing or clearing some filters to see more items.",
+      "emptyFilteredTitle": "No essay items match the filters",
+      "emptyTitle": "No essay items to grade",
+      "errorCount": "Essay item count unavailable",
+      "errorTitle": "Could not load grading queue",
+      "filteredCount": "{count, plural, one {# essay item matches} other {# essay items match}} the filters",
+      "filteredCountRich": "<strong>{count, number}</strong> {count, plural, one {essay item matches} other {essay items match}} the filters",
+      "graderExpired": "{name} (claim expired)",
+      "hint": "Oldest submissions first",
+      "loadingCount": "Loading grading queue…",
+      "noGrader": "None yet",
+      "offlineDescription": "You are offline, so the list could not be loaded. It will reload automatically when back online, or press Try again.",
+      "offlineTitle": "No network connection",
+      "paginationNav": "Grading queue pagination",
+      "paginationNext": "Next",
+      "paginationPage": "Page {page}",
+      "paginationPrevious": "Previous",
+      "paginationRange": "Showing {from}–{to} of {total}",
+      "paginationRowsPerPage": "Rows per page",
+      "questionNo": "Question {number}",
+      "regrading": "Regrading",
+      "retry": "Try again",
+      "scorePending": "— / {max}",
+      "scoreValue": "{score} / {max}",
+      "table": {
+        "actions": "Actions",
+        "grader": "Grader",
+        "item": "Attempt & Question",
+        "kind": "Exam type",
+        "part": "Part",
+        "score": "Score",
+        "status": "Status",
+        "submittedAt": "Submitted"
+      },
+      "tableAriaLabel": "Essay grading queue",
+      "title": "Essay grading"
+    },
+    "status": {
+      "DONE": "Graded",
+      "IN_PROGRESS": "In progress",
+      "WAITING": "Awaiting grading"
     }
   },
   "richText": {
@@ -7192,6 +8829,790 @@
       "latexLabel": "LaTeX code",
       "latexPlaceholder": "x^2 + y^2 = z^2",
       "title": "Insert formula"
+    }
+  },
+  "promotions": {
+    "actions": {
+      "backToDetail": "Back to details",
+      "backToList": "Back to list",
+      "cancel": "Cancel",
+      "clearFilters": "Clear filters",
+      "clearSearch": "Clear search",
+      "create": "Create promotion",
+      "createVoucher": "Create voucher",
+      "delete": "Delete",
+      "deleteDisabledUsed": "Cannot delete because this promotion already has redemptions.",
+      "edit": "Edit",
+      "reload": "Reload",
+      "reloadLatest": "Load latest version",
+      "resume": "Resume",
+      "retry": "Retry",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "stop": "Stop",
+      "suggestCode": "Suggest code",
+      "suggestingCode": "Generating...",
+      "viewDetail": "View details"
+    },
+    "audienceLabels": {
+      "ALL": "All students",
+      "NEW_ACCOUNT": "New accounts",
+      "SELECTED": "Selected ({classes, plural, one {# class} other {# classes}}, {users, plural, one {# student} other {# students}})",
+      "SELECTEDClasses": "By classes ({count})",
+      "SELECTEDUsers": "By students ({count})",
+      "unknownClass": "Class #{id}",
+      "unknownUser": "Student #{id}"
+    },
+    "capWarning": {
+      "badge": "Floor price reached",
+      "cardDescription": "Some exams hit the minimum floor price after this discount and will be capped at the floor price.",
+      "cardTitle": "Floor price warnings ({count})",
+      "discountedPrice": "Discounted",
+      "examName": "Exam",
+      "floorPrice": "Floor price",
+      "inlineSummary": "Price capped at floor {floor} on {count, plural, one {# exam} other {# exams}}",
+      "listMore": "+{count} more",
+      "listPrefix": "Hits floor price:",
+      "listPrice": "List price",
+      "tableLabel": "Exams reaching floor price"
+    },
+    "common": {
+      "loading": "Loading...",
+      "noDescription": "No description",
+      "unlimited": "Unlimited"
+    },
+    "create": {
+      "description": "Configure an automatic promotion or voucher code applied when students purchase exams.",
+      "title": "Create promotion"
+    },
+    "detail": {
+      "createdAt": "Created at",
+      "description": "Configuration, redemption tracking, price preview, and change history.",
+      "errorDescription": "Unable to load promotion details. Please try again.",
+      "errorTitle": "Unable to load details",
+      "info": {
+        "audience": "Audience",
+        "code": "Voucher code",
+        "combinable": "Combinable",
+        "combinableNo": "Not combinable",
+        "combinableYes": "Combinable",
+        "description": "Description",
+        "discount": "Discount",
+        "maxDiscount": "Max discount",
+        "perUserLimit": "Per student",
+        "scope": "Scope",
+        "schedule": "Schedule",
+        "stackingNote": "Automatic promotions always apply independently and do not stack with voucher codes.",
+        "title": "Configuration"
+      },
+      "metrics": {
+        "confirmedReserved": "{confirmed} confirmed · {reserved} reserved",
+        "discountValue": "Discount",
+        "period": "Period",
+        "periodRange": "{startsAt} - {endsAt}",
+        "totalDiscountPaid": "Total discount paid",
+        "usage": "Used",
+        "usageWithLimit": "{used} / {limit}",
+        "usageWithoutLimit": "{used} / Unlimited"
+      },
+      "notFoundDescription": "This promotion does not exist or has been deleted.",
+      "notFoundTitle": "Promotion not found",
+      "revision": "Revision #{revision}",
+      "subtitleAuto": "Automatic promotion",
+      "subtitleVoucher": "Voucher {code}",
+      "title": "Promotion details",
+      "updatedAt": "Updated at"
+    },
+    "dialogs": {
+      "delete": {
+        "confirm": "Delete promotion",
+        "description": "Permanently delete \"{name}\"? This action cannot be undone.",
+        "errorInUse": "This promotion just received redemptions and can no longer be deleted. Latest details have been reloaded.",
+        "title": "Delete promotion?"
+      },
+      "resume": {
+        "confirm": "Resume",
+        "description": "Resume \"{name}\" using its configured schedule?",
+        "title": "Resume promotion"
+      },
+      "stop": {
+        "confirm": "Stop promotion",
+        "description": "Stop \"{name}\" immediately? Existing reservations remain subject to checkout rules.",
+        "title": "Stop promotion"
+      }
+    },
+    "discountLabels": {
+      "amount": "-{amount}",
+      "perUserOnce": "{limit} per student",
+      "percent": "-{percent}%",
+      "percentWithCap": "-{percent}% (up to {cap})"
+    },
+    "edit": {
+      "description": "Update promotion settings. Certain fields are locked once redemptions exist.",
+      "errorDescription": "Unable to load promotion for editing.",
+      "errorTitle": "Unable to load promotion",
+      "title": "Edit promotion"
+    },
+    "errors": {
+      "CONFLICT": "Request conflicts with the current state. Please review and try again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Unable to complete the action. Please try again.",
+      "INTERNAL_ERROR": "A system error occurred. Please try again later.",
+      "NETWORK": "Could not reach the server. Please check your connection and try again.",
+      "NOT_FOUND": "Promotion no longer exists.",
+      "PRODUCT_GONE": "This exam is no longer on sale or available.",
+      "PROMOTION_ENDED": "This promotion has ended and cannot be resumed.",
+      "PROMOTION_ENDS_AT_PAST": "End time must be in the future.",
+      "PROMOTION_IN_USE": "This promotion just received redemptions so locked fields cannot be edited or deleted. Reloading latest data.",
+      "PROMOTION_SCOPE_INVALID": "Selected scope requires at least one valid target in ready state.",
+      "PROMOTION_TOTAL_LIMIT_BELOW_USED": "Total limit must be greater than or equal to current redemptions ({used}).",
+      "PROMOTION_TOTAL_LIMIT_BELOW_USED_GENERIC": "Total limit cannot be less than current redemptions.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "VALIDATION_FAILED": "Some fields are invalid. Please review the highlighted inputs.",
+      "VERSION_CONFLICT": "This promotion was updated by someone else. Reload the latest version before saving.",
+      "VOUCHER_CODE_TAKEN": "This voucher code is already taken. Choose another code or click Suggest code."
+    },
+    "fieldErrors": {
+      "audienceTargetsRequired": "Select at least one class or student when restricting the audience.",
+      "codeFormat": "Voucher code may only contain uppercase letters, numbers, and hyphens (3 to 50 characters).",
+      "codeRequired": "Please enter a voucher code.",
+      "descriptionTooLong": "Description must not exceed 2000 characters.",
+      "discountAmountMin": "Discount amount must be greater than 0.",
+      "discountPercentRange": "Discount percentage must be between 1 and 100.",
+      "discountValueRequired": "Please enter a valid discount value.",
+      "endsAfterStarts": "End time must be after start time.",
+      "endsAtFuture": "End time must be in the future.",
+      "endsAtRequired": "Please select an end time.",
+      "maxDiscountMin": "Maximum discount must be greater than 0.",
+      "nameRequired": "Please enter a promotion name.",
+      "nameTooLong": "Promotion name must not exceed 200 characters.",
+      "perUserLimitMax": "Per-student limit must not exceed 2,147,483,647.",
+      "perUserLimitMin": "Per-student limit must be a positive integer.",
+      "scopeExamsRequired": "Select at least one exam.",
+      "scopeKindsRequired": "Select at least one exam kind.",
+      "startsAtRequired": "Please select a start time.",
+      "suggestCodeFailed": "Unable to suggest a code right now. Please try again.",
+      "totalLimitMax": "Total limit must not exceed 2,147,483,647.",
+      "totalLimitMin": "Total limit must be a positive integer.",
+      "totalLimitTooLow": "Total limit cannot be less than current redemptions."
+    },
+    "form": {
+      "aside": {
+        "summaryAudience": "Audience",
+        "summaryDiscount": "Discount",
+        "summaryKind": "Type",
+        "summaryPeriod": "Schedule",
+        "summaryPlaceholder": "Not set",
+        "summaryScope": "Scope",
+        "summaryTitle": "Promotion summary",
+        "todoComplete": "All required information is filled in and ready to save.",
+        "todoItems": {
+          "audienceTargets": "Select at least one class or student",
+          "code": "Enter a valid voucher code",
+          "discountValue": "Enter a valid discount",
+          "endsAt": "Set an end time after start time",
+          "name": "Enter a promotion name",
+          "scopeTargets": "Select at least one scope target",
+          "startsAt": "Set a start time"
+        },
+        "todoRemaining": "Remaining items ({count})",
+        "todoTitle": "Checklist"
+      },
+      "banner": {
+        "conflictDescription": "The server holds a newer revision than the one you are editing. Reload the latest version before saving.",
+        "conflictTitle": "Version conflict (412)",
+        "formErrorTitle": "Unable to save promotion",
+        "inUseConflictDescription": "The latest promotion details were reloaded automatically and restricted fields are now locked.",
+        "inUseConflictTitle": "Promotion just received redemptions",
+        "inUseDescription": "This promotion already has {count, plural, one {# redemption} other {# redemptions}}. To protect active checkouts and reservations, type, voucher code, discount rules, start time, combinable setting, scope, and audience are locked. You can still update name, description, end time, total limit, or status.",
+        "inUseTitle": "Locked fields due to existing redemptions"
+      },
+      "fields": {
+        "audience": "Target audience",
+        "audienceHint": "Applies to vouchers only; automatic promotions apply to all students.",
+        "audienceOptions": {
+          "ALL": "All students",
+          "ALLHint": "Any eligible student may apply the code.",
+          "NEW_ACCOUNT": "New accounts",
+          "NEW_ACCOUNTHint": "Applies only to eligible new student accounts.",
+          "SELECTED": "Specific classes or students",
+          "SELECTEDHint": "Applies only to the selected classes or students below."
+        },
+        "classesLabel": "Select classes",
+        "classesNoPermission": "Your account lacks CLASS.VIEW permission. Existing assigned classes are preserved or can be removed.",
+        "classesPlaceholder": "Search class name or code...",
+        "classesSelected": "Selected ({count, plural, one {# class} other {# classes}})",
+        "code": "Voucher code",
+        "codeHint": "Uppercase letters, numbers, and hyphens (-). Automatically uppercased.",
+        "codePlaceholder": "e.g. SUMMER2026",
+        "combinable": "Stackable with others",
+        "combinableHint": "Allow stacking with other combinable vouchers in the same order.",
+        "combinableLabel": "Allow combinable stacking at checkout",
+        "description": "Description",
+        "descriptionPlaceholder": "Internal or customer-facing note about this promotion...",
+        "discountType": "Discount type",
+        "discountTypeAmount": "Fixed amount (VND)",
+        "discountTypePercent": "Percentage (%)",
+        "discountValueAmount": "Discount amount (VND)",
+        "discountValueAmountHint": "Formatted: {formatted}",
+        "discountValuePercent": "Discount percentage (%)",
+        "endsAt": "Ends at (UTC+7)",
+        "examKindsLabel": "Select exam kinds",
+        "examsLabel": "Select published exams",
+        "examsNoPermission": "Your account lacks EXAM.VIEW permission to browse exams.",
+        "examsPlaceholder": "Search exam title or code...",
+        "examsSelected": "Selected ({count, plural, one {# exam} other {# exams}})",
+        "kind": "Promotion type",
+        "kindAuto": "Automatic promotion",
+        "kindAutoHint": "Automatically deducted when students view or buy matching exams.",
+        "kindVoucher": "Voucher code",
+        "kindVoucherHint": "Students enter a code at checkout; supports per-user limits and audiences.",
+        "maxDiscountVnd": "Maximum discount (VND)",
+        "maxDiscountVndHint": "Leave blank for no cap. Formatted: {formatted}",
+        "maxDiscountVndPlaceholder": "No cap",
+        "minOrderVnd": "Minimum order (VND)",
+        "minOrderVndHint": "0 VND means no minimum order value.",
+        "name": "Promotion name",
+        "namePlaceholder": "e.g. Back-to-school discount",
+        "perUserLimit": "Per-student limit",
+        "perUserLimitHint": "Leave blank for unlimited uses per student.",
+        "scope": "Scope",
+        "scopeBundleNotice": "This promotion targets exam bundles and its scope is read-only here.",
+        "scopeOptions": {
+          "ALL": "All exams",
+          "ALLHint": "Applies to all published exams.",
+          "EXAM": "Specific exams",
+          "EXAMHint": "Applies only to selected exams below.",
+          "EXAM_KIND": "By exam kind",
+          "EXAM_KINDHint": "Applies to all exams of the selected kinds."
+        },
+        "startsAt": "Starts at (UTC+7)",
+        "status": "Status",
+        "statusActive": "Active",
+        "statusStopped": "Stopped",
+        "totalLimit": "Total usage limit",
+        "totalLimitHint": "Leave blank for unlimited total uses. Once used, must be >= {used}.",
+        "totalLimitHintUnlimited": "Leave blank for unlimited.",
+        "totalLimitPlaceholder": "Unlimited",
+        "usersLabel": "Select students",
+        "usersNoPermission": "Your account lacks USER.VIEW permission. Existing assigned students are preserved or can be removed.",
+        "usersPlaceholder": "Name, username, or email",
+        "usersSelected": "Selected ({count, plural, one {# student} other {# students}})"
+      },
+      "lockedChip": "Locked",
+      "picker": {
+        "empty": "No matching items found.",
+        "error": "Failed to load options.",
+        "loading": "Searching...",
+        "removeItem": "Remove {label}"
+      },
+      "sections": {
+        "audience": "5. Target audience",
+        "general": "1. General information",
+        "limits": "3. Discount & limits",
+        "schedule": "2. Schedule",
+        "scope": "4. Scope"
+      },
+      "toast": {
+        "created": "Promotion created.",
+        "deleted": "Promotion deleted.",
+        "resumed": "Promotion resumed.",
+        "stopped": "Promotion stopped.",
+        "updated": "Promotion updated."
+      }
+    },
+    "history": {
+      "actions": {
+        "CREATED": "Created",
+        "DELETED": "Deleted",
+        "RESUMED": "Resumed",
+        "STOPPED": "Stopped",
+        "UPDATED": "Updated"
+      },
+      "actorFallback": "Administrator",
+      "arrow": "{from} → {to}",
+      "boolFalse": "No",
+      "boolTrue": "Yes",
+      "description": "All configuration and status changes recorded newest-first.",
+      "emptyDescription": "No change history has been recorded yet.",
+      "emptyTitle": "No change history yet",
+      "emptyValue": "Empty",
+      "fields": {
+        "audience": "Audience",
+        "audienceClassIds": "Target classes",
+        "audienceUserIds": "Target students",
+        "code": "Voucher code",
+        "combinable": "Combinable",
+        "deletedAt": "Deleted at",
+        "description": "Description",
+        "discountType": "Discount type",
+        "discountValue": "Discount value",
+        "endsAt": "Ends at",
+        "examIds": "Target exams",
+        "examKindIds": "Exam kinds",
+        "kind": "Type",
+        "maxDiscountVnd": "Max discount",
+        "minOrderVnd": "Minimum order",
+        "name": "Name",
+        "perUserLimit": "Per-student limit",
+        "scope": "Scope",
+        "startsAt": "Starts at",
+        "status": "Status",
+        "totalLimit": "Total limit"
+      },
+      "listCounts": {
+        "audienceClassIds": "{count, plural, one {# class} other {# classes}}",
+        "audienceUserIds": "{count, plural, one {# student} other {# students}}",
+        "examIds": "{count, plural, one {# exam} other {# exams}}",
+        "examKindIds": "{count, plural, one {# exam kind} other {# exam kinds}}"
+      },
+      "title": "Change history",
+      "values": {
+        "audience": {
+          "ALL": "All students",
+          "NEW_ACCOUNT": "New accounts",
+          "SELECTED": "Selected classes / students"
+        },
+        "discountType": {
+          "AMOUNT": "Fixed amount (VND)",
+          "PERCENT": "Percentage (%)"
+        },
+        "scope": {
+          "ALL": "All exams",
+          "BUNDLE": "Specific bundles",
+          "EXAM": "Specific exams",
+          "EXAM_KIND": "By exam kind"
+        },
+        "status": {
+          "ACTIVE": "Active",
+          "STOPPED": "Stopped"
+        }
+      }
+    },
+    "kinds": {
+      "AUTO": "Automatic",
+      "VOUCHER": "Voucher"
+    },
+    "list": {
+      "audienceSummary": {
+        "ALL": "All students",
+        "NEW_ACCOUNT": "New accounts",
+        "SELECTED": "Selected classes / students"
+      },
+      "columns": {
+        "actions": "Actions",
+        "discount": "Discount",
+        "nameAndCode": "Name & code",
+        "period": "Schedule",
+        "scopeAndAudience": "Scope & audience",
+        "status": "Status",
+        "used": "Used"
+      },
+      "description": "Manage automatic promotions and voucher codes for exam purchases.",
+      "emptyDescription": "No promotions in this category yet. Create one to get started.",
+      "emptyFilteredDescription": "No promotions match your active filter or search query.",
+      "emptyFilteredTitle": "No matching promotions",
+      "emptyTitle": "No promotions yet",
+      "errorDescription": "Failed to load promotions. Please try again.",
+      "errorTitle": "Unable to load list",
+      "offlineDescription": "You are offline, so latest data could not be loaded. It reloads automatically when the connection returns, or select Retry.",
+      "offlineTitle": "No network connection",
+      "scopeSummary": {
+        "ALL": "All exams",
+        "BUNDLE": "Exam bundles",
+        "EXAM": "Specific exams",
+        "EXAM_KIND": "By exam kind"
+      },
+      "searchAria": "Search promotions by name or code",
+      "searchPlaceholder": "Search by name or voucher code...",
+      "stateFilters": {
+        "ALL": "All",
+        "ENDED": "Ended",
+        "RUNNING": "Running",
+        "STOPPED": "Stopped",
+        "UPCOMING": "Upcoming"
+      },
+      "stateGroupAria": "Filter by status",
+      "summaryCount": "{total, plural, one {# promotion} other {# promotions}}",
+      "tabs": {
+        "AUTO": "Automatic",
+        "VOUCHER": "Vouchers"
+      },
+      "title": "Promotions"
+    },
+    "pricePreview": {
+      "appliedStatus": "Applied: {label}",
+      "autoTag": "Automatic promotion",
+      "description": "Check the effective price of an exam after applying this promotion and floor price limits.",
+      "discountAmount": "Discount",
+      "discountedPrice": "Final price",
+      "emptyExams": "No matching exams available to preview.",
+      "errorGeneric": "Unable to calculate price preview. Please try again.",
+      "examLabel": "Select an exam to preview",
+      "examPlaceholder": "Select an exam...",
+      "finalDiscountAmount": "Effective discount",
+      "floorBadge": "Capped at floor price",
+      "floorPrice": "Floor price",
+      "listPrice": "List price",
+      "loadingQuote": "Calculating preview price...",
+      "noDiscountReason": "No additional discount applies to this exam.",
+      "saveFirstReason": "Save the promotion first to preview real pricing with floor price rules.",
+      "searchAria": "Search exams for price preview",
+      "searchPlaceholder": "Search exam by title or code...",
+      "title": "Exam price preview",
+      "voucherTag": "Voucher"
+    },
+    "redemptions": {
+      "columns": {
+        "discountVnd": "Discount",
+        "orderCode": "Order",
+        "state": "Status",
+        "student": "Student",
+        "timestamp": "Time"
+      },
+      "description": "Track voucher/promotion reservations and confirmed redemptions across orders.",
+      "emptyFilteredDescription": "No redemptions match your current search or status filter.",
+      "emptyFilteredTitle": "No matching redemptions",
+      "emptyNeverUsedDescription": "This promotion has not been applied to any order yet.",
+      "emptyNeverUsedTitle": "No redemptions yet",
+      "errorDescription": "Failed to load redemption records.",
+      "errorTitle": "Unable to load redemptions",
+      "filters": {
+        "ALL": "All",
+        "CONFIRMED": "Confirmed",
+        "RELEASED": "Released",
+        "RESERVED": "Reserved"
+      },
+      "searchAria": "Search redemptions by student or order code",
+      "searchPlaceholder": "Search by order code or account",
+      "statusLabels": {
+        "CONFIRMED": "Confirmed",
+        "RELEASED": "Released",
+        "RESERVED": "Reserved"
+      },
+      "title": "Redemptions"
+    },
+    "scopeLabels": {
+      "ALL": "All exams",
+      "BUNDLE": "Exam bundles",
+      "EXAM": "Exams ({count})",
+      "EXAM_KIND": "Exam kinds ({count})"
+    },
+    "states": {
+      "ENDED": "Ended",
+      "RUNNING": "Running",
+      "STOPPED": "Stopped",
+      "UPCOMING": "Upcoming"
+    }
+  },
+  "bundles": {
+    "actions": {
+      "backToList": "Back to bundles",
+      "cancel": "Cancel",
+      "clearFilters": "Clear all filters",
+      "clearSearch": "Clear search",
+      "close": "Close",
+      "create": "Create bundle",
+      "discontinue": "Discontinue",
+      "dismiss": "Dismiss",
+      "edit": "Edit bundle",
+      "editAria": "Edit bundle {code}",
+      "moreAria": "More actions for {code}",
+      "publish": "Publish",
+      "refresh": "Refresh",
+      "republish": "Republish",
+      "retry": "Retry",
+      "saveBeforePublish": "Save changes before publishing",
+      "saveChanges": "Save changes",
+      "saveDraft": "Save draft",
+      "view": "View details",
+      "viewAria": "View bundle {code}"
+    },
+    "badges": {
+      "review": "Review"
+    },
+    "create": {
+      "description": "A bundle contains 2-12 on-sale exams from the same exam kind with dedicated pricing and attempts.",
+      "title": "Create bundle"
+    },
+    "dialogs": {
+      "changeExamKind": {
+        "cancel": "Keep {currentKind}",
+        "confirm": "Change and clear selected exams",
+        "description": "{count, plural, one {# selected exam from {currentKind} will be removed from the bundle. Other fields will be kept.} other {# selected exams from {currentKind} will be removed from the bundle. Other fields will be kept.}}",
+        "title": "Change exam kind to {nextKind}?"
+      },
+      "conflictRefreshFailed": "This bundle was updated by another user, but loading the latest version failed ({reason}).",
+      "discontinue": {
+        "descriptionPrefix": "Discontinue bundle",
+        "descriptionSuffix": "The bundle storefront page will no longer allow new purchases. Existing buyer attempts and standalone exams remain unaffected.",
+        "successToast": "Discontinued bundle {code}.",
+        "title": "Discontinue bundle?"
+      },
+      "publish": {
+        "descriptionPrefix": "Publish bundle",
+        "descriptionSuffix": "Changes to items, price, and attempts per exam will apply to new orders after publishing.",
+        "republishTitle": "Republish bundle?",
+        "successToast": "Published bundle {code}.",
+        "title": "Publish bundle?"
+      },
+      "refreshingConflict": "This bundle was updated by another user. Loading the latest version..."
+    },
+    "edit": {
+      "errorDescription": "Could not load the bundle details.",
+      "errorTitle": "Failed to load bundle",
+      "notFoundDescription": "This bundle does not exist or has been removed.",
+      "notFoundTitle": "Bundle not found",
+      "title": "Bundle details"
+    },
+    "errors": {
+      "BUNDLE_ALREADY_DISCONTINUED": "This bundle is already discontinued and can no longer be edited or republished.",
+      "BUNDLE_ATTEMPTS_INVALID": "Attempts per exam must be between 1 and 100.",
+      "BUNDLE_CODE_TAKEN": "This bundle code is already taken.",
+      "BUNDLE_DESCRIPTION_REQUIRED": "Please enter a bundle description before publishing.",
+      "BUNDLE_EXAM_KIND_INVALID": "The selected exam kind is invalid or inactive.",
+      "BUNDLE_ITEMS_COUNT_INVALID": "A bundle must contain between 2 and 12 exams.",
+      "BUNDLE_ITEM_DUPLICATE": "Cannot select the same exam twice in a bundle.",
+      "BUNDLE_ITEM_FULL_SCOPE_NOT_ALLOWED": "Bundles only accept exams with subject or part scope.",
+      "BUNDLE_ITEM_INVALID_EXAM": "One or more selected exams are invalid or not published.",
+      "BUNDLE_ITEM_KIND_MISMATCH": "All exams in a bundle must belong to the same exam kind.",
+      "BUNDLE_ITEM_NOT_ON_SALE": "One or more exams in this bundle are no longer on sale. Replace them before publishing.",
+      "BUNDLE_LIST_PRICE_NEGATIVE": "List price cannot be negative.",
+      "BUNDLE_NOT_FOUND": "Bundle not found.",
+      "BUNDLE_NOT_PUBLISHED": "Only published bundles can be discontinued.",
+      "BUNDLE_RESULT_VIEW_INVALID": "Invalid result view selection.",
+      "CONFLICT": "Record state changed concurrently. Please review and try again.",
+      "FORBIDDEN": "You do not have permission to perform this action.",
+      "GENERIC": "Something went wrong while processing the bundle. Please try again.",
+      "INTERNAL_ERROR": "Temporary server failure. Please try again shortly.",
+      "LISTING_PRICE_BELOW_MIN": "Bundle price is below the payment gateway minimum.",
+      "LISTING_PRICE_MISSING": "Please enter a bundle price before publishing.",
+      "LISTING_PRICE_ZERO": "Bundle price must be greater than 0 VND to publish.",
+      "NETWORK": "Could not reach the server. Check your connection and try again.",
+      "RATE_LIMITED": "Too many requests. Wait a moment and try again.",
+      "VALIDATION_FAILED": "Please review the bundle fields and try again.",
+      "VERSION_CONFLICT": "This bundle was updated by someone else. The latest version has been loaded."
+    },
+    "form": {
+      "ariaLabel": "Bundle form",
+      "aside": {
+        "attempts": "Attempts per exam",
+        "attemptsValue": "{count} attempts",
+        "checklistTitle": "Required before publishing",
+        "examCount": "Exams",
+        "examCountValue": "{count} exams",
+        "examKind": "Exam kind",
+        "issues": {
+          "attempts": "Enter attempts per exam (1-100).",
+          "description": "Missing bundle description.",
+          "price": "Enter a bundle price greater than 0 VND.",
+          "tooFew": "Select at least {min} exams.",
+          "tooMany": "A bundle can include at most {max} exams.",
+          "unavailableItem": "At least one selected exam is no longer on sale."
+        },
+        "notAvailable": "—",
+        "notSelected": "Not selected",
+        "notSet": "Not set",
+        "price": "Bundle price",
+        "publishNote": "Changes to exams, price, or attempts only take effect when republished and apply only to new orders.",
+        "questionsValue": "{value} questions",
+        "ready": "Ready to publish.",
+        "title": "Summary",
+        "totalQuestions": "Total questions"
+      },
+      "banners": {
+        "conflictDescription": "The latest data from the server has been loaded; your unsaved edits did not overwrite it.",
+        "conflictRefetchFailedDescription": "Your unsaved edits are still preserved. Click Retry to load the latest version ({reason}).",
+        "conflictRefetchFailedTitle": "Bundle was updated by another user, but loading the latest version failed.",
+        "conflictTitle": "Bundle was updated by another user.",
+        "discontinuedReadOnly": "This bundle is discontinued and can no longer be edited.",
+        "readOnly": "You have read-only access to bundles. Exam modification permission is required to make changes.",
+        "unavailableDescription": "At least one member exam is no longer on sale. Replace it with an on-sale exam and republish.",
+        "unavailableTitle": "Bundle is currently unavailable.",
+        "unpublishedDescription": "New orders still use the currently published version until you republish.",
+        "unpublishedTitle": "On sale version {version} · Unpublished changes"
+      },
+      "benefits": {
+        "items": {
+          "benefitAiExplanation": {
+            "description": "Students can ask AI why each answer is right or wrong after grading.",
+            "label": "AI explanations"
+          },
+          "benefitPractice": {
+            "description": "Extra practice questions focused on weak knowledge areas.",
+            "label": "Extra practice"
+          },
+          "benefitStrengthWeakness": {
+            "description": "Summary across parts, subjects, and knowledge areas.",
+            "label": "Strengths and weaknesses review"
+          }
+        },
+        "legend": "Benefits for each exam in the bundle"
+      },
+      "candidates": {
+        "columns": {
+          "duration": "Duration",
+          "exam": "Exam",
+          "points": "Max points",
+          "questions": "Questions",
+          "scope": "Scope",
+          "select": "Select",
+          "subject": "Subject"
+        },
+        "durationValue": "{value} min",
+        "empty": "No eligible on-sale exams found for this exam kind.",
+        "emptyMetric": "—",
+        "loading": "Loading on-sale candidate exams...",
+        "offline": "Your device is offline, so loading candidate exams is paused.",
+        "otherSubject": "Other subject",
+        "pointsValue": "{value} pts",
+        "questionsValue": "{value} questions",
+        "selectAria": "Select {code}",
+        "selectKindFirst": "Select an exam kind in section 1 to browse eligible on-sale exams.",
+        "selectedCountChip": "Selected {count}/{max} · min {min}",
+        "tableAria": "Eligible on-sale exams for this exam kind"
+      },
+      "counter": "{count, number} / {max, number} characters",
+      "currency": "VND",
+      "examKindsError": "Could not load exam kinds.",
+      "examKindsOffline": "Your device is offline, so loading exam kinds is paused.",
+      "fields": {
+        "attemptsPerExam": "Attempts per exam",
+        "benefitNote": "Benefit applicability notes",
+        "benefitNotePlaceholder": "For example: AI explanations apply to multiple-choice and short-answer questions.",
+        "code": "Bundle code",
+        "codePlaceholder": "BO-SP2E-001",
+        "description": "Description",
+        "descriptionPlaceholder": "Detailed bundle description, required when publishing.",
+        "examKind": "Exam kind",
+        "examKindPlaceholder": "Select exam kind",
+        "listPriceVnd": "Bundle price",
+        "name": "Bundle name",
+        "namePlaceholder": "SP2E Bundle Block A00",
+        "summary": "Short card summary",
+        "summaryPlaceholder": "Three practice exams for Math, Physics, and Chemistry."
+      },
+      "hints": {
+        "attemptsPerExam": "From {min, number} to {max, number}. Required when publishing.",
+        "code": "Unique, case-insensitive. Suggested format BO-[KIND]-nnn.",
+        "description": "Required when publishing.",
+        "examKind": "All exams in the bundle must share the same exam kind. Changing it asks to clear selected exams.",
+        "items": "Choose 2 to 12 on-sale exams of the same exam kind with subject or part scope.",
+        "listPriceVnd": "Required when publishing. Taxes and fees included."
+      },
+      "order": {
+        "empty": "No exams selected yet.",
+        "hint": "Students see the exams in this order on the bundle detail page and on My Exams.",
+        "listAria": "Order of exams in bundle",
+        "moveDown": "Move {code} down",
+        "moveDownTooltip": "Move down",
+        "moveUp": "Move {code} up",
+        "moveUpTooltip": "Move up",
+        "movedDown": "Moved {code} down to position {position}.",
+        "movedUp": "Moved {code} up to position {position}.",
+        "remove": "Remove {code} from bundle",
+        "removeTooltip": "Remove",
+        "removed": "Removed {code} from bundle ({count, plural, one {# exam} other {# exams}} remaining).",
+        "title": "Order in bundle"
+      },
+      "resultView": {
+        "legend": "After grading, students can see",
+        "options": {
+          "FULL_SOLUTION": {
+            "description": "Adds detailed solutions for each question.",
+            "label": "Score, answers and solutions"
+          },
+          "SCORE": {
+            "description": "Total score, and scores by part and subject.",
+            "label": "Score only"
+          },
+          "SCORE_AND_ANSWERS": {
+            "description": "Adds the correct answer of each question.",
+            "label": "Score and answers"
+          }
+        }
+      },
+      "sections": {
+        "benefits": "Benefits and result view",
+        "info": "Bundle details",
+        "items": "Exams in bundle",
+        "pricing": "Pricing and attempts"
+      },
+      "toast": {
+        "created": "Created draft bundle.",
+        "updated": "Saved bundle changes."
+      }
+    },
+    "itemSaleStates": {
+      "DISCONTINUED": "Discontinued",
+      "UNAVAILABLE": "Unavailable"
+    },
+    "list": {
+      "columns": {
+        "actions": "Actions",
+        "attempts": "Attempts/exam",
+        "bundle": "Bundle",
+        "examKind": "Exam kind",
+        "itemCount": "Exams",
+        "price": "Price",
+        "status": "Status",
+        "updatedAt": "Updated"
+      },
+      "description": "A bundle combines 2-12 on-sale exams of the same exam kind with shared pricing and attempts.",
+      "emptyDescription": "Publish at least 2 on-sale exams of the same exam kind to create a bundle.",
+      "emptyTitle": "No bundles yet",
+      "errorTitle": "Failed to load bundles",
+      "filteredEmptyDescription": "No bundles match your current search or filter criteria.",
+      "filteredEmptyTitle": "No matching bundles",
+      "filters": {
+        "examKind": "Exam kind",
+        "examKindAll": "All",
+        "examKindsError": "Could not load exam kinds for filtering.",
+        "searchAria": "Search by bundle name or code",
+        "searchPlaceholder": "Search by bundle name or code",
+        "statusGroupAria": "Filter by bundle status",
+        "statusOptions": {
+          "ALL": "All",
+          "DISCONTINUED": "Discontinued",
+          "DRAFT": "Draft",
+          "PUBLISHED": "On sale"
+        }
+      },
+      "notSet": "—",
+      "offlineDescription": "Your device is offline, so loading bundles is paused.",
+      "offlineTitle": "Offline",
+      "summary": {
+        "attempts": "Attempts/exam: {value}",
+        "itemCount": "{count, plural, one {# exam} other {# exams}}",
+        "updatedAt": "Updated: {date}"
+      },
+      "tableAria": "Bundles table",
+      "title": "Bundles",
+      "totalItems": "{total, plural, one {Total # bundle} other {Total # bundles}}"
+    },
+    "scopes": {
+      "PART": "By part",
+      "SUBJECT": "By subject"
+    },
+    "states": {
+      "DISCONTINUED": "Discontinued",
+      "DRAFT": "Draft",
+      "PUBLISHED": "On sale",
+      "UNAVAILABLE": "Unavailable",
+      "UNPUBLISHED_CHANGES": "Unpublished changes"
+    },
+    "validation": {
+      "attemptsRange": "Attempts per exam must be between {min, number} and {max, number}.",
+      "benefitNoteMax": "Benefit notes can have at most {max, number} characters.",
+      "codeMax": "Bundle code can have at most {max, number} characters.",
+      "codeRequired": "Please enter a bundle code.",
+      "descriptionMax": "Description can have at most {max, number} characters.",
+      "examKindRequired": "Please select an exam kind.",
+      "itemsRange": "Select between {min, number} and {max, number} exams.",
+      "nameMax": "Bundle name can have at most {max, number} characters.",
+      "nameRequired": "Please enter a bundle name.",
+      "priceInvalid": "Bundle price must be a whole number of 0 VND or more.",
+      "summaryMax": "Short summary can have at most {max, number} characters."
     }
   }
 }

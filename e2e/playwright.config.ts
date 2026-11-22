@@ -2,8 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const isWindows = process.platform === "win32";
 const defaultBackendCmd = isWindows
-  ? "mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev"
-  : "./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev";
+  ? "mvnw.cmd -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev,e2e"
+  : "./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=api,worker,dev,e2e";
 
 const apiUrl = (process.env.THI360_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
 const webUrl = (process.env.THI360_WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -66,6 +66,7 @@ export default defineConfig({
         THI360_API_PORT: process.env.THI360_API_PORT ?? apiPort,
         THI360_WEB_URL: webUrl,
         THI360_ADMIN_URL: adminUrl,
+        THI360_VNPAY_MOCKPAYURL: process.env.THI360_VNPAY_MOCKPAYURL ?? `${apiUrl}/mock-vnpay`,
         // Relax the per-IP login rate limit (default 20/min) so the suite's
         // platform logins cannot trip RateLimitFilter. Applies only to the
         // backend spawned for e2e runs.
@@ -75,6 +76,15 @@ export default defineConfig({
         // from several specs and SessionStore evicts the oldest session
         // beyond the cap, which revoked the cached helper session.
         THI360_SECURITY_SESSION_MAXPERUSER: process.env.THI360_SECURITY_SESSION_MAXPERUSER ?? "50",
+        // Relax the per-IP register (E19: 30/hour, 100/day) and forgot/reset (E16: 60/min) limits: the account-*
+        // specs create a fresh account per test and the suite may be rerun within the hour.
+        THI360_REGISTER_IP_HOUR_LIMIT: process.env.THI360_REGISTER_IP_HOUR_LIMIT ?? "1000",
+        THI360_REGISTER_IP_DAY_LIMIT: process.env.THI360_REGISTER_IP_DAY_LIMIT ?? "5000",
+        THI360_FORGOT_PER_IP_LIMIT: process.env.THI360_FORGOT_PER_IP_LIMIT ?? "600",
+        THI360_RESET_PER_IP_LIMIT: process.env.THI360_RESET_PER_IP_LIMIT ?? "600",
+        // GET /api/v1/public/** is limited to 120 requests a minute per IP (TM 10.2); the e2e web server renders the
+        // catalog from loopback, so exempt it (plan B6, FS-1). The suite must never see a 429 from the catalog.
+        THI360_SECURITY_RATELIMIT_EXEMPTIPS: process.env.THI360_SECURITY_RATELIMIT_EXEMPTIPS ?? "127.0.0.1,::1",
       },
     },
     {

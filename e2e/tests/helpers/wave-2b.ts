@@ -27,6 +27,7 @@ export function examCode(prefix: string): string {
 export interface CreatedExam {
   id: string;
   code: string;
+  kind?: string;
   revision: number;
   templateCode?: string | null;
   status: string;
@@ -610,30 +611,123 @@ export async function saveStructureInUi(page: Page, examId: string): Promise<voi
   await expect(save).toBeDisabled();
 }
 
+const MATRIX_SUBJECTS_BY_KIND: Readonly<Record<string, ReadonlySet<string>>> = {
+  HSA: new Set(["TOAN", "LY", "HOA", "SINH", "SU", "DIA"]),
+  QDA: new Set(["TOAN", "LY", "HOA", "SINH", "SU", "DIA"]),
+  BCA: new Set(["TOAN", "SU", "LY", "HOA", "SINH", "DIA"]),
+  VACT: new Set(["TOAN", "VIETNAMESE"]),
+};
+
+function isEditableBlockSection(kindCode: string | undefined, section: StructureSection): boolean {
+  if (kindCode && MATRIX_SUBJECTS_BY_KIND[kindCode]?.has(section.subjectCode)) return false;
+  if (kindCode === "THPTQG" && section.subjectCode === "VAN") return false;
+  return true;
+}
+
 /**
  * Bước 2: mở nhóm lấy câu đầu tiên (đường dẫn `?block=` là cách màn mở lại đúng mục), đổi tên nhóm rồi bấm Lưu. Nút Lưu
- * của bản mẫu nguyên vẹn tắt, nên đổi tên là giá trị sửa được vô hại để lưu thật. Chỉ đọc cấu trúc ở API để chọn nhóm và
- * để xác nhận tên đã lưu. Trả nhóm sau khi đổi tên.
+ * của bản mẫu nguyên vẹn tắt, nên đổi tên (hoặc một sửa đổi vô hại rồi khôi phục trên MT / đổi tên phần ở cặp chỉ đọc
+ * `THPTQG:VAN`) là thao tác để lưu thật. Chỉ đọc cấu trúc ở API để chọn nhóm và xác nhận giá trị đã lưu.
  */
 export async function renameFirstBlockAndSaveInUi(page: Page, admin: AdminApi, examId: string): Promise<{ id: string; name: string }> {
-  const blocks = allSections(await getStructure(admin, examId))
+  const exam = await getExam(admin, examId);
+  const sections = allSections(await getStructure(admin, examId));
+  const editableBlocks = sections
+    .filter((section) => isEditableBlockSection(exam.kind, section))
     .flatMap((section) => section.blocks ?? [])
     .filter((item) => item.id && item.name);
-  // Ưu tiên nhóm đang tính điểm; bài chỉ còn nhóm tạm bỏ qua (THPTQG Ngữ văn) thì sửa nhóm đầu tiên.
-  const block = blocks.find((item) => item.omitted !== true && (item.questionCount ?? 0) > 0) ?? blocks[0];
+  const allBlocks = sections.flatMap((section) => section.blocks ?? []).filter((item) => item.id && item.name);
+  const candidates = editableBlocks.length > 0 ? editableBlocks : allBlocks;
+  // Ưu tiên nhóm đang tính điểm; bài chỉ còn nhóm tạm bỏ qua thì sửa nhóm đầu tiên.
+  const block = candidates.find((item) => item.omitted !== true && (item.questionCount ?? 0) > 0) ?? candidates[0];
   expect(block, "bài không có nhóm lấy câu để sửa").toBeDefined();
-  const renamed = `${block!.name} 2B`;
+
   await page.goto(`${ADMIN_URL}/exams/${examId}/structure?block=${encodeURIComponent(block!.id!)}`);
   const nameField = page.getByRole("textbox", { name: /^Tên nhóm/ });
-  await expect(nameField).toHaveValue(block!.name!);
-  await nameField.fill(renamed);
+  const matrixForm = page.locator('[data-form-kind="MATRIX"]');
+  const readOnlyNotice = page.locator("[data-read-only-notice]");
+  await expect(nameField.or(matrixForm).or(readOnlyNotice).first()).toBeVisible();
+
+  if ((await nameField.count()) > 0) {
+    const renamed = `${block!.name} 2B`;
+    await expect(nameField).toHaveValue(block!.name!);
+    await nameField.fill(renamed);
+    await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+    await saveStructureInUi(page, examId);
+    const saved = allSections(await getStructure(admin, examId))
+      .flatMap((section) => section.blocks ?? [])
+      .find((item) => item.id === block!.id);
+    expect(saved?.name, "tên nhóm đã lưu").toBe(renamed);
+    return { id: block!.id!, name: renamed };
+  }
+
+  if ((await matrixForm.count()) > 0) {
+    const structureBlock = matrixForm.locator('[data-form-field="STRUCTURE"]');
+    const fillInput = structureBlock.getByRole("textbox", { name: "Điền đáp án", exact: true });
+    const choiceInput = structureBlock.getByRole("textbox", { name: "Trắc nghiệm", exact: true });
+    const singleInput = structureBlock.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true });
+    const fallbackCountInput = structureBlock.getByRole("textbox", { name: /· số câu$/ }).first();
+
+    const isFill = (await fillInput.count()) > 0;
+    const isChoice = !isFill && (await choiceInput.count()) > 0;
+    const isSingle = !isFill && !isChoice && (await singleInput.count()) > 0;
+    const countInput = isFill
+      ? fillInput
+      : isChoice
+        ? choiceInput
+        : isSingle
+          ? singleInput
+          : fallbackCountInput;
+    await expect(countInput).toBeVisible();
+
+    const sectionBefore = allSections(await getStructure(admin, examId)).find((s) =>
+      (s.blocks ?? []).some((b) => b.id === block!.id),
+    );
+    const targetType = isFill ? "SHORT_ANSWER" : "SINGLE_CHOICE";
+    const targetBlockBefore =
+      (sectionBefore?.blocks ?? []).find((b) => b.questionType === targetType) ??
+      (sectionBefore?.blocks ?? []).find((b) => b.id === block!.id);
+    expect(targetBlockBefore?.id, "không tìm thấy khối mục tiêu trong section MATRIX").toBeTruthy();
+
+    const origValue = await countInput.inputValue();
+    const origNum = Number(origValue);
+    const tempValue = isFill ? String(origNum > 1 ? origNum - 1 : origNum + 1) : String(origNum + 1);
+    const delta = Number(tempValue) - origNum;
+    const expectedTempCount = isChoice ? (targetBlockBefore?.questionCount ?? 0) + delta : Number(tempValue);
+
+    await countInput.fill(tempValue);
+    await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+    await saveStructureInUi(page, examId);
+
+    const savedBlock = allSections(await getStructure(admin, examId))
+      .flatMap((section) => section.blocks ?? [])
+      .find((item) => item.id === targetBlockBefore!.id);
+    expect(savedBlock?.questionCount, "số câu khối MATRIX sau khi lưu").toBe(expectedTempCount);
+
+    await countInput.fill(origValue);
+    await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+    await saveStructureInUi(page, examId);
+    await expect(countInput).toHaveValue(origValue);
+
+    const restoredBlock = allSections(await getStructure(admin, examId))
+      .flatMap((section) => section.blocks ?? [])
+      .find((item) => item.id === targetBlockBefore!.id);
+    expect(restoredBlock?.questionCount, "số câu khối MATRIX sau khi khôi phục").toBe(targetBlockBefore?.questionCount);
+    return { id: block!.id!, name: block!.name! };
+  }
+
+  await expect(readOnlyNotice).toHaveText("Tự luận – tạm bỏ qua. Phần này không có ô sửa.");
+  await expect(page.getByRole("button", { name: /^Sửa dòng/ })).toHaveCount(0);
+  await page.getByRole("navigation", { name: "Cấu trúc" }).locator(":scope > ol > li:not(:first-child) > button[data-list-item]").first().click();
+  const partNameField = page.getByRole("textbox", { name: /^Tên phần/ });
+  await expect(partNameField).toBeVisible();
+  const partName = await partNameField.inputValue();
+  const renamedPart = `${partName} 2B`;
+  await partNameField.fill(renamedPart);
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
   await saveStructureInUi(page, examId);
-  const saved = allSections(await getStructure(admin, examId))
-    .flatMap((section) => section.blocks ?? [])
-    .find((item) => item.id === block!.id);
-  expect(saved?.name, "tên nhóm đã lưu").toBe(renamed);
-  return { id: block!.id!, name: renamed };
+  expect((await getStructure(admin, examId)).parts[0]?.name, "tên phần đã lưu").toBe(renamedPart);
+  return { id: block!.id!, name: block!.name! };
 }
 
 /**
@@ -649,7 +743,7 @@ export async function continueToReviewInUi(page: Page, examId: string): Promise<
   ]);
   expect(response.status(), await response.text()).toBe(200);
   const check = (await response.json()) as CheckResult;
-  if (blockingCodes(check).length === 0) await page.waitForURL(/\/exams\/[^/]+\/review/);
+  if (blockingCodes(check.groups ?? []).length === 0) await page.waitForURL(/\/exams\/[^/]+\/review/);
   return check;
 }
 
@@ -728,8 +822,56 @@ export async function switchPathInUi(
 }
 
 /**
- * Công bố ở trang Phiên bản và công bố: nút "Công bố", hộp thoại, "Công bố N đường lựa chọn". Trả phản hồi của máy chủ
- * (đã khẳng định 200).
+ * Điền tối thiểu thông tin bán (FB yêu cầu đủ giá, số lượt và mô tả trước khi công bố) nếu còn trống rồi bấm "Lưu"
+ * (nút Lưu nằm ngoài `<form aria-label="Thông tin bán">` nên tìm ở cấp trang).
+ */
+export async function ensureListingFilledInUi(page: Page, examId: string): Promise<void> {
+  await openEditorTab(page, "Thông tin bán", /\/exams\/[^/]+\/listing/);
+  const listingForm = page.getByRole("form", { name: "Thông tin bán" });
+  await expect(listingForm).toBeVisible();
+  const priceInput = listingForm.getByRole("textbox", { name: "Giá bán", exact: true });
+  const attemptsInput = listingForm.getByRole("spinbutton", { name: "Số lượt mỗi lần mua" });
+  const descriptionInput = listingForm.getByRole("textbox", { name: "Mô tả", exact: true });
+  let shouldSave = false;
+  const price = (await priceInput.inputValue()).trim();
+  if (!price || price === "0") {
+    await priceInput.fill("100000");
+    shouldSave = true;
+  }
+  const attempts = (await attemptsInput.inputValue()).trim();
+  if (!attempts || Number(attempts) < 1) {
+    await attemptsInput.fill("3");
+    shouldSave = true;
+  }
+  if ((await descriptionInput.inputValue()).trim() === "") {
+    await descriptionInput.fill("Đề thi luyện tập chuẩn bị kỳ thi.");
+    shouldSave = true;
+  }
+  const saveListing = page.getByRole("button", { name: "Lưu", exact: true });
+  if (shouldSave || (await saveListing.isEnabled())) {
+    await expect(saveListing).toBeEnabled();
+    const [savedListing, refreshedExam] = await Promise.all([
+      page.waitForResponse(
+        (item) =>
+          new URL(item.url()).pathname === `/api/v1/admin/exams/${examId}/listing` &&
+          item.request().method() === "PUT",
+      ),
+      page.waitForResponse(
+        (item) =>
+          new URL(item.url()).pathname === `/api/v1/admin/exams/${examId}` && item.request().method() === "GET",
+      ),
+      saveListing.click(),
+    ]);
+    expect(savedListing.status(), await savedListing.text()).toBe(200);
+    expect(refreshedExam.status(), await refreshedExam.text()).toBe(200);
+    await expect(saveListing).toBeDisabled();
+  }
+}
+
+/**
+ * Điền tối thiểu thông tin bán (FB yêu cầu đủ giá, số lượt và mô tả trước khi công bố) nếu còn trống rồi công bố ở trang
+ * Phiên bản và công bố: nút "Công bố", hộp thoại, "Công bố N đường lựa chọn". Trả phản hồi của máy chủ (đã khẳng
+ * định 200).
  *
  * `expectedPaths` (tên ô chọn của từng đường, ví dụ `/^Q[DĐ]01 ·/`): trước khi bấm, hộp thoại phải liệt kê đúng ngần ấy
  * đường, đều đã chọn, kèm dòng "Sẽ công bố N / N đường lựa chọn" và nút "Công bố N đường lựa chọn". Các khẳng định này
@@ -740,6 +882,8 @@ export async function publishInUi(
   examId: string,
   expectedPaths?: RegExp[],
 ): Promise<{ version: number; publishedPathIds: string[] }> {
+  await ensureListingFilledInUi(page, examId);
+
   await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
   await page.getByRole("button", { name: "Công bố", exact: true }).click();
   const dialog = page.getByRole("dialog");
@@ -782,10 +926,20 @@ export function writingOmittedSwitch(page: Page): Locator {
 }
 
 /**
- * Nhóm Viết của mẫu `omittedLocked` (H43, H49, R-144): công tắc "Tạm bỏ qua" bật sẵn nhưng tắt (không bấm được) và có lý
- * do đi kèm qua `aria-describedby` (R3-09). Lời giải thích nhắc việc không bật lại được.
+ * Nhóm Viết của mẫu `omittedLocked` (H43, H49, R-144): FTM `RowEditor` khóa và thay công tắc bằng trạng thái chỉ đọc
+ * `[data-lock-reason="omitted"]` + `[data-omitted-locked]` để tránh bật lại nhóm đã lược; `BlockEditor` cũ giữ công tắc
+ * tắt kèm lý do qua `aria-describedby` (R3-09).
  */
 export async function expectWritingSwitchLocked(page: Page): Promise<void> {
+  const rowEditor = page.locator("[data-form-row-editor]");
+  if ((await rowEditor.count()) > 0) {
+    await expect(rowEditor.locator('[data-lock-reason="omitted"]')).toContainText("Nhóm đã lược theo mẫu, không bật lại");
+    const lockedOmitted = rowEditor.locator("[data-omitted-locked]");
+    await expect(lockedOmitted).toContainText("Tạm bỏ qua");
+    await expect(lockedOmitted).toContainText(/không bật lại được|chưa có trong V1/);
+    await expect(writingOmittedSwitch(page)).toHaveCount(0);
+    return;
+  }
   const omit = writingOmittedSwitch(page);
   await expect(omit).toBeVisible();
   await expect(omit).toBeChecked();
@@ -1287,9 +1441,21 @@ interface S3Config {
   secretKey: string;
 }
 
+/**
+ * Điểm cuối kho lưu trữ của stack đang chạy thử. Không có mặc định: `localhost:9360` là MinIO dùng chung của máy dev, và
+ * bước chuẩn bị ở đây XÓA, GHI object trong đó (C-0b, 2026-11-19). Thiếu biến thì dừng thay vì đụng vào kho chung.
+ */
+export function s3Endpoint(): string {
+  const endpoint = process.env.THI360_S3_ENDPOINT?.trim();
+  if (!endpoint) {
+    throw new Error("THI360_S3_ENDPOINT chưa đặt: đặt về MinIO của stack đang chạy thử (stack lane: http://localhost:<57400+k>), không dùng kho dev dùng chung.");
+  }
+  return endpoint.replace(/\/+$/, "");
+}
+
 function s3Config(): S3Config {
   return {
-    endpoint: (process.env.THI360_S3_ENDPOINT ?? "http://localhost:9360").replace(/\/+$/, ""),
+    endpoint: s3Endpoint(),
     bucket: process.env.THI360_S3_BUCKET ?? "thi360-private",
     accessKey: process.env.THI360_S3_ACCESS_KEY ?? "thi360",
     secretKey: process.env.THI360_S3_SECRET_KEY ?? "thi360-dev-only",

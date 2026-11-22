@@ -38,6 +38,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách lượt thi cho vận hành */
+        get: operations["listAdminAttempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/attempts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết lượt thi, các phần, sự kiện và bài làm cuối */
+        get: operations["getAdminAttemptDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/attempts/{id}/compensate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cấp bù 1 lượt cho lượt thi đã đánh dấu lỗi hệ thống */
+        post: operations["compensateAdminAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/attempts/{id}/fault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đánh dấu lượt thi lỗi hệ thống và đóng lượt nếu đang mở */
+        post: operations["faultAdminAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/attempts/{id}/regrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chấm lại lượt thi đang ở trạng thái GRADING_ERROR */
+        post: operations["regradeAdminAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/audit-events": {
         parameters: {
             query?: never;
@@ -83,6 +168,93 @@ export interface paths {
         put?: never;
         /** Xem trước kết quả gán/gỡ quyền hàng loạt */
         post: operations["preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bundles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách bộ đề phân trang */
+        get: operations["listBundles"];
+        put?: never;
+        /** Tạo bộ đề mới ở trạng thái nháp */
+        post: operations["createBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bundles/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách bài thi đang bán (PART hoặc SUBJECT, gồm cả bài ôn) có thể đưa vào bộ đề */
+        get: operations["listBundleCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bundles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết bộ đề và danh sách bài thi thành phần */
+        get: operations["getBundle"];
+        /** Cập nhật bộ đề (khóa lạc quan expectedRevision) */
+        put: operations["updateBundle"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bundles/{id}/discontinue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ngừng bán bộ đề đang công bố */
+        post: operations["discontinueBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bundles/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Công bố hoặc công bố lại bộ đề */
+        post: operations["publishBundle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -667,6 +839,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/exams/{examId}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tải ảnh bìa (jpg, png, webp; tối đa 2 MB, 4.096 px; cạnh ngắn từ 480 px)
+         * @description Chỉ tạo ảnh. PUT listing mới gắn ảnh vào bài.
+         */
+        post: operations["uploadExamCover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{examId}/cover/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem ảnh bìa bản nháp */
+        get: operations["getExamCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/exams/{examId}/discontinue": {
         parameters: {
             query?: never;
@@ -677,6 +886,24 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["discontinueExam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{examId}/listing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thông tin bán: bản làm việc, bản đang bán, lỗi kiểm tra */
+        get: operations["getExamListing"];
+        /** Lưu thông tin bán của bài thi */
+        put: operations["updateExamListing"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -749,6 +976,23 @@ export interface paths {
         patch: operations["update_1"];
         trace?: never;
     };
+    "/api/v1/admin/exams/{id}/buyers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách tài khoản đã mua theo bài thi */
+        get: operations["listExamBuyers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/exams/{id}/duplicate": {
         parameters: {
             query?: never;
@@ -794,6 +1038,57 @@ export interface paths {
         put?: never;
         /** Sinh đề xem trước một đường (có hạt giống) */
         post: operations["previewExam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{id}/preview/{previewId}/grade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chấm bài làm tạm trên bản xem trước bằng ItemGrader/ScoreAggregator, không lưu DB */
+        post: operations["gradeAdminPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{id}/preview/{previewId}/paper": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Đọc đề làm thử từ bản xem trước (đã lọc đáp án, giữ thứ tự câu/đáp án/âm thanh/đoạn) */
+        get: operations["getAdminPreviewPaper"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/exams/{id}/preview/{previewId}/trial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gia hạn TTL phiên xem trước theo công thức max(hiện tại, now + thời lượng + 30p) */
+        post: operations["extendAdminPreviewForTrial"];
         delete?: never;
         options?: never;
         head?: never;
@@ -846,6 +1141,109 @@ export interface paths {
         put?: never;
         /** Nạp mẫu cấu trúc */
         post: operations["loadTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/grading/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách hàng chờ chấm tự luận ẩn danh */
+        get: operations["listGradingItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/grading/items/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số đếm hàng chờ chấm theo trạng thái (BS §11) */
+        get: operations["getGradingItemCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/grading/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết câu tự luận theo đúng phiên bản đã phát (ẩn danh) */
+        get: operations["getGradingItemDetail"];
+        /** Lưu nháp điểm chấm tự luận */
+        put: operations["saveEssayDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/grading/items/{itemId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nhận câu tự luận để chấm hoặc tiếp quản sau 30 phút không hoạt động */
+        post: operations["claimGradingItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/grading/items/{itemId}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hoàn tất chấm câu tự luận và tính lại điểm lượt thi */
+        post: operations["finalizeEssayGrade"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/grading/items/{itemId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở lại bản chấm tự luận đã hoàn tất để chấm lại */
+        post: operations["reopenEssayGrade"];
         delete?: never;
         options?: never;
         head?: never;
@@ -972,6 +1370,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách đơn hàng quản trị và số đếm dải Cần xử lý */
+        get: operations["listAdminOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Số lượng đơn theo 6 nhóm Cần xử lý */
+        get: operations["getAdminOrderAttentionSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết đơn hàng cho quản trị viên */
+        get: operations["getAdminOrderDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{code}/fulfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tiếp tục cấp quyền thủ công cho đơn đã thanh toán */
+        post: operations["recoverOrderFulfillment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{code}/payments/{paymentId}/late-success": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đối soát tiền về muộn trên lần thanh toán đã ghi thất bại */
+        post: operations["reviewLateSuccessPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{code}/payments/{paymentId}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tạo yêu cầu hoàn tiền qua API VNPAY hoặc ghi nhận thủ công */
+        post: operations["createOrderPaymentRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/permissions": {
         parameters: {
             query?: never;
@@ -1026,6 +1526,111 @@ export interface paths {
         get: operations["exportUsersByPermission"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promotions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách khuyến mãi và voucher */
+        get: operations["listPromotions"];
+        put?: never;
+        /** Tạo khuyến mãi tự động hoặc voucher (idempotent) */
+        post: operations["createPromotion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promotions/price-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Thử giá khuyến mãi trên một bài thi */
+        post: operations["previewPromotionPrice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promotions/suggested-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gợi ý mã voucher ngẫu nhiên 8 ký tự */
+        get: operations["getSuggestedPromotionCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promotions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết khuyến mãi, lượt dùng và lịch sử thay đổi */
+        get: operations["getPromotion"];
+        put?: never;
+        post?: never;
+        /** Xóa mềm khuyến mãi hoặc voucher chưa có lượt dùng */
+        delete: operations["deletePromotion"];
+        options?: never;
+        head?: never;
+        /** Cập nhật khuyến mãi hoặc voucher */
+        patch: operations["updatePromotion"];
+        trace?: never;
+    };
+    "/api/v1/admin/promotions/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở lại khuyến mãi hoặc voucher */
+        post: operations["resumePromotion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promotions/{id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tạm dừng khuyến mãi hoặc voucher */
+        post: operations["stopPromotion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1401,6 +2006,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/reconciliation-reports/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lấy báo cáo đối soát mới nhất */
+        get: operations["getLatestReconciliationReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/refunds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem chi tiết một yêu cầu hoàn tiền */
+        get: operations["getRefund"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/refunds/{id}/mark-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đánh dấu giao dịch hoàn tiền UNKNOWN là FAILED kèm chứng từ */
+        post: operations["markRefundFailed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/refunds/{id}/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tra cứu kết quả hoàn tiền từ cổng VNPAY (querydr) */
+        post: operations["queryRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/roles": {
         parameters: {
             query?: never;
@@ -1449,6 +2122,26 @@ export interface paths {
         /** Cập nhật toàn bộ quyền của vai trò */
         put: operations["updateRolePermissions"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/storefront/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dựng lại mọi dòng bảng chiếu từ các bài đã công bố hoặc ngừng bán
+         * @description Sửa chữa khi sự kiện công bố bị mất hoặc lỗi. Chạy lại không đổi kết quả; bài nháp không có dòng.
+         */
+        post: operations["rebuildStorefront"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1800,6 +2493,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Yêu cầu liên kết đặt lại mật khẩu (công khai, luôn 202 cùng một thân) */
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Đặt lại mật khẩu bằng mã trong thư (công khai, không đăng nhập) */
+        post: operations["resetPasswordByToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -1811,6 +2538,43 @@ export interface paths {
         put?: never;
         /** Làm mới phiên đăng nhập */
         post: operations["refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tự đăng ký tài khoản học viên
+         * @description Công khai. Tạo tài khoản và user Keycloak, đặt phiên (cookie HttpOnly), xếp thư mã OTP xác minh email.
+         */
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/avatars/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Phục vụ ảnh đại diện (PNG 256px) cho tài khoản đã đăng nhập */
+        get: operations["getAvatar"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1902,6 +2666,537 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lịch sử luyện thi của học viên */
+        get: operations["listHistory"];
+        put?: never;
+        /** Bắt đầu lượt thi mới hoặc nối lại lượt đang mở (sinh đề chạy nền) */
+        post: operations["start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Đọc trạng thái và nội dung các phần đã mở của lượt thi */
+        get: operations["getState"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Lưu nháp câu trả lời theo seq, cờ đánh dấu xem lại và vị trí đang xem */
+        put: operations["saveAnswers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tải tài nguyên câu hỏi (ảnh, tệp đính kèm, audio) thuộc lượt thi của thí sinh */
+        get: operations["downloadAttemptAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mở lần nghe mới cho tệp audio hoặc trả lại kết quả khi gửi lặp requestId */
+        post: operations["openAudioPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Kết thúc lần nghe audio đang phát */
+        post: operations["endAudioPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Cập nhật tiến độ phát audio và kiểm tra giới hạn chống tua */
+        put: operations["updateAudioProgress"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Phát tiếp lần nghe đang dở từ vị trí đã lưu và gia hạn lease */
+        post: operations["resumeAudioPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cập nhật thời điểm hoạt động của phiên sửa bài */
+        post: operations["heartbeat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác nhận lựa chọn phần tự chọn (phần 3 HSA, QDA) và sinh đề ở nền */
+        post: operations["confirmPartChoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hoàn thành phần hiện tại và mở phần kế tiếp của lượt thi */
+        post: operations["finishPart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Thử lại sinh đề cho phần thi đang ở trạng thái GENERATION_FAILED */
+        post: operations["retryPartGeneration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem kết quả tổng hợp của lượt thi */
+        get: operations["getResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Xem lại bài làm theo quyền result_view */
+        get: operations["getReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nhận, khôi phục hoặc tiếp quản phiên sửa bài của lượt thi */
+        post: operations["claimSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tải ảnh hoặc tệp thuộc lời giải câu hỏi trong lượt đã chấm (FULL_SOLUTION) */
+        get: operations["downloadSolutionAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts/{attemptId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nộp bài và kết thúc lượt thi */
+        post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Đặt ảnh đại diện (jpg, png, webp, ≤5 MB, ≤4.096 px; lưu PNG 256px) */
+        put: operations["replaceMyAvatar"];
+        post?: never;
+        /** Xóa ảnh đại diện (không có ảnh thì không làm gì) */
+        delete: operations["removeMyAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/email/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Yêu cầu đổi email: gửi mã tới email mới */
+        post: operations["requestChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/email/change/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác nhận đổi email bằng mã OTP */
+        post: operations["confirmChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/email/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gửi hoặc gửi lại mã xác minh tới email hiện tại */
+        post: operations["sendVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Xác minh email hiện tại bằng mã OTP */
+        post: operations["verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/entitlements/{entitlementId}/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chuẩn bị trước khi bắt đầu lượt thi theo quyền dùng */
+        get: operations["prepare"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exam-access/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hỏi trạng thái quyền dùng theo mã sản phẩm (tối đa 48 mã) */
+        post: operations["queryMyExamAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/exams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thẻ bài thi của tài khoản đang đăng nhập (TM 12) */
+        get: operations["listMyExams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách đơn hàng của học viên đang đăng nhập */
+        get: operations["listMyOrders"];
+        put?: never;
+        /** Tạo đơn mua bài thi (hoặc dùng lại/thay thế đơn chờ) */
+        post: operations["createMyOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/orders/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết đơn hàng của học viên đang đăng nhập */
+        get: operations["getMyOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/orders/{code}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hủy đơn hàng đang chờ và trả lượt voucher */
+        post: operations["cancelMyOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/orders/{code}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tiếp tục thanh toán cho đơn đang chờ */
+        post: operations["payMyOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/price-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Báo giá bài thi kèm voucher tùy chọn */
+        post: operations["quoteMyPrice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Đọc hồ sơ của tài khoản đang đăng nhập */
+        get: operations["getMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sửa họ tên, số điện thoại của tài khoản đang đăng nhập */
+        patch: operations["updateMyProfile"];
+        trace?: never;
+    };
     "/api/v1/ping": {
         parameters: {
             query?: never;
@@ -1911,6 +3206,111 @@ export interface paths {
         };
         /** Kiểm tra kết nối API */
         get: operations["ping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/payments/vnpay/ipn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nhận thông báo thanh toán tức thì (IPN) từ VNPAY */
+        get: operations["handleVnpayIpn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/payments/vnpay/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kiểm chữ ký tham số VNPAY ở trang kết quả (không đổi trạng thái) */
+        get: operations["verifyVnpayReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/storefront/covers/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ảnh bìa; chỉ ảnh đang là bìa của một dòng bảng chiếu, ảnh khác nhận 404 */
+        get: operations["getStorefrontCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/storefront/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bộ lọc của danh mục: kỳ thi, hình thức, môn, phần, kèm số sản phẩm đang bán */
+        get: operations["getStorefrontFilters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/storefront/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Danh sách thẻ sản phẩm đang bán
+         * @description page tính từ 0. size mặc định 12; lớn hơn 48 thì lấy 48. q tìm theo tên không dấu và theo mã.
+         */
+        get: operations["listStorefrontProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/storefront/products/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chi tiết sản phẩm theo mã */
+        get: operations["getStorefrontProduct"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1950,6 +3350,366 @@ export interface components {
             /** @description Danh sách ID học viên bị bỏ qua do đã thuộc lớp hoặc trùng lặp */
             skippedUserIds: string[];
         };
+        /** @description Trạng thái lượt thi sau thao tác regrade hoặc đánh dấu hỏng (LT §12) */
+        AdminAttemptActionResponse: {
+            /** Format: uuid */
+            attemptId?: string;
+            compensated?: boolean;
+            displayScore?: number;
+            faultFlag?: string;
+            faultReason?: string;
+            /** Format: date-time */
+            gradedAt?: string;
+            maxScore?: number;
+            rawScore?: number;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
+        /** @description Chi tiết lượt thi cho vận hành kèm các phần, dòng sự kiện và bài làm cuối (LT §12, AC-15) */
+        AdminAttemptDetailResponse: {
+            /** @enum {string} */
+            abortReason?: "GENERATION_FAILED" | "GENERATION_TIMEOUT" | "GENERATION_BUSY" | "STALE_STARTING" | "AUDIO_ASSET_MISSING" | "AUDIO_ASSET_INVALID";
+            /** Format: uuid */
+            attemptId?: string;
+            /** Format: int32 */
+            attemptNo?: number;
+            choices?: {
+                [key: string]: components["schemas"]["AttemptChoiceSummary"];
+            };
+            compensated?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            deadlineAt?: string;
+            displayScore?: number;
+            /** Format: uuid */
+            editSessionId?: string;
+            /** Format: date-time */
+            editSessionSeenAt?: string;
+            /** @enum {string} */
+            endReason?: "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOSED";
+            /** Format: uuid */
+            entitlementId?: string;
+            events?: components["schemas"]["AdminAttemptEventView"][];
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            faultFlag?: string;
+            faultReason?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: date-time */
+            gradedAt?: string;
+            gradingError?: string;
+            /** Format: uuid */
+            grantId?: string;
+            items?: components["schemas"]["AdminAttemptItemView"][];
+            lastPosition?: components["schemas"]["AttemptPosition"];
+            maxScore?: number;
+            /** @enum {string} */
+            navigationMode?: "SEQUENTIAL" | "FREE";
+            partCode?: string;
+            parts?: components["schemas"]["AdminAttemptPartView"][];
+            practiceScoring?: string;
+            rawScore?: number;
+            referenceMax?: number;
+            regrading?: boolean;
+            resultView?: string;
+            scope?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            /** @enum {string} */
+            timing?: "PER_PART" | "SHARED";
+            /** Format: date-time */
+            updatedAt?: string;
+            userCode?: string;
+            userEmail?: string;
+            userFullName?: string;
+            /** Format: uuid */
+            userId?: string;
+            username?: string;
+        };
+        AdminAttemptEventView: {
+            /** Format: date-time */
+            at?: string;
+            data?: {
+                [key: string]: unknown;
+            };
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            partId?: string;
+            /** Format: uuid */
+            sessionId?: string;
+            /** @enum {string} */
+            type?: "STARTED" | "GENERATION_FAILED" | "PART_OPENED" | "PART_CLOSED" | "CHOICE_CONFIRMED" | "SESSION_CLAIMED" | "SESSION_TAKEN_OVER" | "SAVE_REJECTED" | "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "GRADED" | "GRADING_FAILED" | "REGRADED" | "COMPENSATED";
+        };
+        AdminAttemptItemView: {
+            answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
+            /** Format: date-time */
+            answerReceivedAt?: string;
+            /** Format: int64 */
+            answerSeq?: number;
+            /** Format: int32 */
+            displayNo?: number;
+            earnedPoints?: number;
+            flagged?: boolean;
+            gradingDetail?: components["schemas"]["ReviewGradingDetail"];
+            inScope?: boolean;
+            /** Format: uuid */
+            itemId?: string;
+            /** Format: int32 */
+            ord?: number;
+            /** @enum {string} */
+            outcome?: "CORRECT" | "PARTIAL" | "WRONG" | "BLANK" | "PENDING_REVIEW";
+            /** Format: uuid */
+            parentItemId?: string;
+            /** Format: uuid */
+            partId?: string;
+            pointsMax?: number;
+            /** Format: uuid */
+            questionId?: string;
+            /** @enum {string} */
+            questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            /** Format: int32 */
+            questionVersionNo?: number;
+            /** Format: int32 */
+            unitCount?: number;
+        };
+        AdminAttemptPartView: {
+            choice?: components["schemas"]["AttemptChoiceSummary"];
+            /** Format: date-time */
+            choiceConfirmedAt?: string;
+            /** Format: date-time */
+            choiceDeadlineAt?: string;
+            /** @enum {string} */
+            closeReason?: "FINISHED" | "TIME_UP" | "CHOICE_TIMEOUT" | "ATTEMPT_SUBMITTED" | "FAULT_CLOSED";
+            /** Format: date-time */
+            closedAt?: string;
+            /** Format: date-time */
+            deadlineAt?: string;
+            /** Format: int32 */
+            durationMinutes?: number;
+            generationError?: string;
+            /** Format: int32 */
+            generationTries?: number;
+            maxPoints?: number;
+            /** Format: int32 */
+            ord?: number;
+            partCode?: string;
+            /** Format: uuid */
+            partId?: string;
+            partName?: string;
+            /** Format: int32 */
+            questionCountRequired?: number;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "PENDING" | "AWAITING_CHOICE" | "GENERATING" | "GENERATION_FAILED" | "OPEN" | "CLOSED" | "SKIPPED";
+        };
+        /** @description Một dòng lượt thi trong danh sách vận hành (LT §12) */
+        AdminAttemptSummary: {
+            /** @enum {string} */
+            abortReason?: "GENERATION_FAILED" | "GENERATION_TIMEOUT" | "GENERATION_BUSY" | "STALE_STARTING" | "AUDIO_ASSET_MISSING" | "AUDIO_ASSET_INVALID";
+            /** Format: uuid */
+            attemptId?: string;
+            /** Format: int32 */
+            attemptNo?: number;
+            choices?: {
+                [key: string]: components["schemas"]["AttemptChoiceSummary"];
+            };
+            compensated?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            deadlineAt?: string;
+            displayScore?: number;
+            /** @enum {string} */
+            endReason?: "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOSED";
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            faultFlag?: string;
+            faultReason?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: date-time */
+            gradedAt?: string;
+            maxScore?: number;
+            partCode?: string;
+            rawScore?: number;
+            regrading?: boolean;
+            scope?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            userFullName?: string;
+            /** Format: uuid */
+            userId?: string;
+            username?: string;
+        };
+        AdminOrderDetailResponse: {
+            /** Format: int64 */
+            amountDueVnd: number;
+            /** Format: int32 */
+            attemptsGranted: number;
+            attentionTypes: ("LATE_SUCCESS_PENDING" | "PAID_UNFULFILLED" | "PAYMENT_UNKNOWN_OVER_24H" | "DUPLICATE_UNREFUNDED" | "NEEDS_REVIEW" | "REFUND_UNKNOWN")[];
+            auditEvents: components["schemas"]["AuditEventItem"][];
+            benefits: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: uuid */
+            bundleId?: string;
+            /** Format: int32 */
+            bundleVersionNo?: number;
+            buyer: components["schemas"]["BuyerInfo"];
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            discountApplied: "NONE" | "PROMOTION_ONLY" | "VOUCHER_ONLY" | "COMBINED";
+            /** Format: uuid */
+            examId?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            fulfilledAt?: string;
+            fulfillmentError?: string;
+            /** Format: int32 */
+            fulfillmentTries: number;
+            grants: components["schemas"]["GrantView"][];
+            items: components["schemas"]["OrderItemView"][];
+            /** Format: int64 */
+            listPriceVnd: number;
+            needsReview: boolean;
+            optionCodes: string[];
+            orderHistory: components["schemas"]["HistoryView"][];
+            /** Format: uuid */
+            orderId: string;
+            /** Format: date-time */
+            paidAt?: string;
+            /** @enum {string} */
+            paymentMethod: "VNPAY" | "FREE";
+            /** @enum {string} */
+            paymentStatus: "SUCCEEDED" | "PENDING" | "FAILED" | "FREE";
+            payments: components["schemas"]["PaymentDetailView"][];
+            productCode: string;
+            productName: string;
+            /** @enum {string} */
+            productType: "EXAM" | "BUNDLE";
+            /** Format: int64 */
+            promotionDiscountVnd: number;
+            /** Format: uuid */
+            promotionId?: string;
+            /** @enum {string} */
+            refundStatus: "NONE" | "IN_PROGRESS" | "PARTIAL" | "FULL";
+            replacedByOrderCode?: string;
+            /** Format: uuid */
+            replacedByOrderId?: string;
+            resultView: string;
+            reviewReason?: string;
+            /** @enum {string} */
+            state: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+            /** Format: date-time */
+            updatedAt: string;
+            voucherCode?: string;
+            /** Format: int64 */
+            voucherDiscountVnd: number;
+            /** Format: uuid */
+            voucherId?: string;
+        };
+        AdminOrderListResponse: {
+            attention: components["schemas"]["OrderAttentionSummary"];
+            items: components["schemas"]["AdminOrderSummary"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalItems: number;
+            /** Format: int32 */
+            totalPages: number;
+        };
+        AdminOrderSummary: {
+            /** Format: int64 */
+            amountDueVnd: number;
+            attentionTypes: ("LATE_SUCCESS_PENDING" | "PAID_UNFULFILLED" | "PAYMENT_UNKNOWN_OVER_24H" | "DUPLICATE_UNREFUNDED" | "NEEDS_REVIEW" | "REFUND_UNKNOWN")[];
+            /** Format: uuid */
+            bundleId?: string | null;
+            buyerFullName: string;
+            /** Format: uuid */
+            buyerUserId: string;
+            buyerUsername: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            examId?: string;
+            /** Format: date-time */
+            fulfilledAt?: string;
+            items?: components["schemas"]["AdminOrderSummaryItem"][];
+            /** Format: int64 */
+            listPriceVnd: number;
+            needsReview: boolean;
+            /** Format: uuid */
+            orderId: string;
+            /** @enum {string} */
+            orderState: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+            /** Format: date-time */
+            paidAt?: string;
+            /** @enum {string} */
+            paymentMethod: "VNPAY" | "FREE";
+            /** @enum {string} */
+            paymentStatus: "SUCCEEDED" | "PENDING" | "FAILED" | "FREE";
+            productCode: string;
+            productName: string;
+            /** @enum {string} */
+            productType: "EXAM" | "BUNDLE";
+            /** @enum {string} */
+            refundStatus: "NONE" | "IN_PROGRESS" | "PARTIAL" | "FULL";
+        };
+        AdminOrderSummaryItem: {
+            examCode: string;
+            /** Format: uuid */
+            examId: string;
+            examName: string;
+            /** Format: int32 */
+            position: number;
+        };
+        AfterStartChoiceView: {
+            kind?: string;
+            options?: components["schemas"]["ChoiceOptionView"][];
+            /** Format: int32 */
+            ord?: number;
+            partCode?: string;
+            partName?: string;
+        };
+        /** @description Thay đổi câu trả lời của một câu hỏi trong lượt thi (LT §7.1) */
+        AnswerChange: {
+            /** @description Nội dung câu trả lời; null để xóa đáp án */
+            answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
+            /**
+             * Format: uuid
+             * @description Id câu hỏi trong lượt
+             */
+            itemId: string;
+            /**
+             * Format: int64
+             * @description Số thứ tự tăng dần của câu
+             */
+            seq: number;
+        };
         AnswerQuota: {
             /** @enum {string} */
             answerType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
@@ -1959,6 +3719,21 @@ export interface components {
             items?: components["schemas"]["AnswerQuota"][];
             /** @enum {string} */
             unit?: "COUNT" | "PERCENT";
+        };
+        /** @description Một dạng câu và số câu từng dạng trong một phần (TM 10.1) */
+        AnswerTypeGroup: {
+            /** @description Dạng câu con của một bộ chùm; null khi không phải chùm một dạng */
+            childAnswerType?: string;
+            /**
+             * Format: int32
+             * @description Số câu của dạng này (một bộ chùm tính câu con)
+             */
+            questionCount: number;
+            /** @description SINGLE_CHOICE, SHORT_ANSWER, QUESTION_SET, ESSAY, ... */
+            questionType: string;
+        };
+        AnswerValue: {
+            type: string;
         };
         /** @description Định dạng lỗi chuẩn của API */
         ApiError: {
@@ -2020,6 +3795,664 @@ export interface components {
              * @example 0
              */
             version: number;
+        };
+        AttemptAttachmentView: {
+            /** Format: uuid */
+            assetId?: string;
+            fileName?: string;
+            mime?: string;
+            url?: string;
+        };
+        /** @description Trạng thái lần nghe của một tệp audio trong lượt thi (BS §17.2) */
+        AttemptAudioPlayResponse: {
+            /**
+             * Format: int64
+             * @description Thời lượng tệp audio do máy chủ đo tính bằng mili giây
+             */
+            durationMs: number;
+            /**
+             * @description Lý do kết thúc khi state là ENDED
+             * @enum {string}
+             */
+            endReason?: "FINISHED" | "CLOSED";
+            /**
+             * Format: uuid
+             * @description Id của lần nghe
+             */
+            playId?: string;
+            /**
+             * Format: int32
+             * @description Số lần nghe còn lại
+             */
+            playsLeft: number;
+            /**
+             * Format: int32
+             * @description Số lần nghe đã dùng
+             */
+            playsUsed: number;
+            /**
+             * Format: int64
+             * @description Vị trí phát đã lưu tính bằng mili giây
+             */
+            positionMs: number;
+            /**
+             * @description Trạng thái phát audio
+             * @enum {string}
+             */
+            state: "IDLE" | "PLAYING" | "ENDED";
+        };
+        AttemptAudioPlayView: {
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: int64 */
+            durationMs?: number;
+            /** @enum {string} */
+            endReason?: "FINISHED" | "CLOSED";
+            /** Format: uuid */
+            partId?: string;
+            /** Format: uuid */
+            playId?: string;
+            /** Format: int32 */
+            playsLeft?: number;
+            /** Format: int32 */
+            playsUsed?: number;
+            /** Format: int64 */
+            positionMs?: number;
+            /** @enum {string} */
+            state?: "IDLE" | "PLAYING" | "ENDED";
+        };
+        /** @description Thông tin lựa chọn đã khóa của lượt thi hoặc phần thi */
+        AttemptChoiceSummary: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn đã chọn (nếu có) */
+            subjectCodes?: string[];
+            /** @description Số câu theo từng môn đã chọn (nếu có) */
+            subjectCounts?: {
+                [key: string]: number;
+            };
+        };
+        /** @description Phân đoạn hiển thị của phần thi đọc từ bản chụp phiên bản đã công bố (BS §17.3) */
+        AttemptDisplaySegmentView: {
+            code?: string;
+            /** Format: int32 */
+            commandCount?: number;
+            /** Format: int32 */
+            fromPosition?: number;
+            maxPoints?: number;
+            name?: string;
+            /** Format: int32 */
+            toPosition?: number;
+        };
+        /** @description Một dòng trong lịch sử luyện thi của học viên (LT §11) */
+        AttemptHistoryItem: {
+            /** @enum {string} */
+            action?: "CONTINUE" | "VIEW_RESULT";
+            /** Format: uuid */
+            attemptId?: string;
+            /** Format: int32 */
+            attemptNo?: number;
+            choices?: {
+                [key: string]: components["schemas"]["AttemptChoiceSummary"];
+            };
+            compensated?: boolean;
+            displayScore?: number;
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            faultFlag?: string;
+            faultReason?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: date-time */
+            gradedAt?: string;
+            maxScore?: number;
+            partCode?: string;
+            practiceScoring?: string;
+            rawScore?: number;
+            regrading?: boolean;
+            regradingLabel?: string;
+            resultView?: string;
+            scaleMax?: number;
+            scope?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            subjectCode?: string;
+        };
+        AttemptItemView: {
+            answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
+            /** Format: int64 */
+            answerSeq?: number;
+            attachments?: components["schemas"]["AttemptAttachmentView"][];
+            blockId?: string;
+            componentCode?: string;
+            content?: string;
+            /** Format: int32 */
+            displayNo?: number;
+            flagged?: boolean;
+            /** Format: uuid */
+            itemId?: string;
+            optionOrder?: string[];
+            /** Format: uuid */
+            parentItemId?: string;
+            points?: number;
+            questionBody?: components["schemas"]["AttemptQuestionBody"];
+            /** @enum {string} */
+            questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            sectionId?: string;
+            /** Format: int32 */
+            unitCount?: number;
+        };
+        AttemptPartStateView: {
+            choice?: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: date-time */
+            choiceDeadlineAt?: string;
+            /** Format: date-time */
+            closedAt?: string;
+            /** Format: date-time */
+            deadlineAt?: string;
+            displaySegments?: components["schemas"]["AttemptDisplaySegmentView"][];
+            /** Format: int32 */
+            durationMinutes?: number;
+            items?: components["schemas"]["AttemptItemView"][];
+            maxPoints?: number;
+            /** Format: int32 */
+            ord?: number;
+            partCode?: string;
+            /** Format: uuid */
+            partId?: string;
+            partName?: string;
+            /** Format: int32 */
+            questionCount?: number;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "PENDING" | "AWAITING_CHOICE" | "GENERATING" | "GENERATION_FAILED" | "OPEN" | "CLOSED" | "SKIPPED";
+        };
+        /** @description Vị trí phần hoặc câu đang xem của học viên trong lượt thi (LT §7.1) */
+        AttemptPosition: {
+            /**
+             * Format: uuid
+             * @description Id câu hỏi trong lượt đang xem
+             */
+            itemId?: string;
+            /**
+             * Format: uuid
+             * @description Id phần thi đang xem
+             */
+            partId?: string;
+        };
+        /** @description Thông tin chuẩn bị trước khi bắt đầu lượt thi (LT §5.1) */
+        AttemptPrepareResponse: {
+            /** @description Lựa chọn sẽ gặp sau khi vào làm (phần mở muộn) */
+            afterStartChoices: components["schemas"]["AfterStartChoiceView"][];
+            /** @description Các định dạng đáp án có trong đề */
+            answerFormats: string[];
+            /**
+             * Format: int32
+             * @description Số lượt còn lại trên quyền dùng
+             */
+            attemptsLeft: number;
+            /** @description STANDARD hoặc REVIEW */
+            buildMode: string;
+            /**
+             * Format: int32
+             * @description Tổng thời lượng dự kiến (phút)
+             */
+            durationMinutes?: number;
+            /**
+             * Format: uuid
+             * @description Quyền dùng được chọn
+             */
+            entitlementId: string;
+            /** @description Mã bài thi */
+            examCode: string;
+            /**
+             * Format: uuid
+             * @description Bài thi gắn với quyền dùng
+             */
+            examId: string;
+            /** @description Kỳ thi */
+            examKind: components["schemas"]["ExamKindView"];
+            /** @description Tên bài thi */
+            examName: string;
+            /** @description Nguồn cấp quyền dùng; null khi hết lượt */
+            grantSource?: components["schemas"]["GrantSourceView"];
+            /** @description Hướng dẫn làm bài đã đóng băng theo phiên bản */
+            instructions?: string;
+            /** @description Chính sách nghe khi đề có phần audio; null nếu đề không có audio */
+            listeningPolicy?: components["schemas"]["ListeningPolicyView"];
+            /**
+             * @description Chế độ di chuyển trong bài
+             * @enum {string}
+             */
+            navigationMode: "SEQUENTIAL" | "FREE";
+            /** @description Nhóm bài tự luận bị lược khỏi lượt thi tự động */
+            omittedGroups: components["schemas"]["OmittedGroupView"][];
+            /** @description Lượt đang mở (STARTING hoặc IN_PROGRESS) nếu có */
+            openAttempt?: components["schemas"]["OpenAttemptView"];
+            /** @description Mã phần nếu là bài theo phần */
+            partCode?: string;
+            /** @description Danh sách phần theo thứ tự cố định của bài */
+            parts: components["schemas"]["PreparePartView"][];
+            /** @description Lựa chọn cần quyết định trước khi bắt đầu; null nếu không cần */
+            preChoice?: components["schemas"]["PreChoiceView"];
+            /** @description Phạm vi bài thi: FULL, PART hay SUBJECT */
+            scope: string;
+            /** @description Trạng thái phục vụ hiện tại của bài: PUBLISHED hoặc DISCONTINUED */
+            servingStatus: string;
+            /** @description Môn nếu là bài theo môn */
+            subject?: components["schemas"]["SubjectView"];
+            /**
+             * @description Kiểu đồng hồ: PER_PART hoặc SHARED
+             * @enum {string}
+             */
+            timing: "PER_PART" | "SHARED";
+        };
+        /** @description Thân câu hỏi đã lọc theo allowlist cho học viên — tuyệt đối không chứa đáp án hay hướng dẫn chấm */
+        AttemptQuestionBody: components["schemas"]["SingleChoice"] | components["schemas"]["MultipleChoice"] | components["schemas"]["ShortAnswer"] | components["schemas"]["Cloze"] | components["schemas"]["QuestionSet"] | components["schemas"]["TrueFalse"] | components["schemas"]["Matching"] | components["schemas"]["Essay"];
+        AttemptResultPart: {
+            maxScore?: number;
+            /** Format: int32 */
+            ord?: number;
+            partCode?: string;
+            /** Format: uuid */
+            partId?: string;
+            partName?: string;
+            pendingReview?: boolean;
+            score?: number;
+            skipped?: boolean;
+            stats?: components["schemas"]["AttemptResultUnitStats"];
+        };
+        /** @description Kết quả lượt thi của học viên (LT §10.1, F14–F16, F20; không chứa đáp án hay hướng dẫn chấm) */
+        AttemptResultResponse: {
+            /** Format: uuid */
+            attemptId?: string;
+            /** Format: int32 */
+            attemptNo?: number;
+            choices?: {
+                [key: string]: components["schemas"]["AttemptChoiceSummary"];
+            };
+            compensated?: boolean;
+            displayScore?: number;
+            /** @enum {string} */
+            endReason?: "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOSED";
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            faultFlag?: string;
+            faultMessage?: string;
+            faultReason?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: date-time */
+            gradedAt?: string;
+            partCode?: string;
+            parts?: components["schemas"]["AttemptResultPart"][];
+            pendingReviewLabel?: string;
+            /** @description Ghi chú cố định dưới điểm luyện tập V-ACT (BS §3) */
+            practiceScoreNote?: string;
+            practiceScoring?: string;
+            rawMaxScore?: number;
+            rawScore?: number;
+            regrading?: boolean;
+            regradingLabel?: string;
+            resultView?: string;
+            reviewAvailable?: boolean;
+            scaleMax?: number;
+            scope?: string;
+            scoreLabel?: string;
+            segments?: components["schemas"]["AttemptResultSegment"][];
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            statistics?: components["schemas"]["AttemptResultUnitStats"];
+            statusMessage?: string;
+            subjectCode?: string;
+            subjects?: components["schemas"]["AttemptResultSubject"][];
+            vactComponents?: components["schemas"]["AttemptResultVactComponent"][];
+        };
+        /** @description Kết quả theo phân đoạn hiển thị của bài thi (BS §17.3, AT-7) */
+        AttemptResultSegment: {
+            code?: string;
+            /** Format: int32 */
+            fromPosition?: number;
+            maxPoints?: number;
+            name?: string;
+            partCode?: string;
+            pendingReview?: boolean;
+            score?: number;
+            stats?: components["schemas"]["AttemptResultUnitStats"];
+            /** Format: int32 */
+            toPosition?: number;
+        };
+        AttemptResultSubject: {
+            code?: string;
+            maxScore?: number;
+            name?: string;
+            pendingReview?: boolean;
+            score?: number;
+            stats?: components["schemas"]["AttemptResultUnitStats"];
+        };
+        AttemptResultUnitStats: {
+            /** Format: int32 */
+            blankCount?: number;
+            /** Format: int32 */
+            correctCount?: number;
+            /** Format: int32 */
+            partialCount?: number;
+            /** Format: int32 */
+            pendingReviewCount?: number;
+            /** Format: int32 */
+            totalCount?: number;
+            /** Format: int32 */
+            wrongCount?: number;
+        };
+        AttemptResultVactComponent: {
+            /** Format: int32 */
+            blankCount?: number;
+            componentCode?: string;
+            /** Format: int32 */
+            correctCount?: number;
+            /** @description Tỷ lệ đúng (0–100%) */
+            correctRate?: number;
+            name?: string;
+            /** Format: int32 */
+            partialCount?: number;
+            subsections?: components["schemas"]["AttemptResultVactSubsection"][];
+            /** Format: int32 */
+            totalCount?: number;
+            /** Format: int32 */
+            wrongCount?: number;
+        };
+        AttemptResultVactSubsection: {
+            /** Format: int32 */
+            blankCount?: number;
+            /** Format: int32 */
+            correctCount?: number;
+            /** @description Tỷ lệ đúng (0–100%) */
+            correctRate?: number;
+            label?: string;
+            /** Format: int32 */
+            partialCount?: number;
+            /** Format: int32 */
+            questionCount?: number;
+            sectionId?: string;
+            /** Format: int32 */
+            totalCount?: number;
+            /** Format: int32 */
+            wrongCount?: number;
+        };
+        AttemptReviewAttachment: {
+            downloadUrl?: string;
+            /** Format: uuid */
+            id?: string;
+            mime?: string;
+            name?: string;
+        };
+        AttemptReviewClozeBlank: {
+            id?: string;
+        };
+        AttemptReviewClozeKey: {
+            acceptedTexts?: string[];
+            blankId?: string;
+        };
+        AttemptReviewEssayCriterionScore: {
+            comment?: string;
+            id?: string;
+            points?: number;
+        };
+        AttemptReviewEssayFeedback: {
+            comment?: string;
+            criteria?: components["schemas"]["AttemptReviewEssayCriterionScore"][];
+            points?: number;
+        };
+        AttemptReviewExpectedAnswer: {
+            acceptedTexts?: string[];
+            clozeKeys?: components["schemas"]["AttemptReviewClozeKey"][];
+            expectedOptionIds?: string[];
+            matchingKeys?: components["schemas"]["AttemptReviewMatchingKey"][];
+            trueFalseKeys?: components["schemas"]["AttemptReviewTrueFalseKey"][];
+        };
+        AttemptReviewItem: {
+            attachments?: components["schemas"]["AttemptReviewAttachment"][];
+            body?: components["schemas"]["AttemptReviewQuestionBody"];
+            componentCode?: string;
+            content?: string;
+            /** Format: int32 */
+            displayNo?: number;
+            earnedPoints?: number;
+            essayFeedback?: components["schemas"]["AttemptReviewEssayFeedback"];
+            expectedAnswer?: components["schemas"]["AttemptReviewExpectedAnswer"];
+            flagged?: boolean;
+            gradingDetail?: components["schemas"]["ReviewGradingDetail"];
+            /** Format: uuid */
+            itemId?: string;
+            optionOrder?: string[];
+            /** Format: int32 */
+            ord?: number;
+            /** @enum {string} */
+            outcome?: "CORRECT" | "PARTIAL" | "WRONG" | "BLANK" | "PENDING_REVIEW";
+            /** Format: uuid */
+            parentItemId?: string;
+            partCode?: string;
+            /** Format: uuid */
+            partId?: string;
+            pointsMax?: number;
+            /** @enum {string} */
+            questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            sectionId?: string;
+            solution?: string;
+            studentAnswer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
+            /** Format: int32 */
+            unitCount?: number;
+        };
+        AttemptReviewMatchingKey: {
+            leftId?: string;
+            rightId?: string;
+        };
+        AttemptReviewMatchingSide: {
+            content?: string;
+            id?: string;
+        };
+        AttemptReviewOption: {
+            content?: string;
+            id?: string;
+        };
+        AttemptReviewPart: {
+            maxScore?: number;
+            /** Format: int32 */
+            ord?: number;
+            partCode?: string;
+            /** Format: uuid */
+            partId?: string;
+            partName?: string;
+            pendingReview?: boolean;
+            score?: number;
+            state?: string;
+        };
+        AttemptReviewQuestionBody: {
+            answerFormat?: string;
+            /** Format: int32 */
+            blankNumberStart?: number;
+            blanks?: components["schemas"]["AttemptReviewClozeBlank"][];
+            inputHint?: string;
+            left?: components["schemas"]["AttemptReviewMatchingSide"][];
+            options?: components["schemas"]["AttemptReviewOption"][];
+            passage?: string;
+            reuseRight?: boolean;
+            right?: components["schemas"]["AttemptReviewMatchingSide"][];
+            scoringRule?: string;
+            statements?: components["schemas"]["AttemptReviewStatement"][];
+            /** Format: int32 */
+            wordLimit?: number;
+        };
+        /** @description Xem lại bài làm theo mức result_view (SCORE_AND_ANSWERS hoặc FULL_SOLUTION, LT §10.2) */
+        AttemptReviewResponse: {
+            /** Format: uuid */
+            attemptId?: string;
+            items?: components["schemas"]["AttemptReviewItem"][];
+            parts?: components["schemas"]["AttemptReviewPart"][];
+            resultView?: string;
+            selectedPartCode?: string;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
+        AttemptReviewStatement: {
+            content?: string;
+            id?: string;
+        };
+        AttemptReviewTrueFalseKey: {
+            expected?: boolean;
+            statementId?: string;
+        };
+        /** @description Lỗi xung đột phiên sửa bài khi lượt đang mở ở phiên khác (LT §7.1, F10) */
+        AttemptSessionConflictResponse: {
+            /** @example ATTEMPT_OPEN_ELSEWHERE */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            /**
+             * Format: date-time
+             * @description Thời điểm hoạt động gần nhất của phiên đang giữ quyền sửa
+             */
+            lastSeenAt?: string;
+            message: string;
+            traceId: string;
+        };
+        /** @description Trạng thái đầy đủ hoặc rút gọn của lượt thi cho giao diện làm bài (LT §7.1) */
+        AttemptStateResponse: {
+            /**
+             * @description Lý do hủy khi state là ABORTED
+             * @enum {string}
+             */
+            abortReason?: "GENERATION_FAILED" | "GENERATION_TIMEOUT" | "GENERATION_BUSY" | "STALE_STARTING" | "AUDIO_ASSET_MISSING" | "AUDIO_ASSET_INVALID";
+            /**
+             * Format: uuid
+             * @description Id lượt thi
+             */
+            attemptId: string;
+            /** Format: int32 */
+            attemptNo?: number;
+            /** @description Trạng thái phát từng tệp audio của lượt thi; không có khi STARTING hoặc ABORTED */
+            audioPlays?: components["schemas"]["AttemptAudioPlayView"][];
+            /** @description Chính sách nghe khi đề có audio; không có khi STARTING hoặc ABORTED */
+            audioPolicy?: components["schemas"]["AudioPolicyView"];
+            choices?: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: date-time */
+            deadlineAt?: string;
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            lastPosition?: {
+                [key: string]: Record<string, never>;
+            };
+            maxScore?: number;
+            /** @enum {string} */
+            navigationMode?: "SEQUENTIAL" | "FREE";
+            partCode?: string;
+            /** @description Các phần của lượt thi; không có khi STARTING hoặc ABORTED */
+            parts?: components["schemas"]["AttemptPartStateView"][];
+            /** @description Có thể bắt đầu lại (true khi ABORTED) */
+            retryable?: boolean;
+            scope?: string;
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /**
+             * @description Trạng thái lượt thi
+             * @enum {string}
+             */
+            state: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            /** @enum {string} */
+            timing?: "PER_PART" | "SHARED";
+        };
+        /** @description Lỗi xung đột khi audio đang có lần nghe dở hoặc đã đóng/hết lượt (BS §17.2) */
+        AudioPlayInProgressResponse: {
+            /** @example AUDIO_PLAY_IN_PROGRESS */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            message: string;
+            /**
+             * Format: uuid
+             * @description Id của lần nghe đang phát nếu có
+             */
+            playId?: string;
+            traceId: string;
+        };
+        AudioPolicyView: {
+            /** Format: int32 */
+            maxPlays?: number;
+            seekable?: boolean;
+        };
+        /** @description Yêu cầu cập nhật vị trí phát hiện tại của audio (BS §17.2) */
+        AudioProgressRequest: {
+            /**
+             * Format: int64
+             * @description Vị trí phát hiện tại tính bằng mili giây
+             */
+            positionMs: number;
+        };
+        /** @description Lỗi xung đột khi vị trí tua vượt ngưỡng chống tua hoặc không hợp lệ (BS §17.2) */
+        AudioSeekRejectedResponse: {
+            /** @example AUDIO_SEEK_REJECTED */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            message: string;
+            /**
+             * Format: int64
+             * @description Vị trí hợp lệ đã lưu trên máy chủ (ms)
+             */
+            positionMs?: number;
+            traceId: string;
+        };
+        AuditEventItem: {
+            action: string;
+            /** Format: uuid */
+            actorId?: string;
+            actorRoles: string[];
+            /** @enum {string} */
+            actorType: "USER" | "PLATFORM" | "SYSTEM";
+            actorUsername?: string;
+            after?: {
+                [key: string]: Record<string, never>;
+            };
+            before?: {
+                [key: string]: Record<string, never>;
+            };
+            errorCode?: string;
+            /** Format: uuid */
+            id: string;
+            ip?: string;
+            module: string;
+            /** Format: date-time */
+            occurredAt: string;
+            /** @enum {string} */
+            outcome: "SUCCESS" | "FAILURE";
+            reason?: string;
+            targetId?: string;
+            targetLabel?: string;
+            targetType?: string;
+            traceId?: string;
         };
         /** @description Bản ghi nhật ký thao tác */
         AuditEventResponse: {
@@ -2390,6 +4823,197 @@ export interface components {
             reasonCode: string;
             /** @description Tên đăng nhập */
             username?: string;
+        };
+        /** @description Trạng thái quyền dùng của một bài thi thành phần khi hỏi theo mã bộ đề (TM 16.4) */
+        BundleAccessExamItem: {
+            /** Format: uuid */
+            activeAttemptId?: string | null;
+            /** Format: int32 */
+            attemptsLeft: number;
+            code: string;
+            /** Format: uuid */
+            entitlementId?: string | null;
+            /** Format: uuid */
+            examId: string;
+            hasPendingFulfillment: boolean;
+            name: string;
+            pendingOrderCode?: string | null;
+            /** @enum {string} */
+            state: "IN_PROGRESS" | "CAN_START" | "CHECKING" | "EXHAUSTED" | "NONE";
+        };
+        /** @description Quyền lợi áp dụng cho từng bài thi trong bộ đề */
+        BundleBenefitsView: {
+            aiExplanation: boolean;
+            note?: string | null;
+            practice: boolean;
+            strengthWeakness: boolean;
+        };
+        /** @description Bài thi đang bán đủ điều kiện đưa vào bộ đề (TM 16.4, BS 2) */
+        BundleCandidateResponse: {
+            /** @description STANDARD hoặc REVIEW */
+            buildMode: string;
+            code: string;
+            durationMinutes?: components["schemas"]["IntRange"] | null;
+            /** Format: uuid */
+            examId: string;
+            /** Format: int64 */
+            listPriceVnd?: number | null;
+            maxPoints?: components["schemas"]["DecimalRange"] | null;
+            name: string;
+            partCode?: string | null;
+            questionCount?: components["schemas"]["IntRange"] | null;
+            /** @description PART hoặc SUBJECT */
+            scope: string;
+            subjectCode?: string | null;
+            /** Format: uuid */
+            subjectItemId?: string | null;
+            subjectName?: components["schemas"]["LocalizedName"] | null;
+            /** Format: int32 */
+            versionNo: number;
+        };
+        /** @description Thông tin một bài thi thành phần trong chi tiết bộ đề (TM 16.4, BS 2) */
+        BundleDetailItem: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            benefits: components["schemas"]["DetailBenefits"];
+            /** @description STANDARD hoặc REVIEW */
+            buildMode: string;
+            code: string;
+            durationMinutes?: components["schemas"]["IntRange"] | null;
+            /** Format: uuid */
+            examId: string;
+            maxPoints?: components["schemas"]["DecimalRange"] | null;
+            name: string;
+            partCode?: string | null;
+            questionCount?: components["schemas"]["IntRange"] | null;
+            /** @description SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION */
+            resultView?: string | null;
+            /** @description PART hoặc SUBJECT */
+            scope: string;
+            subjectName?: components["schemas"]["LocalizedName"] | null;
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        /** @description Chi tiết bộ đề quản trị (TM 16.4) */
+        BundleDetailResponse: {
+            /** Format: int32 */
+            attemptsPerExam?: number | null;
+            benefits: components["schemas"]["BundleBenefitsView"];
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            createdBy?: string | null;
+            createdByUsername?: string | null;
+            description?: string | null;
+            /** Format: date-time */
+            discontinuedAt?: string | null;
+            /** Format: uuid */
+            discontinuedBy?: string | null;
+            examKindCode: string;
+            /** Format: uuid */
+            examKindItemId: string;
+            examKindNameEn: string;
+            examKindNameVi: string;
+            hasUnpublishedChanges: boolean;
+            /** Format: uuid */
+            id: string;
+            items: components["schemas"]["BundleItemView"][];
+            /** Format: int64 */
+            listPriceVnd?: number | null;
+            name: string;
+            /** @enum {string} */
+            resultView: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            /** Format: int64 */
+            revision: number;
+            /** @enum {string|null} */
+            saleState?: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE" | null;
+            /** Format: int32 */
+            servingVersion?: number | null;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "DISCONTINUED";
+            summary?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            updatedBy?: string | null;
+            updatedByUsername?: string | null;
+        };
+        /** @description Thông tin một bài thi thành phần trong chi tiết bộ đề quản trị */
+        BundleItemView: {
+            buildMode?: string | null;
+            code?: string | null;
+            durationMinutes?: components["schemas"]["IntRange"] | null;
+            /** Format: uuid */
+            examId: string;
+            maxPoints?: components["schemas"]["DecimalRange"] | null;
+            name?: string | null;
+            partCode?: string | null;
+            /** Format: int32 */
+            position: number;
+            questionCount?: components["schemas"]["IntRange"] | null;
+            /** @description ON_SALE, DISCONTINUED hoặc UNAVAILABLE */
+            saleState: string;
+            scope?: string | null;
+            subjectCode?: string | null;
+            /** Format: uuid */
+            subjectItemId?: string | null;
+            subjectName?: components["schemas"]["LocalizedName"] | null;
+            /** Format: int32 */
+            versionNo?: number | null;
+        };
+        /** @description Yêu cầu khóa lạc quan cho thao tác công bố hoặc ngừng bán bộ đề */
+        BundleRevisionRequest: {
+            /** Format: int64 */
+            expectedRevision: number;
+        };
+        /** @description Tóm tắt bộ đề trong danh sách quản trị (TM 16.4) */
+        BundleSummaryResponse: {
+            /** Format: int32 */
+            attemptsPerExam?: number | null;
+            code: string;
+            examKindCode: string;
+            /** Format: uuid */
+            examKindItemId: string;
+            examKindNameEn: string;
+            examKindNameVi: string;
+            hasUnpublishedChanges: boolean;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            itemCount: number;
+            /** Format: int64 */
+            listPriceVnd?: number | null;
+            name: string;
+            /** Format: int64 */
+            revision: number;
+            /** @enum {string|null} */
+            saleState?: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE" | null;
+            /** Format: int32 */
+            servingVersion?: number | null;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "DISCONTINUED";
+            summary?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        BuyerInfo: {
+            fullName: string;
+            /** Format: uuid */
+            userId: string;
+            username: string;
+        };
+        /** @description Cảnh báo khuyến mãi tự động bị kẹp ở mức tối thiểu trên một bài thi (BS §10, AC-41) */
+        CapWarning: {
+            /** Format: int64 */
+            discountedPrice: number;
+            /** Format: uuid */
+            examId: string;
+            examName: string;
+            /** Format: int64 */
+            floorPrice: number;
+            /** Format: int64 */
+            listPrice: number;
         };
         /** @description Nút con cháu hiệu lực trong cây danh mục */
         CatalogDescendantNodeResponse: {
@@ -2930,6 +5554,55 @@ export interface components {
             correct?: boolean;
             id?: string;
         };
+        ChoiceOptionView: {
+            /** Format: int32 */
+            chooseSubjects?: number;
+            code?: string;
+            countsByPick?: number[];
+            /**
+             * Format: int32
+             * @description Tổng thời lượng dự kiến (phút) của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định
+             */
+            durationMinutes?: number | null;
+            kind?: string;
+            /** @description Tổng điểm tối đa của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định */
+            maxPoints?: number | null;
+            name?: string;
+            /**
+             * Format: int32
+             * @description Tổng số câu của đường thi khi chọn phương án này; null nếu các đường lệch nhau hoặc không xác định
+             */
+            questionCount?: number | null;
+            subjects?: components["schemas"]["ChoiceSubjectView"][];
+        };
+        ChoiceSubjectView: {
+            code?: string;
+            nameEn?: string;
+            nameVi?: string;
+        };
+        /** @description Yêu cầu nhận hoặc tiếp quản phiên sửa bài của lượt thi (LT §7.1, F10) */
+        ClaimSessionRequest: {
+            /**
+             * Format: uuid
+             * @description Id phiên sửa đã lưu trên thiết bị (nếu có)
+             */
+            sessionId?: string;
+            /** @description Đặt true để xác nhận tiếp quản phiên từ thiết bị khác */
+            takeover?: boolean;
+        };
+        /** @description Phản hồi nhận phiên sửa bài thành công (LT §7.1) */
+        ClaimSessionResponse: {
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+            /**
+             * Format: uuid
+             * @description Id phiên sửa đang giữ quyền ghi
+             */
+            sessionId: string;
+        };
         /** @description Thông tin chi tiết lớp học */
         ClassDetailResponse: {
             /** @description Mã lớp học */
@@ -3068,10 +5741,30 @@ export interface components {
              */
             version: number;
         };
+        Cloze: components["schemas"]["AttemptQuestionBody"] & {
+            blanks?: components["schemas"]["ClozeBlankView"][];
+            passage?: string;
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
+        ClozeAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            blanks?: {
+                [key: string]: string;
+            };
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "CLOZE";
+        };
         ClozeBlank: {
             answers?: string[];
             id?: string;
             points?: number;
+        };
+        ClozeBlankView: {
+            id?: string;
         };
         ClozeBody: {
             type: "ClozeBody";
@@ -3181,6 +5874,20 @@ export interface components {
              */
             versionNo: number;
         };
+        /** @description Yêu cầu cấp bù 1 lượt cho lượt thi đã đánh dấu lỗi hệ thống (LT §12, F18) */
+        CompensateAttemptRequest: {
+            reason: string;
+        };
+        /** @description Kết quả cấp bù 1 lượt cho lượt thi lỗi hệ thống */
+        CompensateAttemptResponse: {
+            /** Format: uuid */
+            attemptId?: string;
+            compensated?: boolean;
+            /** Format: uuid */
+            entitlementId?: string;
+            /** Format: uuid */
+            grantId?: string;
+        };
         /** @description Một năng lực (danh mục COMPETENCY): gắn một môn và các kỳ thi liên kết */
         CompetencyOption: {
             /** @description Mã năng lực */
@@ -3191,6 +5898,13 @@ export interface components {
             name: string;
             /** @description Mã môn của năng lực; null khi chưa gắn */
             subjectCode?: string;
+        };
+        /** @description Yêu cầu xác nhận lựa chọn phần tự chọn sau khi bắt đầu (LT §6.1) */
+        ConfirmPartChoiceRequest: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn khi chọn SUBJECT_CHOICE (HSA Khoa học) */
+            subjectCodes?: string[];
         };
         /** @description Dữ liệu tham chiếu gộp cho màn Ngân hàng câu hỏi và Bài thi (spec mục 5.3, 9.2) */
         ContentReferenceResponse: {
@@ -3214,6 +5928,27 @@ export interface components {
             tags: components["schemas"]["CatalogOption"][];
             /** @description Các dạng bài đang hoạt động */
             taskTypes: components["schemas"]["CatalogOption"][];
+        };
+        /** @description Yêu cầu tạo mới bộ đề ở trạng thái nháp (TM 16.4) */
+        CreateBundleRequest: {
+            /** Format: int32 */
+            attemptsPerExam?: number;
+            benefitAiExplanation?: boolean;
+            benefitNote?: string;
+            benefitPractice?: boolean;
+            benefitStrengthWeakness?: boolean;
+            code: string;
+            description?: string;
+            /** @description Danh sách 2–12 bài thi trong bộ theo thứ tự */
+            examIds: string[];
+            /** Format: uuid */
+            examKindItemId: string;
+            /** Format: int64 */
+            listPriceVnd?: number;
+            name: string;
+            /** @description SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION; mặc định SCORE_AND_ANSWERS */
+            resultView?: string;
+            summary?: string;
         };
         /** @description Yêu cầu tạo nhóm danh mục tùy chỉnh mới */
         CreateCatalogGroupRequest: {
@@ -3358,6 +6093,69 @@ export interface components {
             /** @description Mã môn; bắt buộc khi kỳ thi mẫu theo môn (templateBy = SUBJECT) */
             subjectCode?: string;
         };
+        CreateOrderRequest: {
+            code: string;
+            /** Format: uuid */
+            expectedAccountId: string;
+            /** Format: int64 */
+            expectedAmountDue: number;
+            /** Format: int32 */
+            expectedVersionNo: number;
+            voucherCode?: string;
+        };
+        CreateOrderResponse: {
+            /** @enum {string} */
+            next: "REDIRECT" | "FULFILLED" | "CHECKING";
+            order: components["schemas"]["OrderDetail"];
+            paymentUrl?: string;
+        };
+        /** @description Yêu cầu tạo khuyến mãi tự động hoặc voucher (TM 7.3) */
+        CreatePromotionRequest: {
+            /** @enum {string} */
+            audience?: "ALL" | "NEW_ACCOUNT" | "SELECTED";
+            audienceClassIds?: string[];
+            audienceUserIds?: string[];
+            bundleIds?: string[];
+            /** @description Bắt buộc với VOUCHER (3–50 ký tự); không gửi với AUTO */
+            code?: string;
+            combinable?: boolean;
+            description?: string;
+            /** @enum {string} */
+            discountType: "PERCENT" | "AMOUNT";
+            /** Format: int64 */
+            discountValue: number;
+            /** Format: date-time */
+            endsAt: string;
+            examIds?: string[];
+            examKindIds?: string[];
+            /** @enum {string} */
+            kind: "AUTO" | "VOUCHER";
+            /** Format: int64 */
+            maxDiscountVnd?: number;
+            name: string;
+            /** Format: int32 */
+            perUserLimit?: number;
+            /** @enum {string} */
+            scope: "ALL" | "EXAM_KIND" | "EXAM" | "BUNDLE";
+            /** Format: date-time */
+            startsAt: string;
+            /**
+             * @description Mặc định ACTIVE nếu không truyền
+             * @enum {string}
+             */
+            status?: "ACTIVE" | "STOPPED";
+            /** Format: int32 */
+            totalLimit?: number;
+        };
+        CreateRefundRequest: {
+            /** Format: int64 */
+            amountVnd: number;
+            externalRef?: string;
+            /** @enum {string} */
+            kind?: "API" | "MANUAL";
+            reason: string;
+            verifiedSystemError?: boolean;
+        };
         /** @description Yêu cầu tạo vai trò mới */
         CreateRoleRequest: {
             /**
@@ -3436,12 +6234,78 @@ export interface components {
             /** @description Tài khoản có đang có lượt thi hay không */
             activeAttempt: boolean;
         };
+        /** @description Khoảng điểm của các đường đang phục vụ; min bằng max khi mọi đường như nhau */
+        DecimalRange: {
+            max: number;
+            min: number;
+        };
         /** @description Kết quả kiểm tra điều kiện xóa tài khoản */
         DeletionCheckResponse: {
             /** @description Danh sách nguồn dữ liệu đang chặn xóa */
             blockers: components["schemas"]["Blocker"][];
             /** @description Có thể xóa mềm tài khoản hay không */
             deletable: boolean;
+        };
+        /** @description Quyền lợi sau khi mua (TM 11.3) */
+        DetailBenefits: {
+            aiExplanation: boolean;
+            /** @description Ghi chú về quyền lợi */
+            note?: string;
+            practice: boolean;
+            strengthWeakness: boolean;
+        };
+        /** @description Các lựa chọn của một phần trong phạm vi mua */
+        DetailChoiceGroup: {
+            options: components["schemas"]["DetailChoiceOption"][];
+            /** @description Tên phần có lựa chọn */
+            partName: string;
+        };
+        /** @description Một lựa chọn trong phạm vi mua: nhánh, môn, môn tự chọn hoặc mã tổ hợp */
+        DetailChoiceOption: {
+            /** @description Dạng câu của chính lựa chọn (các nhóm câu gắn với lựa chọn, không gắn với một môn); không bao giờ cộng các môn hay các lựa chọn khác; rỗng khi bản chưa đóng băng chúng */
+            answerTypes: components["schemas"]["AnswerTypeGroup"][];
+            /** @description Nhánh của mã tổ hợp (QDA); null nếu không có */
+            branch?: string;
+            /**
+             * Format: int32
+             * @description SUBJECT_CHOICE: học viên chọn bấy nhiêu môn trong danh sách
+             */
+            chooseSubjects?: number;
+            code: string;
+            /** @description SUBJECT_CHOICE: số câu mỗi môn theo số môn đã chọn */
+            countsByPick?: number[];
+            /** @description BRANCH, SUBJECT, SUBJECT_CHOICE hoặc COMBINATION */
+            kind: string;
+            name: string;
+            /** @description Dạng câu từng môn của lựa chọn: phần của lựa chọn hoặc bể môn của mã tổ hợp; rỗng khi bản chưa đóng băng chúng */
+            subjectAnswerTypes: components["schemas"]["SubjectAnswerTypes"][];
+            /** @description Các môn của lựa chọn, theo thứ tự (với mã tổ hợp là thứ tự làm bài) */
+            subjects: components["schemas"]["SubjectRef"][];
+        };
+        /** @description Một phần của bài thi, theo thứ tự làm bài */
+        DetailPart: {
+            /** @description Các dạng câu và số câu từng dạng của các nhóm cố định của phần (ai cũng làm); lựa chọn và bể môn không cộng vào đây mà nằm ở choices; rỗng khi bản chưa đóng băng chúng */
+            answerTypes: components["schemas"]["AnswerTypeGroup"][];
+            durationMinutes?: components["schemas"]["IntRange"];
+            maxPoints?: components["schemas"]["DecimalRange"];
+            /** @description Tên phần, nội dung bài thi nên không dịch */
+            name: string;
+            /** Format: int32 */
+            order: number;
+            questionCount?: components["schemas"]["IntRange"];
+            /** @description true: phần bắt buộc; false: học viên tự chọn */
+            required: boolean;
+        };
+        /** @description Cách tính giờ và thang điểm của bài thi */
+        DetailScoring: {
+            /** @description Điểm tối đa của bài */
+            maxScore?: number;
+            /** @description Cách quy điểm luyện tập, ví dụ LINEAR */
+            practiceScoring?: string;
+            /** @description Mốc tham chiếu của thang điểm (nếu có) */
+            referenceMax?: number;
+            /** @description PER_PART: tính giờ từng phần; SHARED: một đồng hồ chung */
+            timing?: string;
         };
         DisplaySegment: {
             code: string;
@@ -3522,6 +6386,68 @@ export interface components {
              */
             userId: string;
         };
+        /** @description Yêu cầu đổi email: gửi mã xác nhận tới email mới */
+        EmailCodeChangeRequest: {
+            /**
+             * Format: password
+             * @description Mật khẩu hiện tại
+             */
+            currentPassword: string;
+            /**
+             * @description Email mới
+             * @example moi@thi360.vn
+             */
+            newEmail: string;
+        };
+        /** @description Lỗi của API mã OTP email: lỗi chung kèm retryAfter và remainingAttempts */
+        EmailCodeErrorResponse: {
+            /**
+             * @description Mã lỗi
+             * @example EMAIL_CODE_INVALID
+             */
+            code: string;
+            /** @description Danh sách lỗi theo từng trường */
+            fieldErrors: components["schemas"]["FieldError"][];
+            /** @description Thông báo lỗi theo ngôn ngữ yêu cầu */
+            message: string;
+            /**
+             * Format: int32
+             * @description 422 EMAIL_CODE_INVALID: số lần nhập còn lại
+             */
+            remainingAttempts?: number;
+            /**
+             * Format: int64
+             * @description 429: số giây phải chờ trước khi gửi lại
+             */
+            retryAfter?: number;
+            /** @description Mã định danh yêu cầu */
+            traceId: string;
+        };
+        /** @description Mã OTP 6 số gửi qua email */
+        EmailCodeVerifyRequest: {
+            /**
+             * @description Mã OTP
+             * @example 123456
+             */
+            code: string;
+        };
+        Essay: components["schemas"]["AttemptQuestionBody"] & {
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            /** Format: int32 */
+            wordLimit?: number;
+        };
+        EssayAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            html?: string;
+            /** Format: int32 */
+            wordCount?: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "ESSAY";
+        };
         EssayBody: {
             type: "EssayBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -3537,6 +6463,134 @@ export interface components {
             description?: string;
             id?: string;
             points?: number;
+        };
+        /** @description Điểm và nhận xét theo một tiêu chí chấm tự luận */
+        EssayCriterionInput: {
+            comment?: string;
+            id?: string;
+            points?: number;
+        };
+        EssayCriterionScore: {
+            comment?: string;
+            id?: string;
+            points?: number;
+        };
+        /** @description Bản chấm tự luận (nháp hoặc chính thức) kèm phiên bản khóa lạc quan */
+        EssayGradeView: {
+            /** Format: uuid */
+            attemptItemId?: string;
+            claimExpired?: boolean;
+            /** Format: date-time */
+            claimedAt?: string;
+            comment?: string;
+            criteria?: components["schemas"]["EssayCriterionScore"][];
+            /** Format: date-time */
+            finalizedAt?: string;
+            /** Format: uuid */
+            graderId?: string;
+            graderName?: string;
+            /** Format: int32 */
+            gradingGuideVersion?: number;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            lastActivityAt?: string;
+            points?: number;
+            reopenedReason?: string;
+            /** @enum {string} */
+            state?: "DRAFT" | "FINAL";
+            /** Format: uuid */
+            supersededBy?: string;
+            /** Format: int64 */
+            version?: number;
+        };
+        /** @description Quyền dùng của tài khoản đang đăng nhập với một mã sản phẩm (TM 10.2, 16.4) */
+        ExamAccessItem: {
+            /**
+             * Format: uuid
+             * @description Lượt đang mở (kể cả STARTING); có khi state là IN_PROGRESS
+             */
+            activeAttemptId?: string | null;
+            /**
+             * Format: int32
+             * @description Lượt còn dùng được; 0 khi chưa có quyền dùng, hoặc khi lượt cuối đang được giữ
+             */
+            attemptsLeft: number;
+            /** @description Mã như học viên gửi (đã bỏ khoảng trắng đầu cuối) */
+            code: string;
+            /**
+             * Format: uuid
+             * @description Quyền dùng của tài khoản với bài này; trống khi chưa có
+             */
+            entitlementId?: string | null;
+            /** @description Có đơn đã thu tiền chưa cấp xong cho bài này (kể cả khi vẫn còn lượt dùng) */
+            hasPendingFulfillment: boolean;
+            /** @description Trạng thái quyền từng bài khi mã là bộ đề (TM 16.4); null với bài lẻ */
+            items?: components["schemas"]["BundleAccessExamItem"][] | null;
+            /** @description Mã đơn đã thu tiền chưa cấp xong; trống khi không có */
+            pendingOrderCode?: string | null;
+            /**
+             * @description Giá trị đầu tiên thỏa theo thứ tự IN_PROGRESS, CAN_START, CHECKING, EXHAUSTED, NONE
+             * @enum {string}
+             */
+            state: "IN_PROGRESS" | "CAN_START" | "CHECKING" | "EXHAUSTED" | "NONE";
+        };
+        /** @description Mã sản phẩm cần hỏi quyền dùng (TM 10.2) */
+        ExamAccessQueryRequest: {
+            /** @description Mã sản phẩm, tối đa 48; mã trùng chỉ trả một dòng */
+            codes: string[];
+        };
+        /** @description Quyền dùng theo từng mã đã hỏi */
+        ExamAccessQueryResponse: {
+            /** @description Một dòng cho mỗi mã khác nhau, theo thứ tự gửi lên */
+            items: components["schemas"]["ExamAccessItem"][];
+        };
+        ExamBuyerOrderRef: {
+            /** Format: int64 */
+            amountDueVnd: number;
+            /** Format: date-time */
+            createdAt: string;
+            orderCode: string;
+            /** Format: uuid */
+            orderId: string;
+            /** Format: date-time */
+            paidAt?: string;
+            /** @enum {string} */
+            state: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+        };
+        ExamBuyerRow: {
+            /** Format: int32 */
+            attemptsRemaining: number;
+            /** Format: int32 */
+            attemptsReserved: number;
+            /** Format: int32 */
+            attemptsRevoked: number;
+            /** Format: int32 */
+            attemptsTotal: number;
+            /** Format: int32 */
+            attemptsUsed: number;
+            fullName: string;
+            /** Format: date-time */
+            lastPaidAt?: string;
+            orders: components["schemas"]["ExamBuyerOrderRef"][];
+            /** Format: int32 */
+            purchaseCount: number;
+            /** Format: uuid */
+            userId: string;
+            username: string;
+        };
+        ExamBuyersResponse: {
+            items: components["schemas"]["ExamBuyerRow"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalBuyers: number;
+            /** Format: int64 */
+            totalItems: number;
+            /** Format: int32 */
+            totalPages: number;
         };
         ExamCheckAnswerQuota: {
             /** Format: int32 */
@@ -3683,6 +6737,8 @@ export interface components {
             invalidReason?: string;
             /** Format: int32 */
             issueCount?: number;
+            /** @description Nhóm Thông tin bán, tính lúc đọc từ bản làm việc; không nằm trong groups[] và không lưu vào kết quả kiểm tra */
+            listingCheck?: components["schemas"]["ExamListingCheckGroup"];
             maxScore?: number;
             /** Format: int32 */
             partCount?: number;
@@ -3744,6 +6800,12 @@ export interface components {
             issueCount: number;
             /** @description UNCHECKED | VALID | INVALID | NEEDS_RECHECK */
             status: string;
+        };
+        ExamCoverUpload: {
+            /** Format: uuid */
+            assetId?: string;
+            /** @description Opens the image; the cover is attached by PUT listing, not by this upload */
+            url?: string;
         };
         /** @description Chi tiết bài thi kèm cấu trúc làm việc (spec 9.2 ExamDetail) */
         ExamDetailResponse: {
@@ -3870,7 +6932,119 @@ export interface components {
             /** @description PER_PART | SHARED */
             timing: string;
             /** @description Bảng điểm Đúng/Sai nhiều ý (số điểm theo số ý đúng) */
-            trueFalseScoring?: components["schemas"]["JsonNode"];
+            trueFalseScoring?: components["schemas"]["ExamTrueFalseScoring"];
+        };
+        /** @description Kỳ thi của sản phẩm */
+        ExamKindRef: {
+            /**
+             * @description Mã kỳ thi trong danh mục
+             * @example HSA
+             */
+            code: string;
+            nameEn: string;
+            nameVi: string;
+        };
+        ExamKindView: {
+            code?: string;
+            /** Format: uuid */
+            id?: string;
+            nameEn?: string;
+            nameVi?: string;
+        };
+        ExamListing: {
+            /**
+             * Format: int32
+             * @description Attempts granted by one purchase, 1 to 100
+             */
+            attemptsGranted?: number;
+            audience?: string;
+            benefitAiExplanation?: boolean;
+            benefitNote?: string;
+            benefitPractice?: boolean;
+            benefitStrengthWeakness?: boolean;
+            /** @description Listing issues of the working copy, computed now */
+            checkIssues?: components["schemas"]["ExamListingCheckIssue"][];
+            /** Format: uuid */
+            coverAssetId?: string;
+            /** @description Where the admin web reads the draft cover */
+            coverUrl?: string;
+            /** @description exam.description; lives on the exam row */
+            description?: string;
+            /** Format: uuid */
+            examId?: string;
+            hasUnpublishedChanges?: boolean;
+            /**
+             * Format: int64
+             * @description List price in VND, tax and fees included
+             */
+            listPriceVnd?: number;
+            /**
+             * Format: int64
+             * @description Smallest price accepted at publish (THI360_VNPAY_MIN_AMOUNT)
+             */
+            minPriceVnd?: number;
+            objectives?: string;
+            /** @description Listing of the latest version that still serves a path (E24); null when there is none or that version predates the listing */
+            published?: components["schemas"]["ExamListingPublished"];
+            /** @enum {string} */
+            resultView?: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            /**
+             * Format: int64
+             * @description Exam revision; send it back as expectedRevision
+             */
+            revision?: number;
+            summary?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ExamListingCheckGroup: {
+            /** @enum {string} */
+            group?: "LISTING";
+            issues?: components["schemas"]["ExamListingCheckIssue"][];
+            /** @enum {string} */
+            status?: "PASS" | "WARN" | "FAIL";
+        };
+        ExamListingCheckIssue: {
+            /** @description LISTING_PRICE_MISSING, LISTING_PRICE_ZERO, LISTING_PRICE_BELOW_MIN, LISTING_ATTEMPTS_MISSING, LISTING_DESCRIPTION_MISSING or LISTING_COVER_MISSING */
+            code?: string;
+            /** @description Listing field the issue is about */
+            field?: string;
+            group?: string;
+            key?: string;
+            /**
+             * Format: int64
+             * @description Minimum price in VND, only on LISTING_PRICE_BELOW_MIN
+             */
+            minPriceVnd?: number;
+            /** @enum {string} */
+            severity?: "ERROR" | "WARNING";
+        };
+        ExamListingPublished: {
+            listing?: components["schemas"]["ExamListingSale"];
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        ExamListingSale: {
+            /** Format: int32 */
+            attemptsGranted?: number;
+            audience?: string;
+            benefitAiExplanation?: boolean;
+            benefitNote?: string;
+            benefitPractice?: boolean;
+            benefitStrengthWeakness?: boolean;
+            /** Format: uuid */
+            coverAssetId?: string;
+            coverUrl?: string;
+            description?: string;
+            /** Format: int64 */
+            listPriceVnd?: number;
+            name?: string;
+            objectives?: string;
+            /** @enum {string} */
+            resultView?: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            summary?: string;
         };
         /** @description Cập nhật tổng quan bài thi */
         ExamOverviewRequest: {
@@ -3975,8 +7149,12 @@ export interface components {
             criterion?: string;
             enforcement?: string;
             note?: string;
+            /** @description Required count before the contribution of the dropped question was removed from required; null when nothing was dropped on this row */
+            originalRequired?: number | null;
             required?: number;
             scope?: string;
+            /** @description Topic name of a TOPIC row: the quota name, else the Vietnamese names of its knowledge nodes; null on other rows */
+            topicName?: string | null;
         };
         ExamPreviewIssue: {
             answerType?: string;
@@ -4123,20 +7301,10 @@ export interface components {
         ExamPreviewRequest: {
             /** Format: uuid */
             basePreviewId?: string;
-            /**
-             * @deprecated
-             * @description Legacy path selection; use target when BE-8 is available
-             */
-            pathId?: string;
             regeneratePartIds?: string[];
             /** Format: int64 */
             seed?: number;
-            /**
-             * @deprecated
-             * @description Legacy subject selection; use target.subjectCodes
-             */
-            subjectCodes?: string[];
-            target?: components["schemas"]["ExamPreviewTarget"];
+            target: components["schemas"]["ExamPreviewTarget"];
             /** Format: int32 */
             version?: number;
         };
@@ -4156,6 +7324,11 @@ export interface components {
             droppedQuestions?: components["schemas"]["ExamPreviewQuestion"][] | null;
             /** Format: uuid */
             examId?: string;
+            /**
+             * Format: date-time
+             * @description When the stored preview (previewId) expires if it is not extended; null on FAILED
+             */
+            expiresAt?: string | null;
             /** Format: date-time */
             generatedAt?: string;
             issues?: components["schemas"]["ExamPreviewIssue"][];
@@ -4266,6 +7439,11 @@ export interface components {
             state?: "INCOMPLETE" | "CHECKED" | "NEEDS_CHECK";
             subjectCode?: string;
         };
+        /** @description Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh) */
+        ExamStructureDocument: {
+            examQuotas?: components["schemas"]["ExamQuota"][];
+            parts?: components["schemas"]["ExamPart"][];
+        };
         /** @description Cấu trúc bản làm việc của bài thi (GET/PUT /exams/{id}/structure) */
         ExamStructureResponse: {
             combinations?: components["schemas"]["StructureCombination"][];
@@ -4291,6 +7469,7 @@ export interface components {
             blockId?: string;
             /** Format: int32 */
             childCount?: number;
+            children?: components["schemas"]["ExamStructureSummaryRow"][];
             /** Format: int32 */
             commandCount?: number;
             /** Format: int32 */
@@ -4364,6 +7543,26 @@ export interface components {
             /** @description Người cập nhật gần nhất */
             updatedBy?: components["schemas"]["PersonRef"];
         };
+        ExamTemplatePartSummary: {
+            name: string;
+            /** Format: int32 */
+            order?: number;
+            /** @description Id phần trong mẫu; null khi mẫu chưa gán id */
+            partId?: string;
+            /**
+             * Format: int32
+             * @description Số câu của phần theo mẫu; null khi mẫu không ghi
+             */
+            questionCount?: number;
+            /** @description Số câu theo dạng câu của các nhóm không lược trong phần, theo thứ tự xuất hiện; phần tự chọn tính theo lựa chọn đầu tiên; nhóm không ghi dạng câu có dạng ANY */
+            questionTypes: components["schemas"]["ExamTemplateQuestionTypeCount"][];
+        };
+        ExamTemplateQuestionTypeCount: {
+            /** Format: int32 */
+            questionCount: number;
+            /** @description Mã dạng câu (SINGLE_CHOICE, TRUE_FALSE, MATCHING, QUESTION_SET ...) hoặc ANY */
+            questionType: string;
+        };
         /** @description Nguyên mẫu cấu trúc bài thi (exam_template; spec 4, 5.2) */
         ExamTemplateResponse: {
             /** @description Có đang hoạt động */
@@ -4399,12 +7598,14 @@ export interface components {
             omittedLocked: boolean;
             /** @description Mã phần khi scope = PART */
             partCode?: string;
+            /** @description Mỗi phần của mẫu kèm số câu theo dạng câu (cho dòng thay đổi theo dạng câu khi đổi phiên bản) */
+            parts: components["schemas"]["ExamTemplatePartSummary"][];
             /** @description Mẫu cho phép công bố bài (false: chỉ lưu nháp) */
             publishable: boolean;
             /** @description FULL | PART | SUBJECT */
             scope: string;
             /** @description Tài liệu cấu trúc nguyên bản {parts: [...]} (id để null — client sinh) */
-            structure: components["schemas"]["JsonNode"];
+            structure: components["schemas"]["ExamStructureDocument"];
             /**
              * Format: int32
              * @description Năm cấu trúc
@@ -4416,6 +7617,13 @@ export interface components {
             summary?: string;
             /** @description PER_PART | SHARED */
             timing: string;
+        };
+        /** @description PER_STATEMENT: statementPoints per correct statement; COUNT_TABLE: table[i] is the score for i+1 correct statements */
+        ExamTrueFalseScoring: {
+            /** @enum {string} */
+            method: "PER_STATEMENT" | "COUNT_TABLE";
+            statementPoints?: number | null;
+            table: number[];
         };
         ExamVersionChange: {
             after?: string;
@@ -4493,6 +7701,10 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         };
+        /** @description Yêu cầu đánh dấu lượt thi bị lỗi hệ thống (LT §12, F20) */
+        FaultAttemptRequest: {
+            reason: string;
+        };
         /** @description Chi tiết lỗi của một trường dữ liệu */
         FieldError: {
             /**
@@ -4510,6 +7722,276 @@ export interface components {
              * @example Tên đăng nhập đã tồn tại
              */
             message: string;
+        };
+        /** @description Thay đổi câu trả lời cuối cùng gửi kèm khi hoàn thành phần hoặc nộp bài (LT §6.3, §7.1) */
+        FinalAnswerChange: {
+            /** @description Nội dung câu trả lời; null để xóa đáp án */
+            answer?: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
+            /**
+             * Format: uuid
+             * @description Id câu hỏi trong lượt
+             */
+            itemId: string;
+            /**
+             * Format: int64
+             * @description Số thứ tự tăng dần của câu
+             */
+            seq: number;
+        };
+        /** @description Kết quả xử lý từng câu trong finalAnswers khi hoàn thành phần hoặc nộp bài (LT §6.3) */
+        FinalAnswerResult: {
+            /**
+             * Format: uuid
+             * @description Id câu hỏi trong lượt
+             */
+            itemId: string;
+            /** @description Mã lý do từ chối khi status là REJECTED */
+            reason?: string;
+            /**
+             * Format: int64
+             * @description Số thứ tự đã gửi
+             */
+            seq: number;
+            /**
+             * @description Trạng thái lưu đáp án
+             * @enum {string}
+             */
+            status: "SAVED" | "STALE" | "REJECTED";
+        };
+        /** @description Hoàn tất chấm câu tự luận (có thể gửi kèm điểm/tiêu chí/nhận xét cuối) */
+        FinalizeEssayRequest: {
+            comment?: string;
+            criteria?: components["schemas"]["EssayCriterionInput"][];
+            /** Format: int64 */
+            expectedVersion?: number;
+            points?: number;
+        };
+        /** @description Kết quả hoàn tất chấm câu tự luận và tổng hợp điểm lượt thi */
+        FinalizeEssayResponse: {
+            /** Format: uuid */
+            attemptId?: string;
+            /** @enum {string} */
+            attemptState?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            displayScore?: number;
+            grade?: components["schemas"]["EssayGradeView"];
+            /** Format: date-time */
+            gradedAt?: string;
+            maxScore?: number;
+            rawScore?: number;
+        };
+        /** @description Yêu cầu hoàn thành phần hiện tại của lượt thi tuần tự (LT §6.3) */
+        FinishPartRequest: {
+            /** @description Các câu trả lời cuối cùng của phần trước khi đóng */
+            finalAnswers?: components["schemas"]["FinalAnswerChange"][];
+        };
+        /** @description Kết quả hoàn thành phần và trạng thái phần kế tiếp (LT §6.3) */
+        FinishPartResponse: {
+            /**
+             * Format: uuid
+             * @description Id lượt thi
+             */
+            attemptId: string;
+            /**
+             * @description Trạng thái hiện tại của lượt thi
+             * @enum {string}
+             */
+            attemptState: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            /** @description Thông tin phần đã đóng */
+            closedPart: components["schemas"]["PartSummaryView"];
+            /**
+             * @description Lý do kết thúc lượt nếu lượt đã đóng
+             * @enum {string}
+             */
+            endReason?: "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOSED";
+            /**
+             * Format: date-time
+             * @description Thời điểm kết thúc lượt nếu lượt đã đóng
+             */
+            finishedAt?: string;
+            /** @description Thông tin phần kế tiếp nếu có */
+            nextPart?: components["schemas"]["PartSummaryView"];
+            /** @description Kết quả ghi nhận finalAnswers */
+            results: components["schemas"]["FinalAnswerResult"][];
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+        };
+        /** @description Thay đổi cờ đánh dấu xem lại của một câu hỏi trong lượt thi (LT §7.1) */
+        FlagChange: {
+            /** @description Trạng thái cờ đánh dấu xem lại */
+            flagged: boolean;
+            /**
+             * Format: uuid
+             * @description Id câu hỏi trong lượt
+             */
+            itemId: string;
+        };
+        /** @description Hình thức; tham số format của danh sách là code (FULL, PART, SUBJECT) */
+        FormatFilter: {
+            code: string;
+            /** Format: int64 */
+            count: number;
+        };
+        /** @description Lỗi xung đột khi câu tự luận đang được người chấm khác giữ trong vòng 30 phút */
+        GradingClaimedResponse: {
+            /** Format: date-time */
+            claimedAt?: string;
+            /** Format: uuid */
+            claimedById?: string;
+            claimedByName?: string;
+            /** @example GRADING_CLAIMED */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            /** Format: date-time */
+            lastActivityAt?: string;
+            message: string;
+            traceId: string;
+        };
+        /** @description Chi tiết câu tự luận cần chấm theo đúng phiên bản đã phát (ẩn danh học viên) */
+        GradingItemDetailResponse: {
+            activeGrade?: components["schemas"]["EssayGradeView"];
+            answerHtml?: string;
+            /** Format: uuid */
+            attemptId?: string;
+            content?: string;
+            /** Format: int32 */
+            displayNo?: number;
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            gradingGuide?: string;
+            history?: components["schemas"]["EssayGradeView"][];
+            /** Format: uuid */
+            itemId?: string;
+            partCode?: string;
+            partName?: string;
+            passage?: string;
+            pointsMax?: number;
+            /** Format: uuid */
+            questionId?: string;
+            /** Format: int32 */
+            questionVersionNo?: number;
+            regrading?: boolean;
+            rubric?: components["schemas"]["GradingRubricCriterionView"][];
+            sampleAnswer?: string;
+            /**
+             * @description Trạng thái hàng chờ chấm tự luận (LT §9.2)
+             * @enum {string}
+             */
+            state?: "WAITING" | "IN_PROGRESS" | "DONE";
+            /** Format: date-time */
+            submittedAt?: string;
+            /** Format: int32 */
+            wordCount?: number;
+            /** Format: int32 */
+            wordLimit?: number;
+        };
+        /** @description Số đếm câu tự luận theo từng trạng thái hàng chờ chấm (BS §11) */
+        GradingQueueCountsResponse: {
+            /** Format: int64 */
+            done: number;
+            /** Format: int64 */
+            inProgress: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            waiting: number;
+        };
+        /** @description Một câu tự luận trong hàng chờ chấm (ẩn danh hoàn toàn thông tin học viên) */
+        GradingQueueItemView: {
+            /** Format: uuid */
+            attemptId?: string;
+            claimExpired?: boolean;
+            /** Format: date-time */
+            claimedAt?: string;
+            /** Format: int32 */
+            displayNo?: number;
+            earnedPoints?: number;
+            /** Format: uuid */
+            examId?: string;
+            examKindCode?: string;
+            examName?: string;
+            /** Format: date-time */
+            finalizedAt?: string;
+            /** Format: uuid */
+            graderId?: string;
+            graderName?: string;
+            /** Format: uuid */
+            itemId?: string;
+            /** Format: date-time */
+            lastActivityAt?: string;
+            partCode?: string;
+            partName?: string;
+            pointsMax?: number;
+            regrading?: boolean;
+            /**
+             * @description Trạng thái hàng chờ chấm tự luận (LT §9.2)
+             * @enum {string}
+             */
+            state?: "WAITING" | "IN_PROGRESS" | "DONE";
+            /** Format: date-time */
+            submittedAt?: string;
+        };
+        GradingRubricCriterionView: {
+            description?: string;
+            id?: string;
+            points?: number;
+        };
+        GrantSourceView: {
+            /** Format: date-time */
+            grantedAt?: string;
+            orderCode?: string;
+            /** @enum {string} */
+            source?: "PURCHASE" | "COMPENSATION";
+        };
+        GrantView: {
+            /** Format: int32 */
+            attempts: number;
+            /** Format: int32 */
+            attemptsLeft: number;
+            /** Format: int32 */
+            attemptsReserved: number;
+            /** Format: int32 */
+            attemptsRevoked: number;
+            /** Format: int32 */
+            attemptsUsed: number;
+            /** Format: uuid */
+            entitlementId: string;
+            /** Format: uuid */
+            examId: string;
+            /** Format: uuid */
+            grantId: string;
+            /** Format: date-time */
+            grantedAt: string;
+            grantedBy: string;
+            /** Format: date-time */
+            revokedAt?: string;
+        };
+        /** @description Phản hồi gia hạn phiên sửa bài (LT §7.1) */
+        HeartbeatResponse: {
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+            /**
+             * @description Trạng thái hiện tại của lượt thi
+             * @enum {string}
+             */
+            state: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
+        HistoryView: {
+            actor: string;
+            /** Format: date-time */
+            at: string;
+            fromState?: string;
+            /** Format: uuid */
+            id: string;
+            reason?: string;
+            toState: string;
         };
         /** @description Thông tin đợt cấp tài khoản hàng loạt */
         ImportBatchResponse: {
@@ -4677,6 +8159,13 @@ export interface components {
             /** Format: int32 */
             validSets?: number;
         };
+        /** @description Khoảng giá trị của các đường đang phục vụ; min bằng max khi mọi đường như nhau */
+        IntRange: {
+            /** Format: int32 */
+            max: number;
+            /** Format: int32 */
+            min: number;
+        };
         Issue: {
             code?: string;
             column?: string;
@@ -4699,6 +8188,14 @@ export interface components {
             statements?: number;
         };
         JsonNode: Record<string, never>;
+        /** @description Kỳ thi; tham số kind của danh sách là code */
+        KindFilter: {
+            code: string;
+            /** Format: int64 */
+            count: number;
+            nameEn: string;
+            nameVi: string;
+        };
         /** @description Nút trong cây kiến thức (danh mục KNOWLEDGE) */
         KnowledgeNode: {
             /** @description Nút đang có hiệu lực */
@@ -4736,6 +8233,16 @@ export interface components {
             everyChildInScope?: boolean;
             nodeIds?: string[];
         };
+        LateSuccessReviewRequest: {
+            /** @enum {string} */
+            decision: "ACCEPT" | "REFUND";
+            evidenceRef: string;
+            reason: string;
+        };
+        LatestReconciliationReportResponse: {
+            available: boolean;
+            report?: components["schemas"]["ReconciliationReportResponse"];
+        };
         /** @description Một dòng sổ đã dùng */
         LedgerRef: {
             /** Format: uuid */
@@ -4745,6 +8252,11 @@ export interface components {
             kind: string;
             /** Format: int32 */
             versionNo: number;
+        };
+        ListeningPolicyView: {
+            /** Format: int32 */
+            maxPlays?: number;
+            seekable?: boolean;
         };
         /** @description Nạp lại cấu trúc từ nguyên mẫu (POST /exams/{id}/template, spec 5.2) */
         LoadExamTemplateRequest: {
@@ -4762,6 +8274,11 @@ export interface components {
             overviewPolicy?: "USE_TEMPLATE" | "KEEP_EDITED";
             /** @description Mã nguyên mẫu; phải khớp kỳ thi + phạm vi (+ phần/môn) của bài */
             templateCode: string;
+        };
+        /** @description Tên hai ngôn ngữ của một giá trị danh mục; nội dung bài thi (tên phần) giống nhau ở cả hai */
+        LocalizedName: {
+            nameEn: string;
+            nameVi: string;
         };
         /** @description Yêu cầu đăng nhập */
         LoginRequest: {
@@ -4793,6 +8310,28 @@ export interface components {
             percent?: number;
             /** @enum {string} */
             type?: "PRESENT" | "COUNT" | "ONLY_IN_GROUP" | "SOURCE";
+        };
+        MarkRefundFailedRequest: {
+            evidenceRef: string;
+            reason: string;
+        };
+        Matching: components["schemas"]["AttemptQuestionBody"] & {
+            left?: components["schemas"]["SideView"][];
+            reuseRight?: boolean;
+            right?: components["schemas"]["SideView"][];
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
+        MatchingAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            pairs?: {
+                [key: string]: string;
+            };
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "MATCHING";
         };
         MatchingBody: {
             type: "MatchingBody";
@@ -4864,6 +8403,21 @@ export interface components {
              */
             version?: number;
         };
+        MultipleChoice: components["schemas"]["AttemptQuestionBody"] & {
+            options?: components["schemas"]["OptionView"][];
+            scoringRule?: string;
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
+        MultipleChoiceAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            optionIds?: string[];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "MULTIPLE_CHOICE";
+        };
         MultipleChoiceBody: {
             type: "MultipleChoiceBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -4874,15 +8428,372 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
+        /** @description Bộ đề đã mua chứa bài thi này (TM 16.4) */
+        MyExamBundleRef: {
+            /** Format: uuid */
+            bundleId: string;
+            code: string;
+            name: string;
+        };
+        /** @description Thẻ một bài thi trong "Bài thi của tôi" (TM 12, 16.4): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId) */
+        MyExamCard: {
+            /** @description Nút của thẻ theo TM 12, nút chính đứng đầu */
+            actions: ("CONTINUE" | "START" | "VIEW_RESULT" | "HISTORY" | "REBUY" | "BUY_MORE" | "CHECKING")[];
+            /**
+             * Format: uuid
+             * @description Lượt đang mở (kể cả STARTING)
+             */
+            activeAttemptId?: string | null;
+            /**
+             * @description Trạng thái của lượt đang mở
+             * @enum {string|null}
+             */
+            activeAttemptState?: "STARTING" | "IN_PROGRESS" | null;
+            /**
+             * Format: int32
+             * @description Lượt còn dùng được, từ quyền đã cấp (không từ sản phẩm đang bán)
+             */
+            attemptsLeft: number;
+            /**
+             * Format: int32
+             * @description Tổng lượt của quyền sau khi trừ lượt đã thu hồi; 0 ở thẻ chưa có quyền
+             */
+            attemptsTotal: number;
+            /** @description STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2) */
+            buildMode: string;
+            /** @description Các bộ đề đã mua chứa bài thi này (TM 16.4) */
+            bundles?: components["schemas"]["MyExamBundleRef"][] | null;
+            /** @description Mã sản phẩm, cũng là mã bài thi */
+            code: string;
+            /** @description Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định */
+            coverUrl?: string | null;
+            /** @description Thời lượng một lượt, phút, theo các đường đã mua; khoảng khi các đường khác nhau */
+            durationMinutes?: components["schemas"]["IntRange"] | null;
+            /**
+             * Format: uuid
+             * @description Quyền dùng; trống ở thẻ "Đang kiểm tra" của đơn chưa cấp quyền
+             */
+            entitlementId?: string | null;
+            examKind: components["schemas"]["ExamKindRef"];
+            /** @description Hình thức (E4): FULL, PART hay SUBJECT */
+            format: string;
+            /** @description Có đơn đã thu tiền chưa cấp xong cho bài này */
+            hasPendingFulfillment: boolean;
+            /** @description Tên sản phẩm */
+            name: string;
+            /** @description Mã đơn đã thu tiền chưa cấp xong */
+            pendingOrderCode?: string | null;
+            /** @description Số câu học viên làm theo các đường đã mua; khoảng khi các đường khác nhau */
+            questionCount?: components["schemas"]["IntRange"] | null;
+            /**
+             * Format: uuid
+             * @description Lượt mới nhất đã có kết quả, đích của nút VIEW_RESULT
+             */
+            resultAttemptId?: string | null;
+            /**
+             * @description Trạng thái bán của sản phẩm; ON_SALE thì có nút mua
+             * @enum {string}
+             */
+            saleState: "ON_SALE" | "DISCONTINUED" | "UNAVAILABLE";
+            /** @description Tên phần (PART) hoặc môn (SUBJECT); null với FULL */
+            scopeLabel?: components["schemas"]["LocalizedName"] | null;
+            /**
+             * @description Tình trạng: IN_PROGRESS (Đang làm), CAN_START (Có thể bắt đầu), EXHAUSTED (Hết lượt), CHECKING (Đang kiểm tra)
+             * @enum {string}
+             */
+            state: "IN_PROGRESS" | "CAN_START" | "CHECKING" | "EXHAUSTED" | "NONE";
+        };
+        /** @description Danh sách thẻ "Bài thi của tôi": thẻ "Đang kiểm tra" trước, rồi các quyền dùng mới nhất trước */
+        MyExamsResponse: {
+            /** @description Rỗng khi tài khoản chưa có bài nào */
+            items: components["schemas"]["MyExamCard"][];
+        };
+        /** @description Nhóm tự luận tạm bỏ qua: tên và điểm phần đó đã mang (TM 10.1, 2B K1) */
+        OmittedEssayGroup: {
+            name: string;
+            points?: number;
+        };
+        OmittedGroupView: {
+            name?: string;
+            points?: number;
+        };
+        OpenAttemptView: {
+            /** Format: uuid */
+            attemptId?: string;
+            /** @enum {string} */
+            state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
         Option: {
             content?: string;
             correct?: boolean;
             letter?: string;
         };
+        OptionView: {
+            content?: string;
+            id?: string;
+        };
+        OrderAttentionSummary: {
+            /** Format: int64 */
+            duplicateUnrefunded: number;
+            /** Format: int64 */
+            lateSuccessPending: number;
+            /** Format: int64 */
+            needsReview: number;
+            /** Format: int64 */
+            paidUnfulfilled: number;
+            /** Format: int64 */
+            paymentUnknownOver24h: number;
+            /** Format: int64 */
+            refundUnknown: number;
+            /** Format: int64 */
+            totalAttentionOrders: number;
+        };
+        OrderDetail: {
+            /** Format: int64 */
+            amountDueVnd: number;
+            /** Format: int32 */
+            attemptsGranted: number;
+            benefits: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: uuid */
+            bundleId?: string;
+            /** Format: int32 */
+            bundleVersionNo?: number;
+            buyerFullName: string;
+            buyerUsername: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            discountApplied: "NONE" | "PROMOTION_ONLY" | "VOUCHER_ONLY" | "COMBINED";
+            /** Format: uuid */
+            examId?: string;
+            /** Format: int32 */
+            examVersionNo?: number;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            fulfilledAt?: string;
+            history: components["schemas"]["OrderHistoryView"][];
+            /** Format: uuid */
+            id: string;
+            items: components["schemas"]["OrderItemView"][];
+            /** Format: int64 */
+            listPriceVnd: number;
+            optionCodes: string[];
+            /** Format: date-time */
+            paidAt?: string;
+            /** @enum {string} */
+            paymentMethod: "VNPAY" | "FREE";
+            payments: components["schemas"]["OrderPaymentView"][];
+            productCode: string;
+            productName: string;
+            /** @enum {string} */
+            productType: "EXAM" | "BUNDLE";
+            /** Format: int64 */
+            promotionDiscountVnd: number;
+            /** Format: uuid */
+            promotionId?: string;
+            replacedByOrderCode?: string;
+            /** Format: uuid */
+            replacedByOrderId?: string;
+            resultView: string;
+            /** @enum {string} */
+            state: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            userId: string;
+            voucherCode?: string;
+            /** Format: int64 */
+            voucherDiscountVnd: number;
+            /** Format: uuid */
+            voucherId?: string;
+        };
+        OrderHistoryView: {
+            actor: string;
+            /** Format: date-time */
+            at: string;
+            fromState?: string;
+            /** Format: uuid */
+            id: string;
+            reason?: string;
+            toState: string;
+        };
+        OrderItemView: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            benefits: {
+                [key: string]: Record<string, never>;
+            };
+            examCode: string;
+            /** Format: uuid */
+            examId: string;
+            examName: string;
+            /** Format: int32 */
+            examVersionNo: number;
+            /** Format: uuid */
+            id: string;
+            optionCodes: string[];
+            /** Format: int32 */
+            position: number;
+            resultView: string;
+        };
+        OrderPaymentView: {
+            /** Format: int64 */
+            amountVnd: number;
+            /** Format: int32 */
+            attemptSeq: number;
+            bankCode?: string;
+            cardType?: string;
+            /** Format: date-time */
+            createdAt: string;
+            duplicate: boolean;
+            /** Format: uuid */
+            id: string;
+            payDate?: string;
+            responseCode?: string;
+            /** @enum {string} */
+            state: "CREATED" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
+            txnRef: string;
+            vnpTransactionNo?: string;
+        };
+        OrderPriceChangedResponse: {
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            message: string;
+            quote: components["schemas"]["PriceQuote"];
+            traceId?: string;
+        };
+        OrderSummary: {
+            /** Format: int64 */
+            amountDueVnd: number;
+            /** Format: int32 */
+            attemptsGranted: number;
+            /** Format: uuid */
+            bundleId?: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            discountApplied: "NONE" | "PROMOTION_ONLY" | "VOUCHER_ONLY" | "COMBINED";
+            /** Format: uuid */
+            examId?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            fulfilledAt?: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            listPriceVnd: number;
+            /** Format: date-time */
+            paidAt?: string;
+            /** @enum {string} */
+            paymentMethod: "VNPAY" | "FREE";
+            productCode: string;
+            productName: string;
+            /** @enum {string} */
+            productType: "EXAM" | "BUNDLE";
+            /** Format: int64 */
+            promotionDiscountVnd: number;
+            /** @enum {string} */
+            state: "PENDING_PAYMENT" | "PAID" | "FULFILLED" | "EXPIRED" | "REPLACED" | "CANCELLED" | "REFUNDED";
+            /** Format: int64 */
+            voucherDiscountVnd: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseAdminAttemptSummary: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["AdminAttemptSummary"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseAttemptHistoryItem: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["AttemptHistoryItem"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
         /** @description Kết quả phân trang */
         PageResponseAuditEventResponse: {
             /** @description Danh sách phần tử của trang hiện tại */
             items: components["schemas"]["AuditEventResponse"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseBundleSummaryResponse: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["BundleSummaryResponse"][];
             /**
              * Format: int32
              * @description Chỉ số trang (bắt đầu từ 0)
@@ -5054,6 +8965,35 @@ export interface components {
             totalPages: number;
         };
         /** @description Kết quả phân trang */
+        PageResponseGradingQueueItemView: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["GradingQueueItemView"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
         PageResponseImportRowResponse: {
             /** @description Danh sách phần tử của trang hiện tại */
             items: components["schemas"]["ImportRowResponse"][];
@@ -5083,9 +9023,125 @@ export interface components {
             totalPages: number;
         };
         /** @description Kết quả phân trang */
+        PageResponseOrderSummary: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["OrderSummary"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
         PageResponsePermissionUserResponse: {
             /** @description Danh sách phần tử của trang hiện tại */
             items: components["schemas"]["PermissionUserResponse"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponseProductCard: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["ProductCard"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponsePromotionRedemptionView: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["PromotionRedemptionView"][];
+            /**
+             * Format: int32
+             * @description Chỉ số trang (bắt đầu từ 0)
+             * @example 0
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description Kích thước trang
+             * @example 20
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Tổng số phần tử
+             * @example 0
+             */
+            totalItems: number;
+            /**
+             * Format: int32
+             * @description Tổng số trang
+             * @example 0
+             */
+            totalPages: number;
+        };
+        /** @description Kết quả phân trang */
+        PageResponsePromotionSummary: {
+            /** @description Danh sách phần tử của trang hiện tại */
+            items: components["schemas"]["PromotionSummary"][];
             /**
              * Format: int32
              * @description Chỉ số trang (bắt đầu từ 0)
@@ -5198,11 +9254,202 @@ export interface components {
              */
             totalPages: number;
         };
+        /** @description Trạng thái phần tự chọn sau khi xác nhận lựa chọn hoặc thử lại sinh đề */
+        PartChoiceResponse: {
+            /**
+             * Format: uuid
+             * @description Id lượt thi
+             */
+            attemptId: string;
+            /**
+             * @description Trạng thái lượt thi
+             * @enum {string}
+             */
+            attemptState: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+            /** @description Lựa chọn đã khóa của phần */
+            choice?: components["schemas"]["PartChoiceSummary"];
+            /**
+             * Format: date-time
+             * @description Thời điểm khóa lựa chọn
+             */
+            choiceConfirmedAt?: string;
+            /**
+             * Format: date-time
+             * @description Hạn chờ chọn phần
+             */
+            choiceDeadlineAt?: string;
+            /**
+             * Format: date-time
+             * @description Hạn kết thúc phần
+             */
+            deadlineAt?: string;
+            /** @description Mã lỗi sinh đề gần nhất nếu có */
+            generationError?: string;
+            /**
+             * Format: int32
+             * @description Số lần sinh lỗi liên tiếp
+             */
+            generationTries: number;
+            /** @description Mã phần thi */
+            partCode: string;
+            /**
+             * Format: uuid
+             * @description Id phần thi
+             */
+            partId: string;
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm bắt đầu làm phần
+             */
+            startedAt?: string;
+            /**
+             * @description Trạng thái phần thi
+             * @enum {string}
+             */
+            state: "PENDING" | "AWAITING_CHOICE" | "GENERATING" | "GENERATION_FAILED" | "OPEN" | "CLOSED" | "SKIPPED";
+        };
+        /** @description Thông tin lựa chọn đã khóa của phần thi */
+        PartChoiceSummary: {
+            /** @description Mã nhánh, phương án hoặc tổ hợp môn đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn đã chọn (nếu có) */
+            subjectCodes?: string[];
+            /** @description Số câu theo từng môn đã chọn (nếu có) */
+            subjectCounts?: {
+                [key: string]: number;
+            };
+        };
+        /** @description Phần của bài thi theo phần (PART); mã phần chỉ có nghĩa trong một kỳ thi, nên cặp (kindCode, code) là khóa. Chỉ bài thi theo phần mới có mã phần: bài thi FULL tìm theo hình thức FULL, không theo phần. Tham số part của danh sách là code, đi kèm kind, và chỉ khớp bài thi theo phần */
+        PartFilter: {
+            code: string;
+            /** Format: int64 */
+            count: number;
+            kindCode: string;
+            /** @description Tên phần, nội dung bài thi nên không dịch */
+            name: string;
+        };
         PartParticipation: {
             /** Format: int32 */
             choose?: number;
             /** @enum {string} */
             mode?: "ALL" | "CHOICE";
+        };
+        /** @description Tóm tắt trạng thái và mốc thời gian của một phần thi (LT §6.3) */
+        PartSummaryView: {
+            /**
+             * Format: date-time
+             * @description Hạn chờ chọn phần kế tiếp nếu ở trạng thái AWAITING_CHOICE
+             */
+            choiceDeadlineAt?: string;
+            /**
+             * @description Lý do đóng hoặc bỏ qua phần
+             * @enum {string}
+             */
+            closeReason?: "FINISHED" | "TIME_UP" | "CHOICE_TIMEOUT" | "ATTEMPT_SUBMITTED" | "FAULT_CLOSED";
+            /**
+             * Format: date-time
+             * @description Thời điểm phần đã đóng
+             */
+            closedAt?: string;
+            /**
+             * Format: date-time
+             * @description Hạn kết thúc phần
+             */
+            deadlineAt?: string;
+            /**
+             * Format: int32
+             * @description Thứ tự phần thi (bắt đầu từ 0)
+             */
+            ord: number;
+            /** @description Mã phần thi */
+            partCode: string;
+            /**
+             * Format: uuid
+             * @description Id phần thi
+             */
+            partId: string;
+            /** @description Tên phần thi */
+            partName: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm bắt đầu làm phần
+             */
+            startedAt?: string;
+            /**
+             * @description Trạng thái phần thi
+             * @enum {string}
+             */
+            state: "PENDING" | "AWAITING_CHOICE" | "GENERATING" | "GENERATION_FAILED" | "OPEN" | "CLOSED" | "SKIPPED";
+        };
+        /** @description Yêu cầu gửi liên kết đặt lại mật khẩu */
+        PasswordForgotRequest: {
+            /** @description Email của tài khoản */
+            email: string;
+        };
+        /** @description Phản hồi cố định của yêu cầu quên mật khẩu: giống nhau cho mọi email (AC-06.04) */
+        PasswordForgotResponse: {
+            /** @description Thông báo đã bản địa hóa, không cho biết email có tài khoản hay không */
+            message: string;
+        };
+        /** @description Yêu cầu đặt lại mật khẩu bằng mã trong thư */
+        PasswordResetRequest: {
+            /**
+             * Format: password
+             * @description Mật khẩu mới đạt quy tắc bảo mật
+             */
+            newPassword: string;
+            /**
+             * Format: password
+             * @description Mã đặt lại trong liên kết thư
+             */
+            token: string;
+        };
+        PayOrderResponse: {
+            /** Format: date-time */
+            expiresAt?: string;
+            /** @example REDIRECT */
+            next: string;
+            order: components["schemas"]["OrderDetail"];
+            paymentUrl: string;
+            txnRef: string;
+        };
+        PaymentDetailView: {
+            /** Format: int64 */
+            amountVnd: number;
+            /** Format: int32 */
+            attemptSeq: number;
+            bankCode?: string;
+            cardType?: string;
+            /** Format: date-time */
+            createdAt: string;
+            duplicate: boolean;
+            /** @enum {string} */
+            excessReason?: "AFTER_COUNTED" | "REJECTED_AFTER_RECONCILE";
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            inProgressRefundAmountVnd: number;
+            /** Format: date-time */
+            lateSuccessAt?: string;
+            /** @enum {string} */
+            lateSuccessReview?: "PENDING" | "ACCEPTED" | "REJECTED" | "AUTO_EXCESS";
+            payDate?: string;
+            /** Format: int64 */
+            refundableAmountVnd: number;
+            /** Format: int64 */
+            refundedAmountVnd: number;
+            refunds: components["schemas"]["RefundResponse"][];
+            responseCode?: string;
+            /** @enum {string} */
+            state: "CREATED" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
+            transactionStatus?: string;
+            txnRef: string;
+            vnpTransactionNo?: string;
         };
         /** @description Thông tin quyền hệ thống */
         PermissionResponse: {
@@ -5332,6 +9579,564 @@ export interface components {
             /** Format: int32 */
             to?: number;
         };
+        PreChoiceInput: {
+            /** @description Mã phương án hoặc mã tổ hợp đã chọn */
+            optionCode: string;
+            /** @description Danh sách mã môn nếu phương án yêu cầu chọn N trong M môn */
+            subjectCodes?: string[];
+        };
+        PreChoiceView: {
+            kind?: string;
+            options?: components["schemas"]["ChoiceOptionView"][];
+            partCode?: string;
+            preselectedCode?: string;
+        };
+        PreparePartView: {
+            /** @enum {string} */
+            choiceTiming?: "NONE" | "PRE_START" | "AFTER_START";
+            /** Format: int32 */
+            durationMinutes?: number;
+            maxPoints?: number;
+            name?: string;
+            /** Format: int32 */
+            ord?: number;
+            partCode?: string;
+            /** Format: int32 */
+            questionCount?: number;
+            required?: boolean;
+        };
+        PreviewGradeRequest: {
+            /** @description Bản đồ câu trả lời theo questionId (có thể rỗng hoặc bỏ sót câu bỏ trống) */
+            answers?: {
+                [key: string]: components["schemas"]["ClozeAnswer"] | components["schemas"]["EssayAnswer"] | components["schemas"]["MatchingAnswer"] | components["schemas"]["MultipleChoiceAnswer"] | components["schemas"]["ShortAnswerValue"] | components["schemas"]["SingleChoiceAnswer"] | components["schemas"]["TrueFalseAnswer"];
+            };
+        };
+        PreviewGradeResponse: {
+            /** Format: uuid */
+            examId?: string;
+            hasPendingManualGrading?: boolean;
+            items?: components["schemas"]["PreviewGradedItem"][];
+            kindCode?: string;
+            maxScore?: number;
+            /** Format: uuid */
+            previewId?: string;
+            rawScore?: number;
+            statistics?: components["schemas"]["AttemptResultUnitStats"];
+        };
+        PreviewGradedItem: {
+            earnedPoints?: number;
+            gradingDetail?: components["schemas"]["ReviewGradingDetail"];
+            maxPoints?: number;
+            /** Format: int32 */
+            number?: number;
+            /** @enum {string} */
+            outcome?: "CORRECT" | "PARTIAL" | "WRONG" | "BLANK" | "PENDING_REVIEW";
+            pendingReview?: boolean;
+            /** Format: uuid */
+            questionId?: string;
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
+        PreviewTrialAttachment: {
+            downloadUrl?: string;
+            /** Format: uuid */
+            id?: string;
+            mime?: string;
+            name?: string;
+        };
+        PreviewTrialBlock: {
+            blockId?: string;
+            /** Format: int32 */
+            firstNumber?: number;
+            items?: components["schemas"]["PreviewTrialItem"][];
+            /** Format: int32 */
+            lastNumber?: number;
+            manualGrading?: boolean;
+            name?: string;
+            pointsEach?: number;
+            /** Format: int32 */
+            questionCount?: number;
+            questionType?: string;
+            subjectCode?: string;
+        };
+        PreviewTrialItem: {
+            kind?: string;
+            question?: components["schemas"]["PreviewTrialQuestion"];
+            set?: components["schemas"]["PreviewTrialQuestionSet"];
+        };
+        PreviewTrialPaperResponse: {
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** Format: uuid */
+            examId?: string;
+            kindCode?: string;
+            parts?: components["schemas"]["PreviewTrialPart"][];
+            /** Format: uuid */
+            previewId?: string;
+            timing?: string;
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        PreviewTrialPart: {
+            blocks?: components["schemas"]["PreviewTrialBlock"][];
+            displaySegments?: components["schemas"]["PreviewTrialSegment"][];
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** Format: int32 */
+            firstNumber?: number;
+            /** Format: int32 */
+            lastNumber?: number;
+            name?: string;
+            /** Format: int32 */
+            order?: number;
+            partId?: string;
+            points?: number;
+        };
+        PreviewTrialQuestion: {
+            attachments?: components["schemas"]["PreviewTrialAttachment"][];
+            body?: components["schemas"]["AttemptQuestionBody"];
+            code?: string;
+            content?: string;
+            /** Format: int32 */
+            number?: number;
+            optionOrder?: string[];
+            points?: number;
+            /** Format: uuid */
+            questionId?: string;
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        PreviewTrialQuestionSet: {
+            attachments?: components["schemas"]["PreviewTrialAttachment"][];
+            /** Format: int32 */
+            blankNumberStart?: number;
+            children?: components["schemas"]["PreviewTrialQuestion"][];
+            code?: string;
+            content?: string;
+            passage?: string;
+            /** Format: uuid */
+            questionId?: string;
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        PreviewTrialResponse: {
+            /**
+             * Format: date-time
+             * @description Thời điểm hết hạn mới của phiên xem trước sau khi mở làm thử
+             */
+            expiresAt?: string;
+        };
+        PreviewTrialSegment: {
+            code?: string;
+            /** Format: int32 */
+            commandCount?: number;
+            /** Format: int32 */
+            fromPosition?: number;
+            maxPoints?: number;
+            name?: string;
+            /** Format: int32 */
+            toPosition?: number;
+        };
+        /** @description Kết quả báo giá sản phẩm (TM 7.2, 10.2) */
+        PriceQuote: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            changed: boolean;
+            /** @enum {string} */
+            discountApplied: "NONE" | "PROMOTION_ONLY" | "VOUCHER_ONLY" | "COMBINED";
+            /** Format: int64 */
+            finalPrice: number;
+            /** Format: int64 */
+            listPrice: number;
+            productCode: string;
+            productName: string;
+            promotion?: components["schemas"]["PriceQuotePromotion"];
+            /** Format: int32 */
+            versionNo: number;
+            voucher?: components["schemas"]["PriceQuoteVoucher"];
+            voucherNotBetter: boolean;
+        };
+        /** @description Khuyến mãi tự động được áp dụng trong báo giá */
+        PriceQuotePromotion: {
+            /** @enum {string} */
+            discountType: "PERCENT" | "AMOUNT";
+            /** Format: int64 */
+            discountValue: number;
+            /** Format: int64 */
+            discountVnd: number;
+            /** Format: date-time */
+            endsAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            maxDiscountVnd?: number;
+            name: string;
+        };
+        /** @description Yêu cầu báo giá sản phẩm kèm voucher tùy chọn (TM 10.2) */
+        PriceQuoteRequest: {
+            /** @description Mã sản phẩm */
+            code: string;
+            /**
+             * Format: int64
+             * @description Giá cuối học viên đã thấy
+             */
+            seenPrice?: number;
+            /**
+             * Format: int32
+             * @description Phiên bản sản phẩm học viên đã thấy
+             */
+            seenVersionNo?: number;
+            /** @description Mã voucher tùy chọn */
+            voucherCode?: string;
+        };
+        /** @description Voucher được áp dụng trong báo giá */
+        PriceQuoteVoucher: {
+            code: string;
+            combinable: boolean;
+            /** @enum {string} */
+            discountType: "PERCENT" | "AMOUNT";
+            /** Format: int64 */
+            discountValue: number;
+            /** Format: int64 */
+            discountVnd: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            maxDiscountVnd?: number;
+            name: string;
+        };
+        /** @description Mã và tên của sản phẩm đã ngừng bán */
+        Product: {
+            code: string;
+            name: string;
+        };
+        /** @description Thẻ sản phẩm ở danh mục (TM 10.2). Giá khuyến mãi tính lúc đọc, phần còn lại dựng sẵn. */
+        ProductCard: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            /** @description STANDARD hoặc REVIEW; bài ôn (REVIEW) có nhãn riêng (BS 2) */
+            buildMode: string;
+            /** @description Mã sản phẩm, cũng là mã bài thi hoặc mã bộ đề */
+            code: string;
+            /** @description Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định */
+            coverUrl?: string;
+            /** @description Thời lượng, phút; khoảng khi các đường khác nhau */
+            durationMinutes?: components["schemas"]["IntRange"];
+            examKind: components["schemas"]["ExamKindRef"];
+            /** @description Hình thức (E4): FULL, PART, SUBJECT hay BUNDLE */
+            format: string;
+            /**
+             * Format: int64
+             * @description Giá gốc, đồng
+             */
+            listPrice: number;
+            name: string;
+            /**
+             * Format: int64
+             * @description Giá phải trả sau khuyến mãi tự động, đồng
+             */
+            price: number;
+            /** @description EXAM hoặc BUNDLE */
+            productType?: string;
+            /** @description Khuyến mãi tự động đang áp; null nếu không có */
+            promotion?: components["schemas"]["PromotionBadge"];
+            /** @description Số câu phải làm; khoảng khi các đường khác nhau */
+            questionCount?: components["schemas"]["IntRange"];
+            /** @description Tên phần (PART) hoặc môn (SUBJECT) ghi trên thẻ; null với FULL và BUNDLE */
+            scopeLabel?: components["schemas"]["LocalizedName"];
+            /** @description Tóm tắt; trống nếu quản trị viên chưa nhập */
+            summary?: string;
+            /** Format: int32 */
+            versionNo: number;
+        };
+        /** @description Chi tiết sản phẩm (TM 10.1, 10.2, 16.4). Không có id hay nội dung câu hỏi, đáp án, lời giải. */
+        ProductDetail: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            /** @description Đối tượng phù hợp */
+            audience?: string;
+            benefits: components["schemas"]["DetailBenefits"];
+            /** @description STANDARD hoặc REVIEW */
+            buildMode: string;
+            /** @description Các lựa chọn trong phạm vi mua, theo phần */
+            choices: components["schemas"]["DetailChoiceGroup"][];
+            code: string;
+            coverUrl?: string;
+            /** @description Mô tả sản phẩm */
+            description?: string;
+            durationMinutes?: components["schemas"]["IntRange"];
+            examKind: components["schemas"]["ExamKindRef"];
+            /** @description FULL, PART, SUBJECT hoặc BUNDLE */
+            format: string;
+            /** @description Danh sách bài thi trong bộ đề; rỗng với bài thi đơn */
+            items?: components["schemas"]["BundleDetailItem"][];
+            /**
+             * Format: int64
+             * @description Giá gốc, đồng
+             */
+            listPrice: number;
+            maxPoints?: components["schemas"]["DecimalRange"];
+            name: string;
+            /** @description Mục tiêu */
+            objectives?: string;
+            /** @description Nhóm tự luận tạm bỏ qua; rỗng nếu không có */
+            omittedEssayGroups: components["schemas"]["OmittedEssayGroup"][];
+            /** @description Các phần theo thứ tự làm bài */
+            parts: components["schemas"]["DetailPart"][];
+            /**
+             * Format: int64
+             * @description Giá phải trả sau khuyến mãi tự động, đồng
+             */
+            price: number;
+            /** @description EXAM hoặc BUNDLE */
+            productType?: string;
+            promotion?: components["schemas"]["PromotionBadge"];
+            questionCount?: components["schemas"]["IntRange"];
+            /** @description SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION */
+            resultView?: string;
+            scopeLabel?: components["schemas"]["LocalizedName"];
+            scoring: components["schemas"]["DetailScoring"];
+            summary?: string;
+            /** Format: int32 */
+            versionNo: number;
+        };
+        /** @description Lỗi 410 PRODUCT_DISCONTINUED: định dạng lỗi chung cộng product, vì code của lỗi chung là mã lỗi */
+        ProductGoneResponse: {
+            /** @example PRODUCT_DISCONTINUED */
+            code: string;
+            fieldErrors: components["schemas"]["FieldError"][];
+            message: string;
+            /** @description Sản phẩm đã ngừng bán */
+            product: components["schemas"]["Product"];
+            traceId: string;
+        };
+        /** @description Hồ sơ của tài khoản đang đăng nhập (TM 5.5) */
+        ProfileResponse: {
+            /**
+             * Format: uuid
+             * @description Mã ảnh đại diện; null khi chưa có ảnh
+             */
+            avatarAssetId?: string | null;
+            /**
+             * @description Đường dẫn ảnh đại diện (cần đăng nhập); null khi chưa có ảnh
+             * @example /api/v1/avatars/0192f3a1-0000-7000-8000-000000000001
+             */
+            avatarUrl?: string | null;
+            /** @description Email của tài khoản; null khi tài khoản không có email */
+            email?: string | null;
+            /** @description Email đã xác minh hay chưa */
+            emailVerified: boolean;
+            /** @description Họ và tên */
+            fullName: string;
+            /** @description Email mới đang chờ xác nhận (đổi email, TM 5.3); null khi không có yêu cầu đổi email */
+            pendingEmail?: string | null;
+            /**
+             * @description Số điện thoại; null khi chưa nhập
+             * @example 0912345678
+             */
+            phone?: string | null;
+            /** @description Tên đăng nhập, chỉ đọc */
+            username: string;
+        };
+        /** @description Yêu cầu sửa hồ sơ; trường không gửi thì giữ nguyên */
+        ProfileUpdateRequest: {
+            /** @description Họ và tên, bắt buộc khi gửi, tối đa 100 ký tự */
+            fullName?: string;
+            /**
+             * @description Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng để xóa số
+             * @example 0912345678
+             */
+            phone?: string;
+        };
+        /** @description Lớp học được áp dụng voucher */
+        PromotionAudienceClassView: {
+            code?: string;
+            /** Format: uuid */
+            id: string;
+            name?: string;
+        };
+        /** @description Học viên được chỉ định áp dụng voucher */
+        PromotionAudienceUserView: {
+            fullName?: string;
+            /** Format: uuid */
+            id: string;
+            username?: string;
+        };
+        /** @description Khuyến mãi tự động đang áp cho sản phẩm */
+        PromotionBadge: {
+            /** Format: date-time */
+            endsAt: string;
+            name: string;
+        };
+        /** @description Bản ghi lịch sử thay đổi khuyến mãi (BS §10) */
+        PromotionChangeLogView: {
+            /** @enum {string} */
+            action: "CREATED" | "UPDATED" | "STOPPED" | "RESUMED" | "DELETED";
+            /** Format: uuid */
+            actorId?: string;
+            actorUsername?: string;
+            changes: components["schemas"]["PromotionFieldChange"][];
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        /** @description Chi tiết khuyến mãi / voucher kèm lượt dùng và lịch sử thay đổi (TM 7.3, BS §10) */
+        PromotionDetail: {
+            /** @enum {string} */
+            audience?: "ALL" | "NEW_ACCOUNT" | "SELECTED";
+            audienceClasses: components["schemas"]["PromotionAudienceClassView"][];
+            audienceUsers: components["schemas"]["PromotionAudienceUserView"][];
+            capWarnings: components["schemas"]["CapWarning"][];
+            code?: string;
+            combinable?: boolean;
+            /** Format: int64 */
+            confirmedCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            createdBy?: string;
+            createdByUsername?: string;
+            description?: string;
+            /** @enum {string} */
+            discountType: "PERCENT" | "AMOUNT";
+            /** Format: int64 */
+            discountValue: number;
+            /** Format: date-time */
+            endsAt: string;
+            history: components["schemas"]["PromotionChangeLogView"][];
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "AUTO" | "VOUCHER";
+            /** Format: int64 */
+            maxDiscountVnd?: number;
+            name: string;
+            /** Format: int32 */
+            overLimitCount: number;
+            /** Format: int32 */
+            perUserLimit?: number;
+            redemptions: components["schemas"]["PageResponsePromotionRedemptionView"];
+            /** Format: int64 */
+            reservedCount: number;
+            /** Format: int64 */
+            revision: number;
+            /** @enum {string} */
+            scope: "ALL" | "EXAM_KIND" | "EXAM" | "BUNDLE";
+            scopeItems: components["schemas"]["PromotionScopeItemView"][];
+            /** Format: date-time */
+            startsAt: string;
+            /** @enum {string} */
+            state: "UPCOMING" | "RUNNING" | "ENDED";
+            /** @enum {string} */
+            status: "ACTIVE" | "STOPPED";
+            /** Format: int64 */
+            totalDiscountPaid: number;
+            /** Format: int32 */
+            totalLimit?: number;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            updatedBy?: string;
+            updatedByUsername?: string;
+            /** Format: int32 */
+            usedCount: number;
+        };
+        PromotionFieldChange: {
+            field: string;
+            newValue?: Record<string, never>;
+            oldValue?: Record<string, never>;
+        };
+        /** @description Yêu cầu thử giá khuyến mãi trên một bài thi hoặc bộ đề (TM 7.3, 16.4) */
+        PromotionPricePreviewRequest: {
+            /** Format: uuid */
+            bundleId?: string;
+            /** Format: uuid */
+            examId?: string;
+            /** Format: uuid */
+            promotionId: string;
+        };
+        /** @description Một lần giữ hoặc dùng khuyến mãi / voucher */
+        PromotionRedemptionView: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            discountVnd: number;
+            fullName?: string;
+            /** Format: uuid */
+            id: string;
+            orderCode?: string;
+            /** Format: uuid */
+            orderId: string;
+            /** @enum {string} */
+            state: "RESERVED" | "CONFIRMED" | "RELEASED";
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            userId: string;
+            username?: string;
+        };
+        /** @description Yêu cầu khóa lạc quan cho thao tác dừng/mở lại khuyến mãi */
+        PromotionRevisionRequest: {
+            /** Format: int64 */
+            expectedRevision: number;
+        };
+        /** @description Mục phạm vi áp dụng của khuyến mãi */
+        PromotionScopeItemView: {
+            code?: string;
+            /** Format: uuid */
+            id: string;
+            name?: string;
+            nameEn?: string;
+            /** @description EXAM_KIND | EXAM | BUNDLE */
+            type: string;
+        };
+        /** @description Thông tin tóm tắt khuyến mãi / voucher trên danh sách quản trị (TM 7.3) */
+        PromotionSummary: {
+            /** @enum {string} */
+            audience?: "ALL" | "NEW_ACCOUNT" | "SELECTED";
+            capWarnings: components["schemas"]["CapWarning"][];
+            code?: string;
+            combinable?: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string;
+            /** @enum {string} */
+            discountType: "PERCENT" | "AMOUNT";
+            /** Format: int64 */
+            discountValue: number;
+            /** Format: date-time */
+            endsAt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "AUTO" | "VOUCHER";
+            /** Format: int64 */
+            maxDiscountVnd?: number;
+            name: string;
+            /** Format: int32 */
+            overLimitCount: number;
+            /** Format: int32 */
+            perUserLimit?: number;
+            /** Format: int64 */
+            revision: number;
+            /** @enum {string} */
+            scope: "ALL" | "EXAM_KIND" | "EXAM" | "BUNDLE";
+            /** Format: date-time */
+            startsAt: string;
+            /** @enum {string} */
+            state: "UPCOMING" | "RUNNING" | "ENDED";
+            /** @enum {string} */
+            status: "ACTIVE" | "STOPPED";
+            /** Format: int32 */
+            totalLimit?: number;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int32 */
+            usedCount: number;
+        };
         QuestionAssetUploadResponse: {
             fileName?: string;
             /** Format: uuid */
@@ -5448,6 +10253,13 @@ export interface components {
         QuestionRetireImpact: {
             affectedBlocks: components["schemas"]["QuestionbankExamSourceRef"][];
             usedIn: components["schemas"]["LedgerRef"][];
+        };
+        QuestionSet: components["schemas"]["AttemptQuestionBody"] & {
+            /** Format: int32 */
+            blankNumberStart?: number;
+            passage?: string;
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         };
         QuestionSetBody: {
             type: "QuestionSetBody";
@@ -5588,6 +10400,111 @@ export interface components {
             /** @description Các dòng sổ đã dùng (xem trước, công bố, lượt thi) */
             usedIn: components["schemas"]["LedgerRef"][];
         };
+        ReconciliationReportResponse: {
+            /** Format: date-time */
+            createdAt: string;
+            details: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: date-time */
+            generatedAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            paidUnfulfilledCount: number;
+            /** Format: int32 */
+            pendingLateSuccessCount: number;
+            /** Format: date */
+            reportDate: string;
+            /** Format: int32 */
+            unknownPaymentCount: number;
+            /** Format: int32 */
+            unrefundedExcessCount: number;
+        };
+        RecoverOrderRequest: {
+            reason: string;
+        };
+        RefundResponse: {
+            /** Format: int64 */
+            amountVnd: number;
+            /** Format: date-time */
+            createdAt: string;
+            externalRef?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            gatewayMessage?: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "API" | "MANUAL";
+            markFailedEvidence?: string;
+            markFailedReason?: string;
+            orderCode: string;
+            /** Format: uuid */
+            orderId: string;
+            /** Format: uuid */
+            paymentId: string;
+            paymentTxnRef: string;
+            reason: string;
+            /** Format: date-time */
+            requestedAt: string;
+            requestedBy: string;
+            /** Format: uuid */
+            requestedById?: string;
+            /** @enum {string} */
+            state: "PROCESSING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
+            /** Format: date-time */
+            updatedAt: string;
+            verifiedSystemError: boolean;
+            vnpRequestId?: string;
+            vnpResponseCode?: string;
+            vnpTransactionNo?: string;
+            vnpTransactionStatus?: string;
+        };
+        /** @description Yêu cầu đăng ký tài khoản học viên */
+        RegisterRequest: {
+            /** @description Đã chấp nhận điều khoản sử dụng; phải là true */
+            acceptTerms: boolean;
+            /** @description Đường dẫn chuyển hướng sau đăng ký (tương đối hoặc thuộc tên miền cho phép) */
+            callbackUrl?: string;
+            /**
+             * @description Email, dùng để xác minh và khôi phục tài khoản
+             * @example an@thi360.vn
+             */
+            email: string;
+            /**
+             * @description Họ và tên
+             * @example Nguyễn Văn An
+             */
+            fullName: string;
+            /**
+             * Format: password
+             * @description Mật khẩu đạt quy tắc bảo mật
+             */
+            password: string;
+            /**
+             * @description Phiên bản điều khoản đã hiển thị cho người dùng, lưu đúng giá trị gửi lên
+             * @example 2026-11
+             */
+            termsVersion: string;
+            /**
+             * @description Tên đăng nhập (4-30 ký tự, a-z0-9._@-, bắt đầu bằng chữ hoặc số)
+             * @example nguyen.van.an
+             */
+            username: string;
+        };
+        /** @description Kết quả đăng ký: phiên đã được tạo (cookie HttpOnly) */
+        RegisterResponse: {
+            /**
+             * @description Đường dẫn chuyển hướng sau đăng ký: callbackUrl hợp lệ hoặc /home
+             * @example http://localhost:3000/home
+             */
+            redirectTo: string;
+        };
+        /** @description Mở lại bản chấm tự luận đã hoàn tất để chấm lại */
+        ReopenEssayRequest: {
+            reason: string;
+        };
         /** @description Yêu cầu sắp xếp lại thứ tự giá trị trong nhóm hoặc cùng nút cha */
         ReorderCatalogItemsRequest: {
             /** @description Danh sách ID giá trị theo thứ tự hiển thị mới */
@@ -5628,6 +10545,65 @@ export interface components {
         RestoreQuestionVersionRequest: {
             /** Format: int64 */
             expectedRevision: number;
+        };
+        /** @description Yêu cầu thử lại sinh đề cho phần bị lỗi (LT §6.1) */
+        RetryPartRequest: {
+            /** @description Lý do thử lại tùy chọn */
+            reason?: string;
+        };
+        ReviewClozeBlankResult: {
+            id?: string;
+            /** @enum {string} */
+            outcome?: "CORRECT" | "PARTIAL" | "WRONG" | "BLANK" | "PENDING_REVIEW";
+            pointsEarned?: number;
+            pointsMax?: number;
+        };
+        /** @description Chi tiết chấm điểm theo từng ý/ô/cặp của câu hỏi (không chứa nhận xét hay tiêu chí tự luận) */
+        ReviewGradingDetail: {
+            blankEssay?: boolean;
+            blankResults?: components["schemas"]["ReviewClozeBlankResult"][];
+            /** Format: int32 */
+            blankUnitCount?: number;
+            /** Format: int32 */
+            childCount?: number;
+            /** Format: int32 */
+            correctSelectedCount?: number;
+            /** Format: int32 */
+            correctUnitCount?: number;
+            itemType?: string;
+            /** Format: int32 */
+            matchedCount?: number;
+            normalizedMatch?: boolean;
+            /** Format: int32 */
+            pairCount?: number;
+            pairResults?: components["schemas"]["ReviewMatchingPairResult"][];
+            reuseRight?: boolean;
+            scoringMethod?: string;
+            scoringRule?: string;
+            /** Format: int32 */
+            selectedCount?: number;
+            selectedOptionId?: string;
+            /** Format: int32 */
+            statementCount?: number;
+            statementResults?: components["schemas"]["ReviewStatementResult"][];
+            /** Format: int32 */
+            totalExpectedCount?: number;
+            /** Format: int32 */
+            wordCount?: number;
+            /** Format: int32 */
+            wrongSelectedCount?: number;
+            /** Format: int32 */
+            wrongUnitCount?: number;
+        };
+        ReviewMatchingPairResult: {
+            leftId?: string;
+            matched?: boolean;
+            pointsEarned?: number;
+        };
+        ReviewStatementResult: {
+            answered?: boolean;
+            id?: string;
+            matched?: boolean;
         };
         /** @description Chi tiết vai trò kèm danh sách quyền */
         RoleDetailResponse: {
@@ -5746,6 +10722,33 @@ export interface components {
             /** @enum {string} */
             status?: "VALID" | "ERROR" | "DUPLICATE";
         };
+        /** @description Yêu cầu lưu nháp câu trả lời, cờ đánh dấu và vị trí đang xem (LT §7.1) */
+        SaveAnswersRequest: {
+            /** @description Danh sách thay đổi câu trả lời (tối đa 50) */
+            changes?: components["schemas"]["AnswerChange"][];
+            /** @description Danh sách thay đổi cờ đánh dấu xem lại (tối đa 50) */
+            flags?: components["schemas"]["FlagChange"][];
+            /** @description Vị trí phần và câu đang xem */
+            position?: components["schemas"]["AttemptPosition"];
+        };
+        /** @description Kết quả lưu nháp câu trả lời (LT §7.1) */
+        SaveAnswersResponse: {
+            /** @description Kết quả xử lý từng thay đổi theo thứ tự gửi */
+            results: components["schemas"]["FinalAnswerResult"][];
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+        };
+        /** @description Lưu nháp điểm chấm tự luận kèm khóa lạc quan */
+        SaveEssayDraftRequest: {
+            comment?: string;
+            criteria?: components["schemas"]["EssayCriterionInput"][];
+            /** Format: int64 */
+            expectedVersion: number;
+            points?: number;
+        };
         /** @description Thân yêu cầu tạo hoặc sửa câu hỏi (spec 4.5, 9.2) */
         SaveQuestionRequest: {
             attachmentIds?: string[];
@@ -5767,6 +10770,12 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         };
+        ShortAnswer: components["schemas"]["AttemptQuestionBody"] & {
+            answerFormat?: string;
+            inputHint?: string;
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
         ShortAnswerBody: {
             type: "ShortAnswerBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -5777,6 +10786,33 @@ export interface components {
             /** @enum {string} */
             type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
         });
+        ShortAnswerValue: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            text?: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "SHORT_ANSWER";
+        };
+        SideView: {
+            content?: string;
+            id?: string;
+        };
+        SingleChoice: components["schemas"]["AttemptQuestionBody"] & {
+            options?: components["schemas"]["OptionView"][];
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
+        SingleChoiceAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            optionId?: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "SINGLE_CHOICE";
+        };
         SingleChoiceBody: {
             type: "SingleChoiceBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -5792,10 +10828,86 @@ export interface components {
             questionId: string;
             reason: string;
         };
+        /** @description Yêu cầu bắt đầu một lượt thi mới hoặc nối lại lượt đang mở (LT §5.2) */
+        StartAttemptRequest: {
+            /**
+             * Format: uuid
+             * @description Id quyền dùng bài thi
+             */
+            entitlementId: string;
+            /** @description Lựa chọn trước khi bắt đầu (nếu bài có phần chọn trước) */
+            preChoice?: components["schemas"]["PreChoiceInput"];
+        };
+        /** @description Kết quả khởi tạo hoặc nối lại lượt thi (LT §5.2) */
+        StartAttemptResponse: {
+            /**
+             * @description Lý do hủy khi state là ABORTED
+             * @enum {string}
+             */
+            abortReason?: "GENERATION_FAILED" | "GENERATION_TIMEOUT" | "GENERATION_BUSY" | "STALE_STARTING" | "AUDIO_ASSET_MISSING" | "AUDIO_ASSET_INVALID";
+            /**
+             * Format: uuid
+             * @description Id lượt thi
+             */
+            attemptId: string;
+            /** @description True nếu nối lại lượt đang mở có sẵn; false nếu mới khởi tạo */
+            resumed: boolean;
+            /** @description Có thể thử bắt đầu lại ngay (true khi ABORTED) */
+            retryable: boolean;
+            /**
+             * @description Trạng thái hiện tại của lượt thi
+             * @enum {string}
+             */
+            state: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
+        /** @description Yêu cầu mở lần nghe mới cho tệp audio (BS §17.2) */
+        StartAudioPlayRequest: {
+            /** @description Khóa chống gửi lặp do trình duyệt tạo cho mỗi lần bấm Nghe */
+            requestId: string;
+        };
         Statement: {
             answer?: boolean;
             content?: string;
             letter?: string;
+        };
+        StatementView: {
+            content?: string;
+            id?: string;
+        };
+        /** @description Bộ lọc của danh mục (TM 10.2): mỗi giá trị kèm số sản phẩm đang bán; giá trị có số 0 không có mặt */
+        StorefrontFilters: {
+            formats: components["schemas"]["FormatFilter"][];
+            kinds: components["schemas"]["KindFilter"][];
+            parts: components["schemas"]["PartFilter"][];
+            subjects: components["schemas"]["SubjectFilter"][];
+        };
+        /** @description Kết quả dựng lại bảng chiếu: số bài đã ghi, giữ nguyên, không bán được và lỗi */
+        StorefrontRebuildResponse: {
+            /**
+             * Format: int32
+             * @description Số bài đã công bố hoặc ngừng bán được xét
+             */
+            examined: number;
+            /**
+             * Format: int32
+             * @description Số bài dựng lỗi; các bài khác vẫn được dựng
+             */
+            failed: number;
+            /**
+             * Format: int32
+             * @description Số bài thiếu giá bán hoặc số lượt, không tạo dòng
+             */
+            notSellable: number;
+            /**
+             * Format: int32
+             * @description Số dòng đã đúng sẵn, không đổi
+             */
+            unchanged: number;
+            /**
+             * Format: int32
+             * @description Số dòng đã ghi mới hoặc cập nhật
+             */
+            written: number;
         };
         /** @description Mã tổ hợp đang hiệu lực từ Global List */
         StructureCombination: {
@@ -5807,16 +10919,111 @@ export interface components {
             partId?: string;
             subjectCodes?: string[];
         };
-        /** @description Dữ liệu hồ sơ học tập của học viên (từ module thi, rỗng khi chưa kết nối) */
+        /** @description Một dòng lịch sử lượt thi của học viên */
+        StudentLearningAttempt: {
+            /**
+             * Format: uuid
+             * @description ID lượt thi
+             */
+            attemptId: string;
+            /**
+             * Format: int32
+             * @description Số thứ tự lượt thi
+             */
+            attemptNo?: number | null;
+            /**
+             * Format: uuid
+             * @description ID bài thi
+             */
+            examId: string;
+            /** @description Mã kỳ thi */
+            examKindCode: string;
+            /** @description Tên bài thi */
+            examName: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm kết thúc lượt thi
+             */
+            finishedAt?: string | null;
+            /** @description Thang điểm tối đa (chỉ có khi trạng thái là SCORED) */
+            maxScore?: number | null;
+            /** @description Phạm vi bài thi */
+            scope: string;
+            /** @description Điểm hiển thị (chỉ có khi trạng thái là SCORED) */
+            score?: number | null;
+            /**
+             * Format: date-time
+             * @description Thời điểm bắt đầu lượt thi
+             */
+            startedAt?: string | null;
+            /**
+             * @description Trạng thái lượt thi
+             * @enum {string}
+             */
+            status: "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR";
+        };
+        /** @description Một dòng quyền sử dụng bài thi của học viên */
+        StudentLearningEntitlement: {
+            /**
+             * Format: int32
+             * @description Số lượt còn lại
+             */
+            attemptsLeft: number;
+            /**
+             * Format: int32
+             * @description Số lượt đang giữ cho lượt thi mở
+             */
+            attemptsReserved: number;
+            /**
+             * Format: int32
+             * @description Số lượt đã thu hồi
+             */
+            attemptsRevoked: number;
+            /**
+             * Format: int32
+             * @description Tổng số lượt được cấp
+             */
+            attemptsTotal: number;
+            /**
+             * Format: int32
+             * @description Số lượt đã sử dụng
+             */
+            attemptsUsed: number;
+            /**
+             * Format: uuid
+             * @description ID quyền sử dụng
+             */
+            entitlementId: string;
+            /** @description Mã bài thi */
+            examCode?: string | null;
+            /**
+             * Format: uuid
+             * @description ID bài thi
+             */
+            examId: string;
+            /** @description Tên bài thi */
+            examName?: string | null;
+            /**
+             * @description Nguồn cấp quyền
+             * @enum {string}
+             */
+            source: "PURCHASE" | "CLASS";
+            /**
+             * @description Trạng thái quyền sử dụng
+             * @enum {string}
+             */
+            status: "ACTIVE" | "IN_USE" | "EXHAUSTED" | "REVOKED";
+        };
+        /** @description Dữ liệu hồ sơ học tập của học viên (quyền sử dụng và lịch sử lượt thi) */
         StudentLearningResponse: {
             /** @description Kết quả đánh giá năng lực */
             assessments: Record<string, never>[];
             /** @description Lịch sử lượt thi */
-            attempts: Record<string, never>[];
+            attempts: components["schemas"]["StudentLearningAttempt"][];
             /** @description Cho biết dữ liệu học tập đã sẵn sàng từ module thi hay chưa */
             dataAvailable: boolean;
             /** @description Quyền sử dụng và gói bài thi */
-            entitlements: Record<string, never>[];
+            entitlements: components["schemas"]["StudentLearningEntitlement"][];
             /** @description Lịch sử ôn luyện */
             practice: Record<string, never>[];
             /** @description Yêu cầu hỗ trợ */
@@ -5827,9 +11034,76 @@ export interface components {
              */
             userId: string;
         };
+        /** @description Các dạng câu và số câu từng dạng của một môn trong một lựa chọn (AD-78): mỗi môn tính riêng, không cộng các môn lại với nhau */
+        SubjectAnswerTypes: {
+            answerTypes: components["schemas"]["AnswerTypeGroup"][];
+            subject: components["schemas"]["SubjectRef"];
+        };
+        /** @description Môn; tham số subject của danh sách là code */
+        SubjectFilter: {
+            code: string;
+            /** Format: int64 */
+            count: number;
+            nameEn: string;
+            nameVi: string;
+        };
+        /** @description Một môn trong danh mục */
+        SubjectRef: {
+            code: string;
+            nameEn: string;
+            nameVi: string;
+        };
+        SubjectView: {
+            code?: string;
+            /** Format: uuid */
+            id?: string;
+            nameEn?: string;
+            nameVi?: string;
+        };
+        /** @description Yêu cầu nộp bài và kết thúc lượt thi (LT §6.3) */
+        SubmitAttemptRequest: {
+            /** @description Các câu trả lời cuối cùng trước khi nộp bài */
+            finalAnswers?: components["schemas"]["FinalAnswerChange"][];
+        };
+        /** @description Kết quả nộp bài hoặc trạng thái đóng đã ghi nhận của lượt thi (LT §6.3) */
+        SubmitAttemptResponse: {
+            /**
+             * Format: uuid
+             * @description Id lượt thi
+             */
+            attemptId: string;
+            /**
+             * @description Lý do kết thúc lượt thi
+             * @enum {string}
+             */
+            endReason?: "SUBMITTED" | "TIME_UP" | "CHOICE_TIMEOUT" | "FAULT_CLOSED";
+            /**
+             * Format: date-time
+             * @description Thời điểm kết thúc lượt thi
+             */
+            finishedAt?: string;
+            /** @description Trạng thái các phần sau khi đóng lượt */
+            parts: components["schemas"]["PartSummaryView"][];
+            /** @description Kết quả ghi nhận finalAnswers */
+            results: components["schemas"]["FinalAnswerResult"][];
+            /**
+             * Format: date-time
+             * @description Giờ máy chủ hiện tại
+             */
+            serverNow: string;
+            /**
+             * @description Trạng thái của lượt thi
+             * @enum {string}
+             */
+            state: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+        };
         /** @description Mã bài thi gợi ý theo quy ước <KIND>-<F|P|S>-[PHẦN|MÔN-]<seq:03d> */
         SuggestExamCodeResponse: {
             /** @example HSA-S-TOAN-004 */
+            code: string;
+        };
+        /** @description Mã voucher gợi ý ngẫu nhiên, duy nhất */
+        SuggestedCodeResponse: {
             code: string;
         };
         TopicQuota: {
@@ -5880,6 +11154,22 @@ export interface components {
              */
             userId: string;
         };
+        TrueFalse: components["schemas"]["AttemptQuestionBody"] & {
+            statements?: components["schemas"]["StatementView"][];
+            /** @enum {string} */
+            type?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "CLOZE" | "QUESTION_SET" | "TRUE_FALSE" | "MATCHING" | "ESSAY";
+        };
+        TrueFalseAnswer: Omit<components["schemas"]["AnswerValue"], "type"> & {
+            statements?: {
+                [key: string]: boolean;
+            };
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "TRUE_FALSE";
+        };
         TrueFalseBody: {
             type: "TrueFalseBody";
         } & (Omit<components["schemas"]["QuestionBody"], "type"> & {
@@ -5912,6 +11202,29 @@ export interface components {
              * @example 0
              */
             version: number;
+        };
+        /** @description Yêu cầu cập nhật bản nháp/bản làm việc của bộ đề (TM 16.4) */
+        UpdateBundleRequest: {
+            /** Format: int32 */
+            attemptsPerExam?: number;
+            benefitAiExplanation?: boolean;
+            benefitNote?: string;
+            benefitPractice?: boolean;
+            benefitStrengthWeakness?: boolean;
+            code: string;
+            description?: string;
+            /** @description Danh sách 2–12 bài thi trong bộ theo thứ tự */
+            examIds: string[];
+            /** Format: uuid */
+            examKindItemId?: string;
+            /** Format: int64 */
+            expectedRevision: number;
+            /** Format: int64 */
+            listPriceVnd?: number;
+            name: string;
+            /** @description SCORE, SCORE_AND_ANSWERS hoặc FULL_SOLUTION */
+            resultView?: string;
+            summary?: string;
         };
         /** @description Yêu cầu cập nhật nhóm danh mục */
         UpdateCatalogGroupRequest: {
@@ -6025,9 +11338,14 @@ export interface components {
         };
         /** @description Sửa thông tin chung của bài thi (PATCH /exams/{id}, spec 9.2); trường null = giữ nguyên */
         UpdateExamInfoRequest: {
+            /**
+             * @description STANDARD | REVIEW; đổi → dựng lại cấu trúc như tạo mới (cần confirmReplace như đổi phạm vi); đã phát hành → 409 EXAM_SCOPE_LOCKED; REVIEW chỉ khi scope = SUBJECT
+             * @enum {string}
+             */
+            buildMode?: "STANDARD" | "REVIEW";
             /** @description Mã bài thi (duy nhất) */
             code?: string;
-            /** @description Bắt buộc true khi đổi phạm vi sau khi cấu trúc đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM */
+            /** @description Bắt buộc true khi đổi phạm vi hoặc cách dựng bài sau khi cấu trúc đã sửa; thiếu → 409 EXAM_STRUCTURE_REPLACE_CONFIRM */
             confirmReplace?: boolean;
             /** @description Xác nhận quy đổi điểm sang LINEAR */
             confirmScoring?: boolean;
@@ -6099,7 +11417,50 @@ export interface components {
             /** @description PER_PART | SHARED */
             timing: string;
             /** @description Bảng điểm Đúng/Sai nhiều ý; null khi kỳ thi không dùng */
-            trueFalseScoring?: components["schemas"]["JsonNode"];
+            trueFalseScoring?: components["schemas"]["ExamTrueFalseScoring"];
+        };
+        UpdateExamListingRequest: {
+            /**
+             * Format: int32
+             * @description 1 to 100; null clears
+             */
+            attemptsGranted?: number;
+            /** @description At most 2.000 characters; blank clears */
+            audience?: string;
+            /** @description null counts as false */
+            benefitAiExplanation?: boolean;
+            /** @description At most 1.000 characters; blank clears */
+            benefitNote?: string;
+            /** @description null counts as false */
+            benefitPractice?: boolean;
+            /** @description null counts as false */
+            benefitStrengthWeakness?: boolean;
+            /**
+             * Format: uuid
+             * @description A cover uploaded for this exam; null clears
+             */
+            coverAssetId?: string;
+            /** @description exam.description, at most 4.000 characters; blank clears */
+            description?: string;
+            /**
+             * Format: int64
+             * @description Revision being edited; a different one gives 412 EXAM_REVISION_CONFLICT
+             */
+            expectedRevision: number;
+            /**
+             * Format: int64
+             * @description VND, 0 or more; null clears
+             */
+            listPriceVnd?: number;
+            /** @description At most 2.000 characters; blank clears */
+            objectives?: string;
+            /**
+             * @description SCORE, SCORE_AND_ANSWERS or FULL_SOLUTION; null keeps SCORE_AND_ANSWERS
+             * @enum {string}
+             */
+            resultView?: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+            /** @description At most 300 characters; blank clears */
+            summary?: string;
         };
         /** @description Thay toàn bộ cấu trúc bản làm việc (PUT /exams/{id}/structure, spec 9.2) */
         UpdateExamStructureRequest: {
@@ -6111,6 +11472,46 @@ export interface components {
             expectedRevision: number;
             /** @description Cấu trúc mới; server giữ giá trị của trường thuộc mẫu (answerTypeLocked, templateGroupCode) */
             parts: components["schemas"]["ExamPart"][];
+        };
+        /** @description Yêu cầu cập nhật khuyến mãi hoặc voucher (TM 7.3) */
+        UpdatePromotionRequest: {
+            /** @enum {string} */
+            audience?: "ALL" | "NEW_ACCOUNT" | "SELECTED";
+            audienceClassIds?: string[];
+            audienceUserIds?: string[];
+            bundleIds?: string[];
+            clearDescription?: boolean;
+            clearMaxDiscountVnd?: boolean;
+            clearPerUserLimit?: boolean;
+            clearTotalLimit?: boolean;
+            code?: string;
+            combinable?: boolean;
+            description?: string;
+            /** @enum {string} */
+            discountType?: "PERCENT" | "AMOUNT";
+            /** Format: int64 */
+            discountValue?: number;
+            /** Format: date-time */
+            endsAt?: string;
+            examIds?: string[];
+            examKindIds?: string[];
+            /** Format: int64 */
+            expectedRevision: number;
+            /** @enum {string} */
+            kind?: "AUTO" | "VOUCHER";
+            /** Format: int64 */
+            maxDiscountVnd?: number;
+            name?: string;
+            /** Format: int32 */
+            perUserLimit?: number;
+            /** @enum {string} */
+            scope?: "ALL" | "EXAM_KIND" | "EXAM" | "BUNDLE";
+            /** Format: date-time */
+            startsAt?: string;
+            /** @enum {string} */
+            status?: "ACTIVE" | "STOPPED";
+            /** Format: int32 */
+            totalLimit?: number;
         };
         /** @description Lệnh sửa câu hỏi; expectedRevision là khóa lạc quan (D13) */
         UpdateQuestionRequest: {
@@ -6693,6 +12094,16 @@ export interface components {
             /** Format: uuid */
             uploadId?: string;
         };
+        VnpayIpnResponse: {
+            /** @example Confirm Success */
+            Message: string;
+            /** @example 00 */
+            RspCode: string;
+        };
+        VnpayReturnResponse: {
+            orderCode: string;
+            paymentState: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -6854,6 +12265,676 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppearanceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listAdminAttempts: {
+        parameters: {
+            query?: {
+                /** @description User ID (UUID) hoặc tên đăng nhập đang hoạt động */
+                user?: string;
+                /** @description ID bài thi (UUID) hoặc từ khóa tên bài thi */
+                exam?: string;
+                /** @description Trạng thái lượt thi */
+                state?: "STARTING" | "IN_PROGRESS" | "GRADING" | "PENDING_REVIEW" | "SCORED" | "GRADING_ERROR" | "ABORTED";
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseAdminAttemptSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminAttemptDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAttemptDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    compensateAdminAttempt: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác cấp bù lượt */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompensateAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompensateAttemptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    faultAdminAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FaultAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAttemptActionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    regradeAdminAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAttemptActionResponse"];
                 };
             };
             /** @description Bad Request */
@@ -7268,6 +13349,938 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BulkAuthzResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listBundles: {
+        parameters: {
+            query?: {
+                /** @description Tìm theo tên hoặc mã bộ đề */
+                q?: string;
+                /** @description Mã hoặc UUID kỳ thi */
+                examKind?: string;
+                status?: "DRAFT" | "PUBLISHED" | "DISCONTINUED";
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseBundleSummaryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBundleRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listBundleCandidates: {
+        parameters: {
+            query: {
+                /** @description Mã kỳ thi (ví dụ SP2E) hoặc UUID danh mục kỳ thi */
+                examKind: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleCandidateResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBundleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    discontinueBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BundleRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    publishBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BundleRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleDetailResponse"];
                 };
             };
             /** @description Bad Request */
@@ -13615,6 +20628,277 @@ export interface operations {
             };
         };
     };
+    uploadExamCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Tệp ảnh; loại nhận theo chữ ký byte, không theo đuôi
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamCoverUpload"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getExamCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     discontinueExam: {
         parameters: {
             query?: never;
@@ -13639,6 +20923,270 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ExamDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getExamListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamListing"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateExamListing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                examId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExamListingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExamListing"];
                 };
             };
             /** @description Bad Request */
@@ -14412,6 +21960,140 @@ export interface operations {
             };
         };
     };
+    listExamBuyers: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách người mua phân trang theo tài khoản */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamBuyersResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     duplicate_1: {
         parameters: {
             query?: never;
@@ -14704,6 +22386,403 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ExamPreviewResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    gradeAdminPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                previewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewGradeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewGradeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminPreviewPaper: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                previewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewTrialPaperResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    extendAdminPreviewForTrial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                previewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewTrialResponse"];
                 };
             };
             /** @description Bad Request */
@@ -15271,6 +23350,942 @@ export interface operations {
                 };
             };
             /** @description EXAM_STRUCTURE_REPLACE_CONFIRM or EXAM_OVERVIEW_CONFIRM */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listGradingItems: {
+        parameters: {
+            query?: {
+                /** @description Trạng thái hàng chờ (WAITING, IN_PROGRESS, DONE) */
+                state?: "WAITING" | "IN_PROGRESS" | "DONE";
+                /** @description ID bài thi (UUID) hoặc từ khóa tên bài thi */
+                exam?: string;
+                /** @description Mã kỳ thi (vd: BCA, SP2E) */
+                kind?: string;
+                /** @description Lọc ngày/giờ nộp từ (ISO-8601 hoặc yyyy-MM-dd) */
+                from?: string;
+                /** @description Lọc ngày/giờ nộp đến (ISO-8601 hoặc yyyy-MM-dd) */
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseGradingQueueItemView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getGradingItemCounts: {
+        parameters: {
+            query?: {
+                exam?: string;
+                kind?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingQueueCountsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getGradingItemDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingItemDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    saveEssayDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveEssayDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã lưu nháp */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EssayGradeView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description GRADING_CLAIMED, GRADING_NOT_CLAIMED hoặc ESSAY_ALREADY_FINALIZED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingClaimedResponse"];
+                };
+            };
+            /** @description Dữ liệu đã được cập nhật bởi người khác, vui lòng tải lại */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    claimGradingItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã nhận câu chấm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EssayGradeView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description GRADING_CLAIMED hoặc ESSAY_ALREADY_FINALIZED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingClaimedResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    finalizeEssayGrade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FinalizeEssayRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã hoàn tất chấm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinalizeEssayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description GRADING_CLAIMED, GRADING_NOT_CLAIMED hoặc ESSAY_ALREADY_FINALIZED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingClaimedResponse"];
+                };
+            };
+            /** @description Dữ liệu đã được cập nhật bởi người khác, vui lòng tải lại */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ESSAY_POINTS_OUT_OF_RANGE, ESSAY_CRITERIA_INVALID hoặc ESSAY_CRITERIA_SUM_MISMATCH */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reopenEssayGrade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenEssayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EssayGradeView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -16400,6 +25415,822 @@ export interface operations {
             };
         };
     };
+    listAdminOrders: {
+        parameters: {
+            query?: {
+                /** @description Tìm theo mã đơn, tên đăng nhập, txnRef hoặc mã giao dịch VNPAY */
+                q?: string;
+                /** @description Lọc theo bài thi */
+                examId?: string;
+                /** @description Từ thời điểm tạo (ISO-8601 UTC) */
+                from?: string;
+                /** @description Đến thời điểm tạo (ISO-8601 UTC) */
+                to?: string;
+                /** @description Lọc theo trạng thái thanh toán */
+                paymentStatus?: "SUCCEEDED" | "PENDING" | "FAILED" | "FREE";
+                /** @description Lọc theo trạng thái hoàn tiền */
+                refundStatus?: "NONE" | "IN_PROGRESS" | "PARTIAL" | "FULL";
+                /** @description Lọc theo hình thức thanh toán */
+                paymentMethod?: "VNPAY" | "FREE";
+                /** @description Lọc theo nhóm Cần xử lý */
+                attention?: "LATE_SUCCESS_PENDING" | "PAID_UNFULFILLED" | "PAYMENT_UNKNOWN_OVER_24H" | "DUPLICATE_UNREFUNDED" | "NEEDS_REVIEW" | "REFUND_UNKNOWN";
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách đơn hàng phân trang */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrderListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminOrderAttentionSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Số đếm dải Cần xử lý */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderAttentionSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminOrderDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết đơn hàng */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrderDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng trong tài khoản đang đăng nhập */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    recoverOrderFulfillment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoverOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã cấp quyền thành công */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrderDetailResponse"];
+                };
+            };
+            /** @description IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng trong tài khoản đang đăng nhập */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ORDER_RECOVERY_NOT_ALLOWED hoặc IDEMPOTENCY_KEY_REUSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reviewLateSuccessPayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                code: string;
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LateSuccessReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã xử lý quyết định đối soát */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrderDetailResponse"];
+                };
+            };
+            /** @description IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ORDER_NOT_FOUND hoặc ORDER_PAYMENT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description LATE_SUCCESS_ALREADY_RESOLVED hoặc IDEMPOTENCY_KEY_REUSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createOrderPaymentRefund: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                code: string;
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRefundRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã tạo hoặc phát lại yêu cầu hoàn tiền */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            /** @description IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ORDER_NOT_FOUND hoặc ORDER_PAYMENT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description REFUND_PAYMENT_NOT_SUCCEEDED, REFUND_ACTIVE_EXISTS, REFUND_AMOUNT_EXCEEDED, REFUND_MANUAL_REQUIRES_FAILED_API hoặc IDEMPOTENCY_KEY_REUSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description REFUND_SYSTEM_ERROR_NOT_VERIFIED hoặc REFUND_EXTERNAL_REF_REQUIRED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listPermissions: {
         parameters: {
             query?: {
@@ -16695,6 +26526,1209 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listPromotions: {
+        parameters: {
+            query?: {
+                kind?: "AUTO" | "VOUCHER";
+                status?: "ACTIVE" | "STOPPED";
+                state?: "UPCOMING" | "RUNNING" | "ENDED";
+                q?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponsePromotionSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createPromotion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePromotionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    previewPromotionPrice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionPricePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Kết quả thử giá */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceQuote"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description PRODUCT_NOT_FOUND hoặc PROMOTION_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bài thi đã ngừng bán */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getSuggestedPromotionCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestedCodeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPromotion: {
+        parameters: {
+            query?: {
+                redemptionPage?: number;
+                redemptionSize?: number;
+                redemptionState?: "RESERVED" | "CONFIRMED" | "RELEASED";
+                redemptionQ?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deletePromotion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updatePromotion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePromotionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resumePromotion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    stopPromotion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionDetail"];
                 };
             };
             /** @description Bad Request */
@@ -20008,6 +31042,528 @@ export interface operations {
             };
         };
     };
+    getLatestReconciliationReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trạng thái có sẵn và nội dung báo cáo mới nhất */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatestReconciliationReportResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết yêu cầu hoàn tiền */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy yêu cầu hoàn tiền */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    markRefundFailed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkRefundFailedRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật trạng thái FAILED */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy yêu cầu hoàn tiền */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Chỉ được đánh dấu thất bại cho yêu cầu hoàn đang ở trạng thái chưa rõ kết quả */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    queryRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trạng thái hoàn tiền sau tra cứu */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy yêu cầu hoàn tiền */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không thể tra cứu giao dịch hoàn thủ công hoặc đã thất bại */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listRoles: {
         parameters: {
             query?: {
@@ -20689,6 +32245,134 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RoleDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    rebuildStorefront: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StorefrontRebuildResponse"];
                 };
             };
             /** @description Bad Request */
@@ -24114,6 +35798,268 @@ export interface operations {
             };
         };
     };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordForgotRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordForgotResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resetPasswordByToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     refresh: {
         parameters: {
             query?: never;
@@ -24132,6 +36078,268 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
                 };
             };
             /** @description Bad Request */
@@ -24897,6 +37105,4734 @@ export interface operations {
             };
         };
     };
+    listHistory: {
+        parameters: {
+            query?: {
+                q?: string;
+                kind?: string;
+                scope?: string;
+                examId?: string;
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách lượt thi phân trang */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseAttemptHistoryItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartAttemptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    saveAnswers: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveAnswersRequest"];
+            };
+        };
+        responses: {
+            /** @description Xử lý từng thay đổi câu trả lời theo seq */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveAnswersResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Vượt quá 20 yêu cầu trong 10 giây trên mỗi lượt thi (kèm Retry-After) */
+            429: {
+                headers: {
+                    /** @description Seconds until the rate-limit window refills */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    downloadAttemptAsset: {
+        parameters: {
+            query?: {
+                /** @description Id lần nghe (bắt buộc với tệp audio) */
+                playId?: string;
+            };
+            header?: never;
+            path: {
+                attemptId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Nội dung tệp tài nguyên */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    openAudioPlay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAudioPlayRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái lần nghe sau khi mở hoặc gửi lại */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description AUDIO_PLAY_IN_PROGRESS (kèm playId), AUDIO_PLAYS_EXHAUSTED, PART_CLOSED, TIME_UP hoặc ATTEMPT_SESSION_REVOKED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioPlayInProgressResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    endAudioPlay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+                playId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trạng thái kết thúc của lần nghe audio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateAudioProgress: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+                playId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AudioProgressRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái lần nghe sau khi cập nhật tiến độ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description AUDIO_SEEK_REJECTED (kèm positionMs đã lưu), AUDIO_PLAY_STALE, PART_CLOSED, TIME_UP hoặc ATTEMPT_SESSION_REVOKED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioSeekRejectedResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resumeAudioPlay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                assetId: string;
+                playId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trạng thái lần nghe sau khi phát tiếp */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptAudioPlayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    heartbeat: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeartbeatResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    confirmPartChoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác chọn phần 3 */
+                "Idempotency-Key": string;
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                partId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfirmPartChoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái hiện tại khi gửi lại cùng khóa idempotency hoặc lựa chọn đã khóa giống hệt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Đã khóa lựa chọn và đưa việc sinh phần vào hàng chờ */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    finishPart: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                partId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FinishPartRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishPartResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    retryPartGeneration: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác thử lại sinh phần */
+                "Idempotency-Key": string;
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+                partId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RetryPartRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái hiện tại khi gửi lại cùng khóa idempotency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Đã đưa yêu cầu sinh lại phần vào hàng chờ */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartChoiceResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Kết quả tổng hợp, thống kê và breakdown */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AttemptResultResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Lượt không tồn tại hoặc không thuộc người dùng */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Lượt chưa kết thúc */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getReview: {
+        parameters: {
+            query?: {
+                part?: string;
+            };
+            header?: never;
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết từng câu và đáp án / lời giải */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AttemptReviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Gói lượt thi chỉ cho xem điểm (SCORE) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Lượt hoặc phần không tồn tại */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Lượt chưa ở trạng thái xem lại được */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    claimSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ClaimSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Nhận phiên sửa thành công */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimSessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ATTEMPT_OPEN_ELSEWHERE (kèm lastSeenAt), TIME_UP hoặc ATTEMPT_NOT_OPEN */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptSessionConflictResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    downloadSolutionAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Nội dung tệp lời giải */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    submit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác nộp bài */
+                "Idempotency-Key": string;
+                "X-Attempt-Session"?: string;
+            };
+            path: {
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubmitAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitAttemptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    replaceMyAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    removeMyAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    requestChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã xếp thư mã xác nhận tới email mới */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Email đã thuộc tài khoản khác (EMAIL_TAKEN) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Gửi quá nhanh hoặc quá 5 lần mỗi ngày: có Retry-After và retryAfter */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    confirmChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Email đã đổi, đã xác minh, đã đồng bộ Keycloak */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Email bị tài khoản khác lấy trong lúc chờ (EMAIL_TAKEN) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không đồng bộ được email sang Keycloak; không có thay đổi nào */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+        };
+    };
+    sendVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã xếp thư mã xác minh */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Tài khoản chưa có email (EMAIL_REQUIRED) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Gửi quá nhanh hoặc quá 5 lần mỗi ngày: có Retry-After và retryAfter */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailCodeVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Email đã được xác minh */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailCodeErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    prepare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entitlementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptPrepareResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    queryMyExamAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamAccessQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamAccessQueryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMyExams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyExamsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listMyOrders: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trang danh sách đơn */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseOrderSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OrderPriceChangedResponse"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createMyOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Tạo đơn hoặc dùng lại đơn chờ thành công */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateOrderResponse"];
+                };
+            };
+            /** @description IDEMPOTENCY_KEY_REQUIRED hoặc VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ACCOUNT_CHANGED, IDEMPOTENCY_KEY_REUSED, PRICE_CHANGED hoặc PRODUCT_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OrderPriceChangedResponse"];
+                };
+            };
+            /** @description Bài thi đã ngừng bán */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Lỗi voucher: VOUCHER_* */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMyOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết đơn */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng trong tài khoản đang đăng nhập */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OrderPriceChangedResponse"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    cancelMyOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã hủy đơn */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng trong tài khoản đang đăng nhập */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Đơn hàng không còn ở trạng thái chờ thanh toán */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OrderPriceChangedResponse"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    payMyOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tạo lần thanh toán VNPAY mới */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayOrderResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ORDER_NOT_FOUND hoặc PRODUCT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description ORDER_NOT_PENDING, ORDER_EXPIRED hoặc PRODUCT_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OrderPriceChangedResponse"];
+                };
+            };
+            /** @description Bài thi đã ngừng bán */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    quoteMyPrice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Báo giá hợp lệ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceQuote"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy bài thi */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bài thi đã ngừng bán */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGoneResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Lỗi voucher: VOUCHER_INVALID, VOUCHER_EXPIRED, VOUCHER_EXHAUSTED, VOUCHER_USER_LIMIT, VOUCHER_NOT_APPLICABLE, VOUCHER_NOT_ELIGIBLE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description RATE_LIMITED: vượt giới hạn kiểm tra mã voucher */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     ping: {
         parameters: {
             query?: never;
@@ -24958,6 +41894,810 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    handleVnpayIpn: {
+        parameters: {
+            query: {
+                params: {
+                    [key: string]: string;
+                };
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Phản hồi chuẩn VNPAY */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VnpayIpnResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    verifyVnpayReturn: {
+        parameters: {
+            query: {
+                params: {
+                    [key: string]: string;
+                };
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chữ ký hợp lệ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VnpayReturnResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Không tìm thấy đơn hàng trong tài khoản đang đăng nhập */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Chữ ký phản hồi thanh toán không hợp lệ */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getStorefrontCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getStorefrontFilters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StorefrontFilters"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listStorefrontProducts: {
+        parameters: {
+            query?: {
+                /** @description Tìm theo tên (không dấu) hoặc mã */
+                q?: string;
+                /** @description Mã kỳ thi, ví dụ HSA */
+                kind?: string;
+                /** @description Hình thức */
+                format?: "FULL" | "PART" | "SUBJECT" | "BUNDLE";
+                /** @description Mã môn, ví dụ TOAN */
+                subject?: string;
+                /** @description Mã phần; đi kèm kind vì mã phần chỉ có nghĩa trong một kỳ thi */
+                part?: string;
+                /** @description NEWEST (mặc định), PRICE_ASC, PRICE_DESC */
+                sort?: "NEWEST" | "PRICE_ASC" | "PRICE_DESC";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseProductCard"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getStorefrontProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Chi tiết sản phẩm */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description PRODUCT_NOT_FOUND: không có, hoặc chưa từng công bố */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description PRODUCT_DISCONTINUED: đã ngừng bán, kèm product {code, name} */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGoneResponse"];
                 };
             };
             /** @description Precondition Failed */

@@ -122,7 +122,7 @@ async function selectScope(u: UserEvent, optionPattern: RegExp) {
 describe("Chế độ MAPID của môn HSA", () => {
   it("chưa có dữ liệu: Toàn bài, không có bảng quy tắc, ẩn phạm vi cũ và Chỉ tiêu chủ đề", () => {
     renderPanel(makeSection());
-    expect(screen.getByRole("radio", { name: "Toàn bài (không giới hạn MAPID)" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Không giới hạn MAPID" })).toBeChecked();
     expect(screen.queryByTestId("mapid-rules-table")).not.toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Theo chủ đề" })).not.toBeInTheDocument();
     expect(screen.queryByText("Chỉ tiêu chủ đề")).not.toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("Chế độ MAPID của môn HSA", () => {
     expect(latest.section.mapidMode).toBe("MATRIX");
     expect(within(table()).getByTestId("mapid-rule-row-r1")).toHaveTextContent("Toàn môn · Phải có Mệnh đề và tập hợp");
     expect(screen.queryByTestId("mapid-paused-note")).not.toBeInTheDocument();
-    await u.click(screen.getByRole("radio", { name: "Toàn bài (không giới hạn MAPID)" }));
+    await u.click(screen.getByRole("radio", { name: "Không giới hạn MAPID" }));
     expect(latest.section.mapidMode).toBe("ALL");
     expect(latest.section.mapidRules).toEqual(rules);
     expect(screen.queryByTestId("mapid-rules-table")).not.toBeInTheDocument();

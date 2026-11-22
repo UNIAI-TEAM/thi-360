@@ -18,6 +18,7 @@ import type {
   PreviewQuestion,
 } from "../review-types";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, type Recorded } from "./fake-exams-server";
+import { byTextContent } from "./text-content";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -119,6 +120,8 @@ const row = (over: Partial<PreviewCompliance>): PreviewCompliance => ({
   basis: "QUESTION",
   independent: false,
   note: null,
+  originalRequired: null,
+  topicName: null,
   ...over,
 });
 
@@ -360,7 +363,8 @@ describe("thứ tự gốc (K12)", () => {
   const numbersOnPage = () => screen.getAllByRole("heading", { name: /^Câu \d+$/ }).map((node) => node.textContent);
   const optionsOf = (heading: string) => {
     const article = screen.getByRole("heading", { name: heading }).closest("article")!;
-    return within(article).getAllByRole("listitem").map((node) => node.textContent?.replace(/^[A-H]/, "").replace(/Đáp án đúng$/, ""));
+    const fieldset = article.querySelector("fieldset[data-question-options]")!;
+    return [...fieldset.querySelectorAll("[data-exam-content]")].map((node) => node.textContent);
   };
 
   it("mặc định đúng thứ tự đã đảo: số câu, câu và phương án như đề thật", () => {
@@ -548,9 +552,10 @@ describe("phạm vi sinh thử", () => {
     renderPanel(server, hsaExam(), checkOf([{ pathId: "opt-sci", choices: [{ partId: "part-sci", optionId: "opt-sci", kind: "SUBJECT_CHOICE", code: "SCIENCE", name: "Science" }] }]));
 
     expect(await screen.findByText("Bài có phần chọn mã: hãy chọn một mã.")).toBeInTheDocument();
-    await user.click(screen.getByRole("combobox", { name: "Phạm vi sinh thử" }));
-    expect(await screen.findByRole("option", { name: "Cả bài" })).toHaveAttribute("aria-disabled", "true");
-    await user.keyboard("{Escape}");
+    const scope = screen.getByRole("group", { name: "Phạm vi sinh thử" });
+    expect(within(scope).getAllByRole("radio").map((radio) => (radio as HTMLInputElement).labels?.[0]?.textContent)).toEqual(["Một môn", "Một mã hoặc nhánh", "Cả bài"]);
+    expect(within(scope).getByRole("radio", { name: "Cả bài" })).toBeDisabled();
+    expect(within(scope).getByRole("radio", { name: "Một mã hoặc nhánh" })).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Sinh đề xem trước" }));
 
     await waitFor(() => expect(server.calls("POST", PREVIEW_PATH)).toHaveLength(1));
@@ -566,7 +571,7 @@ describe("phạm vi sinh thử", () => {
     const server = new FakeServer().on("POST", PREVIEW_PATH, { status: 200, body: generatedWire() });
     renderPanel(server);
 
-    await pick(user, "Phạm vi sinh thử", "Một môn");
+    await user.click(screen.getByRole("radio", { name: "Một môn" }));
     await pick(user, "Môn", /Vật lí/);
     await user.click(screen.getByRole("button", { name: "Sinh đề xem trước" }));
     await waitFor(() => expect(server.calls("POST", PREVIEW_PATH)).toHaveLength(1));
@@ -673,7 +678,9 @@ describe("BCA đổi mã trên cùng đề thử", () => {
     await pick(user, "Đường lựa chọn", /CA2/);
     expect(
       await screen.findByText(
-        "Đề thử đang dùng CA1. Đổi sang CA2 giữ nguyên Part 1, Part 2 (câu 1–65), chỉ sinh lại Part 3 (câu 66–80). Sinh đề thử mới sinh lại cả bài với hạt giống mới.",
+        byTextContent(
+          "Đề thử đang dùng CA1. Đổi sang CA2 giữ nguyên Part 1, Part 2 (câu 1–65), chỉ sinh lại Part 3 (câu 66–80). Sinh đề thử mới sinh lại cả bài với hạt giống mới.",
+        ),
       ),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Đổi mã, sinh lại Part 3" }));
@@ -817,7 +824,7 @@ describe("phân đoạn hiển thị của sinh thử một môn (BE-20)", () =>
   async function generateSection(user: UserEvent, body: unknown) {
     const server = new FakeServer().on("POST", PREVIEW_PATH, { status: 200, body });
     renderPanel(server);
-    await pick(user, "Phạm vi sinh thử", "Một môn");
+    await user.click(screen.getByRole("radio", { name: "Một môn" }));
     await pick(user, "Môn", /Vật lí/);
     await user.click(screen.getByRole("button", { name: "Sinh đề xem trước" }));
     await waitFor(() => expect(server.calls("POST", PREVIEW_PATH)).toHaveLength(1));

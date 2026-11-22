@@ -3,6 +3,7 @@ package vn.unicom.thi360.exam.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,7 +20,9 @@ import java.util.stream.Stream;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.catalog.spi.CatalogCombinationView;
@@ -77,6 +80,8 @@ import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.api.VersionConflictException;
+import vn.unicom.thi360.shared.idempotency.IdempotencyKeyId;
+import vn.unicom.thi360.shared.idempotency.IdempotencyKeyRepository;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
@@ -105,6 +110,7 @@ public class ExamService {
     private final UserDirectory userDirectory;
     private final AuditRecorder auditRecorder;
     private final IdempotentCommand idempotentCommand;
+    private final IdempotencyKeyRepository idempotencyKeys;
     private final CurrentUserProvider currentUserProvider;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -112,6 +118,9 @@ public class ExamService {
     private final ExamCheckValidity checkValidity;
     private final ExamStructureProperties structureProperties;
     private final CombinationLookup combinationLookup;
+    private final Clock clock;
+    private final ExamListingService listings;
+    private final TransactionTemplate transaction;
     public ExamService(
             ExamRepository examRepository,
             ExamStructureRepository structureRepository,
@@ -124,13 +133,17 @@ public class ExamService {
             UserDirectory userDirectory,
             AuditRecorder auditRecorder,
             IdempotentCommand idempotentCommand,
+            IdempotencyKeyRepository idempotencyKeys,
             CurrentUserProvider currentUserProvider,
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             AppMessages messages,
             ExamCheckValidity checkValidity,
             ExamStructureProperties structureProperties,
-            CombinationLookup combinationLookup) {
+            CombinationLookup combinationLookup,
+            Clock clock,
+            ExamListingService listings,
+            PlatformTransactionManager transactionManager) {
         this.examRepository = examRepository;
         this.structureRepository = structureRepository;
         this.blockRefRepository = blockRefRepository;
@@ -142,6 +155,7 @@ public class ExamService {
         this.userDirectory = userDirectory;
         this.auditRecorder = auditRecorder;
         this.idempotentCommand = idempotentCommand;
+        this.idempotencyKeys = idempotencyKeys;
         this.currentUserProvider = currentUserProvider;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -149,6 +163,9 @@ public class ExamService {
         this.checkValidity = checkValidity;
         this.structureProperties = structureProperties;
         this.combinationLookup = combinationLookup;
+        this.clock = clock;
+        this.listings = listings;
+        this.transaction = new TransactionTemplate(transactionManager);
     }
     private ExamStructureCodec codec() {
         return new ExamStructureCodec(objectMapper);
@@ -230,6 +247,7 @@ public class ExamService {
                     + " ON qs.subject_item_id = sr.key::uuid"
                     + " WHERE sr.value::bigint IS DISTINCT FROM COALESCE(qs.revision, 0))"
                     + " THEN 'NEEDS_RECHECK'"
+                    + " WHEN " + checkValidity.rulesChanged("cr", "e", "es") + " THEN 'NEEDS_RECHECK'"
                     + " ELSE cr.result->>'status' END) = ?");
             params.add(catalogLookup.revision());
             params.add(wanted);
@@ -444,7 +462,7 @@ public class ExamService {
     }
 
     private ExamDetailResponse doCreate(CreateExamRequest request) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         String code = requireCode(request.code());
 
@@ -453,11 +471,8 @@ public class ExamService {
         ScopeChoice scopeChoice = resolveScope(kindItem, profile, request.scope(),
                 request.partCode(), request.subjectCode());
 
-        String buildMode = request.buildMode() == null ? "STANDARD" : request.buildMode();
-        if (!Set.of("STANDARD", "REVIEW").contains(buildMode)
-                || ("REVIEW".equals(buildMode) && !"SUBJECT".equals(scopeChoice.scope()))) {
-            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
-        }
+        String buildMode = requireBuildMode(
+                request.buildMode() == null ? "STANDARD" : request.buildMode(), scopeChoice.scope());
         boolean subjectPart = "PART".equals(scopeChoice.scope())
                 && "SUBJECT".equals(profile.getTemplateBy());
         // H41 (BE-21): a dedicated PART template of the subject comes first; a subject that has
@@ -698,20 +713,24 @@ public class ExamService {
         if (request.practiceScoring() != null && !Set.of("RAW", "LINEAR").contains(request.practiceScoring())) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
-        if ("LINEAR".equals(request.practiceScoring()) && !"LINEAR".equals(exam.getPracticeScoring())
-                && !Boolean.TRUE.equals(request.confirmScoring())) {
-            throw new BusinessRuleException(ExamErrorCodes.SCORING_CONFIRM_REQUIRED,
-                    messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
+        boolean modeRequested = request.buildMode() != null;
+        if (modeRequested && !Set.of("STANDARD", "REVIEW").contains(request.buildMode())) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
         Map<String, Object> before = examInfoSnapshot(exam);
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
 
         boolean scopeRequested = request.kind() != null || request.scope() != null
                 || request.partCode() != null || request.subjectCode() != null
                 || request.structureYear() != null || request.matrixYear() != null;
+        // A buildMode change replaces the working structure like a scope change (UNI-2751): same
+        // template-load path, same confirmReplace / EXAM_SCOPE_LOCKED rules; unchanged buildMode
+        // without scope fields skips catalog lookups so plain metadata edits stay independent.
+        boolean requestedModeChanged = modeRequested
+                && !Objects.equals(request.buildMode(), exam.getBuildMode());
         boolean scopeChanged = false;
-        if (scopeRequested) {
+        if (scopeRequested || requestedModeChanged) {
             CatalogItemView kindItem = request.kind() != null ? requireKindItem(request.kind())
                     : catalogLookup.findItem(exam.getKindItemId())
                             .orElseThrow(() -> examNotFound(examId));
@@ -724,7 +743,8 @@ public class ExamService {
                     : exam.getStructureYear();
             Integer matrixYear = request.matrixYear() != null ? request.matrixYear()
                     : exam.getMatrixYear();
-            scopeChanged = !Objects.equals(kindItem.id(), exam.getKindItemId())
+            scopeChanged = requestedModeChanged
+                    || !Objects.equals(kindItem.id(), exam.getKindItemId())
                     || !Objects.equals(scope, exam.getScope())
                     || !Objects.equals(partCode, exam.getPartCode())
                     || !Objects.equals(subjectItemOf(subjectCode), exam.getSubjectItemId())
@@ -735,16 +755,19 @@ public class ExamService {
                     throw new ConflictException(ExamErrorCodes.SCOPE_LOCKED,
                             messages.get(ExamErrorCodes.SCOPE_LOCKED));
                 }
+                ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
+                ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
+                String mode = requireBuildMode(
+                        modeRequested ? request.buildMode()
+                                : "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD",
+                        choice.scope());
+                rejectRawReview(request.practiceScoring(), mode);
                 ExamStructure structure = structureRepository.findById(examId).orElse(null);
                 if (structure != null && structure.isEdited()
                         && !Boolean.TRUE.equals(request.confirmReplace())) {
                     throw new ConflictException(ExamErrorCodes.REPLACE_CONFIRM,
                             messages.get(ExamErrorCodes.REPLACE_CONFIRM));
                 }
-                ExamKindProfile profile = profileRepository.findById(kindItem.id()).orElse(null);
-                ScopeChoice choice = resolveScope(kindItem, profile, scope, partCode, subjectCode);
-                String mode = "SUBJECT".equals(choice.scope()) ? exam.getBuildMode() : "STANDARD";
-                rejectRawReview(request.practiceScoring(), mode);
                 boolean subjectPart = "PART".equals(choice.scope()) && "SUBJECT".equals(profile.getTemplateBy());
                 // H41 (BE-21): same dedicated PART lookup as doCreate.
                 boolean cutFromSubject = false;
@@ -784,10 +807,12 @@ public class ExamService {
                         : subjectPart ? doc.parts().getFirst().maxPoints()
                         : template != null && template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
                 requireSharedDuration(timing, duration);
+                String rebuiltScoring = review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring();
+                requireScoringConfirmation(request, rebuiltScoring);
                 exam.applyScoringProfile(review ? maxScore : subjectPart ? null
                                 : scopedReferenceMax(profile, choice.scope(),
                                         request.maxScore() != null ? request.maxScore() : maxScore),
-                        review ? "LINEAR" : subjectPart ? "RAW" : profile.getPracticeScoring());
+                        rebuiltScoring);
                 exam.setBuildMode(mode);
                 exam.changeScope(kindItem.id(), choice.scope(), choice.partCode(),
                         choice.subjectItemId(),
@@ -802,7 +827,10 @@ public class ExamService {
             }
         }
         if (!scopeChanged) {
-            rejectRawReview(request.practiceScoring(), exam.getBuildMode());
+            if (!"RAW".equals(exam.getPracticeScoring())) {
+                rejectRawReview(request.practiceScoring(), exam.getBuildMode());
+            }
+            requireScoringConfirmation(request, exam.getPracticeScoring());
         }
 
         String code = exam.getCode();
@@ -879,7 +907,7 @@ public class ExamService {
         ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
         ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
                 structureProperties.maxMapidRules());
-        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now());
+        writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now(clock));
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
                 .build());
@@ -911,7 +939,7 @@ public class ExamService {
                 && !Set.of("USE_TEMPLATE", "KEEP_EDITED").contains(request.overviewPolicy())) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
         }
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         ExamStructureDocument doc = ExamStructureOps.assignMissingIds(codec().read(template.getStructure()));
         boolean subjectPart = "PART".equals(exam.getScope()) && "SUBJECT".equals(template.getScope());
@@ -993,15 +1021,20 @@ public class ExamService {
         exam.setBuildMode(template.getBuildMode());
         // Changing the build mode by loading a template (STANDARD <-> REVIEW) gives the exam the scoring values
         // of a new exam made from that template, administrator overrides included: a review is LINEAR with no
-        // scale, a standard exam takes the template or profile scale and the profile scoring.
+        // scale, a standard exam takes the template or profile scale and the profile scoring. One exception (BE-13
+        // R3-1, FU): a V-ACT exam scored RAW that loads a review template keeps its scoring, scoringReset stays false.
         boolean scoringReset = false;
         if (modeChanged) {
             ExamKindProfile profile = crossingProfile;
             if ("REVIEW".equals(template.getBuildMode())) {
-                exam.applyScoringProfile(null, "LINEAR");
-                exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
-                        exam.getDurationMinutes(), null, actor, now);
-                scoringReset = true;
+                boolean keepRawVact = rawScoring && catalogLookup.findItem(exam.getKindItemId())
+                        .map(item -> "VACT".equals(item.code())).orElse(false);
+                if (!keepRawVact) {
+                    exam.applyScoringProfile(null, "LINEAR");
+                    exam.updateInfo(exam.getCode(), exam.getName(), exam.getDescription(), exam.getInstructions(),
+                            exam.getDurationMinutes(), null, actor, now);
+                    scoringReset = true;
+                }
             } else {
                 BigDecimal base = subjectPart ? doc.parts().getFirst().maxPoints()
                         : template.getMaxScore() != null ? template.getMaxScore() : profile.getMaxScore();
@@ -1070,7 +1103,7 @@ public class ExamService {
         Exam exam = examRepository.findByIdForUpdate(examId)
                 .orElseThrow(() -> examNotFound(examId));
         requireRevision(request.expectedRevision(), exam.getRevision());
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
 
         ExamStructureDocument incoming = ExamStructureOps.assignMissingIds(
@@ -1136,18 +1169,40 @@ public class ExamService {
         }
     }
 
-    /** POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. */
-    @Transactional
+    /**
+     * POST /exams/{id}/duplicate — nhân bản thành Nháp; id trong cấu trúc sinh lại hết. The cover object is copied
+     * before the transaction opens, so a slow or failing object store cannot hold the command's locks and a missing
+     * cover object fails the command instead of producing a copy without it. The staged object is removed again when
+     * the transaction does not keep it (rollback, lost race, any failure). A key that already has a stored response is
+     * resolved before any object-store call: the committed response comes back as recorded (also when the source
+     * object is gone or storage is down) and a different body under the key is the shared 409. The authoritative
+     * check stays inside the transaction, under the key's advisory lock.
+     */
     public ExamDetailResponse duplicateExam(String idempotencyKey, UUID examId,
             DuplicateExamRequest request) {
-        return idempotentCommand.execute(idempotencyKey, "exam.duplicate", examId.toString(), request,
-                new com.fasterxml.jackson.core.type.TypeReference<ExamDetailResponse>() {},
-                () -> doDuplicate(examId, request));
+        // A missing key is refused here, before anything is staged; a recorded key is resolved without storage I/O.
+        String key = idempotentCommand.requireKey(idempotencyKey);
+        String scope = IdempotentCommand.scope(currentUserProvider.requireCurrentUser(), "exam.duplicate",
+                examId.toString());
+        ExamCoverService.StagedCover staged = idempotencyKeys.existsById(new IdempotencyKeyId(scope, key))
+                ? null : listings.stageCoverCopy(examId);
+        boolean kept = false;
+        try {
+            ExamDetailResponse result = transaction.execute(status -> idempotentCommand.execute(
+                    idempotencyKey, "exam.duplicate", examId.toString(), request,
+                    new com.fasterxml.jackson.core.type.TypeReference<ExamDetailResponse>() {},
+                    () -> doDuplicate(examId, request, staged)));
+            kept = staged != null && staged.attached();
+            return result;
+        } finally {
+            if (staged != null && !kept) listings.discardStagedCover(staged);
+        }
     }
 
-    private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request) {
+    private ExamDetailResponse doDuplicate(UUID examId, DuplicateExamRequest request,
+            ExamCoverService.StagedCover staged) {
         Exam source = examRepository.findById(examId).orElseThrow(() -> examNotFound(examId));
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = actorId();
         String kindCode = catalogLookup.findItem(source.getKindItemId())
                 .map(CatalogItemView::code)
@@ -1164,6 +1219,8 @@ public class ExamService {
         } catch (DataIntegrityViolationException ex) {
             throw codeTaken();
         }
+        // The sale listing and cover are part of the exam (TM 6.2); the copy has no published version yet.
+        listings.copyInto(source, copy, actor, now, staged);
 
         ExamStructure sourceStructure = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = sourceStructure == null
@@ -1379,6 +1436,7 @@ public class ExamService {
         values.put("scope", exam.getScope());
         values.put("partCode", exam.getPartCode());
         values.put("subjectItemId", exam.getSubjectItemId());
+        values.put("buildMode", exam.getBuildMode());
         values.put("templateCode", exam.getTemplateCode());
         values.put("structureYear", exam.getStructureYear());
         values.put("matrixYear", exam.getMatrixYear());
@@ -1588,6 +1646,15 @@ public class ExamService {
     }
 
 
+    /** Create and update share the mode rule: STANDARD | REVIEW, REVIEW only for SUBJECT. */
+    private static String requireBuildMode(String buildMode, String scope) {
+        if (!Set.of("STANDARD", "REVIEW").contains(buildMode)
+                || ("REVIEW".equals(buildMode) && !"SUBJECT".equals(scope))) {
+            throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+        return buildMode;
+    }
+
     /**
      * A review scores LINEAR against its own raw maximum (BE spec D11) and its check never requires a fixed raw
      * total, so an explicit RAW scoring is refused for a review; a standard exam keeps the override.
@@ -1595,6 +1662,15 @@ public class ExamService {
     private static void rejectRawReview(String requestedScoring, String buildMode) {
         if ("RAW".equals(requestedScoring) && "REVIEW".equals(buildMode)) {
             throw new BusinessRuleException(ExamErrorCodes.STRUCTURE_INVALID);
+        }
+    }
+
+    /** Requires explicit confirmation when the effective post-rebuild profile changes into LINEAR. */
+    private void requireScoringConfirmation(UpdateExamInfoRequest request, String effectiveScoring) {
+        if ("LINEAR".equals(request.practiceScoring()) && !"LINEAR".equals(effectiveScoring)
+                && !Boolean.TRUE.equals(request.confirmScoring())) {
+            throw new BusinessRuleException(ExamErrorCodes.SCORING_CONFIRM_REQUIRED,
+                    messages.get(ExamErrorCodes.SCORING_CONFIRM_REQUIRED));
         }
     }
 

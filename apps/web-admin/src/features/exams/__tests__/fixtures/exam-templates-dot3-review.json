@@ -1,0 +1,493 @@
+{
+  "source": {
+    "sha": "ce464ab5806f262845ac81187010e095afdaf365",
+    "exportedAt": "2026-11-20",
+    "note": "Du lieu kham pha, khong thay oracle BA: ky vong viet tay trong test (FTM R-1, R-7)."
+  },
+  "count": 9,
+  "templates": [
+    {
+      "code": "BCA_REVIEW",
+      "kindCode": "BCA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "BCA REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "5e56278b-d177-b493-2f0a-bb0b0ac5b62a",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "BCA_REVIEW_SECTION",
+                "blocks": [
+                  {
+                    "id": "BCA_REVIEW_BLOCK"
+                  }
+                ],
+                "subjectCode": null
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "5e56278b-d177-b493-2f0a-bb0b0ac5b62a",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "HSA_REVIEW",
+      "kindCode": "HSA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "HSA REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "5b27a056-676e-d6b4-9e5d-d9baf39b7ed8",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "HSA_REVIEW_SECTION",
+                "blocks": [
+                  {
+                    "id": "HSA_REVIEW_BLOCK"
+                  }
+                ],
+                "subjectCode": null
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "5b27a056-676e-d6b4-9e5d-d9baf39b7ed8",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "HSCA_REVIEW",
+      "kindCode": "HSCA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "HSCA REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "SHARED",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "44ef8843-07be-5378-932d-695466b2d667",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "6f68bd7d-0f99-596b-8c8c-5035d00f0a8d",
+                "blocks": [
+                  {
+                    "id": "1694bf85-cd91-5c2f-a08b-ff6f8f493fe4"
+                  }
+                ],
+                "subjectCode": null,
+                "knowledgeScope": {
+                  "nodeIds": [],
+                  "competencyCodes": [],
+                  "everyChildInScope": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "44ef8843-07be-5378-932d-695466b2d667",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "QDA_REVIEW",
+      "kindCode": "QDA",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "QDA REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "7381173b-2ca1-dd15-47cd-05b943bc51cd",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "QDA_REVIEW_SECTION",
+                "blocks": [
+                  {
+                    "id": "QDA_REVIEW_BLOCK"
+                  }
+                ],
+                "subjectCode": null
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "7381173b-2ca1-dd15-47cd-05b943bc51cd",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "SP2E_REVIEW",
+      "kindCode": "SP2E",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "SP2E REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "8bed3900-17c8-faa7-07e1-d6ff6101bca4",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "SP2E_REVIEW_SECTION",
+                "blocks": [
+                  {
+                    "id": "SP2E_REVIEW_BLOCK"
+                  }
+                ],
+                "subjectCode": null
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "8bed3900-17c8-faa7-07e1-d6ff6101bca4",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "SPT_REVIEW",
+      "kindCode": "SPT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "SPT REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "ca8fe991-3654-84d6-6093-df1768154461",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "SPT_REVIEW_SECTION",
+                "blocks": [
+                  {
+                    "id": "SPT_REVIEW_BLOCK"
+                  }
+                ],
+                "subjectCode": null
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "ca8fe991-3654-84d6-6093-df1768154461",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "THPTQG_REVIEW",
+      "kindCode": "THPTQG",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "THPTQG REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "PER_PART",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "d488535e-d403-5737-994e-f3c25e919777",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "7860a6a8-5070-5bd0-b1ff-0f1f0e9ff991",
+                "blocks": [
+                  {
+                    "id": "8a9b0238-3d0b-5d01-ba4e-d276e48a0bdd"
+                  }
+                ],
+                "subjectCode": null
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "d488535e-d403-5737-994e-f3c25e919777",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "VACT_REVIEW",
+      "kindCode": "VACT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "VACT REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "SHARED",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "e29ab2f3-6070-56e3-bbfd-933ee323d888",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "029f5eaa-06f3-55df-bfbb-10ed773d1c26",
+                "blocks": [
+                  {
+                    "id": "e1d9ccfc-4a31-5842-bf3c-6981732012a6"
+                  }
+                ],
+                "subjectCode": null,
+                "knowledgeScope": {
+                  "nodeIds": [],
+                  "competencyCodes": [],
+                  "everyChildInScope": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "e29ab2f3-6070-56e3-bbfd-933ee323d888",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    },
+    {
+      "code": "VSAT_REVIEW",
+      "kindCode": "VSAT",
+      "scope": "SUBJECT",
+      "partCode": null,
+      "subjectCode": null,
+      "label": "VSAT REVIEW",
+      "summary": null,
+      "buildMode": "REVIEW",
+      "isDefault": true,
+      "structureYear": null,
+      "matrixYear": null,
+      "timing": "SHARED",
+      "durationMinutes": null,
+      "maxScore": null,
+      "expertNote": null,
+      "active": true,
+      "structure": {
+        "parts": [
+          {
+            "id": "efc49b8a-f76a-5e8d-9608-8c1d62e48dc7",
+            "name": "Bài ôn",
+            "order": 1,
+            "options": [],
+            "sections": [
+              {
+                "id": "f97d16fe-4223-5fbc-a2d3-a80546351a44",
+                "blocks": [
+                  {
+                    "id": "08c89c1f-630f-5396-be02-3616019a6c1c"
+                  }
+                ],
+                "subjectCode": null,
+                "knowledgeScope": {
+                  "nodeIds": [],
+                  "competencyCodes": [],
+                  "everyChildInScope": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "publishable": true,
+      "fixedCounts": false,
+      "fixedBlockCounts": false,
+      "omittedLocked": false,
+      "parts": [
+        {
+          "partId": "efc49b8a-f76a-5e8d-9608-8c1d62e48dc7",
+          "order": 1,
+          "name": "Bài ôn",
+          "questionCount": null,
+          "questionTypes": []
+        }
+      ]
+    }
+  ]
+}

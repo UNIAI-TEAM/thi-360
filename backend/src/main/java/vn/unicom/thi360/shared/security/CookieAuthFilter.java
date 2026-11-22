@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vn.unicom.thi360.shared.testapi.TestApiPaths;
 
 public class CookieAuthFilter extends OncePerRequestFilter {
 
@@ -26,6 +27,9 @@ public class CookieAuthFilter extends OncePerRequestFilter {
             "/api/v1/auth/logout",
             "/api/v1/ping",
             "/api/v1/appearance",
+            "/api/v1/auth/password/forgot",
+            "/api/v1/auth/password/reset",
+            "/mock-vnpay",
             "/error"
     );
 
@@ -34,7 +38,12 @@ public class CookieAuthFilter extends OncePerRequestFilter {
         String path = extractPath(request);
         return SKIP_EXACT_PATHS.contains(path)
                 || path.startsWith("/actuator/health")
-                || path.startsWith("/v3/api-docs");
+                || path.startsWith("/v3/api-docs")
+                // CM-1: a stale or wrong access cookie must not break the public pages (TM 10.2).
+                || path.startsWith("/api/v1/public/")
+                || path.startsWith("/mock-vnpay/")
+                || TestApiPaths.matches(path)
+                || RateLimitFilter.RegistrationRoute.matches(request);
     }
 
     @Override

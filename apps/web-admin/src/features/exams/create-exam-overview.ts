@@ -23,6 +23,8 @@ export interface OverviewRow {
   subjectCode: string;
   /** Năng lực đầu tiên của mục (V-ACT: hai mục cùng môn SCIENTIFIC_THINKING tách tên theo năng lực). */
   competencyCode?: string;
+  /** Dòng phần: vị trí của phần trong mẫu hoặc cấu trúc (không suy từ `key`); dòng khác để trống. */
+  partIndex?: number;
   /** Khóa so khớp gửi máy chủ. */
   partId?: string;
   partCode?: string;
@@ -73,6 +75,7 @@ function partRow(part: ExamTemplate["parts"][number], index: number): OverviewRo
     kind: "part",
     label: part.name,
     subjectCode: "",
+    partIndex: index,
     partId: part.partId || undefined,
     questionCount: formatNumber(base.questionCount),
     durationMinutes: formatNumber(base.durationMinutes),
@@ -247,6 +250,23 @@ export function overviewRowsEmpty(scope: "FULL" | "PART" | "SUBJECT", subjectCod
 
 export function updateRowCell(rows: readonly OverviewRow[], key: string, field: "questionCount" | "durationMinutes" | "maxPoints", text: string): OverviewRow[] {
   return rows.map((row) => (row.key === key ? { ...row, [field]: text } : row));
+}
+
+/** Cập nhật mốc `base` theo giá trị số hợp lệ vừa lưu vào cấu trúc để ô đã lưu không còn tính là chưa lưu. */
+export function rebaseOverviewRows(rows: readonly OverviewRow[]): OverviewRow[] {
+  return rows.map((row) => {
+    const questionCount = numberOrNull(row.questionCount);
+    const durationMinutes = numberOrNull(row.durationMinutes);
+    const maxPoints = numberOrNull(row.maxPoints);
+    return {
+      ...row,
+      base: {
+        questionCount: row.questionCount.trim() !== "" && questionCount !== null ? questionCount : row.base.questionCount,
+        durationMinutes: row.durationMinutes.trim() !== "" && durationMinutes !== null ? durationMinutes : row.base.durationMinutes,
+        maxPoints: row.maxPoints.trim() !== "" && maxPoints !== null ? maxPoints : row.base.maxPoints,
+      },
+    };
+  });
 }
 
 /**

@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
+import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -15,6 +16,13 @@ vi.mock("@/features/content/api", async (importOriginal) => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
+
+// CR-3a bật DS cho HSA Tiếng Anh; các ca này kiểm hành vi MD của HSA-C (nút "Áp dụng phân bổ này", chip lớp Tiếng Anh) nên ghim MD, chỉ đổi fixture (AD-76), không đổi assert.
+let restoreForm: () => void;
+beforeEach(() => {
+  restoreForm = patchSubjectFormEntry("HSA", "ANH", { enabled: false });
+});
+afterEach(() => restoreForm());
 
 const referenceMatrix = {
   mode: "SEPARATE",
@@ -175,23 +183,22 @@ describe("Chỉ tiêu Tiếng Anh chờ chuyên gia của mẫu HSA (UNI-1701 R1
     expect(sent.examQuotas).toMatchObject([{ id: "hsa-english-grade", enforcement: "REQUIRED" }]);
   });
 
-  it("R2-1: chỉ tiêu Tiếng Anh đã Bắt buộc (sau khi áp dụng): chip ở tổng quan là Bắt buộc cố định, không còn lý do chờ chuyên gia", async () => {
+  it("R2-1: chỉ tiêu Tiếng Anh đã Bắt buộc (sau khi áp dụng): không còn chip mức, không còn lý do chờ chuyên gia", async () => {
     boot("HSA", emptyEnglishMatrix, "ANH", [{ ...englishGradeQuota, enforcement: "REQUIRED" }]);
     open("exam=1");
-    const group = await screen.findByRole("group", { name: /Lớp Tiếng Anh tham khảo/ });
-    expect(group).toHaveAttribute("data-fixed", "REQUIRED");
-    expect(within(group).queryByText(reason)).not.toBeInTheDocument();
+    await screen.findByRole("region", { name: /Lớp Tiếng Anh tham khảo/ });
+    expect(screen.queryByRole("group", { name: /Mức của Lớp Tiếng Anh tham khảo/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(reason)).not.toBeInTheDocument();
     expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
   });
 
-  it("R2-3 (AD-29, phương án B): ma trận Tiếng Anh có số ở chiều khối lớp thành Bắt buộc cố định, chỉ chỉ tiêu cấp bài ở lại Tham khảo", async () => {
+  it("R2-3 (AD-29, phương án B): ma trận Tiếng Anh có số ở chiều khối lớp thành Bắt buộc, chỉ chỉ tiêu cấp bài ở lại Tham khảo", async () => {
     const englishMatrix = { ...emptyEnglishMatrix, byGrade: [{ code: "GRADE_12", value: 30 }] };
     const server = boot("HSA", englishMatrix, "ANH", [englishGradeQuota]);
     const user = userEvent.setup();
     const view = open();
-    const grade = await screen.findByRole("group", { name: /Mức của Theo khối lớp/ });
-    expect(grade).toHaveAttribute("data-fixed", "REQUIRED");
-    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    await screen.findByText("Có thay đổi chưa lưu");
+    expect(screen.queryByRole("group", { name: /Mức của Theo khối lớp/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: Record<string, unknown> }> }>; examQuotas: Array<{ enforcement: string }> };

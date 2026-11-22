@@ -32,6 +32,30 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
     private static final String REFERENCE_QUOTA = "[{\"id\":\"ref\",\"name\":\"Grade\",\"dimension\":\"GRADE\","
             + "\"basis\":\"QUESTION\",\"enforcement\":\"REFERENCE\",\"subjectCodes\":[\"LY\"],"
             + "\"buckets\":[{\"codes\":[\"G10\"],\"count\":1}]}]";
+    /**
+     * A QDA exam whose science subjects follow FTM R-12 (one set of 3 in each; a short answer in Lý, Hóa, Sinh), so the
+     * code fixtures keep reaching their reuse, staleness and publication assertions. The first block of every section
+     * is the single-choice question the fixture always had.
+     */
+    private static final String QDA_CODE_POOL = """
+            {"parts":[{"id":"codes","name":"Codes","codeSource":{"source":"GLOBAL_LIST"},
+              "subjectPool":[
+               {"id":"ly","subjectCode":"LY","questionCount":5,"blocks":[{"id":"bly","questionType":"SINGLE_CHOICE","questionCount":1},
+                {"id":"blyset","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE"},
+                {"id":"blysa","questionType":"SHORT_ANSWER","questionCount":1}]},
+               {"id":"hoa","subjectCode":"HOA","questionCount":5,"blocks":[{"id":"bhoa","questionType":"SINGLE_CHOICE","questionCount":1},
+                {"id":"bhoaset","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE"},
+                {"id":"bhoasa","questionType":"SHORT_ANSWER","questionCount":1}]},
+               {"id":"sinh","subjectCode":"SINH","questionCount":5,"blocks":[{"id":"bsinh","questionType":"SINGLE_CHOICE","questionCount":1},
+                {"id":"bsinhset","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE"},
+                {"id":"bsinhsa","questionType":"SHORT_ANSWER","questionCount":1}]},
+               {"id":"su","subjectCode":"SU","questionCount":5,"blocks":[{"id":"bsu","questionType":"SINGLE_CHOICE","questionCount":2},
+                {"id":"bsuset","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE"}]},
+               {"id":"dia","subjectCode":"DIA","questionCount":5,"blocks":[{"id":"bdia","questionType":"SINGLE_CHOICE","questionCount":2},
+                {"id":"bdiaset","questionType":"QUESTION_SET","questionCount":3,"setCount":1,"setSize":3,"childAnswerType":"SINGLE_CHOICE"}]},
+               {"id":"anh","subjectCode":"ANH","questionCount":10,"blocks":[{"id":"banh","questionType":"SINGLE_CHOICE","questionCount":10}]}
+              ]}]}
+            """;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private EntityManager entities;
     @Autowired private ObjectMapper mapper;
@@ -162,24 +186,9 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         UUID id = UUID.randomUUID();
         UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
         jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,duration_minutes) "
-                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2,60)", id, id.toString(), id.toString(), qda);
-        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
-                {"parts":[{"id":"codes","name":"Codes","codeSource":{"source":"GLOBAL_LIST"},
-                  "subjectPool":[
-                   {"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[{"id":"bly","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"hoa","subjectCode":"HOA","questionCount":1,"blocks":[{"id":"bhoa","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"sinh","subjectCode":"SINH","questionCount":1,"blocks":[{"id":"bsinh","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"su","subjectCode":"SU","questionCount":1,"blocks":[{"id":"bsu","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"dia","subjectCode":"DIA","questionCount":1,"blocks":[{"id":"bdia","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"anh","subjectCode":"ANH","questionCount":2,"blocks":[{"id":"banh","questionType":"SINGLE_CHOICE","questionCount":2}]}
-                  ]}]}
-                """);
-        for (String[] ref : new String[][] {{"ly", "204"}, {"hoa", "205"}, {"sinh", "206"},
-                {"su", "207"}, {"dia", "208"}, {"anh", "203"}}) {
-            jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
-                    UUID.randomUUID(), id, "b" + ref[0], "codes", ref[0],
-                    UUID.fromString("00000000-0000-7000-8200-000000000" + ref[1]));
-        }
+                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',10,60)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, QDA_CODE_POOL);
+        insertCodeRefs(id);
         String url = "/api/v1/admin/exams/" + id;
         clearInvocations(units);
         mockMvc.perform(post(url + "/check").with(asUser(Permissions.EXAM_MODIFY)))
@@ -249,7 +258,8 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         entities.clear();
         clearInvocations(units);
         var checked = checkCodes(base);
-        verify(units, times(6)).solveUnit(any(), any(), any());
+        // FU-BE9-1: a new code is a new path over the same subject units, so every unit proof is reused (K13 re-solved all six).
+        verify(units, times(0)).solveUnit(any(), any(), any());
         assertThat(checked.path("groups").findValuesAsText("code")).contains("COMBINATION_LIST_CHANGED");
         assertThat(checked.path("paths").toString()).contains("codes:QD06");
         assertThat(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=1", String.class, id)).isEqualTo(before);
@@ -264,7 +274,9 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pathIds\":[\"codes:QD06\"],\"expectedRevision\":" + revision + "}"))
+                // E24 (QDA, BS 8): the new code is published together with the codes already serving, in one version.
+                .content("{\"pathIds\":[\"codes:QD01\",\"codes:QD02\",\"codes:QD03\",\"codes:QD04\",\"codes:QD05\",\"codes:QD06\"],"
+                        + "\"expectedRevision\":" + revision + "}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
         assertThat(jdbc.queryForObject("SELECT has_unpublished_changes FROM exam.exam WHERE id=?", Boolean.class, id)).isFalse();
         var config = mapper.readTree(jdbc.queryForObject("SELECT config::text FROM exam.exam_version WHERE exam_id=? AND version_no=2", String.class, id));
@@ -342,29 +354,29 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         assertThat(checkCodes(base).path("groups").findValuesAsText("code")).doesNotContain("COMBINATION_LIST_CHANGED");
     }
 
+    /** One block ref per block of {@link #QDA_CODE_POOL}: the first block of every section and its R-12 set and fill. */
+    private void insertCodeRefs(UUID id) {
+        for (String[] ref : new String[][] {{"ly", "204"}, {"hoa", "205"}, {"sinh", "206"},
+                {"su", "207"}, {"dia", "208"}, {"anh", "203"}}) {
+            java.util.List<String> blocks = new java.util.ArrayList<>(java.util.List.of("b" + ref[0]));
+            if (!ref[0].equals("anh")) blocks.add("b" + ref[0] + "set");
+            if (java.util.List.of("ly", "hoa", "sinh").contains(ref[0])) blocks.add("b" + ref[0] + "sa");
+            for (String block : blocks) {
+                jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
+                        UUID.randomUUID(), id, block, "codes", ref[0],
+                        UUID.fromString("00000000-0000-7000-8200-000000000" + ref[1]));
+            }
+        }
+    }
+
     private String publishCodeFixture() throws Exception {
         UUID id = UUID.randomUUID();
         UUID qda = UUID.fromString("00000000-0000-7000-8200-000000000102");
         jdbc.update("INSERT INTO exam.exam(id,code,code_normalized,name,kind_item_id,scope,timing,question_count,has_unpublished_changes,duration_minutes) "
-                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',2,true,60)", id, id.toString(), id.toString(), qda);
-        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, """
-                {"parts":[{"id":"codes","name":"Codes","codeSource":{"source":"GLOBAL_LIST"},
-                  "subjectPool":[
-                   {"id":"ly","subjectCode":"LY","questionCount":1,"blocks":[{"id":"bly","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"hoa","subjectCode":"HOA","questionCount":1,"blocks":[{"id":"bhoa","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"sinh","subjectCode":"SINH","questionCount":1,"blocks":[{"id":"bsinh","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"su","subjectCode":"SU","questionCount":1,"blocks":[{"id":"bsu","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"dia","subjectCode":"DIA","questionCount":1,"blocks":[{"id":"bdia","questionType":"SINGLE_CHOICE","questionCount":1}]},
-                   {"id":"anh","subjectCode":"ANH","questionCount":2,"blocks":[{"id":"banh","questionType":"SINGLE_CHOICE","questionCount":2}]}
-                  ]}]}
-                """);
+                + "VALUES (?,?,?,'Codes',?,'FULL','SHARED',10,true,60)", id, id.toString(), id.toString(), qda);
+        jdbc.update("INSERT INTO exam.exam_structure(exam_id,parts,structure_hash) VALUES (?,?::jsonb,'first')", id, QDA_CODE_POOL);
         jdbc.update("UPDATE exam.exam_structure SET exam_quotas=?::jsonb WHERE exam_id=?", REFERENCE_QUOTA, id);
-        for (String[] ref : new String[][] {{"ly", "204"}, {"hoa", "205"}, {"sinh", "206"},
-                {"su", "207"}, {"dia", "208"}, {"anh", "203"}}) {
-            jdbc.update("INSERT INTO exam.exam_block_ref(id,exam_id,block_id,part_id,section_id,subject_item_id) VALUES (?,?,?,?,?,?)",
-                    UUID.randomUUID(), id, "b" + ref[0], "codes", ref[0],
-                    UUID.fromString("00000000-0000-7000-8200-000000000" + ref[1]));
-        }
+        insertCodeRefs(id);
         String base = "/api/v1/admin/exams/" + id;
         var checked = checkCodes(base);
         assertThat(checked.path("status").asText()).isEqualTo("VALID");
@@ -374,6 +386,7 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         var request = mapper.createObjectNode();
         request.set("pathIds", paths);
         request.put("expectedRevision", revision);
+        ExamListingFixture.fill(jdbc, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                 .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                 .content(request.toString())).andExpect(status().isOk());
@@ -413,6 +426,7 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT witness::text FROM exam.exam_check_run WHERE exam_id=?",
                 String.class, id)).contains("QD05");
         long revision = jdbc.queryForObject("SELECT revision FROM exam.exam WHERE id=?", Long.class, id);
+        ExamListingFixture.fill(jdbc, id);
         mockMvc.perform(post(base + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pathIds\":[\"codes:QD05\"],\"expectedRevision\":" + revision + "}"))
@@ -421,6 +435,25 @@ class ExamCheckUnitReuseIT extends AbstractIntegrationTest {
 
     @Test
     void unavailableRequiredTopicIsReportedWithItsSection() throws Exception {
+        assertTopicShortage();
+    }
+
+    /**
+     * T1-1: a published-ready question that carries no grade and no difficulty (a bare fixture left by another test, or
+     * any legacy row) is in the candidate pool. A topic quota that filters by grade must not count it, and above all
+     * must not turn the check into a 500 (the quota's immutable list rejected the null grade).
+     */
+    @Test
+    void unavailableRequiredTopicIgnoresCandidatesWithoutGradeOrDifficulty() throws Exception {
+        UUID question = UUID.randomUUID();
+        jdbc.update("INSERT INTO questionbank.question(id, code, type, status, subject_item_id, current_version_no, points) "
+                + "VALUES (?, ?, 'SINGLE_CHOICE', 'READY', ?, 1, 1)", question, "NOGRADE-" + question,
+                UUID.fromString("00000000-0000-7000-8200-000000000201"));
+        jdbc.update("INSERT INTO questionbank.question_version(question_id, version_no, snapshot) VALUES (?, 1, '{}'::jsonb)", question);
+        assertTopicShortage();
+    }
+
+    private void assertTopicShortage() throws Exception {
         UUID id = UUID.randomUUID();
         UUID math = UUID.fromString("00000000-0000-7000-8200-000000000201");
         UUID topic = UUID.fromString("00000000-0000-7000-8200-000000001201");

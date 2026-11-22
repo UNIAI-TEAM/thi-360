@@ -6,6 +6,7 @@ import type * as ContentApi from "@/features/content/api";
 import { renderWithProviders } from "@/test/render";
 import { ExamGeneralView } from "../components/exam-general-view";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
+import { byTextContent } from "./text-content";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
   ...(await importOriginal<typeof ContentApi>()),
@@ -32,7 +33,7 @@ const part = (name: string, count: number, extra: Wire = {}) => ({
 
 /** Mẫu theo dạng máy chủ trả: `structure` là tài liệu `{ parts }`. */
 function template(code: string, fields: Wire, parts: Wire[]): Wire {
-  return { active: true, kindCode: "HSA", scope: "SUBJECT", timing: "PER_PART", buildMode: "STANDARD", isDefault: true, ...fields, code, structure: { parts } };
+  return { active: true, kindCode: "HSA", scope: "SUBJECT", timing: "PER_PART", buildMode: "STANDARD", isDefault: true, ...fields, code, structure: { parts }, parts: [] };
 }
 
 // Hình thật: mẫu bài ôn không ghi môn và không có thang; mẫu STANDARD của môn có thang 150.
@@ -86,7 +87,9 @@ describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có tha
 
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/Bài ôn/)).toBeInTheDocument();
+    expect(within(dialog).getByText(byTextContent("1. Vật lí"))).toBeInTheDocument();
+    expect(within(dialog).getByText(/0 câu/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Bài ôn/)).not.toBeInTheDocument();
     expect(within(dialog).queryByText(/Vật lí chuẩn/)).not.toBeInTheDocument();
 
     await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));

@@ -43,6 +43,8 @@ export function CreateExamScopeFields({
   errors,
   disabled,
   showBuildMode = true,
+  buildModeLocked = false,
+  buildModeHint,
   onChange,
 }: {
   kinds: readonly ExamKindOption[];
@@ -52,6 +54,9 @@ export function CreateExamScopeFields({
   errors: { partCode?: string; subjectCode?: string };
   disabled?: boolean;
   showBuildMode?: boolean;
+  /** Bài đã có phiên bản công bố (`/exams/new?exam=`): cách dựng bài chỉ đọc; `buildModeHint` nêu lý do ngay dưới nhóm. */
+  buildModeLocked?: boolean;
+  buildModeHint?: string;
   onChange: (change: Partial<ScopeSelection>) => void;
 }) {
   const t = useTranslations("exams.create.step1");
@@ -86,9 +91,10 @@ export function CreateExamScopeFields({
       )
       .map((subject) => subject.code),
   );
-  const subjectOptions = subjects
-    .filter((subject) => offers.size === 0 || offers.has(subject.code))
-    .map((subject) => ({ value: subject.code, label: subject.name }));
+  // Một môn một lần theo mã: danh mục dev có dòng trùng mã, hai mục cùng giá trị làm ô chọn lỗi khóa và chọn nhầm.
+  const subjectOptions = [...new Map(subjects.filter((subject) => offers.size === 0 || offers.has(subject.code)).map((subject) => [subject.code, subject])).values()].map(
+    (subject) => ({ value: subject.code, label: subject.name }),
+  );
   const noTemplate =
     offers.size === 0 ||
     !latestTemplate(templates, { kind: selection.kind, scope: "SUBJECT", partCode: "", subjectCode: selection.subjectCode, buildMode: selection.buildMode ?? "STANDARD" });
@@ -160,18 +166,18 @@ export function CreateExamScopeFields({
           />
         )}
       </FormField>
-      {Boolean(selection.subjectCode) && notPublishable && (
-        <p
-          role="status"
-          className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2.5 text-body text-text-secondary"
-        >
-          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-          <span className="flex flex-col gap-0.5">
-            <span>{t("notPublishableNotice", { subject: subjectName })}</span>
-            <span className="text-caption">{t("notPublishableDraft")}</span>
-          </span>
-        </p>
-      )}
+      {/* Vùng thông báo luôn có mặt trong DOM, chỉ phần nội dung mới gắn khi cần: trình đọc màn hình chỉ đọc thay đổi trong vùng đã có sẵn. */}
+      <div role="status" className="empty:-mt-3">
+        {Boolean(selection.subjectCode) && notPublishable && (
+          <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2.5 text-body text-text-secondary">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span className="flex flex-col gap-0.5">
+              <span>{t("notPublishableNotice", { subject: subjectName })}</span>
+              <span className="text-caption">{t("notPublishableDraft")}</span>
+            </span>
+          </p>
+        )}
+      </div>
       {Boolean(selection.subjectCode) && noTemplate && !subjectFirst && (
         <p className="flex items-start gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-body text-text-secondary">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-text-muted" />
@@ -274,7 +280,8 @@ export function CreateExamScopeFields({
           name="buildMode"
           value={selection.buildMode ?? "STANDARD"}
           required
-          disabled={disabled}
+          disabled={disabled || buildModeLocked}
+          hint={buildModeHint}
           options={buildModes}
           onChange={(buildMode) => onChange({ buildMode })}
         />

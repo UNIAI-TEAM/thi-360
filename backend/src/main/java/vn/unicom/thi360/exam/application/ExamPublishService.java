@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Array;
 import java.sql.PreparedStatement;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -20,6 +21,7 @@ import vn.unicom.thi360.catalog.spi.CatalogLookup;
 import vn.unicom.thi360.exam.api.ExamErrorCodes;
 import vn.unicom.thi360.exam.api.ExamPublishRequest;
 import vn.unicom.thi360.exam.api.ExamPublishResponse;
+import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionUsageKind;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
@@ -30,6 +32,8 @@ import vn.unicom.thi360.shared.api.VersionConflictException;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.ids.Ids;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
+import vn.unicom.thi360.shared.web.AppMessages;
+import vn.unicom.thi360.catalog.spi.CatalogItemView;
 
 @Service
 public class ExamPublishService {
@@ -41,10 +45,15 @@ public class ExamPublishService {
     private final IdempotentCommand idempotency;
     private final CurrentUserProvider currentUser;
     private final AuditRecorder audit;
+    private final Clock clock;
+    private final ExamListingChecks listingChecks;
+    private final AppMessages messages;
+    private final ExamEventOutbox events;
 
     public ExamPublishService(JdbcTemplate jdbc, ObjectMapper mapper, ExamCheckValidity validity,
             QuestionSourcePort source, CatalogLookup catalog, IdempotentCommand idempotency, CurrentUserProvider currentUser,
-            AuditRecorder audit) {
+            AuditRecorder audit, Clock clock, ExamListingChecks listingChecks, AppMessages messages,
+            ExamEventOutbox events) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.validity = validity;
@@ -53,6 +62,10 @@ public class ExamPublishService {
         this.idempotency = idempotency;
         this.currentUser = currentUser;
         this.audit = audit;
+        this.clock = clock;
+        this.listingChecks = listingChecks;
+        this.messages = messages;
+        this.events = events;
     }
 
     @Transactional
@@ -87,6 +100,11 @@ public class ExamPublishService {
             if ("VALID".equals(path.path("result").asText())) valid.add(id);
         }
         if (!valid.containsAll(selected)) throw new BusinessRuleException(ExamErrorCodes.PATH_NOT_VALID, null);
+        // ADV:CR-4:21 / R6-1: evidence saved before the exam-level rule (or kept by a scoped check, which never replaces
+        // the whole-exam result) must not authorize a draft that the rule now refuses. The locked live draft decides;
+        // frozen versions are never read here.
+        JsonNode document = json(jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId));
+        if (ExamStoredIdCollision.find(new ExamStructureCodec(mapper).read(document)).isPresent()) throw checkRequired("RULES_CHANGED");
         List<QuestionSourcePort.VersionKey> picks = new ArrayList<>();
         Set<String> witnessed = new LinkedHashSet<>();
         for (JsonNode path : check.witness()) {
@@ -105,9 +123,7 @@ public class ExamPublishService {
             if (stale != null && "SOURCE_CHANGED".equals(stale.invalidReason())) throw checkRequired("SOURCE_CHANGED");
             throw e;
         }
-        String structure = jdbc.queryForObject("SELECT parts::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId);
         var snapshot = new ExamVersionSnapshot(mapper);
-        JsonNode document = json(structure);
         long materializationRevision = catalog.revision();
         var allCombinations = snapshot.combinations(document, allPaths, exam.kindId(), catalog);
         if (catalog.revision() != materializationRevision) throw checkRequired("CONFIG_CHANGED");
@@ -126,15 +142,19 @@ public class ExamPublishService {
         extra.set("omittedGroups", snapshot.omittedGroups(document));
         // The default mode is not stored, so a STANDARD exam's snapshot is unchanged and a snapshot without the key is STANDARD.
         if (!"STANDARD".equals(exam.buildMode())) extra.put("buildMode", exam.buildMode());
+        // kindCode is the navigation discriminator of the port; frozen so it never depends on the catalog afterwards.
+        String kindCode = catalog.findItem(exam.kindId()).map(CatalogItemView::code).orElse(null);
+        if (kindCode != null) extra.put("kindCode", kindCode);
         extra.set("examQuotas", json(jdbc.queryForObject("SELECT exam_quotas::text FROM exam.exam_structure WHERE exam_id = ?", String.class, examId)));
         String extraConfig = extra.toString();
         String snapshotParts = snapshot.parts(document, check.result(), check.witness(), selected, exam.timing(), exam.durationMinutes()).toString();
-        String configSql = "jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), 'resolvedQuotas', ?::jsonb)";
+        String configSql = "jsonb_build_object('code', e.code, 'name', e.name, 'description', e.description, 'instructions', e.instructions, 'kindItemId', e.kind_item_id, 'scope', e.scope, 'partCode', e.part_code, 'subjectItemId', e.subject_item_id, 'templateCode', e.template_code, 'structureYear', e.structure_year, 'matrixYear', e.matrix_year, 'yearsConfirmed', e.years_confirmed, 'timing', e.timing, 'durationMinutes', e.duration_minutes, 'maxScore', e.max_score, 'referenceMax', e.reference_max, 'practiceScoring', e.practice_scoring, 'coverAssetId', e.cover_asset_id, 'kindProfile', jsonb_build_object('scopes', p.scopes, 'templateBy', p.template_by, 'timing', p.timing, 'maxScore', p.max_score, 'referenceMax', p.reference_max, 'practiceScoring', p.practice_scoring, 'trueFalseScoring', p.tf_scoring, 'multipleChoiceRule', p.mc_rule), "
+                + "'listing', " + ExamListingSnapshot.WORKING_JSON_SQL + ", 'resolvedQuotas', ?::jsonb)";
         Set<Integer> matchingVersions = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT v.version_no FROM exam.exam_version v JOIN exam.exam e ON e.id = v.exam_id "
                 + "JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
-                + "WHERE (v.config - 'resolvedQuotas' - 'combinations') = "
-                + "((" + configSql + " || ?::jsonb) - 'resolvedQuotas' - 'combinations') "
+                + "WHERE (" + ExamListingSnapshot.comparable("v.config") + " - 'resolvedQuotas' - 'combinations') = "
+                + "(" + ExamListingSnapshot.comparable("(" + configSql + " || ?::jsonb)") + " - 'resolvedQuotas' - 'combinations') "
                 + "AND jsonb_set(v.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
                 + "FROM jsonb_array_elements(v.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) = s.parts "
                 + "AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(?::jsonb->'combinations') c "
@@ -146,7 +166,12 @@ public class ExamPublishService {
         for (VersionPaths old : versions) {
             if (matchingVersions.contains(old.version())) alreadyServing.addAll(old.paths());
         }
+        // E24 first: a serving path that is missing or INVALID in the fresh check is named even when nothing changed (R2-3).
+        List<FieldError> blocking = allPathsBlockers(kindCode, document, selected, valid, allPaths, versions);
+        if (blocksServing(blocking)) throw allPathsRequired(blocking);
         if (alreadyServing.containsAll(selected)) throw new ConflictException(ExamErrorCodes.NOTHING_TO_PUBLISH);
+        if (!blocking.isEmpty()) throw allPathsRequired(blocking);
+        requireSellableListing(examId);
         for (VersionPaths old : versions) {
             List<String> remaining = old.paths().stream().filter(path -> !selected.contains(path)).toList();
             for (String path : remaining) kept.add(new ExamPublishResponse.KeptPath(path, old.version()));
@@ -161,7 +186,7 @@ public class ExamPublishService {
         }
         String sql = "INSERT INTO exam.exam_version (id, exam_id, version_no, config, parts, published_path_ids, serving_path_ids, check_run_id, state, status, published_at, published_by, note) "
                 + "SELECT ?, e.id, ?, " + configSql + " || ?::jsonb, ?::jsonb, ?, ?, ?, 'SERVING', 'PUBLISHED', ?, ?, ? FROM exam.exam e JOIN exam.exam_structure s ON s.exam_id = e.id LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id WHERE e.id = ?";
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         int inserted = jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql);
             Array paths = connection.createArrayOf("text", selected.toArray());
@@ -186,8 +211,8 @@ public class ExamPublishService {
         Set<String> published = new LinkedHashSet<>(jdbc.queryForList(
                 "SELECT DISTINCT unnest(old.serving_path_ids) FROM exam.exam_version old "
                 + "JOIN exam.exam_version current ON current.exam_id = old.exam_id AND current.version_no = ? "
-                + "WHERE old.exam_id = ? AND (old.config - 'resolvedQuotas' - 'combinations') = "
-                + "(current.config - 'resolvedQuotas' - 'combinations') "
+                + "WHERE old.exam_id = ? AND (" + ExamListingSnapshot.comparable("old.config") + " - 'resolvedQuotas' - 'combinations') = "
+                + "(" + ExamListingSnapshot.comparable("current.config") + " - 'resolvedQuotas' - 'combinations') "
                 + "AND jsonb_set(old.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
                 + "FROM jsonb_array_elements(old.parts->'parts') WITH ORDINALITY p(value, ordinality)), '[]'::jsonb)) = "
                 + "jsonb_set(current.parts, '{parts}', COALESCE((SELECT jsonb_agg(p.value - 'paths' ORDER BY p.ordinality) "
@@ -199,9 +224,71 @@ public class ExamPublishService {
                 String.class, version, examId, allCombinationsJson));
         jdbc.update("UPDATE exam.exam SET status = 'PUBLISHED', serving_version = ?, has_unpublished_changes = ?, updated_at = ?, updated_by = ?, revision = revision + 1 WHERE id = ?",
                 version, !published.containsAll(allPaths), java.sql.Timestamp.from(now), actor, examId);
+        // In this transaction, so a rollback takes the event with it and a replayed key (stored response) writes none.
+        events.published(examId, version);
         audit.record(AuditEvent.success("EXAM", "EXAM.PUBLISH", "exam", examId.toString(), exam.name(),
                 java.util.Map.of("version", version, "pathIds", List.copyOf(selected))));
         return new ExamPublishResponse(examId, version, List.copyOf(selected), kept);
+    }
+
+    /**
+     * E24, BS 8, AD-60: an exam with a choice made after the attempt starts publishes every valid path of the latest
+     * check and EVERY path still serving in one version, the first publish included. A serving path is never dropped
+     * because the fresh check no longer lists it or no longer finds it VALID: the refusal names it so the admin knows
+     * what to fix. A path that is neither valid nor serving may stay out. The code of BCA and the orientation of
+     * Informatics are chosen before the attempt starts: not covered.
+     */
+    private List<FieldError> allPathsBlockers(String kindCode, JsonNode structure, Set<String> selected, Set<String> valid,
+            Set<String> allPaths, List<VersionPaths> serving) {
+        if (!choiceAfterStart(structure, kindCode)) return List.of();
+        Set<String> servingPaths = new LinkedHashSet<>();
+        for (VersionPaths version : serving) servingPaths.addAll(version.paths());
+        List<FieldError> blocking = new ArrayList<>();
+        for (String path : servingPaths) {
+            if (selected.contains(path)) continue;
+            String code = !allPaths.contains(path) ? "PATH_SERVING_MISSING_FROM_CHECK"
+                    : valid.contains(path) ? "PATH_VALID_NOT_SELECTED" : "PATH_SERVING_INVALID";
+            blocking.add(new FieldError("pathIds", code, path));
+        }
+        for (String path : valid) {
+            if (!selected.contains(path) && !servingPaths.contains(path)) {
+                blocking.add(new FieldError("pathIds", "PATH_VALID_NOT_SELECTED", path));
+            }
+        }
+        return blocking;
+    }
+
+    private BusinessRuleException allPathsRequired(List<FieldError> blocking) {
+        return new BusinessRuleException(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED,
+                messages.get(ExamErrorCodes.PUBLISH_ALL_PATHS_REQUIRED), blocking);
+    }
+
+    /** A serving path that the fresh check lost or finds INVALID: reported even when the configuration is unchanged (R2-3). */
+    private static boolean blocksServing(List<FieldError> blocking) {
+        return blocking.stream().anyMatch(error -> !"PATH_VALID_NOT_SELECTED".equals(error.code()));
+    }
+
+    /** Part 3 of HSA (a CHOICE part with subject options) and the code of QDA are chosen after the attempt starts. */
+    static boolean choiceAfterStart(JsonNode structure, String kindCode) {
+        for (JsonNode part : structure.path("parts")) {
+            if (part.hasNonNull("codeSource") && "QDA".equals(kindCode)) return true;
+            if (!"CHOICE".equals(part.path("participation").path("mode").asText())) continue;
+            for (JsonNode option : part.path("options")) {
+                String kind = option.path("kind").asText();
+                if ("SUBJECT".equals(kind) || "SUBJECT_CHOICE".equals(kind)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** The listing rules run last, so every refusal that existed before keeps its code (EX-1, TM 6.2). */
+    private void requireSellableListing(UUID examId) {
+        var errors = listingChecks.issues(examId).stream().filter(ExamListingCheck::blocks).toList();
+        if (errors.isEmpty()) return;
+        var first = errors.getFirst();
+        throw new BusinessRuleException(first.code(), messages.get(first.code(), first.minPriceVnd()),
+                errors.stream().map(issue -> new FieldError(issue.field(), issue.code(),
+                        messages.get(issue.code(), issue.minPriceVnd()))).toList());
     }
 
     private static ConflictException checkRequired(String reason) {

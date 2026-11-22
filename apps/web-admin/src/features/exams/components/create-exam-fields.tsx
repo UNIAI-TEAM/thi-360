@@ -296,10 +296,12 @@ export function KindSelect({
   kinds,
   value,
   onChange,
+  disabled,
 }: {
   kinds: readonly ExamKindOption[];
   value: ExamKind;
   onChange: (kind: ExamKind) => void;
+  disabled?: boolean;
 }) {
   const t = useTranslations("exams.create");
   const kindLabel = useKindLabel();
@@ -318,6 +320,7 @@ export function KindSelect({
           name="kind"
           value={value || undefined}
           onValueChange={onChange}
+          disabled={disabled}
           options={kinds.map((kind) => ({ value: kind.code, label: kind.name }))}
         />
       )}

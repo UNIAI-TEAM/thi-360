@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,10 +69,7 @@ class CatalogSeedUpgradeIT {
         FlywayMigrationStrategy upgradeFromBase() {
             return flyway -> {
                 DataSource dataSource = flyway.getConfiguration().getDataSource();
-                Flyway.configure().dataSource(dataSource).defaultSchema("shared")
-                        .schemas("shared", "identity", "catalog", "audit", "classroom", "questionbank", "exam")
-                        .placeholders(flyway.getConfiguration().getPlaceholders())
-                        .locations("classpath:db/migration").load().migrate();
+                CatalogUpgradeSupport.migrateUpToBeforeSystemValues(dataSource, flyway.getConfiguration().getPlaceholders());
                 JdbcTemplate db = new JdbcTemplate(dataSource);
                 db.execute("""
                     INSERT INTO catalog.catalog_item (id, group_id, code, code_normalized, value, name_vi, display_order, status, is_system, depth, path) VALUES
@@ -125,8 +121,8 @@ class CatalogSeedUpgradeIT {
         assertThat(qd05.subjects()).extracting(subject -> subject.code()).containsExactly("ANH");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.combination_version WHERE id = '4df2381e-c78c-5577-805b-818bf8a76373' AND item_id = 'ffbd8a8b-e696-54c4-b87f-fd2e3033f0fe'", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForList("SELECT value FROM catalog.catalog_item WHERE group_id = ? AND code IN ('TEST-HIEM', 'USER-TAG') ORDER BY value", Integer.class, TAG_GROUP)).containsExactly(1, 2);
-        // 42 from before UNI-2688 plus the two Địa lí tags DIA_BANG_SO_LIEU, DIA_BIEU_DO (ids ...8601-...47, ...48).
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND id::text LIKE '00000000-0000-7000-8601-%'", Integer.class, TAG_GROUP)).isEqualTo(44);
+        // 42 from before UNI-2688 plus the four Địa lí tags DIA_BANG_SO_LIEU, DIA_BIEU_DO, DIA_BAN_DO, DIA_ATLAT (ids ...8601-...47 to ...50).
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalog.catalog_item WHERE group_id = ? AND id::text LIKE '00000000-0000-7000-8601-%'", Integer.class, TAG_GROUP)).isEqualTo(46);
         int highWater = jdbc.queryForObject("SELECT max(value) FROM catalog.catalog_item WHERE group_id = ?", Integer.class, TAG_GROUP);
         assertThat(jdbc.queryForObject("SELECT last_value FROM catalog.catalog_group WHERE id = ?", Integer.class, TAG_GROUP)).isGreaterThanOrEqualTo(highWater);
         var result = mockMvc.perform(post("/api/v1/admin/catalog/groups/{id}/items", TAG_GROUP)

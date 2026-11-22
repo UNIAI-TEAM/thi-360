@@ -72,7 +72,10 @@ public final class ExamCheckApiModels {
     public record Result(UUID examId, Instant checkedAt, double durationSeconds, long timeLimitSeconds,
                          boolean stale, String invalidReason, String status, int issueCount, List<Path> paths,
                          List<Group> groups, int partCount, BigDecimal totalPoints, int printedQuestions,
-                         BigDecimal maxScore, @Schema(types = {"array", "null"}) List<SectionState> sectionStates) { }
+                         BigDecimal maxScore, @Schema(types = {"array", "null"}) List<SectionState> sectionStates,
+                         @Schema(description = "Nhóm Thông tin bán, tính lúc đọc từ bản làm việc; không nằm trong groups[]"
+                                 + " và không lưu vào kết quả kiểm tra", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+                         ExamListingCheckResult listingCheck) { }
     @Schema(name = "ExamCheckRun")
     public record Run(UUID runId, String state, Result result, String errorCode) { }
 }

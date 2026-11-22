@@ -7,6 +7,7 @@ import java.util.Objects;
 import vn.unicom.thi360.exam.api.ExamStructureResponse;
 import vn.unicom.thi360.exam.api.ExamStructureSummaryResponse;
 import vn.unicom.thi360.exam.api.ExamStructureSummaryResponse.Row;
+import vn.unicom.thi360.exam.domain.BlockCounts;
 import vn.unicom.thi360.exam.domain.ChildCondition;
 import vn.unicom.thi360.exam.domain.ExamPart;
 import vn.unicom.thi360.exam.domain.ExamPartOption;
@@ -80,41 +81,19 @@ public final class ExamCheckUnitSummary {
     }
 
     private static boolean isSet(QuestionBlock block) {
-        return block.questionType() == QuestionType.QUESTION_SET || block.questionType() == QuestionType.CLOZE;
+        return BlockCounts.isSet(block);
     }
 
-    /** A "take the remainder" group: neither omitted nor a set, and without its own question count. */
     private static boolean isRemainder(QuestionBlock block) {
-        return !Boolean.TRUE.equals(block.omitted()) && !isSet(block) && block.questionCount() == null;
+        return BlockCounts.isRemainder(block);
     }
 
-    /** Explicit count of a group: omitted is 0; null when the configuration does not determine it. */
     private static Integer fixedCount(QuestionBlock block) {
-        if (Boolean.TRUE.equals(block.omitted())) return 0;
-        if (isSet(block) && (block.setCount() != null || block.setSize() != null)) {
-            return multiply(block.setCount(), block.setSize());
-        }
-        return block.questionCount();
+        return BlockCounts.declared(block);
     }
 
-    /**
-     * Count of the single remainder group of a section: the section count minus the fixed counts of the other
-     * groups (same rule as ExamCheckRules). Null when there are two or more remainder groups, the section has no
-     * count, another group's count is unknown, or the result is negative.
-     */
     private static Integer remainderCount(ExamSection section) {
-        if (section.questionCount() == null || section.blocks().stream().filter(ExamCheckUnitSummary::isRemainder)
-                .count() != 1) return null;
-        long fixed = 0;
-        for (QuestionBlock other : section.blocks()) {
-            if (isRemainder(other)) continue;
-            Integer count = fixedCount(other);
-            if (count == null) return null;
-            fixed += count;
-            if (fixed > Integer.MAX_VALUE) return null;
-        }
-        long left = section.questionCount() - fixed;
-        return left < 0 || left > Integer.MAX_VALUE ? null : Integer.valueOf((int) left);
+        return BlockCounts.remainder(section);
     }
 
     private static Row block(String partId, String sectionId, QuestionBlock block, Integer remainder) {

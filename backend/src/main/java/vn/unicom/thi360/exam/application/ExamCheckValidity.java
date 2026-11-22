@@ -38,26 +38,59 @@ public class ExamCheckValidity {
     /**
      * SQL for the template policy of the exam aliased {@code e}: only the non-default flags, {@code '{}'} when the
      * exam has the default policy. {@code unpublishable}: the standard default SUBJECT template of its kind and
-     * subject has {@code publishable = false}; {@code fixedCounts}: the template it was loaded from has
-     * {@code fixed_counts = true}. A saved check records the policy only when it is not the default, so checks
-     * saved before the flags existed keep their meaning.
+     * subject has {@code publishable = false}; {@code fixedCounts}, {@code fixedBlockCounts}, {@code omittedLocked}:
+     * the template it was loaded from has that lock; {@code lockHash}: a hash of that template's structure while it
+     * has any lock, so an in-place change of locked counts is detected too (FU-BE15-R2-4). A saved check records the
+     * policy only when it is not the default, so checks saved before the flags existed keep their meaning.
      * <p>
      * Templates identify a kind and a subject by code and exams by catalog item id. The catalog tables are not read
      * here: the (few) unpublishable templates are read once, their codes are resolved to item ids through
      * {@link CatalogLookup}, and the exam's own ids are compared with those literals.
      */
     String currentPolicy(String e) {
+        String loaded = "SELECT 1 FROM exam.exam_template ft WHERE ft.code = " + e + ".template_code AND ";
         return "jsonb_strip_nulls(jsonb_build_object("
                 + "'unpublishable', " + unpublishable(e) + ", "
-                + "'fixedCounts', CASE WHEN EXISTS (SELECT 1 FROM exam.exam_template ft"
-                + " WHERE ft.code = " + e + ".template_code AND ft.fixed_counts) THEN true END))";
+                + "'fixedCounts', CASE WHEN EXISTS (" + loaded + "ft.fixed_counts) THEN true END, "
+                + "'fixedBlockCounts', CASE WHEN EXISTS (" + loaded + "ft.fixed_block_counts) THEN true END, "
+                + "'omittedLocked', CASE WHEN EXISTS (" + loaded + "ft.omitted_locked) THEN true END, "
+                + "'lockHash', (SELECT md5(ft.structure::text) FROM exam.exam_template ft WHERE ft.code = "
+                + e + ".template_code AND (ft.fixed_counts OR ft.fixed_block_counts OR ft.omitted_locked))))";
+    }
+
+    /**
+     * The template policy of one exam as a check reads it now ({@code {}} for the default policy). A check captures
+     * it when it reads its input, so a template that changes before the result is saved is detected at save.
+     */
+    public JsonNode templatePolicy(UUID examId) {
+        List<String> rows = jdbc.queryForList("SELECT " + currentPolicy("e") + "::text FROM exam.exam e WHERE e.id = ?",
+                String.class, examId);
+        if (rows.isEmpty()) return mapper.createObjectNode();
+        try {
+            return mapper.readTree(rows.getFirst());
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Invalid template policy", e);
+        }
+    }
+
+    /**
+     * The (kind, subject) pairs whose standard default SUBJECT template is not publishable. The template that decides
+     * is the one {@code ExamTemplateService.findBestMatch} picks (default first, then the latest structure year, then
+     * the highest code), so Java and SQL never select different defaults when two are active (FU-BE15-R2-5).
+     */
+    private List<String[]> unpublishablePairs() {
+        return jdbc.query("SELECT kind_code, subject_code FROM ("
+                + " SELECT DISTINCT ON (kind_code, subject_code) kind_code, subject_code, is_default, part_code, publishable"
+                + " FROM exam.exam_template WHERE scope = 'SUBJECT' AND active AND build_mode = 'STANDARD'"
+                + " AND subject_code IS NOT NULL"
+                + " ORDER BY kind_code, subject_code, is_default DESC, COALESCE(structure_year, 0) DESC,"
+                + " code COLLATE \"C\" DESC) best"
+                + " WHERE is_default AND part_code IS NULL AND NOT publishable",
+                (rs, row) -> new String[] {rs.getString("kind_code"), rs.getString("subject_code")});
     }
 
     private String unpublishable(String e) {
-        List<String[]> codes = jdbc.query("SELECT DISTINCT kind_code, subject_code FROM exam.exam_template"
-                + " WHERE scope = 'SUBJECT' AND part_code IS NULL AND active AND is_default"
-                + " AND build_mode = 'STANDARD' AND NOT publishable AND subject_code IS NOT NULL",
-                (rs, row) -> new String[] {rs.getString("kind_code"), rs.getString("subject_code")});
+        List<String[]> codes = unpublishablePairs();
         if (codes.isEmpty()) return "CAST(NULL AS boolean)";
         Map<String, UUID> kinds = idsByCode("EXAM");
         Map<String, UUID> subjects = idsByCode("SUBJECT");
@@ -90,6 +123,29 @@ public class ExamCheckValidity {
     }
 
     /**
+     * SQL boolean (FTM R-12, AC-58): the saved whole-exam result of run {@code r} was not evaluated under the current
+     * rules ({@link ExamCheckRulesStamp}) and the rules apply to exam {@code e}: a standard exam of a kind that has
+     * subject limits whose structure {@code s} holds a section of a limited subject in {@code sections},
+     * {@code subjectPool} or {@code options[].sections} (the arrays {@link ExamCheckRules} reads; the blocks of a
+     * SUBJECT option have no stored subject code and are in neither).
+     */
+    String rulesChanged(String r, String e, String s) {
+        Map<String, UUID> kinds = idsByCode("EXAM");
+        String kindIds = SubjectFormLimits.kinds().stream().sorted().filter(kinds::containsKey)
+                .map(code -> "'" + kinds.get(code) + "'::uuid").collect(java.util.stream.Collectors.joining(", "));
+        if (kindIds.isEmpty()) return "false";
+        // Constant codes only: no user input reaches this SQL.
+        String subjects = SubjectFormLimits.subjects().stream().sorted()
+                .map(code -> "@.subjectCode == \"" + code + "\"").collect(java.util.stream.Collectors.joining(" || "));
+        String arrays = "exists(@.sections[*] ? (" + subjects + ")) || exists(@.subjectPool[*] ? (" + subjects + "))"
+                + " || exists(@.options[*].sections[*] ? (" + subjects + "))";
+        return "(" + r + ".result->>'" + ExamCheckRulesStamp.KEY + "' IS DISTINCT FROM '" + ExamCheckRulesStamp.CURRENT + "'"
+                + " AND COALESCE(" + e + ".build_mode, 'STANDARD') <> 'REVIEW'"
+                + " AND " + e + ".kind_item_id IN (" + kindIds + ")"
+                + " AND jsonb_path_exists(" + s + ".parts, '$.parts[*] ? (" + arrays + ")'))";
+    }
+
+    /**
      * SQL jsonb to store for the exam whose id is bound to {@code examIdParameter}: the config parameter plus
      * {@code templatePolicy} when the policy is not the default.
      */
@@ -115,7 +171,7 @@ public class ExamCheckValidity {
                 + "s.structure_hash AS current_hash, r.structure_hash AS saved_hash, "
                 + "r.profile_revision, p.revision AS current_profile_revision, "
                 + "r.catalog_revision, r.source_revisions::text AS source_revisions, "
-                + configMatches("r", "e") + " AS config_matches "
+                + configMatches("r", "e") + " AS config_matches, " + rulesChanged("r", "e", "s") + " AS rules_changed "
                 + "FROM exam.exam e LEFT JOIN exam.exam_structure s ON s.exam_id = e.id "
                 + "LEFT JOIN exam.exam_kind_profile p ON p.exam_item_id = e.kind_item_id "
                 + "LEFT JOIN exam.exam_check_run r ON r.exam_id = e.id WHERE e.id IN (" + placeholders + ")";
@@ -124,7 +180,8 @@ public class ExamCheckValidity {
                 rs.getString("current_hash"),
                 rs.getString("saved_hash"), (Long) rs.getObject("profile_revision"),
                 (Long) rs.getObject("current_profile_revision"), (Long) rs.getObject("catalog_revision"),
-                revisions(rs.getString("source_revisions")), rs.getBoolean("config_matches")), examIds.toArray());
+                revisions(rs.getString("source_revisions")), rs.getBoolean("config_matches"),
+                rs.getBoolean("rules_changed")), examIds.toArray());
         Set<UUID> subjects = new HashSet<>();
         for (Row row : rows) subjects.addAll(row.revisions().keySet());
         Map<UUID, Long> currentSources = subjects.isEmpty() ? Map.of() : source.sourceRevisions(subjects);
@@ -142,6 +199,8 @@ public class ExamCheckValidity {
                 } else if (row.revisions().entrySet().stream().anyMatch(entry ->
                         !Objects.equals(entry.getValue(), currentSources.getOrDefault(entry.getKey(), 0L)))) {
                     reason = "SOURCE_CHANGED";
+                } else if (row.rulesChanged()) {
+                    reason = "RULES_CHANGED";
                 }
             }
             String status;
@@ -181,5 +240,5 @@ public class ExamCheckValidity {
 
     private record Row(UUID examId, String status, UUID runId, String checkedStatus, String currentHash, String savedHash,
                        Long profileRevision, Long currentProfileRevision, Long catalogRevision,
-                       Map<UUID, Long> revisions, boolean configMatches) { }
+                       Map<UUID, Long> revisions, boolean configMatches, boolean rulesChanged) { }
 }

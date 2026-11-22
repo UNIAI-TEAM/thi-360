@@ -1,6 +1,6 @@
 # Thi 360
 
-Cổng luyện thi trực tuyến cho kỳ thi đánh giá năng lực HSA và QDA.
+Cổng luyện thi trực tuyến cho 9 kỳ thi (`HSA`, `QDA`, `BCA`, `V-ACT`, `SP2E`, `SPT`, `THPTQG`, `H-SCA`, `V-SAT`), gồm ngân hàng câu hỏi, soạn và công bố đề, thương mại/thanh toán (khuyến mãi, bộ đề, VNPAY) và phòng thi/chấm điểm học viên.
 
 | Muốn biết | Đọc |
 |---|---|
@@ -73,7 +73,7 @@ Chạy từ thư mục gốc (Node 22 trên PATH). Ba bộ độc lập; CI ch�
 |---|---|---|
 | Backend | `cd backend && ./mvnw -B -ntp verify` | Unit + tích hợp (Testcontainers: PostgreSQL, Redis, Keycloak, MinIO; cần Docker, nặng). Chạy một lần trên một máy tại một thời điểm. Xuất `backend/target/openapi.json`. Test hẹp: `./mvnw -B -ntp test -Dtest=<Lớp>` |
 | Web | `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build` | `pnpm test` chạy Vitest của hai web và các gói, không gồm e2e |
-| E2E | `pnpm --filter @thi360/e2e exec playwright install chromium` (một lần), rồi `E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test` | Cần Compose đang chạy và `pnpm build` đã chạy. Playwright tự khởi động backend (`api,worker,dev`) và hai web ở 8080/3000/3001 rồi tắt khi xong; `reuseExistingServer` bật ở máy dev nên cổng đang có server sẽ bị dùng lại, hãy giải phóng 8080/3000/3001 trước |
+| E2E | `pnpm --filter @thi360/e2e exec playwright install chromium` (một lần), rồi `E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test` | Cần Compose đang chạy và `pnpm build` đã chạy. Playwright (`e2e/playwright.config.ts` và `.github/workflows/e2e.yml`) tự khởi động backend với profile `api,worker,dev,e2e` (mở đồng hồ điều khiển được `/api/v1/test/clock`, hộp thư thử `/api/v1/test/mail`, giả lập lỗi tệp nghe `/api/v1/test/audio-faults/**` và cổng thanh toán giả lập `/mock-vnpay` khi `THI360_VNPAY_MODE=MOCK`) cùng hai web ở 8080/3000/3001 rồi tắt khi xong; `reuseExistingServer` bật ở máy dev nên cổng đang có server sẽ bị dùng lại, hãy giải phóng 8080/3000/3001 trước |
 
 Kiểm tra không lệch OpenAPI sau `verify`: `diff -u packages/api-client/openapi.json backend/target/openapi.json` rồi `pnpm --filter @thi360/api-client generate && git diff --exit-code packages/api-client` đều phải sạch. Trên Windows có DB dùng chung xem mục trên: `THI360_DB_PORT=54320 SPRING_FLYWAY_OUT_OF_ORDER=true E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test`.
 
@@ -125,9 +125,49 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
    - Thêm **Audience** protocol mapper (`oidc-audience-mapper`) cho client trên với **Included Client Audience** = `THI360_KC_PLATFORM_CLIENT_ID`, bật **Add to access token**, tắt **Add to ID token**.
    - Tạo tài khoản khởi tạo (ví dụ `platform`), đặt mật khẩu và gán **duy nhất** realm role `PLATFORM_ADMIN` (không gán role `admin` của Keycloak). Tên đăng nhập tài khoản nền tảng phải nằm trong danh sách tên dành riêng của ứng dụng.
 3. **Biến môi trường bắt buộc ở production/staging**: `THI360_KC_URL`, `THI360_KC_REALM`, `THI360_KC_CLIENT_ID`, `THI360_KC_CLIENT_SECRET`, `THI360_KC_PLATFORM_REALM`, `THI360_KC_PLATFORM_ROLE`, `THI360_KC_PLATFORM_CLIENT_ID`, `THI360_KC_PLATFORM_CLIENT_SECRET`, `THI360_CTX_SECRET` (khóa HMAC >= 32 bytes UTF-8; giá trị mặc định trong `.env.example` chỉ áp dụng khi chạy profile `dev` hoặc `test`, khởi động các profile khác sẽ bị từ chối nếu thiếu hoặc ngắn hơn 32 bytes), `THI360_TRUSTED_PROXIES`.
-4. **Proxy web & IP thực của người dùng (`THI360_TRUST_REAL_IP`)**: Next.js 16 không còn `request.ip`, và route proxy `/api/[...path]` của cả hai web luôn bỏ qua `X-Forwarded-For` do trình duyệt gửi. Khi triển khai sau nginx, cấu hình `proxy_set_header X-Real-IP $remote_addr;` trên nginx, đặt `THI360_TRUST_REAL_IP=1` cho hai web để proxy ghi đè `X-Forwarded-For` từ `X-Real-IP`, và đưa IP của máy chủ web vào `THI360_TRUSTED_PROXIES` ở backend. Không bật `THI360_TRUST_REAL_IP=1` nếu request đi thẳng tới Next.js mà không qua reverse proxy đáng tin cậy.
+4. **Proxy web & IP thực của người dùng (`THI360_TRUST_REAL_IP`)**: Next.js 16 không còn `request.ip`, và route proxy `/api/[...path]` của cả hai web luôn bỏ qua `X-Forwarded-For` do trình duyệt gửi. Khi triển khai sau nginx, cấu hình `proxy_set_header X-Real-IP $remote_addr;` trên nginx, đặt `THI360_TRUST_REAL_IP=1` cho hai web để proxy ghi đè `X-Forwarded-For` từ `X-Real-IP`, và đưa IP của máy chủ web vào `THI360_TRUSTED_PROXIES` ở backend. Khi các tuyến VNPAY (`/api/v1/public/payments/vnpay/`) được nginx định tuyến thẳng tới `thi360-api` (không đi qua Next.js, xem mục 3 dưới đây), **bắt buộc đưa cả IP/CIDR của nginx biên vào `THI360_TRUSTED_PROXIES`** cùng với IP các máy chủ web Next.js. Không bật `THI360_TRUST_REAL_IP=1` nếu request đi thẳng tới Next.js mà không qua reverse proxy đáng tin cậy.
 5. **Bộ đệm header của nginx và phiên tự làm mới**: khi access token hết hạn (5 phút) mà refresh token còn hạn, hai web tự làm mới phiên ở phía máy chủ và trả về bốn cookie mới (`thi360_at`, `thi360_rt`, `thi360_ctx`, `thi360_xsrf`) ngay trên phản hồi của trang hoặc của API. Header của phản hồi đó vượt bộ đệm mặc định 4k/8k của nginx và nginx trả 502 ("upstream sent too big header"). Trong các `location` trỏ tới hai web đặt `proxy_buffer_size 16k; proxy_buffers 8 16k; proxy_busy_buffers_size 32k;`. Cách làm mới này dựa vào việc realm **không** bật "Revoke Refresh Token" (mặc định của Keycloak): nếu bật, một refresh token chỉ dùng được một lần và người dùng có thể bị đăng xuất khi hai web cùng làm mới.
-6. **PostgreSQL `pg_trgm` và giới hạn tải lên**: backend dùng extension `pg_trgm` cho tìm kiếm câu hỏi (schema `questionbank`). Migration `CREATE EXTENSION IF NOT EXISTS pg_trgm` tự chạy khi tài khoản ứng dụng đủ quyền (`CREATE` trên database); nếu chính sách DB không cho phép, DBA chạy `CREATE EXTENSION pg_trgm` trước bằng tài khoản quản trị — migration sau đó là no-op. Backend chấp nhận tệp tới 21 MB (`spring.servlet.multipart.max-file-size`); trên nginx của môi trường triển khai đặt `client_max_body_size 22m;` trở lên cho các `location` trỏ tới `thi360-api` để không chặn tệp đính kèm 20 MB trước khi tới backend.
+6. **PostgreSQL `pg_trgm` và giới hạn tải lên**: backend dùng extension `pg_trgm` cho tìm kiếm câu hỏi (schema `questionbank`) và tìm kiếm sản phẩm (`commerce.storefront_product`). Migration `CREATE EXTENSION IF NOT EXISTS pg_trgm` tự chạy khi tài khoản ứng dụng đủ quyền (`CREATE` trên database); nếu chính sách DB không cho phép, DBA chạy `CREATE EXTENSION pg_trgm` trước bằng tài khoản quản trị — migration sau đó là no-op. Backend chấp nhận tệp tới 21 MB (`spring.servlet.multipart.max-file-size`); trên nginx của môi trường triển khai đặt `client_max_body_size 22m;` trở lên cho các `location` trỏ tới `thi360-api` để không chặn tệp đính kèm 20 MB trước khi tới backend.
+
+## Triển khai môi trường thật (Production / Staging)
+
+1. **Bắt buộc bật profile `prod`** (`api,prod` cho tiến trình API và `worker,prod` cho tiến trình nền):
+   - `E2eProfileGuard` từ chối khởi động ngay ở `BeanFactoryPostProcessor` nếu profile `e2e` được bật cùng `prod` (khóa `/api/v1/test/**` và đồng hồ `MutableClock`; khi tắt `e2e`, `TestApiAbsentSecurityConfig` trả `404` cho `/api/v1/test/**`).
+   - `VnpayModeStartupGuard` từ chối khởi động nếu `THI360_VNPAY_MODE` là `MOCK` khi profile `prod` đang bật (ngoài `dev`/`test`/`e2e` cũng chặn `MOCK` nếu có cấu hình `THI360_VNPAY_TMN_CODE` hoặc `THI360_VNPAY_HASH_SECRET`). `MockVnpayPageCondition` tắt `/mock-vnpay` ngoài `(dev | test | e2e) & !prod`, còn `VnpayRealModeStartupGuard` kiểm tra đủ 4 biến cấu hình và định dạng URI (`https` ở `PRODUCTION`, `http`/`https` ở `SANDBOX`).
+   - `DevEmailCodeGuard` chặn đặt `THI360_DEV_EMAIL_CODE` trừ khi profile `dev` bật và chỉ đi cùng `api`/`worker`.
+   - **Lưu ý:** nếu không bật profile `prod`, các chốt chặn dành riêng cho môi trường thật nói trên không kích hoạt.
+
+2. **Biến môi trường mới (đợt 3):** kiểm tra đầy đủ theo `backend/src/main/resources/application.yml` và `.env.example` (không ghi giá trị bí mật vào file cấu hình được commit):
+   - **Token pepper, đăng ký & đặt lại mật khẩu:** `THI360_TOKEN_PEPPER` (bắt buộc ở môi trường thật để ký HMAC mã OTP email và mã đặt lại mật khẩu; ứng dụng không khởi động nếu trống; chỉ profile `dev`, `test`, `e2e` có giá trị mặc định công khai), `THI360_DEV_EMAIL_CODE` (mã OTP 6 số cố định, chỉ dùng cho profile `dev`), `THI360_REGISTER_IP_HOUR_LIMIT` (mặc định `30`), `THI360_REGISTER_IP_DAY_LIMIT` (`100`), `THI360_FORGOT_PER_IP_LIMIT` (`60`), `THI360_RESET_PER_IP_LIMIT` (`60`), `THI360_PASSWORD_RESET_TTL` (`PT1H`), `THI360_PASSWORD_RESET_COOLDOWN` (`PT1M`), `THI360_PASSWORD_RESET_DAILY_LIMIT` (`5`), `THI360_PASSWORD_RESET_DAILY_WINDOW` (`PT24H`), `THI360_PASSWORD_RESET_RECONCILE_GRACE` (`PT5M`).
+   - **Email / SMTP & Mailpit:** `THI360_SMTP_HOST`, `THI360_SMTP_PORT`, `THI360_SMTP_USERNAME`, `THI360_SMTP_PASSWORD`, `THI360_SMTP_TLS` (`starttls` | `tls` | `none`, mặc định `starttls`; giá trị khác làm ứng dụng không khởi động), `THI360_MAIL_FROM`. Môi trường `dev` (và E2E) gửi mọi email vào Mailpit (`localhost:1360`, giao diện xem thư http://localhost:8361), không gửi tới địa chỉ thật; profile `test` tắt scheduler gửi thư và dùng `GreenMail` trong bộ nhớ.
+   - **Ảnh đại diện & MinIO/S3:** `THI360_AVATAR_BUCKET` (mặc định `thi360-avatars`, tách riêng khỏi `THI360_S3_BUCKET` mặc định `thi360-private`). **Bắt buộc tạo sẵn bucket `thi360-avatars` (cùng bucket `THI360_S3_BUCKET`) ở chế độ riêng tư (private — phục vụ qua backend, không mở public-read) trên kho lưu trữ ở môi trường thật** vì `THI360_S3_AUTO_CREATE_BUCKET` mặc định là `false` ngoài `dev`/`test`.
+   - **VNPAY & Thương mại:** `THI360_VNPAY_MODE` (`MOCK` dùng cho `dev`/`test`/`e2e` và chỉ được phép trên bản demo chưa cấu hình `THI360_VNPAY_TMN_CODE`/`THI360_VNPAY_HASH_SECRET` ngoài `prod`; `SANDBOX` hoặc `PRODUCTION` bắt buộc có đủ `THI360_VNPAY_TMN_CODE`, `THI360_VNPAY_HASH_SECRET`, `THI360_VNPAY_PAY_URL`, `THI360_VNPAY_API_URL`), `THI360_VNPAY_MIN_AMOUNT` (mặc định trong mã `5000` đồng cho production; đặt `10000` cho sandbox/dev/e2e theo AD-10, cũng là giá bán tối thiểu khi công bố bài thi), `THI360_VNPAY_IPN_ALLOWED_IPS` (danh sách IP hoặc CIDR phân tách bằng dấu phẩy; **để trống sẽ tắt kiểm tra IP — fail-open/cho phép mọi IP**, cú pháp IP/CIDR sai sẽ chặn khởi động), `THI360_VNPAY_PAY_ENCODING` (mặc định `JAVA_URL_ENCODER`), `THI360_VNPAY_PAY_HASH_ALGORITHM` (`HMAC_SHA512`), `THI360_VNPAY_QUERYDR_HASH_ALGORITHM` (`HMAC_SHA512`), `THI360_VNPAY_REFUND_HASH_ALGORITHM` (`HMAC_SHA512`), `THI360_VNPAY_CONNECT_TIMEOUT` (`PT5S`), `THI360_VNPAY_READ_TIMEOUT` (`PT10S`), `THI360_VNPAY_SERVER_IP` (mặc định `127.0.0.1`, đặt thành IP công cộng của máy chủ backend ở môi trường thật), `THI360_VNPAY_REFUND_CODE02_POLICY` (`UNKNOWN`), `THI360_VOUCHER_QUOTE_MINUTE_LIMIT` (`10`), `THI360_VOUCHER_QUOTE_DAY_LIMIT` (`50`), `THI360_COMMERCE_RECONCILIATION_CRON` (`0 0 2 * * *`), `THI360_COMMERCE_RECONCILIATION_ZONE` (`Asia/Ho_Chi_Minh`).
+   - **Lượt thi, sinh đề & audio:** `THI360_EXAM_SOLVER_GENERATE_DEADLINE` (`30s`), `THI360_ATTEMPT_GEN_THREADS` (`4`), `THI360_ATTEMPT_GEN_QUEUE_CAPACITY` (`32`), `THI360_ATTEMPT_GEN_MAX_QUEUE_WAIT` (`PT60S`), `THI360_ATTEMPT_STALE_STARTING_AFTER` (`PT2M`), `THI360_ATTEMPT_AUDIO_LEASE_DURATION` (`PT45S`), `THI360_ATTEMPT_AUDIO_SEEK_TOLERANCE` (`PT3S`).
+   - **Rate limit & Proxy web:** `THI360_SECURITY_RATELIMIT_EXEMPTIPS` (danh sách IP hoặc CIDR của máy chủ web SSR được miễn ngưỡng 120 req/phút trên `GET`/`HEAD /api/v1/public/**`; không miễn đăng nhập và tải tệp), `THI360_TRUST_REAL_IP` (đặt `1` khi đứng sau nginx đã đặt `proxy_set_header X-Real-IP $remote_addr;`) kết hợp `THI360_TRUSTED_PROXIES` (bao gồm cả IP/CIDR máy chủ web Next.js và nginx biên khi proxy thẳng tuyến VNPAY).
+   - **Kênh hỗ trợ web học viên:** `NEXT_PUBLIC_SUPPORT_PHONE`, `NEXT_PUBLIC_SUPPORT_EMAIL`, `NEXT_PUBLIC_SUPPORT_HOURS` (biến `NEXT_PUBLIC_*` được nhúng lúc build `web-student`; để trống sẽ hiện thông báo đang cập nhật).
+
+3. **Cấu hình nginx cho VNPAY IPN & Return:**
+   - Bắt buộc định tuyến trực tiếp `location ^~ /api/v1/public/payments/vnpay/` thẳng tới `thi360-api` (**không** đi qua proxy Next.js) để IPN từ VNPAY và URL quay lại trình duyệt tới thẳng backend, giữ nguyên IP nguồn cho `THI360_VNPAY_IPN_ALLOWED_IPS` và tránh timeout/CSRF proxy.
+   - **Bắt buộc đưa IP/CIDR của nginx biên vào `THI360_TRUSTED_PROXIES`** (cùng với IP của các máy chủ web Next.js): theo `ClientIpResolver`, nếu `remoteAddr` của nginx không nằm trong `THI360_TRUSTED_PROXIES`, `thi360-api` sẽ bỏ qua `X-Forwarded-For` và dùng chính IP của nginx làm IP khách — khiến `VnpayIpnIpAllowlist` từ chối mọi IPN hợp lệ từ VNPAY với `97 Invalid Checksum` và dồn toàn bộ người dùng quay lại `/vnpay/return` vào chung một hạn mức `120 req/phút`.
+   - Khuyến nghị dùng `proxy_set_header X-Forwarded-For $remote_addr;` khi nginx là lớp proxy biên ngoài cùng (hoặc `$proxy_add_x_forwarded_for` nếu phía trước nginx có load balancer tin cậy mà IP của nó cũng nằm trong `THI360_TRUSTED_PROXIES`):
+     ```nginx
+     location ^~ /api/v1/public/payments/vnpay/ {
+         proxy_pass http://thi360_api;
+         proxy_set_header Host $host;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header X-Forwarded-For $remote_addr;
+         proxy_set_header X-Forwarded-Proto $scheme;
+     }
+     ```
+   - **Lưu ý kết quả đo thực tế (VP-2):** các máy chủ đám mây đặt ngoài Việt Nam có thể bị chặn geo-IP khi gọi chủ động tới `sandbox.vnpayment.vn` (`querydr`/`refund`), trong khi trang thanh toán `pay.vnpay.vn` và luồng IPN gọi từ VNPAY tới miền đích vẫn hoạt động bình thường.
+
+4. **Tiến trình `worker` (profile `worker`):** chạy cùng codebase với `thi360-api` (không mở web server khi chạy chỉ profile `worker`) để thực thi các job nền:
+   - **Outbox & thư điện tử:** outbox relay (`OutboxRelay` quét `shared.outbox_event`), gửi thư và dọn thư đã gửi (`MailWorker` trên scheduler riêng `mailTaskScheduler`, giữ chỗ bằng `claim_token`).
+   - **Tài khoản & nhật ký:** đối soát tài khoản kẹt `PROVISIONING` (`ProvisioningReconcilerJob`), cấp tài khoản hàng loạt (`ImportBatchProcessorJob`), thu hồi phiên sau khi đặt lại mật khẩu (`PasswordResetRevocationWorker`), dọn ảnh đại diện chờ xóa (`AvatarCleanupWorker`), tạo phân vùng và lưu trữ nhật ký (`AuditPartitionJob`, `AuditArchiveJob`).
+   - **Nội dung & bài thi:** dọn tài sản/tệp nhập câu hỏi (`QuestionAssetCleanupJob`, `QuestionImportCleanupJob`), dọn ảnh bìa bài thi mồ côi (`ExamCoverCleanupJob`), dọn job kiểm tra cấu hình hết hạn (`ExamCheckRetentionJob`).
+   - **Thương mại & VNPAY:** tự động cấp quyền lại cho đơn `PAID` gặp lỗi (`FulfillmentRetryWorker`), hết hạn đơn `PENDING_PAYMENT` sau tra cứu (`OrderExpiryWorker`), tra cứu giao dịch treo qua VNPAY `querydr` (`QueryDrWorker`), lập báo cáo đối soát cuối ngày lúc 02:00 (`ReconciliationWorker`).
+   - **Lượt thi:** dọn lượt `STARTING` quá hạn (`AttemptStaleWorker`), đóng phần/bài thi quá hạn (`AttemptDeadlineWorker`), thử lại sinh phần bị kẹt hoặc lỗi (`PartGenerationRetryWorker`).
+   - **Chống chạy trùng:** các job hàng đợi dùng `SELECT ... FOR UPDATE SKIP LOCKED` để nhiều worker không lấy cùng bản ghi; tác vụ đối soát cuối ngày (`ReconciliationService`) dùng `pg_try_advisory_xact_lock`.
 
 
 ## Lệnh thường dùng
@@ -147,9 +187,11 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
 backend/            Spring Boot (modular monolith)
 apps/web-admin/     Next.js, trang quản trị
 apps/web-student/   Next.js, trang học viên
-packages/ui/        token và thành phần giao diện dùng chung
+packages/ui/        token và thành phần giao diện dùng chung (`@thi360/ui`)
+packages/web-kit/   proxy, phiên và tiện ích Next.js dùng chung (`@thi360/web-kit`)
 packages/api-client/  client sinh từ OpenAPI
 packages/config/    cấu hình TypeScript dùng chung
+e2e/                bộ kiểm thử đầu-cuối Playwright (`@thi360/e2e`)
 infra/              Docker Compose, realm Keycloak
 docs/               spec, plan
 scripts/            công cụ làm việc với UniAI

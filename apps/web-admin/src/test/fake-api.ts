@@ -1,9 +1,9 @@
 import type { components } from "@thi360/api-client";
-import { afterEach, beforeEach, vi } from "vitest";
+import { beforeEach } from "vitest";
 
 /**
  * Client giả cho test của các màn đã nối API (plan B7): các hàm `api.real.ts` gọi
- * `createBrowserApiClient()` của `@/lib/api/client`, nên test chặn ở đó thay vì dữ liệu mẫu.
+ * `createBrowserApiClient()` của `@/lib/api/client`, nên test chặn ở đó.
  *
  * Cách dùng trong một file test:
  *
@@ -13,7 +13,7 @@ import { afterEach, beforeEach, vi } from "vitest";
  *   const fake = await import("@/test/fake-api");
  *   return { createBrowserApiClient: fake.fakeBrowserApiClient };
  * });
- * withRealApi(); // tắt cờ GRADING_MOCK + dọn registry mỗi test
+ * withRealApi(); // dọn registry trước mỗi test
  * fakeApi.get("/api/v1/admin/questions", ok(apiPage));
  * ```
  *
@@ -120,16 +120,11 @@ export function fieldErrors(code: string, errors: { field: string; message?: str
 }
 
 /**
- * Cài cho một file test: cờ `GRADING_MOCK` tắt (nhánh API thật chạy, như trong production) và dọn registry trước
- * mỗi test. Gọi sau `vi.mock("@/lib/api/client", …)`.
+ * Cài cho một file test: dọn registry `fakeApi` trước mỗi test. Gọi sau `vi.mock("@/lib/api/client", …)`.
  */
 export function withRealApi(): void {
   beforeEach(() => {
     fakeApi.reset();
-    vi.stubEnv("NEXT_PUBLIC_THI360_GRADING_MOCK", "false");
-  });
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 }
 

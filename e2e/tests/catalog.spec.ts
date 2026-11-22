@@ -1,5 +1,6 @@
 import { expect, type Browser, type Page, test } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
+import { loginAdmin } from "./helpers/editor-qa";
 
 const WEB_URL = process.env.THI360_WEB_URL ?? "http://localhost:3000";
 const ADMIN_URL = process.env.THI360_ADMIN_URL ?? "http://localhost:3001";
@@ -499,5 +500,54 @@ test.describe("Cấu hình chung — Danh mục dùng chung, tổ hợp, cây v�
     await expect(page.getByText(impChapName)).toBeVisible();
     await page.getByRole("button", { name: `Mở ${impChapName}` }).click();
     await expect(page.getByText(impLessonName)).toBeVisible();
+  });
+
+  test("giá trị hệ thống: đổi tên hiện ở ô chọn Môn khi tạo bài thi; không có nút xóa, ngừng; khóa mã (UNI-2759)", async ({
+    context,
+    page,
+  }) => {
+    const originalName = "Toán học";
+    const renamed = `Toán học ${Date.now().toString(36).toUpperCase()}`;
+
+    await loginAdmin(context, "vi");
+
+    async function renameSubject(from: string, to: string) {
+      await page.goto(`${ADMIN_URL}/catalog?group=SUBJECT`);
+      await page.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" }).fill("TOAN");
+      await page.getByRole("button", { name: `Sửa ${from}`, exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByText("Giá trị hệ thống: chỉ sửa được tên.")).toBeVisible();
+      await expect(dialog.getByLabel(/Mã giá trị/)).toBeDisabled();
+      await dialog.getByLabel(/Tên tiếng Việt/).fill(to);
+      await dialog.getByRole("button", { name: "Lưu", exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.getByText(to, { exact: true })).toBeVisible();
+    }
+
+    await page.goto(`${ADMIN_URL}/catalog?group=SUBJECT`);
+    await page.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" }).fill("TOAN");
+    const row = page.getByRole("row", { name: new RegExp(originalName) });
+    await expect(row.getByText("Hệ thống", { exact: true })).toBeVisible();
+    await expect(row.getByRole("button", { name: `Xóa ${originalName}`, exact: true })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: `Ngừng sử dụng ${originalName}`, exact: true })).toHaveCount(0);
+
+    try {
+      await renameSubject(originalName, renamed);
+      await page.goto(`${ADMIN_URL}/exams/new`);
+      await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
+      await page.getByRole("combobox", { name: /^Kỳ thi/ }).click();
+      await page.getByRole("option", { name: /H-SCA/ }).click();
+      await page.getByRole("combobox", { name: /^Môn/ }).click();
+      await expect(page.getByRole("option", { name: renamed, exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+    } finally {
+      // Trả lại tên gốc dù bước trên lỗi ở đâu; chỉ khi đổi tên đã lưu được.
+      await page.goto(`${ADMIN_URL}/catalog?group=SUBJECT`);
+      await page.getByRole("searchbox", { name: "Tìm theo mã hoặc tên" }).fill("TOAN");
+      await expect(page.getByRole("row", { name: /TOAN/ }).first()).toBeVisible();
+      if ((await page.getByRole("button", { name: `Sửa ${renamed}`, exact: true }).count()) > 0) {
+        await renameSubject(renamed, originalName);
+      }
+    }
   });
 });

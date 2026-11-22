@@ -6,9 +6,8 @@ import { screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { createRichTextExtensions } from "../../../extensions";
-import { stripTrailingEmptyParagraph } from "../../../html-contract";
-import { sanitizeQuestionHtml } from "../../../sanitize";
 import { INSERT_REGISTRY } from "../../registry";
 import CrossInsertDialog from "../dialog";
 

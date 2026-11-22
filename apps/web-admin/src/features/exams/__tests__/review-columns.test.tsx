@@ -73,6 +73,8 @@ describe("AC-1: bảng đối chiếu Yêu cầu / Thực tế / Chênh lệch",
       basis: "QUESTION",
       independent: false,
       note: null,
+      originalRequired: null,
+      topicName: null,
     });
     renderWithProviders(
       <ExamPreviewCompliance
@@ -137,7 +139,7 @@ describe("AC-3: bảng Chi tiết theo khối", () => {
       ],
     });
 
-    const table = await screen.findByRole("table", { name: /^Chi tiết theo khối của đường/ });
+    const table = await screen.findByRole("table", { name: "Chi tiết theo khối" });
     expectRightAligned(table, ["Số câu yêu cầu", "Nguồn phù hợp"]);
     for (const name of ["Số câu yêu cầu", "Nguồn phù hợp"]) {
       const index = columnIndex(table, name);

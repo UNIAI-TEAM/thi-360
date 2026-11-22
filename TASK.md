@@ -222,6 +222,85 @@ Sóng 7:  T16
 
 **Danh mục mở lại (2026-11-14, M.Trường):** T13, T14, T15 (PBI-02 Danh mục dùng chung) từng hoãn ngày 2026-11-13, nay làm trong đợt chạy này. Chi tiết: plan mục A7.
 
+## Đợt 3 — Thương mại và lượt thi (PBI-05 đến PBI-13)
+
+Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-05-13.md` (44 task, 138 điểm, 10 sóng) · nhánh tích hợp `integration/dot-3` · cook bắt đầu 2026-11-19 (zone17-builder, lane trên ba máy: local, bro, cty).
+
+| Task | Issue | Việc | Phụ thuộc cứng | Phụ thuộc mềm | Điểm | Trạng thái |
+|---|---|---|---|---|---|---|
+| C-0 | UNI-2703 | Khung module `commerce`, `attempt`; quyền bit 18–26; hợp đồng SPI; `StudentLearningProvider` nhận danh sách; pepper; ngôn ngữ ưa dùng; danh sách IP miễn giới hạn tần suất |  |  | 3 | merge PR #124 (`b64c9e14`) |
+| C-0b | UNI-2704 | Profile `e2e`, đồng hồ thử, `/api/v1/test/**`, `ForbiddenKeysAssert` |  |  | 1 | merge PR #123 (`2b72ce26`) |
+| ML | UNI-2705 | Gửi thư `shared/mail` (hàng thư, worker, SMTP, mẫu vi/en, endpoint đọc thư cho E2E) |  | C-0b | 3 | merge PR #127 (`265ea998`) |
+| TS | UNI-2701 | Dựng lại seed đề test `TEST-*` theo mẫu BA (UNI-2701, cổng G0c cũ) | G0b |  | 3 | merge PR #136 (`5e70f8e8`) |
+| FU | UNI-2700 | Việc tồn đọng của đợt 2B (UNI-2700, 41 mục) | EX-1, EX-2, TS | FA-1 | 8 | merge PR #155 (`858cb28c`) |
+| EX-1 | UNI-2706 | Module `exam`: thông tin bán, ảnh bìa (kèm dọn ảnh bỏ), kiểm tra khi công bố, quy tắc E24, sự kiện, `PublishedExamPort`, đọc giờ qua `Clock` | G0b, TS | C-0b | 4 | merge PR #140 (`ba90c125`) |
+| EX-2 | UNI-2707 | Module `exam`: `PaperSolverPort` trên mô hình 2B, `PreviewPaperPort`, đo hiệu năng | G0b, TS |  | 2 | merge PR #138 (`f77deccb`) |
+| DS | UNI-2708 | Bộ dữ liệu bài đã công bố cho 9 kỳ thi, dùng cho test, dev, E2E | EX-1 | EX-2 | 4 | merge PR #145 (`9389da7f`) |
+| VP-1 | UNI-2709 | Thử VNPAY sandbox trước khi làm cổng thật; vector chữ ký thật | G2 |  | 1 | đã merge vào `integration/dot-3` (PR #121, `171ee506`, 2026-11-19); AC-3, AC-12 chờ VNPAY (Q9), VP-2 đo lại |
+| ID-1 | UNI-2710 | Đăng ký, xác minh email, đổi email | C-0, ML |  | 3 | merge PR #137 (`9c73a563`) |
+| ID-2 | UNI-2711 | Quên và đặt lại mật khẩu, hồ sơ, ảnh đại diện | C-0, ML |  | 2 | merge PR #139 (`1250752a`) |
+| CM-1 | UNI-2712 | Bảng chiếu sản phẩm, API công khai | C-0, C-0b, EX-1 | DS | 3 | merge PR #141 (`25e2e8f7`) |
+| CM-2 | UNI-2713 | Khuyến mãi, voucher, tính giá, cảnh báo giá sàn, tổng tiền đã giảm, lịch sử thay đổi | CM-1 |  | 5 | merge PR #156 (`e82928eb`) |
+| CM-4a | UNI-2714 | Bảng quyền dùng, `EntitlementPort`, cấp quyền nội bộ | C-0 |  | 2 | merge PR #128 (`55994db7`) |
+| CM-4b | UNI-2715 | `exam-access`, `/me/exams` | CM-1, CM-4a |  | 2 | merge PR #146 (`9ce34f90`) |
+| CM-3a | UNI-2716 | Đơn hàng, cổng giả lập, IPN, trang quay lại, đơn 0 đồng, cấp quyền sau thu tiền, quy tắc một khoản được tính mỗi đơn | CM-2, CM-4b, ML |  | 5 | merge PR #163 (`29c6cbdf`) |
+| CM-3b | UNI-2717 | Cổng VNPAY thật, `querydr`, đơn hết hạn, tiền về muộn sau hết hạn | CM-3a | VP-1 | 3 | merge PR #165 (`04965899`) |
+| CM-5 | UNI-2718 | Quản lý đơn, người mua, hoàn tiền, tiếp tục cấp quyền, đối soát, xử lý tiền về trên lần đã ghi thất bại | CM-3a |  | 5 | merge PR #168 (`bcfdde0b`) |
+| VP-2 | UNI-2719 | Luồng VNPAY sandbox thật có IPN, qua bản demo | CM-3b, FS-3, FA-3, DS, G2 |  | 1 | merge PR #173 (`0b2493f6`) |
+| CM-6 | UNI-2720 | Bộ đề: bảng, công bố, bảng chiếu, đơn nhiều bài, cấp quyền từng bài, hoàn tiền, voucher phạm vi bộ | CM-1, CM-3a, CM-4b, DS | CM-5 | 3 | merge PR #174 (`aa66e370`) |
+| AT-1 | UNI-2721 | Lượt thi: bảng, chuẩn bị, bắt đầu và sinh đề chạy nền, đảo, trạng thái, `AttemptGuard` | C-0, C-0b, EX-1, EX-2, CM-4a, DS |  | 5 | merge PR #157 (`11527568`) |
+| AT-2a | UNI-2722 | Chuyển phần tuần tự, hoàn thành phần, nộp, đóng lượt, worker hạn giờ | AT-1 |  | 4 | merge PR #160 (`d75b1369`) |
+| AT-2b | UNI-2723 | Chọn phần 3, thử lại, sinh lỗi | AT-2a |  | 2 | merge PR #164 (`f0d05797`) |
+| AT-3 | UNI-2724 | Lưu bài, phiên sửa, tiếp quản, tài nguyên của lượt | AT-1 | AT-2a | 4 | merge PR #166 (`26db8dac`) |
+| AT-4 | UNI-2725 | Chấm tự động, tổng hợp, kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | AT-2a | AT-2b, AT-3 | 5 | merge PR #172 (`6fc8bd9c`) |
+| AT-5 | UNI-2726 | Hàng chờ chấm tự luận, số đếm, chấm lại, vận hành lượt, API chấm và kéo dài đề làm thử | AT-4 |  | 4 | merge PR #176 (`6a6552f2`) |
+| AT-6 | UNI-2727 | Phát audio có giới hạn lần nghe, kiểm tệp audio khi mở lượt | AT-2a, AT-3 |  | 3 | merge PR #169 (`ebefab8d`) |
+| AT-7 | UNI-2728 | Chấm H-SCA, V-SAT, kết quả theo phân đoạn | AT-4 | AT-5 | 2 | merge PR #180 (`9037dacb`) |
+| AT-8 | UNI-2729 | THPTQG chuyển tự do giữa các phần | AT-2a | AT-3, AT-6 | 2 | merge PR #171 (`41a9e3f7`) |
+| FS-1 | UNI-2730 | Web học viên: trang giới thiệu, danh mục, chi tiết; `proxy.ts`; thanh đầu trang | CM-1 | CM-4b, FS-4 | 3 | merge PR #149 (`1e49a9e5`) |
+| FS-2 | UNI-2731 | Web học viên: đăng ký, xác minh, quên mật khẩu, hồ sơ | ID-1, ID-2 | FS-1 | 3 | merge PR #142 (`db46d807`) |
+| FS-3 | UNI-2732 | Web học viên: xác nhận mua, kết quả thanh toán, Bài thi của tôi, đơn của tôi | CM-3a, CM-4b, FS-1 | AT-1, FS-2 | 3 | merge PR #167 (`0afe8021`) |
+| FS-4 | UNI-2733 | `packages/ui`: thành phần 8 dạng câu (làm bài và chỉ đọc); đưa bộ hiển thị nội dung (`RichTextView`, mọi loại nút, KaTeX, mhchem) vào `packages/ui` |  |  | 3 | merge PR #122 (`4f3820ab`) |
+| FS-5 | UNI-2734 | Web học viên: chuẩn bị (có chọn định hướng Tin học), chờ sinh đề, màn làm bài, lưu, ngoại tuyến, tiếp quản | FS-4, AT-2b, AT-3, CM-3a, AT-8 |  | 4 | merge PR #179 (`5e578a36`) |
+| FS-6 | UNI-2735 | Web học viên: kết quả, xem lại, lịch sử, ảnh lời giải, xem riêng 12 và 18 câu | FS-4, AT-4, FS-1, CM-3a |  | 3 | merge PR #177 (`d67dab4f`) |
+| FS-7 | UNI-2736 | Web học viên: audio, phân đoạn, nhập ký hiệu và kết quả của H-SCA, V-SAT | FS-5, FS-6, AT-6, AT-7 |  | 3 | merge PR #181 (`447d78fd`) |
+| FB | UNI-2737 | Bộ đề trên web: màn admin "Bộ đề"; thẻ, chi tiết, mua bộ và nhóm thẻ theo bộ ở web học viên | CM-6, FS-1, FS-3, FA-1 | FA-3 | 2 | merge PR #178 (`85517a06`) |
+| FA-1 | UNI-2738 | Web admin: tab Thông tin bán, ảnh bìa, cảnh báo chấm tay, menu của đợt | EX-1, FS-4 | DS | 2 | merge PR #144 (`ac60b21d`) |
+| FA-2 | UNI-2739 | Web admin: Khuyến mãi | CM-2, FA-1 |  | 3 | merge PR #161 (`664edae8`) |
+| FA-3 | UNI-2740 | Web admin: Đơn hàng, người mua, hoàn tiền, đối soát tiền về muộn | CM-5, FA-1 |  | 4 | merge PR #170 (`5d7ddfa3`) |
+| FA-4 | UNI-2741 | Web admin: hàng chờ chấm thật, vận hành lượt, làm thử như học viên (phần web) | AT-5, FA-1, FS-4, FS-5, FS-6 |  | 3 | merge PR #182 (`a6ef4908`) |
+| FA-5 | UNI-2742 | Web admin: màn Sinh thử dùng giao diện câu hỏi chung, audio khi làm thử | FA-4, FS-7 |  | 2 | merge PR #183 (`28bd7da2`) |
+| LP | UNI-2743 | Web admin: tab Hồ sơ học tập nối Quyền sử dụng và Lịch sử lượt thi | CM-4b, AT-4, FA-1 |  | 2 | merge PR #175 (`7bf21d7c`) |
+| QA | UNI-2744 | E2E đầu cuối, kiểm thử bảo mật, tài liệu | C-0, C-0b, ML, TS, FU, EX-1, EX-2, FS-4, VP-1, CM-4a, DS, ID-1, ID-2, CM-1, FA-1, AT-1, CM-2, CM-4b, FS-1, FS-2, AT-2a, AT-3, CM-3a, FA-2, AT-2b, AT-4, AT-6, AT-8, CM-3b, CM-5, CM-6, FS-3, AT-5, AT-7, LP, FS-5, FS-6, FA-3, FB, FA-4, VP-2, FS-7, FA-5 |  | 4 | merge PR #184 (`3c5f95d8`), hoàn tất 138/138 điểm Đợt 3 |
+
+**Ngoài plan (không tính vào 138 điểm):** lỗi UI/UX khi thiết lập HSA, uniworkos UNI-1695 (BA giao M.Trường ngày 2026-11-19, M.Trường yêu cầu mở luồng sửa song song). Issue cha UniAI **UNI-2749**. Xong thì merge vào `integration/dot-3`, rồi cherry-pick sang nhánh hotfix từ `develop`, PR vào `develop` và dựng lại bản demo.
+
+| Lane | Issue UniAI | uniworkos | Việc | Trạng thái |
+|---|---|---|---|---|
+| HSA-A | UNI-2750, UNI-2751 | 1696, 1697 | Bước 1 tạo bài thi: bỏ các dòng thừa; bảng tổng quan sửa được ở tab Thông tin chung | merge PR #129 (`8c9eb3e6`); vào `develop`: PR #130 (`e0240ffd`) |
+| HSA-B | UNI-2752, UNI-2753, UNI-2754 | 1698, 1699, 1700 | Bước cấu trúc: kiểm tra bài ôn tập, số câu trên đề chỉ đọc, gọn bảng chỉ tiêu, dòng "Bộ câu hỏi" trong chỉ tiêu dạng trả lời | merge PR #133 (`469c034e`); vào `develop`: PR #134 (`12ec91a8`) |
+| HSA-C | UNI-2755, UNI-2756, UNI-2757 | 1701, 1702, 1703 | Ma trận HSA cố định Bắt buộc, màu khi phân bổ vượt, bỏ dòng "Nguồn phù hợp với bộ lọc" | merge PR #125 (`ed52d43e`); vào `develop`: PR #126 (`fd67d223`) |
+| HSA-D | UNI-2758 | 1704 | Luồng thiết lập MAPID: Toàn bài / Theo ma trận MAPID | vào `develop`: PR #147 (`e6b3b71d`); forward-merge PR #148 (`5bd43aff`) |
+| HSA-E | UNI-2760 | 1705 | Bước Kiểm tra và Xem trước: các cột không thẳng hàng | merge PR #131 (`cf789ed9`); vào `develop`: PR #132 (`9b8a7e2e`) |
+| HSA-F | UNI-2749 (2751, 2752, 2753, 2755, 2756) | 1697, 1698, 1699, 1701, 1702 | BA vòng 2 HSA: quay lại bước 1 sửa thông tin và đổi chế độ dựng bài, gộp Xem trước, làm gọn thẻ môn và bảng phân bổ | merge PR #158 (`4ab461eb`), demo đã cập nhật |
+| HSA-G | UNI-2770 | 1707 | Điều chỉnh form Thêm quy tắc MAPID theo phạm vi và kiểm tra xung đột giữa các dòng | vào `develop`: PR #152 (`c69484fb`), demo đã cập nhật; forward-merge PR #153 (`ada02513`) |
+
+**Ngoài plan, thay đổi theo yêu cầu (AD-34):** khóa giá trị hệ thống của danh mục, issue UniAI **UNI-2759**.
+
+| Lane | Issue | Việc | Trạng thái |
+|---|---|---|---|
+| CL | UNI-2759 | 52 giá trị của 6 nhóm EXAM, SUBJECT, GRADE, QUESTION_LEVEL, QUESTION_FORMAT, TASK_TYPE thành giá trị hệ thống: chỉ sửa tên, mô tả, thứ tự | merge PR #135 (`b4e575c4`), chỉ vào `integration/dot-3` |
+| CR-1 | UNI-2761 | Form theo môn: bảng đăng ký, khớp và chọn biểu mẫu, điều hướng, chặn lưu (6 điểm, sóng 1) | merge PR #143 (`52168620`) |
+| CR-4 | UNI-2762 | Form theo môn: luật máy chủ giới hạn chùm và câu điền môn Khoa học HSA, QDA (4 điểm, sóng 1, nộp sau EX-1) | merge PR #150 (`d66469eb`) |
+| CR-2 | UNI-2763 | Form theo môn: Ma trận môn QDA, BCA, V-ACT (3 điểm, sóng 2) | merge PR #151 (`6600d6c4`) |
+| CR-3 | UNI-2764 | Form theo môn: Danh sách dòng lấy câu (6 điểm, sóng 2) | merge PR #154 (`31cc852e`) |
+| CR-2H | UNI-2765 | Form theo môn: Ma trận môn HSA, nhúng quy tắc MAPID của HSA-D + HSA-G và Sử/Địa UNI-1706 (2 điểm, sóng 3) | merge PR #159 (`ac0f96d8`), demo đã cập nhật |
+| CR-5 | UNI-2766 | Form theo môn: nghiệm thu, `DESIGN.md` (3 điểm, sóng 4) | merge PR #162 (`7fd21bf8`), hoàn tất 24/24 điểm FTM |
+
+Đặc tả `docs/specs/2026-11-19-form-theo-mon.md` và plan `docs/plans/2026-11-19-form-theo-mon.md` (bản 4, 24 điểm, báo riêng ngoài mẫu số 138).
+
+Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
+
 ## Backlog
 
 | Issue | Việc | Ghi chú |

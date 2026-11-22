@@ -96,7 +96,7 @@ export function ItemDetailDrawer({
             </DrawerDescription>
           </DrawerHeader>
 
-          {canModify && item.status === "ACTIVE" && (
+          {canModify && item.status === "ACTIVE" && !item.system && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="secondary"

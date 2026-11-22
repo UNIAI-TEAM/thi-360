@@ -194,10 +194,14 @@ public class AuthService {
                 : new RedirectResolver("http://localhost:3000", "http://localhost:3001", List.of());
         this.messages = messages != null ? messages : AppMessages.defaultInstance();
     }
+    /** Cookie của web đặt ngôn ngữ giao diện; đăng nhập thành công ghi giá trị hợp lệ vào {@code preferred_locale}. */
+    public static final String LOCALE_COOKIE = "thi360_locale";
+
     public LoginResult login(
             String identifier,
             String password,
             String callbackUrl,
+            String localeCookieValue,
             HttpServletResponse response) {
         String normalized = Normalizer.normalize(identifier);
         if (normalized == null) {
@@ -217,7 +221,7 @@ public class AuthService {
 
         Optional<UserAccount> accountOpt = resolveActiveAccount(normalized);
         if (accountOpt.isPresent()) {
-            return loginAppRealm(accountOpt.get(), normalized, password, callbackUrl, response);
+            return loginAppRealm(accountOpt.get(), normalized, password, callbackUrl, localeCookieValue, response);
         }
         return loginMasterRealm(identifier.trim(), normalized, password, callbackUrl, response);
     }
@@ -227,6 +231,7 @@ public class AuthService {
             String normalizedIdentifier,
             String password,
             String callbackUrl,
+            String localeCookieValue,
             HttpServletResponse response) {
         long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
         TokenResult tokens;
@@ -266,6 +271,36 @@ public class AuthService {
             throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
         }
 
+        return completeAppLogin(
+                account, normalizedIdentifier, tokens, revocationGeneration, callbackUrl, localeCookieValue, response);
+    }
+
+    /**
+     * Tạo phiên cho tài khoản vừa tự đăng ký (TM 5.1): cùng bước tạo phiên với đăng nhập, nhưng không đụng bộ đếm
+     * đăng nhập sai vì chưa có định danh đăng nhập nào bị đếm.
+     *
+     * @return đường dẫn chuyển hướng: {@code callbackUrl} hợp lệ hoặc trang chủ học viên
+     */
+    public String openSessionForRegisteredAccount(
+            UserAccount account,
+            String password,
+            String callbackUrl,
+            String localeCookieValue,
+            HttpServletResponse response) {
+        long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
+        TokenResult tokens = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
+        return completeAppLogin(account, null, tokens, revocationGeneration, callbackUrl, localeCookieValue, response)
+                .redirectTo();
+    }
+
+    private LoginResult completeAppLogin(
+            UserAccount account,
+            String normalizedIdentifier,
+            TokenResult tokens,
+            long revocationGeneration,
+            String callbackUrl,
+            String localeCookieValue,
+            HttpServletResponse response) {
         Jwt jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
         String sid = requireSid(jwt);
         Instant now = Instant.now(clock);
@@ -282,10 +317,21 @@ public class AuthService {
                     MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "SESSION_REVOKED"));
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
-        loginThrottle.reset(normalizedIdentifier);
+        if (normalizedIdentifier != null) {
+            loginThrottle.reset(normalizedIdentifier);
+        }
+        // Mọi bước có thể ném lỗi (đọc quyền, ký ctx, chọn trang đích) xong TRƯỚC khi commit ngôn ngữ
+        // và nhật ký thành công: nếu không, đăng nhập báo lỗi mà ngôn ngữ thư đã bị đổi (R1-5).
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
+        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
+        String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
         transactionTemplate.executeWithoutResult(status -> {
             UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
             fresh.markLoggedIn(now);
+            // TM 4: chỉ "vi" và "en"; thiếu hoặc lạ thì giữ giá trị đang lưu.
+            if ("vi".equals(localeCookieValue) || "en".equals(localeCookieValue)) {
+                fresh.changePreferredLocale(localeCookieValue);
+            }
             userAccountRepository.save(fresh);
             auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
                     .actor(fresh.getId(), fresh.getUsername(), List.of(), AuditActorType.USER)
@@ -295,8 +341,6 @@ public class AuthService {
                     .build());
         });
 
-        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
-        String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
         authCookieService.setAuthCookies(
                 response,
                 tokens.accessToken(),
@@ -305,7 +349,6 @@ public class AuthService {
                 tokens.refreshExpiresInSeconds(),
                 ctx);
 
-        String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
         return new LoginResult(redirectTo, account.isMustChangePassword());
     }
 

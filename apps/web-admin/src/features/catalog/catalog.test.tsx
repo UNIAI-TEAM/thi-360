@@ -4078,4 +4078,222 @@ describe("CatalogView: dịch cấp cây hệ thống và pickName theo useLocal
     expect(csvText).not.toContain("Thiếu mã");
     vi.restoreAllMocks();
   });
+
+});
+
+describe("CatalogView: giá trị hệ thống chỉ sửa tên, khóa mã/trạng thái và ẩn ngừng/xóa (UNI-2759)", { timeout: 20_000 }, () => {
+  function createSystemSubjectApi(overrides: Partial<CatalogApi> = {}): CatalogApi {
+    return createMockApi({
+      listItems: vi.fn<CatalogApi["listItems"]>(async (groupId, query) => {
+        const source =
+          groupId === "grp-subject"
+            ? SUBJECT_ITEMS.map((item) =>
+                item.id === "item-toan" ? { ...item, system: true } : item,
+              )
+            : groupId === "grp-combination"
+              ? COMBINATION_ITEMS
+              : [];
+        const q = query?.q?.trim().toLowerCase() ?? "";
+        const filtered = source.filter((item) => {
+          const matchesStatus = !query?.status || item.status === query.status;
+          const matchesQ =
+            !q ||
+            item.code.toLowerCase().includes(q) ||
+            item.nameVi.toLowerCase().includes(q) ||
+            (item.nameEn ?? "").toLowerCase().includes(q);
+          return matchesStatus && matchesQ;
+        });
+        return pageOfItems(filtered);
+      }),
+      ...overrides,
+    });
+  }
+
+  it("bảng giá trị: nút giá trị hệ thống hiện chip Hệ thống, ẩn ngừng/xóa, vẫn đổi thứ tự; nút thường đủ thao tác", async () => {
+    renderCatalog({ api: createSystemSubjectApi(), search: "group=SUBJECT" });
+
+    const row = (await screen.findByText("Toán học")).closest("tr")!;
+    expect(within(row).getByText(viMessages.catalog.systemBadge)).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Xóa Toán học" })).not.toBeInTheDocument();
+    expect(
+      within(row).queryByRole("button", { name: "Ngừng sử dụng Toán học" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(row).getByRole("button", { name: "Sửa Toán học" }),
+    ).toBeInTheDocument();
+    expect(
+      within(row).getByRole("button", { name: "Di chuyển Toán học xuống" }),
+    ).toBeEnabled();
+
+    // Giá trị không phải hệ thống giữ nguyên thao tác.
+    const normalRow = screen.getByText("Ngữ văn").closest("tr")!;
+    expect(
+      within(normalRow).queryByText(viMessages.catalog.systemBadge),
+    ).not.toBeInTheDocument();
+    expect(
+      within(normalRow).getByRole("button", { name: "Xóa Ngữ văn" }),
+    ).toBeInTheDocument();
+    expect(
+      within(normalRow).getByRole("button", { name: "Ngừng sử dụng Ngữ văn" }),
+    ).toBeInTheDocument();
+
+    // Ngăn chi tiết của giá trị hệ thống không còn nút Ngừng sử dụng.
+    await userEvent.click(within(row).getByRole("button", { name: "Chi tiết Toán học" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(
+      within(drawer).queryByRole("button", { name: /Ngừng sử dụng/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("dialog sửa giá trị hệ thống: khóa mã và trạng thái, ghi chú một dòng, chỉ gửi tên/mô tả/thứ tự khi lưu", async () => {
+    const updateItem = vi.fn<CatalogApi["updateItem"]>(async (itemId, payload) => ({
+      ...SUBJECT_ITEMS[0]!,
+      system: true,
+      id: itemId,
+      nameVi: payload.nameVi ?? SUBJECT_ITEMS[0]!.nameVi,
+      nameEn: payload.nameEn,
+      version: SUBJECT_ITEMS[0]!.version + 1,
+    }));
+    renderCatalog({ api: createSystemSubjectApi({ updateItem }), search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa Toán học" }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(
+      within(dialog).getByText("Giá trị hệ thống: chỉ sửa được tên."),
+    ).toBeInTheDocument();
+
+    const codeInput = within(dialog).getByLabelText(/Mã giá trị/);
+    expect(codeInput).toBeDisabled();
+    expect(codeInput).toHaveValue("TOAN");
+
+    const statusSelect = within(dialog).getByRole("combobox", { name: /Trạng thái/ });
+    expect(statusSelect).toBeDisabled();
+    expect(
+      within(dialog).queryByLabelText(/Lý do ngừng sử dụng/),
+    ).not.toBeInTheDocument();
+
+    const nameViInput = within(dialog).getByLabelText(/Tên tiếng Việt/);
+    const nameEnInput = within(dialog).getByLabelText(/Tên tiếng Anh/);
+    await userEvent.clear(nameViInput);
+    await userEvent.type(nameViInput, "Toán học đổi tên");
+    await userEvent.clear(nameEnInput);
+    await userEvent.type(nameEnInput, "Math (renamed)");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => {
+      expect(updateItem).toHaveBeenCalledWith(
+        "item-toan",
+        expect.objectContaining({
+          nameVi: "Toán học đổi tên",
+          nameEn: "Math (renamed)",
+          version: 0,
+        }),
+      );
+    });
+    const [, payload] = updateItem.mock.calls[0]!;
+    expect(payload).not.toHaveProperty("code");
+    expect(payload).not.toHaveProperty("status");
+  });
+
+  it("dialog sửa giá trị hệ thống đang ngừng: chọn trạng thái được và chỉ gửi status ACTIVE để bật lại (R1-1)", async () => {
+    const updateItem = vi.fn<CatalogApi["updateItem"]>(async (itemId, payload) => ({
+      ...SUBJECT_ITEMS[0]!,
+      system: true,
+      id: itemId,
+      status: payload.status ?? "INACTIVE",
+      version: SUBJECT_ITEMS[0]!.version + 1,
+    }));
+    const api = createSystemSubjectApi({
+      updateItem,
+      listItems: vi.fn<CatalogApi["listItems"]>(async (groupId) =>
+        pageOfItems(
+          groupId === "grp-subject"
+            ? SUBJECT_ITEMS.map((item) =>
+                item.id === "item-toan"
+                  ? { ...item, system: true, status: "INACTIVE" as const }
+                  : item,
+              )
+            : [],
+        ),
+      ),
+    });
+    renderCatalog({ api, search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa Toán học" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText(/Mã giá trị/)).toBeDisabled();
+
+    const statusSelect = within(dialog).getByRole("combobox", { name: /Trạng thái/ });
+    expect(statusSelect).toBeEnabled();
+    await userEvent.click(statusSelect);
+    await userEvent.click(await screen.findByRole("option", { name: "Hoạt động" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Lưu" }));
+
+    await waitFor(() => {
+      expect(updateItem).toHaveBeenCalledWith(
+        "item-toan",
+        expect.objectContaining({ status: "ACTIVE", version: 0 }),
+      );
+    });
+    const [, payload] = updateItem.mock.calls[0]!;
+    expect(payload).not.toHaveProperty("code");
+  });
+
+  it("giá trị thường trong nhóm hệ thống: dialog không ghi chú, thao tác đầy đủ và vẫn đổi trạng thái", async () => {
+    renderCatalog({ api: createSystemSubjectApi(), search: "group=SUBJECT" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sửa Ngữ văn" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).queryByText("Giá trị hệ thống: chỉ sửa được tên."),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Mã giá trị/)).toBeEnabled();
+    expect(
+      within(dialog).getByRole("combobox", { name: /Trạng thái/ }),
+    ).toBeEnabled();
+  });
+
+  it("thẻ hẹp: thẻ giá trị hệ thống có chip Hệ thống và menu ⋯ chỉ còn Sửa; thẻ thường đủ Sửa/Ngừng/Xóa", async () => {
+    const width = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(
+        () =>
+          ({ width: 328, height: 0, top: 0, left: 0, right: 328, bottom: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect,
+      );
+    try {
+      renderCatalog({ api: createSystemSubjectApi(), search: "group=SUBJECT" });
+      const list = await screen.findByRole("list", { name: "Danh sách giá trị danh mục" });
+      await within(list).findByText("Toán học");
+      const [toan, van] = within(list).getAllByRole("listitem");
+      expect(within(toan!).getByText(viMessages.catalog.systemBadge)).toBeInTheDocument();
+      expect(within(van!).queryByText(viMessages.catalog.systemBadge)).toBeNull();
+
+      await userEvent.click(within(toan!).getByRole("button", { name: "Thao tác khác với Toán học" }));
+      let menu = await screen.findByRole("menu");
+      expect(within(menu).getByRole("menuitem", { name: "Sửa Toán học" })).toBeInTheDocument();
+      expect(within(menu).queryByRole("menuitem", { name: /^Ngừng sử dụng/ })).toBeNull();
+      expect(within(menu).queryByRole("menuitem", { name: /^Xóa/ })).toBeNull();
+      await userEvent.keyboard("{Escape}");
+
+      await userEvent.click(within(van!).getByRole("button", { name: "Thao tác khác với Ngữ văn" }));
+      menu = await screen.findByRole("menu");
+      expect(within(menu).getByRole("menuitem", { name: "Ngừng sử dụng Ngữ văn" })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitem", { name: "Xóa Ngữ văn" })).toBeInTheDocument();
+    } finally {
+      width.mockRestore();
+    }
+  });
+
+  it("en: chip System và dòng ghi chú bằng tiếng Anh, không lẫn tiếng Việt", async () => {
+    renderCatalog({ api: createSystemSubjectApi(), locale: "en", search: "group=SUBJECT" });
+
+    const row = (await screen.findByText("Mathematics")).closest("tr")!;
+    expect(within(row).getByText(en.catalog.systemBadge)).toBeInTheDocument();
+    await userEvent.click(within(row).getByRole("button", { name: "Edit Mathematics" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("System value: only the name can be edited.")).toBeInTheDocument();
+    expect(within(dialog).queryByText(viMessages.catalog.itemDialog.systemHint)).toBeNull();
+  });
 });

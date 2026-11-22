@@ -1,13 +1,20 @@
 import type { StatusTone } from "@thi360/ui";
-import type { GradingStatus } from "./types";
+import type { GradingQueueState } from "./types";
 
-/** Màu chip trạng thái lượt thi. Chữ lấy từ `grading.status.<STATUS>`. */
-export const GRADING_STATUS_TONE: Record<GradingStatus, StatusTone> = {
-  GRADING: "info",
-  SCORED: "success",
+/** Chip tones for anonymous grading queue states (LT §9.2, BS §11). */
+export const GRADING_STATUS_TONE: Record<GradingQueueState, StatusTone> = {
+  WAITING: "warning",
+  IN_PROGRESS: "info",
+  DONE: "success",
 };
 
-/** Đường dẫn màn chấm của một lượt thi. */
-export function gradingAttemptHref(attemptId: string): string {
-  return `/grading/${encodeURIComponent(attemptId)}`;
+/** Route to the single-item anonymous essay grading page. */
+export function gradingItemHref(itemId: string): string {
+  return `/grading/${encodeURIComponent(itemId)}`;
+}
+
+/** Short anonymous attempt identifier for display (never learner name/username/email). */
+export function shortAttemptCode(attemptId: string | undefined): string {
+  if (!attemptId) return "---";
+  return attemptId.slice(0, 8).toUpperCase();
 }

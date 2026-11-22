@@ -4,10 +4,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Card, EmptyState, FormField, ListCard, Select, StatusChip, Table, type TableCards } from "@thi360/ui";
 import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { PreviewBlock, PreviewCheck, PreviewKnowledgeStat, PreviewPaper } from "../review-types";
 import { ExamPreviewSubjectQuotas } from "./exam-preview-subject-quotas";
-import { useLookup } from "./exam-review-shared";
+import { ExamName, richNodes, useLookup } from "./exam-review-shared";
 
 /** Đối chiếu phân bổ: chỉ tiêu yêu cầu với đề đã sinh theo từng khối, kiểm tra trên đề, thống kê theo kiến thức. */
 export function ExamPreviewAllocation({ paper }: { paper: PreviewPaper }) {
@@ -18,7 +18,12 @@ export function ExamPreviewAllocation({ paper }: { paper: PreviewPaper }) {
     () => (blocks.find((block) => block.requirement.mode === "COMBINED") ?? blocks[0])?.blockId ?? "",
   );
   const block = blocks.find((item) => item.blockId === blockId) ?? blocks[0];
-  const name = (item: PreviewBlock) => `${lookup.subject(item.subjectCode)} · ${item.blockName}`;
+  // Tên khối do mẫu đặt là nội dung đề (`ExamName`); tên môn theo danh mục ở ngoài.
+  const name = (item: PreviewBlock) => (
+    <>
+      {lookup.subject(item.subjectCode)} · <ExamName>{item.blockName}</ExamName>
+    </>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -30,7 +35,15 @@ export function ExamPreviewAllocation({ paper }: { paper: PreviewPaper }) {
               {...controlProps}
               value={block?.blockId}
               onValueChange={setBlockId}
-              options={blocks.map((item) => ({ value: item.blockId, label: `${name(item)} · ${item.questionCount}` }))}
+              options={blocks.map((item) => ({
+                value: item.blockId,
+                label: (
+                  <>
+                    {name(item)} · {item.questionCount}
+                  </>
+                ),
+                textValue: `${lookup.subject(item.subjectCode)} · ${item.blockName} · ${item.questionCount}`,
+              }))}
             />
           )}
         </FormField>
@@ -50,7 +63,7 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
 
-function AllocationMatrix({ block, name }: { block: PreviewBlock; name: string }) {
+function AllocationMatrix({ block, name }: { block: PreviewBlock; name: ReactNode }) {
   const t = useTranslations("exams.preview.allocation");
   const format = useFormatter();
   const lookup = useLookup();
@@ -89,7 +102,7 @@ function AllocationMatrix({ block, name }: { block: PreviewBlock; name: string }
     <div className="flex flex-col gap-2">
       <div>
         <h3 id={captionId} className="text-label font-semibold text-text">
-          {t("heading", { block: name, count: block.questionCount })}
+          {richNodes(t, "heading", { block: name, count: block.questionCount })}
         </h3>
         <p className="text-caption text-text-muted">{combined ? t("combinedNote") : t("separateNote")}</p>
       </div>
@@ -100,7 +113,7 @@ function AllocationMatrix({ block, name }: { block: PreviewBlock; name: string }
         className="overflow-x-auto rounded-md border border-border"
       >
         <table className="w-full min-w-3xl table-fixed border-collapse text-body tabular-nums">
-          <caption className="sr-only">{t("tableLabel", { block: name })}</caption>
+          <caption className="sr-only">{richNodes(t, "tableLabel", { block: name })}</caption>
           <colgroup>
             <col className="w-32" />
             {levels.map((level) => (

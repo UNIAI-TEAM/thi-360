@@ -371,7 +371,7 @@ test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi 
   await expect(row).toBeFocused({ timeout: 15_000 });
 
   // Toàn bài: quy tắc tạm ngừng, ghi chú nêu số quy tắc.
-  await page.getByRole("radio", { name: /Toàn bài/ }).check();
+  await page.getByRole("radio", { name: /Không giới hạn MAPID/ }).check();
   await expect(page.getByTestId("mapid-paused-note")).toContainText("3 quy tắc tạm ngừng áp dụng");
   await saveStructure(page);
   const relaxed = mathSection(await getStructure(admin, id));

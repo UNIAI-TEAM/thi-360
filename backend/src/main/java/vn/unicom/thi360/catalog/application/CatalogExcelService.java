@@ -590,7 +590,7 @@ public class CatalogExcelService {
                     new FieldError("file", "IMPORT_INVALID_HEADER", schemaHelper.message("IMPORT_INVALID_HEADER"))));
         }
 
-        Set<String> existingCodes = loadExistingCodesNormalized(group.getId());
+        Map<String, Boolean> existingCodes = loadExistingCodeSystemFlags(group.getId());
         Set<String> seenInFile = new HashSet<>();
 
         List<StagedSimpleRow> simpleRows = new ArrayList<>();
@@ -634,12 +634,8 @@ public class CatalogExcelService {
                 codeNorm = CatalogNormalizer.normalizeCode(trimmedCode);
                 if (!seenInFile.add(codeNorm)) {
                     errors.add(new CatalogImportRowError(rowNo, "code", "CATALOG_CODE_DUPLICATE_IN_FILE", schemaHelper.message("import.catalog.row.code.duplicateInFile")));
-                } else if (existingCodes.contains(codeNorm)) {
-                    errors.add(new CatalogImportRowError(
-                            rowNo,
-                            "code",
-                            "CATALOG_CODE_TAKEN",
-                            schemaHelper.message("CATALOG_CODE_TAKEN")));
+                } else if (existingCodes.containsKey(codeNorm)) {
+                    errors.add(existingCodeRowError(rowNo, existingCodes.get(codeNorm)));
                 }
             }
 
@@ -933,11 +929,14 @@ public class CatalogExcelService {
                             ? existing.parentId() == null
                             : Objects.equals(existing.parentId(), parentExistingId);
                     if (existing.depth() != depth || !sameParent) {
-                        errors.add(new CatalogImportRowError(
-                                rowNo,
-                                colCode,
-                                "CATALOG_CODE_TAKEN",
-                                schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
+                        errors.add(existing.system()
+                                ? new CatalogImportRowError(
+                                        rowNo, colCode, "CATALOG_ITEM_SYSTEM", schemaHelper.message("CATALOG_ITEM_SYSTEM"))
+                                : new CatalogImportRowError(
+                                        rowNo,
+                                        colCode,
+                                        "CATALOG_CODE_TAKEN",
+                                        schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
                         break;
                     }
                     if (d < lastExplicit && existing.status() != CatalogStatus.ACTIVE) {
@@ -1083,16 +1082,12 @@ public class CatalogExcelService {
             UUID previewId,
             UUID actorId,
             Instant now) {
-        Set<String> existingCodes = loadExistingCodesNormalized(group.getId());
+        Map<String, Boolean> existingCodes = loadExistingCodeSystemFlags(group.getId());
         List<CatalogImportRowError> recheckErrors = new ArrayList<>();
         for (StagedSimpleRow row : staged.simpleRows()) {
-            String norm = CatalogNormalizer.normalizeCode(row.code());
-            if (existingCodes.contains(norm)) {
-                recheckErrors.add(new CatalogImportRowError(
-                        row.rowNo(),
-                        "code",
-                        "CATALOG_CODE_TAKEN",
-                        schemaHelper.message("CATALOG_CODE_TAKEN")));
+            Boolean system = existingCodes.get(CatalogNormalizer.normalizeCode(row.code()));
+            if (system != null) {
+                recheckErrors.add(existingCodeRowError(row.rowNo(), system));
             }
         }
         if (!recheckErrors.isEmpty()) {
@@ -1216,11 +1211,14 @@ public class CatalogExcelService {
                         || Objects.equals(byCode.parentId(), node.expectedParentId());
                 if (byCode.depth() != node.depth() || !sameParent || !expectedParentMatches) {
                     failedBranchCodes.add(node.codeNormalized());
-                    recheckErrors.add(new CatalogImportRowError(
-                            rowNo,
-                            col,
-                            "CATALOG_CODE_TAKEN",
-                            schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
+                    recheckErrors.add(byCode.system()
+                            ? new CatalogImportRowError(
+                                    rowNo, col, "CATALOG_ITEM_SYSTEM", schemaHelper.message("CATALOG_ITEM_SYSTEM"))
+                            : new CatalogImportRowError(
+                                    rowNo,
+                                    col,
+                                    "CATALOG_CODE_TAKEN",
+                                    schemaHelper.message("import.catalog.row.nodeCodeTakenElsewhere")));
                     continue;
                 }
                 reusedCount++;
@@ -1378,17 +1376,26 @@ public class CatalogExcelService {
                 previewId, group.getId(), group.getCode(), staged.totalRows(), createdItems.size(), reusedCount);
     }
 
-    private Set<String> loadExistingCodesNormalized(UUID groupId) {
-        return new HashSet<>(jdbcTemplate.query(
-                "SELECT code_normalized FROM catalog.catalog_item WHERE group_id = ?",
-                (rs, rowNum) -> rs.getString("code_normalized"),
-                groupId));
+    private Map<String, Boolean> loadExistingCodeSystemFlags(UUID groupId) {
+        Map<String, Boolean> flags = new HashMap<>();
+        jdbcTemplate.query(
+                "SELECT code_normalized, is_system FROM catalog.catalog_item WHERE group_id = ?",
+                rs -> {
+                    flags.put(rs.getString("code_normalized"), rs.getBoolean("is_system"));
+                },
+                groupId);
+        return flags;
+    }
+
+    private CatalogImportRowError existingCodeRowError(int rowNo, boolean system) {
+        String key = system ? "CATALOG_ITEM_SYSTEM" : "CATALOG_CODE_TAKEN";
+        return new CatalogImportRowError(rowNo, "code", key, schemaHelper.message(key));
     }
 
     private Map<String, ExistingTreeNode> loadExistingTreeNodes(UUID groupId) {
         Map<String, ExistingTreeNode> map = new HashMap<>();
         jdbcTemplate.query(
-                "SELECT id, code_normalized, parent_id, depth, path, status FROM catalog.catalog_item WHERE group_id = ?",
+                "SELECT id, code_normalized, parent_id, depth, path, status, is_system FROM catalog.catalog_item WHERE group_id = ?",
                 rs -> {
                     map.put(
                             rs.getString("code_normalized"),
@@ -1397,7 +1404,8 @@ public class CatalogExcelService {
                                     rs.getObject("parent_id", UUID.class),
                                     rs.getShort("depth"),
                                     rs.getString("path"),
-                                    CatalogStatus.fromCode(rs.getShort("status"))));
+                                    CatalogStatus.fromCode(rs.getShort("status")),
+                                    rs.getBoolean("is_system")));
                 },
                 groupId);
         return map;
@@ -1728,7 +1736,7 @@ public class CatalogExcelService {
     }
 
     private record ExistingTreeNode(
-            UUID id, UUID parentId, short depth, String path, CatalogStatus status) {
+            UUID id, UUID parentId, short depth, String path, CatalogStatus status, boolean system) {
     }
 
     private record PlannedTreeNode(

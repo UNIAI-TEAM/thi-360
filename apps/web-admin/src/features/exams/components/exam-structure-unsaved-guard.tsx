@@ -8,15 +8,16 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Chặn rời trang khi còn thay đổi chưa lưu (Cấu trúc và ma trận, Thông tin chung): `beforeunload` cho tải lại/đóng tab,
  * và bắt cú bấm liên kết nội bộ (tab của trang soạn, menu, breadcrumb) để hỏi lại trước khi chuyển trang. Cùng cách với
- * bước kết quả của Cấp hàng loạt.
+ * bước kết quả của Cấp hàng loạt. `hasUnsavedChanges` ở bước Cấu trúc gồm cả trạng thái nhập thô của biểu mẫu theo môn (FTM R-15),
+ * không chỉ bản nháp khác bản đã lưu.
  */
-export function useUnsavedChangesGuard(dirty: boolean) {
+export function useUnsavedChangesGuard(hasUnsavedChanges: boolean) {
   const router = useRouter();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const bypass = useRef(false);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!hasUnsavedChanges) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (bypass.current) return;
       event.preventDefault();
@@ -24,10 +25,10 @@ export function useUnsavedChangesGuard(dirty: boolean) {
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [dirty]);
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!hasUnsavedChanges) return;
     const handleClick = (event: MouseEvent) => {
       if (bypass.current || event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -53,7 +54,7 @@ export function useUnsavedChangesGuard(dirty: boolean) {
     };
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [dirty]);
+  }, [hasUnsavedChanges]);
 
   return {
     pendingHref,

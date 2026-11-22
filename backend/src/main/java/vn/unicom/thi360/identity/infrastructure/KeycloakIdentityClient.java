@@ -144,6 +144,56 @@ public class KeycloakIdentityClient {
         }
     }
 
+    /** A response from the create endpoint rejected the request without creating a user. */
+    public static class CreateUserRejectedException extends ExternalServiceException {
+        public CreateUserRejectedException() {
+            super("IDENTITY_PROVIDER_ERROR", null, null);
+        }
+    }
+
+    /**
+     * Create a self-registered user, distinguishing an explicit rejection from an unknown outcome.
+     * No response or an unusable success response remains ambiguous.
+     */
+    public UUID createSelfRegisteredUser(CreateUserCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+        long startNanos = System.nanoTime();
+        try {
+            UserRepresentation rep = new UserRepresentation();
+            rep.setUsername(command.username());
+            rep.setEmail(command.email());
+            rep.setFirstName(command.firstName());
+            rep.setLastName(command.lastName());
+            rep.setEnabled(command.enabled());
+            rep.setEmailVerified(command.emailVerified());
+            rep.setRequiredActions(List.of());
+            try (Response response = appRealm().users().create(rep)) {
+                int status = response.getStatus();
+                if (status == 409) {
+                    throw new ConflictException("USERNAME_TAKEN");
+                }
+                if (status >= 400 && status < 500) {
+                    throw new CreateUserRejectedException();
+                }
+                if (status >= 300) {
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+                }
+                URI location = response.getLocation();
+                if (location == null || location.getPath() == null) {
+                    throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, null);
+                }
+                String path = location.getPath();
+                return UUID.fromString(path.substring(path.lastIndexOf('/') + 1));
+            }
+        } catch (ConflictException | ExternalServiceException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            logExternal("createSelfRegisteredUser", properties.realm(), "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
+
     public void setPassword(UUID userId, String password, boolean temporary) {
         Objects.requireNonNull(userId, "userId must not be null");
         Objects.requireNonNull(password, "password must not be null");
@@ -162,11 +212,29 @@ public class KeycloakIdentityClient {
                         null,
                         List.of(new FieldError("password", "PASSWORD_WEAK", messages.get("PASSWORD_WEAK"))));
             }
+            if (status >= 400 && status < 500 && status != 408 && status != 429) {
+                throw new PasswordWriteRejectedException(ex);
+            }
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {
             logExternal("setPassword", targetRealm, "exception", startNanos);
+            if (neverReachedServer(ex)) {
+                throw new PasswordWriteRejectedException(ex);
+            }
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
+    }
+
+    /** Kết nối bị từ chối hoặc không phân giải được máy chủ: yêu cầu chưa tới Keycloak nên chắc chắn chưa ghi gì. */
+    private static boolean neverReachedServer(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof java.net.ConnectException
+                    || cause instanceof java.net.UnknownHostException
+                    || cause instanceof java.net.NoRouteToHostException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setEnabled(UUID userId, boolean enabled) {
@@ -223,6 +291,26 @@ public class KeycloakIdentityClient {
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         } catch (RuntimeException ex) {
             logExternal("updateUserProfile", targetRealm, "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
+    /**
+     * Chỉ ghi họ và tên: gửi biểu diễn chỉ có {@code firstName}/{@code lastName}, không đọc rồi ghi lại toàn bộ
+     * hồ sơ nên không thể ghi đè email, trạng thái bật/tắt hay thay đổi khác chạy đồng thời của quản trị.
+     */
+    public void updateUserNames(UUID userId, String firstName, String lastName) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        long startNanos = System.nanoTime();
+        String targetRealm = properties.realm();
+        try {
+            UserRepresentation rep = new UserRepresentation();
+            rep.setFirstName(firstName == null ? "" : firstName.trim());
+            rep.setLastName(lastName == null ? "" : lastName.trim());
+            appRealm().users().get(userId.toString()).update(rep);
+            logExternal("updateUserNames", targetRealm, "success", startNanos);
+        } catch (RuntimeException ex) {
+            logExternal("updateUserNames", targetRealm, "exception", startNanos);
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
@@ -302,6 +390,17 @@ public class KeycloakIdentityClient {
             return false;
         } catch (RuntimeException ex) {
             logExternal("listCredentials", targetRealm, "exception", startNanos);
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+    /** Compare the full Keycloak subject with the normalized local identity before recovery. */
+    public boolean matchesRegistrationIdentity(UUID userId, String usernameNormalized, String emailNormalized) {
+        try {
+            UserRepresentation user = appRealm().users().get(userId.toString()).toRepresentation();
+            return usernameNormalized != null && emailNormalized != null
+                    && usernameNormalized.equals(vn.unicom.thi360.identity.domain.Normalizer.normalize(user.getUsername()))
+                    && emailNormalized.equals(vn.unicom.thi360.identity.domain.Normalizer.normalize(user.getEmail()));
+        } catch (RuntimeException ex) {
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
     }
@@ -545,6 +644,17 @@ public class KeycloakIdentityClient {
         USER_DISABLED,
         ACCOUNT_LOCKED,
         INVALID_TOKEN
+    }
+
+    /**
+     * Keycloak từ chối rõ ràng việc ghi mật khẩu (phản hồi 4xx trừ 408/429, hoặc yêu cầu chưa tới được máy chủ):
+     * mật khẩu chắc chắn chưa đổi. Mọi lỗi khác của {@link #setPassword} (5xx, hết thời gian, mất kết nối giữa
+     * chừng) không loại trừ được việc đã ghi.
+     */
+    public static class PasswordWriteRejectedException extends ExternalServiceException {
+        public PasswordWriteRejectedException(Throwable cause) {
+            super("IDENTITY_PROVIDER_ERROR", null, cause);
+        }
     }
 
     public static class KeycloakAuthException extends RuntimeException {

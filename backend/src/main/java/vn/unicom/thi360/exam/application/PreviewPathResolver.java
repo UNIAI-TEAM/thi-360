@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import vn.unicom.thi360.exam.api.ExamPreviewController.PathChoice;
 import vn.unicom.thi360.exam.api.ExamPreviewController.PathRef;
 import vn.unicom.thi360.exam.domain.ExamPart;
@@ -22,8 +23,15 @@ import vn.unicom.thi360.shared.api.NotFoundException;
 final class PreviewPathResolver {
     record Resolved(SolvePath path, PathRef pathRef) {}
 
-    /** Validate request selection against the draft without constructing strict solver records. */
-    static PathRef resolveDraft(ExamStructureDocument document, String pathId, List<String> subjectCodes) {
+    private record Selection(List<PathChoice> names, List<ExamPartOption> choices) { }
+
+    /** The options a request path takes from the draft, by (part, option): an option id alone may repeat across parts. */
+    static List<ChosenOption> selectedOptions(ExamStructureDocument document, String pathId) {
+        return select(document, pathId).names().stream()
+                .map(choice -> new ChosenOption(choice.partId(), choice.optionId())).toList();
+    }
+
+    private static Selection select(ExamStructureDocument document, String pathId) {
         String[] ids = "default".equals(pathId) ? new String[0] : pathId.split("\\+", -1);
         int pos = 0;
         List<PathChoice> names = new ArrayList<>();
@@ -54,6 +62,14 @@ final class PreviewPathResolver {
             }
         }
         if (pos != ids.length) throw missing(pathId);
+        return new Selection(names, choices);
+    }
+
+    /** Validate request selection against the draft without constructing strict solver records. */
+    static PathRef resolveDraft(ExamStructureDocument document, String pathId, List<String> subjectCodes) {
+        Selection selection = select(document, pathId);
+        List<PathChoice> names = selection.names();
+        List<ExamPartOption> choices = selection.choices();
         List<String> codes = subjectCodes == null ? List.of() : subjectCodes;
         if (codes.stream().anyMatch(code -> code == null || code.isBlank())
                 || new HashSet<>(codes).size() != codes.size()) {
@@ -86,6 +102,32 @@ final class PreviewPathResolver {
 
     static Resolved resolve(ExamStructureDocument document, List<SolvePart> parts,
             String pathId, List<String> subjectCodes, long seed, SubjectCountAllocator allocator) {
+        return resolve(document, parts, pathId, seed, allocator, choices -> unionAssignment(choices, subjectCodes));
+    }
+
+    /**
+     * Same path, but the chosen subjects are given per subject-choice option id, so a subject that two options of
+     * different parts both offer is only taken by the option that chose it. A choice without an entry takes none.
+     */
+    static Resolved resolve(ExamStructureDocument document, List<SolvePart> parts,
+            String pathId, Map<String, List<String>> subjectsByOption, long seed, SubjectCountAllocator allocator) {
+        return resolve(document, parts, pathId, seed, allocator, choices -> {
+            List<Set<String>> wanted = new ArrayList<>(choices.size());
+            for (SubjectChoice choice : choices) {
+                List<String> codes = subjectsByOption.getOrDefault(choice.optionId(), List.of());
+                if (codes.stream().anyMatch(code -> code == null || code.isBlank()
+                        || choice.sections().stream().noneMatch(section -> code.equals(section.subjectCode())))
+                        || new HashSet<>(codes).size() != codes.size()) {
+                    throw new BusinessRuleException("PREVIEW_SUBJECTS_INVALID");
+                }
+                wanted.add(new HashSet<>(codes));
+            }
+            return wanted;
+        });
+    }
+
+    private static Resolved resolve(ExamStructureDocument document, List<SolvePart> parts, String pathId, long seed,
+            SubjectCountAllocator allocator, Function<List<SubjectChoice>, List<Set<String>>> assignment) {
         String[] ids = "default".equals(pathId) ? new String[0] : pathId.split("\\+", -1);
         int pos = 0;
         List<ChosenOption> chosen = new ArrayList<>();
@@ -123,7 +165,7 @@ final class PreviewPathResolver {
             }
         }
         if (pos != ids.length) throw missing(pathId);
-        List<List<SubjectPick>> picks = picks(subjectChoices, subjectCodes, seed, allocator);
+        List<List<SubjectPick>> picks = picks(subjectChoices, assignment.apply(subjectChoices), seed, allocator);
         return new Resolved(new SolvePath(0, chosen, sections, subjectChoices, picks),
                 new PathRef(pathId, names));
     }
@@ -133,8 +175,7 @@ final class PreviewPathResolver {
      * each code must belong to exactly one choice's sections and each choice must receive exactly
      * its {@code chooseSubjects} codes; anything else is {@code PREVIEW_SUBJECTS_INVALID}.
      */
-    private static List<List<SubjectPick>> picks(List<SubjectChoice> choices,
-            List<String> subjectCodes, long seed, SubjectCountAllocator allocator) {
+    private static List<Set<String>> unionAssignment(List<SubjectChoice> choices, List<String> subjectCodes) {
         List<String> codes = subjectCodes == null ? List.of() : subjectCodes;
         if (codes.stream().anyMatch(code -> code == null || code.isBlank())
                 || new HashSet<>(codes).size() != codes.size()) {
@@ -153,6 +194,11 @@ final class PreviewPathResolver {
             if (owner == null || owner < 0) throw new BusinessRuleException("PREVIEW_SUBJECTS_INVALID");
             wanted.get(owner).add(code);
         }
+        return wanted;
+    }
+
+    private static List<List<SubjectPick>> picks(List<SubjectChoice> choices, List<Set<String>> wanted, long seed,
+            SubjectCountAllocator allocator) {
         List<List<SubjectPick>> picks = new ArrayList<>(choices.size());
         for (int i = 0; i < choices.size(); i++) {
             SubjectChoice choice = choices.get(i);

@@ -46,6 +46,7 @@ class ExamTemplateFlagsCheckIT extends AbstractIntegrationTest {
 
         JsonNode exam = json(get(url).with(asUser(Permissions.EXAM_VIEW)), 200);
         String publish = "{\"pathIds\":[\"default\"],\"expectedRevision\":" + exam.path("revision").asLong() + "}";
+        ExamListingFixture.fill(jdbc, UUID.fromString(exam.path("id").asText()));
         JsonNode refused = mapper.readTree(mockMvc.perform(post(url + "/publish").with(asUser(Permissions.EXAM_PUBLISH))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON).content(publish))

@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
@@ -130,7 +129,7 @@ public class UserAdminService {
     private static final String ERROR_USER_HAS_TRANSACTIONS = "USER_HAS_TRANSACTIONS";
     private static final String BULK_IDEMPOTENCY_ENDPOINT = "POST:/api/v1/admin/users/bulk-actions";
 
-    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+    static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$");
 
     private final UserAccountRepository userAccountRepository;
@@ -149,7 +148,7 @@ public class UserAdminService {
     private final List<AccountDeletionGuard> deletionGuards;
     private final List<ActiveAttemptChecker> activeAttemptCheckers;
     private final ClassMembershipPort classMembershipPort;
-    private final StudentLearningProvider studentLearningProvider;
+    private final List<StudentLearningProvider> studentLearningProviders;
     private final KeycloakIdentityClient keycloakClient;
     private final CurrentUserProvider currentUserProvider;
     private final AuditRecorder auditRecorder;
@@ -176,7 +175,7 @@ public class UserAdminService {
             List<AccountDeletionGuard> deletionGuards,
             List<ActiveAttemptChecker> activeAttemptCheckers,
             ClassMembershipPort classMembershipPort,
-            @Autowired(required = false) StudentLearningProvider studentLearningProvider,
+            List<StudentLearningProvider> studentLearningProviders,
             KeycloakIdentityClient keycloakClient,
             CurrentUserProvider currentUserProvider,
             AuditRecorder auditRecorder,
@@ -200,7 +199,9 @@ public class UserAdminService {
         this.deletionGuards = deletionGuards == null ? List.of() : List.copyOf(deletionGuards);
         this.activeAttemptCheckers = activeAttemptCheckers == null ? List.of() : List.copyOf(activeAttemptCheckers);
         this.classMembershipPort = classMembershipPort;
-        this.studentLearningProvider = studentLearningProvider;
+        this.studentLearningProviders = studentLearningProviders == null
+                ? List.of()
+                : List.copyOf(studentLearningProviders);
         this.keycloakClient = keycloakClient;
         this.currentUserProvider = currentUserProvider;
         this.auditRecorder = auditRecorder;
@@ -392,19 +393,77 @@ public class UserAdminService {
         userAccountRepository.findById(userId)
                 .filter(u -> u.getStatus() != UserStatus.PROVISIONING)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));
-        StudentLearningProvider.StudentLearningData data =
-                studentLearningProvider == null ? null : studentLearningProvider.loadForUser(userId);
-        if (data == null) {
-            data = StudentLearningProvider.StudentLearningData.empty();
+
+        // plan B1: các module thương mại và lượt thi đều cài StudentLearningProvider,
+        // nên gộp kết quả của mọi bean; dataAvailable đúng khi một bean có dữ liệu.
+        boolean dataAvailable = false;
+        List<StudentLearningResponse.StudentLearningEntitlement> entitlements = new ArrayList<>();
+        List<StudentLearningResponse.StudentLearningAttempt> attempts = new ArrayList<>();
+        List<Object> assessments = new ArrayList<>();
+        List<Object> practice = new ArrayList<>();
+        List<Object> supportRequests = new ArrayList<>();
+        for (StudentLearningProvider provider : studentLearningProviders) {
+            StudentLearningProvider.StudentLearningData data = provider.loadForUser(userId);
+            if (data == null) {
+                continue;
+            }
+            dataAvailable |= data.dataAvailable();
+            for (StudentLearningProvider.EntitlementItem item : data.entitlements()) {
+                if (item != null) {
+                    entitlements.add(toLearningEntitlement(item));
+                }
+            }
+            for (StudentLearningProvider.AttemptItem item : data.attempts()) {
+                if (item != null) {
+                    attempts.add(toLearningAttempt(item));
+                }
+            }
+            assessments.addAll(data.assessments());
+            practice.addAll(data.practice());
+            supportRequests.addAll(data.supportRequests());
         }
         return new StudentLearningResponse(
                 userId,
-                data.dataAvailable(),
-                data.entitlements(),
-                data.attempts(),
-                data.assessments(),
-                data.practice(),
-                data.supportRequests());
+                dataAvailable,
+                entitlements,
+                attempts,
+                assessments,
+                practice,
+                supportRequests);
+    }
+
+    private static StudentLearningResponse.StudentLearningEntitlement toLearningEntitlement(
+            StudentLearningProvider.EntitlementItem item) {
+        return new StudentLearningResponse.StudentLearningEntitlement(
+                item.entitlementId(),
+                item.examId(),
+                item.examCode(),
+                item.examName(),
+                item.source(),
+                item.attemptsTotal(),
+                item.attemptsUsed(),
+                item.attemptsReserved(),
+                item.attemptsRevoked(),
+                item.attemptsLeft(),
+                item.status());
+    }
+
+    private static StudentLearningResponse.StudentLearningAttempt toLearningAttempt(
+            StudentLearningProvider.AttemptItem item) {
+        // Defense-in-depth: never expose score/maxScore unless the attempt is SCORED.
+        boolean scored = item.status() == StudentLearningProvider.AttemptLearningStatus.SCORED;
+        return new StudentLearningResponse.StudentLearningAttempt(
+                item.attemptId(),
+                item.examId(),
+                item.examName(),
+                item.examKindCode(),
+                item.scope(),
+                item.attemptNo(),
+                item.status(),
+                item.startedAt(),
+                item.finishedAt(),
+                scored ? item.score() : null,
+                scored ? item.maxScore() : null);
     }
 
     @Transactional(readOnly = true)
@@ -1316,7 +1375,7 @@ public class UserAdminService {
             return keycloakClient.createUser(cmd);
         }
     }
-    private void revokeAllSessionsFailClosed(UUID userId) {
+    public void revokeAllSessionsFailClosed(UUID userId) {
         RuntimeException firstFailure = null;
         try {
             sessionStore.deleteAllSessions(userId);
@@ -1667,7 +1726,7 @@ public class UserAdminService {
                 .build());
     }
 
-    private void deleteProvisionalUserQuietly(UUID provisionalId) {
+    void deleteProvisionalUserQuietly(UUID provisionalId) {
         deleteProvisionalUserQuietly(provisionalId, null, null);
     }
 
@@ -1684,9 +1743,7 @@ public class UserAdminService {
         } catch (StaleBatchLeaseException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
+            log.atWarn().setCause(ex).addKeyValue("provisionalUserId", provisionalId.toString())
                     .log("Failed to clean up PROVISIONING user row");
         }
     }
@@ -1703,9 +1760,7 @@ public class UserAdminService {
         } catch (StaleBatchLeaseException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("provisionalUserId", provisionalId.toString())
+            log.atWarn().setCause(ex).addKeyValue("provisionalUserId", provisionalId.toString())
                     .log("Failed to mark PROVISIONING user for IdP cleanup");
         }
     }
@@ -1715,12 +1770,22 @@ public class UserAdminService {
             keycloakClient.deleteUser(keycloakUserId);
             return true;
         } catch (RuntimeException ex) {
-            log.atWarn()
-                    .setCause(ex)
-                    .addKeyValue("keycloakUserId", keycloakUserId.toString())
+            log.atWarn().setCause(ex).addKeyValue("keycloakUserId", keycloakUserId.toString())
                     .log("Failed to clean up Keycloak user during rollback");
             return false;
         }
+    }
+
+    void rollbackCreatedRegistration(UUID provisionalId, UUID keycloakUserId) {
+        if (deleteKeycloakUserQuietly(keycloakUserId)) {
+            deleteProvisionalUserQuietly(provisionalId);
+        } else {
+            markProvisionalIdpCleanupPendingQuietly(provisionalId, null, null);
+        }
+    }
+
+    void cleanupOwnedRegistrationBeforeRetry(UserAccount ownedStale) {
+        cleanupOwnedProvisioningBeforeRetry(ownedStale, null, null);
     }
 
     private void cleanupOwnedProvisioningBeforeRetry(
@@ -1773,7 +1838,7 @@ public class UserAdminService {
                 .orElseThrow(() -> new StaleBatchLeaseException(batchId, leaseToken));
     }
 
-    private static RuntimeException mapUniqueConstraintViolation(DataIntegrityViolationException ex) {
+    static RuntimeException mapUniqueConstraintViolation(DataIntegrityViolationException ex) {
         Throwable cursor = ex;
         while (cursor != null) {
             if (cursor instanceof ConstraintViolationException cve && cve.getConstraintName() != null) {
@@ -1841,7 +1906,7 @@ public class UserAdminService {
         return trimmed;
     }
 
-    private static String[] splitFullName(String fullName) {
+    static String[] splitFullName(String fullName) {
         if (fullName == null || fullName.isBlank()) {
             return new String[] {null, null};
         }

@@ -14,6 +14,7 @@ import type { MatrixLabels } from "./block-matrix-editor";
 import { AllocationGap } from "./allocation-gap";
 import { BlockNumberInput } from "./block-number-input";
 import { EnforcementToggle } from "./enforcement-toggle";
+import { ExamName, richNodes } from "./exam-review-shared";
 import type { StructureNames } from "./exam-structure-issues";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
@@ -57,7 +58,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
   return (
     <Card padding="md" className="flex flex-col gap-6 sm:p-6">
       <div className="flex flex-col gap-0.5">
-        <h2 className="text-h3 font-bold wrap-break-word text-text">{t("title", { name: examName })}</h2>
+        <h2 className="text-h3 font-bold wrap-break-word text-text">{richNodes(t, "title", { name: <ExamName>{examName}</ExamName> })}</h2>
         <p className="text-caption text-text-muted">{summary}</p>
       </div>
       {quotas.length === 0 && <TopicQuotaElsewhereAlert error={topicError} />}
@@ -81,7 +82,11 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
               {rows.map((row) => (
                 <tr key={row.key}>
                   <th scope="row" className="border-b border-border px-3 py-2 text-left font-medium text-text">
-                    {row.coded ? t("codedRow", { part: row.partName }) : parts.length > 1 ? t("partRow", { part: row.partName, subject: names.subject(row.subjectCode) }) : names.subject(row.subjectCode)}
+                    {row.coded
+                      ? richNodes(t, "codedRow", { part: <ExamName>{row.partName}</ExamName> })
+                      : parts.length > 1
+                        ? richNodes(t, "partRow", { part: <ExamName>{row.partName}</ExamName>, subject: names.subject(row.subjectCode) })
+                        : names.subject(row.subjectCode)}
                   </th>
                   <td className="border-b border-border px-2 py-2 text-right">{row.count}</td>
                   <td className="border-b border-border px-2 py-2 text-right">{row.eachPoints === null ? t("mixed") : number(row.eachPoints)}</td>
@@ -127,18 +132,22 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
           const label = quota.dimension === "GRADE" ? labels.grade : labels.difficulty;
           const total = sum(quota.buckets.map((bucket) => (percent ? (bucket.percent ?? 0) : (bucket.count ?? 0))));
           const mismatch = percent ? Math.abs(total - 100) > 1e-6 : scope.count > 0 && total !== scope.count;
+          const quotaHeadingId = `${quotasId}-${quota.id}-title`;
+          const quotaTitle = quota.name ? <ExamName>{quota.name}</ExamName> : t(quota.dimension === "GRADE" ? "gradeName" : "difficultyName");
           return (
-            <section key={quota.id} aria-label={quota.name} className="flex flex-col gap-3 rounded-md border border-border p-4">
+            <section key={quota.id} aria-labelledby={quotaHeadingId} className="flex flex-col gap-3 rounded-md border border-border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <h4 className="text-label font-semibold text-text">{quota.name || t(quota.dimension === "GRADE" ? "gradeName" : "difficultyName")}</h4>
+                  <h4 id={quotaHeadingId} className="text-label font-semibold text-text">
+                    {quotaTitle}
+                  </h4>
                   <p className="text-caption text-text-muted">
                     {t("scope", { count: roundForDisplay(scope.count), subjects: scope.subjectCodes.map(names.subject).join(", ") })}
                     {(quota.excludeSubjectCodes?.length ?? 0) > 0 && ` · ${t("excluding", { subjects: quota.excludeSubjectCodes?.map(names.subject).join(", ") ?? "" })}`}
                   </p>
                 </div>
                 <EnforcementToggle
-                  legend={quota.name}
+                  legend={quotaTitle}
                   name={`quota-${quota.id}-enforcement`}
                   value={quota.enforcement}
                   basis={quota.basis}

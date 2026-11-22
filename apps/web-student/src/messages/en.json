@@ -1,4 +1,510 @@
 {
+  "account": {
+    "forgotPassword": {
+      "backToLogin": "Back to sign in",
+      "cooldownEnd": "You can send it again now.",
+      "cooldownStart": "You can send it again in {time}.",
+      "createAccount": "Create a new account",
+      "description": "Enter your registered email. If the email is verified, you will receive a link to reset your password.",
+      "emailInvalid": "Email format is not valid.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your registered email",
+      "emailRequired": "Please enter your email.",
+      "errors": {
+        "RATE_LIMITED": "You are sending requests too fast. Please try again in a few minutes.",
+        "generic": "Unable to send the request. Please try again."
+      },
+      "resend": "Send again",
+      "resendIn": "Send again in {time}",
+      "sentMessage": "If this email is eligible for account recovery, you will receive instructions to reset your password.",
+      "sentNote1": "The link is valid for 1 hour and can be used only once.",
+      "sentNote2": "Sending a new request invalidates the previous link.",
+      "sentNote3": "Cannot find the email? Check your spam folder.",
+      "sentTitle": "Check your inbox",
+      "submit": "Send instructions",
+      "title": "Forgot password"
+    },
+    "profile": {
+      "avatar": {
+        "current": "Current profile picture",
+        "currentEmpty": "No profile picture, showing name initials",
+        "errors": {
+          "DIMENSIONS_EXCEEDED": "The image is larger than 4,096 × 4,096 px. Please choose a smaller image.",
+          "INVALID_IMAGE": "The image cannot be read. Please choose a valid JPG, PNG or WEBP file.",
+          "TOO_LARGE": "The image is larger than 5 MB. Please choose a smaller image.",
+          "TOO_LARGE_FILE": "The image {name} is {size} MB, larger than 5 MB. Please choose a smaller image.",
+          "generic": "Unable to update the profile picture. Your current picture is unchanged."
+        },
+        "hint": "JPG, PNG or WEBP; up to 5 MB and 4,096 × 4,096 px. The image is cropped to a square.",
+        "remove": "Remove picture",
+        "removed": "Profile picture removed.",
+        "title": "Profile picture",
+        "upload": "Upload picture",
+        "uploaded": "Profile picture updated."
+      },
+      "email": {
+        "cancel": "Cancel",
+        "change": "Change email",
+        "changeErrors": {
+          "RATE_LIMITED": "You requested codes too fast or too many times. Please try again later.",
+          "generic": "Unable to send the verification code. Please try again."
+        },
+        "changeTitle": "Change email",
+        "changed": "Email changed.",
+        "codeInvalid": "Incorrect code. You have {count} attempts left.",
+        "codeLabel": "Verification code",
+        "codePlaceholder": "6 digits",
+        "codeRequired": "Please enter the 6-digit code.",
+        "confirm": "Confirm",
+        "confirmErrors": {
+          "EMAIL_TAKEN": "This email has just been taken by another account. Please choose a different email.",
+          "EXPIRED": "This code can no longer be used. Click Resend code to get a new one.",
+          "SYNC_FAILED": "Unable to change the email; your current email is unchanged. Please try again later.",
+          "generic": "Unable to confirm the new email. Please try again."
+        },
+        "cooldownEnd": "You can resend the code now.",
+        "cooldownStart": "You can resend the code in {time}.",
+        "currentPasswordLabel": "Current password",
+        "currentPasswordRequired": "Please enter your current password.",
+        "newEmailInvalid": "Email format is not valid.",
+        "newEmailLabel": "New email",
+        "newEmailRequired": "Please enter the new email.",
+        "newEmailTaken": "This email already belongs to another account.",
+        "none": "This account has no email.",
+        "passwordHide": "Hide current password",
+        "passwordShow": "Show current password",
+        "pendingBody": "A 6-digit code was sent to the new address and is valid for 10 minutes. Meanwhile your current email is still used to recover your account. If the code expires, your profile keeps the current email.",
+        "pendingTitle": "Waiting to verify the new email: {email}",
+        "resend": "Resend code",
+        "resendIn": "Resend code in {time}",
+        "sendCode": "Send verification code",
+        "sendCodeIn": "Send verification code in {time}",
+        "title": "Email",
+        "unverified": "Not verified",
+        "verified": "Verified",
+        "wrongPassword": "Current password is incorrect."
+      },
+      "errorDescription": "An error occurred while loading your profile. Please try again.",
+      "errorTitle": "Unable to load profile",
+      "info": {
+        "cancel": "Discard changes",
+        "fullNameLabel": "Full name",
+        "fullNameRequired": "Please enter your full name.",
+        "fullNameTooLong": "Full name is up to 200 characters.",
+        "genericError": "Unable to save changes. Please try again.",
+        "phoneEmpty": "You have not entered a phone number.",
+        "phoneInvalid": "Phone number has 10 digits and starts with 0.",
+        "phoneLabel": "Phone number (optional)",
+        "phonePlaceholder": "For example 0912345678",
+        "save": "Save changes",
+        "saved": "Personal information saved.",
+        "title": "Personal information",
+        "usernameHint": "The username cannot be changed.",
+        "usernameLabel": "Username"
+      },
+      "intro": "Changing your name, email or password does not affect purchased exams, remaining attempts or your results.",
+      "password": {
+        "change": "Change password",
+        "description": "Change your password on a separate page.",
+        "title": "Password"
+      },
+      "title": "Profile",
+      "unverifiedBody": "Verify it to use this email for account recovery and order emails.",
+      "unverifiedTitle": "Email not verified.",
+      "verifyEmail": "Verify email"
+    },
+    "register": {
+      "backHome": "Home",
+      "continueNote": "After you register, you will return to the step you were working on.",
+      "emailHint": "Used for contact and account recovery. You will receive a verification code after registering.",
+      "emailInvalid": "Email format is not valid.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "emailRequired": "Please enter your email.",
+      "emailTaken": "This email already has an account. Sign in or use Forgot password.",
+      "errors": {
+        "RATE_LIMITED": "Too many registrations from this network. Please try again in a few minutes.",
+        "generic": "Unable to register. Please try again."
+      },
+      "fullNameLabel": "Full name",
+      "fullNamePlaceholder": "Enter your full name",
+      "fullNameRequired": "Please enter your full name.",
+      "haveAccount": "Already have an account?",
+      "intro": {
+        "feature1": "Exams are granted to the account that is signed in",
+        "feature2": "Changing your name, email or password keeps purchased exams and results",
+        "feature3": "A verified email is used to recover your account",
+        "headline": "One account to buy exams, take them and see results",
+        "subtitle": "Register a student account with your own username and password. No class or organization needed."
+      },
+      "loginLink": "Sign in",
+      "password": {
+        "hide": "Hide password",
+        "ruleDigit": "At least one digit",
+        "ruleLength": "8 to 64 characters",
+        "ruleLower": "At least one lowercase letter",
+        "ruleSpecial": "At least one special character",
+        "ruleUpper": "At least one uppercase letter",
+        "rulesLabel": "Password requirements",
+        "show": "Show password"
+      },
+      "passwordLabel": "Password",
+      "passwordRequired": "Please enter a password.",
+      "passwordSameAsUsername": "Password must not match the username.",
+      "passwordWeak": "Password does not meet all the requirements.",
+      "submit": "Register",
+      "termsBody": "[TERMS OF USE TEXT, DRAFT PENDING CONFIRMATION BY THE OPERATOR]",
+      "termsClose": "Close",
+      "termsDraft": "Draft text, pending confirmation by the operator.",
+      "termsLabel": "I have read and agree to the Terms of Use of Thi 360.",
+      "termsRequired": "You must agree to the Terms of Use to register.",
+      "termsTitle": "Terms of Use",
+      "termsView": "View the Terms of Use",
+      "title": "Register",
+      "usernameHint": "4–30 characters: unaccented letters, digits and . @ _ -; starts with a letter or digit. Not case-sensitive.",
+      "usernameLabel": "Username",
+      "usernamePattern": "The username does not follow the rules. See the guidance below the field.",
+      "usernamePlaceholder": "Choose a username",
+      "usernameRequired": "Please enter a username.",
+      "usernameTaken": "This username is already taken. Please choose another."
+    },
+    "resetPassword": {
+      "backToLogin": "Back to sign in",
+      "confirmMismatch": "Passwords do not match.",
+      "confirmPasswordLabel": "Confirm new password",
+      "confirmRequired": "Please confirm your new password.",
+      "description": "Enter a new password for your account.",
+      "footerNote": "After the reset, all sign-in sessions of this account end. Sign in again with your new password. The new password must not match the username.",
+      "genericError": "Unable to reset the password. Please try again.",
+      "invalidMessage": "The password reset link has expired or has already been used. A link is valid for 1 hour and can be used only once. Please send a new request.",
+      "invalidTitle": "This link can no longer be used",
+      "newPasswordLabel": "New password",
+      "passwordRequired": "Please enter a new password.",
+      "passwordWeak": "The new password does not meet all the requirements.",
+      "requestNew": "Send a new request",
+      "rules": {
+        "ruleDigit": "At least one digit",
+        "ruleLength": "8 to 64 characters",
+        "ruleLower": "At least one lowercase letter",
+        "ruleSpecial": "At least one special character",
+        "ruleUpper": "At least one uppercase letter",
+        "rulesLabel": "Password requirements"
+      },
+      "submit": "Set new password",
+      "title": "Reset password",
+      "toggles": {
+        "confirmHide": "Hide confirmed password",
+        "confirmShow": "Show confirmed password",
+        "newHide": "Hide new password",
+        "newShow": "Show new password"
+      }
+    },
+    "verifyEmail": {
+      "alerts": {
+        "codeExpired": "This code can no longer be used. Click Resend code to get a new one.",
+        "generic": "Unable to verify the email. Please try again.",
+        "resendFailed": "Unable to send a new code. Please try again."
+      },
+      "alreadyVerified": "Your email is already verified.",
+      "codeInvalid": "Incorrect code. You have {count} attempts left.",
+      "codeLabel": "Verification code",
+      "codePlaceholder": "6 digits",
+      "codeRequired": "Please enter the 6-digit code.",
+      "codeResent": "A new code was sent. The previous code no longer works.",
+      "continue": "Continue",
+      "cooldownEnd": "You can resend the code now.",
+      "cooldownStart": "You can resend the code in {time}.",
+      "dailyLimit": "You have resent the code too many times. Try again after {time}.",
+      "errorLoad": "Unable to load account details. Please try again.",
+      "errorLoadTitle": "Unable to load page",
+      "footnote": "Until verified you can still buy and take exams, but this email cannot be used to reset your password. You can verify it again in your <profile>Profile</profile>. You can resend the code up to 5 times a day.",
+      "later": "Later",
+      "notReceived": "Did not get the code?",
+      "resend": "Resend code",
+      "resendIn": "Resend code in {time}",
+      "sentTo": "We sent a 6-digit code to <strong>{email}</strong>. The code is valid for 10 minutes.",
+      "submit": "Verify",
+      "title": "Verify email",
+      "verifiedContinue": "Your email is verified. You can continue."
+    }
+  },
+  "attempt": {
+    "abortReasons": {
+      "AUDIO_ASSET_INVALID": "An audio file in this exam is invalid or unreadable.",
+      "AUDIO_ASSET_MISSING": "A required audio file for this exam is missing.",
+      "GENERATION_BUSY": "The system is busy handling many exam requests. Please try again in a moment.",
+      "GENERATION_FAILED": "Could not generate the question set for this exam.",
+      "GENERATION_TIMEOUT": "Exam generation took longer than allowed.",
+      "STALE_STARTING": "Exam preparation was interrupted.",
+      "generic": "Unable to prepare the exam right now."
+    },
+    "closed": {
+      "backToMyExams": "Back to My exams",
+      "description": "This attempt has ended and answers can no longer be edited.",
+      "heading": "Attempt closed",
+      "headingChoiceTimeout": "Section 3 selection timed out",
+      "headingTimeUp": "Time is up",
+      "viewResult": "View result"
+    },
+    "dialogs": {
+      "closeLabel": "Close",
+      "finishPart": {
+        "cancel": "Keep working",
+        "confirm": "Finish section",
+        "missingSummary": "{missing}/{total} questions unanswered",
+        "nextPartChoiceNote": "Next is the Section 3 selection step. You have up to 15 minutes to confirm; if time runs out, the attempt ends and Section 3 scores 0.",
+        "nextPartOpensNote": "The next section will open right away and you cannot return to this section.",
+        "partialSummary": "{partial} questions partially answered",
+        "reconcile": "Check attempt status",
+        "title": "Finish section?",
+        "unconfirmedDesc": "Connection was lost before the server responded, so it is unclear whether this section has closed. Once back online, the system checks attempt status before allowing a retry.",
+        "unconfirmedTitle": "Section completion unconfirmed",
+        "warningIrreversible": "Once finished, you cannot return to this section."
+      },
+      "submitConfirm": {
+        "answeredCount": "{answered}/{total} answered",
+        "blankCount": "Unanswered: {count}",
+        "cancel": "Review answers",
+        "confirm": "Submit exam",
+        "description": "Once submitted, the attempt ends and answers cannot be modified.",
+        "essaySaved": "{words} words · saved",
+        "essaySectionTitle": "Essay status",
+        "essayUnderLimitItem": "Question {displayNo}: {wordCount}/{wordLimit} words — below minimum word count",
+        "essayUnderLimitTitle": "Essays below minimum word count (you can still submit)",
+        "essayUnsaved": "{words} words · unsaved",
+        "flaggedCount": "Flagged for review: {count}",
+        "partBreakdownTitle": "Missing questions by section",
+        "partMissingRow": "{missing}/{total} missing",
+        "partialCount": "Partially answered: {count}",
+        "reconcile": "Check attempt status",
+        "title": "Submit exam?",
+        "unconfirmedDesc": "Connection was lost before the server responded, so submission is not yet confirmed. Once back online, the system checks attempt status before retrying.",
+        "unconfirmedTitle": "Submission unconfirmed"
+      }
+    },
+    "editor": {
+      "bold": "Bold",
+      "bulletList": "Bullet list",
+      "italic": "Italic",
+      "loading": "Loading essay editor…",
+      "orderedList": "Numbered list",
+      "redo": "Redo",
+      "toolbarLabel": "Essay formatting",
+      "undo": "Undo"
+    },
+    "errors": {
+      "loadBackToMyExams": "Back to My exams",
+      "loadDescription": "Unable to load attempt details. Please try again.",
+      "loadTitle": "Unable to load attempt",
+      "notFoundDescription": "This attempt does not exist or belongs to a different account.",
+      "notFoundTitle": "Attempt not found",
+      "retry": "Try again"
+    },
+    "evicted": {
+      "backToMyExams": "Back to My exams",
+      "description": "This session can no longer edit answers. Any unsaved edits on this device were not sent to the server.",
+      "heading": "This attempt has been resumed on another device.",
+      "takeoverHere": "Continue here"
+    },
+    "header": {
+      "finishPart": "Finish section",
+      "submit": "Submit exam"
+    },
+    "nav": {
+      "answeredCount": "{answered}/{total} answered",
+      "closeGrid": "Close question list",
+      "controlsLabel": "Question navigation",
+      "emptyFiltered": "No questions match this filter.",
+      "filterAll": "All",
+      "filterFlagged": "Flagged",
+      "filterUnanswered": "Unanswered",
+      "gridLabel": "Question list",
+      "legendAnswered": "Answered",
+      "legendBlank": "Unanswered",
+      "legendCurrent": "Current",
+      "legendFlagged": "Flagged",
+      "legendPartial": "Partial",
+      "legendUnsaved": "Unsaved",
+      "next": "Next",
+      "openGrid": "Questions {current}/{total}",
+      "openGridCompact": "{current}/{total}",
+      "prev": "Previous",
+      "progressLabel": "Progress: {answered} of {total} questions",
+      "questionPosition": "Question {current}/{total}",
+      "stateAnswered": "answered",
+      "stateBlank": "unanswered",
+      "stateCurrent": "current",
+      "stateFlagged": "flagged for review",
+      "statePartial": "partially answered",
+      "stateSaved": "saved",
+      "stateUnsaved": "unsaved"
+    },
+    "partChoice": {
+      "busyNotice": "Your section is still being prepared. This page checks automatically.",
+      "confirmCta": "Confirm section 3 choice",
+      "countsPerSubject": "Questions per subject: {counts}",
+      "deadlineExpired": "Section 3 selection time has expired.",
+      "deadlineWarning": "If not confirmed before the timer ends, the attempt closes and Section 3 scores 0.",
+      "description": "Choose your option for the next section and confirm. Your choice is locked once confirmed.",
+      "errors": {
+        "ATTEMPT_SESSION_REVOKED": "This edit session is no longer active because the attempt was opened elsewhere.",
+        "CHOICE_LOCKED": "Another choice has already been locked for this section.",
+        "CHOICE_NOT_ALLOWED": "This option is invalid or not included in your purchase.",
+        "CHOICE_WINDOW_CLOSED": "The selection window for Section 3 has closed.",
+        "PART_GENERATING": "This section is currently being generated. Please wait a moment.",
+        "PART_NOT_AWAITING": "This section is not awaiting selection right now.",
+        "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+        "SUBJECTS_INVALID": "Please select the exact number of valid subjects required.",
+        "generic": "Unable to confirm selection. Please try again."
+      },
+      "failedDescription": "Your selection is preserved. Earlier sections are unaffected and this section timer has not started.",
+      "failedRetry": "Try again",
+      "failedTitle": "Could not prepare section",
+      "generatingDescription": "Your choice is locked. The section timer starts only when the questions are ready.",
+      "generatingTitle": "Preparing questions for this section",
+      "legendOption": "Choose an option or combination",
+      "legendSubjects": "Select subjects",
+      "selectedProgress": "Selected {selected}/{total}",
+      "subjectsLimitReached": "{total} subjects selected. Uncheck one to choose another.",
+      "timerLabel": "Selection time left",
+      "title": "Choose the third section"
+    },
+    "parts": {
+      "navLabel": "Exam sections",
+      "states": {
+        "AWAITING_CHOICE": "Choosing section",
+        "CLOSED": "Completed",
+        "GENERATING": "Preparing",
+        "GENERATION_FAILED": "Failed",
+        "OPEN": "In progress",
+        "PENDING": "Locked",
+        "SKIPPED": "Skipped"
+      }
+    },
+    "player": {
+      "attachmentsLabel": "Attachments",
+      "noActiveQuestion": "No question available to display.",
+      "offlineBanner": "Connection lost. Latest answers are not saved yet. The timer is still running.",
+      "pageTitle": "Exam attempt",
+      "shortcutHint": "Shortcuts: 1–4 choose option · ← → switch question · F flag for review"
+    },
+    "saveStatus": {
+      "reasons": {
+        "network_error": "Network error",
+        "offline": "Offline",
+        "rate_limited": "Wait {seconds}s",
+        "rejected": "Invalid answer",
+        "server_error": "Server busy",
+        "session_conflict": "Opened elsewhere"
+      },
+      "saved": "Saved",
+      "saving": "Saving...",
+      "unsaved": "Unsaved"
+    },
+    "segments": {
+      "commands": "{count, plural, one {# item} other {# items}}",
+      "maxPoints": "{points} pts",
+      "range": "Questions {from}–{to}",
+      "ungrouped": "Other questions"
+    },
+    "tabLock": {
+      "badge": "Read-only",
+      "description": "This tab is read-only. Closing the active tab will automatically allow editing here.",
+      "heading": "This attempt is open in another browser tab.",
+      "switchHere": "Switch editing to this tab"
+    },
+    "takeover": {
+      "attemptLabel": "Exam",
+      "cancel": "Cancel",
+      "confirm": "Continue here",
+      "description": "Do you want to continue on this device? The other device will no longer be able to edit.",
+      "lastSeenLabel": "Other session last active",
+      "noteClock": "The timer keeps running while you decide.",
+      "noteUnsaved": "Any unsaved edits on the other device will not appear here.",
+      "title": "Attempt is open in another session"
+    },
+    "timer": {
+      "ariaLabel": "{label}: {hours} hours {minutes} minutes {seconds} seconds",
+      "ariaLabelShort": "{label}: {minutes} minutes {seconds} seconds",
+      "partRemaining": "Section {ord} left",
+      "sharedRemaining": "Exam time left"
+    },
+    "waiting": {
+      "backToMyExams": "Back to My exams",
+      "busyDescription": "Your exam is still being prepared. This page checks automatically—you do not need to click anything. The timer has not started.",
+      "busyNoticeLabel": "Still preparing after 90 seconds",
+      "busyTitle": "System is busy",
+      "clockPaused": "Timer not started",
+      "description": "The system is assembling your exam questions. The timer only starts once your exam is ready, so you do not lose any test time while waiting.",
+      "durationLabel": "Section duration",
+      "durationSharedLabel": "Exam duration",
+      "failedHeading": "Could not prepare the exam",
+      "failedNoticeLabel": "Exam preparation failed",
+      "failedRefundNote": "Your attempt credit has been returned, so no attempt was lost. The timer has not started.",
+      "firstPartLabel": "Opening section",
+      "minutesValue": "{minutes} minutes",
+      "pageTitle": "Preparing exam",
+      "reassureNote": "The exam screen will open automatically once ready. If you accidentally close this page, reopen it from <myExams>My exams</myExams> and choose Continue; a new attempt will not be created.",
+      "retry": "Try again",
+      "title": "Preparing your exam"
+    }
+  },
+  "bundle": {
+    "badgeWithCount": "Exam bundle · {count, plural, one {# exam} other {# exams}}",
+    "buyLabel": "Buy bundle",
+    "buyNote": "The bundle detail page always keeps Buy bundle available, even when you already own some exams in it.",
+    "checkout": {
+      "backToBundle": "Back to bundle",
+      "existingNote": "For exams you already own, newly purchased attempts are added to your remaining balance. Benefits apply per grant.",
+      "grantNotice": "Once completed, all {count, plural, one {# exam in the bundle} other {# exams in the bundle}} will be granted to account {username}.",
+      "itemsTitle": "Included exams ({count})",
+      "pendingExamOrder": "Order {orderCode} for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "pendingExamOrderNoCode": "An order for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "refundBody": "Exams in the bundle are granted immediately after completion and cannot be refunded once any attempt is activated.",
+      "sectionTitle": "Selected bundle",
+      "subtitle": "Review the included exams, access rights, and receiving account before paying.",
+      "summaryLabel": "Bundle summary",
+      "tableCaption": "Exams in this bundle and granted attempts",
+      "unavailableActionBack": "Back to bundle",
+      "unavailableBody": "One exam in this bundle has just been discontinued. No amount has been charged.",
+      "unavailableTitle": "This bundle is temporarily unavailable."
+    },
+    "detail": {
+      "attemptsPerExam": "{count, plural, one {# attempt per exam} other {# attempts per exam}}",
+      "attemptsPerExamLabel": "Attempts per exam",
+      "examCountLabel": "Exams",
+      "examCountValue": "{count, plural, one {# exam} other {# exams}}",
+      "examRightsPrefix": "Benefits for this exam:",
+      "existingEntitlement": "{count, plural, one {You already have # attempt for <examContent>{name}</examContent>; buying this bundle adds more attempts} other {You already have # attempts for <examContent>{name}</examContent>; buying this bundle adds more attempts}}",
+      "how1": "After purchase, all exams appear in My exams grouped under the bundle name.",
+      "how2": "Each exam keeps its own Start, Continue, result, and history actions. Submitting one exam only ends that exam's attempt.",
+      "how3": "Each exam opens section by section under its own exam structure.",
+      "howTitle": "How this bundle works",
+      "itemsNote": "Question counts, durations, and max points reflect the currently on-sale version of each exam. Bundle price and attempts per exam remain fixed.",
+      "itemsTitle": "Exams in this bundle",
+      "partScope": "Section exam",
+      "pendingOrder": "Order {orderCode} for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "pendingOrderNoCode": "An order for <examContent>{name}</examContent> is being checked. You do not need to pay again.",
+      "priceLabel": "Bundle price",
+      "subjectScope": "Subject exam",
+      "totalDurationLabel": "Total duration",
+      "totalQuestionsLabel": "Total questions",
+      "unavailableBody": "An exam in this bundle is currently being updated. You can still purchase individual exams.",
+      "unavailableTitle": "This bundle is temporarily unavailable."
+    },
+    "home": {
+      "crossReference": "<examContent>{examName}</examContent> is shown under <bundleLink>{bundleName}</bundleLink>",
+      "groupFootnote": "Submitting one exam only ends that exam's attempt; other exams in the bundle stay unchanged. Remaining attempts include standalone purchases of the same exam.",
+      "standaloneHeading": "Individual exams",
+      "viewBundle": "View bundle"
+    },
+    "unavailablePage": {
+      "description": "An exam in this bundle is currently being updated. You can still purchase individual exams.",
+      "eyebrow": "UNAVAILABLE",
+      "title": "This bundle is temporarily unavailable.",
+      "toCatalog": "Back to the exam catalog"
+    }
+  },
   "changePassword": {
     "back": "Back",
     "confirmPasswordLabel": "Confirm new password",
@@ -37,6 +543,144 @@
     },
     "wrongOldPassword": "Current password is incorrect."
   },
+  "checkout": {
+    "accessBanner": {
+      "buyMore": "Buy more attempts",
+      "checkingDescription": "An order for this exam is currently awaiting payment verification. You do not need to place a new order or pay again.",
+      "checkingTitle": "Checking order {orderCode}",
+      "continueAttempt": "Continue",
+      "enterExam": "Go to exam",
+      "existingInProgressTitle": "You have an attempt in progress ({count, plural, one {# attempt} other {# attempts}} for this exam)",
+      "existingTitle": "You currently have {count, plural, one {# attempt} other {# attempts}} for this exam",
+      "loadErrorDescription": "Could not verify your current access to this exam. Please try again before continuing.",
+      "loadErrorTitle": "Unable to verify exam access",
+      "viewPaymentStatus": "View payment status"
+    },
+    "account": {
+      "adminBlockedCta": "Open admin portal",
+      "adminBlockedDescription": "Administrator accounts cannot buy or take exams in the student portal.",
+      "adminBlockedTitle": "Administrator account",
+      "changedDescription": "You opened this page with account {previous}, while the active session is now {current}. Please review the account before paying.",
+      "changedTitle": "Signed-in account changed",
+      "continueAsCurrent": "Continue as {username}",
+      "grantNotice": "Once completed, the exam will be granted to account {username}.",
+      "switchAccount": "Sign in with another account",
+      "title": "Account receiving exam"
+    },
+    "backToCatalog": "Back to exam catalog",
+    "backToExam": "Back to exam",
+    "gone": {
+      "description": "<examContent>{name}</examContent> has been discontinued and is no longer available for purchase.",
+      "title": "This exam is no longer on sale"
+    },
+    "heading": "Confirm purchase",
+    "loadError": {
+      "description": "Please check your internet connection and try again.",
+      "title": "Unable to load checkout details"
+    },
+    "notFound": {
+      "description": "The requested exam does not exist or is no longer listed.",
+      "title": "Exam not found"
+    },
+    "pageTitle": "Confirm purchase",
+    "priceChanged": {
+      "description": "Price or benefits have been updated to the latest version ({latest}). Please review before paying.",
+      "descriptionWithSeen": "Price or benefits updated to {latest} (previously shown {seen}). Please review before paying.",
+      "title": "Price or benefits changed"
+    },
+    "product": {
+      "attemptsGranted": "{count, plural, one {# attempt} other {# attempts}}",
+      "sectionTitle": "Exam summary",
+      "version": "Version v{version}"
+    },
+    "refund": {
+      "body": "Exam access is granted immediately after completion and cannot be refunded once activated.",
+      "supportLabel": "Payment support:",
+      "title": "Refund policy"
+    },
+    "result": {
+      "buyAgain": "Buy exam again",
+      "checkAgain": "Check again",
+      "checkingBadge": "Checking",
+      "checkingHeading": "Awaiting payment confirmation",
+      "checkingPending": "Confirming VNPAY transaction status for order {code}. Please wait a moment.",
+      "checkingTimeoutBody": "Verification has taken longer than 60 seconds for order {code}. Status remains Checking — please do not pay again.",
+      "checkingTimeoutHeading": "Checking payment",
+      "checkingTimeoutSupport": "If the exam does not appear in a few minutes, contact support via {contact} with order code {code}.",
+      "closedBody": "Order {code} is no longer awaiting payment.",
+      "closedHeading": "Order closed",
+      "failedBody": "Transaction for order {code} did not complete.",
+      "failedGuestBody": "Transaction for order {code} was not completed ({reason}). Sign in to review your order and retry payment if needed.",
+      "failedHeading": "Payment unsuccessful",
+      "guestCheckingBody": "Payment confirmation is still in progress for order {code}. Sign in to view detailed status.",
+      "guestCheckingHeading": "Awaiting payment confirmation",
+      "guestFailedHeading": "Payment unsuccessful",
+      "guestOrderSignInBody": "Sign in to view order {code}.",
+      "guestOrderSignInHeading": "Sign in to view order status",
+      "guestSignInCheck": "Sign in to check order",
+      "guestSignInView": "Sign in to view exam",
+      "guestSuccessBody": "Payment for order {code} succeeded. Sign in with the purchasing account to view and start your exam.",
+      "guestSuccessHeading": "Payment successful",
+      "invalidSignatureBody": "The VNPAY response signature is invalid or corrupted. Please check My orders before retrying payment.",
+      "invalidSignatureHeading": "Could not verify payment response",
+      "loadErrorBody": "Could not load order details right now. Please try again.",
+      "loadErrorHeading": "Unable to check payment result",
+      "missingOrderBody": "No valid order code or payment return parameters were found in this link.",
+      "missingOrderHeading": "Missing transaction details",
+      "notOwnedBody": "Order {code} was not found in account {username}. You may be signed in with a different account.",
+      "notOwnedHeading": "Order not found in the signed-in account",
+      "pollErrorNotice": "Could not refresh the latest order status right now. Checking will continue automatically.",
+      "pollErrorTimeoutNotice": "Could not refresh order status right now. Click Check again or contact support.",
+      "retryPay": "Retry payment",
+      "successBody": "Order {code} has been confirmed. Exam access is now active in your account.",
+      "successFreeBody": "Order {code} used a free voucher and exam access has been granted immediately.",
+      "successHeading": "Exam granted",
+      "txnRefLabel": "Transaction ref:",
+      "verifyNotFoundBody": "No order was found for this payment response.",
+      "viewMyExams": "Go to My exams",
+      "viewOrder": "View order details",
+      "viewOrders": "View my orders"
+    },
+    "resultPageTitle": "Payment result",
+    "subtitle": "Review your account, exam details, and payment breakdown before continuing.",
+    "summary": {
+      "ctaFree": "Apply voucher & get exam",
+      "ctaFreeNoVoucher": "Get free exam",
+      "ctaVnpay": "Pay with VNPAY",
+      "errorGeneric": "Unable to create order. Please try again.",
+      "errorRateLimited": "Too many requests. Please wait a moment and try again.",
+      "freeVoucher": "0 VND (voucher applied)",
+      "listPrice": "List price",
+      "promotion": "Auto promotion (<examContent>{name}</examContent>)",
+      "promotionFallback": "Auto promotion",
+      "title": "Payment summary",
+      "totalDue": "Total due",
+      "voucherDiscount": "Voucher ({code})"
+    },
+    "voucher": {
+      "applied": "Applied voucher {code} (-{discount}).",
+      "appliedCombined": "Applied voucher {code} (-{discount}) together with the auto promotion.",
+      "appliedReplacedPromo": "Applied voucher {code} (-{discount}). Replaced the auto promotion because this voucher saves more.",
+      "apply": "Apply",
+      "emptyInput": "Please enter a voucher code.",
+      "errors": {
+        "RATE_LIMITED": "Too many voucher checks. Please try again in a few minutes.",
+        "VOUCHER_EXHAUSTED": "This voucher code has reached its usage limit.",
+        "VOUCHER_EXPIRED": "This voucher code has expired.",
+        "VOUCHER_INVALID": "This voucher code does not exist or is invalid.",
+        "VOUCHER_NOT_APPLICABLE": "This voucher code is not applicable to this exam.",
+        "VOUCHER_NOT_APPLICABLE_BUNDLE": "This voucher code only applies to selected exams, not to exam bundles.",
+        "VOUCHER_NOT_ELIGIBLE": "Your account is not eligible for this voucher.",
+        "VOUCHER_USER_LIMIT": "You have reached your personal usage limit for this voucher.",
+        "generic": "Unable to apply voucher code. Please try again."
+      },
+      "label": "Enter voucher code",
+      "notBetter": "Code {code} does not beat the active auto promotion, so the best price is kept.",
+      "placeholder": "Example: SAVE20",
+      "remove": "Remove",
+      "sectionTitle": "Voucher code"
+    }
+  },
   "common": {
     "appName": "Thi 360",
     "backHome": "Back to home",
@@ -44,6 +688,10 @@
     "loading": "Loading",
     "logoMark": "360",
     "notificationsLabel": "Notifications",
+    "offline": {
+      "description": "Check your network connection and try again.",
+      "title": "No connection"
+    },
     "retry": "Retry"
   },
   "errorPage": {
@@ -60,6 +708,9 @@
     "upstreamTimeout": "The server took too long to respond. Please try again later.",
     "upstreamUnavailable": "Unable to connect to the server. Please try again later."
   },
+  "footer": {
+    "note": "Online practice that follows the real exam structure"
+  },
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
@@ -67,34 +718,274 @@
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
   },
+  "header": {
+    "login": "Sign in",
+    "nav": {
+      "history": "History",
+      "label": "Main navigation",
+      "myExams": "My exams",
+      "orders": "My orders",
+      "profile": "Profile"
+    },
+    "register": "Register"
+  },
+  "history": {
+    "actions": {
+      "continue": "Continue",
+      "viewResult": "View result"
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts do not have attempt history on the student portal.",
+      "title": "Administrator account"
+    },
+    "attemptNo": "Attempt {count}",
+    "choiceOptions": {
+      "ANH": "English",
+      "CS": "Computer science",
+      "ENGLISH": "English",
+      "ICT": "Applied informatics",
+      "KH": "Science",
+      "SCIENCE": "Science",
+      "TA": "English"
+    },
+    "columns": {
+      "actions": "Actions",
+      "attemptStarted": "Attempt · Started",
+      "choice": "Selection",
+      "exam": "Exam",
+      "scope": "Scope",
+      "score": "Score",
+      "status": "Status"
+    },
+    "count": "{count, plural, one {# attempt} other {# attempts}}",
+    "empty": {
+      "clearFilters": "Clear filters",
+      "description": "Try another keyword, date range, or remove some filters.",
+      "noAttemptsDescription": "Open an exam in My exams to start practicing. Your completed and active attempts will appear here.",
+      "noAttemptsTitle": "You have no practice attempts yet",
+      "outOfRangeBack": "Back to page 1",
+      "outOfRangeDescription": "There are no attempts on this page. Return to page 1 to see your latest attempts.",
+      "outOfRangeTitle": "No attempts on this page",
+      "title": "No matching attempts found",
+      "toMyExams": "My exams"
+    },
+    "error": {
+      "description": "Your attempts are still safe. Please try again in a few minutes.",
+      "title": "Unable to load practice history"
+    },
+    "examFilterChip": "Exam: <examContent>{name}</examContent>",
+    "examFilterClear": "Clear exam filter",
+    "examFilterUnknown": "Filtered by selected exam",
+    "fault": {
+      "compensated": "This attempt was affected by a system fault; 1 replacement attempt has been granted",
+      "systemFault": "Attempt ended due to a system fault"
+    },
+    "filters": {
+      "clear": "Clear filters",
+      "from": "From date",
+      "kind": "Exam",
+      "kindAll": "All exams",
+      "label": "Filter practice history",
+      "q": "Search by exam name",
+      "qPlaceholder": "For example: HSA full",
+      "scope": "Scope",
+      "scopeAll": "All scopes",
+      "to": "To date"
+    },
+    "listTitle": "Attempts",
+    "loading": "Loading practice history",
+    "noChoice": "—",
+    "noScore": "No score yet",
+    "pageTitle": "Practice history",
+    "paginationLabel": "Practice history pagination",
+    "regradingNote": "Score before regrading",
+    "scopeDetails": {
+      "PART": "Section {code}",
+      "SUBJECT": "Subject {name}"
+    },
+    "scopes": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "stale": {
+      "description": "Could not refresh data; showing the version loaded at {time}.",
+      "descriptionNoTime": "Could not refresh data; showing the previously loaded version.",
+      "title": "Data may be out of date."
+    },
+    "states": {
+      "GRADING": "Grading",
+      "GRADING_ERROR": "Processing result",
+      "IN_PROGRESS": "In progress",
+      "PENDING_REVIEW": "Pending review",
+      "REGRADING": "Regrading",
+      "SCORED": "Scored"
+    },
+    "subtitle": "Your exam attempts, newest first. Select View result to open the exact result for each attempt.",
+    "tableLabel": "Practice history table",
+    "vactPracticeNote": "Practice score"
+  },
   "home": {
-    "emptyDescription": "Exam catalog, purchases, and test taking will arrive in upcoming waves. This release includes sign-in, password change, and sign-out.",
-    "emptyTitle": "No exams yet",
-    "errorDescription": "An error occurred while loading your account. Please try again.",
-    "errorTitle": "Unable to load page",
-    "greeting": "Hello {name}",
-    "intro": "You are signed in to the student portal.",
-    "pageTitle": "Student portal",
+    "actions": {
+      "buyMore": "Buy more attempts",
+      "continue": "Continue",
+      "history": "History",
+      "rebuy": "Buy again",
+      "start": "Start",
+      "viewResult": "View result"
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts do not buy or take exams in the student portal.",
+      "title": "Administrator account"
+    },
+    "card": {
+      "attemptsLeft": "Remaining attempts",
+      "minutesPerAttempt": "{value} minutes per attempt",
+      "purchased": "Purchased"
+    },
+    "checking": {
+      "message": "Payment received for order {orderCode}. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support via {contact} and include your order code.",
+      "messageNoContact": "Payment received for order {orderCode}. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support with your order code. {pending}",
+      "messageNoOrder": "Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support via {contact}.",
+      "messageNoOrderNoContact": "Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the page in a few minutes; if the exam still does not appear, contact support. {pending}",
+      "reload": "Reload",
+      "sectionTitle": "Checking",
+      "status": "Checking",
+      "viewOrder": "View order"
+    },
+    "emptyDescription": "Choose an exam from the catalog to start practicing.",
+    "emptyTitle": "You have no exams yet",
+    "errorDescription": "Check your internet connection and try again.",
+    "errorLoadAccountDescription": "An error occurred while loading your account. Please try again.",
+    "errorLoadAccountTitle": "Unable to load page",
+    "errorTitle": "Unable to load exam list",
+    "examCount": "{count, plural, one {# exam} other {# exams}}",
+    "exploreExams": "Explore exams",
+    "notes": {
+      "discontinuedCanStart": "This exam is no longer on sale. You can still use your remaining attempts.",
+      "discontinuedExhausted": "This exam is no longer on sale and cannot be bought again.",
+      "discontinuedExhaustedWithHistory": "This exam is no longer on sale and cannot be bought again. Results and history are still available.",
+      "lastAttempt": "You are taking your last attempt of this exam.",
+      "pendingTopUp": "Your top-up order {orderCode} is being checked. You do not need to pay again."
+    },
+    "pageTitle": "My exams",
     "roleAdmin": "Role: Admin",
     "roleStudent": "Role: Student",
-    "sectionTitle": "My exams"
+    "sectionTitle": "Purchased exams",
+    "staleDescription": "Could not refresh the list; showing the version loaded at {time}.",
+    "staleDescriptionNoTime": "Could not refresh the list; showing the previously loaded version.",
+    "staleTitle": "Data may be out of date.",
+    "status": {
+      "CAN_START": "Ready to start",
+      "EXHAUSTED": "No attempts left",
+      "IN_PROGRESS": "In progress"
+    },
+    "subtitle": "Hello {name}. Here are the exams you have bought and your remaining attempts."
   },
   "landing": {
-    "badge": "HSA · QDA Prep",
-    "ctaHeader": "Sign in",
-    "ctaHero": "Sign in to start",
-    "features": {
-      "analysisDescription": "Section scores, correct, incorrect, and skipped items shown right after submission.",
-      "analysisTitle": "Instant scores and breakdown",
-      "practiceDescription": "Targeted topic recommendations and progress tracking across attempts.",
-      "practiceTitle": "Focus on weak areas",
-      "structureDescription": "Full-length or section practice exams with server-tracked timing.",
-      "structureTitle": "Authentic exam structure"
+    "faq": {
+      "intro": "Question counts, durations, attempts and benefits differ between exams. See the detail page of the exam you choose.",
+      "items": {
+        "attempts": {
+          "answer": "The number of attempts per purchase is shown on the card and on the detail page of each exam. While you still have attempts you can buy more; the extra attempts are added to the exam you already have in My exams.",
+          "question": "How many attempts does one purchase give? How do I buy more?"
+        },
+        "formats": {
+          "answer": "A FULL exam has every section of the paper, taken one after another in one attempt. A section exam has a single section, for example HSA Mathematics and Data Processing. A subject exam is for exams organized by subject, such as SPT, SP2E and the high school graduation exam. The section or subject of each exam is shown on its card.",
+          "question": "How do FULL, section and subject exams differ?"
+        },
+        "otherAccount": {
+          "answer": "Rules about buying for another account are published by the operating unit. If you need help, contact support through the channels in the Need help? block below.",
+          "question": "Can I buy for another account?"
+        },
+        "paidNoExam": {
+          "answer": "Keep your order code and contact support through the channels in the Need help? block below so we can look it up. Exams already granted to your account are in My exams.",
+          "question": "My payment succeeded but I cannot see the exam. What now?"
+        },
+        "refund": {
+          "answer": "Refunds follow the policy published by the operating unit. If you need help, contact support through the channels in the Need help? block below.",
+          "question": "When can I get a refund?"
+        },
+        "voucher": {
+          "answer": "Enter the code at the purchase confirmation step, before you go to payment. The system recalculates the price and shows the amount to pay before you confirm.",
+          "question": "How do I use a discount code?"
+        }
+      },
+      "title": "Frequently asked questions"
     },
-    "featuresTitle": "How Thi 360 helps you prepare",
-    "footerNote": "Online practice portal for HSA and QDA exams",
-    "heroDescription": "Thi 360 is the online exam preparation portal for the VNU Hanoi (HSA) and Ministry of Defense (QDA) aptitude tests.",
-    "heroTitle": "Practice like the real exam, see what to improve right away"
+    "hero": {
+      "cta": "Explore exams",
+      "description": "Take a full paper to practice under exam timing, or pick single sections to focus on what you want to improve. For candidates preparing for aptitude, admission and high school graduation exams.",
+      "formats": {
+        "full": {
+          "description": "All sections in one attempt, with the real exam duration.",
+          "title": "FULL exam"
+        },
+        "part": {
+          "description": "Practice one section of the paper, for example HSA Mathematics and Data Processing.",
+          "title": "Section exam"
+        },
+        "subject": {
+          "description": "Practice one subject of a subject-based exam, for example Mathematics in SPT or the graduation exam.",
+          "title": "Subject exam"
+        }
+      },
+      "formatsTitle": "Three ways to practice",
+      "kindsLabel": "Exams",
+      "title": "Online practice that follows the real exam structure"
+    },
+    "steps": {
+      "cta": "Choose an exam",
+      "items": {
+        "choose": {
+          "description": "See the structure, price and access rights of the exam.",
+          "title": "Choose an exam"
+        },
+        "pay": {
+          "description": "The exam is granted to the account you are signed in with. Pay through VNPAY.",
+          "title": "Sign in and pay"
+        },
+        "result": {
+          "description": "See your score on the platform once the exam is graded.",
+          "title": "See your result"
+        },
+        "start": {
+          "description": "Open the exam you bought in My exams and start when you are ready.",
+          "title": "Take the exam"
+        }
+      },
+      "title": "From choosing an exam to seeing your result"
+    },
+    "support": {
+      "contact": "Contact support",
+      "description": "Contact us if you have trouble buying, paying or opening an exam you bought. For payment issues, have your order code (for example DH261117AB12CD) or the VNPAY transaction code ready so we can look it up quickly.",
+      "labels": {
+        "email": "Email",
+        "hours": "Support hours",
+        "phone": "Phone"
+      },
+      "pending": "Contact information is being updated.",
+      "title": "Need help?"
+    },
+    "why": {
+      "items": {
+        "choose": {
+          "description": "Pick a FULL exam, or a section or subject exam that fits your goal.",
+          "title": "Practice the part you need"
+        },
+        "results": {
+          "description": "See your score after grading and follow every attempt in History.",
+          "title": "Review your results"
+        },
+        "structure": {
+          "description": "Take exams with the question counts, section order and durations published for each exam.",
+          "title": "Follow the exam structure"
+        }
+      },
+      "title": "Why practice here?"
+    }
   },
   "login": {
     "backHome": "Home",
@@ -108,23 +999,26 @@
     "feature1": "Practice exams matching official structure",
     "feature2": "Instant scoring upon submission",
     "feature3": "Detailed solutions and weak-area focus",
-    "forgotNote": "Forgot password? Contact an administrator for a reset. After 5 consecutive failed attempts, sign-in is locked for 15 minutes.",
+    "forgotLink": "Forgot password?",
     "headline": "HSA & QDA Aptitude Exam Preparation",
     "hidePassword": "Hide password",
     "identifierLabel": "Username or email",
     "identifierPlaceholder": "Enter username or email",
     "identifierRequired": "Please enter your username or email.",
+    "noAccount": "No account yet?",
     "passwordLabel": "Password",
     "passwordPlaceholder": "Enter password",
     "passwordRequired": "Please enter your password.",
+    "registerLink": "Register",
+    "resetDone": "Your password has been reset. Sign in with your new password.",
     "showPassword": "Show password",
     "submit": "Sign in",
     "subtitle": "One account for both the student portal and the admin portal. After signing in, you are directed to the right place for your role.",
     "title": "Sign in"
   },
   "metadata": {
-    "description": "Online practice portal for HSA and QDA aptitude exams",
-    "title": "Thi 360 — HSA & QDA Exam Prep",
+    "description": "Online practice that follows the real exam structure: HSA, QDA, BCA, V-ACT, SPT, SP2E, high school graduation",
+    "title": "Thi 360 — Online exam practice",
     "titleTemplate": "{title} · Thi 360"
   },
   "notFound": {
@@ -132,12 +1026,739 @@
     "eyebrow": "ERROR 404",
     "title": "Page not found"
   },
+  "orders": {
+    "actions": {
+      "cancel": "Cancel order",
+      "continuePayment": "Continue payment",
+      "createNew": "Create new order",
+      "goMyExams": "Go to My exams",
+      "toCatalog": "Back to the exam catalog",
+      "viewDetail": "View details",
+      "viewReplacement": "View replacement order {code}"
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts do not create or view exam purchase orders in the student portal.",
+      "title": "Administrator account"
+    },
+    "amount": {
+      "discountSummary": "{amount} off",
+      "free": "Free",
+      "freeAmount": "0 VND",
+      "freeVoucher": "0 VND (voucher applied)",
+      "freeVoucherNote": "Free with voucher",
+      "vnpay": "VNPAY"
+    },
+    "backToList": "My orders",
+    "bundleBadge": "Bundle",
+    "cancelDialog": {
+      "confirm": "Cancel order",
+      "description": "Pending order {code} will be cancelled. Any discount code used on this order will be released.",
+      "keep": "Keep order",
+      "success": "Order {code} cancelled.",
+      "title": "Cancel order {code}?"
+    },
+    "columns": {
+      "actions": "Actions",
+      "amount": "Amount",
+      "code": "Order code",
+      "createdAt": "Created at",
+      "product": "Exam",
+      "status": "Status"
+    },
+    "detail": {
+      "attemptsValue": "{count, plural, one {# attempt} other {# attempts}}",
+      "benefits": {
+        "ai": "AI explanations",
+        "no": "No",
+        "practice": "Extra practice",
+        "resultView": "Result view",
+        "strengths": "Strengths and weaknesses",
+        "yes": "Yes"
+      },
+      "errorTitle": "Unable to load order details",
+      "fields": {
+        "amountDue": "Amount due",
+        "attempts": "Attempts granted",
+        "benefits": "Benefits",
+        "buyer": "Buyer account",
+        "createdAt": "Created at",
+        "expiresAt": "Price held until",
+        "fulfilledAt": "Granted at",
+        "listPrice": "List price",
+        "paidAt": "Paid at",
+        "product": "Product",
+        "promotion": "Automatic promotion",
+        "version": "Purchased version",
+        "voucher": "Discount code"
+      },
+      "heading": "Order {code}",
+      "history": {
+        "actors": {
+          "ADMIN": "Administrator",
+          "LEARNER": "Learner",
+          "SYSTEM": "System",
+          "VNPAY_IPN": "VNPAY gateway",
+          "unknown": "System"
+        },
+        "created": "Order created",
+        "empty": "No history events yet.",
+        "reasons": {
+          "AUTO_EXCESS_AFTER_COUNTED": "Transaction {ref} automatically recorded as excess after counted payment",
+          "CANCELLED_BY_USER": "Cancelled by learner",
+          "DOUBLE_CHARGE_REPLACED_ORDER": "Duplicate charge flagged on replacement order chain ({ref})",
+          "DOUBLE_CHARGE_REVIEW": "Duplicate charge pending review ({ref})",
+          "EXCESS_AFTER_COUNTED": "Excess payment {ref} received after order was already paid",
+          "EXPIRED": "Order payment window expired",
+          "FREE_ORDER_PAID": "Zero-amount order confirmed immediately",
+          "FULFILLED": "Exam access granted",
+          "LATE_PAYMENT_RECLAIMED": "Late payment {ref} received and reconciled for fulfillment",
+          "LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": "Late payment {ref} on replaced order (duplicate charge review)",
+          "LATE_PAYMENT_REPLACED_RECLAIMED": "Late payment {ref} received on replaced order",
+          "LATE_SUCCESS_PENDING_REVIEW": "Late success on transaction {ref}, pending review",
+          "ORDER_CREATED": "Created order awaiting payment",
+          "PAYMENT_ATTEMPT_CREATED": "Created payment attempt {ref}",
+          "PAYMENT_SUCCEEDED": "Payment succeeded for transaction {ref}",
+          "REFUNDED": "Order refunded",
+          "REPLACED_BY": "Replaced by order {ref}",
+          "REUSE_PENDING_PAYMENT": "Reused pending order with payment attempt {ref}",
+          "unknown": "Order status updated"
+        },
+        "title": "Order history",
+        "transition": "{from} → {to}"
+      },
+      "itemsTitle": "Exams in order ({count})",
+      "payments": {
+        "amount": "Amount",
+        "attemptSeq": "Attempt",
+        "bank": "Bank",
+        "createdAt": "Time",
+        "duplicate": "Duplicate",
+        "empty": "Free order; no VNPAY payment attempts.",
+        "emptyVnpay": "No payment attempts yet.",
+        "reason": "Details",
+        "states": {
+          "CREATED": "Created",
+          "FAILED": "Failed",
+          "SUCCEEDED": "Succeeded",
+          "UNKNOWN": "Unknown"
+        },
+        "status": "Status",
+        "tableLabel": "Payment attempts",
+        "title": "Payment attempts",
+        "txnRef": "Reference"
+      },
+      "snapshotTitle": "Order summary"
+    },
+    "detailPageTitle": "Order details",
+    "emptyDescription": "When you purchase an exam, your orders will appear here.",
+    "emptyTitle": "You have no orders yet",
+    "errorDescription": "Check your internet connection and try again.",
+    "errorTitle": "Unable to load orders",
+    "errors": {
+      "ORDER_EXPIRED": "This order has expired. Please create a new order at the current price.",
+      "ORDER_NOT_FOUND": "Order not found in the signed-in account. Please check that you are signed in with the account used to purchase.",
+      "ORDER_NOT_PENDING": "This order is no longer awaiting payment.",
+      "PAYMENT_ATTEMPTS_EXCEEDED": "This order has exceeded the maximum payment attempts. Please create a new order.",
+      "PRODUCT_DISCONTINUED": "This exam is no longer on sale. Payment cannot continue for this order.",
+      "PRODUCT_NOT_FOUND": "The exam for this order could not be found.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "generic": "Unable to complete the action. Please try again or create a new order."
+    },
+    "exploreExams": "Explore exams",
+    "notFound": {
+      "backToOrders": "Back to My orders",
+      "description": "Order not found in the signed-in account. Please check that you are signed in with the account used to purchase.",
+      "otherAccount": "Sign in with another account",
+      "title": "Order not found"
+    },
+    "pageTitle": "My orders",
+    "paidChecking": "Payment received for order {code}. The exam is being granted to your account.",
+    "paidCheckingSupport": "If it takes too long, contact support via {contact} and include order code {code}.",
+    "paidCheckingSupportPending": "If it takes too long, contact support and include order code {code}. {pending}",
+    "pendingHoldUntil": "Price held until {time}",
+    "replacedBy": "Replaced by order {code}",
+    "staleDescription": "Could not refresh data; showing the version loaded at {time}.",
+    "staleDescriptionNoTime": "Could not refresh data; showing the previously loaded version.",
+    "staleTitle": "Data may be out of date.",
+    "stateSubtext": {
+      "PAID": "Payment received, granting exam"
+    },
+    "states": {
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired",
+      "FULFILLED": "Exam granted",
+      "PAID": "Checking",
+      "PENDING_PAYMENT": "Awaiting payment",
+      "REFUNDED": "Refunded",
+      "REPLACED": "Replaced"
+    },
+    "subtitle": "Exam orders for account {username}, newest first. Include your order code when contacting support.",
+    "tableLabel": "My orders table",
+    "vnpayReasons": {
+      "10": "Card or account authentication failed more than 3 times.",
+      "11": "The payment session timed out.",
+      "12": "Your card or account is locked.",
+      "13": "You entered an incorrect authentication password (OTP).",
+      "24": "You cancelled the payment on VNPAY.",
+      "51": "Insufficient bank balance for this payment.",
+      "65": "Your account has exceeded the daily transaction limit.",
+      "75": "The payment bank is under maintenance.",
+      "79": "Authentication failed too many times.",
+      "99": "Final result from the payment gateway is not available yet.",
+      "07": "Amount deducted, but the transaction is flagged for review.",
+      "09": "Your card or account is not registered for Internet Banking.",
+      "generic": "The bank or VNPAY declined the transaction."
+    }
+  },
+  "prepare": {
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot take exams in the student portal.",
+      "title": "Administrator account"
+    },
+    "afterStartChoices": {
+      "chooseSubjects": "choose {count} of {total} subjects",
+      "deadlineNote": "Selection time limit: up to 15 minutes after the previous section closes. If not confirmed in time, the attempt ends and the optional section scores 0.",
+      "timerNote": "The optional section timer starts only once the question set is ready.",
+      "title": "Choices during the exam"
+    },
+    "answerFormats": {
+      "CLOZE": "Fill in the blank",
+      "ESSAY": "Essay",
+      "MATCHING": "Matching",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "QUESTION_SET": "Question set",
+      "SHORT_ANSWER": "Short answer",
+      "SINGLE_CHOICE": "Single choice",
+      "TRUE_FALSE": "True/False"
+    },
+    "answerFormatsLabel": "Question formats",
+    "backToMyExams": "Back to My exams",
+    "breadcrumbLabel": "Breadcrumb",
+    "breadcrumbMyExams": "My exams",
+    "buyMoreAttempts": "Buy more attempts",
+    "continueAttempt": "Continue",
+    "errorLoad": {
+      "description": "Please check your connection and try again.",
+      "title": "Unable to load exam preparation details"
+    },
+    "exhaustedDescription": "You can buy more attempts to keep practicing this exam.",
+    "exhaustedDescriptionDiscontinued": "This exam is no longer on sale, so more attempts cannot be purchased.",
+    "exhaustedTitle": "You have used all attempts for this exam.",
+    "grantSource": {
+      "compensation": "Compensation",
+      "purchase": "Purchased {date}, order {orderCode}",
+      "purchaseNoOrder": "Purchased {date}"
+    },
+    "inProgressBanner": "You have an unfinished attempt in progress. Continue where you left off without creating a new attempt.",
+    "instructions": {
+      "noteAutoSave": "Answers are saved automatically. The top bar shows Saving, Saved, or Unsaved.",
+      "noteClock": "Remaining time follows the server clock; changing your device clock does not affect the timer.",
+      "noteOffline": "If you lose connection, you can keep working. Answers stay saved on this device and sync when reconnected while the clock keeps running.",
+      "noteSingleDevice": "Each attempt runs on one device at a time. Opening it on another device requires confirming takeover.",
+      "title": "Exam instructions"
+    },
+    "listeningPolicy": {
+      "maxPlays": "Each audio file can be played up to {maxPlays} times.",
+      "noSeek": "No seek bar, pause button, or playback speed controls.",
+      "title": "Listening policy"
+    },
+    "noServingOption": {
+      "contactPending": "Support contact details are being updated.",
+      "descriptionWithContact": "Please contact support via {contact} for a refund or compensation.",
+      "title": "None of your purchased options are currently served."
+    },
+    "notFound": {
+      "description": "This exam access does not exist or belongs to a different account.",
+      "title": "Exam not found in the signed-in account"
+    },
+    "omittedGroupsLabel": "Essay groups temporarily omitted from automatic generation:",
+    "optional": "Optional",
+    "pageTitle": "Prepare for exam",
+    "preChoice": {
+      "chooseSubjectsCount": "Choose {count} of {total} subjects",
+      "chooseSubjectsProgress": "Selected {selected}/{total}",
+      "hintSelectOption": "Please select an option before starting.",
+      "hintSelectSubjects": "Please choose {count} subjects before starting.",
+      "legend": "Pre-start selection",
+      "selectedPathSummary": "Path {code}",
+      "subjectLegend": "Select subjects",
+      "title": "Choose before starting"
+    },
+    "required": "Required",
+    "reviewBadge": "Review exam",
+    "scope": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "sidebar": {
+      "attemptsLeft": "Remaining attempts",
+      "attemptsValue": "{count, plural, one {# attempt} other {# attempts}}",
+      "duration": "Total duration",
+      "grantSource": "Credit source",
+      "maxPoints": "Max points",
+      "questions": "Questions",
+      "startNote": "Clicking Start prepares your exam in a few seconds. The timer starts only when the paper is ready. If preparation fails, your attempt credit is returned.",
+      "title": "Ready to start"
+    },
+    "startCta": "Start exam",
+    "startErrors": {
+      "CHOICE_NOT_ALLOWED": "The selected option is not valid or not included in your purchase.",
+      "NO_ATTEMPTS_LEFT": "You have no attempts left for this exam.",
+      "NO_SERVING_OPTION": "None of your purchased options are currently available.",
+      "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
+      "SUBJECTS_INVALID": "The selected subjects are incomplete or invalid.",
+      "generic": "Unable to start the exam right now. Please try again."
+    },
+    "structure": {
+      "title": "Exam structure"
+    },
+    "timing": {
+      "FREE": {
+        "description": "You can move freely between sections and edit answers within the shared timer.",
+        "title": "Shared clock, free section navigation"
+      },
+      "PER_PART": {
+        "description": "Complete each section in order. Finishing a section or running out of time opens the next section immediately with no break and no going back.",
+        "title": "Timed per section"
+      },
+      "SHARED": {
+        "description": "Sections are taken sequentially under one shared clock. Finishing a section or running out of time opens the next section; when the shared clock ends, the attempt closes.",
+        "title": "Shared clock for the whole exam"
+      }
+    },
+    "units": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "partCount": "{count, plural, one {# section} other {# sections}}",
+      "points": "{value} points",
+      "questions": "{count, plural, one {# question} other {# questions}}"
+    }
+  },
+  "result": {
+    "actions": {
+      "myExams": "My exams",
+      "pendingReviewNote": "Essay questions can be reviewed once grading completes.",
+      "reviewAutoGraded": "Review auto-graded questions",
+      "reviewFull": "Review attempt",
+      "scoreOnlyNote": "This exam includes score only and does not include attempt review.",
+      "unavailableNote": "Attempt review is not available in the current state."
+    },
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot view student attempt results on this portal.",
+      "title": "Administrator account"
+    },
+    "attemptNo": "Attempt {count}",
+    "backToHistory": "Practice history",
+    "choiceOptions": {
+      "ANH": "English",
+      "CS": "Computer science",
+      "ENGLISH": "English",
+      "ICT": "Applied informatics",
+      "KH": "Science",
+      "SCIENCE": "Science",
+      "TA": "English"
+    },
+    "endReasons": {
+      "CHOICE_TIMEOUT": "Section 3 selection timed out",
+      "FAULT_CLOSED": "Closed due to system fault",
+      "SUBMITTED": "Submitted",
+      "TIME_UP": "Time up"
+    },
+    "errorDescription": "Check your network connection and try again.",
+    "errorTitle": "Unable to load attempt result",
+    "eyebrow": "Attempt result",
+    "fault": {
+      "compensatedBanner": "This attempt was affected by a system fault; 1 replacement attempt has been granted",
+      "faultNoticeBanner": "Attempt ended due to a system fault",
+      "reasonLabel": "Note:"
+    },
+    "grading": {
+      "description": "Your submission has been recorded. The system is calculating your score and this page will update automatically.",
+      "heading": "Grading",
+      "reload": "Reload",
+      "timeoutDescription": "Scoring is taking longer than expected. Your result will appear in Practice history once complete.",
+      "timeoutHeading": "Scoring is still in progress; you can check back later"
+    },
+    "gradingError": {
+      "heading": "Processing result",
+      "message": "Your attempt has been recorded; the result is being processed"
+    },
+    "info": {
+      "attemptNo": "Attempt",
+      "choices": "Selected options",
+      "duration": "Actual duration",
+      "durationHoursMinutes": "{hours} hr {minutes} min",
+      "durationMinutes": "{minutes} min",
+      "durationSeconds": "{seconds} sec",
+      "durationZero": "0 sec",
+      "endReason": "End reason",
+      "examKind": "Exam",
+      "finishedAt": "Finished",
+      "noChoices": "None",
+      "part": "Section",
+      "scope": "Scope",
+      "startedAt": "Started",
+      "subject": "Subject",
+      "title": "Attempt details"
+    },
+    "loading": "Loading attempt result",
+    "notFinished": {
+      "continueAttempt": "Continue attempt",
+      "description": "This attempt is still open or being prepared, so results are not available yet.",
+      "title": "Attempt not finished yet",
+      "toHistory": "Practice history"
+    },
+    "notFound": {
+      "description": "This attempt does not exist or does not belong to the signed-in account.",
+      "eyebrow": "ERROR 404",
+      "title": "Attempt result not found",
+      "toHistory": "Practice history",
+      "toHome": "My exams"
+    },
+    "pageTitle": "Attempt result",
+    "parts": {
+      "description": "Section score is the sum of question points in that section.",
+      "manualChip": "Manual grading",
+      "maxScoreNote": "Section maximum score: {max}.",
+      "partScoreLabel": "Section score",
+      "pendingDescription": "Scores shown for graded sections are section scores only, not the total exam score.",
+      "skippedBadge": "Skipped",
+      "skippedChoiceTimeout": "Section 3 not taken: selection time expired",
+      "skippedFallback": "This section was skipped and scored 0 points.",
+      "skippedFaultClosed": "Section skipped because the attempt closed due to a system fault.",
+      "title": "Section breakdown"
+    },
+    "scopes": {
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "segments": {
+      "columns": {
+        "blank": "Blank",
+        "correct": "Correct",
+        "partial": "Partial",
+        "pending": "Pending review",
+        "range": "Questions",
+        "score": "Segment score",
+        "segment": "Segment",
+        "wrong": "Wrong"
+      },
+      "description": "Scores by display segment within your exam scope.",
+      "manualChip": "Manual grading",
+      "pendingDescription": "Scores shown for graded segments are segment scores only, not the total exam score.",
+      "range": "Questions {from}–{to}",
+      "segmentScoreLabel": "Segment score",
+      "title": "Segment breakdown"
+    },
+    "states": {
+      "GRADING": "Grading",
+      "GRADING_ERROR": "Processing result",
+      "PENDING_REVIEW": "Pending review",
+      "REGRADING": "Regrading",
+      "SCORED": "Scored"
+    },
+    "stats": {
+      "blank": "Blank",
+      "correct": "Correct",
+      "denominator": "Out of {total} required questions.",
+      "partial": "Partial",
+      "pending": "Pending review",
+      "title": "Question statistics",
+      "unitQuestions": "{count, plural, one {# question} other {# questions}}",
+      "wrong": "Wrong"
+    },
+    "subjects": {
+      "columns": {
+        "blank": "Blank",
+        "correct": "Correct",
+        "partial": "Partial",
+        "pending": "Pending review",
+        "score": "Subject score",
+        "subject": "Subject",
+        "wrong": "Wrong"
+      },
+      "description": "Scores by subject taken in this attempt.",
+      "manualChip": "Manual grading",
+      "maxScoreNote": "Max {max}",
+      "pendingDescription": "Scores shown for graded subjects are subject scores only, not the total exam score.",
+      "subjectScoreLabel": "Subject score",
+      "title": "Subject breakdown"
+    },
+    "total": {
+      "pendingDescription": "This exam includes manually graded essay questions. The total score appears once all essays are graded.",
+      "pendingReturnNote": "You may leave this page. Open this attempt from Practice history once grading finishes to view your total score.",
+      "pendingTitle": "Pending review",
+      "regradingNote": "A grader is regrading an essay response. The score shown above is the previous score and may change once regrading finishes.",
+      "scaleDescription": "Total points earned across required questions. Blank questions score 0.",
+      "title": "Total score",
+      "vactScaleDescription": "Practice score scaled from question points to a {scaleMax} scale."
+    },
+    "vact": {
+      "collapseSubsections": "Hide 2 subsections",
+      "components": {
+        "ANH": "English",
+        "SCIENTIFIC_THINKING": "Scientific thinking",
+        "TOAN": "Mathematics",
+        "VIETNAMESE": "Vietnamese"
+      },
+      "componentsCaption": "Correct counts and accuracy rates by component (per-component scores are not displayed).",
+      "componentsTitle": "Performance by component",
+      "correctRatio": "{correct}/{total} correct · {rate}%",
+      "expandSubsections": "Show 2 subsections (12 and 18 questions)",
+      "practiceNote": "Not an official V-ACT score",
+      "scoreLabel": "Practice score",
+      "subsectionQuestions": "{count, plural, one {# question} other {# questions}}",
+      "subsections": {
+        "logicData": "Logic and data analysis",
+        "scientificReasoning": "Scientific reasoning"
+      }
+    }
+  },
+  "review": {
+    "adminNotice": {
+      "cta": "Open admin portal",
+      "description": "Administrator accounts cannot review student attempts on this portal.",
+      "title": "Administrator account"
+    },
+    "backToResult": "Back to result",
+    "emptyPart": {
+      "description": "This section does not have any questions available to review.",
+      "title": "No questions in this section"
+    },
+    "errorDescription": "Check your network connection and try again.",
+    "errorTitle": "Unable to load attempt review",
+    "essayCriteria": {
+      "commentCol": "Criterion comment",
+      "criterionCol": "Criterion",
+      "criterionFallback": "Criterion {index}",
+      "pointsCol": "Score",
+      "pointsValue": "{points} pts",
+      "title": "Criterion breakdown"
+    },
+    "loading": "Loading attempt review",
+    "nav": {
+      "currentItem": "current",
+      "next": "Next",
+      "paletteItemAria": "{label}, {outcome}",
+      "paletteLegend": "Question status legend",
+      "paletteSummary": "Correct {correct} · Partial {partial} · Wrong {wrong} · Blank {blank}",
+      "paletteTitle": "Question list",
+      "partsLabel": "Exam sections",
+      "prev": "Previous",
+      "skippedPartBadge": "Skipped"
+    },
+    "notAvailable": {
+      "backToResult": "Back to result",
+      "description": "The result for this attempt is not ready yet. You can review your attempt once grading completes.",
+      "title": "Attempt review is not available yet"
+    },
+    "notFound": {
+      "description": "This attempt does not exist or does not belong to the signed-in account.",
+      "eyebrow": "ERROR 404",
+      "title": "Attempt review not found",
+      "toHistory": "Practice history",
+      "toHome": "My exams"
+    },
+    "notIncluded": {
+      "backToResult": "Back to result",
+      "description": "The exam package you purchased includes score only. You can still view your score on the result page.",
+      "title": "This exam does not include attempt review"
+    },
+    "outcomes": {
+      "BLANK": "blank",
+      "CORRECT": "correct",
+      "PARTIAL": "partial",
+      "PENDING_REVIEW": "pending review",
+      "WRONG": "wrong"
+    },
+    "pageTitle": "Review attempt",
+    "pendingBanner": "This attempt still has essay questions pending manual grading. Only auto-graded questions are shown until grading completes.",
+    "questionLabel": "Question {no}",
+    "questionRangeLabel": "Questions {from}–{to}",
+    "scoreOnlyNotice": "Solutions are not included in your purchased tier.",
+    "skippedPart": {
+      "description": "This section was skipped, so there are no questions to review. Section score: {score}/{max}.",
+      "descriptionNoScore": "This section was skipped, so there are no questions to review.",
+      "title": "This section was skipped"
+    },
+    "subtitle": "{examName} · {scope} · Attempt {attemptNo}",
+    "subtitleWithScore": "{examName} · {scope} · Attempt {attemptNo} · Total score {score}/{max}"
+  },
+  "storefront": {
+    "access": {
+      "adminNote": "Administrator accounts have no buy or start buttons. Public information only.",
+      "attemptsLeft": "{count, plural, one {# attempt left} other {# attempts left}}",
+      "buy": "Buy exam",
+      "buyAgain": "Buy again",
+      "buyBundle": "Buy bundle",
+      "buyMore": "Buy more attempts",
+      "checking": "Checking",
+      "checkingNote": "Order {orderCode}. You do not need to pay again. If the exam still does not show up, contact support and include this order code.",
+      "continue": "Continue",
+      "continueNote": "You have an attempt in progress.",
+      "enter": "Start exam",
+      "exhaustedNote": "You have used all attempts of this exam.",
+      "loadError": "Could not determine your access to this exam.",
+      "loading": "Loading access",
+      "pendingTopUp": "Your top-up order {orderCode} is being checked. You do not need to pay again.",
+      "reload": "Reload access",
+      "viewDetail": "View details"
+    },
+    "catalog": {
+      "clearFilters": "Clear filters",
+      "emptyTitle": "No exams are on sale right now",
+      "errorMessage": "Could not load the exam catalog. Your filters are kept.",
+      "filtersLabel": "Search and filter exams",
+      "formatAll": "All formats",
+      "formatHint": "A FULL exam has all sections in one attempt. A section or subject exam lets you practice only the section or subject shown on the card.",
+      "formatHintLabel": "Format:",
+      "formatLabel": "Format",
+      "kindAll": "All exams",
+      "kindLabel": "Exam",
+      "loading": "Loading catalog",
+      "noResultsDescription": "Try another keyword or remove some filters.",
+      "noResultsTitle": "No matching exams found",
+      "paginationLabel": "Catalog pagination",
+      "partAll": "All sections, subjects",
+      "partLabel": "Section/subject",
+      "searchLabel": "Search by name or code",
+      "searchPlaceholder": "For example: HSA FULL or HSA-FULL-01",
+      "showing": "Showing {from}–{to} of {total} exams on sale",
+      "sort": {
+        "NEWEST": "Newest",
+        "PRICE_ASC": "Price: low to high",
+        "PRICE_DESC": "Price: high to low"
+      },
+      "sortLabel": "Sort by",
+      "title": "Choose an exam"
+    },
+    "detail": {
+      "answerType": {
+        "CLOZE": "Fill in the blank",
+        "ESSAY": "Essay",
+        "MATCHING": "Matching",
+        "MULTIPLE_CHOICE": "Multiple choice",
+        "QUESTION_SET": "Question set",
+        "SHORT_ANSWER": "Short answer",
+        "SINGLE_CHOICE": "Single choice",
+        "TRUE_FALSE": "True/False"
+      },
+      "answerTypeCount": "{type}: {count}",
+      "attemptsPerPurchase": "{count, plural, one {# attempt per purchase} other {# attempts per purchase}}",
+      "audience": "Who it is for",
+      "breadcrumbCatalog": "Choose an exam",
+      "breadcrumbHome": "Home",
+      "breadcrumbLabel": "Breadcrumb",
+      "choicesTitle": "Options within the purchase",
+      "chooseSubjects": "Choose {count} of {total} subjects",
+      "codeLabel": "Product code",
+      "columns": {
+        "duration": "Duration",
+        "maxPoints": "Max points",
+        "nature": "Type",
+        "order": "Order",
+        "part": "Section",
+        "questions": "Questions"
+      },
+      "countsByPick": "Questions per subject by number of subjects chosen: {counts}",
+      "guestHint": "You need to sign in to buy. After signing in you return to this exam at the purchase confirmation step. No account yet?",
+      "how": {
+        "answerTypes": "Question types",
+        "essayNote": "Essay sections are graded by hand. The total score is available once grading is finished.",
+        "maxScore": "{score} points",
+        "noEssay": "No essay section:",
+        "points": "{value} points",
+        "scoring": "Scoring",
+        "switching": "Moving between sections",
+        "switchingValue": "Taken in order. When time runs out or you submit early, the next section opens right away; you cannot go back to a closed section.",
+        "timing": "Timing",
+        "timingPER_PART": "Timed per section. The clock runs on the server.",
+        "timingSHARED": "One shared clock for the whole exam. The clock runs on the server."
+      },
+      "howTitle": "How it works and how it is graded",
+      "includesTax": "Tax and fees included",
+      "objectives": "Objectives",
+      "optional": "Optional",
+      "perAttempt": "{questions} questions · {minutes} minutes per attempt",
+      "policy": {
+        "contactLine": "Send a request via: {contact}",
+        "contactPending": "Contact information is being updated.",
+        "hoursLine": "Support hours: {hours}",
+        "priceNote": "Prices are in VND, tax and fees included.",
+        "refund": "Refund for system errors: {policy}",
+        "refundPending": "per the policy published by the operating unit; if you need help, contact support through the channels in the Need help? block on the home page.",
+        "title": "Price and policy"
+      },
+      "priceHeading": "Price",
+      "promoEnds": "Ends {date}",
+      "required": "Required",
+      "rights": {
+        "afterEssay": "After the grader finishes grading",
+        "afterGrading": "Right after grading is done",
+        "ai": "AI explanations",
+        "attempts": "Attempts",
+        "no": "No",
+        "noteLabel": "Note:",
+        "practice": "Extra practice",
+        "resultTiming": "When you can see the result",
+        "resultView": "Result detail",
+        "resultViews": {
+          "FULL_SOLUTION": "Score, answers and solutions",
+          "SCORE": "Score only",
+          "SCORE_AND_ANSWERS": "Score and answers"
+        },
+        "strengths": "Strengths and weaknesses report",
+        "title": "What you get after buying",
+        "yes": "Yes"
+      },
+      "structureCaption": "Sections in the order you take them",
+      "structureTitle": "Exam structure",
+      "structureTotal": "{questions} questions · {minutes} minutes",
+      "subjectAnswerTypes": "<examContent>{subject}</examContent>: {types}"
+    },
+    "discount": "{percent}% off",
+    "format": {
+      "BUNDLE": "Exam bundle",
+      "FULL": "FULL exam",
+      "PART": "Section exam",
+      "SUBJECT": "Subject exam"
+    },
+    "gone": {
+      "descriptionTail": "is no longer on sale. You can pick another exam from the catalog.",
+      "eyebrow": "ERROR 410",
+      "myExams": "My exams",
+      "owned": "If you already bought this exam, your access and remaining attempts are still in My exams.",
+      "title": "This exam is no longer on sale",
+      "toCatalog": "Back to the exam catalog"
+    },
+    "listPriceLabel": "List price",
+    "notFound": {
+      "description": "The link is wrong or the exam has not been published.",
+      "eyebrow": "ERROR 404",
+      "title": "Exam not found",
+      "toCatalog": "Back to the exam catalog"
+    },
+    "price": "{amount, number} VND",
+    "promoEnds": "Ends {date}",
+    "review": "Review exam",
+    "units": {
+      "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+      "attemptsPerExam": "{count, plural, one {# attempt per exam} other {# attempts per exam}}",
+      "minutes": "{value} minutes",
+      "questions": "{value} questions"
+    }
+  },
   "userMenu": {
     "adminPortal": "Admin portal",
     "changePassword": "Change password",
     "logout": "Sign out",
     "logoutFailed": "Unable to sign out. Please try again.",
     "menuLabel": "Account",
+    "profile": "Profile",
     "studentPortal": "Student portal",
     "trigger": "Account menu"
   }

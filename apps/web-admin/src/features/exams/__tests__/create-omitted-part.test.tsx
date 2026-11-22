@@ -37,6 +37,7 @@ const SP2E_VAN_OLD: Wire = {
   maxScore: 6,
   buildMode: "STANDARD",
   label: "SP2E – Ngữ văn – Đọc hiểu",
+  parts: [],
   structure: {
     parts: [
       {
@@ -95,6 +96,7 @@ const HSA_FULL: Wire = {
   timing: "PER_PART",
   buildMode: "STANDARD",
   label: "HSA · Toàn bài",
+  parts: [],
   structure: {
     parts: [
       {

@@ -13,6 +13,7 @@ import { partsFromInput } from "../create-parts";
 import { sum } from "../matrix";
 import { mapExamDetail, toApiParts } from "../api-mapping";
 import type {
+  ExamBuildMode,
   ExamDetail,
   ExamKind,
   ExamPart,
@@ -90,6 +91,7 @@ export function toWireExam(exam: ExamDetail): WireDetail {
     name: exam.name,
     kind: exam.kind,
     scope: exam.scope,
+    buildMode: exam.scope === "SUBJECT" ? exam.buildMode : undefined,
     status: exam.status,
     revision: exam.revision,
     servingVersion: exam.servingVersion ?? undefined,
@@ -265,6 +267,14 @@ export function toWireTemplate(template: ExamTemplate): WireTemplate {
     maxScore: template.maxScore ?? undefined,
     expertNote: template.expertNote ?? undefined,
     structure: { parts: template.parts.map((part, index) => wireTemplatePart(template, part, index)) } as unknown as WireTemplate["structure"],
+    // Tóm tắt từng phần của máy chủ: số câu theo dạng câu chỉ có khi mẫu của test khai `questionTypes`.
+    parts: template.parts.map((part, index) => ({
+      ...(part.partId ? { partId: part.partId } : {}),
+      order: index + 1,
+      name: part.name,
+      questionCount: part.questionCount,
+      questionTypes: part.questionTypes ?? [],
+    })),
   };
 }
 
@@ -283,6 +293,7 @@ interface ScopeRequest {
   scope: ExamScope;
   partCode: string | null;
   subjectCode: string | null;
+  buildMode?: ExamBuildMode;
 }
 
 const err = (status: number, code: string): Reply => ({ status, body: { code, message: code } });
@@ -505,6 +516,7 @@ export class ExamsBackend {
       scope: request.scope,
       partCode: request.partCode ?? "",
       subjectCode: request.subjectCode ?? "",
+      buildMode: request.buildMode,
     });
   }
 
@@ -684,13 +696,21 @@ export class ExamsBackend {
     if (body.expectedRevision !== exam.revision) return REVISION_CONFLICT();
     const code = String(body.code ?? exam.code).trim().toUpperCase();
     if (this.codeTaken(code, exam.id)) return err(409, "EXAM_CODE_TAKEN");
+    const storedMode: ExamBuildMode = exam.buildMode ?? "STANDARD";
     const request: ScopeRequest = {
       kind: (body.kind ?? exam.kind) as ExamKind,
       scope: (body.scope ?? exam.scope) as ExamScope,
       partCode: (body.partCode as string | undefined) ?? exam.partCode ?? null,
       subjectCode: (body.subjectCode as string | undefined) ?? exam.subjectCode ?? null,
+      buildMode: (body.buildMode as ExamBuildMode | null | undefined) ?? storedMode,
     };
-    const scopeChanged = exam.kind !== request.kind || exam.scope !== request.scope || (exam.partCode ?? null) !== request.partCode || (exam.subjectCode ?? null) !== request.subjectCode;
+    if (request.buildMode === "REVIEW" && request.scope !== "SUBJECT") return err(422, "EXAM_STRUCTURE_INVALID");
+    const scopeChanged =
+      exam.kind !== request.kind ||
+      exam.scope !== request.scope ||
+      (exam.partCode ?? null) !== request.partCode ||
+      (exam.subjectCode ?? null) !== request.subjectCode ||
+      storedMode !== request.buildMode;
     if (scopeChanged) {
       if (exam.servingVersion !== undefined) return err(409, "EXAM_SCOPE_LOCKED");
       const scopeErr = this.scopeError(request);
@@ -715,6 +735,7 @@ export class ExamsBackend {
       kind: request.kind,
       scope: request.scope,
       templateCode: scopeChanged ? template?.code : exam.templateCode,
+      buildMode: request.buildMode,
       partCode: request.partCode ?? undefined,
       subjectCode: request.subjectCode ?? undefined,
       timing,

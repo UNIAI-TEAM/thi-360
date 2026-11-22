@@ -1,10 +1,12 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  cn,
   EmptyState,
-  FormField,
+  focusRing,
   LiveStatus,
   Select,
   Skeleton,
@@ -13,12 +15,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@thi360/ui";
-import { ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, RefreshCw, TriangleAlert } from "lucide-react";
+import { AlertCircle, ArrowRight, CircleHelp, CircleX, Clock, Eye, Info, ListOrdered, Play, RefreshCw, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
 import { errorCodeOf } from "../review-api";
+import { defaultPreviewTrialApiDeps, trialPageHref, type PreviewTrialApiDeps } from "../trial/api";
+import { usePreviewMinutesLeft } from "../preview-retention";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathCheckResult, PreviewResult, PreviewTarget } from "../review-types";
@@ -28,7 +32,8 @@ import { ExamPreviewAllocation } from "./exam-preview-allocation";
 import { ExamPreviewCompliance } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
-import { useChoiceNameResolver, useIssueText, useLookup, usePathLabel } from "./exam-review-shared";
+import { PreviewScopeCard } from "./exam-preview-scope-card";
+import { ExamName, richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
 export interface ExamPreviewPanelProps {
   exam: ExamDetail;
@@ -41,6 +46,7 @@ export interface ExamPreviewPanelProps {
   version: number | null;
   onClearVersion: () => void;
   onShowCheck: () => void;
+  trialDeps?: PreviewTrialApiDeps;
 }
 
 interface PathOption {
@@ -66,20 +72,67 @@ export function ExamPreviewPanel({
   version,
   onClearVersion,
   onShowCheck,
+  trialDeps = defaultPreviewTrialApiDeps,
 }: ExamPreviewPanelProps) {
   const t = useTranslations("exams.preview");
   const tIssue = useTranslations("exams.review.issue");
   const format = useFormatter();
   const lookup = useLookup();
   const pathLabel = usePathLabel(exam.id);
+  const pathNode = usePathNode(exam.id);
   const nameOf = useChoiceNameResolver();
   const versionQuery = useExamVersion(exam.id, version);
   const generate = useGeneratePreview(exam.id);
+  const scopeName = useId();
+  const trialUnavailableId = useId();
   const [liveMessage, setLiveMessage] = useState("");
   const [run, setRun] = useState(0);
   const [tab, setTab] = useState<"paper" | "allocation">("paper");
   const [original, setOriginal] = useState(false);
   const [resultLabel, setResultLabel] = useState("");
+  const [trialExpires, setTrialExpires] = useState<{ previewId: string; expiresAt: string } | null>(null);
+  const [trialErrorCode, setTrialErrorCode] = useState<string | null>(null);
+  const [blockedTrialHref, setBlockedTrialHref] = useState<string | null>(null);
+  const activePreviewIdRef = useRef<string | null>(null);
+  const tryButtonRef = useRef<HTMLButtonElement>(null);
+
+  const extendTrial = useMutation({
+    networkMode: "always",
+    mutationFn: (previewId: string) =>
+      trialDeps.extendPreviewForTrial({ examId: exam.id, previewId }),
+    onSuccess: (res, previewId) => {
+      if (activePreviewIdRef.current !== previewId) return;
+      setTrialErrorCode(null);
+      if (res.expiresAt) {
+        setTrialExpires({ previewId, expiresAt: res.expiresAt });
+      }
+      const href = trialPageHref(exam.id, previewId, res.expiresAt ?? null);
+      let popup: Window | null = null;
+      try {
+        popup = window.open(href, "_blank");
+      } catch {
+        popup = null;
+      }
+      if (!popup || popup.closed) {
+        setBlockedTrialHref(href);
+        setLiveMessage(t("trial.popupBlocked"));
+        return;
+      }
+      try {
+        popup.opener = null;
+      } catch {
+        // Ignore if browser restricts setting opener on child window
+      }
+      setBlockedTrialHref(null);
+      setLiveMessage(t("trial.liveOpened"));
+    },
+    onError: (error, previewId) => {
+      if (activePreviewIdRef.current !== previewId) return;
+      const code = errorCodeOf(error) ?? "GENERIC";
+      setTrialErrorCode(code);
+      setLiveMessage(code === "PREVIEW_EXPIRED" ? t("trial.expiredError") : t("trial.genericError"));
+    },
+  });
 
   const parts = version !== null ? versionQuery.data?.parts : exam.parts;
   const sectionOptions = useMemo(() => listPreviewSections(parts ?? []), [parts]);
@@ -170,6 +223,9 @@ export function ExamPreviewPanel({
     setRun(nextRun);
     setTab("paper");
     setOriginal(false);
+    setTrialErrorCode(null);
+    setBlockedTrialHref(null);
+    activePreviewIdRef.current = null;
     setLiveMessage(t("live.generating"));
     generate.mutate(
       {
@@ -180,6 +236,7 @@ export function ExamPreviewPanel({
       },
       {
         onSuccess: (result) => {
+          activePreviewIdRef.current = result.status === "GENERATED" ? (result.previewId ?? null) : null;
           setResultLabel(labelOf(result, used));
           setLiveMessage(
             result.status === "GENERATED"
@@ -201,7 +258,15 @@ export function ExamPreviewPanel({
     start();
   });
 
-  const optionLabel = (option: PathOption) => {
+  /** Tên đường trong ô chọn: tên lựa chọn của mẫu nằm trong `ExamName`, chữ "(không sinh được)" ở ngoài. */
+  const optionLabel = (option: PathOption): ReactNode => {
+    const label = pathNode(option.path);
+    if (option.result === "INVALID") return richNodes(t, "pathOptionInvalid", { path: label });
+    if (option.result === "UNCONFIRMED") return richNodes(t, "pathOptionUnconfirmed", { path: label });
+    return label;
+  };
+  /** Cùng nhãn nhưng là chữ thuần, để Radix gõ tìm trong danh sách (`SelectOption.textValue`). */
+  const optionText = (option: PathOption): string => {
     const label = pathLabel(option.path);
     if (option.result === "INVALID") return t("pathOptionInvalid", { path: label });
     if (option.result === "UNCONFIRMED") return t("pathOptionUnconfirmed", { path: label });
@@ -210,6 +275,21 @@ export function ExamPreviewPanel({
 
   const data = generate.data;
   const shown = data?.status === "GENERATED" ? data : null;
+  useEffect(() => {
+    activePreviewIdRef.current = !generate.isPending && shown?.previewId ? shown.previewId : null;
+    return () => {
+      activePreviewIdRef.current = null;
+    };
+  }, [generate.isPending, shown?.previewId]);
+  const extendedExpiresAt =
+    shown?.previewId && trialExpires?.previewId === shown.previewId
+      ? trialExpires.expiresAt
+      : null;
+  const effectiveExpiresAt = extendedExpiresAt ?? data?.expiresAt ?? null;
+  const minutesLeft = usePreviewMinutesLeft(
+    effectiveExpiresAt,
+    extendedExpiresAt ? undefined : PREVIEW_RETENTION_MINUTES,
+  );
   const expired = generate.isError && errorCodeOf(generate.error) === "PREVIEW_EXPIRED";
   const runStatus = data
     ? t(data.status === "GENERATED" ? "runStatus" : "runStatusFailed", {
@@ -293,23 +373,97 @@ export function ExamPreviewPanel({
   } else if (data.status === "FAILED") {
     body = <PreviewFailure exam={exam} result={data} label={resultLabel} onShowCheck={onShowCheck} />;
   } else {
+    const canStartTrial = data.previewId !== null;
+    const isExtendingCurrent = extendTrial.isPending && extendTrial.variables === data.previewId;
     body = (
       <div className="flex flex-col gap-4">
-        <Card padding="md" className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h3 className="text-title font-semibold text-text">{t("resultTitle", { label: resultLabel })}</h3>
-            <p className="text-body text-text-secondary">
-              {t("resultMeta", {
-                questions: data.paper.totalQuestions,
-                seed: data.seed,
-                minutes: PREVIEW_RETENTION_MINUTES,
-              })}
-            </p>
+        <Card padding="md" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h3 className="text-title font-semibold text-text">{t("resultTitle", { label: resultLabel })}</h3>
+              <p className="text-body text-text-secondary">
+                {t("resultMeta", {
+                  questions: data.paper.totalQuestions,
+                  seed: data.seed,
+                  retention: extendedExpiresAt
+                    ? t("retentionExtended", {
+                        time: format.dateTime(new Date(extendedExpiresAt), "dateTime"),
+                        state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                        left: minutesLeft ?? 0,
+                      })
+                    : t("retention", {
+                        minutes: PREVIEW_RETENTION_MINUTES,
+                        state: minutesLeft === null ? "unknown" : minutesLeft === 0 ? "expired" : "left",
+                        left: minutesLeft ?? 0,
+                      }),
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setOriginal((value) => !value)}>
+                <ListOrdered />
+                {original ? t("order.showShuffled") : t("order.showOriginal")}
+              </Button>
+              <Button
+                ref={tryButtonRef}
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={!canStartTrial}
+                loading={isExtendingCurrent}
+                aria-describedby={!canStartTrial ? trialUnavailableId : undefined}
+                onClick={() => {
+                  if (!data.previewId || isExtendingCurrent) return;
+                  setBlockedTrialHref(null);
+                  setTrialErrorCode(null);
+                  setLiveMessage("");
+                  extendTrial.mutate(data.previewId);
+                }}
+              >
+                <Play aria-hidden />
+                {t("trial.button")}
+              </Button>
+            </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setOriginal((value) => !value)}>
-            <ListOrdered />
-            {original ? t("order.showShuffled") : t("order.showOriginal")}
-          </Button>
+          {!canStartTrial && (
+            <p id={trialUnavailableId} className="text-caption text-text-muted">
+              {t("trial.unavailable")}
+            </p>
+          )}
+          {blockedTrialHref && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-caption text-text">
+              <span className="flex items-center gap-2">
+                <Info aria-hidden className="size-4 shrink-0 text-warning" />
+                <span>{t("trial.popupBlocked")}</span>
+              </span>
+              <a
+                href={blockedTrialHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  setBlockedTrialHref(null);
+                  tryButtonRef.current?.focus();
+                }}
+                className={cn(
+                  "inline-flex min-h-8 items-center rounded-sm font-semibold text-primary-text underline pointer-coarse:min-h-11",
+                  focusRing,
+                )}
+              >
+                {t("trial.popupBlockedLink")}
+              </a>
+            </div>
+          )}
+          {trialErrorCode && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-bg px-3 py-2 text-caption text-danger"
+            >
+              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {trialErrorCode === "PREVIEW_EXPIRED" ? t("trial.expiredError") : t("trial.genericError")}
+              </span>
+            </div>
+          )}
         </Card>
         <Tabs variant="segmented" value={tab} onValueChange={(value) => setTab(value as "paper" | "allocation")}>
           <TabsList aria-label={t("tabs.label")} className="max-w-md">
@@ -327,12 +481,6 @@ export function ExamPreviewPanel({
       </div>
     );
   }
-
-  const kindOptions = [
-    ...(sectionOptions.length > 0 ? [{ value: "SECTION", label: t("scope.kind.SECTION") }] : []),
-    ...(choiceRequired ? [{ value: "PATH", label: t("scope.kind.PATH") }] : []),
-    { value: "EXAM", label: t("scope.kind.EXAM"), disabled: choiceRequired },
-  ];
 
   return (
     <section aria-labelledby="preview-title" className="flex flex-col gap-4">
@@ -356,52 +504,54 @@ export function ExamPreviewPanel({
       )}
 
       <Card padding="md" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <FormField label={t("scope.label")} className="min-w-0 flex-[1_1_14rem]">
-            {(controlProps) => (
-              <Select {...controlProps} value={kind} onValueChange={(value) => setPickedKind(value as ScopeKind)} options={kindOptions} />
-            )}
-          </FormField>
-          {kind === "PATH" && (
-            <FormField label={t("pathLabel")} className="min-w-0 flex-[1_1_18rem]">
-              {(controlProps) => (
+        <fieldset className="m-0 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(16.25rem,100%),1fr))] gap-2.5 border-0 p-0">
+          <legend className="sr-only">{t("scope.label")}</legend>
+          {sectionOptions.length > 0 && (
+            <PreviewScopeCard name={scopeName} value="SECTION" label={t("scope.kind.SECTION")} checked={kind === "SECTION"} onSelect={() => setPickedKind("SECTION")}>
+              {section && (
                 <Select
-                  {...controlProps}
-                  value={pathId ?? undefined}
-                  onValueChange={setSelected}
-                  disabled={options.length === 0}
-                  options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option) }))}
-                />
-              )}
-            </FormField>
-          )}
-          {kind === "SECTION" && section && (
-            <FormField label={t("scope.section")} className="min-w-0 flex-[1_1_18rem]">
-              {(controlProps) => (
-                <Select
-                  {...controlProps}
+                  aria-label={t("scope.section")}
                   value={section.sectionId}
-                  onValueChange={setPickedSection}
+                  onValueChange={(value) => {
+                    setPickedKind("SECTION");
+                    setPickedSection(value);
+                  }}
                   options={sectionOptions.map((item) => ({
                     value: item.sectionId,
-                    label: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
+                    label: richNodes(t, "scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: <ExamName>{item.partName}</ExamName> }),
+                    textValue: t("scope.sectionOption", { subject: lookup.subject(item.subjectCode), part: item.partName }),
                   }))}
                 />
               )}
-            </FormField>
-          )}
-          {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
-            <FormField label={t("scope.count")} className="min-w-0 flex-[0_1_12rem]">
-              {(controlProps) => (
+              {kind === "SECTION" && section?.counts && section.counts.length > 1 && sectionCount !== null && (
                 <Select
-                  {...controlProps}
+                  aria-label={t("scope.count")}
                   value={String(sectionCount)}
                   onValueChange={(value) => setPickedCount(Number(value))}
-                  options={section.counts!.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
+                  options={section.counts.map((count) => ({ value: String(count), label: t("scope.countOption", { count, full: count === section.counts![0] ? "yes" : "no" }) }))}
                 />
               )}
-            </FormField>
+            </PreviewScopeCard>
           )}
+          {choiceRequired && (
+            <PreviewScopeCard name={scopeName} value="PATH" label={t("scope.kind.PATH")} checked={kind === "PATH"} onSelect={() => setPickedKind("PATH")}>
+              <Select
+                aria-label={t("pathLabel")}
+                value={pathId ?? undefined}
+                onValueChange={(value) => {
+                  setPickedKind("PATH");
+                  setSelected(value);
+                }}
+                disabled={options.length === 0}
+                options={options.map((option) => ({ value: option.path.pathId, label: optionLabel(option), textValue: optionText(option) }))}
+              />
+            </PreviewScopeCard>
+          )}
+          <PreviewScopeCard name={scopeName} value="EXAM" label={t("scope.kind.EXAM")} checked={kind === "EXAM"} disabled={choiceRequired} onSelect={() => setPickedKind("EXAM")}>
+            {choiceRequired && <span className="text-caption">{t("scope.examBlocked")}</span>}
+          </PreviewScopeCard>
+        </fieldset>
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => start()} loading={generate.isPending} disabled={!canGenerate}>
             {data ? <RefreshCw /> : <Eye />}
             {data ? t("regenerate") : t("generate")}
@@ -412,11 +562,10 @@ export function ExamPreviewPanel({
               onClick={() => start({ basePreviewId: shown.previewId!, regeneratePartIds: keepIds, seed: shown.seed })}
               loading={generate.isPending}
             >
-              {t("keep.change", { parts: regeneratedParts.map((part) => part.name).join(", ") })}
+              {richNodes(t, "keep.change", { parts: <ExamName>{regeneratedParts.map((part) => part.name).join(", ")}</ExamName> })}
             </Button>
           )}
         </div>
-        {choiceRequired && <p className="text-caption text-text-muted">{t("scope.examBlocked")}</p>}
         {subjectOption && (
           <ExamPreviewSubjects
             option={subjectOption}
@@ -427,13 +576,13 @@ export function ExamPreviewPanel({
         {canKeep && shown && selectedPath && keptRange && regeneratedRange && (
           <p className="flex items-start gap-2 text-body text-text-secondary">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {t("keep.note", {
-              from: pathLabel(shown.path),
-              to: pathLabel(selectedPath),
-              kept: keptParts.map((part) => part.name).join(", "),
+            {richNodes(t, "keep.note", {
+              from: pathNode(shown.path),
+              to: pathNode(selectedPath),
+              kept: <ExamName>{keptParts.map((part) => part.name).join(", ")}</ExamName>,
               keptFirst: keptRange.first,
               keptLast: keptRange.last,
-              regenerated: regeneratedParts.map((part) => part.name).join(", "),
+              regenerated: <ExamName>{regeneratedParts.map((part) => part.name).join(", ")}</ExamName>,
               regeneratedFirst: regeneratedRange.first,
               regeneratedLast: regeneratedRange.last,
             })}
@@ -467,6 +616,7 @@ function PreviewFailure({
   onShowCheck: () => void;
 }) {
   const t = useTranslations("exams.preview");
+  const unavailableId = useId();
   const issueText = useIssueText(exam);
   const issueContent = useIssueText(exam, true);
   const invalid = result.reason === "INVALID";
@@ -487,7 +637,7 @@ function PreviewFailure({
           ))}
         </ul>
         <p className="text-body text-text-secondary">{t("failNote")}</p>
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           {invalid ? (
             <Button asChild variant="link" size="sm">
               <Link href={fixHref ?? `/exams/${encodeURIComponent(exam.id)}/structure`}>
@@ -501,7 +651,20 @@ function PreviewFailure({
               <ArrowRight />
             </Button>
           )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled
+            aria-describedby={unavailableId}
+          >
+            <Play aria-hidden />
+            {t("trial.button")}
+          </Button>
         </div>
+        <p id={unavailableId} className="text-caption text-text-muted">
+          {t("trial.unavailable")}
+        </p>
       </div>
     </div>
   );

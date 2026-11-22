@@ -89,4 +89,50 @@ describe("UserHistoryTab: khung hẹp thành danh sách thẻ (UNI-2587)", () =>
     ]);
     expect(screen.queryByRole("list", { name: "Lịch sử thay đổi tài khoản" })).toBeNull();
   });
+
+  it("dịch đầy đủ 8 mã audit thương mại trong lịch sử tài khoản (AC-23, R1-67)", async () => {
+    installContainerWidth(900);
+    const commerceActions = [
+      ["REFUND_REQUESTED", "Yêu cầu hoàn tiền"],
+      ["REFUND_SUCCEEDED", "Hoàn tiền thành công"],
+      ["REFUND_FAILED", "Hoàn tiền thất bại"],
+      ["REFUND_RECORDED_MANUALLY", "Ghi nhận hoàn tiền thủ công"],
+      ["ENTITLEMENT_REVOKED", "Thu hồi lượt sử dụng"],
+      ["ORDER_FULFILLED_MANUALLY", "Tiếp tục cấp quyền thủ công"],
+      ["PAYMENT_LATE_SUCCESS_ACCEPTED", "Chấp nhận tiền về muộn và cấp quyền"],
+      ["PAYMENT_LATE_SUCCESS_REJECTED", "Chuyển tiền về muộn sang hoàn tiền"],
+    ] as const;
+
+    const events: AuditEvent[] = commerceActions.map(([action], idx) => ({
+      id: `commerce-evt-${idx}`,
+      occurredAt: `2026-11-21T0${idx}:00:00Z`,
+      actorUsername: "ops.admin",
+      actorRoles: ["ADMIN"],
+      actorType: "USER",
+      module: "COMMERCE",
+      action,
+      targetType: "ORDER",
+      targetId: USER_ID,
+      outcome: action === "REFUND_FAILED" ? "FAILURE" : "SUCCESS",
+    }));
+
+    const listUserAuditEvents = vi.fn<UsersApiDeps["listUserAuditEvents"]>(async () => ({
+      items: events,
+      page: 0,
+      size: 20,
+      totalItems: events.length,
+      totalPages: 1,
+    }));
+
+    renderWithProviders(
+      <UserHistoryTab userId={USER_ID} listUserAuditEvents={listUserAuditEvents} />,
+    );
+
+    await screen.findByText("Yêu cầu hoàn tiền");
+    const table = screen.getByRole("table", { name: "Lịch sử thay đổi tài khoản" });
+    for (const [action, label] of commerceActions) {
+      expect(within(table).getByText(label)).toBeInTheDocument();
+      expect(within(table).queryByText(action)).toBeNull();
+    }
+  });
 });

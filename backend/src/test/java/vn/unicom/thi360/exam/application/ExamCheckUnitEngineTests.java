@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +29,11 @@ import vn.unicom.thi360.exam.domain.Exam;
 import vn.unicom.thi360.exam.domain.ExamStructureCodec;
 import vn.unicom.thi360.exam.domain.ExamStructureDocument;
 import vn.unicom.thi360.exam.domain.solver.SolverLimits;
+import vn.unicom.thi360.exam.domain.solver.SectionOnPath;
+import vn.unicom.thi360.exam.domain.solver.SolveOutcome;
+import vn.unicom.thi360.exam.domain.solver.SolveReason;
+import vn.unicom.thi360.exam.domain.solver.SolveStats;
+import vn.unicom.thi360.exam.domain.solver.SolveStatus;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
 
@@ -267,6 +273,96 @@ class ExamCheckUnitEngineTests {
                 new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
         assertThat(states.states(exam.getId())).extracting(state -> state.state())
                 .containsExactly("CHECKED", "INCOMPLETE");
+    }
+
+    /**
+     * CR-4 R2-2: a run is complete when no unit of it was left unconfirmed, whatever the verdict of the paths that hold
+     * the units: an invalid unit next to an unconfirmed one in the same tuple folds into an INVALID path, which shows no
+     * unconfirmed path or selection. The real planner and engine run; only the per-unit solver answers are forced.
+     */
+    @Test
+    void aRunWithAnUnconfirmedUnitIsIncompleteEvenWhenItsTupleIsInvalid() {
+        var mapper = new ObjectMapper();
+        var catalog = mock(CatalogLookup.class);
+        var source = mock(QuestionSourcePort.class);
+        var store = mock(ExamCheckUnitStore.class);
+        UUID physics = UUID.randomUUID(), chemistry = UUID.randomUUID();
+        var physicsItem = item(physics);
+        var chemistryItem = item(chemistry);
+        when(catalog.findActiveItem(eq("SUBJECT"), eq("LY"))).thenReturn(Optional.of(physicsItem));
+        when(catalog.findActiveItem(eq("SUBJECT"), eq("HOA"))).thenReturn(Optional.of(chemistryItem));
+        doAnswer(call -> {
+            UUID subject = ((QuestionSourcePort.Filter) call.getArgument(0)).subjectId();
+            var unit = new QuestionSourcePort.Unit(subject, null, QuestionType.SINGLE_CHOICE,
+                    null, null, List.of(), List.of(), BigDecimal.ONE);
+            return List.of(new QuestionSourcePort.Candidate(subject, 1, null, List.of(unit), null, null));
+        }).when(source).findCandidates(any(), anyInt());
+        var limits = SolverLimits.defaults();
+        var clock = Clock.systemUTC();
+        var engine = spy(new ExamCheckUnitEngine(store,
+                new ExamCheckUnitFingerprint(mapper, new ExamCheckFingerprint(mapper)), catalog, mapper, limits, clock));
+        Map<String, SolveStatus> forced = new HashMap<>();
+        doAnswer(call -> {
+            List<SectionOnPath> sections = call.getArgument(0);
+            SolveStatus status = forced.get(sections.getFirst().subjectCode());
+            if (status == null) return call.callRealMethod();
+            return new SolveOutcome(status, status == SolveStatus.UNCONFIRMED ? SolveReason.DEADLINE_EXCEEDED : null,
+                    List.of(), SolveStats.EMPTY);
+        }).when(engine).solveUnit(any(), any(), any());
+        var checker = new DefaultExamChecker(new SolverInputBuilder(catalog, source, limits), limits, clock, mapper, catalog,
+                source, org.mockito.Mockito.mock(vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.class), engine,
+                new ExamCheckTemplateFacts(catalog, org.mockito.Mockito.mock(ExamTemplateService.class), mapper));
+        var exam = new Exam(UUID.randomUUID(), "UNIT", "Unit", null, "FULL", "SHARED", 60,
+                null, "RAW", clock.instant(), UUID.randomUUID());
+        exam.applyStructureSummary(2, false, false, 0);
+        var input = new ExamCheckResultStore.Input(exam.getId(), 0, "hash",
+                mapper.valueToTree(ExamCheckFingerprint.Config.from(exam)), null, 0, "hash", mapper.createObjectNode());
+        when(store.load(exam.getId())).thenReturn(Map.of());
+        var whole = ExamCheckScope.from(null, null, null);
+
+        // Both subjects solved: complete.
+        var plain = check(checker, exam, document(mapper, false), input, clock, whole);
+        assertThat(plain.result().path("status").asText()).isEqualTo("VALID");
+        assertThat(plain.rulesEvaluated()).as("all units solved").isTrue();
+
+        // A completed mixed run (one unit proved invalid, the other solved) is complete.
+        forced.put("LY", SolveStatus.INVALID);
+        var mixedDone = check(checker, exam, document(mapper, false), input, clock, whole);
+        assertThat(mixedDone.result().path("paths").get(0).path("result").asText()).isEqualTo("INVALID");
+        assertThat(mixedDone.rulesEvaluated()).as("invalid + valid units").isTrue();
+
+        // An unconfirmed unit alone: incomplete (the path itself shows it).
+        forced.clear();
+        forced.put("HOA", SolveStatus.UNCONFIRMED);
+        assertThat(check(checker, exam, document(mapper, false), input, clock, whole).rulesEvaluated())
+                .as("valid + unconfirmed units").isFalse();
+
+        // The same tuple holds an invalid and an unconfirmed unit: the path folds to INVALID, the run is still incomplete.
+        forced.put("LY", SolveStatus.INVALID);
+        var folded = check(checker, exam, document(mapper, false), input, clock, whole);
+        assertThat(folded.result().path("paths").get(0).path("result").asText()).isEqualTo("INVALID");
+        assertThat(folded.rulesEvaluated()).as("invalid + unconfirmed units of one tuple").isFalse();
+
+        // The same with a subject choice: the only pick holds both units, so its selection shows INVALID as well and no
+        // path or selection of the result says UNCONFIRMED; the run is incomplete all the same.
+        var choice = new ExamStructureCodec(mapper).read("""
+                {"parts":[{"id":"p","name":"Part","questionCount":2,"participation":{"mode":"CHOICE","choose":1},"options":[
+                  {"id":"science","kind":"SUBJECT_CHOICE","code":"SCIENCE","chooseSubjects":2,"countsByPick":[1,1],"sections":[
+                    {"id":"physics","subjectCode":"LY","questionCount":1,"choiceGroup":"NATURAL","blocks":[
+                      {"id":"bp","questionType":"SINGLE_CHOICE","questionCount":1}]},
+                    {"id":"chemistry","subjectCode":"HOA","questionCount":1,"choiceGroup":"NATURAL","blocks":[
+                      {"id":"bc","questionType":"SINGLE_CHOICE","questionCount":1}]}]}]}]}
+                """);
+        var hidden = check(checker, exam, choice, input, clock, whole);
+        var hiddenPath = hidden.result().path("paths").get(0);
+        assertThat(hiddenPath.path("result").asText()).isEqualTo("INVALID");
+        for (var selection : hiddenPath.path("selections")) {
+            assertThat(selection.path("result").asText()).as("no selection advertises the unconfirmed unit").isEqualTo("INVALID");
+        }
+        assertThat(hidden.rulesEvaluated()).as("invalid + unconfirmed units of the only pick").isFalse();
+        forced.remove("HOA");
+        assertThat(check(checker, exam, choice, input, clock, whole).rulesEvaluated())
+                .as("the same pick with the unconfirmed unit solved").isTrue();
     }
 
     private static CatalogItemView item(UUID id) {

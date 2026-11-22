@@ -1,0 +1,263 @@
+"use client";
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Input } from "../components/input";
+import { useUiLocale, useUiStrings } from "../components/ui-strings";
+import { cn } from "../lib/cn";
+import { RichTextView } from "../rich-text";
+import { formatScore } from "./helpers";
+import { PartOutcome, QuestionFrame, ReviewPoints } from "./question-frame";
+import { ReviewBody, ReviewCell, ReviewHead, ReviewRow, ReviewTable, ReviewTh } from "./review-table";
+import type { KitQuestionProps } from "./shared";
+import { answersVisible, resolveReview, reviewSolution } from "./shared";
+import { coarseFieldHeight, touchFieldText } from "./touch";
+import type { ClozeAnswer, KitQuestion, KitQuestionOf, PartResult, QuestionReview } from "./types";
+
+const MARKER = /\[\[([^\]]+)\]\]/;
+
+interface Slot {
+  blankId: string;
+  element: HTMLElement;
+}
+
+/**
+ * Ngữ liệu Điền khuyết dạng HTML với chỗ trống `[[id]]` nằm ngay trong dòng chữ (port từ
+ * `ClozePassage` của web-admin): `RichTextView` dựng HTML và công thức, rồi mỗi `[[id]]` trong chữ
+ * thuần được thay bằng một vị trí gắn `renderBlank` (ô nhập khi làm bài, nhãn đáp án khi xem lại).
+ * Vị trí đánh số theo thứ tự xuất hiện. Theo dõi DOM vì `RichTextView` chỉ dựng nội dung sau khi
+ * hydrate và dựng lại khi ngữ liệu đổi.
+ */
+export function ClozePassage({
+  html,
+  renderBlank,
+  className,
+}: {
+  html: string;
+  renderBlank: (blankId: string, ordinal: number) => ReactNode;
+  className?: string;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const scan = () => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const texts: Text[] = [];
+      while (walker.nextNode()) texts.push(walker.currentNode as Text);
+      for (const node of texts) {
+        if (!MARKER.test(node.data)) continue;
+        const fragment = document.createDocumentFragment();
+        // split với nhóm bắt: phần tử lẻ là id chỗ trống.
+        node.data.split(MARKER).forEach((part, index) => {
+          if (index % 2 === 0) {
+            if (part) fragment.append(part);
+            return;
+          }
+          const slot = document.createElement("span");
+          slot.dataset.clozeSlot = part.trim();
+          fragment.append(slot);
+        });
+        node.replaceWith(fragment);
+      }
+      // Ô nhập (tên truy cập, placeholder) là chữ giao diện nên không được nằm trong vùng `data-exam-content`
+      // (DESIGN.md mục 8). Vì ô nằm lẫn trong đoạn chữ, chỉ gắn thuộc tính lên từng đoạn chữ của ngữ liệu
+      // (công thức thì gắn lên chính phần tử công thức), không gắn lên khối bao ngoài.
+      const marker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const bare: Text[] = [];
+      while (marker.nextNode()) bare.push(marker.currentNode as Text);
+      for (const node of bare) {
+        const parent = node.parentElement;
+        if (!parent || !node.data.trim() || parent.closest("[data-exam-content], [data-cloze-slot]")) continue;
+        const math = parent.closest<HTMLElement>("span.math-inline, span.math-block");
+        if (math) {
+          math.dataset.examContent = "";
+          continue;
+        }
+        const wrapper = document.createElement("span");
+        wrapper.dataset.examContent = "";
+        node.replaceWith(wrapper);
+        wrapper.append(node);
+      }
+      const found = [...root.querySelectorAll<HTMLElement>("[data-cloze-slot]")];
+      setSlots((current) =>
+        current.length === found.length &&
+        current.every((slot, index) => slot.element === found[index])
+          ? current
+          : found.map((element) => ({ blankId: element.dataset.clozeSlot ?? "", element })),
+      );
+    };
+    scan();
+    const observer = new MutationObserver(scan);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={rootRef} className={className}>
+      <RichTextView html={html} />
+      {slots.map((slot, ordinal) =>
+        createPortal(renderBlank(slot.blankId, ordinal), slot.element, `${ordinal}-${slot.blankId}`),
+      )}
+    </div>
+  );
+}
+
+type ClozeBody = Extract<KitQuestion["body"], { type: "CLOZE" }>;
+
+/**
+ * Câu Điền khuyết: ô inline ngay trong đoạn (LT 8, canvas `ThiDienKhuyet`):
+ * số ô = `displayNo + ordinal` (BS 5), bàn phím đi vào trực tiếp, dấu phẩy hay chấm đều được.
+ * Review: ô chỉ đọc + icon kết quả, "Đáp án" (bảng chấp nhận) khi `showAnswers`.
+ */
+export function ClozeQuestion({
+  question,
+  mode,
+  value,
+  onChange,
+  flagged,
+  onToggleFlag,
+  review,
+  headingLevel,
+  className,
+}: KitQuestionProps<KitQuestionOf<ClozeBody>, ClozeAnswer>) {
+  const strings = useUiStrings().question;
+  const resolved = resolveReview(review);
+  const body = question.body;
+  const blanks = value?.blanks ?? {};
+  const filled = body.blanks.filter((blank) => (blanks[blank.id] ?? "").trim() !== "").length;
+  return (
+    <QuestionFrame
+      question={question}
+      headingLevel={headingLevel}
+      flagged={mode === "answer" ? flagged : undefined}
+      onToggleFlag={mode === "answer" ? onToggleFlag : undefined}
+      reviewOutcome={mode === "review" ? (resolved?.outcome ?? null) : undefined}
+      reviewPoints={
+        mode === "review" ? (
+          <ReviewPoints earned={resolved?.earned} max={resolved?.max ?? question.points ?? 1} />
+        ) : undefined
+      }
+      reviewSolutionHtml={reviewSolution(mode, resolved)}
+      className={className}
+    >
+      {mode === "answer" && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-caption text-text-secondary">{strings.clozeHelp}</p>
+          <p role="status" className="text-caption font-medium text-text-secondary tabular-nums">
+            {strings.clozeFilled(filled, body.blanks.length)}
+          </p>
+        </div>
+      )}
+      <div>
+        <ClozePassage
+          html={body.passage}
+          renderBlank={(blankId, ordinal) => {
+            const number = question.displayNo + ordinal;
+            const part = resolved?.gradingDetail?.[blankId];
+            return (
+              <span className="relative mx-1 inline-flex items-center align-baseline">
+                <Input
+                  size="md"
+                  value={blanks[blankId] ?? ""}
+                  readOnly={mode === "review"}
+                  aria-readonly={mode === "review" || undefined}
+                  aria-label={strings.clozeBlankAria(number, ordinal + 1)}
+                  placeholder={strings.clozePlaceholder(ordinal + 1)}
+                  onChange={(event) =>
+                    onChange?.({ blanks: { ...blanks, [blankId]: event.target.value } })
+                  }
+                  className={cn(
+                    "inline-flex w-24 px-2.5 text-center font-semibold tabular-nums",
+                    coarseFieldHeight,
+                    touchFieldText,
+                    mode === "review" && partToneClass(part),
+                  )}
+                />
+                {mode === "review" && part && (
+                  <PartOutcome outcome={part.outcome} className="absolute -top-1.5 -right-1.5 size-3.5" />
+                )}
+              </span>
+            );
+          }}
+        />
+      </div>
+      {mode === "answer" && <p className="text-caption text-text-secondary">{strings.clozeBlankNote}</p>}
+      {mode === "review" && <ClozeReviewTable question={question} value={value} review={resolved} />}
+    </QuestionFrame>
+  );
+}
+
+function partToneClass(part: PartResult | undefined): string | undefined {
+  if (!part) return undefined;
+  switch (part.outcome) {
+    case "CORRECT":
+      return "border-success bg-success-bg";
+    case "PARTIAL":
+      return "border-warning bg-warning-bg";
+    case "WRONG":
+      return "border-danger bg-danger-bg";
+    default:
+      return undefined;
+  }
+}
+
+function ClozeReviewTable({
+  question,
+  value,
+  review,
+}: {
+  question: KitQuestionOf<ClozeBody>;
+  value: ClozeAnswer | null | undefined;
+  review: QuestionReview | null;
+}) {
+  const strings = useUiStrings().question;
+  const locale = useUiLocale();
+  const blanks = value?.blanks ?? {};
+  const showAnswers = answersVisible(review);
+  const hasPoints = question.body.blanks.some((blank) => review?.gradingDetail?.[blank.id]?.earned != null);
+  return (
+    <ReviewTable>
+      <ReviewHead>
+        <ReviewTh>{strings.itemCol}</ReviewTh>
+        <ReviewTh>{strings.youChoseCol}</ReviewTh>
+        {showAnswers && <ReviewTh>{strings.acceptedCol}</ReviewTh>}
+        {hasPoints && <ReviewTh last>{strings.pointsCol}</ReviewTh>}
+      </ReviewHead>
+      <ReviewBody>
+        {question.body.blanks.map((blank, ordinal) => {
+          const part = review?.gradingDetail?.[blank.id];
+          const text = blanks[blank.id] ?? "";
+          const number = question.displayNo + ordinal;
+          return (
+            <ReviewRow key={blank.id}>
+              <ReviewCell className="font-semibold tabular-nums">{strings.questionLabel(number)}</ReviewCell>
+              <ReviewCell label={strings.youChoseCol}>
+                <span className="inline-flex items-center gap-2">
+                  {part && <PartOutcome outcome={part.outcome} />}
+                  {text === "" ? (
+                    <span className="text-text-muted">{strings.blankFilledTag}</span>
+                  ) : (
+                    <span data-exam-content>{text}</span>
+                  )}
+                </span>
+              </ReviewCell>
+              {showAnswers && (
+                <ReviewCell label={strings.acceptedCol}>
+                  <span data-exam-content>{blank.answers.join(" · ")}</span>
+                </ReviewCell>
+              )}
+              {hasPoints && (
+                <ReviewCell label={strings.pointsCol} last className="tabular-nums">
+                  {part?.earned != null
+                    ? strings.points(formatScore(part.earned, locale), formatScore(part.max ?? blank.points ?? 1, locale))
+                    : "—"}
+                </ReviewCell>
+              )}
+            </ReviewRow>
+          );
+        })}
+      </ReviewBody>
+    </ReviewTable>
+  );
+}

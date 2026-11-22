@@ -20,6 +20,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import vn.unicom.thi360.shared.testapi.TestApiPaths;
 
 @Configuration
 @EnableWebSecurity
@@ -92,17 +93,29 @@ public class SecurityConfig {
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(deniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(RateLimitFilter.RegistrationRoute::matches).permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout").permitAll()
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/password/forgot",
+                                "/api/v1/auth/password/reset").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/ping",
                                 "/api/v1/appearance",
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/v3/api-docs",
-                                "/v3/api-docs/**").permitAll()
+                                "/v3/api-docs/**",
+                                // CM-1 (TM 10.2): the public storefront; /api/v1/public/** is limited per IP by RateLimitFilter.
+                                "/api/v1/public/**",
+                                // CM-3a (TM 8.4): mock VNPAY page (active only in dev/test/e2e when MODE=MOCK).
+                                "/mock-vnpay",
+                                "/mock-vnpay/**").permitAll()
+                        // /api/v1/test/**: chỉ profile e2e có handler (shared/testapi), nên chuỗi này chỉ thấy
+                        // tiền tố ở profile e2e (ẩn danh gọi được). Profile khác do chuỗi riêng
+                        // TestApiAbsentSecurityConfig trả 404 trước khi xét xác thực.
+                        .requestMatchers(TestApiPaths.PATTERN).permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/admin/**").access((authentication, context) -> {
                             var authObj = authentication.get();

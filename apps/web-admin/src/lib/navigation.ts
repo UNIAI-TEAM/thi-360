@@ -5,13 +5,16 @@ import {
   GraduationCap,
   LayoutDashboard,
   List,
+  Package,
+  Receipt,
   Shield,
   SlidersVertical,
+  Tag,
+  Timer,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { hasPermission, type PermissionRequirement } from "@/features/session/permissions";
-import { isGradingMockEnabled } from "@/lib/mock/flags";
 
 /**
  * Menu chính của web admin, nguồn duy nhất cho sidebar, breadcrumb và lối tắt ở Bảng điều khiển.
@@ -32,11 +35,6 @@ export interface NavItem {
   permission: PermissionRequirement | null;
   /** Đặt `true` cho mục không hiện thành thẻ lối tắt (chính trang Bảng điều khiển). */
   excludeFromShortcuts?: boolean;
-  /**
-   * Màn chạy được trên dữ liệu mẫu: hiện khi người dùng có `permission`, hoặc khi cờ
-   * `NEXT_PUBLIC_THI360_GRADING_MOCK` bật (chỉ còn `/grading` sau QA UNI-2621).
-   */
-  mockFlag?: "grading";
 }
 
 export interface NavGroup {
@@ -94,13 +92,46 @@ export const NAVIGATION: readonly NavGroup[] = [
         href: "/grading",
         icon: ClipboardCheck,
         permission: "GRADING.VIEW",
-        mockFlag: "grading",
       },
       {
         id: "catalog",
         href: "/catalog",
         icon: List,
         permission: "CATALOG.VIEW",
+      },
+    ],
+  },
+  {
+    id: "commerce",
+    items: [
+      {
+        id: "promotions",
+        href: "/promotions",
+        icon: Tag,
+        permission: "PROMOTION.VIEW",
+      },
+      {
+        id: "orders",
+        href: "/orders",
+        icon: Receipt,
+        permission: "ORDER.VIEW",
+      },
+      {
+        id: "bundles",
+        href: "/bundles",
+        icon: Package,
+        permission: "EXAM.VIEW",
+      },
+    ],
+  },
+  {
+    id: "learners",
+    items: [
+      {
+        id: "attempts",
+        href: "/attempts",
+        icon: Timer,
+        permission: "ATTEMPT.VIEW",
       },
     ],
   },
@@ -123,30 +154,30 @@ export const NAVIGATION: readonly NavGroup[] = [
   },
 ];
 
-export interface MockFlags {
-  readonly grading: boolean;
-}
+/**
+ * Mục đã có trong menu nhưng trang chưa có: ẩn ở sidebar và lối tắt ở Bảng điều khiển dù người dùng đủ quyền
+ * (plan B8). FA-4 đã mở trang Lượt thi nên danh sách này rỗng.
+ */
+export const HIDDEN_NAV_ITEMS: readonly string[] = [];
 
-export function currentMockFlags(): MockFlags {
-  return { grading: isGradingMockEnabled() };
-}
-
-/** Hiện khi cờ dữ liệu mẫu của mục bật, hoặc người dùng có quyền (mục không có quyền: mọi người dùng thấy). */
-function isVisible(item: NavItem, granted: ReadonlySet<string>, flags: MockFlags): boolean {
-  if (item.mockFlag && flags[item.mockFlag]) return true;
+/** Hiện khi người dùng có quyền (mục không có quyền: mọi người dùng thấy). */
+function isVisible(item: NavItem, granted: ReadonlySet<string>): boolean {
   return item.permission === null || hasPermission(granted, item.permission);
 }
 
-/** Giữ các mục người dùng có quyền; nhóm không còn mục nào thì bỏ. */
+/**
+ * Giữ các mục người dùng có quyền và không nằm trong danh sách ẩn; nhóm không còn mục nào thì bỏ. `hiddenItems`
+ * mặc định là `HIDDEN_NAV_ITEMS`.
+ */
 export function filterNavigation(
   groups: readonly NavGroup[],
   granted: ReadonlySet<string>,
-  mockFlags: MockFlags = currentMockFlags(),
+  hiddenItems: readonly string[] = HIDDEN_NAV_ITEMS,
 ): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => isVisible(item, granted, mockFlags)),
+      items: group.items.filter((item) => !hiddenItems.includes(item.id) && isVisible(item, granted)),
     }))
     .filter((group) => group.items.length > 0);
 }

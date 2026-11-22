@@ -7,6 +7,3 @@ vi.mock("@/lib/api/client", async () => {
   const fake = await import("@/test/fake-api");
   return { createBrowserApiClient: fake.fakeBrowserApiClient };
 });
-
-// Cờ dữ liệu mẫu của `/grading` tắt trong project này (các màn content/questions/import/exams luôn gọi client giả).
-process.env.NEXT_PUBLIC_THI360_GRADING_MOCK = "false";

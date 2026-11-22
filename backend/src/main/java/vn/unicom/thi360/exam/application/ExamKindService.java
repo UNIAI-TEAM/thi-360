@@ -1,5 +1,6 @@
 package vn.unicom.thi360.exam.application;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -47,13 +48,15 @@ public class ExamKindService {
     private final AppMessages messages;
     private final JdbcTemplate jdbc;
 
+    private final Clock clock;
+
     public ExamKindService(
             ExamKindProfileRepository profileRepository,
             CatalogLookup catalogLookup,
             ContentReferenceService contentReferenceService,
             AuditRecorder auditRecorder,
             CurrentUserProvider currentUserProvider,
-            AppMessages messages, JdbcTemplate jdbc) {
+            AppMessages messages, JdbcTemplate jdbc, Clock clock) {
         this.profileRepository = profileRepository;
         this.catalogLookup = catalogLookup;
         this.contentReferenceService = contentReferenceService;
@@ -61,6 +64,7 @@ public class ExamKindService {
         this.currentUserProvider = currentUserProvider;
         this.messages = messages;
         this.jdbc = jdbc;
+        this.clock = clock;
     }
 
     /** Danh sách kỳ thi (giá trị nhóm EXAM đang hoạt động) kèm hồ sơ; chưa có hồ sơ → profileSet = false. */
@@ -113,7 +117,7 @@ public class ExamKindService {
             throw new ValidationException(errors);
         }
 
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         UUID actor = currentUserProvider.getCurrentUser().map(u -> u.id()).orElse(null);
         ExamKindProfile profile = profileRepository.findByExamItemIdForUpdate(itemId).orElse(null);
         long currentRevision = profile == null ? 0L : profile.getRevision();

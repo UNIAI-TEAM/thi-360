@@ -174,12 +174,13 @@ describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("R2-07: sau Áp dụng số mới hoặc Giữ số cũ tiêu điểm về ô Số câu của mục, không rơi về thân trang", async () => {
+  it("R2-07: sau Áp dụng số mới hoặc Giữ số cũ tiêu điểm về tiêu đề màn môn, không rơi về thân trang", async () => {
     for (const action of ["Áp dụng số mới", "Giữ số cũ"]) {
       const user = userEvent.setup();
       renderPanel(section());
       await user.click(screen.getByRole("button", { name: action }));
-      await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu của mục" })).toHaveFocus());
+      await waitFor(() => expect(screen.getByRole("heading", { level: 2 })).toHaveFocus());
+      expect(screen.getByRole("heading", { level: 2 })).toHaveClass("focus-visible:ring-3");
       cleanup();
     }
   });
@@ -268,14 +269,14 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     publishable: true,
     fixedCounts,
     structure: { parts: [] },
+    parts: [],
   });
 
-  it("khóa ô số câu của mục; phân bổ bên trong mục vẫn sửa được", async () => {
+  it("mẫu khóa số câu: dòng số câu ở đầu màn ghi lý do khóa; không có ô Số câu của mục", async () => {
     boot({ template: template(true) });
     open();
-    const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
-    expect(count).toHaveAttribute("readonly");
-    expect(screen.getByText("Mẫu đã khóa số câu")).toBeInTheDocument();
+    expect(await screen.findByText("Mẫu đã khóa số câu")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
   });
 
   it("nhóm trong mục khóa vẫn sửa được số câu", async () => {
@@ -285,11 +286,11 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     expect(groupCount).not.toHaveAttribute("readonly");
   });
 
-  it("mẫu không khóa: ô số câu của mục cũng chỉ đọc (số câu chỉ sửa ở thông tin tổng quan), không có dòng 'Mẫu đã khóa số câu'", async () => {
+  it("mẫu không khóa: không có ô Số câu của mục và không có dòng 'Mẫu đã khóa số câu'", async () => {
     boot({ template: template(false) });
     open();
-    const count = await screen.findByRole("textbox", { name: "Số câu của mục" });
-    expect(count).toHaveAttribute("readonly");
+    await screen.findByRole("heading", { name: /^Môn / });
+    expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
     expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
   });
 
@@ -307,6 +308,13 @@ describe("Row 12: mẫu khóa số câu (H27)", () => {
     for (const name of [/^Số câu trên đề/, /^Số câu phải làm/]) {
       expect(await screen.findByRole("textbox", { name })).toHaveAttribute("readonly");
     }
+    expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
+  });
+
+  it("R1-18: chưa rõ số câu của môn thì không gắn nhãn Mẫu đã khóa số câu cạnh dòng số câu", async () => {
+    boot({ section: { questionCount: null }, template: template(true) });
+    open();
+    expect(await screen.findByText("Số câu của môn chưa xác định.")).toBeInTheDocument();
     expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
   });
 });

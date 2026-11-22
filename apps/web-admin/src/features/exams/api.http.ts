@@ -207,6 +207,7 @@ export async function updateExamInfo(id: string, request: UpdateExamInfoRequest)
       scope: request.scope,
       partCode: request.partCode ?? undefined,
       subjectCode: request.subjectCode ?? undefined,
+      buildMode: request.buildMode ?? undefined,
       // Chuỗi trống xóa mô tả và hướng dẫn; thiếu trường thì giữ nguyên.
       description: request.description ?? "",
       instructions: request.instructions === undefined ? undefined : (request.instructions ?? ""),

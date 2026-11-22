@@ -42,6 +42,8 @@ const row = (criterion: string, scope: string, required: number | null, actual: 
   basis: "QUESTION",
   independent: false,
   note: null,
+  originalRequired: null,
+  topicName: null,
   ...over,
 });
 

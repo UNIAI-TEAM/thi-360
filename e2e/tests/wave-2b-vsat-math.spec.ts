@@ -61,12 +61,19 @@ test("V-SAT Toán cả môn: 25 câu, 67 lệnh, 150 điểm; kiểm tra, sinh t
   expect(summary.parts.reduce((sum, row) => sum + (row.commandCount ?? 0), 0)).toBe(67);
   await expectStructureQuestions(page, /^25(\D|$)/);
 
-  // Dòng lấy câu bị mẫu khóa (H42): số câu và loại chỉ đọc.
+  // Dòng lấy câu bị mẫu khóa trên Danh sách dòng (FTM R-7, H42): lý do khóa chữ, ô số câu chỉ đọc, cách lấy khóa, không có nút xóa nhóm.
   const firstBlock = allSections(structure).flatMap((section) => section.blocks ?? [])[0]!;
   await openBlockInUi(page, id, firstBlock.id!, firstBlock.name);
-  await expect(page.getByText("Mẫu đã khóa dòng")).toBeVisible();
-  await expect(blockCountCell(page)).toHaveJSProperty("readOnly", true);
-  await expect(blockCountCell(page)).toHaveValue("9");
+  const rowEditor = page.locator(`[data-form-row-editor="${firstBlock.id}"]`);
+  await expect(rowEditor).toBeVisible();
+  await expect(rowEditor.locator('[data-lock-reason="rowCounts"]')).toHaveText("Theo mẫu đề chuẩn, không đổi số lượng");
+  const countCell = blockCountCell(page);
+  await expect(countCell).toHaveJSProperty("readOnly", true);
+  await expect(countCell).toHaveValue("9");
+  await expect(countCell).toHaveAccessibleDescription(/Theo mẫu đề chuẩn, không đổi số lượng/);
+  await expect(rowEditor.locator("[data-template-facts]")).toContainText("Đúng/Sai");
+  await expect(page.getByRole("radio", { name: /^Câu chùm/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /^Xóa nhóm / })).toHaveCount(0);
 
   await renameFirstBlockAndSaveInUi(page, admin, id);
 

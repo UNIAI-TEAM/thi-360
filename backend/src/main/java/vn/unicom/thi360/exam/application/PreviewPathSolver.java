@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.Set;
 import vn.unicom.thi360.exam.domain.solver.CandidateSource;
 import vn.unicom.thi360.exam.domain.solver.GroupQuota;
@@ -32,10 +33,20 @@ final class PreviewPathSolver {
 
     static Result solve(PaperSolver solver, SolvePath path, CandidateSource source, long seed,
             Set<String> excluded) {
+        return solve(() -> solver, path, source, seed, excluded);
+    }
+
+    /**
+     * As above, but every solver call takes a fresh solver from {@code solvers}: the solver anchors its time budget
+     * at the start of a call, so a caller with one overall deadline hands each call what is left of it.
+     */
+    static Result solve(Supplier<PaperSolver> solvers, SolvePath path, CandidateSource source, long seed,
+            Set<String> excluded) {
         boolean needsTrim = path.choices().stream().anyMatch(choice ->
                 choice.countsByPick().stream().distinct().count() > 1);
         if (!needsTrim) {
-            return new Result(solver.solvePartExcluding(path, source, SolveMode.generate(seed), excluded), List.of());
+            return new Result(solvers.get().solvePartExcluding(path, source, SolveMode.generate(seed), excluded),
+                    List.of());
         }
 
         List<SubjectChoice> jointChoices = new ArrayList<>();
@@ -48,7 +59,7 @@ final class PreviewPathSolver {
             }
         }
         SolvePath jointPath = new SolvePath(path.pathIndex(), path.chosen(), path.sections(), jointChoices, jointPicks);
-        PathResult joint = solver.solvePartExcluding(jointPath, source, SolveMode.generate(seed), excluded);
+        PathResult joint = solvers.get().solvePartExcluding(jointPath, source, SolveMode.generate(seed), excluded);
         if (joint.status() != SolveStatus.VALID) return new Result(joint, List.of());
         List<SubjectWitness> witnesses = new ArrayList<>(joint.witness());
         List<QuestionPick> dropped = new ArrayList<>();
@@ -63,7 +74,7 @@ final class PreviewPathSolver {
             SubjectChoice choice = path.choices().get(i);
             if (choice.countsByPick().stream().distinct().count() == 1) continue;
             SubjectPick selected = path.picks().get(i).getFirst();
-            PathResult result = solver.solvePick(choice, selected.subjectCodes(), seed, source, used);
+            PathResult result = solvers.get().solvePick(choice, selected.subjectCodes(), seed, source, used);
             if (result.status() != SolveStatus.VALID) return new Result(result, List.of());
             witnesses.addAll(result.witness());
             picks.set(i, result.path().picks().getFirst());

@@ -652,13 +652,16 @@ class BulkAuthzIT extends AbstractKeycloakIntegrationTest {
                 Permissions.USER_VIEW,
                 Permissions.CATALOG_VIEW,
                 Permissions.CATALOG_MODIFY,
-                // F-07: content_admin giờ gồm cả nhóm question/exam nên actor phải có đủ
-                // bộ quyền của vai trò mới được gán (privilege guard).
+                // content_admin gồm nhóm question/exam (đợt 2) và grading/attempt (đợt 3, BS 7) nên
+                // actor phải có đủ bộ quyền của vai trò mới được gán (privilege guard).
                 Permissions.QUESTION_VIEW,
                 Permissions.QUESTION_MODIFY,
                 Permissions.EXAM_VIEW,
                 Permissions.EXAM_MODIFY,
-                Permissions.EXAM_PUBLISH);
+                Permissions.EXAM_PUBLISH,
+                Permissions.GRADING_VIEW,
+                Permissions.GRADING_MODIFY,
+                Permissions.ATTEMPT_VIEW);
 
         // 1. Actor A applies bodyOne
         MvcResult resA1 = mockMvc.perform(post("/api/v1/admin/authz/bulk")

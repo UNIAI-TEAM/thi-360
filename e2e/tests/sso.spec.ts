@@ -26,7 +26,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
     await submitLoginForm(page, "student01", DEV_PASSWORD);
 
     await expect(page).toHaveURL(`${WEB_URL}/home`);
-    await expect(page.getByRole("heading", { name: /Chào/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bài thi của tôi" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Menu tài khoản" })).toContainText("student01");
   });
 
@@ -55,7 +55,7 @@ test.describe("Đăng nhập một nơi (SSO) và điều hướng theo vai trò
     await submitLoginForm(page, "student01", DEV_PASSWORD);
 
     await expect(page).toHaveURL(`${WEB_URL}/home`);
-    await expect(page.getByRole("heading", { name: /Chào/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bài thi của tôi" })).toBeVisible();
   });
 
   test("student01 mở web admin bị chặn ở /forbidden và API quản trị trả 403", async ({ page }) => {

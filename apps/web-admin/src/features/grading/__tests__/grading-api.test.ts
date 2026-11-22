@@ -1,194 +1,208 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { questionStore } from "../mock/question-store";
-import type { QuestionDetail } from "@/features/questions/types";
-import { MockApiError } from "@/lib/mock/content-mock";
+import { describe, expect, it, vi } from "vitest";
+import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 import {
-  finishGrading,
-  getGradingAttempt,
-  getGradingFilterOptions,
-  getGradingStatusCounts,
-  listGradingAttempts,
-  saveGradingDraft,
+  claimGradingItem,
+  fetchExamKindOptions,
+  finalizeEssayGrade,
+  getGradingItemCounts,
+  getGradingItemDetail,
+  GradingApiError,
+  listGradingItems,
+  reopenEssayGrade,
+  resolveGradingErrorMessage,
+  saveEssayDraft,
 } from "../api";
-import { attemptStore } from "../mock/store";
-import { UNASSIGNED_GRADER } from "../types";
+import {
+  EXAM_KIND_CATALOG_FIXTURES,
+  ITEM_1_ID,
+  makeCounts,
+  makeDetail,
+  makeEssayGrade,
+  makeQueueItem,
+} from "./grading-fixtures";
 
-beforeEach(() => window.history.replaceState(null, "", "/grading"));
-
-afterEach(() => {
-  attemptStore.reset();
-  questionStore.reset();
-  window.history.replaceState(null, "", "/grading");
+vi.mock("@/lib/api/client", async () => {
+  const fake = await import("@/test/fake-api");
+  return { createBrowserApiClient: fake.fakeBrowserApiClient };
 });
 
-async function expectApiError(promise: Promise<unknown>, status: number, code: string) {
-  const error = await promise.then(
-    () => null,
-    (reason: unknown) => reason,
-  );
-  expect(error).toBeInstanceOf(MockApiError);
-  expect((error as MockApiError).status).toBe(status);
-  expect((error as MockApiError).code).toBe(code);
-}
+withRealApi();
 
-describe("grading api: danh sach", () => {
-  it("nop truoc len truoc, co du ba ky thi BCA, SPT, THPTQG", async () => {
-    const page = await listGradingAttempts({});
-    expect(page.totalElements).toBe(11);
-    const submitted = page.content.map((item) => item.submittedAt);
-    expect(submitted).toEqual([...submitted].sort());
-    expect(new Set(page.content.map((item) => item.exam.kindCode))).toEqual(new Set(["BCA", "SPT", "THPTQG"]));
-  });
+describe("grading real API client", () => {
+  it("listGradingItems sends query params to /api/v1/admin/grading/items", async () => {
+    const page = { items: [makeQueueItem()], page: 1, size: 10, totalItems: 11, totalPages: 2 };
+    fakeApi.get("/api/v1/admin/grading/items", ok(page));
 
-  it("loc theo trang thai, ky thi, bai thi, nguoi cham va tim theo ten", async () => {
-    expect((await listGradingAttempts({ status: "SCORED" })).totalElements).toBe(4);
-    expect((await listGradingAttempts({ examKindCode: "SPT" })).totalElements).toBe(4);
-    expect((await listGradingAttempts({ examId: "ex-thptqg-f-van-001" })).totalElements).toBe(3);
-    expect((await listGradingAttempts({ graderId: UNASSIGNED_GRADER })).content.map((item) => item.id)).toEqual([
-      "att-bca-001",
-      "att-spt-001",
-      "att-thpt-001",
-    ]);
-    expect((await listGradingAttempts({ graderId: "u-grader-01" })).totalElements).toBe(4);
-    expect((await listGradingAttempts({ q: "hv-002010" })).content[0]?.id).toBe("att-spt-001");
-  });
+    const result = await listGradingItems({
+      state: "WAITING",
+      exam: "  BCA Literature  ",
+      kind: "BCA",
+      from: "2026-11-01",
+      to: "2026-11-20",
+      page: 1,
+      size: 10,
+    });
 
-  it("so luot theo trang thai bo qua dieu kien trang thai", async () => {
-    expect(await getGradingStatusCounts({ status: "SCORED", examKindCode: "BCA" })).toEqual({
-      total: 4,
-      byStatus: { GRADING: 3, SCORED: 1 },
+    expect(result).toEqual(page);
+    expect(fakeApi.calls).toHaveLength(1);
+    expect(fakeApi.calls[0]?.path).toBe("/api/v1/admin/grading/items");
+    expect(fakeApi.calls[0]?.options?.params).toEqual({
+      query: {
+        state: "WAITING",
+        exam: "BCA Literature",
+        kind: "BCA",
+        from: "2026-11-01",
+        to: "2026-11-20",
+        page: 1,
+        size: 10,
+      },
     });
   });
 
-  it("tong diem = trac nghiem + tu luan khi da co diem; dang cham thi chua co", async () => {
-    const page = await listGradingAttempts({ examKindCode: "BCA" });
-    const scored = page.content.find((item) => item.id === "att-bca-003")!;
-    expect(scored).toMatchObject({ objectiveScore: 47.25, essayScore: 11, totalScore: 58.25, essayMaxScore: 25 });
-    const grading = page.content.find((item) => item.id === "att-bca-002")!;
-    expect(grading).toMatchObject({ essayScore: null, totalScore: null, gradedEssayCount: 0 });
+  it("getGradingItemCounts calls /api/v1/admin/grading/items/counts without state param", async () => {
+    const counts = makeCounts();
+    fakeApi.get("/api/v1/admin/grading/items/counts", ok(counts));
+
+    const result = await getGradingItemCounts({
+      exam: "  BCA ",
+      kind: "BCA",
+      from: "2026-11-01",
+      to: "2026-11-20",
+    });
+
+    expect(result).toEqual(counts);
+    const query = (fakeApi.calls[0]?.options?.params as { query?: Record<string, unknown> })?.query;
+    expect(query).toEqual({
+      exam: "BCA",
+      kind: "BCA",
+      from: "2026-11-01",
+      to: "2026-11-20",
+    });
+    expect(query).not.toHaveProperty("state");
   });
 
-  it("bo loc: moi bai thi mot lan va danh sach nguoi cham", async () => {
-    const options = await getGradingFilterOptions();
-    expect(options.exams.map((exam) => exam.code)).toEqual(["BCA-F-001", "SPT-F-TOAN-001", "THPTQG-F-VAN-001"]);
-    expect(options.graders).toHaveLength(3);
+  it("getGradingItemDetail fetches /api/v1/admin/grading/items/{itemId}", async () => {
+    const detail = makeDetail();
+    fakeApi.get("/api/v1/admin/grading/items/{itemId}", ok(detail));
+
+    const result = await getGradingItemDetail(ITEM_1_ID);
+    expect(result).toEqual(detail);
+    expect(fakeApi.calls[0]?.options?.params).toEqual({ path: { itemId: ITEM_1_ID } });
   });
 
-  it("?mockState=empty tra danh sach rong", async () => {
-    window.history.replaceState(null, "", "/grading?mockState=empty");
-    expect((await listGradingAttempts({})).totalElements).toBe(0);
-  });
-});
+  it("claimGradingItem posts claim and maps 409 GRADING_CLAIMED with claimedByName", async () => {
+    const grade = makeEssayGrade();
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/claim", ok(grade));
+    expect(await claimGradingItem(ITEM_1_ID)).toEqual(grade);
 
-describe("grading api: chi tiet", () => {
-  it("THPTQG Ngu van: cau doc hieu kem doan doc hieu, hai cau viet, tieu chi tong bang diem cau", async () => {
-    const detail = await getGradingAttempt("att-thpt-001");
-    expect(detail.essays).toHaveLength(7);
-    expect(detail.essayMaxScore).toBe(10);
-    expect(detail.objectiveMaxScore).toBe(0);
-    expect(detail.essays[0]?.passage?.code).toBe("CH-TL-THPT-010");
-    expect(detail.essays[6]?.passage).toBeNull();
-    for (const item of detail.essays) {
-      expect(item.rubric.reduce((total, criterion) => total + criterion.points, 0)).toBeCloseTo(item.maxPoints);
-      expect(item.source).toBe("ATTEMPT");
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/claim", {
+      data: undefined,
+      error: {
+        code: "GRADING_CLAIMED",
+        message: "Claimed",
+        fieldErrors: [],
+        traceId: "t1",
+        claimedById: "grader-2",
+        claimedByName: "Nguyen Van B",
+        claimedAt: "2026-11-20T03:00:00Z",
+        lastActivityAt: "2026-11-20T03:05:00Z",
+      },
+      response: new Response(null, { status: 409 }),
+    });
+
+    const err = await claimGradingItem(ITEM_1_ID).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(GradingApiError);
+    expect((err as GradingApiError).status).toBe(409);
+    expect((err as GradingApiError).code).toBe("GRADING_CLAIMED");
+    expect((err as GradingApiError).claimedByName).toBe("Nguyen Van B");
+
+    const tErrors = vi.fn((key: string, values?: Record<string, string | number>) =>
+      `${key}:${values?.name ?? ""}`,
+    );
+    expect(resolveGradingErrorMessage(err, tErrors)).toBe("GRADING_CLAIMED_BY:Nguyen Van B");
+  });
+
+  it("saveEssayDraft puts draft with expectedVersion and surfaces 412 VERSION_CONFLICT", async () => {
+    const updated = makeEssayGrade({ version: 2, points: 7.5 });
+    fakeApi.put("/api/v1/admin/grading/items/{itemId}", ok(updated));
+
+    const body = {
+      expectedVersion: 1,
+      points: 7.5,
+      criteria: [{ id: "c1", points: 3.5 }, { id: "c2", points: 4 }],
+      comment: "Good draft",
+    };
+    expect(await saveEssayDraft(ITEM_1_ID, body)).toEqual(updated);
+    expect(fakeApi.calls[0]?.options?.body).toEqual(body);
+
+    fakeApi.put(
+      "/api/v1/admin/grading/items/{itemId}",
+      fail(412, { code: "VERSION_CONFLICT", message: "Stale version" }),
+    );
+    const err = await saveEssayDraft(ITEM_1_ID, body).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(GradingApiError);
+    expect((err as GradingApiError).status).toBe(412);
+    expect((err as GradingApiError).code).toBe("VERSION_CONFLICT");
+  });
+
+  it("finalizeEssayGrade posts finalize and maps 422 business rule codes", async () => {
+    const response = {
+      attemptId: "att-1",
+      attemptState: "SCORED" as const,
+      displayScore: 80,
+      rawScore: 80,
+      maxScore: 100,
+      gradedAt: "2026-11-20T03:20:00Z",
+      grade: makeEssayGrade({ state: "FINAL", points: 8, version: 2 }),
+    };
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/finalize", ok(response));
+
+    const result = await finalizeEssayGrade(ITEM_1_ID, {
+      expectedVersion: 1,
+      points: 8,
+      criteria: [{ id: "c1", points: 3 }, { id: "c2", points: 5 }],
+      comment: "Well done",
+    });
+    expect(result).toEqual(response);
+
+    for (const code of [
+      "ESSAY_POINTS_OUT_OF_RANGE",
+      "ESSAY_CRITERIA_INVALID",
+      "ESSAY_CRITERIA_SUM_MISMATCH",
+    ]) {
+      fakeApi.post("/api/v1/admin/grading/items/{itemId}/finalize", fail(422, { code }));
+      const err = await finalizeEssayGrade(ITEM_1_ID, { points: 8 }).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(GradingApiError);
+      expect((err as GradingApiError).code).toBe(code);
     }
   });
 
-  it("doc de va tieu chi tu ngan hang cau hoi khi trung id", async () => {
-    const bankQuestion: QuestionDetail = {
-      ...questionStore.all()[0]!,
-      id: "gq-spt-toan-23",
-      code: "CH-009999",
-      type: "ESSAY",
-      content: "De tu ngan hang",
-      points: 1,
-      body: {
-        type: "ESSAY",
-        gradingGuide: "Huong dan cham",
-        rubric: [
-          { id: "c1", description: "Dieu kien", points: 0.25 },
-          { id: "c9", description: "Tieu chi moi", points: 0.75 },
-        ],
-        sampleAnswer: null,
-        wordLimit: null,
+  it("reopenEssayGrade posts reopen reason to /reopen", async () => {
+    const reopened = makeEssayGrade({ state: "DRAFT", version: 1, reopenedReason: "Recheck rubric" });
+    fakeApi.post("/api/v1/admin/grading/items/{itemId}/reopen", ok(reopened));
+
+    const result = await reopenEssayGrade(ITEM_1_ID, { reason: "Recheck rubric" });
+    expect(result).toEqual(reopened);
+    expect(fakeApi.calls[0]?.options?.body).toEqual({ reason: "Recheck rubric" });
+  });
+
+  it("fetchExamKindOptions reads /api/v1/catalog/options?group=EXAM", async () => {
+    fakeApi.get("/api/v1/catalog/options", ok(EXAM_KIND_CATALOG_FIXTURES));
+
+    const kinds = await fetchExamKindOptions();
+    expect(fakeApi.calls[0]?.options?.params).toEqual({ query: { group: "EXAM" } });
+    expect(kinds).toEqual([
+      {
+        id: "k-bca",
+        code: "BCA",
+        nameVi: "Danh gia tuyen sinh Cong an (BCA)",
+        nameEn: "Public Security Admission (BCA)",
       },
-      children: [],
-    };
-    questionStore.insert(bankQuestion);
-    const detail = await getGradingAttempt("att-spt-002");
-    const first = detail.essays[0]!;
-    expect(first).toMatchObject({ source: "BANK", questionCode: "CH-009999", content: "De tu ngan hang" });
-    // Diem da luu theo id tieu chi: c1 giu nguyen, tieu chi moi chua co diem.
-    expect(first.scores).toEqual([
-      { criterionId: "c1", score: 0 },
-      { criterionId: "c9", score: null },
+      {
+        id: "k-spt",
+        code: "SPT",
+        nameVi: "Danh gia nang luc DH Su pham (SPT)",
+      },
     ]);
-  });
-
-  it("lot thi khong ton tai: 404", async () => {
-    await expectApiError(getGradingAttempt("khong-co"), 404, "NOT_FOUND");
-  });
-});
-
-describe("grading api: luu nhap va hoan tat", () => {
-  it("luu nhap giu diem, nhan luot cho nguoi cham hien tai, van Dang cham", async () => {
-    const saved = await saveGradingDraft({
-      attemptId: "att-bca-001",
-      essays: [
-        {
-          questionId: "gq-bca-van-01",
-          scores: [
-            { criterionId: "c1", score: 2 },
-            { criterionId: "c2", score: null },
-          ],
-          comment: "  Can them dan chung  ",
-        },
-      ],
-    });
-    expect(saved.status).toBe("GRADING");
-    expect(saved.grader?.id).toBe("u-grader-01");
-    expect(saved.essays[0]?.scores.slice(0, 2)).toEqual([
-      { criterionId: "c1", score: 2 },
-      { criterionId: "c2", score: null },
-    ]);
-    expect(saved.essays[0]?.comment).toBe("Can them dan chung");
-    expect((await getGradingAttempt("att-bca-001")).essays[0]?.scores[0]?.score).toBe(2);
-  });
-
-  it("diem vuot tieu chi: 422 SCORE_OUT_OF_RANGE", async () => {
-    await expectApiError(
-      saveGradingDraft({
-        attemptId: "att-bca-001",
-        essays: [{ questionId: "gq-bca-van-01", scores: [{ criterionId: "c1", score: 3 }], comment: "" }],
-      }),
-      422,
-      "SCORE_OUT_OF_RANGE",
-    );
-  });
-
-  it("hoan tat khi con tieu chi trong: 422 GRADING_INCOMPLETE", async () => {
-    await expectApiError(
-      finishGrading({
-        attemptId: "att-bca-001",
-        essays: [{ questionId: "gq-bca-van-01", scores: [{ criterionId: "c1", score: 2 }], comment: "" }],
-      }),
-      422,
-      "GRADING_INCOMPLETE",
-    );
-  });
-
-  it("hoan tat du diem: Da co diem, tong = trac nghiem + tu luan; luot da co diem khong luu duoc nua", async () => {
-    const scores = [2.5, 2, 10, 2, 3.5].map((score, index) => ({ criterionId: `c${index + 1}`, score }));
-    const done = await finishGrading({
-      attemptId: "att-bca-001",
-      essays: [{ questionId: "gq-bca-van-01", scores, comment: "" }],
-    });
-    expect(done).toMatchObject({ status: "SCORED", essayScore: 20, totalScore: 72.5, gradedEssayCount: 1 });
-    expect(done.gradedAt).not.toBeNull();
-    await expectApiError(
-      saveGradingDraft({ attemptId: "att-bca-001", essays: [] }),
-      409,
-      "ATTEMPT_ALREADY_SCORED",
-    );
   });
 });

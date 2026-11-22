@@ -2,14 +2,14 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import { examTabHref } from "../editor-tabs";
+import { examEditHref, examTabHref } from "../editor-tabs";
 import { ExamStructureList } from "../components/exam-structure-list";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { defaultSelection } from "../components/exam-structure-draft";
 import { ExamEditorActionsSlot } from "../components/exam-editor-actions";
 import type { ExamPart, ExamSection } from "../types";
 import checkHsa from "./fixtures/check-hsa-f-001.json";
-import { ExamsBackend } from "./fake-exams-backend";
+import { examFixture, ExamsBackend } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -372,17 +372,53 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("50");
   });
 
-  it("quay lại bước Thông tin chung ('Sửa thông tin tổng quan') cũng hỏi bằng hộp thoại ba nút; Bỏ thay đổi mới rời trang", async () => {
+  it("quay lại bước 1 ('Sửa thông tin tổng quan') cũng hỏi bằng hộp thoại ba nút; Bỏ thay đổi mới rời trang", async () => {
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
     await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
+    expect(within(dialog).getByText(/Bạn đang rời trang soạn bài thi\./)).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examEditHref(QDA)));
+    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
+  });
+
+  it("rời Cấu trúc sang tab Thông tin bán: hộp thoại gọi đúng tên tab (không rỗng) và 'Bỏ thay đổi' mới chuyển tới /listing", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${QDA}/structure?part=part-42`);
+    renderWithProviders(
+      <>
+        <ExamStructureView examId={QDA} />
+        <a href={examTabHref(QDA, "listing")}>tab-listing</a>
+      </>,
+    );
+    await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
+    await user.click(screen.getByRole("link", { name: "tab-listing" }));
+    const dialog = await screen.findByRole("dialog", { name: dialogName });
+    expect(within(dialog).getByText(/Bạn đang chuyển sang tab Thông tin bán\./)).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${QDA}/listing`));
+  });
+
+  it("rời Cấu trúc sang tab Thông tin chung: hộp thoại gọi destination.general và 'Bỏ thay đổi' mới chuyển tới /exams/[id]", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/exams/${QDA}/structure?part=part-42`);
+    renderWithProviders(
+      <>
+        <ExamStructureView examId={QDA} />
+        <a href={examTabHref(QDA, "general")}>tab-general</a>
+      </>,
+    );
+    await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
+    await user.click(screen.getByRole("link", { name: "tab-general" }));
+    const dialog = await screen.findByRole("dialog", { name: dialogName });
     expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
-    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
   });
 
   it("rời trang bằng 'Lưu và chuyển': lưu xong mới chuyển", async () => {
@@ -392,7 +428,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examEditHref(QDA)));
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
   });
 
@@ -507,5 +543,46 @@ describe("Khung bước 2: nút kiểm tra", () => {
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
     backend.server.release("PUT", api(QDA, "structure"));
     await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
+  });
+});
+
+describe("Khung bước 2: đọc lựa chọn từ URL (?exam=)", () => {
+  function seedExam1(over: Partial<ReturnType<typeof examFixture>> = {}) {
+    const base = examFixture(HSA);
+    backend.seedExam({ ...base, ...over, id: "exam-1" });
+  }
+
+  it("?exam=<uuid> (chuyển trang từ /exams/new?exam=<uuid>): mở môn mặc định, không mở Tổng quan bài", async () => {
+    seedExam1();
+    window.history.replaceState(null, "", "/exams/exam-1/structure?exam=01a1f9da-798b-7c95-83ed-0deb9e963179");
+    renderWithProviders(<ExamStructureView examId="exam-1" />);
+    expect(await screen.findByRole("heading", { level: 2, name: /^Môn / })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: /^Tổng quan bài · / })).not.toBeInTheDocument();
+  });
+
+  it("?exam=<uuid> trên bài ôn (buildMode: REVIEW): mở Bài ôn, không mở Tổng quan bài", async () => {
+    const base = examFixture("ex-hsa-l-toan-001");
+    const firstPart = base.parts[0]!;
+    const firstSection = firstPart.sections[0]!;
+    const firstBlock = { ...firstSection.blocks[0]!, questionType: "SINGLE_CHOICE" as const, questionCount: firstPart.questionCount };
+    seedExam1({
+      ...base,
+      scope: "SUBJECT",
+      partCode: null,
+      subjectCode: "MATH",
+      buildMode: "REVIEW",
+      parts: [{ ...firstPart, sections: [{ ...firstSection, blocks: [firstBlock] }] }],
+    });
+    window.history.replaceState(null, "", "/exams/exam-1/structure?exam=01a1f9da-798b-7c95-83ed-0deb9e963179");
+    renderWithProviders(<ExamStructureView examId="exam-1" />);
+    expect(await screen.findByRole("heading", { level: 2, name: /^Bài ôn · / })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: /^Tổng quan bài · / })).not.toBeInTheDocument();
+  });
+
+  it("?exam=1: vẫn mở Tổng quan bài", async () => {
+    seedExam1();
+    window.history.replaceState(null, "", "/exams/exam-1/structure?exam=1");
+    renderWithProviders(<ExamStructureView examId="exam-1" />);
+    expect(await screen.findByRole("heading", { level: 2, name: /^Tổng quan bài · / })).toBeInTheDocument();
   });
 });

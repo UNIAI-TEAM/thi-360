@@ -94,7 +94,7 @@ export const CHECK_GROUPS = [
 ] as const;
 export type CheckGroup = (typeof CHECK_GROUPS)[number];
 
-/** Mã vấn đề của kiểm tra cấu hình và xem trước. Mã do backend thêm (BE-5b:13, BE-5b:17) nằm cuối danh sách. */
+/** Mã vấn đề của kiểm tra cấu hình và xem trước. Mã do backend thêm (BE-5b:13, BE-5b:17, UNI-2762) nằm cuối danh sách. */
 export const CHECK_ISSUE_CODES = [
   "INFO_MISSING",
   "OPTION_EMPTY",
@@ -155,8 +155,12 @@ export const CHECK_ISSUE_CODES = [
   "OMITTED_BLOCK_LOCKED",
   "SCALE_INCLUDES_EXCLUDED_PART",
   "DISPLAY_SEGMENT_MISMATCH",
+  "SECTION_SET_COUNT_RANGE",
+  "SHORT_ANSWER_MIN",
+  "STORED_ID_COLLISION",
   "MAPID_RULE_CONFLICT",
   "MAPID_RULE_GROUP_MISSING",
+  "STATEMENT_POINTS_UNEVEN",
 ] as const;
 export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
 
@@ -321,6 +325,33 @@ export interface CheckGroupResult {
   issues: CheckIssue[];
 }
 
+/** Mã vấn đề của nhóm Thông tin bán (TM 6.2). Thiếu ảnh bìa là cảnh báo, các mã còn lại chặn công bố. */
+export const LISTING_ISSUE_CODES = [
+  "LISTING_PRICE_MISSING",
+  "LISTING_PRICE_ZERO",
+  "LISTING_PRICE_BELOW_MIN",
+  "LISTING_ATTEMPTS_MISSING",
+  "LISTING_DESCRIPTION_MISSING",
+  "LISTING_COVER_MISSING",
+] as const;
+export type ListingIssueCode = (typeof LISTING_ISSUE_CODES)[number];
+
+export interface ListingCheckIssue {
+  key: string;
+  /** Một mã của `LISTING_ISSUE_CODES`; mã máy chủ thêm sau vẫn giữ nguyên và hiện bằng câu chung. */
+  code: string;
+  severity: "ERROR" | "WARNING";
+  /** Trường của biểu mẫu Thông tin bán mà vấn đề nói tới (`listPriceVnd`, `attemptsGranted`, `description`, `coverAssetId`). */
+  field: string | null;
+  /** Mức giá tối thiểu (VND), chỉ có ở `LISTING_PRICE_BELOW_MIN`. */
+  minPriceVnd: number | null;
+}
+
+export interface ListingCheckGroup {
+  status: "PASS" | "WARN" | "FAIL";
+  issues: ListingCheckIssue[];
+}
+
 /** Kết quả thuần của một lần kiểm tra (không có thời điểm, thời gian chạy). */
 export interface ExamCheckOutcome {
   status: Extract<ExamCheckStatus, "VALID" | "INVALID">;
@@ -336,8 +367,11 @@ export interface ExamCheckOutcome {
   maxScore: number | null;
 }
 
-/** Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi. */
-export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED";
+/**
+ * Lý do kết quả kiểm tra hết hiệu lực (D14): cấu trúc, cấu hình bài hoặc nguồn câu hỏi đã đổi, hoặc quy tắc kiểm tra đã
+ * đổi (RULES_CHANGED, R-12: kết quả lưu trước quy tắc Khoa học của HSA, QDA; chỉ lần kiểm tra cả bài mới xóa lý do này).
+ */
+export type CheckInvalidReason = "STRUCTURE_CHANGED" | "CONFIG_CHANGED" | "SOURCE_CHANGED" | "RULES_CHANGED";
 
 export interface ExamCheckResult extends ExamCheckOutcome {
   examId: string;
@@ -351,6 +385,11 @@ export interface ExamCheckResult extends ExamCheckOutcome {
 
   /** Trạng thái từng môn sau lần kiểm tra (H2); `null` khi BE-5 chưa triển khai — màn không hiện trạng thái. */
   sectionStates?: ExamSectionState[] | null;
+  /**
+   * Nhóm "Thông tin bán" (EX-1), máy chủ tính lúc đọc từ bản làm việc; không nằm trong `groups` (tám nhóm cấu hình).
+   * Thiếu hoặc `null`: máy chủ chưa tính được, màn hiện trạng thái lỗi kèm nút thử lại.
+   */
+  listingCheck?: ListingCheckGroup | null;
 }
 
 /**
@@ -542,6 +581,8 @@ interface PreviewBase {
   version: number | null;
   seed: number;
   generatedAt: string;
+  /** Hạn giữ đề thử (`generatedAt` + 30 phút) để đếm ngược; `null` khi sinh thử lỗi. */
+  expiresAt: string | null;
 }
 
 /** Một dòng bảng Yêu cầu / Thực tế của đề đã sinh (2B mục 8): mọi tiêu chí kể cả tham khảo. */
@@ -559,6 +600,10 @@ export interface PreviewCompliance {
   independent: boolean;
   /** Ghi chú của máy chủ (`dropped N`: đã bỏ N câu của chỉ tiêu 17 câu); `null` khi không có. */
   note: string | null;
+  /** Số yêu cầu trước khi trừ phần đóng góp của câu bỏ ("16 (17, đã bỏ 1 câu)"); `null` khi dòng không bỏ câu nào. */
+  originalRequired: number | null;
+  /** Tên chủ đề của dòng `TOPIC:*` (tên chỉ tiêu, không có thì tên kiến thức tiếng Việt: nội dung đề); `null` ở dòng khác. */
+  topicName: string | null;
 }
 
 /** Phạm vi sinh thử (2B mục 8): một môn, một đường (mã, nhánh, bộ ba môn), hoặc cả bài không có lựa chọn. */
