@@ -122,6 +122,29 @@ for (const cell of matrixCells()) {
         );
         await expectMatrixClean(page, "register-terms", cell);
 
+        // Bước 2 của đăng ký: xác minh mã OTP 6 chữ số.
+        await page.route("**/api/v1/auth/register", (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              registrationId: "0192f3a1-0000-7000-8000-000000000002",
+              email: "visual.submitting@e2e.thi360.vn",
+              resendAfterSeconds: 60,
+            }),
+          }),
+        );
+        await page.goto(`${WEB_URL}/register`);
+        await page.locator('input[name="username"]').fill("visual.submitting");
+        await page.locator('input[name="fullName"]').fill("E2E Student");
+        await page.locator('input[name="email"]').fill("visual.submitting@e2e.thi360.vn");
+        await page.locator('input[name="password"]').fill("Thi360@e2e1");
+        await page.getByRole("checkbox").check();
+        await page.locator("form button[type=submit]").click();
+        await expect(page.locator("input[autocomplete=one-time-code]")).toBeVisible();
+        await expectMatrixClean(page, "register-otp", cell);
+        await page.unroute("**/api/v1/auth/register");
+
         await page.goto(`${WEB_URL}/forgot-password`);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expectMatrixClean(page, "forgot-password", cell);
@@ -179,15 +202,34 @@ for (const cell of matrixCells()) {
     test("màn cần phiên: xác minh email và hồ sơ (đang tải, lỗi, có dữ liệu, rỗng, có ảnh và email chờ)", async () => {
       const { context, page } = await openCell(cell, true);
       try {
-        // Xác minh email: khung chờ, rồi biểu mẫu.
-        const releaseVerify = await holdApi(page, "**/api/v1/me/profile");
+        // Xác minh email (dành cho tài khoản do admin tạo chưa xác minh email): khung chờ, rồi biểu mẫu.
+        const unverifiedProfile = {
+          username: "visual.student",
+          fullName: "E2E Student",
+          email: "visual.student@e2e.thi360.vn",
+          emailVerified: false,
+          phone: null,
+          avatarAssetId: null,
+          avatarUrl: null,
+          pendingEmail: null,
+        };
+        const { promise: profileGate, resolve: openProfileGate } = Promise.withResolvers<void>();
+        await page.route("**/api/v1/me/profile", async (route) => {
+          await profileGate;
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(unverifiedProfile),
+          });
+        });
         await page.goto(`${WEB_URL}/verify-email`, { waitUntil: "commit" });
         await expect(page.locator("[role=status][aria-label]")).toBeVisible();
         await expectMatrixClean(page, "verify-email-loading", cell);
-        await releaseVerify();
+        openProfileGate();
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(page.locator("input[autocomplete=one-time-code]")).toBeVisible();
         await expectMatrixClean(page, "verify-email", cell);
+        await page.unroute("**/api/v1/me/profile");
 
         // Xác minh email: lỗi tải hồ sơ.
         await failApi(page, "**/api/v1/me/profile", 500, SERVER_ERROR);
@@ -196,17 +238,25 @@ for (const cell of matrixCells()) {
         await expectMatrixClean(page, "verify-email-error", cell);
         await page.unroute("**/api/v1/me/profile");
 
-        // Hồ sơ: khung chờ.
-        const releaseProfile = await holdApi(page, "**/api/v1/me/profile");
+        // Hồ sơ: khung chờ, rồi dữ liệu ở trạng thái rỗng (chưa có ảnh, chưa số điện thoại, email chưa xác minh).
+        const { promise: emptyProfileGate, resolve: openEmptyProfileGate } = Promise.withResolvers<void>();
+        await page.route("**/api/v1/me/profile", async (route) => {
+          await emptyProfileGate;
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(unverifiedProfile),
+          });
+        });
         await page.goto(`${WEB_URL}/account/profile`, { waitUntil: "commit" });
         await expect(page.locator("[role=status][aria-label]")).toBeVisible();
         await expectMatrixClean(page, "profile-loading", cell);
-        await releaseProfile();
+        openEmptyProfileGate();
 
-        // Hồ sơ: dữ liệu ở trạng thái rỗng (chưa có ảnh, chưa số điện thoại, email chưa xác minh).
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expect(page.locator("#profile-email-title")).toBeVisible();
         await expectMatrixClean(page, "profile-empty", cell);
+        await page.unroute("**/api/v1/me/profile");
 
         // Hồ sơ: có ảnh đại diện, số điện thoại và email mới đang chờ xác minh.
         await page.route("**/api/v1/me/profile", (route) =>

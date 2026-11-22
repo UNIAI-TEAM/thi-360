@@ -103,7 +103,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         support.cleanup();
     }
 
-    /** AC-1: 20 yêu cầu cùng tên đăng nhập chạy đồng thời. */
+    /** AC-1: 20 yêu cầu hoàn tất đăng ký cùng tên đăng nhập chạy đồng thời. */
     @Test
     void twentyConcurrentSameUsername() throws Exception {
         String suffix = SelfRegistrationSupport.suffix();
@@ -113,8 +113,16 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         for (int i = 0; i < 20; i++) {
             String email = "conc" + i + "." + suffix + "@thi360.vn";
             emails.add(email);
-            var request = support.request(support.body(username, email), SelfRegistrationSupport.freshIp());
-            calls.add(() -> mockMvc.perform(request).andReturn());
+            MvcResult started = support.startRegistration(support.body(username, email), SelfRegistrationSupport.freshIp())
+                    .andExpect(status().isOk())
+                    .andReturn();
+            UUID registrationId = UUID.fromString(objectMapper
+                    .readTree(started.getResponse().getContentAsString())
+                    .path("registrationId")
+                    .asText());
+            String otp = support.latestVerifyCode(email);
+            var verifyRequest = support.verifyRequest(registrationId, otp, SelfRegistrationSupport.freshIp());
+            calls.add(() -> mockMvc.perform(verifyRequest).andReturn());
         }
 
         List<MvcResult> results = runConcurrently(calls);
@@ -140,7 +148,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(accountsByEmail).isEqualTo(1);
     }
 
-    /** AC-2: email trùng, kể cả hai yêu cầu đồng thời khác tên đăng nhập. */
+    /** AC-2: email trùng, kể cả hai yêu cầu hoàn tất đồng thời khác tên đăng nhập. */
     @Test
     void duplicateEmail() throws Exception {
         String suffix = SelfRegistrationSupport.suffix();
@@ -155,14 +163,31 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(support.liveAccountCount(second)).isZero();
         assertThat(support.keycloakHasUser(second)).isFalse();
 
-        // Hai yêu cầu đồng thời, khác tên đăng nhập, cùng email.
+        // Hai yêu cầu hoàn tất đồng thời, khác tên đăng nhập, cùng email.
         String raceEmail = "race." + suffix + "@thi360.vn";
         String raceA = "racea." + suffix;
         String raceB = "raceb." + suffix;
-        var requestA = support.request(support.body(raceA, raceEmail), SelfRegistrationSupport.freshIp());
-        var requestB = support.request(support.body(raceB, raceEmail), SelfRegistrationSupport.freshIp());
+        MvcResult startedA = support.startRegistration(support.body(raceA, raceEmail), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isOk())
+                .andReturn();
+        UUID regIdA = UUID.fromString(objectMapper.readTree(startedA.getResponse().getContentAsString())
+                .path("registrationId").asText());
+        String otpA = support.latestVerifyCode(raceEmail);
+        jdbcTemplate.update(
+                "UPDATE identity.pending_registration_send SET created_at = created_at - interval '61 seconds'"
+                        + " WHERE email_normalized = ?",
+                raceEmail.toLowerCase());
+        MvcResult startedB = support.startRegistration(support.body(raceB, raceEmail), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isOk())
+                .andReturn();
+        UUID regIdB = UUID.fromString(objectMapper.readTree(startedB.getResponse().getContentAsString())
+                .path("registrationId").asText());
+        String otpB = support.latestVerifyCode(raceEmail);
+
+        var verifyA = support.verifyRequest(regIdA, otpA, SelfRegistrationSupport.freshIp());
+        var verifyB = support.verifyRequest(regIdB, otpB, SelfRegistrationSupport.freshIp());
         List<MvcResult> results = runConcurrently(List.of(
-                () -> mockMvc.perform(requestA).andReturn(), () -> mockMvc.perform(requestB).andReturn()));
+                () -> mockMvc.perform(verifyA).andReturn(), () -> mockMvc.perform(verifyB).andReturn()));
 
         assertThat(results.stream().map(r -> r.getResponse().getStatus())).containsExactlyInAnyOrder(201, 409);
         MvcResult loser = results.stream().filter(r -> r.getResponse().getStatus() == 409).findFirst().orElseThrow();
@@ -173,7 +198,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(support.keycloakHasUser(raceA) ^ support.keycloakHasUser(raceB)).isTrue();
     }
 
-    /** AC-3: tài khoản ACTIVE, nguồn SELF_REGISTERED, vai trò Học viên, điều khoản, ngôn ngữ, nhật ký, một thư. */
+    /** AC-3: tài khoản ACTIVE, đã xác minh email, nguồn SELF_REGISTERED, vai trò Học viên, điều khoản, ngôn ngữ, nhật ký, một thư. */
     @Test
     void createsStudentAccount() throws Exception {
         String suffix = SelfRegistrationSupport.suffix();
@@ -195,7 +220,10 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(row.get("preferred_locale")).isEqualTo("en");
         assertThat(row.get("terms_version")).isEqualTo(SelfRegistrationSupport.TERMS_VERSION);
         assertThat(row.get("terms_accepted_at")).isNotNull();
-        assertThat(row.get("email_verified_at")).isNull();
+        assertThat(row.get("email_verified_at")).isNotNull();
+        assertThat(KEYCLOAK.getKeycloakAdminClient().realm("thi-360").users()
+                        .get(id.toString()).toRepresentation().isEmailVerified())
+                .isTrue();
         assertThat(row.get("email_normalized")).isEqualTo(email.toLowerCase());
         assertThat(row.get("must_change_password")).isEqualTo(false);
         assertThat(row.get("provisioning_role_ids")).isNull();
@@ -218,7 +246,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         List<MailOutbox.Mail> mails = mailOutbox.all(email, MailKind.EMAIL_VERIFY);
         assertThat(mails).hasSize(1);
         assertThat(mails.getFirst().locale()).isEqualTo("en");
-        assertThat(mails.getFirst().userId()).isEqualTo(id);
+        assertThat(mails.getFirst().userId()).isNull();
         assertThat(mailOutbox.count(email)).isEqualTo(1);
         assertThat(SIX_DIGITS.matcher(mails.getFirst().text()).find()).isTrue();
     }
@@ -413,7 +441,7 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         assertThat(support.keycloakHasUser(username)).as("keycloak user of %s", username).isFalse();
         assertThat(result.getResponse().getCookie(AuthCookieService.ACCESS_TOKEN_COOKIE)).isNull();
         assertThat(result.getResponse().getCookie(AuthCookieService.REFRESH_TOKEN_COOKIE)).isNull();
-        assertThat(mailOutbox.count(username + "@thi360.vn")).isZero();
+        assertThat(mailOutbox.count(username + "@thi360.vn")).isEqualTo(1);
     }
 
     @Test
@@ -935,5 +963,177 @@ class SelfRegistrationIT extends AbstractKeycloakIntegrationTest {
         keycloakClient.setPassword(adminSubject, SelfRegistrationSupport.PASSWORD, false);
         reconcilerJob.reconcile();
         assertThat(support.accountId(username)).isEqualTo(adminSubject);
+    }
+
+    /** UNI-2773: Bước 1 không tạo tài khoản, không khóa cứng username/email, mã hóa mật khẩu tạm và xóa sau Bước 2. */
+    @Test
+    void stepOneDoesNotCreateAccountOrReserveUsernameOrEmail() throws Exception {
+        String suffix = SelfRegistrationSupport.suffix();
+        String username = "step1.free." + suffix;
+        String emailA = "step1a." + suffix + "@thi360.vn";
+        String emailB = "step1b." + suffix + "@thi360.vn";
+
+        MvcResult startedA = support.startRegistration(support.body(username, emailA), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(emailA))
+                .andExpect(jsonPath("$.resendAfterSeconds").value(60))
+                .andReturn();
+        UUID regIdA = UUID.fromString(objectMapper.readTree(startedA.getResponse().getContentAsString())
+                .path("registrationId").asText());
+        String otpA = support.latestVerifyCode(emailA);
+
+        assertThat(support.liveAccountCount(username)).isZero();
+        assertThat(support.liveAccountCountByEmail(emailA)).isZero();
+        assertThat(support.keycloakHasUser(username)).isFalse();
+
+        Map<String, Object> pendingRow = jdbcTemplate.queryForMap(
+                "SELECT password_ciphertext, code_hash, completed_at FROM identity.pending_registration WHERE id = ?",
+                regIdA);
+        assertThat(String.valueOf(pendingRow.get("password_ciphertext")))
+                .isNotEmpty()
+                .doesNotContain(SelfRegistrationSupport.PASSWORD);
+        assertThat(String.valueOf(pendingRow.get("code_hash"))).doesNotContain(otpA);
+        assertThat(pendingRow.get("completed_at")).isNull();
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, SelfRegistrationSupport.freshIp())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identifier\":\"" + username + "\",\"password\":\""
+                                + SelfRegistrationSupport.PASSWORD + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        // Người B hoàn tất đăng ký cùng tên đăng nhập trong lúc người A chưa xác minh OTP.
+        support.register(support.body(username, emailB), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+        UUID userIdB = support.accountId(username);
+        assertThat(userIdB).isNotNull();
+
+        // Bản ghi pending đã hoàn tất của B bị xóa sạch mật khẩu tạm.
+        String wipedCipher = jdbcTemplate.queryForObject(
+                "SELECT password_ciphertext FROM identity.pending_registration"
+                        + " WHERE email_normalized = ? ORDER BY created_at DESC LIMIT 1",
+                String.class,
+                emailB.toLowerCase());
+        assertThat(wipedCipher).isEmpty();
+
+        // Người A giờ nhập đúng OTP của mình sẽ nhận 409 USERNAME_TAKEN, nhưng vẫn quay lại Bước 1 đổi tên đăng nhập được ngay.
+        support.verifyRegistration(regIdA, otpA, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USERNAME_TAKEN"));
+
+        String editedUsername = "step1.edited." + suffix;
+        Map<String, Object> editedBody = support.body(editedUsername, emailA);
+        editedBody.put("registrationId", regIdA);
+        editedBody.put("fullName", "Trần Thị Bích");
+        support.startRegistration(editedBody, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registrationId").value(regIdA.toString()));
+        assertThat(mailOutbox.count(emailA)).isEqualTo(1);
+
+        support.verifyRegistration(regIdA, otpA, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT full_name FROM identity.user_account WHERE id = ?",
+                        String.class,
+                        support.accountId(editedUsername)))
+                .isEqualTo("Trần Thị Bích");
+    }
+
+    /** UNI-2773: OTP sai 5 lần, hết hạn 10 phút, dùng 1 lần, gửi lại 60 giây & 5 mã/24 giờ, và chung giới hạn IP. */
+    @Test
+    void otpWrongAttemptsExpireAndResendLimits() throws Exception {
+        String suffix = SelfRegistrationSupport.suffix();
+        String username = "otp.rules." + suffix;
+        String email = "otp.rules." + suffix + "@thi360.vn";
+
+        MvcResult started = support.startRegistration(support.body(username, email), SelfRegistrationSupport.freshIp())
+                .andExpect(status().isOk())
+                .andReturn();
+        UUID regId = UUID.fromString(objectMapper.readTree(started.getResponse().getContentAsString())
+                .path("registrationId").asText());
+        String otp1 = support.latestVerifyCode(email);
+        String wrong = "000000".equals(otp1) ? "111111" : "000000";
+
+        // Gửi lại trước 60 giây nhận 429 kèm Retry-After và retryAfter.
+        MvcResult earlyResend = support.resendRegistration(regId, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andReturn();
+        long retryAfter = objectMapper.readTree(earlyResend.getResponse().getContentAsString())
+                .path("retryAfter").asLong();
+        assertThat(retryAfter).isBetween(1L, 60L);
+        assertThat(earlyResend.getResponse().getHeader("Retry-After")).isEqualTo(Long.toString(retryAfter));
+
+        // Nhập sai 5 lần giảm remainingAttempts 4 -> 0; lần thứ 6 nhập đúng vẫn nhận EMAIL_CODE_EXPIRED.
+        for (int remaining = 4; remaining >= 0; remaining--) {
+            support.verifyRegistration(regId, wrong, SelfRegistrationSupport.freshIp())
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.code").value("EMAIL_CODE_INVALID"))
+                    .andExpect(jsonPath("$.remainingAttempts").value(remaining));
+        }
+        support.verifyRegistration(regId, otp1, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EMAIL_CODE_EXPIRED"));
+
+        // Sau 61 giây được gửi lại mã mới (lần 2..5 trong 24 giờ); mã thứ 6 trong 24 giờ nhận 429 RATE_LIMITED.
+        String latestOtp = otp1;
+        for (int sendNo = 2; sendNo <= 5; sendNo++) {
+            jdbcTemplate.update(
+                    "UPDATE identity.pending_registration_send SET created_at = created_at - interval '61 seconds'"
+                            + " WHERE email_normalized = ?",
+                    email.toLowerCase());
+            support.resendRegistration(regId, SelfRegistrationSupport.freshIp())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.resendAfterSeconds").value(60));
+            latestOtp = support.latestVerifyCode(email);
+        }
+        jdbcTemplate.update(
+                "UPDATE identity.pending_registration_send SET created_at = created_at - interval '61 seconds'"
+                        + " WHERE email_normalized = ?",
+                email.toLowerCase());
+        support.resendRegistration(regId, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+        // Mã hết hạn sau 10 phút nhận EMAIL_CODE_EXPIRED.
+        jdbcTemplate.update(
+                "UPDATE identity.pending_registration SET code_expires_at = now() - interval '1 second' WHERE id = ?",
+                regId);
+        support.verifyRegistration(regId, latestOtp, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EMAIL_CODE_EXPIRED"));
+
+        // Khôi phục hạn mã: xác minh thành công 1 lần, gọi lại cùng mã nhận EMAIL_CODE_EXPIRED.
+        jdbcTemplate.update(
+                "UPDATE identity.pending_registration SET code_expires_at = now() + interval '5 minutes' WHERE id = ?",
+                regId);
+        support.verifyRegistration(regId, latestOtp, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isCreated());
+        support.verifyRegistration(regId, latestOtp, SelfRegistrationSupport.freshIp())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("EMAIL_CODE_EXPIRED"));
+
+        // /register/resend và /register/verify dùng chung giới hạn IP của đăng ký.
+        String sharedIp = SelfRegistrationSupport.freshIp();
+        for (int i = 1; i <= 30; i++) {
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .header(ClientIpResolver.X_FORWARDED_FOR, sharedIp)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(post("/api/v1/auth/register/resend")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, sharedIp)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+        mockMvc.perform(post("/api/v1/auth/register/verify")
+                        .header(ClientIpResolver.X_FORWARDED_FOR, sharedIp)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+        redisTemplate.delete(vn.unicom.thi360.shared.security.RateLimitFilter.REGISTER_KEY_PREFIX + sharedIp);
     }
 }

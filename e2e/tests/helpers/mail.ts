@@ -94,11 +94,11 @@ export function newAccount(prefix: string): E2eAccount {
 
 export type SessionCookies = Awaited<ReturnType<Awaited<ReturnType<typeof playwrightRequest.newContext>>["storageState"]>>["cookies"];
 
-/** Đăng ký qua API công khai của web (cùng đường với biểu mẫu); trả cookie phiên vừa được tạo. */
+/** Đăng ký qua API công khai hai bước (Bước 1 gửi OTP -> Bước 2 xác minh OTP); trả cookie phiên vừa được tạo. */
 export async function registerViaApi(account: E2eAccount): Promise<SessionCookies> {
   const api = await playwrightRequest.newContext();
   try {
-    const response = await api.post(`${WEB_URL}/api/v1/auth/register`, {
+    const startResponse = await api.post(`${WEB_URL}/api/v1/auth/register`, {
       headers: { origin: WEB_URL },
       data: {
         username: account.username,
@@ -109,19 +109,36 @@ export async function registerViaApi(account: E2eAccount): Promise<SessionCookie
         termsVersion: TERMS_VERSION,
       },
     });
-    expect(response.status(), `đăng ký ${account.username}: ${await response.text()}`).toBe(201);
+    expect(startResponse.status(), `bắt đầu đăng ký ${account.username}: ${await startResponse.text()}`).toBe(200);
+    const { registrationId } = (await startResponse.json()) as { registrationId: string };
+    const mail = await waitForMail(account.email, "EMAIL_VERIFY");
+    const verifyResponse = await api.post(`${WEB_URL}/api/v1/auth/register/verify`, {
+      headers: { origin: WEB_URL },
+      data: {
+        registrationId,
+        code: readOtp(mail),
+      },
+    });
+    expect(verifyResponse.status(), `xác minh OTP đăng ký ${account.username}: ${await verifyResponse.text()}`).toBe(
+      201,
+    );
     return (await api.storageState()).cookies;
   } finally {
     await api.dispose();
   }
 }
 
-/** Xác minh email của tài khoản vừa đăng ký bằng mã OTP đọc từ thư thử. */
+/** Xác minh email của tài khoản nếu chưa xác minh (tài khoản tự đăng ký qua `registerViaApi` đã xác minh sẵn ở Bước 2). */
 export async function verifyEmailViaApi(cookies: SessionCookies, account: E2eAccount): Promise<void> {
-  const mail = await waitForMail(account.email, "EMAIL_VERIFY");
-  const xsrf = cookies.find((cookie) => cookie.name === "thi360_xsrf")?.value ?? "";
   const api = await playwrightRequest.newContext({ storageState: { cookies, origins: [] } });
   try {
+    const profileRes = await api.get(`${WEB_URL}/api/v1/me/profile`);
+    if (profileRes.status() === 200) {
+      const profile = (await profileRes.json()) as { emailVerified?: boolean };
+      if (profile.emailVerified === true) return;
+    }
+    const mail = await waitForMail(account.email, "EMAIL_VERIFY");
+    const xsrf = cookies.find((cookie) => cookie.name === "thi360_xsrf")?.value ?? "";
     const response = await api.post(`${WEB_URL}/api/v1/me/email/verify`, {
       headers: { origin: WEB_URL, "X-XSRF-TOKEN": xsrf },
       data: { code: readOtp(mail) },
@@ -136,7 +153,6 @@ export async function verifyEmailViaApi(cookies: SessionCookies, account: E2eAcc
 export async function createVerifiedAccount(prefix: string): Promise<{ account: E2eAccount; cookies: SessionCookies }> {
   const account = newAccount(prefix);
   const cookies = await registerViaApi(account);
-  await verifyEmailViaApi(cookies, account);
   return { account, cookies };
 }
 

@@ -116,7 +116,7 @@
     "register": {
       "backHome": "Home",
       "continueNote": "After you register, you will return to the step you were working on.",
-      "emailHint": "Used for contact and account recovery. You will receive a verification code after registering.",
+      "emailHint": "Used for contact and account recovery. You will receive a 6-digit verification code to complete registration.",
       "emailInvalid": "Email format is not valid.",
       "emailLabel": "Email",
       "emailPlaceholder": "Enter your email",
@@ -138,6 +138,30 @@
         "subtitle": "Register a student account with your own username and password. No class or organization needed."
       },
       "loginLink": "Sign in",
+      "otp": {
+        "alerts": {
+          "codeExpired": "This code can no longer be used. Click Resend code to get a new one.",
+          "generic": "Unable to verify the code. Please try again.",
+          "rateLimited": "You are sending requests too fast. Please try again in a few minutes.",
+          "resendFailed": "Unable to send a new code. Please try again."
+        },
+        "backToEdit": "Back to edit details",
+        "codeInvalid": "Incorrect code. You have {count} attempts left.",
+        "codeLabel": "Verification code",
+        "codePlaceholder": "6 digits",
+        "codeRequired": "Please enter the 6-digit code.",
+        "codeResent": "A new code was sent. The previous code no longer works.",
+        "cooldownEnd": "You can resend the code now.",
+        "cooldownStart": "You can resend the code in {time}.",
+        "dailyLimit": "You have resent the code too many times. Try again after {time}.",
+        "footnote": "Your account is created only after you verify the 6-digit code. The code is valid for 10 minutes.",
+        "notReceived": "Did not receive the code?",
+        "resend": "Resend code",
+        "resendIn": "Resend code in {time}",
+        "sentTo": "We sent a 6-digit code to <strong>{email}</strong>. Enter the code below to create your account.",
+        "submit": "Verify",
+        "title": "Verify email"
+      },
       "password": {
         "hide": "Hide password",
         "ruleDigit": "At least one digit",

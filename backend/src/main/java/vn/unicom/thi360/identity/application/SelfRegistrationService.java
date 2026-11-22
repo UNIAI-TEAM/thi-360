@@ -1,12 +1,15 @@
 package vn.unicom.thi360.identity.application;
 
 import jakarta.servlet.http.HttpServletResponse;
+import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +23,13 @@ import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
 import vn.unicom.thi360.audit.spi.AuditRecorder;
 import vn.unicom.thi360.identity.api.RegisterRequest;
+import vn.unicom.thi360.identity.api.RegisterStartResponse;
 import vn.unicom.thi360.identity.domain.EmailCodePurpose;
+import vn.unicom.thi360.identity.domain.EmailCodeSendPolicy;
 import vn.unicom.thi360.identity.domain.IdentityProvider;
 import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.PasswordPolicy;
+import vn.unicom.thi360.identity.domain.PendingRegistration;
 import vn.unicom.thi360.identity.domain.Role;
 import vn.unicom.thi360.identity.domain.RoleStatus;
 import vn.unicom.thi360.identity.domain.UserAccount;
@@ -32,11 +38,15 @@ import vn.unicom.thi360.identity.domain.UserRole;
 import vn.unicom.thi360.identity.domain.UserSource;
 import vn.unicom.thi360.identity.domain.UserStatus;
 import vn.unicom.thi360.identity.domain.UsernamePolicy;
+import vn.unicom.thi360.identity.infrastructure.EmailCodeHasher;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
+import vn.unicom.thi360.identity.infrastructure.PendingPasswordCipher;
+import vn.unicom.thi360.identity.infrastructure.PendingRegistrationRepository;
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.infrastructure.UserIdentityRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
+import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.api.FieldError;
@@ -47,12 +57,16 @@ import vn.unicom.thi360.shared.mail.MailQueue;
 import vn.unicom.thi360.shared.web.AppMessages;
 
 /**
- * Tự đăng ký tài khoản học viên (TM 5.1, PBI-06). Theo cách tạo tài khoản của PBI-01
- * ({@code UserAdminService.createUserInternal}): dòng {@code PROVISIONING} trước, rồi Keycloak, rồi nâng lên
- * {@code ACTIVE}; Keycloak lỗi thì bù để không còn tài khoản dở dang. Không giữ khóa dòng khi gọi Keycloak.
- *
- * <p>Dòng {@code PROVISIONING} ghi sẵn {@code provisioning_role_ids} (vai trò Học viên), điều khoản và ngôn ngữ,
- * để {@code ProvisioningReconcilerJob} hoàn tất đúng nếu tiến trình chết giữa chừng.
+ * Tự đăng ký tài khoản học viên hai bước có xác minh OTP email bắt buộc trước khi tạo tài khoản (TM 5.1, Q13,
+ * UNI-2773):
+ * <ol>
+ *   <li><b>Bước 1 ({@link #startRegistration}):</b> kiểm tra hợp lệ đầu vào và trùng tên đăng nhập / email, mã hóa tạm
+ *       mật khẩu bằng {@link PendingPasswordCipher}, băm mã OTP 6 chữ số bằng {@link EmailCodeHasher} và xếp thư
+ *       {@code EMAIL_VERIFY}. Chưa tạo dòng trong {@code identity.user_account} hay user trên Keycloak.</li>
+ *   <li><b>Bước 2 ({@link #verifyAndRegister}):</b> kiểm tra mã OTP một lần dùng, rồi tạo tài khoản theo cơ chế hai pha
+ *       {@code PROVISIONING -> Keycloak -> ACTIVE} của PBI-01 với {@code emailVerified = true} ngay từ đầu, đặt phiên
+ *       cookie {@code HttpOnly} và trả đường dẫn chuyển hướng.</li>
+ * </ol>
  */
 @Service
 public class SelfRegistrationService {
@@ -62,16 +76,20 @@ public class SelfRegistrationService {
     private static final String STUDENT_ROLE_CODE_NORMALIZED = "student";
     private static final String ERROR_USERNAME_TAKEN = "USERNAME_TAKEN";
     private static final String ERROR_EMAIL_TAKEN = "EMAIL_TAKEN";
+    private static final String ERROR_EMAIL_CODE_EXPIRED = "EMAIL_CODE_EXPIRED";
 
     private final UserAccountRepository userAccountRepository;
     private final UserIdentityRepository userIdentityRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final PendingRegistrationRepository pendingRegistrationRepository;
     private final UsernamePolicy usernamePolicy;
     private final PasswordPolicy passwordPolicy;
     private final KeycloakIdentityClient keycloakClient;
     private final AuthService authService;
-    private final EmailCodeService emailCodeService;
+    private final EmailCodeGenerator emailCodeGenerator;
+    private final EmailCodeHasher emailCodeHasher;
+    private final PendingPasswordCipher passwordCipher;
     private final MailQueue mailQueue;
     private final AuditRecorder auditRecorder;
     private final JdbcTemplate jdbcTemplate;
@@ -86,12 +104,15 @@ public class SelfRegistrationService {
             UserIdentityRepository userIdentityRepository,
             RoleRepository roleRepository,
             UserRoleRepository userRoleRepository,
+            PendingRegistrationRepository pendingRegistrationRepository,
             UsernamePolicy usernamePolicy,
             PasswordPolicy passwordPolicy,
             KeycloakIdentityClient keycloakClient,
             UserAdminService userAdminService,
             AuthService authService,
-            EmailCodeService emailCodeService,
+            EmailCodeGenerator emailCodeGenerator,
+            EmailCodeHasher emailCodeHasher,
+            PendingPasswordCipher passwordCipher,
             MailQueue mailQueue,
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
@@ -102,11 +123,14 @@ public class SelfRegistrationService {
         this.userIdentityRepository = userIdentityRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
+        this.pendingRegistrationRepository = pendingRegistrationRepository;
         this.usernamePolicy = usernamePolicy;
         this.passwordPolicy = passwordPolicy;
         this.keycloakClient = keycloakClient;
         this.authService = authService;
-        this.emailCodeService = emailCodeService;
+        this.emailCodeGenerator = emailCodeGenerator;
+        this.emailCodeHasher = emailCodeHasher;
+        this.passwordCipher = passwordCipher;
         this.mailQueue = mailQueue;
         this.auditRecorder = auditRecorder;
         this.jdbcTemplate = jdbcTemplate;
@@ -119,48 +143,224 @@ public class SelfRegistrationService {
     }
 
     /**
-     * @param localeCookieValue giá trị cookie {@code thi360_locale}; chỉ {@code vi}, {@code en} được ghi
-     * @return đường dẫn chuyển hướng; phiên đã được đặt trong cookie của {@code response}
+     * Bước 1: kiểm tra đầu vào, kiểm tra tên đăng nhập / email chưa có tài khoản hoạt động, tạo (hoặc cập nhật) phiên
+     * đăng ký chờ và xếp thư OTP 6 chữ số.
      */
-    public String register(RegisterRequest request, String localeCookieValue, HttpServletResponse response) {
+    public RegisterStartResponse startRegistration(RegisterRequest request, String localeCookieValue) {
         ValidInput input = validate(request);
-        String locale = "vi".equals(localeCookieValue) || "en".equals(localeCookieValue)
-                ? localeCookieValue
-                : UserAccount.DEFAULT_LOCALE;
+        String locale = normalizeLocale(localeCookieValue);
+        resolveStudentRole();
+        ensureAvailable(input.usernameNormalized(), input.emailNormalized());
+
+        RegisterStartResponse result = transactionTemplate.execute(status -> {
+            lockEmail(input.emailNormalized());
+            ensureAvailable(input.usernameNormalized(), input.emailNormalized());
+
+            Instant now = Instant.now(clock);
+            List<Instant> sent = findSentSince(input.emailNormalized(), now.minus(EmailCodeSendPolicy.DAILY_WINDOW));
+
+            if (request.registrationId() != null) {
+                PendingRegistration existing =
+                        pendingRegistrationRepository.findByIdForUpdate(request.registrationId()).orElse(null);
+                if (existing != null
+                        && existing.canResend(now)
+                        && existing.getEmailNormalized().equals(input.emailNormalized())) {
+                    String cipher = passwordCipher.encrypt(existing.getId(), request.password());
+                    existing.updateDetails(
+                            input.username(),
+                            input.usernameNormalized(),
+                            input.fullName(),
+                            cipher,
+                            input.termsVersion(),
+                            locale,
+                            request.callbackUrl(),
+                            now);
+                    long cooldownWait = cooldownRemainingSeconds(sent, now);
+                    if (cooldownWait > 0) {
+                        if (!existing.isCodeUsable(now)) {
+                            throw new EmailCodeRateLimitedException(cooldownWait);
+                        }
+                        pendingRegistrationRepository.saveAndFlush(existing);
+                        return new RegisterStartResponse(existing.getId(), input.email(), cooldownWait);
+                    }
+                    OptionalLong dailyWait = EmailCodeSendPolicy.retryAfterSeconds(sent, now);
+                    if (dailyWait.isPresent()) {
+                        if (!existing.isCodeUsable(now)) {
+                            throw new EmailCodeRateLimitedException(dailyWait.getAsLong());
+                        }
+                        pendingRegistrationRepository.saveAndFlush(existing);
+                        return new RegisterStartResponse(existing.getId(), input.email(), dailyWait.getAsLong());
+                    }
+                    String otp = emailCodeGenerator.next();
+                    existing.replaceCode(
+                            emailCodeHasher.hash(existing.getId(), EmailCodePurpose.VERIFY, otp), now);
+                    pendingRegistrationRepository.saveAndFlush(existing);
+                    recordSend(existing.getId(), input.emailNormalized(), now);
+                    enqueueVerifyMail(input.email(), locale, input.fullName(), otp);
+                    return new RegisterStartResponse(
+                            existing.getId(), input.email(), EmailCodeSendPolicy.RESEND_COOLDOWN.toSeconds());
+                }
+            }
+
+            OptionalLong wait = EmailCodeSendPolicy.retryAfterSeconds(sent, now);
+            if (wait.isPresent()) {
+                throw new EmailCodeRateLimitedException(wait.getAsLong());
+            }
+
+            UUID registrationId = Ids.newId();
+            String otp = emailCodeGenerator.next();
+            String codeHash = emailCodeHasher.hash(registrationId, EmailCodePurpose.VERIFY, otp);
+            String cipher = passwordCipher.encrypt(registrationId, request.password());
+            PendingRegistration pending = new PendingRegistration(
+                    registrationId,
+                    input.username(),
+                    input.usernameNormalized(),
+                    input.fullName(),
+                    input.email(),
+                    input.emailNormalized(),
+                    cipher,
+                    input.termsVersion(),
+                    locale,
+                    request.callbackUrl(),
+                    codeHash,
+                    now);
+            pendingRegistrationRepository.saveAndFlush(pending);
+            recordSend(registrationId, input.emailNormalized(), now);
+            enqueueVerifyMail(input.email(), locale, input.fullName(), otp);
+            return new RegisterStartResponse(
+                    registrationId, input.email(), EmailCodeSendPolicy.RESEND_COOLDOWN.toSeconds());
+        });
+        if (result == null) {
+            throw new IllegalStateException("Failed to create pending registration");
+        }
+        return result;
+    }
+
+    /** Gửi lại mã OTP 6 chữ số cho phiên đăng ký đang chờ, áp đúng giới hạn E15 (60 giây và 5 mã / 24 giờ). */
+    public RegisterStartResponse resendCode(UUID registrationId, String localeCookieValue) {
+        PendingRegistration snapshot = pendingRegistrationRepository.findById(registrationId)
+                .orElseThrow(() -> new BusinessRuleException(ERROR_EMAIL_CODE_EXPIRED));
+        String emailNormalized = snapshot.getEmailNormalized();
+
+        RegisterStartResponse result = transactionTemplate.execute(status -> {
+            lockEmail(emailNormalized);
+            PendingRegistration pending = pendingRegistrationRepository.findByIdForUpdate(registrationId)
+                    .orElseThrow(() -> new BusinessRuleException(ERROR_EMAIL_CODE_EXPIRED));
+            Instant now = Instant.now(clock);
+            if (!pending.canResend(now)) {
+                throw new BusinessRuleException(ERROR_EMAIL_CODE_EXPIRED);
+            }
+            ensureAvailable(pending.getUsernameNormalized(), pending.getEmailNormalized());
+
+            List<Instant> sent = findSentSince(pending.getEmailNormalized(), now.minus(EmailCodeSendPolicy.DAILY_WINDOW));
+            OptionalLong wait = EmailCodeSendPolicy.retryAfterSeconds(sent, now);
+            if (wait.isPresent()) {
+                throw new EmailCodeRateLimitedException(wait.getAsLong());
+            }
+
+            String otp = emailCodeGenerator.next();
+            pending.replaceCode(emailCodeHasher.hash(registrationId, EmailCodePurpose.VERIFY, otp), now);
+            pendingRegistrationRepository.saveAndFlush(pending);
+            recordSend(registrationId, pending.getEmailNormalized(), now);
+
+            String mailLocale = localeCookieValue != null && ("vi".equals(localeCookieValue) || "en".equals(localeCookieValue))
+                    ? localeCookieValue
+                    : pending.getPreferredLocale();
+            enqueueVerifyMail(pending.getEmail(), mailLocale, pending.getFullName(), otp);
+            return new RegisterStartResponse(
+                    registrationId, pending.getEmail(), EmailCodeSendPolicy.RESEND_COOLDOWN.toSeconds());
+        });
+        if (result == null) {
+            throw new IllegalStateException("Failed to resend registration OTP");
+        }
+        return result;
+    }
+
+    /**
+     * Bước 2: kiểm tra mã OTP 6 chữ số, tạo tài khoản học viên đã xác minh email trên cả {@code identity} và Keycloak,
+     * đặt phiên cookie {@code HttpOnly} và trả đường dẫn chuyển hướng.
+     */
+    public String verifyAndRegister(UUID registrationId, String submittedCode, HttpServletResponse response) {
+        VerifyStep step = transactionTemplate.execute(status -> {
+            PendingRegistration pending = pendingRegistrationRepository.findByIdForUpdate(registrationId).orElse(null);
+            Instant now = Instant.now(clock);
+            if (pending == null || !pending.isCodeUsable(now)) {
+                return new VerifyStep.Expired();
+            }
+            String trimmed = submittedCode == null ? "" : submittedCode.trim();
+            if (!emailCodeHasher.matches(registrationId, EmailCodePurpose.VERIFY, trimmed, pending.getCodeHash())) {
+                int remaining = pending.recordWrongAttempt(now);
+                pendingRegistrationRepository.saveAndFlush(pending);
+                return new VerifyStep.Wrong(remaining);
+            }
+            ensureAvailable(pending.getUsernameNormalized(), pending.getEmailNormalized());
+            String plaintextPassword = passwordCipher.decrypt(registrationId, pending.getPasswordCiphertext());
+            pending.consumeCode(now);
+            pendingRegistrationRepository.saveAndFlush(pending);
+            return new VerifyStep.Verified(
+                    new ValidInput(
+                            pending.getUsername(),
+                            pending.getUsernameNormalized(),
+                            pending.getFullName(),
+                            pending.getEmail(),
+                            pending.getEmailNormalized(),
+                            pending.getTermsVersion()),
+                    plaintextPassword,
+                    pending.getPreferredLocale(),
+                    pending.getCallbackUrl());
+        });
+
+        if (step == null || step instanceof VerifyStep.Expired) {
+            throw new BusinessRuleException(ERROR_EMAIL_CODE_EXPIRED);
+        }
+        if (step instanceof VerifyStep.Wrong wrong) {
+            throw new EmailCodeInvalidException(wrong.remainingAttempts());
+        }
+        VerifyStep.Verified verified = (VerifyStep.Verified) step;
+        ValidInput input = verified.input();
+        String locale = verified.preferredLocale();
         Role studentRole = resolveStudentRole();
 
-        if (userAccountRepository.findActiveByUsernameNormalized(input.usernameNormalized()).isPresent()) {
-            throw new ConflictException(ERROR_USERNAME_TAKEN);
-        }
-        if (userAccountRepository.findActiveByEmailNormalized(input.emailNormalized()).isPresent()) {
-            throw new ConflictException(ERROR_EMAIL_TAKEN);
-        }
-
         UUID provisionalId = Ids.newId();
-        insertProvisional(provisionalId, input, studentRole, locale);
-
-        UUID keycloakUserId = createKeycloakUser(provisionalId, input);
         try {
-            keycloakClient.setPassword(keycloakUserId, request.password(), false);
+            insertProvisional(provisionalId, input, studentRole, locale);
+        } catch (RuntimeException ex) {
+            releaseConsumedCodeQuietly(registrationId);
+            throw ex;
+        }
+
+        UUID keycloakUserId;
+        try {
+            keycloakUserId = createKeycloakUser(provisionalId, input);
+        } catch (RuntimeException ex) {
+            if (userAccountRepository.findById(provisionalId).isEmpty()) {
+                releaseConsumedCodeQuietly(registrationId);
+            }
+            throw ex;
+        }
+        try {
+            keycloakClient.setPassword(keycloakUserId, verified.password(), false);
         } catch (RuntimeException ex) {
             // Cả lỗi chính sách mật khẩu của Keycloak lẫn lỗi mạng: user Keycloak chưa có mật khẩu, bỏ cả hai phía.
             userAdminService.rollbackCreatedRegistration(provisionalId, keycloakUserId);
+            releaseConsumedCodeQuietly(registrationId);
             throw ex;
         }
 
         try {
-            activate(provisionalId, keycloakUserId, input, studentRole, locale);
+            activate(provisionalId, keycloakUserId, studentRole, registrationId);
         } catch (RuntimeException ex) {
             userAdminService.rollbackCreatedRegistration(provisionalId, keycloakUserId);
+            releaseConsumedCodeQuietly(registrationId);
             throw ex;
         }
 
-        // Câu hỏi mở 1 (tạm): tài khoản đã tạo xong mà tạo phiên lỗi thì giữ tài khoản, trả lỗi, người dùng đăng nhập lại.
+        // Tài khoản đã tạo xong mà tạo phiên lỗi thì giữ tài khoản, trả lỗi, người dùng đăng nhập lại.
         UserAccount account = userAccountRepository.findById(keycloakUserId)
                 .orElseThrow(() -> new IllegalStateException("Registered account missing: " + keycloakUserId));
         try {
             return authService.openSessionForRegisteredAccount(
-                    account, request.password(), request.callbackUrl(), locale, response);
+                    account, verified.password(), verified.callbackUrl(), locale, response);
         } catch (RuntimeException ex) {
             log.atError()
                     .setCause(ex)
@@ -171,6 +371,29 @@ public class SelfRegistrationService {
         }
     }
 
+    private void releaseConsumedCodeQuietly(UUID registrationId) {
+        try {
+            requiresNewTx.executeWithoutResult(status -> pendingRegistrationRepository
+                    .findByIdForUpdate(registrationId)
+                    .ifPresent(pending -> {
+                        pending.releaseCode(Instant.now(clock));
+                        pendingRegistrationRepository.saveAndFlush(pending);
+                    }));
+        } catch (RuntimeException ex) {
+            log.atWarn()
+                    .setCause(ex)
+                    .addKeyValue("registrationId", registrationId.toString())
+                    .log("Failed to release consumed registration OTP after rollback");
+        }
+    }
+
+    private sealed interface VerifyStep {
+        record Expired() implements VerifyStep {}
+        record Wrong(int remainingAttempts) implements VerifyStep {}
+        record Verified(ValidInput input, String password, String preferredLocale, String callbackUrl)
+                implements VerifyStep {}
+    }
+
     private record ValidInput(
             String username,
             String usernameNormalized,
@@ -178,6 +401,75 @@ public class SelfRegistrationService {
             String email,
             String emailNormalized,
             String termsVersion) {
+    }
+
+    private static String normalizeLocale(String localeCookieValue) {
+        return "vi".equals(localeCookieValue) || "en".equals(localeCookieValue)
+                ? localeCookieValue
+                : UserAccount.DEFAULT_LOCALE;
+    }
+
+    private void ensureAvailable(String usernameNormalized, String emailNormalized) {
+        if (userAccountRepository.findActiveByUsernameNormalized(usernameNormalized).isPresent()) {
+            throw new ConflictException(ERROR_USERNAME_TAKEN);
+        }
+        if (userAccountRepository.findActiveByEmailNormalized(emailNormalized).isPresent()) {
+            throw new ConflictException(ERROR_EMAIL_TAKEN);
+        }
+    }
+
+    private void lockEmail(String emailNormalized) {
+        jdbcTemplate.query(
+                "SELECT pg_advisory_xact_lock(hashtext(?), hashtext(?))",
+                rs -> null,
+                "identity.pending_registration",
+                emailNormalized);
+    }
+
+    private List<Instant> findSentSince(String emailNormalized, Instant since) {
+        return jdbcTemplate.query(
+                """
+                SELECT created_at
+                FROM identity.pending_registration_send
+                WHERE email_normalized = ?
+                  AND created_at >= ?
+                ORDER BY created_at DESC
+                """,
+                (rs, rowNum) -> rs.getTimestamp("created_at").toInstant(),
+                emailNormalized,
+                Timestamp.from(since));
+    }
+
+    private void recordSend(UUID registrationId, String emailNormalized, Instant now) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO identity.pending_registration_send (id, registration_id, email_normalized, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                Ids.newId(),
+                registrationId,
+                emailNormalized,
+                Timestamp.from(now));
+    }
+
+    private static long cooldownRemainingSeconds(List<Instant> sent, Instant now) {
+        if (sent.isEmpty()) {
+            return 0;
+        }
+        Duration remaining = Duration.between(now, sent.getFirst().plus(EmailCodeSendPolicy.RESEND_COOLDOWN));
+        if (remaining.isNegative() || remaining.isZero()) {
+            return 0;
+        }
+        return remaining.getNano() > 0 ? remaining.getSeconds() + 1 : remaining.getSeconds();
+    }
+
+    private void enqueueVerifyMail(String email, String locale, String fullName, String otp) {
+        mailQueue.enqueue(
+                MailKind.EMAIL_VERIFY,
+                email,
+                locale,
+                Map.of("fullName", fullName, "code", otp),
+                null);
     }
 
     /** Trả đủ lỗi theo trường trong một lần (TM 5.1: kiểm ở máy chủ, AC-5). */
@@ -210,7 +502,6 @@ public class SelfRegistrationService {
             errors.add(new FieldError(
                     "acceptTerms", "TERMS_REQUIRED", messages.get("validation.register.terms.required")));
         }
-        // Câu hỏi mở 7 (tạm): lưu đúng giá trị gửi lên, không so với bản hiện hành.
         String termsVersion = request.termsVersion() == null ? "" : request.termsVersion().trim();
         if (termsVersion.isEmpty()) {
             errors.add(new FieldError(
@@ -258,6 +549,8 @@ public class SelfRegistrationService {
                 provisional.setProvisioningRoleIds(studentRole.getId().toString());
                 provisional.recordTermsAcceptance(input.termsVersion(), now);
                 provisional.changePreferredLocale(locale);
+                // Email đã được xác minh qua mã OTP ở Bước 2 trước khi tạo dòng tài khoản (UNI-2773).
+                provisional.markEmailVerified(now, null);
                 userAccountRepository.saveAndFlush(provisional);
             });
         } catch (DataIntegrityViolationException ex) {
@@ -269,7 +562,7 @@ public class SelfRegistrationService {
     private UUID createKeycloakUser(UUID provisionalId, ValidInput input) {
         String[] names = UserAdminService.splitFullName(input.fullName());
         KeycloakIdentityClient.CreateUserCommand command = new KeycloakIdentityClient.CreateUserCommand(
-                input.username(), input.email(), names[0], names[1], null, true, false, false);
+                input.username(), input.email(), names[0], names[1], null, true, false, true);
         try {
             return keycloakClient.createSelfRegisteredUser(command);
         } catch (ConflictException conflict) {
@@ -356,8 +649,8 @@ public class SelfRegistrationService {
         }
     }
 
-    /** Nâng dòng tạm lên ACTIVE, gán vai trò, ghi nhật ký và xếp thư OTP trong một transaction (TM 5.1). */
-    private void activate(UUID provisionalId, UUID keycloakUserId, ValidInput input, Role studentRole, String locale) {
+    /** Nâng dòng tạm lên ACTIVE, gán vai trò, đánh dấu hoàn tất phiên chờ và ghi nhật ký kiểm toán trong một transaction. */
+    private void activate(UUID provisionalId, UUID keycloakUserId, Role studentRole, UUID registrationId) {
         Instant activatedAt = Instant.now(clock);
         transactionTemplate.executeWithoutResult(status -> {
             int updated = userAccountRepository.promoteProvisionedUser(
@@ -366,12 +659,15 @@ public class SelfRegistrationService {
                     UserStatus.PROVISIONING.code(),
                     UserStatus.ACTIVE.code(),
                     activatedAt,
-                    null);
+                    keycloakUserId);
             if (updated != 1) {
                 throw new IllegalStateException("Expected 1 promoted user row, got " + updated);
             }
             UserAccount account = userAccountRepository.findById(keycloakUserId)
                     .orElseThrow(() -> new IllegalStateException("Promoted user not found: " + keycloakUserId));
+            account.markEmailVerified(activatedAt, keycloakUserId);
+            userAccountRepository.save(account);
+
             userIdentityRepository.save(new UserIdentity(
                     Ids.newId(),
                     keycloakUserId,
@@ -381,11 +677,17 @@ public class SelfRegistrationService {
                     activatedAt));
             userRoleRepository.saveAndFlush(new UserRole(keycloakUserId, studentRole.getId(), null, activatedAt));
 
+            pendingRegistrationRepository.findByIdForUpdate(registrationId).ifPresent(pending -> {
+                pending.markCompleted(activatedAt);
+                pendingRegistrationRepository.saveAndFlush(pending);
+            });
+
             Map<String, Object> after = new LinkedHashMap<>();
             after.put("code", account.getCode());
             after.put("username", account.getUsername());
             after.put("fullName", account.getFullName());
             after.put("email", account.getEmail());
+            after.put("emailVerified", true);
             after.put("source", account.getSource().name());
             after.put("status", account.getStatus().name());
             after.put("roleCodes", List.of(studentRole.getCode()));
@@ -397,19 +699,11 @@ public class SelfRegistrationService {
                     .actor(keycloakUserId, account.getUsername(), List.of(), AuditActorType.USER)
                     .build());
 
-            String otp = emailCodeService.issue(keycloakUserId, EmailCodePurpose.VERIFY, account.getEmail());
-            mailQueue.enqueue(
-                    MailKind.EMAIL_VERIFY,
-                    account.getEmail(),
-                    account.getPreferredLocale(),
-                    Map.of("fullName", account.getFullName(), "code", otp),
-                    keycloakUserId);
-
             log.atInfo()
                     .addKeyValue("event", "user.self_registered")
                     .addKeyValue("userId", keycloakUserId.toString())
                     .addKeyValue("code", account.getCode())
-                    .log("User account self-registered");
+                    .log("User account self-registered with verified email");
         });
     }
 }

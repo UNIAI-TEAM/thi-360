@@ -13,16 +13,20 @@ const DEV_PASSWORD = process.env.THI360_DEV_PASSWORD ?? "Thi360@dev";
 // Đường dẫn bài mẫu của dữ liệu DS; trang chi tiết bài là của FS-1 nên chỉ kiểm điểm đến của URL.
 const EXAM_PATH = process.env.THI360_E2E_EXAM_PATH ?? "/exams/BCA-FULL";
 
-test.describe("Đăng ký, xác minh email và các đường tài khoản", () => {
-  test("đăng ký, nhập OTP, quay lại callbackUrl (AC-1)", async ({ page }) => {
+test.describe("Đăng ký 2 bước OTP, xác minh email và các đường tài khoản", () => {
+  test("đăng ký Bước 1 chưa tạo tài khoản, nhập OTP Bước 2 mới tạo tài khoản đã xác minh và quay lại callbackUrl (UNI-2773)", async ({
+    page,
+  }) => {
     const account = newAccount("reg");
     await page.goto(`${WEB_URL}/register?callbackUrl=${encodeURIComponent(EXAM_PATH)}`);
     await fillRegisterForm(page, account);
     await page.getByRole("button", { name: "Đăng ký" }).click();
 
-    await page.waitForURL((url) => url.pathname === "/verify-email");
-    await expect(page.getByRole("heading", { name: "Xác minh email" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Xác minh email", level: 1 })).toBeVisible();
     await expect(page.getByText(account.email)).toBeVisible();
+
+    // Trước khi xác minh OTP: chưa có phiên và chưa đăng nhập được.
+    expect((await page.request.get(`${WEB_URL}/api/v1/me`)).status()).toBe(401);
 
     const mail = await waitForMail(account.email, "EMAIL_VERIFY");
     await page.getByLabel(/^Mã xác minh/).fill(readOtp(mail));
@@ -30,9 +34,13 @@ test.describe("Đăng ký, xác minh email và các đường tài khoản", () 
 
     await page.waitForURL((url) => url.pathname === EXAM_PATH);
     expect(new URL(page.url()).origin).toBe(new URL(WEB_URL).origin);
+
+    const profileRes = await page.request.get(`${WEB_URL}/api/v1/me/profile`);
+    expect(profileRes.status()).toBe(200);
+    expect(((await profileRes.json()) as { emailVerified: boolean }).emailVerified).toBe(true);
   });
 
-  test("giữ callbackUrl qua các trang; nút Để sau đi theo callbackUrl; callbackUrl ngoài hệ thống không được dùng (AC-7)", async ({
+  test("giữ callbackUrl qua các trang; Quay lại sửa thông tin ở Bước 2 giữ dữ liệu; callbackUrl ngoài hệ thống không được dùng (AC-7)", async ({
     page,
   }) => {
     await page.goto(`${WEB_URL}/login?callbackUrl=${encodeURIComponent(EXAM_PATH)}`);
@@ -46,12 +54,21 @@ test.describe("Đăng ký, xác minh email và các đường tài khoản", () 
     await page.getByRole("link", { name: "Tạo tài khoản mới" }).click();
     await expectUrlWithCallback(page, "/register", EXAM_PATH);
 
-    // Đăng ký xong, "Để sau" đi theo callbackUrl mà không cần nhập mã.
-    const account = newAccount("later");
+    // Qua Bước 2, bấm "Quay lại sửa thông tin" sửa họ tên rồi hoàn tất xác minh OTP vẫn về đúng callbackUrl.
+    const account = newAccount("edit");
     await fillRegisterForm(page, account);
     await page.getByRole("button", { name: "Đăng ký" }).click();
-    await page.waitForURL((url) => url.pathname === "/verify-email");
-    await page.getByRole("link", { name: "Để sau" }).click();
+    await expect(page.getByRole("heading", { name: "Xác minh email", level: 1 })).toBeVisible();
+
+    const mail = await waitForMail(account.email, "EMAIL_VERIFY");
+    await page.getByRole("button", { name: "Quay lại sửa thông tin" }).click();
+    await expect(page.getByLabel(/^Tên đăng nhập/)).toHaveValue(account.username);
+    await page.getByLabel(/^Họ và tên/).fill("E2E Updated Name");
+    await page.getByRole("button", { name: "Đăng ký" }).click();
+    await expect(page.getByRole("heading", { name: "Xác minh email", level: 1 })).toBeVisible();
+
+    await page.getByLabel(/^Mã xác minh/).fill(readOtp(mail));
+    await page.getByRole("button", { name: "Xác minh", exact: true }).click();
     await page.waitForURL((url) => url.pathname === EXAM_PATH);
 
     // callbackUrl ngoài hệ thống: liên kết đi không mang theo.
@@ -101,16 +118,19 @@ test.describe("Đăng ký, xác minh email và các đường tài khoản", () 
     }
   });
 
-  test("trình duyệt còn thi360_rt hỏng vẫn đăng ký được và nhận phiên mới", async ({ context, page }) => {
+  test("trình duyệt còn thi360_rt hỏng vẫn đăng ký 2 bước được và nhận phiên mới", async ({ context, page }) => {
     await context.addCookies([{ name: "thi360_rt", value: "refresh-token-hong", url: WEB_URL }]);
     const account = newAccount("broken");
 
     await page.goto(`${WEB_URL}/register`);
     await fillRegisterForm(page, account);
     await page.getByRole("button", { name: "Đăng ký" }).click();
+    await expect(page.getByRole("heading", { name: "Xác minh email", level: 1 })).toBeVisible();
 
-    await page.waitForURL((url) => url.pathname === "/verify-email");
-    await page.goto(`${WEB_URL}/home`);
+    const mail = await waitForMail(account.email, "EMAIL_VERIFY");
+    await page.getByLabel(/^Mã xác minh/).fill(readOtp(mail));
+    await page.getByRole("button", { name: "Xác minh", exact: true }).click();
+
     await expect(page).toHaveURL(`${WEB_URL}/home`);
     await expect(page.getByRole("button", { name: "Menu tài khoản" })).toContainText(account.username);
   });

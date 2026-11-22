@@ -41,8 +41,23 @@ public record RegisterRequest(
         @Schema(description = "Đường dẫn chuyển hướng sau đăng ký (tương đối hoặc thuộc tên miền cho phép)",
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         @Size(max = 2048, message = "{validation.register.callbackUrl.size}")
-        String callbackUrl
+        String callbackUrl,
+
+        @Schema(description = "Mã phiên đăng ký đang chờ (khi học viên quay lại sửa thông tin ở Bước 1)",
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        java.util.UUID registrationId
 ) {
+    public RegisterRequest(
+            String username,
+            String fullName,
+            String email,
+            String password,
+            Boolean acceptTerms,
+            String termsVersion,
+            String callbackUrl) {
+        this(username, fullName, email, password, acceptTerms, termsVersion, callbackUrl, null);
+    }
+
     @Override
     public String toString() {
         return "RegisterRequest["
@@ -53,6 +68,7 @@ public record RegisterRequest(
                 + ", acceptTerms=" + acceptTerms
                 + ", termsVersion=" + termsVersion
                 + ", callbackUrl=" + callbackUrl
+                + ", registrationId=" + registrationId
                 + ']';
     }
 }
