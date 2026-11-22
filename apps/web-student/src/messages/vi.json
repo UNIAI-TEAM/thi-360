@@ -866,6 +866,8 @@
     },
     "card": {
       "attemptsLeft": "Lượt còn lại",
+      "classAssigned": "Bài theo lớp · {className}",
+      "classAssignedNoName": "Bài theo lớp",
       "minutesPerAttempt": "{value} phút mỗi lượt",
       "purchased": "Đã mua"
     },
@@ -888,6 +890,8 @@
     "examCount": "{count, plural, other {# bài}}",
     "exploreExams": "Khám phá bài thi",
     "notes": {
+      "classExhausted": "Đã hết lượt được giao cho bài thi này.",
+      "classExhaustedWithHistory": "Đã hết lượt được giao cho bài thi này. Kết quả và lịch sử vẫn xem được.",
       "discontinuedCanStart": "Bài thi đã ngừng bán. Bạn vẫn dùng được các lượt còn lại.",
       "discontinuedExhausted": "Bài thi đã ngừng bán, không mua thêm được.",
       "discontinuedExhaustedWithHistory": "Bài thi đã ngừng bán, không mua thêm được. Kết quả và lịch sử vẫn xem được.",
@@ -1268,9 +1272,12 @@
       "title": "Không tải được thông tin chuẩn bị bài thi"
     },
     "exhaustedDescription": "Bạn có thể mua thêm lượt để tiếp tục luyện tập bài thi này.",
+    "exhaustedDescriptionClass": "Bạn đã dùng hết số lượt được giao cho bài thi này.",
     "exhaustedDescriptionDiscontinued": "Bài thi này đã ngừng mở bán nên không thể mua thêm lượt.",
     "exhaustedTitle": "Bạn đã dùng hết lượt của bài này.",
     "grantSource": {
+      "classAssigned": "Giao theo lớp ngày {date}",
+      "classAssignedNoDate": "Giao theo lớp",
       "compensation": "Cấp bù",
       "purchase": "Mua ngày {date}, đơn {orderCode}",
       "purchaseNoOrder": "Mua ngày {date}"

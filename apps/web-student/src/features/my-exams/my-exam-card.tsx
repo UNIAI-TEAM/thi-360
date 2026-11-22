@@ -106,13 +106,15 @@ export function MyExamCard({
       : card.state;
 
   const hasAction = (action: MyExamCardData["actions"][number]) => card.actions.includes(action);
+  const isClassAssigned = card.entitlementSource === "CLASS";
+  const className = card.className?.trim() ?? "";
   const canContinue = hasAction("CONTINUE") && Boolean(card.activeAttemptId);
   const canStart = hasAction("START") && Boolean(card.entitlementId);
   const canViewResult = hasAction("VIEW_RESULT") && Boolean(card.resultAttemptId);
   const canViewHistory = hasAction("HISTORY");
   const isOnSale = card.saleState === "ON_SALE";
-  const canRebuy = isOnSale && !card.hasPendingFulfillment && hasAction("REBUY");
-  const canBuyMore = isOnSale && !card.hasPendingFulfillment && hasAction("BUY_MORE");
+  const canRebuy = !isClassAssigned && isOnSale && !card.hasPendingFulfillment && hasAction("REBUY");
+  const canBuyMore = !isClassAssigned && isOnSale && !card.hasPendingFulfillment && hasAction("BUY_MORE");
 
   return (
     <article className="flex flex-col gap-3.5 rounded-xl border border-border bg-surface p-5">
@@ -120,9 +122,15 @@ export function MyExamCard({
         <span className="inline-flex min-h-6 items-center rounded-full bg-subtle px-2.5 py-0.5 text-caption font-medium text-text-secondary">
           {examKindName}
         </span>
-        <span className="inline-flex min-h-6 items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-caption font-semibold text-primary-text">
-          {t("card.purchased")}
-        </span>
+        {isClassAssigned ? (
+          <span className="inline-flex min-h-6 items-center rounded-full bg-info-bg px-2.5 py-0.5 text-caption font-semibold text-info">
+            {className ? t("card.classAssigned", { className }) : t("card.classAssignedNoName")}
+          </span>
+        ) : (
+          <span className="inline-flex min-h-6 items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-caption font-semibold text-primary-text">
+            {t("card.purchased")}
+          </span>
+        )}
         {card.buildMode === REVIEW_BUILD_MODE && (
           <span className="inline-flex min-h-6 items-center rounded-full bg-info-bg px-2.5 py-0.5 text-caption font-semibold text-info">
             {storefront("review")}
@@ -174,14 +182,21 @@ export function MyExamCard({
         {card.state === "IN_PROGRESS" && card.attemptsLeft === 0 && (
           <p className="text-caption text-text-muted">{t("notes.lastAttempt")}</p>
         )}
-        {!isOnSale && card.state === "EXHAUSTED" && (
+        {isClassAssigned && card.state === "EXHAUSTED" && (
+          <p className="text-caption text-text-muted">
+            {canViewResult || canViewHistory
+              ? t("notes.classExhaustedWithHistory")
+              : t("notes.classExhausted")}
+          </p>
+        )}
+        {!isClassAssigned && !isOnSale && card.state === "EXHAUSTED" && (
           <p className="text-caption text-text-muted">
             {canViewResult || canViewHistory
               ? t("notes.discontinuedExhaustedWithHistory")
               : t("notes.discontinuedExhausted")}
           </p>
         )}
-        {!isOnSale && (card.state === "CAN_START" || card.state === "IN_PROGRESS") && (
+        {!isClassAssigned && !isOnSale && (card.state === "CAN_START" || card.state === "IN_PROGRESS") && (
           <p className="text-caption text-text-muted">{t("notes.discontinuedCanStart")}</p>
         )}
 

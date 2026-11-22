@@ -195,6 +195,22 @@ describe("PrepareView", () => {
     expect(screen.queryByText("Chính sách nghe")).toBeNull();
     compRender.unmount();
 
+    // CLASS grant source (UNI-2774)
+    const classRender = renderWithProviders(
+      <PrepareView
+        entitlementId="ent-cls"
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadPrepare={async () =>
+          makePrepare({
+            entitlementId: "ent-cls",
+            grantSource: { source: "CLASS", grantedAt: "2026-11-22T03:00:00Z" },
+          })
+        }
+      />,
+    );
+    expect(await screen.findByText("Giao theo lớp ngày 22/11")).toBeInTheDocument();
+    classRender.unmount();
+
     renderWithProviders(
       <PrepareView
         entitlementId="other-ent"

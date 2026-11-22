@@ -49,7 +49,7 @@ class ExamAccessOpenApiIT extends AbstractIntegrationTest {
             }
         }
 
-        assertThat(checked).as("optional fields looked at").isEqualTo(4 + 10);
+        assertThat(checked).as("optional fields looked at").isEqualTo(4 + 13);
         assertThat(notNullable).as("optional fields that do not accept null").isEmpty();
     }
 

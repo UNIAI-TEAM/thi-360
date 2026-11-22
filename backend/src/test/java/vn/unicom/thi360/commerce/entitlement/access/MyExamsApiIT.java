@@ -417,7 +417,10 @@ class MyExamsApiIT extends AbstractExamAccessIT {
         assertThat(fieldNames(item)).containsExactlyInAnyOrder("entitlementId", "code", "name", "examKind", "format",
                 "scopeLabel", "buildMode", "coverUrl", "questionCount", "durationMinutes", "attemptsLeft",
                 "attemptsTotal", "saleState", "state", "activeAttemptId", "activeAttemptState", "resultAttemptId",
-                "hasPendingFulfillment", "pendingOrderCode", "actions", "bundles");
+                "hasPendingFulfillment", "pendingOrderCode", "actions", "bundles", "entitlementSource", "classId", "className");
+        assertThat(item.get("entitlementSource").asText()).isEqualTo("PURCHASE");
+        assertThat(item.get("classId").isNull()).isTrue();
+        assertThat(item.get("className").isNull()).isTrue();
         assertThat(item.get("code").asText()).isEqualTo(code);
         assertThat(item.get("name").asText()).isEqualTo("Phan Toan " + code);
         assertThat(item.get("examKind").get("code").asText()).isEqualTo("HSA");

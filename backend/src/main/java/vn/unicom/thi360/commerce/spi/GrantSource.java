@@ -6,5 +6,6 @@ package vn.unicom.thi360.commerce.spi;
  */
 public enum GrantSource {
     PURCHASE,
-    COMPENSATION
+    COMPENSATION,
+    CLASS
 }

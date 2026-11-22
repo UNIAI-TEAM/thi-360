@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -25,6 +26,7 @@ import vn.unicom.thi360.classroom.domain.ClassRoom;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberHistoryRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassRoomRepository;
+import vn.unicom.thi360.classroom.spi.ClassMemberRemoved;
 import vn.unicom.thi360.identity.spi.UserDeleted;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.ids.Ids;
@@ -44,6 +46,7 @@ public class UserDeletedClassCleanupListener {
     private final AuditRecorder auditRecorder;
     private final Clock clock;
     private final AppMessages messages;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserDeletedClassCleanupListener(
             ClassMemberRepository classMemberRepository,
@@ -61,7 +64,29 @@ public class UserDeletedClassCleanupListener {
                 classMemberLock,
                 auditRecorder,
                 clock,
-                AppMessages.defaultInstance());
+                AppMessages.defaultInstance(),
+                event -> {});
+    }
+
+    public UserDeletedClassCleanupListener(
+            ClassMemberRepository classMemberRepository,
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            ClassRoomRepository classRoomRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
+            AuditRecorder auditRecorder,
+            Clock clock,
+            AppMessages messages) {
+        this(
+                classMemberRepository,
+                classMemberHistoryRepository,
+                classRoomRepository,
+                userDirectory,
+                classMemberLock,
+                auditRecorder,
+                clock,
+                messages,
+                event -> {});
     }
 
     @Autowired
@@ -73,7 +98,8 @@ public class UserDeletedClassCleanupListener {
             ClassMemberLock classMemberLock,
             AuditRecorder auditRecorder,
             Clock clock,
-            AppMessages messages) {
+            AppMessages messages,
+            ApplicationEventPublisher eventPublisher) {
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
         this.classRoomRepository = classRoomRepository;
@@ -82,6 +108,7 @@ public class UserDeletedClassCleanupListener {
         this.auditRecorder = auditRecorder;
         this.clock = clock;
         this.messages = messages;
+        this.eventPublisher = eventPublisher == null ? (event -> {}) : eventPublisher;
     }
 
     @EventListener
@@ -159,6 +186,8 @@ public class UserDeletedClassCleanupListener {
                 auditBuilder.actorType(AuditActorType.SYSTEM);
             }
             auditRecorder.record(auditBuilder.build());
+            eventPublisher.publishEvent(
+                    new ClassMemberRemoved(membership.getClassId(), event.userId(), event.actorId(), occurredAt));
         }
     }
 }

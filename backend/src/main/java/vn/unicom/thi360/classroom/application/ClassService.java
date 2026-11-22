@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,6 +48,9 @@ import vn.unicom.thi360.classroom.domain.ClassStatus;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberHistoryRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassMemberRepository;
 import vn.unicom.thi360.classroom.infrastructure.ClassRoomRepository;
+import vn.unicom.thi360.classroom.spi.ClassDeleted;
+import vn.unicom.thi360.classroom.spi.ClassMemberRemoved;
+import vn.unicom.thi360.classroom.spi.ClassMembersAdded;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
@@ -86,6 +90,7 @@ public class ClassService {
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
     private final AppMessages messages;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ClassService(
             ClassRoomRepository classRoomRepository,
@@ -107,7 +112,33 @@ public class ClassService {
                 auditRecorder,
                 jdbcTemplate,
                 clock,
-                AppMessages.defaultInstance());
+                AppMessages.defaultInstance(),
+                event -> {});
+    }
+
+    public ClassService(
+            ClassRoomRepository classRoomRepository,
+            ClassMemberRepository classMemberRepository,
+            ClassMemberHistoryRepository classMemberHistoryRepository,
+            UserDirectory userDirectory,
+            ClassMemberLock classMemberLock,
+            CurrentUserProvider currentUserProvider,
+            AuditRecorder auditRecorder,
+            JdbcTemplate jdbcTemplate,
+            Clock clock,
+            AppMessages messages) {
+        this(
+                classRoomRepository,
+                classMemberRepository,
+                classMemberHistoryRepository,
+                userDirectory,
+                classMemberLock,
+                currentUserProvider,
+                auditRecorder,
+                jdbcTemplate,
+                clock,
+                messages,
+                event -> {});
     }
 
     @Autowired
@@ -121,7 +152,8 @@ public class ClassService {
             AuditRecorder auditRecorder,
             JdbcTemplate jdbcTemplate,
             Clock clock,
-            AppMessages messages) {
+            AppMessages messages,
+            ApplicationEventPublisher eventPublisher) {
         this.classRoomRepository = classRoomRepository;
         this.classMemberRepository = classMemberRepository;
         this.classMemberHistoryRepository = classMemberHistoryRepository;
@@ -132,6 +164,7 @@ public class ClassService {
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
         this.messages = messages;
+        this.eventPublisher = eventPublisher == null ? (event -> {}) : eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -366,6 +399,7 @@ public class ClassService {
         after.put("deletedAt", classRoom.getDeletedAt().toString());
         after.put("deleteReason", trimmedReason);
         recordAudit("CLASS_DELETED", classRoom.getId(), classRoom.getCode(), before, after, trimmedReason);
+        eventPublisher.publishEvent(new ClassDeleted(classRoom.getId(), actor.id(), trimmedReason, now));
     }
 
     @Transactional(readOnly = true)
@@ -502,6 +536,8 @@ public class ClassService {
                 after.put("skippedUserIds", skippedUserIds.stream().map(UUID::toString).toList());
             }
             recordAudit("CLASS_MEMBER_ADDED", classRoom.getId(), classRoom.getCode(), null, after, null);
+            eventPublisher.publishEvent(
+                    new ClassMembersAdded(classId, List.copyOf(addedUserIds), actor.id(), now));
         }
 
         return new AddClassMembersResponse(
@@ -540,6 +576,7 @@ public class ClassService {
         before.put("classId", classId.toString());
         before.put("userId", userId.toString());
         recordAudit("CLASS_MEMBER_REMOVED", classRoom.getId(), classRoom.getCode(), before, null, trimmedReason);
+        eventPublisher.publishEvent(new ClassMemberRemoved(classId, userId, actor.id(), now));
     }
 
     @Transactional
@@ -617,6 +654,8 @@ public class ClassService {
         after.put("userId", userId.toString());
 
         recordAudit("CLASS_MEMBER_TRANSFERRED", sourceClass.getId(), sourceClass.getCode(), before, after, trimmedReason);
+        eventPublisher.publishEvent(new ClassMemberRemoved(sourceClassId, userId, actor.id(), now));
+        eventPublisher.publishEvent(new ClassMembersAdded(targetClassId, List.of(userId), actor.id(), now));
 
         return new TransferClassMemberResponse(sourceClassId, targetClassId, userId, now);
     }

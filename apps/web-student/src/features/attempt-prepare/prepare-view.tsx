@@ -576,6 +576,11 @@ function PopulatedPrepareContent({
     const dateText = prepare.grantSource.grantedAt
       ? formatDayMonth(prepare.grantSource.grantedAt)
       : "";
+    if (prepare.grantSource.source === "CLASS") {
+      return dateText
+        ? t("grantSource.classAssigned", { date: dateText })
+        : t("grantSource.classAssignedNoDate");
+    }
     const orderCode = prepare.grantSource.orderCode?.trim() ?? "";
     if (orderCode) {
       return t("grantSource.purchase", { date: dateText, orderCode });
@@ -1061,19 +1066,22 @@ function PopulatedPrepareContent({
                     <div className="flex flex-col gap-0.5">
                       <span className="font-semibold text-danger">{t("exhaustedTitle")}</span>
                       <span className="text-text-secondary">
-                        {prepare.servingStatus === "PUBLISHED"
-                          ? t("exhaustedDescription")
-                          : t("exhaustedDescriptionDiscontinued")}
+                        {prepare.grantSource?.source === "CLASS"
+                          ? t("exhaustedDescriptionClass")
+                          : prepare.servingStatus === "PUBLISHED"
+                            ? t("exhaustedDescription")
+                            : t("exhaustedDescriptionDiscontinued")}
                       </span>
                     </div>
                   </div>
-                  {prepare.servingStatus === "PUBLISHED" && (
-                    <Button asChild variant="outline" className="h-11 w-full">
-                      <Link href={`/checkout/${encodeURIComponent(prepare.examCode)}`}>
-                        {t("buyMoreAttempts")}
-                      </Link>
-                    </Button>
-                  )}
+                  {prepare.servingStatus === "PUBLISHED" &&
+                    prepare.grantSource?.source !== "CLASS" && (
+                      <Button asChild variant="outline" className="h-11 w-full">
+                        <Link href={`/checkout/${encodeURIComponent(prepare.examCode)}`}>
+                          {t("buyMoreAttempts")}
+                        </Link>
+                      </Button>
+                    )}
                 </div>
               )}
 

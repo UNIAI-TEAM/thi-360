@@ -38,6 +38,13 @@ public class EntitlementRowLocker {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
+    public Entitlement lockOrCreateClass(UUID userId, UUID examId, UUID classId) {
+        entitlementRepository.insertClassIfAbsent(Ids.newId(), userId, examId, classId, clock.instant());
+        return entitlementRepository.lockClass(userId, examId, classId)
+                .orElseThrow(() -> new IllegalStateException("Class entitlement row vanished after insert"));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
     public Entitlement lockById(UUID entitlementId) {
         return entitlementRepository.lockById(entitlementId)
                 .orElseThrow(() -> new NotFoundException("NOT_FOUND", null));

@@ -576,6 +576,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/classes/{classId}/assignable-exams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách các bài thi đang xuất bản có thể giao cho lớp học */
+        get: operations["listAssignableExams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{classId}/exam-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Danh sách các đợt giao bài thi của lớp học */
+        get: operations["listAssignments"];
+        put?: never;
+        /** Giao một hoặc nhiều bài thi đang xuất bản cho lớp học */
+        post: operations["assignExams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{classId}/exam-assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cập nhật cấu hình tự động cấp thành viên mới của đợt giao bài */
+        patch: operations["updateAssignment"];
+        trace?: never;
+    };
+    "/api/v1/admin/classes/{classId}/exam-assignments/{assignmentId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Thu hồi đợt giao bài thi của lớp và thu hồi các lượt chưa dùng */
+        post: operations["revokeAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/classes/{id}": {
         parameters: {
             query?: never;
@@ -3833,6 +3902,38 @@ export interface components {
              */
             version: number;
         };
+        /** @description Yêu cầu giao một hoặc nhiều bài thi cho lớp học (UNI-2774) */
+        AssignClassExamsRequest: {
+            /** Format: int32 */
+            attemptsGranted: number;
+            /** @description Tự động cấp cho học viên vào lớp sau; mặc định true */
+            autoGrantNewMembers?: boolean;
+            examIds: string[];
+            note?: string | null;
+            /** @enum {string} */
+            resultView: "SCORE" | "SCORE_AND_ANSWERS" | "FULL_SOLUTION";
+        };
+        /** @description Kết quả giao bài thi cho lớp học (UNI-2774) */
+        AssignClassExamsResponse: {
+            assignments: components["schemas"]["ClassExamAssignmentItem"][];
+            /** Format: int32 */
+            totalGrantsCreated: number;
+        };
+        /** @description Bài thi đang xuất bản có thể chọn giao cho lớp học (UNI-2774) */
+        AssignableExamItem: {
+            activeInClass: boolean;
+            buildMode: string;
+            code: string;
+            defaultResultView: string;
+            /** Format: uuid */
+            examId: string;
+            examKind: components["schemas"]["ExamKindRef"];
+            name: string;
+            scope: string;
+            scopeLabel?: components["schemas"]["LocalizedName"];
+            /** Format: int32 */
+            versionNo: number;
+        };
         AttemptAttachmentView: {
             /** Format: uuid */
             assetId?: string;
@@ -5697,6 +5798,47 @@ export interface components {
              * @description Phiên bản khóa lạc quan
              */
             version: number;
+        };
+        /** @description Một đợt giao bài thi cho lớp học (UNI-2774) */
+        ClassExamAssignmentItem: {
+            /** Format: date-time */
+            assignedAt: string;
+            /** Format: uuid */
+            assignedBy: string;
+            assignedByUsername?: string | null;
+            /** Format: int32 */
+            attemptsGranted: number;
+            autoGrantNewMembers: boolean;
+            /** Format: uuid */
+            classId: string;
+            examCode: string;
+            /** Format: uuid */
+            examId: string;
+            examKind: components["schemas"]["ExamKindRef"];
+            examName: string;
+            /** Format: int32 */
+            examVersionNo: number;
+            /** Format: int32 */
+            grantedMembersCount: number;
+            /** Format: uuid */
+            id: string;
+            note?: string | null;
+            resultView: string;
+            revokeReason?: string | null;
+            /** Format: date-time */
+            revokedAt?: string | null;
+            /** Format: uuid */
+            revokedBy?: string | null;
+            revokedByUsername?: string | null;
+            scope: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "REVOKED";
+            /** Format: int32 */
+            totalAttemptsLeft: number;
+            /** Format: int32 */
+            totalAttemptsRevoked: number;
+            /** Format: int32 */
+            totalAttemptsUsed: number;
         };
         /** @description Thông tin thành viên trong lớp học */
         ClassMemberResponse: {
@@ -7982,7 +8124,7 @@ export interface components {
             grantedAt?: string;
             orderCode?: string;
             /** @enum {string} */
-            source?: "PURCHASE" | "COMPENSATION";
+            source?: "PURCHASE" | "COMPENSATION" | "CLASS";
         };
         GrantView: {
             /** Format: int32 */
@@ -8472,7 +8614,7 @@ export interface components {
             code: string;
             name: string;
         };
-        /** @description Thẻ một bài thi trong "Bài thi của tôi" (TM 12, 16.4): một quyền dùng nguồn mua, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId) */
+        /** @description Thẻ một bài thi trong "Bài thi của tôi" (TM 12, 16.4, UNI-2774): một quyền dùng nguồn mua hoặc lớp học, hoặc một đơn đã thu tiền chưa cấp quyền (state CHECKING, không có entitlementId) */
         MyExamCard: {
             /** @description Nút của thẻ theo TM 12, nút chính đứng đầu */
             actions: ("CONTINUE" | "START" | "VIEW_RESULT" | "HISTORY" | "REBUY" | "BUY_MORE" | "CHECKING")[];
@@ -8500,6 +8642,13 @@ export interface components {
             buildMode: string;
             /** @description Các bộ đề đã mua chứa bài thi này (TM 16.4) */
             bundles?: components["schemas"]["MyExamBundleRef"][] | null;
+            /**
+             * Format: uuid
+             * @description ID lớp học khi entitlementSource = CLASS
+             */
+            classId?: string | null;
+            /** @description Tên lớp học khi entitlementSource = CLASS */
+            className?: string | null;
             /** @description Mã sản phẩm, cũng là mã bài thi */
             code: string;
             /** @description Đường dẫn ảnh bìa; trống thì dùng ảnh mặc định */
@@ -8511,6 +8660,8 @@ export interface components {
              * @description Quyền dùng; trống ở thẻ "Đang kiểm tra" của đơn chưa cấp quyền
              */
             entitlementId?: string | null;
+            /** @description Nguồn quyền dùng: PURCHASE hoặc CLASS; null ở thẻ đang kiểm tra chưa cấp quyền */
+            entitlementSource?: string | null;
             examKind: components["schemas"]["ExamKindRef"];
             /** @description Hình thức (E4): FULL, PART hay SUBJECT */
             format: string;
@@ -10687,6 +10838,16 @@ export interface components {
             id?: string;
             matched?: boolean;
         };
+        /** @description Yêu cầu thu hồi đợt giao bài thi cho lớp (UNI-2774) */
+        RevokeClassExamAssignmentRequest: {
+            reason?: string | null;
+        };
+        /** @description Kết quả thu hồi đợt giao bài thi cho lớp (UNI-2774) */
+        RevokeClassExamAssignmentResponse: {
+            assignment: components["schemas"]["ClassExamAssignmentItem"];
+            /** Format: int32 */
+            attemptsRevoked: number;
+        };
         /** @description Chi tiết vai trò kèm danh sách quyền */
         RoleDetailResponse: {
             /**
@@ -11378,6 +11539,10 @@ export interface components {
              * @description Phiên bản khóa lạc quan
              */
             version: number;
+        };
+        /** @description Cập nhật cấu hình tự động cấp thành viên mới của đợt giao bài (UNI-2774) */
+        UpdateClassExamAssignmentRequest: {
+            autoGrantNewMembers: boolean;
         };
         /** @description Yêu cầu cập nhật thông tin lớp học */
         UpdateClassRequest: {
@@ -17933,6 +18098,673 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ClassDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listAssignableExams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssignableExamItem"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClassExamAssignmentItem"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    assignExams: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Khóa chống gửi trùng (bắt buộc) */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignClassExamsRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssignClassExamsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClassExamAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClassExamAssignmentItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    revokeAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                classId: string;
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RevokeClassExamAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RevokeClassExamAssignmentResponse"];
                 };
             };
             /** @description Bad Request */
