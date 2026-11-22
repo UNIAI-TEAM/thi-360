@@ -896,13 +896,14 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       await expect(nav.getByRole("link", { name: "Lượt thi" })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Chấm tự luận" })).toHaveCount(0);
 
-      const searchResPromise = page.waitForResponse(
-        (r) =>
-          r.url().includes("/api/v1/admin/attempts") &&
-          r.url().includes(encodeURIComponent(submitted.student.username)) &&
-          r.request().method() === "GET" &&
-          r.status() === 200,
-      );
+      const searchResPromise = page.waitForResponse((r) => {
+        if (r.request().method() !== "GET") return false;
+        const url = new URL(r.url());
+        return (
+          url.pathname === "/api/v1/admin/attempts" &&
+          url.searchParams.get("user") === submitted.student.username
+        );
+      });
       await page.getByRole("searchbox", { name: "Học viên" }).fill(submitted.student.username);
       const searchRes = await searchResPromise;
       expect(searchRes.ok()).toBe(true);

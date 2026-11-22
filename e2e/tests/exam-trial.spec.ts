@@ -421,7 +421,9 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
       const gradedP3 = gradeJson.items.find((it) => it.questionId === part3FirstQ.questionId);
       expect(gradedP1?.outcome).toBeDefined();
       expect(gradedP1?.outcome).not.toBe("BLANK");
+      expect(gradedP2?.outcome).toBeDefined();
       expect(gradedP2?.outcome).not.toBe("BLANK");
+      expect(gradedP3?.outcome).toBeDefined();
       expect(gradedP3?.outcome).not.toBe("BLANK");
       expect(gradedP2?.gradingDetail?.statementResults).toHaveLength(4);
       expect(
