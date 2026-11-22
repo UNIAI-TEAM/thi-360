@@ -14,6 +14,7 @@ import {
   PASSWORD_RESET_DONE_VALUE,
   withCallbackUrl,
 } from "@/features/account/account-links";
+import { AUTH_BRAND_PANEL_CLASS, AuthBrandDecor, AuthPageStage } from "@/features/auth/auth-backdrop";
 import { loginWithPassword } from "@/features/session/api";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
@@ -91,7 +92,7 @@ export function LoginView({
   const highlights = [t("feature1"), t("feature2"), t("feature3")];
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-4 bg-page p-4 sm:p-6 md:justify-center">
+    <AuthPageStage>
       <div className="flex w-full max-w-[920px] items-center gap-2">
         {/* Màn hẹp: khối giới thiệu nằm dưới biểu mẫu, nên logo hiện ở hàng trên cùng. */}
         <div className="flex items-center gap-2.5 md:hidden">
@@ -224,7 +225,8 @@ export function LoginView({
           </div>
         </section>
 
-        <section className="flex min-w-0 flex-1 flex-col gap-6 bg-primary-50 p-6 sm:p-10 md:p-12">
+        <section className={AUTH_BRAND_PANEL_CLASS}>
+          <AuthBrandDecor />
           <div className="hidden items-center gap-3 md:flex">
             <span
               aria-hidden
@@ -253,6 +255,6 @@ export function LoginView({
           </ul>
         </section>
       </div>
-    </main>
+    </AuthPageStage>
   );
 }

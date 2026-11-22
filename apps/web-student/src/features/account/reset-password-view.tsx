@@ -11,10 +11,10 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { PASSWORD_RESET_DONE_PARAM, PASSWORD_RESET_DONE_VALUE } from "@/features/account/account-links";
 import { resetPasswordByToken } from "@/features/account/api";
+import { AuthPageStage } from "@/features/auth/auth-backdrop";
 import { ApiStatusError } from "@/lib/api/client";
 import { touchFieldText } from "@/lib/styles";
 
-const PAGE_CLASS = "flex min-h-screen flex-col items-center gap-4 bg-page p-4 sm:p-6 md:justify-center";
 const CARD_CLASS =
   "flex w-full max-w-[480px] flex-col gap-5 rounded-2xl border border-border bg-surface p-6 shadow-xl sm:p-10";
 
@@ -107,7 +107,7 @@ export function ResetPasswordView({
 
   if (tokenInvalid) {
     return (
-      <main className={PAGE_CLASS}>
+      <AuthPageStage>
         {header}
         <section aria-labelledby="reset-invalid-title" className={CARD_CLASS}>
           <span aria-hidden className="grid size-12 place-items-center rounded-lg bg-warning-bg text-warning">
@@ -126,7 +126,7 @@ export function ResetPasswordView({
             </Button>
           </div>
         </section>
-      </main>
+      </AuthPageStage>
     );
   }
 
@@ -142,7 +142,7 @@ export function ResetPasswordView({
   };
 
   return (
-    <main className={PAGE_CLASS}>
+    <AuthPageStage>
       {header}
       <div className={CARD_CLASS}>
         <div className="flex flex-col gap-1.5">
@@ -224,6 +224,6 @@ export function ResetPasswordView({
 
         <p className={cn("text-field-label text-text-muted")}>{t("footerNote")}</p>
       </div>
-    </main>
+    </AuthPageStage>
   );
 }

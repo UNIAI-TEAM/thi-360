@@ -40,6 +40,7 @@ import {
 } from "@/features/account/api";
 import { withCallbackUrl } from "@/features/account/account-links";
 import { cooldownAnnouncement, formatClock, LONG_COOLDOWN_SECONDS, useCooldown } from "@/features/account/cooldown";
+import { AUTH_BRAND_PANEL_CLASS, AuthBrandDecor, AuthPageStage } from "@/features/auth/auth-backdrop";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
 
@@ -338,7 +339,7 @@ export function RegisterView({
   const highlights = [t("intro.feature1"), t("intro.feature2"), t("intro.feature3")];
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-4 bg-page p-4 sm:p-6 md:justify-center">
+    <AuthPageStage>
       <div className="flex w-full max-w-[920px] items-center gap-2">
         <Link href="/" className="flex items-center gap-2.5 md:hidden">
           <span
@@ -676,7 +677,8 @@ export function RegisterView({
           )}
         </section>
 
-        <section className="flex min-w-0 flex-1 flex-col gap-6 bg-primary-50 p-6 sm:p-10 md:p-12">
+        <section className={AUTH_BRAND_PANEL_CLASS}>
+          <AuthBrandDecor />
           <Link href="/" className="hidden items-center gap-3 md:flex">
             <span
               aria-hidden
@@ -705,6 +707,6 @@ export function RegisterView({
           </ul>
         </section>
       </div>
-    </main>
+    </AuthPageStage>
   );
 }
