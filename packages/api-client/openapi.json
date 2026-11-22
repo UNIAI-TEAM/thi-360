@@ -1216,6 +1216,33 @@
         "required" : [ "optionCode" ],
         "type" : "object"
       },
+      "AttemptDisplaySegmentView" : {
+        "description" : "Phân đoạn hiển thị của phần thi đọc từ bản chụp phiên bản đã công bố (BS §17.3)",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "commandCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "fromPosition" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxPoints" : {
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "toPosition" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "AttemptHistoryItem" : {
         "description" : "Một dòng trong lịch sử luyện thi của học viên (LT §11)",
         "properties" : {
@@ -1410,6 +1437,12 @@
           "deadlineAt" : {
             "format" : "date-time",
             "type" : "string"
+          },
+          "displaySegments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AttemptDisplaySegmentView"
+            },
+            "type" : "array"
           },
           "durationMinutes" : {
             "format" : "int32",

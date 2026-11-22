@@ -1028,4 +1028,58 @@ describe("AttemptReviewView · AC-10..AC-12, AC-17, AC-23", () => {
       onlineManager.setOnline(true);
     }
   });
+
+  it("hiển thị đúng chip và palette Đúng một phần (PARTIAL) cho TRUE_FALSE, MATCHING, CLOZE, MULTIPLE_CHOICE ở cả vi và en (BS §17.6)", async () => {
+    const partialItemsReview: AttemptReviewResponse = {
+      ...makeFullReview("FULL_SOLUTION"),
+      items: makeFullReview("FULL_SOLUTION").items!.filter((it) =>
+        ["q2", "q4", "q5", "q6"].includes(it.itemId ?? ""),
+      ),
+    };
+
+    const viView = renderWithProviders(
+      <AttemptReviewView
+        attemptId={ATTEMPT_UUID_1}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadReview={async () => partialItemsReview}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Xem lại bài làm" })).toBeInTheDocument();
+    // 4 OutcomeChip badges ("Đúng một phần") across MULTIPLE_CHOICE, CLOZE, TRUE_FALSE, MATCHING
+    expect(screen.getAllByText("Đúng một phần")).toHaveLength(4);
+    const viPalette = screen.getByRole("complementary", { name: "Danh sách câu" });
+    expect(within(viPalette).getByText("Đúng 0 · Đúng một phần 4 · Sai 0 · Bỏ trống 0")).toBeInTheDocument();
+    expect(within(viPalette).getByRole("button", { name: "Câu 2, đúng một phần" })).toHaveClass(
+      "border-warning",
+      "bg-warning-bg",
+    );
+    expect(within(viPalette).getByRole("button", { name: "Câu 5, đúng một phần" })).toHaveClass(
+      "border-warning",
+      "bg-warning-bg",
+    );
+    expect(within(viPalette).getByRole("button", { name: "Câu 6, đúng một phần" })).toHaveClass(
+      "border-warning",
+      "bg-warning-bg",
+    );
+    viView.unmount();
+
+    renderWithProviders(
+      <AttemptReviewView
+        attemptId={ATTEMPT_UUID_EN}
+        loadCurrentSession={async () => STUDENT_SESSION}
+        loadReview={async () => partialItemsReview}
+      />,
+      { locale: "en", messages: enMessages },
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Review attempt" })).toBeInTheDocument();
+    expect(screen.getAllByText("Partially correct")).toHaveLength(4);
+    const enPalette = screen.getByRole("complementary", { name: "Question list" });
+    expect(within(enPalette).getByText("Correct 0 · Partial 4 · Wrong 0 · Blank 0")).toBeInTheDocument();
+    expect(within(enPalette).getByRole("button", { name: "Question 5, partial" })).toHaveClass(
+      "border-warning",
+      "bg-warning-bg",
+    );
+  });
 });

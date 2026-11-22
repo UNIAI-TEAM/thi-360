@@ -1,9 +1,34 @@
 export {
+  createAttemptAudioAdapter,
+  endAttemptAudioPlay,
+  mapAudioHttpError,
+  openAttemptAudioPlay,
+  reportAttemptAudioProgress,
+  resumeAttemptAudioPlay,
+  toAudioPlaybackSnapshot,
+  type AttemptAudioApi,
+  type AttemptAudioPlayResponse,
+  type AttemptAudioPlayView,
+  type CreateAttemptAudioAdapterOptions,
+} from "./audio/attempt-audio-adapter";
+export {
   AttemptPlayer,
   AttemptPlayerPageClient,
   type AttemptPlayerDeps,
   type AttemptPlayerProps,
 } from "./attempt-player";
+export {
+  SegmentHeader,
+  type SegmentHeaderProps,
+} from "./segments/segment-header";
+export {
+  buildSegmentedQuestionUnits,
+  findSegmentForPosition,
+  groupNavItemsBySegment,
+  type AttemptDisplaySegmentView,
+  type NavSegmentGroup,
+  type SegmentedQuestionUnit,
+} from "./segments/segment-units";
 export {
   AttemptApiError,
   claimEditSession,

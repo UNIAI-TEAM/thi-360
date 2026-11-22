@@ -6,6 +6,33 @@
 export { Question, type QuestionProps } from "./question";
 export { SingleChoiceQuestion, MultipleChoiceQuestion } from "./choice-body";
 export { ShortAnswerQuestion } from "./short-answer";
+export {
+  AttemptAudioPlayer,
+  AudioPlayer,
+  type AttemptAudioPlayerProps,
+} from "./audio-player/audio-player";
+export {
+  createTrialAudioAdapter,
+  type CreateTrialAudioAdapterOptions,
+} from "./audio-player/trial-adapter";
+export {
+  AudioAdapterError,
+  type AudioAdapterErrorCode,
+  type AudioAdapterErrorOptions,
+  type AudioClosedReason,
+  type AudioEndReason,
+  type AudioPlayAdapter,
+  type AudioPlaybackSnapshot,
+  type AudioPlayState,
+} from "./audio-player/types";
+export { SymbolInputBar, type SymbolInputBarProps } from "./symbol-input/symbol-input-bar";
+export {
+  DEFAULT_ION_SYMBOLS,
+  insertTextAtCursor,
+  shouldShowSymbolInput,
+  type SymbolGroup,
+  type SymbolKey,
+} from "./symbol-input/symbols";
 export { ClozeQuestion, ClozePassage } from "./cloze";
 export { TrueFalseQuestion } from "./true-false";
 export { MatchingQuestion } from "./matching";

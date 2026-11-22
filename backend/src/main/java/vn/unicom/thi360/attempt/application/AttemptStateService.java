@@ -5,11 +5,13 @@ import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +33,7 @@ import vn.unicom.thi360.attempt.api.AttemptQuestionBody.TrueFalse;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptAttachmentView;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptAudioPlayView;
+import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptDisplaySegmentView;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptItemView;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AttemptPartStateView;
 import vn.unicom.thi360.attempt.api.AttemptStateResponse.AudioPolicyView;
@@ -44,6 +47,9 @@ import vn.unicom.thi360.attempt.domain.PartState;
 import vn.unicom.thi360.attempt.infrastructure.AttemptAudioPlayRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptItemRepository;
 import vn.unicom.thi360.attempt.infrastructure.AttemptPartRepository;
+import vn.unicom.thi360.exam.spi.PublishedExamPort;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.PublishedVersion;
+import vn.unicom.thi360.exam.spi.PublishedExamPort.Segment;
 import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort;
 import vn.unicom.thi360.questionbank.spi.QuestionAttachmentPort.Attachment;
 import vn.unicom.thi360.questionbank.spi.QuestionSourcePort;
@@ -66,6 +72,7 @@ public class AttemptStateService {
     private final AttemptAudioPlayRepository attemptAudioPlayRepository;
     private final QuestionSourcePort questionSourcePort;
     private final QuestionAttachmentPort questionAttachmentPort;
+    private final PublishedExamPort publishedExamPort;
     private final AttemptQuestionSanitizer sanitizer;
     private final EntityManager entityManager;
     private final Clock clock;
@@ -86,13 +93,14 @@ public class AttemptStateService {
                 null,
                 questionSourcePort,
                 null,
+                null,
                 sanitizer,
                 null,
                 clock,
+                false,
                 false);
     }
 
-    @Autowired
     public AttemptStateService(
             AttemptAccessGate accessGate,
             AttemptGuard attemptGuard,
@@ -112,9 +120,40 @@ public class AttemptStateService {
                 attemptAudioPlayRepository,
                 questionSourcePort,
                 questionAttachmentPort,
+                null,
                 sanitizer,
                 entityManager,
                 clock,
+                true,
+                false);
+    }
+
+    @Autowired
+    public AttemptStateService(
+            AttemptAccessGate accessGate,
+            AttemptGuard attemptGuard,
+            AttemptPartRepository attemptPartRepository,
+            AttemptItemRepository attemptItemRepository,
+            AttemptAudioPlayRepository attemptAudioPlayRepository,
+            QuestionSourcePort questionSourcePort,
+            QuestionAttachmentPort questionAttachmentPort,
+            PublishedExamPort publishedExamPort,
+            AttemptQuestionSanitizer sanitizer,
+            EntityManager entityManager,
+            Clock clock) {
+        this(
+                accessGate,
+                attemptGuard,
+                attemptPartRepository,
+                attemptItemRepository,
+                attemptAudioPlayRepository,
+                questionSourcePort,
+                questionAttachmentPort,
+                publishedExamPort,
+                sanitizer,
+                entityManager,
+                clock,
+                true,
                 true);
     }
 
@@ -126,10 +165,12 @@ public class AttemptStateService {
             AttemptAudioPlayRepository attemptAudioPlayRepository,
             QuestionSourcePort questionSourcePort,
             QuestionAttachmentPort questionAttachmentPort,
+            PublishedExamPort publishedExamPort,
             AttemptQuestionSanitizer sanitizer,
             EntityManager entityManager,
             Clock clock,
-            boolean requireAudioDeps) {
+            boolean requireAudioDeps,
+            boolean requirePublishedExam) {
         this.accessGate = Objects.requireNonNull(accessGate);
         this.attemptGuard = Objects.requireNonNull(attemptGuard);
         this.attemptPartRepository = Objects.requireNonNull(attemptPartRepository);
@@ -146,6 +187,11 @@ public class AttemptStateService {
                         ? Objects.requireNonNull(
                                 questionAttachmentPort, "questionAttachmentPort must not be null")
                         : questionAttachmentPort;
+        this.publishedExamPort =
+                requirePublishedExam
+                        ? Objects.requireNonNull(
+                                publishedExamPort, "publishedExamPort must not be null")
+                        : publishedExamPort;
         this.sanitizer = Objects.requireNonNull(sanitizer);
         this.entityManager =
                 requireAudioDeps
@@ -195,27 +241,37 @@ public class AttemptStateService {
             itemsByPartId.computeIfAbsent(item.getPartId(), k -> new ArrayList<>()).add(view);
         }
 
+        Map<String, List<AttemptDisplaySegmentView>> displaySegmentsByPartCode =
+                loadDisplaySegmentsByPartCode(attempt, visiblePartIds);
+
         List<AttemptPartStateView> partViews =
                 parts.stream()
                         .map(
-                                p ->
-                                        new AttemptPartStateView(
-                                                p.getId(),
-                                                p.getPartCode(),
-                                                p.getPartName(),
-                                                p.getOrd(),
-                                                p.getState(),
-                                                p.getDurationMinutes(),
-                                                p.getQuestionCountRequired(),
-                                                p.getMaxPoints(),
-                                                p.getStartedAt(),
-                                                p.getDeadlineAt(),
-                                                p.getClosedAt(),
-                                                p.getChoice(),
-                                                p.getChoiceDeadlineAt(),
-                                                isPartVisible(p)
-                                                        ? itemsByPartId.getOrDefault(p.getId(), List.of())
-                                                        : List.of()))
+                                p -> {
+                                    boolean visible = isPartVisible(p);
+                                    return new AttemptPartStateView(
+                                            p.getId(),
+                                            p.getPartCode(),
+                                            p.getPartName(),
+                                            p.getOrd(),
+                                            p.getState(),
+                                            p.getDurationMinutes(),
+                                            p.getQuestionCountRequired(),
+                                            p.getMaxPoints(),
+                                            p.getStartedAt(),
+                                            p.getDeadlineAt(),
+                                            p.getClosedAt(),
+                                            p.getChoice(),
+                                            p.getChoiceDeadlineAt(),
+                                            visible
+                                                    ? itemsByPartId.getOrDefault(
+                                                            p.getId(), List.of())
+                                                    : List.of(),
+                                            visible
+                                                    ? displaySegmentsByPartCode.getOrDefault(
+                                                            p.getPartCode(), List.of())
+                                                    : List.of());
+                                })
                         .toList();
 
         return new AttemptStateResponse(
@@ -241,6 +297,54 @@ public class AttemptStateService {
                 audioPolicy,
                 audioPlayViews,
                 partViews);
+    }
+
+    private Map<String, List<AttemptDisplaySegmentView>> loadDisplaySegmentsByPartCode(
+            Attempt attempt, List<UUID> visiblePartIds) {
+        if (visiblePartIds.isEmpty()
+                || publishedExamPort == null
+                || attempt.getExamId() == null) {
+            return Map.of();
+        }
+        Optional<PublishedVersion> rawPublished =
+                publishedExamPort.loadVersion(attempt.getExamId(), attempt.getExamVersionNo());
+        if (rawPublished == null || rawPublished.isEmpty() || rawPublished.get().parts() == null) {
+            return Map.of();
+        }
+        Map<String, List<AttemptDisplaySegmentView>> byPartCode = new LinkedHashMap<>();
+        for (PublishedExamPort.Part pubPart : rawPublished.get().parts()) {
+            if (pubPart == null
+                    || pubPart.id() == null
+                    || pubPart.displaySegments() == null
+                    || pubPart.displaySegments().isEmpty()) {
+                continue;
+            }
+            List<AttemptDisplaySegmentView> views =
+                    pubPart.displaySegments().stream()
+                            .filter(Objects::nonNull)
+                            .sorted(
+                                    Comparator.comparing(
+                                                    Segment::fromPosition,
+                                                    Comparator.nullsLast(Comparator.naturalOrder()))
+                                            .thenComparing(
+                                                    Segment::toPosition,
+                                                    Comparator.nullsLast(
+                                                            Comparator.naturalOrder())))
+                            .map(
+                                    s ->
+                                            new AttemptDisplaySegmentView(
+                                                    s.code(),
+                                                    s.name(),
+                                                    s.fromPosition(),
+                                                    s.toPosition(),
+                                                    s.commandCount(),
+                                                    s.maxPoints()))
+                            .toList();
+            if (!views.isEmpty()) {
+                byPartCode.put(pubPart.id(), views);
+            }
+        }
+        return byPartCode;
     }
 
     private List<AttemptAudioPlayView> loadAndReconcileAudioPlays(

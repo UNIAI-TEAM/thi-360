@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Input } from "../components/input";
 import { useUiLocale, useUiStrings } from "../components/ui-strings";
 import { cn } from "../lib/cn";
@@ -7,6 +8,8 @@ import { formatScore } from "./helpers";
 import { OutcomeGlyph, QuestionFrame, ReviewPoints } from "./question-frame";
 import type { KitQuestionProps } from "./shared";
 import { answersVisible, resolveReview, reviewSolution } from "./shared";
+import { SymbolInputBar } from "./symbol-input/symbol-input-bar";
+import { shouldShowSymbolInput } from "./symbol-input/symbols";
 import { touchFieldText } from "./touch";
 import type { AnswerFormat, KitQuestion, KitQuestionOf, ShortAnswerAnswer } from "./types";
 
@@ -25,10 +28,14 @@ export function ShortAnswerQuestion({
   onToggleFlag,
   review,
   headingLevel,
+  showSymbolBar,
   className,
-}: KitQuestionProps<KitQuestionOf<ShortAnswerBody>, ShortAnswerAnswer>) {
+}: KitQuestionProps<KitQuestionOf<ShortAnswerBody>, ShortAnswerAnswer> & {
+  showSymbolBar?: boolean;
+}) {
   const strings = useUiStrings().question;
   const locale = useUiLocale();
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const resolved = resolveReview(review);
   const body = question.body;
   const text = value?.text ?? "";
@@ -37,6 +44,8 @@ export function ShortAnswerQuestion({
   const hints = [body.inputHint, formatHint(body.answerFormat)].filter(
     (hint): hint is string => hint != null && hint !== "",
   );
+  const displaySymbolBar =
+    mode === "answer" && (showSymbolBar ?? shouldShowSymbolInput(body.answerFormat, body.inputHint));
   return (
     <QuestionFrame
       question={question}
@@ -58,6 +67,7 @@ export function ShortAnswerQuestion({
         </label>
         <div className="flex items-center gap-3">
           <Input
+            ref={inputRef}
             id={inputId}
             size="lg"
             value={text}
@@ -79,6 +89,13 @@ export function ShortAnswerQuestion({
             </span>
           )}
         </div>
+        {displaySymbolBar && (
+          <SymbolInputBar
+            targetRef={inputRef}
+            value={text}
+            onChange={(nextText) => onChange?.({ text: nextText })}
+          />
+        )}
         {mode === "answer" && (
           <p id={noteId} className="text-caption text-text-secondary">
             {hints.length > 0 && (
@@ -130,7 +147,6 @@ function formatHint(format: AnswerFormat | null | undefined): string | null {
       return "0-9 · .";
     case "CHEM_FORMULA":
     case "CHEM_EQUATION":
-      return "\\ce{}";
     case "TEXT":
     default:
       return null;

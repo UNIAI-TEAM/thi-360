@@ -229,6 +229,20 @@ class AttemptOpenApiContractTest {
                 .extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("number", "null");
 
+        JsonNode partStateProps = schemas.path("AttemptPartStateView").path("properties");
+        JsonNode partDisplaySegments = partStateProps.path("displaySegments");
+        assertThat(partDisplaySegments.path("type").asText()).isEqualTo("array");
+        assertThat(partDisplaySegments.path("items").path("$ref").asText())
+                .isEqualTo("#/components/schemas/AttemptDisplaySegmentView");
+
+        JsonNode displaySegmentProps = schemas.path("AttemptDisplaySegmentView").path("properties");
+        for (String field :
+                List.of("code", "name", "fromPosition", "toPosition", "commandCount", "maxPoints")) {
+            assertThat(displaySegmentProps.has(field))
+                    .as("AttemptDisplaySegmentView.%s in openapi.json", field)
+                    .isTrue();
+        }
+
         for (String endpointPath :
                 List.of(
                         "/api/v1/me/attempts/{attemptId}/submit",
@@ -355,6 +369,21 @@ class AttemptOpenApiContractTest {
                 .contains("questionCount?: number | null;")
                 .contains("durationMinutes?: number | null;")
                 .contains("maxPoints?: number | null;");
+
+        String attemptPartStateBlock = extractComponentSchemaBlock(schemaDts, "AttemptPartStateView");
+        assertThat(attemptPartStateBlock)
+                .contains("displaySegments?: components[\"schemas\"][\"AttemptDisplaySegmentView\"][];");
+
+        String displaySegmentBlock = extractComponentSchemaBlock(schemaDts, "AttemptDisplaySegmentView");
+        assertThat(displaySegmentBlock)
+                .doesNotContain(": never")
+                .doesNotContain("Record<string, never>")
+                .contains("code?: string;")
+                .contains("name?: string;")
+                .contains("fromPosition?: number;")
+                .contains("toPosition?: number;")
+                .contains("commandCount?: number;")
+                .contains("maxPoints?: number;");
     }
 
     @Test
