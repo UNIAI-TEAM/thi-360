@@ -51,7 +51,15 @@ final class PathSearch {
     private int[] pairClass;
     private List<int[]>[] pairMembers; // thành viên (g, c) theo thứ tự ứng viên
     private int[] pairUnits;   // đơn vị một thành viên của cặp
-    private boolean[] independentPair; // every key occurs exactly once across all pairs
+    private boolean[] independentPair; // fallback when keys are not a clean entity partition
+    private boolean cleanIdentityPartition;
+    private boolean[] usedEntity;
+    private int[] pickedEntities;
+    private int pickedLen;
+    private int[][] memberEntity;
+    private int[][] memberProfile;
+    private int[] pairProfileCount;
+
     private int[][] pairVec;   // vector đóng góp của cặp
     private int[][] suffixMax; // suffixMax[p][r] cung tối đa còn lại của chỉ tiêu r từ cặp p trở đi
     private int[][] suffixUnits; // suffixUnits[p][g] đơn vị tối đa còn lấy của nhóm g từ cặp p
@@ -73,6 +81,7 @@ final class PathSearch {
     private record TopicScope(int section, String id) {}
     private boolean topicOpt;
     private int[][] pairTopic;
+    private long[][] suffixTopic;
     private int[] topicTarget;
     private int[] topicSelected;
 
@@ -292,27 +301,7 @@ final class PathSearch {
             pairUnits[p] = unitsOfMember(g, c);
         }
         buildTopicBounds();
-        independentPair = new boolean[nPairs];
-        Arrays.fill(independentPair, true);
-        Map<String, Integer> keyOwner = new HashMap<>();
-        for (int p = 0; p < nPairs; p++) {
-            int g = pairGroup[p];
-            for (int[] member : pairMembers[p]) {
-                if ((steps++ & 0x3FF) == 0) {
-                    deadlineCheck.run();
-                }
-                for (String key : ctx.keys()[g][member[1]]) {
-                    if ((steps++ & 0x3FF) == 0) {
-                        deadlineCheck.run();
-                    }
-                    Integer other = keyOwner.putIfAbsent(key, p);
-                    if (other != null) {
-                        independentPair[p] = false;
-                        independentPair[other] = false;
-                    }
-                }
-            }
-        }
+        buildIdentityProfiles();
         // cận cung còn lại: mỗi chỉ tiêu, tổng tối đa có thể cộng từ cặp p trở đi
         int rCount = ctx.reqs().size();
         suffixMax = new int[nPairs + 1][rCount];
@@ -337,6 +326,167 @@ final class PathSearch {
                 suffixUnits[p][g] = suffixUnits[p + 1][g];
             }
             suffixUnits[p][pairGroup[p]] += pairUnits[p] * pairMembers[p].size();
+        }
+    }
+
+    private static final class IntSlice {
+        private static final IntSlice EMPTY = new IntSlice(new int[0], 0);
+        private final int[] data;
+        private final int from;
+        private final int hash;
+
+        IntSlice(int[] data, int from) {
+            this.data = data;
+            this.from = from;
+            int h = 1;
+            for (int i = from; i < data.length; i++) {
+                h = 31 * h + data[i];
+            }
+            this.hash = h;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof IntSlice o) || hash != o.hash) return false;
+            int len = data.length - from;
+            if (len != o.data.length - o.from) return false;
+            return Arrays.equals(data, from, data.length, o.data, o.from, o.data.length);
+        }
+    }
+
+    /**
+     * Khi khóa danh tính chia sạch các ứng viên thành các thực thể rời nhau (trường hợp chuẩn của mọi
+     * câu đơn và chùm câu thật), gán mã thực thể nguyên và gom các thành viên cùng cặp có cùng tập
+     * xuất hiện ở các cặp phía sau ({@code q > p}) thành một hồ sơ đối xứng. Nếu gặp dữ liệu giả lập
+     * chồng lấp một phần tập khóa thì quay về nhánh {@code usedKeys} + {@code independentPair}.
+     */
+    private void buildIdentityProfiles() {
+        Map<Set<String>, Integer> setToEntity = new HashMap<>();
+        Map<String, Integer> keyToEntity = new HashMap<>();
+        boolean clean = true;
+        int[][] mEntity = new int[nPairs][];
+        for (int p = 0; p < nPairs && clean; p++) {
+            int g = pairGroup[p];
+            List<int[]> ms = pairMembers[p];
+            mEntity[p] = new int[ms.size()];
+            Set<Integer> seenInPair = new HashSet<>(ms.size() * 2);
+            for (int m = 0; m < ms.size(); m++) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
+                String[] ks = ctx.keys()[g][ms.get(m)[1]];
+                if (ks.length == 0) {
+                    clean = false;
+                    break;
+                }
+                Set<String> keySet = ks.length == 1 ? Set.of(ks[0]) : new HashSet<>(Arrays.asList(ks));
+                Integer eid = setToEntity.get(keySet);
+                if (eid == null) {
+                    for (String k : keySet) {
+                        if (keyToEntity.containsKey(k)) {
+                            clean = false;
+                            break;
+                        }
+                    }
+                    if (!clean) {
+                        break;
+                    }
+                    eid = setToEntity.size();
+                    setToEntity.put(keySet, eid);
+                    for (String k : keySet) {
+                        keyToEntity.put(k, eid);
+                    }
+                }
+                if (!seenInPair.add(eid)) {
+                    clean = false;
+                    break;
+                }
+                mEntity[p][m] = eid;
+            }
+        }
+        if (clean) {
+            cleanIdentityPartition = true;
+            int entityCount = setToEntity.size();
+            usedEntity = new boolean[entityCount];
+            pickedEntities = new int[entityCount];
+            pickedLen = 0;
+            memberEntity = mEntity;
+            int[] occ = new int[entityCount];
+            for (int p = 0; p < nPairs; p++) {
+                for (int eid : mEntity[p]) {
+                    occ[eid]++;
+                }
+            }
+            int[][] occPairs = new int[entityCount][];
+            int[] fill = new int[entityCount];
+            for (int p = 0; p < nPairs; p++) {
+                for (int eid : mEntity[p]) {
+                    if (occ[eid] > 1) {
+                        if (occPairs[eid] == null) {
+                            occPairs[eid] = new int[occ[eid]];
+                        }
+                        occPairs[eid][fill[eid]++] = p;
+                    }
+                }
+            }
+            memberProfile = new int[nPairs][];
+            pairProfileCount = new int[nPairs];
+            Map<IntSlice, Integer> profileIds = new HashMap<>();
+            for (int p = 0; p < nPairs; p++) {
+                int len = mEntity[p].length;
+                memberProfile[p] = new int[len];
+                profileIds.clear();
+                for (int m = 0; m < len; m++) {
+                    if ((steps++ & 0x3FF) == 0) {
+                        deadlineCheck.run();
+                    }
+                    int eid = mEntity[p][m];
+                    IntSlice slice = IntSlice.EMPTY;
+                    int[] pairsOfEntity = occPairs[eid];
+                    if (pairsOfEntity != null) {
+                        int idx = Arrays.binarySearch(pairsOfEntity, p);
+                        if (idx + 1 < pairsOfEntity.length) {
+                            slice = new IntSlice(pairsOfEntity, idx + 1);
+                        }
+                    }
+                    Integer prof = profileIds.get(slice);
+                    if (prof == null) {
+                        prof = profileIds.size();
+                        profileIds.put(slice, prof);
+                    }
+                    memberProfile[p][m] = prof;
+                }
+                pairProfileCount[p] = profileIds.size();
+            }
+            return;
+        }
+        cleanIdentityPartition = false;
+        independentPair = new boolean[nPairs];
+        Arrays.fill(independentPair, true);
+        Map<String, Integer> keyOwner = new HashMap<>();
+        for (int p = 0; p < nPairs; p++) {
+            int g = pairGroup[p];
+            for (int[] member : pairMembers[p]) {
+                if ((steps++ & 0x3FF) == 0) {
+                    deadlineCheck.run();
+                }
+                for (String key : ctx.keys()[g][member[1]]) {
+                    if ((steps++ & 0x3FF) == 0) {
+                        deadlineCheck.run();
+                    }
+                    Integer other = keyOwner.putIfAbsent(key, p);
+                    if (other != null) {
+                        independentPair[p] = false;
+                        independentPair[other] = false;
+                    }
+                }
+            }
         }
     }
 
@@ -367,6 +517,7 @@ final class PathSearch {
         topicTarget = new int[0];
         topicSelected = new int[0];
         pairTopic = new int[0][];
+        suffixTopic = new long[0][];
         if (!topicOpt) {
             return;
         }
@@ -387,19 +538,19 @@ final class PathSearch {
                 if (quota.count() > 0) needs.add(new TopicNeed(ctx.sectionOf()[g], scope, quota));
             }
         }
-        topicTarget = new int[needs.size()];
-        topicSelected = new int[needs.size()];
-        if (needs.isEmpty()) {
-            pairTopic = new int[0][];
+        int nQ = needs.size();
+        topicTarget = new int[nQ];
+        topicSelected = new int[nQ];
+        if (nQ == 0) {
             return;
         }
-        for (int q = 0; q < needs.size(); q++) topicTarget[q] = needs.get(q).quota().count();
-        pairTopic = new int[nPairs][needs.size()];
+        for (int q = 0; q < nQ; q++) topicTarget[q] = needs.get(q).quota().count();
+        pairTopic = new int[nPairs][nQ];
         for (int p = 0; p < nPairs; p++) {
             int g = pairGroup[p];
             String scope = TopicAssignments.scopeId(ctx.groups().get(g).group());
             PathCandidate candidate = ctx.cands().get(g).get(pairMembers[p].getFirst()[1]);
-            for (int q = 0; q < needs.size(); q++) {
+            for (int q = 0; q < nQ; q++) {
                 if ((steps++ & 0x3FF) == 0) deadlineCheck.run();
                 TopicNeed need = needs.get(q);
                 if (need.section() != ctx.sectionOf()[g]
@@ -407,6 +558,13 @@ final class PathSearch {
                 for (CountingUnit unit : candidate.units()) {
                     if (need.quota().matches(scope, unit)) pairTopic[p][q]++;
                 }
+            }
+        }
+        suffixTopic = new long[nPairs + 1][nQ];
+        for (int p = nPairs - 1; p >= 0; p--) {
+            long size = pairMembers[p].size();
+            for (int q = 0; q < nQ; q++) {
+                suffixTopic[p][q] = suffixTopic[p + 1][q] + size * pairTopic[p][q];
             }
         }
     }
@@ -417,18 +575,26 @@ final class PathSearch {
      */
     private boolean topicsPossible(int p) {
         for (int q = 0; q < topicTarget.length; q++) {
+            int target = topicTarget[q];
             long supply = topicSelected[q];
-            for (int j = p; j < nPairs && supply < topicTarget[q]; j++) {
+            if (supply >= target) {
+                continue;
+            }
+            if (supply + suffixTopic[p][q] < target) {
+                return false;
+            }
+            for (int j = p; j < nPairs && supply < target; j++) {
                 if ((steps++ & 0x3FF) == 0) deadlineCheck.run();
-                if (pairTopic[j][q] == 0) continue;
+                int pt = pairTopic[j][q];
+                if (pt == 0) continue;
                 int max = Math.min(pairMembers[j].size(), remUnits[pairGroup[j]] / pairUnits[j]);
                 int[] caps = classCaps.get(pairClass[j]);
                 for (int k = 0; k < caps.length; k++) {
                     if (caps[k] > 0) max = Math.min(max, capRem[k] / caps[k]);
                 }
-                supply += (long) max * pairTopic[j][q];
+                supply += (long) max * pt;
             }
-            if (supply < topicTarget[q]) return false;
+            if (supply < target) return false;
         }
         return true;
     }
@@ -450,30 +616,138 @@ final class PathSearch {
     /**
      * Chữ ký trạng thái cụ thể của một nhánh duyệt (R2-10): đầy đủ trạng thái ảnh hưởng tới tính
      * khả thi của cây con — cặp/vị trí duyệt, chỉ tiêu và đơn vị còn thiếu, số thành viên đã dùng
-     * của từng lớp, và tập khóa đã chiếm. Một trạng thái đã chứng minh bất khả thi không bao giờ
-     * được duyệt lại (không liệt kê lặp các thành viên tương đương trong một lớp).
+     * của từng lớp, cận/chủ đề đã chọn, và tập thực thể/khóa đã chiếm. Một trạng thái đã chứng minh
+     * bất khả thi không bao giờ được duyệt lại.
      */
-    private record StateSig(int pair, int pos, int need, List<Integer> rem,
-            List<Integer> remUnits, List<Integer> consumed, List<String> usedKeys) {
+    private static final class StateSig {
+        private final int pair;
+        private final int pos;
+        private final int need;
+        private final int[] rem;
+        private final int[] remUnits;
+        private final int[] consumed;
+        private final int[] capRem;
+        private final int[] topicSelected;
+        private final int[] usedEntities;
+        private final boolean[] deadProfile;
+        private final Set<String> usedKeysFallback;
+        private final int hash;
+
+        StateSig(int pair, int pos, int need, int[] rem, int[] remUnits, int[] consumed,
+                int[] capRem, int[] topicSelected, int[] usedEntities, boolean[] deadProfile,
+                Set<String> usedKeysFallback) {
+            this.pair = pair;
+            this.pos = pos;
+            this.need = need;
+            this.rem = rem;
+            this.remUnits = remUnits;
+            this.consumed = consumed;
+            this.capRem = capRem;
+            this.topicSelected = topicSelected;
+            this.usedEntities = usedEntities;
+            this.deadProfile = deadProfile;
+            this.usedKeysFallback = usedKeysFallback;
+            int h = pair;
+            h = 31 * h + pos;
+            h = 31 * h + need;
+            h = 31 * h + Arrays.hashCode(rem);
+            h = 31 * h + Arrays.hashCode(remUnits);
+            h = 31 * h + Arrays.hashCode(consumed);
+            h = 31 * h + Arrays.hashCode(capRem);
+            h = 31 * h + Arrays.hashCode(topicSelected);
+            h = 31 * h + Arrays.hashCode(usedEntities);
+            h = 31 * h + Arrays.hashCode(deadProfile);
+            h = 31 * h + (usedKeysFallback == null ? 0 : usedKeysFallback.hashCode());
+            this.hash = h;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof StateSig o
+                    && hash == o.hash
+                    && pair == o.pair
+                    && pos == o.pos
+                    && need == o.need
+                    && Arrays.equals(rem, o.rem)
+                    && Arrays.equals(remUnits, o.remUnits)
+                    && Arrays.equals(consumed, o.consumed)
+                    && Arrays.equals(capRem, o.capRem)
+                    && Arrays.equals(topicSelected, o.topicSelected)
+                    && Arrays.equals(usedEntities, o.usedEntities)
+                    && Arrays.equals(deadProfile, o.deadProfile)
+                    && java.util.Objects.equals(usedKeysFallback, o.usedKeysFallback);
+        }
+    }
+
+    private static final class FeasibleSig {
+        private final int p;
+        private final int[] rem;
+        private final int[] remUnits;
+        private final int[] capRem;
+        private final int[] topicSelected;
+        private final int hash;
+
+        FeasibleSig(int p, int[] rem, int[] remUnits, int[] capRem, int[] topicSelected) {
+            this.p = p;
+            this.rem = rem.clone();
+            this.remUnits = remUnits.clone();
+            this.capRem = capRem.clone();
+            this.topicSelected = topicSelected.clone();
+            int h = p;
+            h = 31 * h + Arrays.hashCode(this.rem);
+            h = 31 * h + Arrays.hashCode(this.remUnits);
+            h = 31 * h + Arrays.hashCode(this.capRem);
+            h = 31 * h + Arrays.hashCode(this.topicSelected);
+            this.hash = h;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof FeasibleSig o
+                    && hash == o.hash
+                    && p == o.p
+                    && Arrays.equals(rem, o.rem)
+                    && Arrays.equals(remUnits, o.remUnits)
+                    && Arrays.equals(capRem, o.capRem)
+                    && Arrays.equals(topicSelected, o.topicSelected);
+        }
     }
 
     /** Trạng thái đã duyệt hết mà không có lời giải. */
     private final Set<StateSig> failed = new HashSet<>();
+    private final Set<FeasibleSig> feasibleFailed = new HashSet<>();
 
-    private StateSig sig(int pair, int pos, int need) {
-        List<Integer> r = new ArrayList<>(rem.length);
-        for (int v : rem) {
-            r.add(v);
+    private StateSig sig(int pair, int pos, int need, boolean[] entryDead) {
+        int[] usedEnt = null;
+        Set<String> keysCopy = null;
+        if (cleanIdentityPartition) {
+            usedEnt = Arrays.copyOf(pickedEntities, pickedLen);
+            Arrays.sort(usedEnt);
+        } else {
+            keysCopy = Set.copyOf(usedKeys);
         }
-        List<Integer> ru = new ArrayList<>(remUnits.length);
-        for (int v : remUnits) {
-            ru.add(v);
-        }
-        List<Integer> cs = new ArrayList<>(consumed.length);
-        for (int v : consumed) {
-            cs.add(v);
-        }
-        return new StateSig(pair, pos, need, r, ru, cs, List.copyOf(usedKeys));
+        return new StateSig(
+                pair,
+                pos,
+                need,
+                rem.clone(),
+                remUnits.clone(),
+                consumed.clone(),
+                capRem.clone(),
+                topicSelected.clone(),
+                usedEnt,
+                entryDead,
+                keysCopy);
     }
 
     /** Khung duyệt một cặp (nhóm, lớp): thử số take từ lớn xuống, nhớ số take đang áp để thu hồi. */
@@ -547,18 +821,34 @@ final class PathSearch {
     /**
      * Khung duyệt tổ hợp thành viên của một cặp: chọn {@code need} thành viên từ vị trí
      * {@code pos} trở đi, không trùng khóa đã dùng. Thành viên bị bỏ qua (nhánh skip) không được
-     * chọn lại trong cùng lần duyệt — đúng ngữ nghĩa liệt kê tổ hợp của bản đệ quy.
+     * chọn lại trong cùng lần duyệt; các thành viên rảnh có cùng hồ sơ xuất hiện ở các cặp phía sau
+     * hoàn toàn đẳng cấu nên khi một đại diện thất bại, cả hồ sơ đó bị đánh dấu không thể dùng.
      */
     private final class EnumFrame {
         final int p;
+        final int startPos;
         int pos;
-        int need;
-        int[] pending; // thành viên đã lấy đang chờ kết quả nhánh con để hoàn tác
+        final int need;
+        final boolean[] entryDead;
+        final boolean[] deadProfile;
+        int deadCount;
+        int pendingPos = -1; // chỉ số thành viên đã lấy đang chờ kết quả nhánh con để hoàn tác
 
-        EnumFrame(int p, int pos, int need) {
+        EnumFrame(int p, int pos, int need, boolean[] inheritedDead, int inheritedDeadCount) {
             this.p = p;
+            this.startPos = pos;
             this.pos = pos;
             this.need = need;
+            if (cleanIdentityPartition) {
+                int nProf = pairProfileCount[p];
+                this.entryDead = inheritedDead == null ? new boolean[nProf] : inheritedDead.clone();
+                this.deadProfile = this.entryDead.clone();
+                this.deadCount = inheritedDeadCount;
+            } else {
+                this.entryDead = null;
+                this.deadProfile = null;
+                this.deadCount = 0;
+            }
         }
     }
 
@@ -594,17 +884,25 @@ final class PathSearch {
                 return;
             }
         }
-        if (failed.contains(sig(p, -1, 0))) {
+        if (failed.contains(sig(p, -1, 0, null))) {
             return;
         }
         stack.push(new PairsFrame(p));
     }
 
-    private void pushEnum(Deque<Object> stack, int p, int pos, int need) {
-        if (failed.contains(sig(p, pos, need))) {
+    private void pushEnum(Deque<Object> stack, int p, int pos, int need,
+            boolean[] inheritedDead, int inheritedDeadCount) {
+        if (pairMembers[p].size() - pos < need) {
             return;
         }
-        stack.push(new EnumFrame(p, pos, need));
+        if (cleanIdentityPartition && inheritedDeadCount >= pairProfileCount[p]) {
+            return;
+        }
+        EnumFrame frame = new EnumFrame(p, pos, need, inheritedDead, inheritedDeadCount);
+        if (failed.contains(sig(p, pos, need, frame.entryDead))) {
+            return;
+        }
+        stack.push(frame);
     }
 
     /** Necessary feasibility check on contribution counts, ignoring identity conflicts. */
@@ -633,6 +931,10 @@ final class PathSearch {
         }
         int g = pairGroup[p];
         if (remUnits[g] > suffixUnits[p][g]) {
+            return false;
+        }
+        FeasibleSig fs = new FeasibleSig(p, rem, remUnits, capRem, topicSelected);
+        if (feasibleFailed.contains(fs)) {
             return false;
         }
         int[] vec = pairVec[p];
@@ -668,20 +970,20 @@ final class PathSearch {
                 capRem[k] += caps[k] * t;
             }
             for (int r = 0; r < vec.length; r++) {
-                rem[r] += vec[r] * t;
+                rem[r] += vec.length == 0 ? 0 : vec[r] * t;
             }
             if (feasible) {
                 return true;
             }
         }
+        feasibleFailed.add(fs);
         return false;
     }
 
     /**
      * Máy duyệt không đệ quy (R2-10): khung trên stack heap thay cho lời gọi đệ quy, nên độ sâu
      * duyệt theo số thành viên của lớp không còn giới hạn bởi stack Java. Trạng thái đã thất bại
-     * được nhớ theo chữ ký đầy đủ (gồm tập khóa đã chiếm) để không liệt kê lặp các tổ hợp tương
-     * đương của một lớp.
+     * được nhớ theo chữ ký đầy đủ để không liệt kê lặp các tổ hợp tương đương của một lớp.
      *
      * @return true khi tìm được phân công khớp mọi chỉ tiêu và đơn vị
      */
@@ -704,7 +1006,7 @@ final class PathSearch {
                 }
                 if (f.nextT < 0) {
                     stack.pop();
-                    failed.add(sig(f.p, -1, 0));
+                    failed.add(sig(f.p, -1, 0, null));
                     continue;
                 }
                 int t = f.nextT--;
@@ -714,54 +1016,92 @@ final class PathSearch {
                 } else {
                     f.apply(t);
                     chosen[f.p] = new ArrayList<>(t);
-                    pushEnum(stack, f.p, 0, t);
+                    pushEnum(stack, f.p, 0, t, null, 0);
                 }
                 continue;
             }
             EnumFrame f = (EnumFrame) top;
-            if (f.pending != null) {
+            List<int[]> ms = pairMembers[f.p];
+            if (f.pendingPos >= 0) {
                 // nhánh con của thành viên đã lấy thất bại: hoàn tác rồi đi tiếp đuôi skip
-                int g = pairGroup[f.p];
-                int i = f.pending[1];
-                for (String k : ctx.keys()[g][i]) {
-                    usedKeys.remove(k);
+                if (cleanIdentityPartition) {
+                    int eid = memberEntity[f.p][f.pendingPos];
+                    usedEntity[eid] = false;
+                    pickedLen--;
+                    int prof = memberProfile[f.p][f.pendingPos];
+                    if (!f.deadProfile[prof]) {
+                        f.deadProfile[prof] = true;
+                        f.deadCount++;
+                    }
+                    f.pos = f.deadCount >= pairProfileCount[f.p] ? ms.size() : f.pendingPos + 1;
+                } else {
+                    int g = pairGroup[f.p];
+                    int i = ms.get(f.pendingPos)[1];
+                    for (String k : ctx.keys()[g][i]) {
+                        usedKeys.remove(k);
+                    }
+                    f.pos = independentPair[f.p] ? ms.size() : f.pendingPos + 1;
                 }
                 List<int[]> ch = chosen[f.p];
                 ch.remove(ch.size() - 1);
-                f.pending = null;
-                // With disjoint identities every member in this pair is interchangeable.
-                // A downstream failure cannot be repaired by picking a different one.
-                f.pos = independentPair[f.p] ? pairMembers[f.p].size() : f.pos + 1;
+                f.pendingPos = -1;
             }
-            List<int[]> ms = pairMembers[f.p];
-            if (f.need == 0 || f.pos >= ms.size()) {
-                stack.pop();
-                failed.add(sig(f.p, f.pos, f.need));
-                continue;
-            }
-            int g = pairGroup[f.p];
-            int i = ms.get(f.pos)[1];
-            String[] ks = ctx.keys()[g][i];
-            boolean free = true;
-            for (String k : ks) {
-                if (usedKeys.contains(k)) {
-                    free = false;
-                    break;
+            int limit = ms.size();
+            if (cleanIdentityPartition) {
+                int[] profs = memberProfile[f.p];
+                int[] ents = memberEntity[f.p];
+                while (f.pos < limit && limit - f.pos >= f.need
+                        && (f.deadProfile[profs[f.pos]] || usedEntity[ents[f.pos]])) {
+                    if ((steps++ & 0x3FF) == 0) {
+                        deadlineCheck.run();
+                    }
+                    f.pos++;
                 }
-            }
-            if (free) {
-                for (String k : ks) {
-                    usedKeys.add(k);
+                if (f.need == 0 || limit - f.pos < f.need) {
+                    stack.pop();
+                    failed.add(sig(f.p, f.startPos, f.need, f.entryDead));
+                    continue;
                 }
+                int eid = ents[f.pos];
+                usedEntity[eid] = true;
+                pickedEntities[pickedLen++] = eid;
                 chosen[f.p].add(ms.get(f.pos));
-                f.pending = ms.get(f.pos);
+                f.pendingPos = f.pos;
                 if (f.need == 1) {
                     pushPairs(stack, f.p + 1);
                 } else {
-                    pushEnum(stack, f.p, f.pos + 1, f.need - 1);
+                    pushEnum(stack, f.p, f.pos + 1, f.need - 1, f.deadProfile, f.deadCount);
                 }
             } else {
-                f.pos++;
+                if (f.need == 0 || limit - f.pos < f.need) {
+                    stack.pop();
+                    failed.add(sig(f.p, f.startPos, f.need, null));
+                    continue;
+                }
+                int g = pairGroup[f.p];
+                int i = ms.get(f.pos)[1];
+                String[] ks = ctx.keys()[g][i];
+                boolean free = true;
+                for (String k : ks) {
+                    if (usedKeys.contains(k)) {
+                        free = false;
+                        break;
+                    }
+                }
+                if (free) {
+                    for (String k : ks) {
+                        usedKeys.add(k);
+                    }
+                    chosen[f.p].add(ms.get(f.pos));
+                    f.pendingPos = f.pos;
+                    if (f.need == 1) {
+                        pushPairs(stack, f.p + 1);
+                    } else {
+                        pushEnum(stack, f.p, f.pos + 1, f.need - 1, null, 0);
+                    }
+                } else {
+                    f.pos++;
+                }
             }
         }
         return terminalOk;

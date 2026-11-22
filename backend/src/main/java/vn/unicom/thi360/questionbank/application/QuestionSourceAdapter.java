@@ -119,23 +119,11 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
     public List<Candidate> findCandidates(Filter filter, int limit) {
         if (limit <= 0) return List.of();
         var params = new MapSqlParameterSource();
-        String sql = roots(List.of(filter), params, limit) + units() + """
-                select units.*, r.task_type_item_id, r.code root_code, unit_question.code unit_code,
-                       coalesce(r.snapshot #>> '{body,scoringRule}', r.snapshot #>> '{body,scoringMethod}') scoring_rule,
-                       r.snapshot #>> '{body,scoringMethod}' root_tf_method,
-                       (r.snapshot #> '{body,scoreTable}')::text root_tf_table,
-                       r.snapshot #>> '{body,scoringRule}' root_mc_rule,
-                       (case when units.unit_id = r.id then r.snapshot else child.snapshot end) #>> '{body,scoringMethod}' unit_tf_method,
-                       ((case when units.unit_id = r.id then r.snapshot else child.snapshot end) #> '{body,scoreTable}')::text unit_tf_table,
-                       (case when units.unit_id = r.id then r.snapshot else child.snapshot end) #>> '{body,scoringRule}' unit_mc_rule,
-                       array(select knowledge_item_id from questionbank.question_knowledge k
-                             where k.question_id = units.unit_id order by knowledge_item_id) mapids
-                from units join roots r on r.id = units.root_id
-                join questionbank.question unit_question on unit_question.id = units.unit_id
-                left join questionbank.question_version child
-                  on child.question_id = units.unit_id and child.version_no = r.current_version_no
-                     and units.unit_id <> r.id
-                order by units.root_id, units.unit_order
+        String sql = candidateRoots(filter, params, limit) + candidateUnits() + """
+                select u.*, um.mapids
+                from units u
+                left join unit_mapids um on um.question_id = u.unit_id
+                order by u.root_id, u.unit_order
                 """;
         Map<UUID, String> codes = catalogCodes();
         Map<UUID, List<Unit>> grouped = new LinkedHashMap<>();
@@ -631,6 +619,93 @@ public class QuestionSourceAdapter implements QuestionSourcePort {
                          case when answer_type = 'SHORT_ANSWER' then unit_snapshot #>> '{body,answerFormat}' end answer_format,
                          coalesce(jsonb_array_length(unit_snapshot #> '{attachmentIds}'), 0) > 0 has_attachment
                   from raw_units
+                )
+                """;
+    }
+
+    private String candidateRoots(Filter filter, MapSqlParameterSource params, int limit) {
+        String pred = predicate(filter, 0, params);
+        params.addValue("limit", limit);
+        return """
+                with roots as (
+                  select q.id, q.current_version_no, q.type, q.code, q.grade_item_id, q.level_item_id,
+                         q.competency_item_id, q.points, q.task_type_item_id,
+                         coalesce(v.snapshot #>> '{body,scoringRule}', v.snapshot #>> '{body,scoringMethod}') scoring_rule,
+                         v.snapshot #>> '{body,scoringMethod}' root_tf_method,
+                         (v.snapshot #> '{body,scoreTable}')::text root_tf_table,
+                         v.snapshot #>> '{body,scoringRule}' root_mc_rule,
+                         case when q.type = 'TRUE_FALSE' then case when jsonb_typeof(v.snapshot #> '{body,statements}') = 'array'
+                                   then jsonb_array_length(v.snapshot #> '{body,statements}') else 0 end
+                              when q.type = 'MATCHING' then coalesce(jsonb_array_length(v.snapshot #> '{body,left}'), 0)
+                              else 1 end root_command_count,
+                         case when q.type = 'TRUE_FALSE' and jsonb_typeof(v.snapshot #> '{body,statements}') = 'array'
+                              then jsonb_array_length(v.snapshot #> '{body,statements}') end root_statement_count,
+                         case when q.type = 'MATCHING' then jsonb_array_length(v.snapshot #> '{body,left}') end root_left_count,
+                         case when q.type = 'MATCHING' then jsonb_array_length(v.snapshot #> '{body,right}') end root_right_count,
+                         case when q.type = 'SHORT_ANSWER' then v.snapshot #>> '{body,answerFormat}' end root_answer_format,
+                         coalesce(jsonb_array_length(v.snapshot #> '{attachmentIds}'), 0) > 0 root_has_attachment,
+                         case when q.type = 'CLOZE' then v.snapshot #> '{body,blanks}' end cloze_blanks
+                  from questionbank.question q
+                  join questionbank.question_version v on v.question_id = q.id and v.version_no = q.current_version_no
+                  where q.parent_id is null and q.deleted_at is null and q.status = 'READY' and ("""
+                + pred + ") order by q.id limit :limit), ";
+    }
+
+    private String candidateUnits() {
+        return """
+                units as (
+                  select r.id root_id, r.current_version_no version_no, r.type root_type,
+                         r.id unit_id, null::text reference, r.type answer_type,
+                         r.grade_item_id grade_id, r.level_item_id level_id,
+                         r.competency_item_id competency_id, r.points, 0::bigint unit_order,
+                         r.task_type_item_id, r.code root_code, r.code unit_code,
+                         r.scoring_rule, r.root_tf_method, r.root_tf_table, r.root_mc_rule,
+                         r.root_tf_method unit_tf_method, r.root_tf_table unit_tf_table, r.root_mc_rule unit_mc_rule,
+                         r.root_command_count command_count, r.root_statement_count statement_count,
+                         r.root_left_count left_count, r.root_right_count right_count,
+                         r.root_answer_format answer_format, r.root_has_attachment has_attachment
+                  from roots r where r.type not in ('QUESTION_SET','CLOZE')
+                  union all
+                  select r.id, r.current_version_no, r.type, c.id, null::text, c.type,
+                         coalesce(c.grade_item_id, r.grade_item_id), coalesce(c.level_item_id, r.level_item_id),
+                         coalesce(c.competency_item_id, r.competency_item_id), c.points, c.position::bigint,
+                         r.task_type_item_id, r.code, c.code,
+                         r.scoring_rule, r.root_tf_method, r.root_tf_table, r.root_mc_rule,
+                         cv.snapshot #>> '{body,scoringMethod}',
+                         (cv.snapshot #> '{body,scoreTable}')::text,
+                         cv.snapshot #>> '{body,scoringRule}',
+                         case when c.type = 'TRUE_FALSE' then case when jsonb_typeof(cv.snapshot #> '{body,statements}') = 'array'
+                                   then jsonb_array_length(cv.snapshot #> '{body,statements}') else 0 end
+                              when c.type = 'MATCHING' then coalesce(jsonb_array_length(cv.snapshot #> '{body,left}'), 0)
+                              else 1 end,
+                         case when c.type = 'TRUE_FALSE' and jsonb_typeof(cv.snapshot #> '{body,statements}') = 'array'
+                              then jsonb_array_length(cv.snapshot #> '{body,statements}') end,
+                         case when c.type = 'MATCHING' then jsonb_array_length(cv.snapshot #> '{body,left}') end,
+                         case when c.type = 'MATCHING' then jsonb_array_length(cv.snapshot #> '{body,right}') end,
+                         case when c.type = 'SHORT_ANSWER' then cv.snapshot #>> '{body,answerFormat}' end,
+                         coalesce(jsonb_array_length(cv.snapshot #> '{attachmentIds}'), 0) > 0
+                  from roots r
+                  join questionbank.question c on c.parent_id = r.id and c.deleted_at is null
+                  left join questionbank.question_version cv
+                    on cv.question_id = c.id and cv.version_no = r.current_version_no
+                  where r.type = 'QUESTION_SET'
+                  union all
+                  select r.id, r.current_version_no, r.type, r.id, b.value->>'id', 'CLOZE',
+                         r.grade_item_id, r.level_item_id, r.competency_item_id,
+                         (b.value->>'points')::numeric, b.ordinality,
+                         r.task_type_item_id, r.code, r.code,
+                         r.scoring_rule, r.root_tf_method, r.root_tf_table, r.root_mc_rule,
+                         r.root_tf_method, r.root_tf_table, r.root_mc_rule,
+                         1, null::integer, null::integer, null::integer, null::text, r.root_has_attachment
+                  from roots r
+                  cross join lateral jsonb_array_elements(r.cloze_blanks) with ordinality b(value, ordinality)
+                  where r.type = 'CLOZE'
+                ),
+                unit_mapids as (
+                  select k.question_id, array_agg(k.knowledge_item_id order by k.knowledge_item_id) mapids
+                  from questionbank.question_knowledge k
+                  join (select distinct unit_id from units) du on du.unit_id = k.question_id
+                  group by k.question_id
                 )
                 """;
     }
