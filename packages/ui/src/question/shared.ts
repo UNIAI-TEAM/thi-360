@@ -14,8 +14,8 @@ export interface KitQuestionProps<Q extends KitQuestion = KitQuestion, V = unkno
   onToggleFlag?: () => void;
   /** Kết quả chấm của câu; bắt buộc ở `mode="review"`. */
   review?: QuestionReview | null;
-  /** Cấp thẻ tiêu đề "Câu n" (mặc định 2; trong Bộ câu hỏi con dùng 3). */
-  headingLevel?: 1 | 2 | 3;
+  /** Cấp thẻ tiêu đề "Câu n" (mặc định 2; trong Bộ câu hỏi con dùng 3, tối đa 6). */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
   className?: string;
 }
 

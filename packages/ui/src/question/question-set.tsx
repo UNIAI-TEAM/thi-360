@@ -51,7 +51,7 @@ export function QuestionSet({
   const nos = children.map((child) => child.displayNo);
   const from = nos.length === 0 ? question.displayNo : Math.min(...nos);
   const to = nos.length === 0 ? question.displayNo : Math.max(...nos);
-  const HeadingTag = `h${headingLevel ?? 2}` as "h1" | "h2" | "h3";
+  const HeadingTag = `h${headingLevel ?? 2}` as const;
   const solution = reviewSolution(mode, review);
   return (
     <div className={cn("flex min-w-0 flex-col gap-4", className)}>
@@ -88,7 +88,7 @@ export function QuestionSet({
                         onChange?.({ children: { ...childAnswers, [child.id]: next } })
                     : undefined,
                 review: mode === "review" ? childReview(review, child.id) : null,
-                headingLevel: Math.min(3, (headingLevel ?? 2) + 1) as 1 | 2 | 3,
+                headingLevel: Math.min(6, (headingLevel ?? 2) + 1) as 1 | 2 | 3 | 4 | 5 | 6,
                 flagged: flaggedIds?.[child.id],
                 onToggleFlag:
                   mode === "answer" && onToggleChildFlag ? () => onToggleChildFlag(child.id) : undefined,
@@ -108,7 +108,7 @@ export interface ChildQuestionProps {
   value: AnswerValue | null;
   onChange?: (value: AnswerValue) => void;
   review: QuestionReview | null;
-  headingLevel?: 1 | 2 | 3;
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
   flagged?: boolean;
   onToggleFlag?: () => void;
 }
