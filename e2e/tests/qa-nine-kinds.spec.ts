@@ -1,0 +1,319 @@
+import { randomUUID } from "node:crypto";
+import { expect, test, type Page } from "@playwright/test";
+
+import { adminApi, ADMIN_URL, RUN_ID, WEB_URL } from "./helpers/editor-qa";
+import {
+  answerCurrentUnit,
+  ensureDsReady,
+  getAttemptStateApi,
+  publishThptqgMath3PartExam,
+  purchaseExamViaUi,
+  waitForSavedStatus,
+} from "./helpers/attempt-fixtures";
+import { createVerifiedAccount } from "./helpers/mail";
+
+async function startAttemptHandlingPreChoice(page: Page, entitlementId: string, preferredPreChoice?: RegExp): Promise<string> {
+  await page.goto(`${WEB_URL}/prepare/${encodeURIComponent(entitlementId)}`);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+
+  const radios = page.locator('main input[type="radio"]');
+  const radioCount = await radios.count();
+  if (radioCount > 0) {
+    if (preferredPreChoice) {
+      const targetRadio = page.getByRole("radio", { name: preferredPreChoice }).first();
+      if ((await targetRadio.count()) > 0) {
+        await targetRadio.check();
+      } else {
+        await radios.first().check();
+      }
+    } else {
+      await radios.first().check();
+    }
+  }
+
+  const startBtn = page.getByRole("button", { name: "Bắt đầu bài thi" });
+  await expect(startBtn).toBeEnabled({ timeout: 15_000 });
+
+  const startPromise = page.waitForResponse(
+    (res) => res.url().endsWith("/api/v1/me/attempts") && res.request().method() === "POST",
+  );
+  await startBtn.click();
+  const startRes = await startPromise;
+  expect(startRes.ok(), `POST /api/v1/me/attempts failed: ${startRes.status()}`).toBe(true);
+  const { attemptId } = (await startRes.json()) as { attemptId: string };
+
+  await page.waitForURL(new RegExp(`/attempts/${attemptId}`), { timeout: 45_000 });
+  await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 45_000 });
+  return attemptId;
+}
+
+async function answerOpenPartUnits(page: Page, maxUnits = 30): Promise<void> {
+  for (let i = 0; i < maxUnits; i += 1) {
+    const changed = await answerCurrentUnit(page, "42");
+    if (changed > 0) {
+      await waitForSavedStatus(page);
+    }
+    const nextBtn = page.getByRole("button", { name: "Câu sau" }).first();
+    if ((await nextBtn.count()) === 0 || !(await nextBtn.isVisible()) || !(await nextBtn.isEnabled())) {
+      break;
+    }
+    await nextBtn.click();
+  }
+}
+
+async function gradePendingEssayIfNeeded(
+  page: Page,
+  attemptId: string,
+  admin: Awaited<ReturnType<typeof adminApi>>,
+): Promise<string> {
+  let finalState = "";
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get(`${WEB_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/result`);
+        if (!res.ok()) return "";
+        finalState = ((await res.json()) as { state?: string }).state ?? "";
+        return finalState;
+      },
+      { message: `wait attempt ${attemptId} graded or pending review`, timeout: 45_000, intervals: [500, 1_000] },
+    )
+    .toMatch(/^(SCORED|PENDING_REVIEW)$/);
+
+  if (finalState === "SCORED") return "SCORED";
+
+  const detailRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/attempts/${encodeURIComponent(attemptId)}`);
+  expect(detailRes.ok(), `GET /admin/attempts/${attemptId}: ${detailRes.status()} ${await detailRes.text()}`).toBe(true);
+  const attemptDetail = (await detailRes.json()) as {
+    items: Array<{ itemId: string; questionType: string; pointsMax?: number }>;
+  };
+
+  for (const item of attemptDetail.items.filter((i) => i.questionType === "ESSAY")) {
+    const qRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items/${encodeURIComponent(item.itemId)}`);
+    expect(qRes.ok(), await qRes.text()).toBe(true);
+    const qDetail = (await qRes.json()) as {
+      pointsMax: number;
+      rubric: Array<{ id: string; points?: number }>;
+    };
+
+    const claimRes = await admin.api.post(`${ADMIN_URL}/api/v1/admin/grading/items/${encodeURIComponent(item.itemId)}/claim`, {
+      headers: { ...admin.headers, "idempotency-key": randomUUID() },
+    });
+    expect(claimRes.ok(), `claim ${item.itemId}: ${claimRes.status()} ${await claimRes.text()}`).toBe(true);
+    const claimView = (await claimRes.json()) as { version: number };
+
+    const criteria = qDetail.rubric.map((r) => ({
+      id: r.id,
+      points: r.points ?? 0,
+      comment: "QA grade",
+    }));
+    const points =
+      criteria.length > 0
+        ? criteria.reduce((sum, c) => sum + c.points, 0)
+        : Math.min(qDetail.pointsMax || 1, 1);
+
+    const finalizeRes = await admin.api.post(
+      `${ADMIN_URL}/api/v1/admin/grading/items/${encodeURIComponent(item.itemId)}/finalize`,
+      {
+        headers: { ...admin.headers, "idempotency-key": randomUUID() },
+        data: {
+          expectedVersion: claimView.version,
+          criteria: criteria.length > 0 ? criteria : undefined,
+          points,
+          comment: "QA finalize for nine kinds sweep",
+        },
+      },
+    );
+    expect(finalizeRes.ok(), `finalize ${item.itemId}: ${finalizeRes.status()} ${await finalizeRes.text()}`).toBe(true);
+  }
+
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get(`${WEB_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/result`);
+        if (!res.ok()) return "";
+        return ((await res.json()) as { state?: string }).state ?? "";
+      },
+      { message: `wait attempt ${attemptId} transition to SCORED after manual grading`, timeout: 30_000 },
+    )
+    .toBe("SCORED");
+
+  return "SCORED";
+}
+
+async function completeAttemptToScored(
+  page: Page,
+  attemptId: string,
+  admin: Awaited<ReturnType<typeof adminApi>>,
+  options?: { maxUnitsPerPart?: number },
+): Promise<void> {
+  const maxUnitsPerPart = options?.maxUnitsPerPart ?? 30;
+
+  for (let partStep = 0; partStep < 6; partStep += 1) {
+    await answerOpenPartUnits(page, maxUnitsPerPart);
+
+    const finishPartBtn = page.getByRole("button", { name: "Hoàn thành phần" });
+    if ((await finishPartBtn.count()) > 0 && (await finishPartBtn.isVisible())) {
+      await finishPartBtn.click();
+      const finishDialog = page.getByRole("dialog");
+      await expect(finishDialog).toBeVisible();
+      await finishDialog.getByRole("button", { name: "Hoàn thành phần" }).click();
+      await expect(finishDialog).toBeHidden({ timeout: 15_000 });
+
+      // Nếu phần tiếp theo là AWAITING_CHOICE (vd HSA/QDA đầy đủ) thì chọn lựa chọn đầu
+      const confirmChoiceBtn = page.getByRole("button", { name: /Xác nhận chọn phần/ });
+      if ((await confirmChoiceBtn.count()) > 0 && (await confirmChoiceBtn.isVisible())) {
+        const radio = page.locator('main input[type="radio"]').first();
+        if ((await radio.count()) > 0) await radio.check();
+        await confirmChoiceBtn.click();
+      }
+      await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 25_000 });
+      continue;
+    }
+
+    const submitBtn = page.getByRole("button", { name: "Nộp bài" });
+    await expect(submitBtn).toBeVisible({ timeout: 10_000 });
+    await submitBtn.click();
+    const submitDialog = page.getByRole("dialog");
+    await expect(submitDialog).toBeVisible();
+    await submitDialog.getByRole("button", { name: "Nộp bài" }).click();
+    break;
+  }
+
+  await page.waitForURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 45_000 });
+  const settledState = await gradePendingEssayIfNeeded(page, attemptId, admin);
+  expect(settledState).toBe("SCORED");
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Đã chấm điểm", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+}
+
+async function runStandardKindFlow(
+  page: Page,
+  examCode: string,
+  admin: Awaited<ReturnType<typeof adminApi>>,
+  options?: { preChoice?: RegExp; maxUnitsPerPart?: number },
+): Promise<string> {
+  const { entitlementId } = await purchaseExamViaUi(page, examCode);
+  const attemptId = await startAttemptHandlingPreChoice(page, entitlementId, options?.preChoice);
+  await completeAttemptToScored(page, attemptId, admin, options);
+  return attemptId;
+}
+
+test.describe("AC-24 chín kỳ thi E2E", () => {
+  test.beforeAll(async ({ browser }) => {
+    await ensureDsReady(browser);
+  });
+
+  test("AC-24 chín kỳ thi: mua -> làm bài -> nộp bài -> kết quả SCORED cho cả 9 kỳ thi (HSA, QDA, BCA, VACT, SP2E, SPT, THPTQG, HSCA, VSAT)", async ({
+    browser,
+  }) => {
+    test.setTimeout(600_000);
+
+    const thptqgExam = await publishThptqgMath3PartExam(`QA9_${RUN_ID}`);
+    const { cookies } = await createVerifiedAccount("qa.9kinds");
+    const context = await browser.newContext();
+    await context.addCookies(cookies);
+    const page = await context.newPage();
+    page.setDefaultTimeout(25_000);
+    const admin = await adminApi();
+
+    try {
+      await test.step("1. HSA (DS-HSA-PART-MATH-MINI)", async () => {
+        await runStandardKindFlow(page, "DS-HSA-PART-MATH-MINI", admin);
+      });
+
+      await test.step("2. QDA (DS-QDA-PART-SCIENCE-MINI)", async () => {
+        await runStandardKindFlow(page, "DS-QDA-PART-SCIENCE-MINI", admin, { preChoice: /Q[DĐ]01/i });
+      });
+
+      await test.step("3. BCA (DS-BCA-PART-TN-TU-CHON-MINI)", async () => {
+        await runStandardKindFlow(page, "DS-BCA-PART-TN-TU-CHON-MINI", admin, { preChoice: /CA1/i });
+      });
+
+      await test.step("4. VACT (DS-VACT-SUBJECT-TOAN-MINI)", async () => {
+        await runStandardKindFlow(page, "DS-VACT-SUBJECT-TOAN-MINI", admin);
+      });
+
+      await test.step("5. SP2E (DS-SP2E-MATH-2026-MINI)", async () => {
+        await runStandardKindFlow(page, "DS-SP2E-MATH-2026-MINI", admin);
+      });
+
+      await test.step("6. SPT (DS-SPT-INFORMATICS-MINI)", async () => {
+        await runStandardKindFlow(page, "DS-SPT-INFORMATICS-MINI", admin);
+      });
+
+      await test.step("7. THPTQG 3 phần điều hướng FREE (publishThptqgMath3PartExam)", async () => {
+        const { entitlementId } = await purchaseExamViaUi(page, thptqgExam.code);
+        const attemptId = await startAttemptHandlingPreChoice(page, entitlementId);
+
+        const state = await getAttemptStateApi(page.request, attemptId);
+        expect(state.navigationMode).toBe("FREE");
+        expect(state.parts.length).toBe(3);
+        await expect(page.getByRole("button", { name: "Hoàn thành phần" })).toHaveCount(0);
+
+        const partTabs = page.getByRole("tab");
+        await expect(partTabs).toHaveCount(3);
+        // Điều hướng tự do Phần 3 -> Phần 2 -> Phần 1 và trả lời câu hỏi ở mỗi phần
+        for (const idx of [2, 1, 0]) {
+          await partTabs.nth(idx).click();
+          await expect(partTabs.nth(idx)).toHaveAttribute("aria-selected", "true");
+          await answerOpenPartUnits(page, 10);
+        }
+
+        await page.getByRole("button", { name: "Nộp bài" }).click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole("button", { name: "Nộp bài" }).click();
+        await page.waitForURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 45_000 });
+        expect(await gradePendingEssayIfNeeded(page, attemptId, admin)).toBe("SCORED");
+      });
+
+      await test.step("8. HSCA (DS-HSCA-ANH-MINI): nghe 2 lần hết lượt (0/2), không seek/audio[controls]", async () => {
+        const { entitlementId } = await purchaseExamViaUi(page, "DS-HSCA-ANH-MINI");
+        const attemptId = await startAttemptHandlingPreChoice(page, entitlementId);
+
+        const audioRegion = page.getByRole("region", { name: "Trình phát audio" });
+        await expect(audioRegion).toBeVisible({ timeout: 20_000 });
+        await expect(page.locator("audio[controls]")).toHaveCount(0);
+        await expect(audioRegion.getByRole("slider")).toHaveCount(0);
+        await expect(audioRegion.getByText(/Còn 2\/2 lần nghe/)).toBeVisible();
+
+        for (let playNo = 1; playNo <= 2; playNo += 1) {
+          const playBtn = audioRegion.getByRole("button", { name: /^Nghe$/ });
+          await expect(playBtn).toBeEnabled({ timeout: 10_000 });
+          const endPromise = page.waitForResponse(
+            (res) => res.url().endsWith("/audio/end") && res.request().method() === "POST",
+            { timeout: 90_000 },
+          );
+          await playBtn.click();
+          const endRes = await endPromise;
+          expect(endRes.ok(), `audio end #${playNo} failed: ${endRes.status()}`).toBe(true);
+        }
+
+        await expect(audioRegion.getByText(/Đã hết lượt nghe \(0\/2\)/)).toBeVisible({ timeout: 15_000 });
+        await expect(audioRegion.getByRole("button", { name: /^Nghe$/ })).toHaveCount(0);
+
+        await completeAttemptToScored(page, attemptId, admin);
+      });
+
+      await test.step("9. VSAT (DS-VSAT-ANH): displaySegments Phần I-IV + segments[] breakdown trên /result", async () => {
+        const { entitlementId } = await purchaseExamViaUi(page, "DS-VSAT-ANH");
+        const attemptId = await startAttemptHandlingPreChoice(page, entitlementId);
+
+        await expect(page.locator("[data-segment-header]").filter({ hasText: "Phần I" }).first()).toBeVisible({
+          timeout: 15_000,
+        });
+        await completeAttemptToScored(page, attemptId, admin, { maxUnitsPerPart: 30 });
+
+        const segmentsSection = page.locator('section[aria-labelledby="result-segments-title"]');
+        await expect(segmentsSection).toBeVisible({ timeout: 20_000 });
+        for (const seg of ["Phần I", "Phần II", "Phần III", "Phần IV"]) {
+          await expect(segmentsSection.getByText(seg).first()).toBeVisible();
+        }
+      });
+    } finally {
+      await admin.api.dispose();
+      await context.close();
+    }
+  });
+});
