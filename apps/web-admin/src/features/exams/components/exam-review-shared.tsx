@@ -4,7 +4,7 @@ import { cn, focusRing, StatusChip, Tooltip, type StatusTone } from "@thi360/ui"
 import { CircleCheck, CircleHelp, CircleX } from "lucide-react";
 import { useLocale, useTranslations, type RichTranslationValues, type TranslationValues } from "next-intl";
 import Link from "next/link";
-import { Fragment, useCallback, useId, useMemo, type ReactNode } from "react";
+import { cloneElement, Fragment, isValidElement, useCallback, useId, useMemo, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { blockFilterConfig, combinationLabel, findBlockContext, type ChoiceNameResolver } from "../check";
 import { type ChangeLevel, parseChangeWhere } from "../change-where";
@@ -61,7 +61,17 @@ export function richNodes(
   key: string,
   values: Record<string, ReactNode>,
 ): ReactNode {
-  return t.rich(key, values as RichTranslationValues);
+  const keyedValues: Record<string, ReactNode> = {};
+  for (const [slot, node] of Object.entries(values)) {
+    if (isValidElement(node)) {
+      keyedValues[slot] = node.key == null ? cloneElement(node, { key: slot }) : node;
+    } else if (Array.isArray(node)) {
+      keyedValues[slot] = <Fragment key={slot}>{node}</Fragment>;
+    } else {
+      keyedValues[slot] = node;
+    }
+  }
+  return t.rich(key, keyedValues as RichTranslationValues);
 }
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */

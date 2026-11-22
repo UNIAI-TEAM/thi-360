@@ -363,7 +363,8 @@ describe("thứ tự gốc (K12)", () => {
   const numbersOnPage = () => screen.getAllByRole("heading", { name: /^Câu \d+$/ }).map((node) => node.textContent);
   const optionsOf = (heading: string) => {
     const article = screen.getByRole("heading", { name: heading }).closest("article")!;
-    return within(article).getAllByRole("listitem").map((node) => node.textContent?.replace(/^[A-H]/, "").replace(/Đáp án đúng$/, ""));
+    const fieldset = article.querySelector("fieldset[data-question-options]")!;
+    return [...fieldset.querySelectorAll("[data-exam-content]")].map((node) => node.textContent);
   };
 
   it("mặc định đúng thứ tự đã đảo: số câu, câu và phương án như đề thật", () => {
