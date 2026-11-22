@@ -1,6 +1,6 @@
 # DESIGN — Thi 360
 
-> Cập nhật: 2026-11-13 · Tham khảo phong cách: https://hsavnu.edu.vn (đã xem trang chủ, Thi thử, Khóa học, chi tiết khóa học, Tin tức, Đăng nhập). Số liệu dưới đây đo trực tiếp từ các trang đó.
+> Cập nhật: 2026-11-22 (đã cập nhật hết đợt 3 · QA UNI-2744) · Tham khảo phong cách: https://hsavnu.edu.vn (đã xem trang chủ, Thi thử, Khóa học, chi tiết khóa học, Tin tức, Đăng nhập). Số liệu dưới đây đo trực tiếp từ các trang đó.
 >
 > Chỉ tham khảo **phong cách**. Không dùng logo, tên, ảnh hay nội dung của HSA Education. Thi 360 cần logo riêng.
 
@@ -224,7 +224,12 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - **Thanh trên dưới 640px** phải vừa một hàng ở 360px: nút menu, breadcrumb chỉ còn trang hiện tại (`Breadcrumb collapseOnNarrow`, cắt bằng dấu ba chấm nếu vẫn dài), nút sáng/tối, nút ngôn ngữ, menu avatar chỉ còn avatar (tên đăng nhập hiện ở dòng đầu của menu). Từ 640px breadcrumb đủ các mục và menu avatar có tên đăng nhập kèm mũi tên.
 - **Tiêu đề trang** (`PageHeader`): dưới 640px nút của màn xuống dưới tiêu đề và mô tả, căn trái, tự xuống dòng khi không đủ một hàng; từ 640px nút nằm cùng hàng với tiêu đề, căn phải. Màn chỉ truyền nút qua `actions`, không tự bọc thêm hàng.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
-- Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện, Nhật ký). Chức năng phụ của một mục là nút hoặc tab bên trong màn đó, không thành mục menu riêng: Cấp hàng loạt là nút trong màn Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền.
+- Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện; Nhật ký là tab trong chi tiết tài khoản).
+- Bổ sung qua đợt 2 & đợt 3 (`apps/web-admin/src/lib/navigation.ts`):
+  - **Nội dung:** Ngân hàng câu hỏi (`/questions`, `QUESTION.VIEW`), Bài thi (`/exams`, `EXAM.VIEW`), **Chấm tự luận** (`/grading`, `GRADING.VIEW`), Cấu hình chung (`/catalog`, `CATALOG.VIEW`).
+  - **Thương mại:** Khuyến mãi (`/promotions`, `PROMOTION.VIEW`), Đơn hàng (`/orders`, `ORDER.VIEW`), Bộ đề (`/bundles`, `EXAM.VIEW`).
+  - **Học viên:** Lượt thi (`/attempts`, `ATTEMPT.VIEW`).
+  - Chức năng phụ vẫn là nút hoặc tab trong trang chi tiết: Cấp hàng loạt là nút trong Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền; Thông tin bán (`/exams/[id]/listing`) là tab trong khung soạn bài thi; Hồ sơ học tập (`?tab=learning`) là tab trong chi tiết tài khoản (`/users/[id]`).
 
 ### 5.9 Bảng (admin)
 
@@ -321,16 +326,15 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 - **Vùng xem trước chỉ để nhìn** (xem trước giao diện) mang `inert` và `aria-hidden`, không nhận focus.
 - **Trang đổi mật khẩu** mở từ menu tài khoản dùng `?source=account-menu` để hiện lối "Quay lại"; luồng bắt buộc đổi mật khẩu không có lối này.
 
-### 5.14 Màn đợt 2: Ngân hàng câu hỏi, Bài thi (API thật) và `/grading` (dữ liệu mẫu)
+### 5.14 Màn đợt 2: Ngân hàng câu hỏi, Bài thi và Hàng chờ chấm (API thật)
 
-Từ QA (UNI-2621) Ngân hàng câu hỏi, Nhập câu hỏi và Bài thi chỉ gọi API thật; lớp mẫu và cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` đã gỡ. Chỉ `/grading` còn chạy trên dữ liệu mẫu tới đợt chấm điểm.
+Từ QA đợt 2 (UNI-2621) Ngân hàng câu hỏi, Nhập câu hỏi và Bài thi chạy trên API thật; tới đợt 3 (FA-4), Hàng chờ chấm (`/grading`) cũng đã nối API thật, toàn bộ cờ và lớp dữ liệu mẫu đã được gỡ bỏ hoàn toàn.
 
-- **Cờ:** một cờ trong `lib/mock/flags.ts`: `NEXT_PUBLIC_THI360_GRADING_MOCK` (`/grading`); giá trị `true|false`, bỏ trống thì bật khi `next dev`, tắt khi build. Trang nằm sau `PermissionGate` (`features/session/permission-gate.tsx`) ở `layout.tsx`: `/questions` cần `QUESTION.VIEW`, `/exams` cần `EXAM.VIEW`, `/grading` cần `GRADING.VIEW` **hoặc** cờ bật (`flag="grading"`; mục menu mang `mockFlag: "grading"` trong `lib/navigation.ts`). Thiếu thì hiện trang 403.
-- **Dải "Dữ liệu mẫu":** `MockDataBanner` (`components/mock-data-banner.tsx`) chỉ còn ở `/grading`, một lần mỗi màn, ngay dưới tiêu đề trang. Hộp thoại không lặp lại dải.
-- **Dữ liệu:** giao diện chỉ gọi hook trong `features/<x>/queries.ts`; hook gọi `features/<x>/api.ts`. Ngân hàng câu hỏi và Bài thi: `api.ts` gọi `@thi360/api-client`, kiểu trong `types.ts` là bí danh của client; mọi lệnh ghi gửi `expectedRevision` (lệch thì 412 `QUESTION_REVISION_CONFLICT` hoặc `EXAM_REVISION_CONFLICT`); test dùng client giả (`src/test/fake-api.ts`, dự án vitest `fake-client`). `/grading`: `api.ts` bọc hàm của `api.mock.ts` bằng `gradingApi` (cờ tắt thì lỗi "chưa nối API"); `api.mock.ts` đọc `features/grading/mock/*.json`, ghi qua kho trong bộ nhớ (`createMockStore`).
-- **Bốn trạng thái:** mỗi màn có đủ bốn trạng thái như mọi màn khác; `?mockState=loading|empty|error` chỉ còn tác dụng ở `/grading`.
-- **Mã quyền:** menu và trang dùng `QUESTION.VIEW`, `EXAM.VIEW`, `GRADING.VIEW`; nút ghi chưa ẩn theo `QUESTION.MODIFY`, `EXAM.MODIFY`, `EXAM.PUBLISH` (backend trả 403, giao diện hiện lỗi).
-- **Trang soạn bài thi** `/exams/[id]` có khung chung `ExamEditorLayout` (tiêu đề, chip trạng thái, dải tóm tắt `<dl>`, `NavTabs` bốn trang con: `/exams/[id]`, `/structure`, `/review`, `/versions`). Trang con đọc bài thi bằng `useExam(id)`.
+- **Bảo vệ theo quyền:** các trang nằm sau `PermissionGate` (`features/session/permission-gate.tsx`) ở `layout.tsx`: `/questions` cần `QUESTION.VIEW`, `/exams` cần `EXAM.VIEW`, `/grading` cần `GRADING.VIEW`. Thiếu quyền thì hiện trang 403.
+- **Dữ liệu:** giao diện chỉ gọi hook trong `features/<x>/queries.ts`; hook gọi `features/<x>/api.ts` qua `@thi360/api-client`, kiểu trong `types.ts` là bí danh của client; mọi lệnh ghi câu hỏi và cấu trúc gửi `expectedRevision` (lệch thì trả 412 `QUESTION_REVISION_CONFLICT` hoặc `EXAM_REVISION_CONFLICT`); kiểm thử đơn vị dùng client giả (`src/test/fake-api.ts`, dự án vitest `fake-client`).
+- **Bốn trạng thái:** mỗi màn có đủ bốn trạng thái tải đầu, rỗng, lỗi, có dữ liệu (kèm trạng thái ngoại tuyến theo mục 5.9).
+- **Mã quyền:** menu và trang dùng `QUESTION.VIEW`, `EXAM.VIEW`, `GRADING.VIEW`; các thao tác ghi kiểm tra theo `QUESTION.MODIFY`, `EXAM.MODIFY`, `EXAM.PUBLISH`, `GRADING.MODIFY` (backend trả 403 khi thiếu quyền).
+- **Trang soạn bài thi** `/exams/[id]` có khung chung `ExamEditorLayout` (tiêu đề, chip trạng thái, dải tóm tắt `<dl>`, `NavTabs` năm trang con: `/exams/[id]`, `/structure`, `/listing`, `/review`, `/versions`). Trang con đọc bài thi bằng `useExam(id)`.
 - **Chọn kiến thức (MAPID):** dùng `KnowledgePickerDialog` (`features/content/components`) cho mọi nơi chọn nút của cây Cấu trúc kiến thức; câu hỏi chỉ tick cấp Kiến thức và có một kiến thức chính, phạm vi khối của bài thi cho tick cả Chương và Bài (`selectableLevels`, `withPrimary={false}`).
 
 Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi màn sau:
@@ -338,13 +342,13 @@ Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi 
 - **Tạo đối tượng có nhiều phần** (cấu trúc, phân bổ, nhiều quy tắc phụ thuộc nhau, ví dụ Tạo bài thi `/exams/new`) dùng **trang riêng**, không dùng hộp thoại: các khối đánh số theo thứ tự nhập, cột **Tóm tắt** bên phải dính khi cuộn (xuống dưới biểu mẫu khi khung hẹp) gồm các con số tính trực tiếp và danh sách "Cần xử lý" mà mỗi mục đưa focus tới ô lỗi. Hộp thoại chỉ cho biểu mẫu ngắn (mục 5.10).
 - **Đổi lựa chọn làm mất phần đã nhập** (nạp lại mẫu khi đổi kỳ thi, phạm vi, phần, môn hoặc phiên bản năm của cấu trúc): hỏi xác nhận, nêu rõ phần sẽ bị thay. Ở trang Tạo bài thi hỏi ngay trong trang; ở Thông tin chung và bước Cấu trúc dùng hộp thoại liệt kê các phần sẽ nạp lại (`ReloadStructureDialog`) và nói rõ thay đổi chưa lưu cũng mất; chưa sửa gì thì nạp luôn.
 - **Danh sách có trạng thái** (Ngân hàng câu hỏi): dải trạng thái kèm số lượng mỗi trạng thái đứng đầu thanh lọc; bộ lọc ít dùng gom vào "Bộ lọc khác"; bộ lọc đang áp dụng hiện thành chip "Đang lọc" bỏ được từng cái, kèm "Xóa tất cả bộ lọc". Mọi bộ lọc nằm trên URL.
-- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Xem trước, Nơi đang dùng, Lịch sử phiên bản; bài thi: bốn trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
+- **Trang chi tiết có trang con** (câu hỏi: Nội dung, Xem trước, Nơi đang dùng, Lịch sử phiên bản; bài thi: năm trang con) dùng layout chung của đoạn đường dẫn (nhóm route như `questions/[id]/(detail)/layout.tsx`) và `NavTabs`; trang Sửa nằm ngoài nhóm để không có thanh tab.
 - **Luồng nhiều bước** (Nhập câu hỏi từ tệp, Cấp tài khoản hàng loạt): đổi bước thì focus về tiêu đề bước; lỗi chặn bước tiếp hiện thành bảng tóm tắt lỗi nhận focus; báo cáo lỗi tải về là CSV tạo ở trình duyệt.
 - **Cột của `Table` phải ổn định** (`useMemo` hoặc khai báo ngoài component): mảng `columns` mới ở mỗi lần render làm bảng dựng lại ô, mất focus và hỏng việc trả focus khi đóng hộp thoại. Trạng thái của dòng (đang chạy, đang chọn) đưa vào ô qua context hoặc dữ liệu dòng, không qua closure của `columns`.
 
 Quy ước thêm ở đợt 7 kỳ thi và chấm tự luận (UNI-2599):
 
-- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Chờ chấm" (tiếng Anh "Awaiting grading"; mã trạng thái vẫn là `GRADING`), có điểm tự luận rồi mới ghi "Đã có điểm".
+- **Câu chấm tay:** câu và khối dạng Tự luận mang nhãn "Chấm tay" (icon kèm chữ, không chỉ màu) ở mọi nơi hiện câu: soạn, chi tiết, khối của cấu trúc, xem trước, phiên bản. Lượt thi còn câu chưa chấm ghi "Chờ chấm" (tiếng Anh "Awaiting grading"; mã trạng thái là `PENDING_REVIEW`), có điểm tự luận rồi mới ghi "Đã có điểm" (`SCORED`).
 - **Chờ chuyên gia xác nhận:** số liệu chờ chuyên gia (số câu tổ hợp QDA, BCA do tổ hợp sinh hoặc mới sửa, năm cấu trúc khác năm ma trận) hiện chip trạng thái "Chờ chuyên gia xác nhận" kèm nút "Xác nhận"; xác nhận xong chip đổi thành "Chuyên gia đã xác nhận". Kiểm tra cấu hình chặn công bố khi còn mục chờ. Cách chia 17–17–16 của phương án Khoa học HSA đã có quy định (B10) nên không mang chip này.
 - **Thời lượng chung:** bài dùng một thời lượng cho cả bài thì phần không có ô thời lượng; chỗ hiện thời lượng phần ghi chữ chỉ đọc "… phút, dùng chung cả bài", danh sách ghi "… phút chung".
 - **Bảng điểm sửa được** (bảng điểm câu Đúng/Sai, tiêu chí chấm): mỗi ô là một ô nhập số nhận dấu phẩy hoặc dấu chấm như ô Điểm; lỗi hiện ngay dưới ô sai (không phải số, nhỏ hơn ô trước, ô cuối khác điểm của câu), dòng tổng nói rõ đã khớp chưa.
@@ -471,6 +475,23 @@ Hộp riêng (`insert/word/`) mở từ nút "Dán từ Word" của form soạn 
 - **Sau khi đưa vào biểu mẫu.** Ô trống thì điền, ô đã có nội dung thì `ConfirmDialog` hỏi ghi đè kèm danh sách ô. Chỗ tự sửa chưa Chấp nhận vẫn được đánh dấu trong ô bằng decoration của ProseMirror (cùng nền `warning-bg`, viền `warning`, `title` giải thích); dấu không vào HTML, mất khi tải lại trang, tự mất khi người soạn sửa công thức, và không chặn lưu.
 - **Số nối xem trước với thẻ.** Mỗi chỗ cần xem lại có một số thứ tự cố định (theo thứ tự trong nội dung, không đổi khi lọc "Chỉ hiện mục chưa xử lý"): viên tròn 20px chữ 11px đậm, nền `warning` (chỗ tự sửa chờ xác nhận) hoặc `danger` (ảnh công thức chưa xử lý), chữ `surface` để đủ tương phản ở cả hai chế độ; hiện cạnh chỗ đó trong xem trước và ở đầu thẻ tương ứng (thẻ đã xử lý dùng viên trung tính). Chip "đã đổi đúng" có biểu tượng dấu tích (lucide `Check`, 14px, nét 2.6) thay cho chấm.
 - **Dấu trong ô soạn** dùng cờ `!` của Tailwind (`bg-warning-bg!`, `outline-2!`, `outline-warning!`) vì `.rich-text-editor-content .rich-text-math` đặt nền và viền chip công thức bằng hai lớp và sẽ che dấu nếu không ép; viền `warning` 2px (tương phản ≥ 3:1 ở cả hai chế độ), chữ vẫn `text` trên `warning-bg` (≥ 4.5:1). Sau khi dán xong, focus chuyển tới tiêu đề "Chỗ cần xem lại" thay vì để rơi về khung hộp.
+
+### 5.16 Thành phần và màn hình Đợt 3 (Thương mại, Bộ đề, Màn làm bài, Chấm tự luận & Làm thử)
+
+- **Bộ thành phần câu hỏi dùng chung (`@thi360/ui/question`, `packages/ui/src/question/`):**
+  - `Question` hỗ trợ 8 dạng câu hỏi ở cả hai chế độ `answer` (làm bài) và `review` (xem lại chỉ đọc): Trắc nghiệm 1 đáp án (`SingleChoiceQuestion`), Nhiều đáp án (`MultipleChoiceQuestion`), Đúng/Sai (`TrueFalseQuestion`), Trả lời ngắn (`ShortAnswerQuestion`), Điền khuyết (`ClozeQuestion`), Ghép đôi (`MatchingQuestion`), Tự luận (`EssayQuestion`: `wordLimit` là số chữ tối thiểu kèm bộ đếm `role="status"` theo `countWords` và cảnh báo không chặn nộp; có thể gắn trình soạn Tiptap qua `renderEditor`), Câu chùm (`QuestionSet`).
+  - `QuestionFrame`: hỗ trợ `headingLevel` `1..6`, đánh số câu liên tục suốt bài, vùng nội dung đề gắn `data-exam-content`, cờ đánh dấu xem lại, chip `Chấm tay`, `OutcomeChip` và `ReviewPoints`.
+  - `SymbolInputBar`: thanh chèn ký tự/ion/mũi tên (`DEFAULT_ION_SYMBOLS`, `shouldShowSymbolInput`) cho câu trả lời ngắn hóa học/toán trên thiết bị di động và máy tính.
+  - `SegmentHeader` (`apps/web-student/src/features/attempt-player/segments/segment-header.tsx`): tiêu đề phân đoạn hiển thị `displaySegments` cho H-SCA, V-SAT (tên phân đoạn, khoảng câu, số lệnh, điểm tối đa; không có đồng hồ riêng theo phân đoạn).
+  - `AttemptAudioPlayer` & `createTrialAudioAdapter`: phát audio tối đa 2 lần (`maxPlays`), không tua/không tạm dừng/không đổi tốc độ ở lượt thật; đồng bộ adapter cục bộ (`createTrialAudioAdapter`) cho màn Sinh thử / Làm thử admin.
+  - `RichTextView` (`@thi360/ui/rich-text`, KaTeX + mhchem nạp động khi cần) được đưa về `packages/ui` dùng chung giữa `web-admin` và `web-student`.
+- **Màn hình học viên & công khai (`apps/web-student`):**
+  - Trang giới thiệu (`/`), Danh mục (`/exams` và `#exams`, lọc theo kỳ thi/hình thức gồm Bộ đề/môn, nhãn `"Bài ôn"` cho `REVIEW`), Chi tiết sản phẩm/bộ đề (`/exams/[code]`, `ExamGoneView` cho HTTP/API `410 PRODUCT_DISCONTINUED`, `BundleUnavailableView` cho trạng thái `UNAVAILABLE` của bộ đề), Thanh toán (`/checkout/[code]` áp dụng voucher, luồng đơn 0 đồng, `/checkout/result`), Bài thi của tôi (`/home`, `groupMyExams` nhóm thẻ theo bộ chống trùng và dẫn chiếu tới bộ chính), Đơn của tôi (`/account/orders`, `/account/orders/[code]`), Hồ sơ & tài khoản (`/register`, `/verify-email`, `/forgot-password`, `/reset-password`, `/account/profile`).
+  - **Màn chuẩn bị và làm bài (`/prepare/[entitlementId]`, `/attempts/[id]`):** `PrepareView` / `PreparingScreen` và `AttemptPlayer`, `QuestionNav` (gồm cụm phân đoạn `displaySegments`, bộ lọc tất cả/chưa làm/đánh dấu), đồng hồ theo phần hoặc chung (`server-clock.ts`), `PartNavigation` chuyển phần tuần tự `SEQUENTIAL` (ngoại lệ `THPTQG` chuyển tự do `FREE` giữa các phần theo BS 4), `PartChoiceView` chọn phần sau & chờ sinh đề nền (`STARTING`/`GENERATING`), lưu bản nháp IndexedDB ngoại tuyến (`attempt-draft/db.ts`, `AttemptSaveQueue`) & đồng bộ khi nối lại, hộp thoại tiếp quản phiên (`TakeoverDialog` / `SessionEvictedView`) và chế độ chỉ xem ở tab thứ hai (`ReadonlyTabBanner` / `AttemptTabLock`).
+  - **Màn kết quả, xem lại và lịch sử (`/attempts/[id]/result`, `/attempts/[id]/review`, `/history`):** nhãn `"Chờ chấm"` (`PENDING_REVIEW`) khi còn tự luận chưa chấm, `"Đã có điểm"` (`SCORED`), trạng thái `"Đúng một phần"` (`PARTIAL`), `SegmentBreakdownSection` cho H-SCA/V-SAT (bảng trên màn rộng, `CardList` trên khung hẹp), hiển thị kết quả V-ACT (`"Điểm luyện tập"` trên thang điểm cấu hình như `1.200` + 4 thành phần + `ThinkingSubsections` tách riêng tiểu mục 12/18 câu Tư duy khoa học), tải ảnh lời giải qua endpoint bảo vệ (`/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}`, chỉ mở với `FULL_SOLUTION`).
+- **Màn hình quản trị Đợt 3 (`apps/web-admin`):**
+  - Tab Thông tin bán (`/exams/[id]/listing`, `ExamListingView` + ảnh bìa + cảnh báo chấm tay `MANUAL_GRADING_REQUIRED`), Khuyến mãi (`/promotions`), Bộ đề (`/bundles`), Đơn hàng, người mua, hoàn tiền & đối soát (`/orders`, `/orders/[code]`, `/orders/buyers`, `OrderAttentionStrip` 6 loại gồm khoản thu thừa `DUPLICATE_UNREFUNDED` & thanh toán báo thành công muộn `LATE_SUCCESS_PENDING`), Hồ sơ học tập (`/users/[id]?tab=learning`, `LearningProfileTab` nối Quyền sử dụng và Lịch sử lượt thi).
+  - Chấm tự luận, Vận hành lượt & Làm thử: `GradingListView` (bộ lọc + số đếm theo trạng thái), `GradingItemView` (chấm ẩn danh, tiêu chí chấm, đếm chữ, lưu nháp/hoàn tất/mở lại), `AttemptListView` / `AttemptDetailView` (tra cứu lượt, chấm lại `GRADING_ERROR`, đánh dấu hỏng `FAULT_CLOSED`, cấp bù 1 lượt với `ATTEMPT.COMPENSATE`), `PreviewTrialView` ("Làm thử như học viên" và màn Sinh thử `/exams/[id]/preview/[previewId]` dùng chung `@thi360/ui/question` + `AttemptAudioPlayer` cho đủ 9 kỳ thi).
 
 ## 6. Icon và hình ảnh
 
