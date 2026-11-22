@@ -415,21 +415,24 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       const today = await testClockDayIso();
       await statusGroup.locator("label").filter({ hasText: /^Chờ chấm/ }).click();
       await expect(statusGroup.getByRole("radio", { name: /^Chờ chấm/ })).toBeChecked();
-      const filteredResPromise = page.waitForResponse((r) => {
-        if (r.request().method() !== "GET") return false;
-        const url = new URL(r.url());
-        return (
-          url.pathname === "/api/v1/admin/grading/items" &&
-          url.searchParams.get("state") === "WAITING" &&
-          url.searchParams.get("exam") === "BCA" &&
-          url.searchParams.get("from") === today &&
-          url.searchParams.get("to") === today
-        );
-      });
-      await page.getByLabel("Bài thi").fill("BCA");
-      await page.getByLabel("Từ ngày").fill(today);
-      await page.getByLabel("Đến ngày").fill(today);
-      const filteredRes = await filteredResPromise;
+      const [filteredRes] = await Promise.all([
+        page.waitForResponse((r) => {
+          if (r.request().method() !== "GET") return false;
+          const url = new URL(r.url());
+          return (
+            url.pathname === "/api/v1/admin/grading/items" &&
+            url.searchParams.get("state") === "WAITING" &&
+            url.searchParams.get("exam") === "BCA" &&
+            url.searchParams.get("from") === today &&
+            url.searchParams.get("to") === today
+          );
+        }),
+        (async () => {
+          await page.getByLabel("Bài thi").fill("BCA");
+          await page.getByLabel("Từ ngày").fill(today);
+          await page.getByLabel("Đến ngày").fill(today);
+        })(),
+      ]);
       expect(filteredRes.ok()).toBe(true);
       await expect(page).toHaveURL(
         (url) =>
@@ -1032,8 +1035,8 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
             allowLanguage,
             elementOverflow: {
               ...overflowOpts,
-              // attempt-list-view.tsx:177 truncates long learner usernames via span.truncate (tracked as P2 follow-up per AD-180 3=B)
-              ignore: "pre,input,textarea,select,.katex-display,span.truncate",
+              // attempt-list-view.tsx:176-177 applies max-w-36 + span.truncate on the learner username cell (tracked as a P2 post-wave UI follow-up under QA's zero-product-code-edits scope; AD-180 3=B specifically named exam-detail-view.tsx:198)
+              ignore: "pre,input,textarea,select,.katex-display,tbody td span.truncate",
             },
           });
 

@@ -166,9 +166,9 @@ test.describe("QA Core Flow — AC-4: Guest đăng ký, mua và hoàn thành DS-
     const subjectCheckboxes = page.locator(
       'main input[type="checkbox"]:not(:disabled), main button[role="checkbox"]:not([disabled])',
     );
-    expect(await subjectCheckboxes.count()).toBeGreaterThanOrEqual(3);
+    await expect(subjectCheckboxes.nth(2)).toBeVisible({ timeout: 10_000 });
     for (let i = 0; i < 3; i += 1) {
-      await subjectCheckboxes.nth(i).click();
+      await subjectCheckboxes.nth(i).check();
     }
     await expect(page.getByText("Đã chọn 3/3")).toBeVisible();
     await page.getByRole("button", { name: "Xác nhận chọn phần 3" }).click();

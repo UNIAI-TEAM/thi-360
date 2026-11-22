@@ -6,7 +6,6 @@ import {
   answerCurrentUnit,
   ensureDsReady,
   getAttemptStateApi,
-  publishThptqgMath3PartExam,
   purchaseExamViaUi,
   waitForSavedStatus,
 } from "./helpers/attempt-fixtures";
@@ -34,11 +33,12 @@ async function startAttemptHandlingPreChoice(page: Page, entitlementId: string, 
   const startBtn = page.getByRole("button", { name: "Bắt đầu bài thi" });
   await expect(startBtn).toBeEnabled({ timeout: 15_000 });
 
-  const startPromise = page.waitForResponse(
-    (res) => res.url().endsWith("/api/v1/me/attempts") && res.request().method() === "POST",
-  );
-  await startBtn.click();
-  const startRes = await startPromise;
+  const [startRes] = await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().endsWith("/api/v1/me/attempts") && res.request().method() === "POST",
+    ),
+    startBtn.click(),
+  ]);
   expect(startRes.ok(), `POST /api/v1/me/attempts failed: ${startRes.status()}`).toBe(true);
   const { attemptId } = (await startRes.json()) as { attemptId: string };
 
@@ -148,6 +148,7 @@ async function completeAttemptToScored(
 ): Promise<void> {
   const maxUnitsPerPart = options?.maxUnitsPerPart ?? 30;
 
+  let submitted = false;
   for (let partStep = 0; partStep < 6; partStep += 1) {
     await answerOpenPartUnits(page, maxUnitsPerPart);
 
@@ -161,6 +162,8 @@ async function completeAttemptToScored(
 
       // Nếu phần tiếp theo là AWAITING_CHOICE (vd HSA/QDA đầy đủ) thì chọn lựa chọn đầu
       const confirmChoiceBtn = page.getByRole("button", { name: /Xác nhận chọn phần/ });
+      const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
+      await expect(confirmChoiceBtn.or(fieldset).first()).toBeVisible({ timeout: 25_000 });
       if ((await confirmChoiceBtn.count()) > 0 && (await confirmChoiceBtn.isVisible())) {
         const radio = page.locator('main input[type="radio"]').first();
         if ((await radio.count()) > 0) await radio.check();
@@ -174,7 +177,7 @@ async function completeAttemptToScored(
         await expect(confirmChoiceBtn).toBeEnabled({ timeout: 10_000 });
         await confirmChoiceBtn.click();
       }
-      await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 25_000 });
+      await expect(fieldset).toBeVisible({ timeout: 25_000 });
       continue;
     }
 
@@ -184,8 +187,10 @@ async function completeAttemptToScored(
     const submitDialog = page.getByRole("dialog");
     await expect(submitDialog).toBeVisible();
     await submitDialog.getByRole("button", { name: "Nộp bài" }).click();
+    submitted = true;
     break;
   }
+  expect(submitted, "completeAttemptToScored must submit within max part iterations").toBe(true);
 
   await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({ timeout: 25_000 });
   const viewResultLink = page.getByRole("link", { name: "Xem kết quả" });
@@ -221,56 +226,56 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
   }) => {
     test.setTimeout(600_000);
 
-    const thptqgExam = await publishThptqgMath3PartExam("qa9");
-    const admin = await adminApi();
+    let admin: Awaited<ReturnType<typeof adminApi>> | undefined;
     let context: Awaited<ReturnType<typeof browser.newContext>> | undefined;
 
     try {
+      admin = await adminApi();
       const { cookies } = await createVerifiedAccount("qa.9kinds");
       context = await browser.newContext();
       await context.addCookies(cookies);
       const page = await context.newPage();
       page.setDefaultTimeout(25_000);
       await test.step("1. HSA (DS-HSA-PART-MATH-MINI)", async () => {
-        await runStandardKindFlow(page, "DS-HSA-PART-MATH-MINI", admin);
+        await runStandardKindFlow(page, "DS-HSA-PART-MATH-MINI", admin!);
       });
 
       await test.step("2. QDA (DS-QDA-PART-SCIENCE-MINI)", async () => {
-        await runStandardKindFlow(page, "DS-QDA-PART-SCIENCE-MINI", admin, { preChoice: /Q[DĐ]01/i });
+        await runStandardKindFlow(page, "DS-QDA-PART-SCIENCE-MINI", admin!, { preChoice: /Q[DĐ]01/i });
       });
 
       await test.step("3. BCA (DS-BCA-PART-TN-TU-CHON-MINI)", async () => {
-        await runStandardKindFlow(page, "DS-BCA-PART-TN-TU-CHON-MINI", admin, { preChoice: /CA1/i });
+        await runStandardKindFlow(page, "DS-BCA-PART-TN-TU-CHON-MINI", admin!, { preChoice: /CA1/i });
       });
 
       await test.step("4. VACT (DS-VACT-SUBJECT-TOAN-MINI)", async () => {
-        await runStandardKindFlow(page, "DS-VACT-SUBJECT-TOAN-MINI", admin);
+        await runStandardKindFlow(page, "DS-VACT-SUBJECT-TOAN-MINI", admin!);
       });
 
       await test.step("5. SP2E (DS-SP2E-MATH-2026-MINI)", async () => {
-        await runStandardKindFlow(page, "DS-SP2E-MATH-2026-MINI", admin);
+        await runStandardKindFlow(page, "DS-SP2E-MATH-2026-MINI", admin!);
       });
 
       await test.step("6. SPT (DS-SPT-INFORMATICS-MINI)", async () => {
-        await runStandardKindFlow(page, "DS-SPT-INFORMATICS-MINI", admin);
+        await runStandardKindFlow(page, "DS-SPT-INFORMATICS-MINI", admin!);
       });
 
-      await test.step("7. THPTQG 3 phần điều hướng FREE (publishThptqgMath3PartExam)", async () => {
-        const { entitlementId } = await purchaseExamViaUi(page, thptqgExam.code);
-        const attemptId = await startAttemptHandlingPreChoice(page, entitlementId);
+      await test.step("7. THPTQG (DS-THPTQG-INFORMATICS-MINI): điều hướng FREE đa phần + /result Đã chấm", async () => {
+        const { entitlementId } = await purchaseExamViaUi(page, "DS-THPTQG-INFORMATICS-MINI");
+        const attemptId = await startAttemptHandlingPreChoice(page, entitlementId, /CS|Khoa học máy tính/i);
 
         const state = await getAttemptStateApi(page.request, attemptId);
         expect(state.navigationMode).toBe("FREE");
-        expect(state.parts.length).toBe(3);
+        expect(state.parts.length).toBeGreaterThanOrEqual(2);
         await expect(page.getByRole("button", { name: "Hoàn thành phần" })).toHaveCount(0);
 
         const partTabs = page.getByRole("tab");
-        await expect(partTabs).toHaveCount(3);
-        // Điều hướng tự do Phần 3 -> Phần 2 -> Phần 1 và trả lời câu hỏi ở mỗi phần
-        for (const idx of [2, 1, 0]) {
+        await expect(partTabs).toHaveCount(state.parts.length);
+        // Điều hướng tự do ngược từ phần cuối về Phần 1 và trả lời câu hỏi ở mỗi phần
+        for (let idx = state.parts.length - 1; idx >= 0; idx -= 1) {
           await partTabs.nth(idx).click();
           await expect(partTabs.nth(idx)).toHaveAttribute("aria-selected", "true");
-          await answerOpenPartUnits(page, 10);
+          await answerOpenPartUnits(page, 30);
         }
 
         await page.getByRole("button", { name: "Nộp bài" }).click();
@@ -282,7 +287,10 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         await expect(viewResultLink).toHaveAttribute("href", `/attempts/${attemptId}/result`);
         await viewResultLink.click();
         await page.waitForURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 45_000 });
-        expect(await gradePendingEssayIfNeeded(page, attemptId, admin)).toBe("SCORED");
+        expect(await gradePendingEssayIfNeeded(page, attemptId, admin!)).toBe("SCORED");
+        await page.reload();
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByText("Đã chấm", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
       });
 
       await test.step("8. HSCA (DS-HSCA-ANH-MINI): nghe 2 lần hết lượt (0/2), không seek/audio[controls]", async () => {
@@ -300,13 +308,6 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
           const playBtn = audioRegion.getByRole("button", { name: /^Nghe$/ });
           await expect(playBtn).toBeEnabled({ timeout: 10_000 });
 
-          const playStartPromise = page.waitForResponse(
-            (res) =>
-              res.url().includes(`/attempts/${attemptId}/audio/`) &&
-              res.url().endsWith("/plays") &&
-              res.request().method() === "POST",
-            { timeout: 30_000 },
-          );
           const endPromise = page.waitForResponse(
             (res) =>
               res.url().includes(`/attempts/${attemptId}/audio/`) &&
@@ -314,9 +315,18 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
               res.request().method() === "POST",
             { timeout: 90_000 },
           );
+          endPromise.catch(() => undefined);
 
-          await playBtn.click();
-          const playStartRes = await playStartPromise;
+          const [playStartRes] = await Promise.all([
+            page.waitForResponse(
+              (res) =>
+                res.url().includes(`/attempts/${attemptId}/audio/`) &&
+                res.url().endsWith("/plays") &&
+                res.request().method() === "POST",
+              { timeout: 30_000 },
+            ),
+            playBtn.click(),
+          ]);
           expect(playStartRes.status(), `audio start #${playNo} failed: ${playStartRes.status()}`).toBe(200);
 
           const autoplayBlockedNotice = audioRegion.getByText(/Trình duyệt chặn tự động phát/);
@@ -352,7 +362,7 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         });
         await expect(audioRegion.getByRole("button", { name: /^Nghe$/ })).toBeDisabled({ timeout: 15_000 });
 
-        await completeAttemptToScored(page, attemptId, admin);
+        await completeAttemptToScored(page, attemptId, admin!);
       });
 
       await test.step("9. VSAT (DS-VSAT-ANH): displaySegments Phần I-IV + segments[] breakdown trên /result", async () => {
@@ -362,7 +372,7 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         await expect(page.locator("[data-segment-header]").filter({ hasText: "Phần I" }).first()).toBeVisible({
           timeout: 15_000,
         });
-        await completeAttemptToScored(page, attemptId, admin, { maxUnitsPerPart: 30 });
+        await completeAttemptToScored(page, attemptId, admin!, { maxUnitsPerPart: 30 });
 
         const segmentsSection = page.locator('section[aria-labelledby="result-segments-title"]');
         await expect(segmentsSection).toBeVisible({ timeout: 20_000 });
@@ -371,23 +381,7 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         }
       });
     } finally {
-      try {
-        const detailRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${thptqgExam.id}`, {
-          headers: admin.headers,
-        });
-        if (detailRes.ok()) {
-          const detail = (await detailRes.json()) as { revision: number; status?: string };
-          if (detail.status === "PUBLISHED") {
-            await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${thptqgExam.id}/discontinue`, {
-              headers: { ...admin.headers, "idempotency-key": randomUUID() },
-              data: { expectedRevision: detail.revision },
-            });
-          }
-        }
-      } finally {
-        await admin.api.dispose();
-        await context?.close();
-      }
+      await Promise.allSettled([admin?.api.dispose(), context?.close()]);
     }
   });
 });

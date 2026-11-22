@@ -52,14 +52,17 @@ test.describe("AC-25 BS 14 khoản thu thừa từ thanh toán nhiều lần", (
   test("AC-25 BS 14 khoản thu thừa: thử 1 lỗi -> thử 2 thành công -> IPN trễ lần 1 -> hoàn riêng lần 1 giữ FULFILLED và 3 lượt, replay lần 2 trả 02", async ({
     browser,
   }) => {
-    const { cookies } = await createVerifiedAccount("qa.pay14");
-    const studentCtx = await browser.newContext();
-    await studentCtx.addCookies(cookies);
-    const studentPage = await studentCtx.newPage();
-    studentPage.setDefaultTimeout(25_000);
-    const admin = await adminApi();
+    let studentCtx: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+    let admin: Awaited<ReturnType<typeof adminApi>> | undefined;
 
     try {
+      const { cookies } = await createVerifiedAccount("qa.pay14");
+      studentCtx = await browser.newContext();
+      await studentCtx.addCookies(cookies);
+      const studentPage = await studentCtx.newPage();
+      studentPage.setDefaultTimeout(25_000);
+      const activeAdmin = await adminApi();
+      admin = activeAdmin;
       // 1. Tạo thanh toán lần 1 -> lưu IPN thành công của lần 1 -> chọn fail trên /mock-vnpay
       await studentPage.goto(`${WEB_URL}/checkout/DS-HSA-PART-MATH-MINI`);
       await expect(studentPage.getByRole("heading", { level: 1, name: "Xác nhận mua" })).toBeVisible();
@@ -108,7 +111,7 @@ test.describe("AC-25 BS 14 khoản thu thừa từ thanh toán nhiều lần", (
       await expect
         .poll(
           async () => {
-            const detail = await fetchAdminOrderDetail(admin.api, orderCode);
+            const detail = await fetchAdminOrderDetail(activeAdmin.api, orderCode);
             const p1 = detail.payments.find((p) => p.txnRef === txnRef1);
             return p1 ? `${p1.duplicate}:${p1.excessReason ?? ""}` : "";
           },
@@ -156,21 +159,28 @@ test.describe("AC-25 BS 14 khoản thu thừa từ thanh toán nhiều lần", (
         await expect
           .poll(
             async () => {
-              const detail = await fetchAdminOrderDetail(admin.api, orderCode);
+              const detail = await fetchAdminOrderDetail(activeAdmin.api, orderCode);
               const p1 = detail.payments.find((p) => p.txnRef === txnRef1);
-              return `${detail.state}:${p1?.refundedAmountVnd ?? 0}:${p1?.refunds.length ?? 0}`;
+              return (
+                detail.state === "FULFILLED" &&
+                (p1?.refundedAmountVnd ?? 0) > 0 &&
+                Boolean(p1?.refunds.some((r) => r.state === "SUCCEEDED"))
+              );
             },
-            { message: "payment 1 refunded while order remains FULFILLED", timeout: 20_000 },
+            { message: "payment 1 refund SUCCEEDED while order remains FULFILLED", timeout: 20_000 },
           )
-          .not.toMatch(/:0:0$/);
+          .toBe(true);
 
         const afterRefundDetail = await fetchAdminOrderDetail(admin.api, orderCode);
         expect(afterRefundDetail.state).toBe("FULFILLED");
+        expect(afterRefundDetail.needsReview).toBe(false);
+        expect(afterRefundDetail.attentionTypes ?? []).not.toContain("DUPLICATE_UNREFUNDED");
         expect(afterRefundDetail.grants).toHaveLength(1);
         const payment1 = afterRefundDetail.payments.find((p) => p.txnRef === txnRef1);
         const payment2 = afterRefundDetail.payments.find((p) => p.txnRef === txnRef2);
         expect(payment1?.refundedAmountVnd).toBeGreaterThan(0);
         expect(payment1?.refunds).toHaveLength(1);
+        expect(payment1?.refunds[0]?.state).toBe("SUCCEEDED");
         expect(payment2?.refundedAmountVnd).toBe(0);
         expect(payment2?.refunds).toHaveLength(0);
       } finally {
@@ -194,8 +204,7 @@ test.describe("AC-25 BS 14 khoản thu thừa từ thanh toán nhiều lần", (
       const finalPayment1 = finalDetail.payments.find((p) => p.txnRef === txnRef1);
       expect(finalPayment1?.refunds).toHaveLength(1);
     } finally {
-      await admin.api.dispose();
-      await studentCtx.close();
+      await Promise.allSettled([admin?.api.dispose(), studentCtx?.close()]);
     }
   });
 });

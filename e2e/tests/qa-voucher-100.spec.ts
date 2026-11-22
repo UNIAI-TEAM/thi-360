@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { getMyExams, getTestClockNow } from "./helpers/attempt-fixtures";
@@ -50,17 +51,19 @@ test.describe("QA Core Flow — AC-5: Admin tạo voucher 100% và student nhậ
   test("AC-5: admin UI tạo voucher 100% hiệu lực ngay -> student áp mã 0đ không qua mock-vnpay", async ({
     browser,
   }) => {
-    const cleanRun = RUN_ID.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 8) || "QA";
     const voucherName = `QA-V100-${RUN_ID}`;
-    const voucherCode = `QAV100${cleanRun}`.slice(0, 20);
+    const voucherCode = `QAV100${randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
     const exam = voucherExam();
 
-    const admin = await adminApi();
+    let admin: Awaited<ReturnType<typeof adminApi>> | undefined;
+    let adminCtx: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+    let studentCtx: Awaited<ReturnType<typeof browser.newContext>> | undefined;
     let createdPromoId: string | undefined;
 
-    const adminCtx = await browser.newContext();
-    const studentCtx = await browser.newContext();
     try {
+      admin = await adminApi();
+      adminCtx = await browser.newContext();
+      studentCtx = await browser.newContext();
       await loginAdmin(adminCtx, "vi");
       const adminPage = await adminCtx.newPage();
 
@@ -149,26 +152,33 @@ test.describe("QA Core Flow — AC-5: Admin tạo voucher 100% và student nhậ
       await expect(
         studentPage.locator(`a[href="/prepare/${encodeURIComponent(granted.entitlementId)}"]`),
       ).toBeVisible();
+
+      const afterUseRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}`);
+      expect(afterUseRes.status(), await afterUseRes.text()).toBe(200);
+      const afterUseDetail = (await afterUseRes.json()) as PromotionDetail;
+      expect(afterUseDetail.usedCount).toBe(1);
     } finally {
-      if (createdPromoId) {
-        const getRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}`);
-        if (getRes.ok()) {
-          const detail = (await getRes.json()) as PromotionDetail;
-          if (detail.usedCount === 0) {
-            await admin.api.delete(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}`, {
-              headers: admin.headers,
-            });
-          } else if (detail.status === "ACTIVE") {
-            await admin.api.post(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}/stop`, {
-              headers: admin.headers,
-              data: { expectedRevision: detail.revision },
-            });
+      try {
+        if (createdPromoId && admin) {
+          const getRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}`);
+          if (getRes.ok()) {
+            const detail = (await getRes.json()) as PromotionDetail;
+            if (detail.usedCount === 0) {
+              await admin.api.delete(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}`, {
+                headers: admin.headers,
+              });
+            } else if (detail.status === "ACTIVE") {
+              await admin.api.post(`${ADMIN_URL}/api/v1/admin/promotions/${createdPromoId}/stop`, {
+                headers: admin.headers,
+                data: { expectedRevision: detail.revision },
+              });
+            }
           }
         }
+      } catch {
+        // Ignore cleanup errors so teardown still closes browser contexts and reports root test failures.
       }
-      await adminCtx.close();
-      await studentCtx.close();
-      await admin.api.dispose();
+      await Promise.allSettled([adminCtx?.close(), studentCtx?.close(), admin?.api.dispose()]);
     }
   });
 });

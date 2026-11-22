@@ -18,19 +18,13 @@ import {
 } from "./helpers/attempt-fixtures";
 import { createVerifiedAccount, type SessionCookies } from "./helpers/mail";
 
-function cookieHeader(cookies: SessionCookies): string {
-  return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
-}
-
-function xsrfFromCookies(cookies: SessionCookies): string {
-  return cookies.find((c) => c.name === "thi360_xsrf")?.value ?? "";
-}
-
-function studentWriteHeaders(cookies: SessionCookies): Record<string, string> {
+async function studentWriteHeaders(page: Page): Promise<Record<string, string>> {
+  const cookies = await page.context().cookies(WEB_URL);
+  const xsrf = cookies.find((c) => c.name === "thi360_xsrf")?.value ?? "";
+  expect(xsrf, "Expected live thi360_xsrf cookie on student context").toBeTruthy();
   return {
-    cookie: cookieHeader(cookies),
     origin: WEB_URL,
-    "x-xsrf-token": xsrfFromCookies(cookies),
+    "x-xsrf-token": xsrf,
   };
 }
 
@@ -86,14 +80,13 @@ async function startAttemptCapturingSession(
 }
 
 async function ensureSessionId(
-  request: APIRequestContext,
-  cookies: SessionCookies,
+  page: Page,
   attemptId: string,
   capturedSessionId: string,
 ): Promise<string> {
   if (capturedSessionId) return capturedSessionId;
-  const res = await request.post(`${API_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/session`, {
-    headers: studentWriteHeaders(cookies),
+  const res = await page.request.post(`${WEB_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/session`, {
+    headers: await studentWriteHeaders(page),
     data: { takeover: true },
   });
   expect(res.ok(), `POST /session: ${res.status()} ${await res.text()}`).toBe(true);
@@ -210,7 +203,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
 
       // Mở lại /pay trên đơn 1 quá hạn phải bị từ chối 409 ORDER_EXPIRED
       const expiredPayRes = await page.request.post(`${WEB_URL}/api/v1/me/orders/${encodeURIComponent(orderCode1)}/pay`, {
-        headers: studentWriteHeaders(cookies),
+        headers: await studentWriteHeaders(page),
         data: {},
       });
       expect(expiredPayRes.status(), await expiredPayRes.text()).toBe(409);
@@ -227,7 +220,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       expect(orderCode2).not.toBe(orderCode1);
 
       const cancelRes = await page.request.post(`${WEB_URL}/api/v1/me/orders/${encodeURIComponent(orderCode2)}/cancel`, {
-        headers: studentWriteHeaders(cookies),
+        headers: await studentWriteHeaders(page),
         data: {},
       });
       expect(cancelRes.ok(), `cancel replacement order ${orderCode2}: ${cancelRes.status()} ${await cancelRes.text()}`).toBe(true);
@@ -283,20 +276,56 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       const nowIso = await getTestClockNow();
       const deltaSeconds = Math.max(5, Math.ceil((Date.parse(deadlineIso!) - Date.parse(nowIso)) / 1000) + 5);
 
-      const sessionId = await ensureSessionId(page.request, cookies, attemptId, initialSessionId);
+      const sessionId = await ensureSessionId(page, attemptId, initialSessionId);
       await advanceTestClock(deltaSeconds);
 
-      // Nộp bài ngay sau mốc deadline trên server: server đóng sạch (200), không trả 500
-      const submitRes = await page.request.post(`${WEB_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/submit`, {
+      const key1 = randomUUID();
+      const key2 = randomUUID();
+      const writeHeaders = await studentWriteHeaders(page);
+      const submitUrl = `${WEB_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/submit`;
+
+      // Nộp trùng đồng thời ngay sau mốc deadline + replay idempotent: trả 200 sạch, không 409/500
+      const [submitRes1, submitRes2] = await Promise.all([
+        page.request.post(submitUrl, {
+          headers: {
+            ...writeHeaders,
+            "Idempotency-Key": key1,
+            "X-Attempt-Session": sessionId,
+          },
+          data: { finalAnswers: [] },
+        }),
+        page.request.post(submitUrl, {
+          headers: {
+            ...writeHeaders,
+            "Idempotency-Key": key2,
+            "X-Attempt-Session": sessionId,
+          },
+          data: { finalAnswers: [] },
+        }),
+      ]);
+      expect(submitRes1.status(), `Concurrent boundary submit #1 must return 200: ${await submitRes1.text()}`).toBe(200);
+      expect(submitRes2.status(), `Concurrent boundary submit #2 must return 200: ${await submitRes2.text()}`).toBe(200);
+      const submitBody1 = (await submitRes1.json()) as { attemptId?: string; state?: string; endReason?: string | null };
+      const submitBody2 = (await submitRes2.json()) as { attemptId?: string; state?: string; endReason?: string | null };
+      for (const body of [submitBody1, submitBody2]) {
+        expect(body.attemptId).toBe(attemptId);
+        expect(["GRADING", "SCORED"]).toContain(body.state);
+        expect(["TIME_UP", "SUBMITTED"]).toContain(body.endReason);
+      }
+
+      const replaySubmitRes = await page.request.post(submitUrl, {
         headers: {
-          ...studentWriteHeaders(cookies),
-          "Idempotency-Key": randomUUID(),
+          ...writeHeaders,
+          "Idempotency-Key": key1,
           "X-Attempt-Session": sessionId,
         },
         data: { finalAnswers: [] },
       });
-      expect(submitRes.status(), `Boundary submit must not 500: ${await submitRes.text()}`).toBeLessThan(500);
-      expect([200, 409]).toContain(submitRes.status());
+      expect(replaySubmitRes.status(), `Idempotent boundary submit replay: ${await replaySubmitRes.text()}`).toBe(200);
+      const replayBody = (await replaySubmitRes.json()) as { attemptId?: string; state?: string; endReason?: string | null };
+      expect(replayBody.attemptId).toBe(attemptId);
+      expect(replayBody.state).toBe(submitBody1.state);
+      expect(replayBody.endReason).toBe(submitBody1.endReason);
 
       await expect
         .poll(
@@ -359,12 +388,19 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       const attemptId = await startAttemptFromPrepare(page, hsa.entitlementId);
 
       // Hoàn thành Phần 1 & Phần 2 để vào màn chọn Phần 3 (SCIENCE: 3 môn)
+      const partNav = page.locator('nav[aria-label="Các phần của bài thi"]');
       for (let step = 0; step < 2; step += 1) {
         await page.getByRole("button", { name: "Hoàn thành phần" }).click();
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await dialog.getByRole("button", { name: "Hoàn thành phần" }).click();
         await expect(dialog).toBeHidden({ timeout: 25_000 });
+        await expect
+          .poll(async () => ((await partNav.textContent()) ?? "").match(/Đã hoàn thành/g)?.length ?? 0, {
+            timeout: 25_000,
+            message: `Đợi có ${step + 1} phần Đã hoàn thành`,
+          })
+          .toBeGreaterThanOrEqual(step + 1);
       }
 
       await expect(page.getByRole("heading", { name: "Chọn phần thi thứ ba" })).toBeVisible({ timeout: 25_000 });
@@ -515,16 +551,23 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       await expect(examCard.getByRole("link", { name: "Tiếp tục" })).toBeVisible();
       await expect(examCard.getByRole("link", { name: "Bắt đầu" })).toHaveCount(0);
 
-      const newAttemptRes = await page.request.post(`${WEB_URL}/api/v1/me/attempts`, {
+      // Khi lượt thi đang IN_PROGRESS sau hoàn tiền: POST /attempts nối lại lượt đang mở (200 resumed: true, LT F6) mà không trừ lượt mới
+      const resumeAttemptRes = await page.request.post(`${WEB_URL}/api/v1/me/attempts`, {
         headers: {
-          ...studentWriteHeaders(cookies),
+          ...(await studentWriteHeaders(page)),
           "Idempotency-Key": randomUUID(),
         },
         data: { entitlementId },
       });
-      expect(newAttemptRes.status(), await newAttemptRes.text()).toBe(409);
-      const newAttemptBody = (await newAttemptRes.json()) as { code?: string };
-      expect(newAttemptBody.code).toBe("NO_ATTEMPTS_LEFT");
+      expect(resumeAttemptRes.status(), await resumeAttemptRes.text()).toBe(200);
+      const resumeAttemptBody = (await resumeAttemptRes.json()) as {
+        attemptId?: string;
+        state?: string;
+        resumed?: boolean;
+      };
+      expect(resumeAttemptBody.attemptId).toBe(attemptId);
+      expect(resumeAttemptBody.state).toBe("IN_PROGRESS");
+      expect(resumeAttemptBody.resumed).toBe(true);
 
       // Học viên quay lại lượt đang làm và nộp bài thành công tới SCORED
       await examCard.getByRole("link", { name: "Tiếp tục" }).click();
@@ -550,6 +593,28 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
           { message: "in-progress attempt settles to SCORED after refund", timeout: 45_000, intervals: [500, 1_000] },
         )
         .toBe("SCORED");
+
+      // Sau khi lượt đang dở đã SCORED: không thể mở lượt mới (409 NO_ATTEMPTS_LEFT) và /home chỉ còn 0 lượt, Hết lượt / Mua lại
+      const blockedAfterScoredRes = await page.request.post(`${WEB_URL}/api/v1/me/attempts`, {
+        headers: {
+          ...(await studentWriteHeaders(page)),
+          "Idempotency-Key": randomUUID(),
+        },
+        data: { entitlementId },
+      });
+      expect(blockedAfterScoredRes.status(), await blockedAfterScoredRes.text()).toBe(409);
+      const blockedAfterScoredBody = (await blockedAfterScoredRes.json()) as { code?: string };
+      expect(blockedAfterScoredBody.code).toBe("NO_ATTEMPTS_LEFT");
+
+      await page.goto(`${WEB_URL}/home`);
+      await page.reload();
+      const cardAfterScored = page.locator("article", { hasText: "HSA theo phần Toán (thu nhỏ)" }).first();
+      await expect(cardAfterScored).toBeVisible({ timeout: 15_000 });
+      await expect(cardAfterScored.locator("strong")).toHaveText("0");
+      await expect(cardAfterScored.getByRole("link", { name: "Bắt đầu" })).toHaveCount(0);
+      await expect(cardAfterScored.getByRole("link", { name: "Tiếp tục" })).toHaveCount(0);
+      await expect(cardAfterScored.getByText("Hết lượt").first()).toBeVisible();
+      await expect(cardAfterScored.getByRole("link", { name: "Mua lại" })).toBeVisible();
     } finally {
       await context.close();
     }

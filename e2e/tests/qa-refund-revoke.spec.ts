@@ -58,7 +58,8 @@ test.describe("QA Core Flow — AC-7: Hoàn tiền toàn bộ thu hồi lượt 
         const orderLink = studentPage.locator('main a[href^="/account/orders/"]').first();
         await expect(orderLink).toBeVisible({ timeout: 10_000 });
         const href = await orderLink.getAttribute("href");
-        orderCode = /\/account\/orders\/([^/?#]+)/.exec(href ?? "")?.[1] ?? null;
+        const match = /\/account\/orders\/([^/?#]+)/.exec(href ?? "");
+        orderCode = match?.[1] ? decodeURIComponent(match[1]) : null;
       }
       if (!orderCode) {
         throw new Error(`Không tách được orderCode từ URL ${studentPage.url()}`);
@@ -95,7 +96,7 @@ test.describe("QA Core Flow — AC-7: Hoàn tiền toàn bộ thu hồi lượt 
       const refundDialog = adminPage.getByRole("dialog");
       await expect(refundDialog).toBeVisible();
 
-      await refundDialog.getByRole("checkbox").check();
+      await refundDialog.getByLabel(/Xác nhận đây là lỗi hệ thống/).check();
       await refundDialog
         .getByLabel(/Lý do hoàn tiền/)
         .fill("QA-E2E full refund revoke unused attempts");
@@ -132,10 +133,11 @@ test.describe("QA Core Flow — AC-7: Hoàn tiền toàn bộ thu hồi lượt 
       await expect(studentPage.getByRole("button", { name: "Bắt đầu bài thi" })).toBeDisabled();
 
       const xsrf = readXsrfCookie(await studentCtx.cookies(WEB_URL));
+      expect(xsrf, "Expected XSRF cookie on student context").toBeTruthy();
       const blockedStartRes = await studentCtx.request.post(`${WEB_URL}/api/v1/me/attempts`, {
         headers: {
           Origin: WEB_URL,
-          ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}),
+          "X-XSRF-TOKEN": xsrf,
           "Idempotency-Key": randomUUID(),
         },
         data: { entitlementId: ownedBefore.entitlementId },
@@ -143,6 +145,15 @@ test.describe("QA Core Flow — AC-7: Hoàn tiền toàn bộ thu hồi lượt 
       expect(blockedStartRes.status()).toBe(409);
       const blockedBody = (await blockedStartRes.json()) as { code?: string };
       expect(blockedBody.code).toBe("NO_ATTEMPTS_LEFT");
+
+      // 6. Trang chi tiết đơn hàng của học viên hiển thị trạng thái Đã hoàn tiền
+      await studentPage.goto(`${WEB_URL}/account/orders/${encodeURIComponent(orderCode)}`);
+      await expect(studentPage.getByRole("heading", { level: 1, name: new RegExp(orderCode) })).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(studentPage.getByText("Đã hoàn tiền", { exact: true }).first()).toBeVisible({
+        timeout: 15_000,
+      });
     } finally {
       await studentCtx.close();
       await adminCtx.close();

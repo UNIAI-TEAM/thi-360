@@ -665,19 +665,54 @@ export async function renameFirstBlockAndSaveInUi(page: Page, admin: AdminApi, e
     const structureBlock = matrixForm.locator('[data-form-field="STRUCTURE"]');
     const fillInput = structureBlock.getByRole("textbox", { name: "Điền đáp án", exact: true });
     const choiceInput = structureBlock.getByRole("textbox", { name: "Trắc nghiệm", exact: true });
+    const singleInput = structureBlock.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true });
+    const fallbackCountInput = structureBlock.getByRole("textbox", { name: /· số câu$/ }).first();
+
     const isFill = (await fillInput.count()) > 0;
-    const countInput = isFill ? fillInput : choiceInput;
+    const isChoice = !isFill && (await choiceInput.count()) > 0;
+    const isSingle = !isFill && !isChoice && (await singleInput.count()) > 0;
+    const countInput = isFill
+      ? fillInput
+      : isChoice
+        ? choiceInput
+        : isSingle
+          ? singleInput
+          : fallbackCountInput;
     await expect(countInput).toBeVisible();
+
+    const sectionBefore = allSections(await getStructure(admin, examId)).find((s) =>
+      (s.blocks ?? []).some((b) => b.id === block!.id),
+    );
+    const targetType = isFill ? "SHORT_ANSWER" : "SINGLE_CHOICE";
+    const targetBlockBefore =
+      (sectionBefore?.blocks ?? []).find((b) => b.questionType === targetType) ??
+      (sectionBefore?.blocks ?? []).find((b) => b.id === block!.id);
+    expect(targetBlockBefore?.id, "không tìm thấy khối mục tiêu trong section MATRIX").toBeTruthy();
+
     const origValue = await countInput.inputValue();
     const origNum = Number(origValue);
     const tempValue = isFill ? String(origNum > 1 ? origNum - 1 : origNum + 1) : String(origNum + 1);
+    const delta = Number(tempValue) - origNum;
+    const expectedTempCount = isChoice ? (targetBlockBefore?.questionCount ?? 0) + delta : Number(tempValue);
+
     await countInput.fill(tempValue);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
     await saveStructureInUi(page, examId);
+
+    const savedBlock = allSections(await getStructure(admin, examId))
+      .flatMap((section) => section.blocks ?? [])
+      .find((item) => item.id === targetBlockBefore!.id);
+    expect(savedBlock?.questionCount, "số câu khối MATRIX sau khi lưu").toBe(expectedTempCount);
+
     await countInput.fill(origValue);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
     await saveStructureInUi(page, examId);
     await expect(countInput).toHaveValue(origValue);
+
+    const restoredBlock = allSections(await getStructure(admin, examId))
+      .flatMap((section) => section.blocks ?? [])
+      .find((item) => item.id === targetBlockBefore!.id);
+    expect(restoredBlock?.questionCount, "số câu khối MATRIX sau khi khôi phục").toBe(targetBlockBefore?.questionCount);
     return { id: block!.id!, name: block!.name! };
   }
 
@@ -816,8 +851,15 @@ export async function ensureListingFilledInUi(page: Page, examId: string): Promi
   if (shouldSave || (await saveListing.isEnabled())) {
     await expect(saveListing).toBeEnabled();
     const [savedListing, refreshedExam] = await Promise.all([
-      page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/listing`) && item.request().method() === "PUT"),
-      page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}`) && item.request().method() === "GET"),
+      page.waitForResponse(
+        (item) =>
+          new URL(item.url()).pathname === `/api/v1/admin/exams/${examId}/listing` &&
+          item.request().method() === "PUT",
+      ),
+      page.waitForResponse(
+        (item) =>
+          new URL(item.url()).pathname === `/api/v1/admin/exams/${examId}` && item.request().method() === "GET",
+      ),
       saveListing.click(),
     ]);
     expect(savedListing.status(), await savedListing.text()).toBe(200);

@@ -9,7 +9,7 @@ import {
   waitForSavedStatus,
 } from "./helpers/attempt-fixtures";
 import { adminApi, ADMIN_URL, loginAdmin, RUN_ID, WEB_URL } from "./helpers/editor-qa";
-import { createVerifiedAccount } from "./helpers/mail";
+import { newAccount, registerViaApi, verifyEmailViaApi } from "./helpers/mail";
 
 /**
  * AC-6: Student hoàn thành `DS-BCA-FULL-MINI` (`preChoiceCode: CA1`, Phần 1 ESSAY + các phần sau) ->
@@ -25,11 +25,18 @@ interface AttemptResultSummary {
   displayScore?: number | null;
 }
 
-interface GradingQueueResponse {
+interface AdminAttemptDetail {
   items: Array<{
     itemId: string;
-    attemptId: string;
-    state: string;
+    questionType: string;
+  }>;
+}
+
+interface AttemptReviewSummary {
+  items: Array<{
+    itemId: string;
+    questionType: string;
+    earnedPoints?: number | null;
   }>;
 }
 
@@ -72,7 +79,13 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
     browser,
   }) => {
     const admin = await adminApi();
-    const { account, cookies } = await createVerifiedAccount("qa.bca");
+    const baseAccount = newAccount("qa.bca");
+    const account = {
+      ...baseAccount,
+      fullName: `QA-Bca Student ${RUN_ID}`,
+    };
+    const cookies = await registerViaApi(account);
+    await verifyEmailViaApi(cookies, account);
     const essayMarker = `QA-BCA-ESSAY-${RUN_ID} lap luan mach lac va dan chung cu the.`;
 
     const studentCtx = await browser.newContext();
@@ -147,15 +160,21 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
       await expect(studentPage.getByText("Chờ chấm").first()).toBeVisible();
       await expect(studentPage.locator("main .text-display")).toHaveCount(0);
 
-      // Đợi item xuất hiện trong hàng chờ chấm trước khi mở UI admin
+      // Đợi item tự luận được khởi tạo qua /admin/attempts/[id] và sẵn sàng trong /admin/grading/items/[itemId]
       let itemId: string | undefined;
       await expect
         .poll(
           async () => {
-            const queueRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/grading/items?state=WAITING&size=50`);
-            if (!queueRes.ok()) return undefined;
-            const queue = (await queueRes.json()) as GradingQueueResponse;
-            itemId = queue.items.find((item) => item.attemptId === attemptId)?.itemId;
+            const attemptRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/attempts/${encodeURIComponent(attemptId)}`);
+            if (!attemptRes.ok()) return undefined;
+            const attemptDetail = (await attemptRes.json()) as AdminAttemptDetail;
+            const essayItem = attemptDetail.items.find((item) => item.questionType === "ESSAY");
+            if (!essayItem?.itemId) return undefined;
+            const itemRes = await admin.api.get(
+              `${ADMIN_URL}/api/v1/admin/grading/items/${encodeURIComponent(essayItem.itemId)}`,
+            );
+            if (!itemRes.ok()) return undefined;
+            itemId = essayItem.itemId;
             return itemId;
           },
           { timeout: 25_000, message: `Tìm câu tự luận của lượt ${attemptId}` },
@@ -171,21 +190,39 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
 
       const queueTable = adminPage.getByRole("table", { name: "Danh sách câu tự luận cần chấm" });
       await expect(queueTable).toBeVisible();
+      await expect(adminPage.locator('[aria-busy="true"], .animate-pulse')).toHaveCount(0, { timeout: 20_000 });
 
       let targetRow = queueTable.getByRole("link", { name: new RegExp(`#${shortCode}`) });
       if ((await targetRow.count()) === 0) {
         const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(
           new Date(await getTestClockNow()),
         );
-        await adminPage.getByLabel("Bài thi").fill("BCA");
-        await adminPage.getByLabel("Từ ngày").fill(today);
-        await adminPage.getByLabel("Đến ngày").fill(today);
+        const [filteredRes] = await Promise.all([
+          adminPage.waitForResponse((res) => {
+            if (res.request().method() !== "GET") return false;
+            const url = new URL(res.url());
+            return (
+              url.pathname === "/api/v1/admin/grading/items" &&
+              url.searchParams.get("exam") === "BCA" &&
+              url.searchParams.get("from") === today &&
+              url.searchParams.get("to") === today
+            );
+          }),
+          (async () => {
+            await adminPage.getByLabel("Bài thi").fill("BCA");
+            await adminPage.getByLabel("Từ ngày").fill(today);
+            await adminPage.getByLabel("Đến ngày").fill(today);
+          })(),
+        ]);
+        expect(filteredRes.ok(), `GET /admin/grading/items filtered: ${filteredRes.status()}`).toBe(true);
+        await expect(adminPage.locator('[aria-busy="true"], .animate-pulse')).toHaveCount(0, { timeout: 20_000 });
         targetRow = queueTable.getByRole("link", { name: new RegExp(`#${shortCode}`) });
       }
 
       await expect(targetRow).toBeVisible({ timeout: 20_000 });
       await expect(adminPage.locator('[aria-busy="true"], .animate-pulse')).toHaveCount(0, { timeout: 20_000 });
       await expect(adminPage.locator("main")).not.toContainText(account.username);
+      await expect(adminPage.locator("main")).not.toContainText(account.fullName);
       await expect(adminPage.locator("main")).not.toContainText(account.email);
 
       await targetRow.click();
@@ -193,6 +230,7 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
       await expect(adminPage.getByRole("heading", { level: 1, name: new RegExp(`#${shortCode}`) })).toBeVisible();
       await expect(adminPage.locator("main")).toContainText(essayMarker);
       await expect(adminPage.locator("main")).not.toContainText(account.username);
+      await expect(adminPage.locator("main")).not.toContainText(account.fullName);
       await expect(adminPage.locator("main")).not.toContainText(account.email);
 
       await adminPage.getByRole("button", { name: "Nhận câu để chấm" }).click();
@@ -203,20 +241,21 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
       expect(detailRes.status()).toBe(200);
       const detail = (await detailRes.json()) as GradingDetailResponse;
 
+      let expectedEssayScore = 0;
       if (detail.rubric.length > 0) {
         const rubricScores = detail.rubric.map((criterion) =>
           Number(((criterion.points ?? 0) / 2).toFixed(2)),
         );
-        const totalScore = Number(rubricScores.reduce((sum, score) => sum + score, 0).toFixed(2));
+        expectedEssayScore = Number(rubricScores.reduce((sum, score) => sum + score, 0).toFixed(2));
         for (let i = 0; i < detail.rubric.length; i += 1) {
           await adminPage
             .getByLabel(new RegExp(`^Tiêu chí ${i + 1}\\.`))
             .fill(toViInput(rubricScores[i] ?? 0));
         }
-        await pointsInput.fill(toViInput(totalScore));
+        await pointsInput.fill(toViInput(expectedEssayScore));
       } else {
-        const halfPoints = Number((detail.pointsMax / 2).toFixed(2));
-        await pointsInput.fill(toViInput(halfPoints));
+        expectedEssayScore = Number((detail.pointsMax / 2).toFixed(2));
+        await pointsInput.fill(toViInput(expectedEssayScore));
       }
 
       await adminPage.getByLabel("Nhận xét").fill(`QA-E2E Nhận xét chấm tự luận ${RUN_ID}`);
@@ -229,7 +268,7 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
         timeout: 20_000,
       });
 
-      // 4. Student reload `/attempts/[id]/result` -> thấy `Đã chấm`, API `SCORED` và điểm số hiển thị
+      // 4. Student reload `/attempts/[id]/result` -> thấy `Đã chấm`, API `SCORED` và điểm tự luận khớp rubric đã chấm
       let scoredSummary: AttemptResultSummary | undefined;
       await expect
         .poll(
@@ -243,9 +282,16 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
         )
         .toBe("SCORED");
 
+      const reviewRes = await studentCtx.request.get(`${WEB_URL}/api/v1/me/attempts/${encodeURIComponent(attemptId)}/review`);
+      expect(reviewRes.status(), await reviewRes.text()).toBe(200);
+      const reviewBody = (await reviewRes.json()) as AttemptReviewSummary;
+      const gradedEssayItem = reviewBody.items.find((item) => item.itemId === itemId && item.questionType === "ESSAY");
+      expect(gradedEssayItem, `Không tìm thấy câu tự luận ${itemId} trong /review`).toBeDefined();
+      expect(Number(gradedEssayItem!.earnedPoints)).toBeCloseTo(expectedEssayScore, 2);
+
       const finalScore = scoredSummary?.displayScore ?? scoredSummary?.rawScore;
       expect(finalScore).not.toBeNull();
-      expect(Number(finalScore)).toBeGreaterThan(0);
+      expect(Number(finalScore)).toBeGreaterThanOrEqual(expectedEssayScore);
 
       await studentPage.reload();
       await expect(studentPage.getByText("Đã chấm").first()).toBeVisible({ timeout: 20_000 });

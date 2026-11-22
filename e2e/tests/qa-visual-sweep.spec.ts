@@ -22,74 +22,96 @@ function escapeRegExp(value: string): string {
 let cachedAllowForms: Promise<Set<string>> | undefined;
 
 function knownDynamicForms(): Promise<Set<string>> {
-  cachedAllowForms ??= (async () => {
-    const forms = new Set<string>();
-    const api = await playwrightRequest.newContext();
-    try {
-      const filtersRes = await api.get(`${API_URL}/api/v1/public/storefront/filters`);
-      if (filtersRes.ok()) {
-        const data = (await filtersRes.json()) as {
-          parts?: Array<{ kindCode: string; name: string }>;
-          exams?: Array<{ code: string; name: string }>;
-          kinds?: Array<{ code: string; name: string }>;
-        };
-        for (const p of data.parts ?? []) {
-          forms.add(p.name);
-          forms.add(`${p.kindCode} · ${p.name}`);
-        }
-        for (const e of data.exams ?? []) {
-          forms.add(e.name);
-        }
-        for (const k of data.kinds ?? []) {
-          forms.add(k.name);
-        }
-      }
-    } finally {
-      await api.dispose();
-    }
-
-    const admin = await adminApi();
-    try {
-      for (const path of [
-        "/api/v1/admin/exams?page=0&size=100",
-        "/api/v1/admin/bundles?page=0&size=100",
-        "/api/v1/admin/promotions?page=0&size=100",
-      ]) {
-        const res = await admin.api.get(`${ADMIN_URL}${path}`);
-        if (res.ok()) {
-          const body = (await res.json()) as { items?: Array<{ name?: string; title?: string; code?: string }> };
-          for (const item of body.items ?? []) {
-            if (item.name) forms.add(item.name);
-            if (item.title) forms.add(item.title);
+  if (!cachedAllowForms) {
+    const promise = (async () => {
+      const forms = new Set<string>();
+      const api = await playwrightRequest.newContext();
+      try {
+        const filtersRes = await api.get(`${API_URL}/api/v1/public/storefront/filters`);
+        if (filtersRes.ok()) {
+          const data = (await filtersRes.json()) as {
+            parts?: Array<{ kindCode: string; name: string }>;
+            exams?: Array<{ code: string; name: string }>;
+            kinds?: Array<{ code: string; name: string }>;
+          };
+          for (const p of data.parts ?? []) {
+            forms.add(p.name);
+            forms.add(`${p.kindCode} · ${p.name}`);
+          }
+          for (const e of data.exams ?? []) {
+            forms.add(e.name);
+          }
+          for (const k of data.kinds ?? []) {
+            forms.add(k.name);
           }
         }
+      } finally {
+        await api.dispose();
       }
-    } finally {
-      await admin.api.dispose();
-    }
 
-    return forms;
-  })();
+      const admin = await adminApi();
+      try {
+        const pageSize = 100;
+        for (const basePath of [
+          "/api/v1/admin/exams",
+          "/api/v1/admin/bundles",
+          "/api/v1/admin/promotions",
+        ]) {
+          let pageIdx = 0;
+          while (true) {
+            const res = await admin.api.get(`${ADMIN_URL}${basePath}?page=${pageIdx}&size=${pageSize}`);
+            if (!res.ok()) break;
+            const body = (await res.json()) as {
+              items?: Array<{ name?: string; title?: string; code?: string }>;
+              totalPages?: number;
+            };
+            const items = body.items ?? [];
+            for (const item of items) {
+              if (item.name) forms.add(item.name);
+              if (item.title) forms.add(item.title);
+            }
+            pageIdx += 1;
+            if (items.length < pageSize || (typeof body.totalPages === "number" && pageIdx >= body.totalPages)) {
+              break;
+            }
+          }
+        }
+      } finally {
+        await admin.api.dispose();
+      }
+
+      return forms;
+    })().catch((err) => {
+      if (cachedAllowForms === promise) {
+        cachedAllowForms = undefined;
+      }
+      throw err;
+    });
+    cachedAllowForms = promise;
+  }
   return cachedAllowForms;
 }
 
-async function buildAllowLanguage(page: Page, options: { includeTitle?: boolean } = {}): Promise<RegExp[]> {
-  const { optionTexts, examContentTexts } = await page.evaluate(() => ({
+async function buildAllowLanguage(page: Page, options: { allowProductTitle?: boolean } = {}): Promise<RegExp[]> {
+  const { optionTexts, examContentTexts, productHeading } = await page.evaluate(() => ({
     optionTexts: [...document.querySelectorAll<HTMLOptionElement>('select[aria-hidden="true"] option')].map((opt) =>
       opt.text.replace(/\s+/g, " ").trim(),
     ),
     examContentTexts: [...document.querySelectorAll("[data-exam-content]")].map((el) =>
       (el.textContent ?? "").replace(/\s+/g, " ").trim(),
     ),
+    productHeading:
+      document.querySelector("h1[data-exam-content]")?.textContent?.replace(/\s+/g, " ").trim() ?? "",
   }));
-  const known = await knownDynamicForms();
+  const known = new Set(await knownDynamicForms());
   for (const t of examContentTexts) {
     if (t) known.add(t);
   }
-  const allowStrings = [
-    ...optionTexts.filter((text) => known.has(text)),
-    ...(options.includeTitle ? [await page.title()] : []),
-  ].filter(Boolean);
+  const allowStrings = optionTexts.filter((text) => known.has(text)).filter(Boolean);
+  const titlePatterns =
+    options.allowProductTitle && productHeading
+      ? [new RegExp(`^${escapeRegExp(productHeading)}(?:\\s*[·|\\-–—]\\s*Thi 360)?$`)]
+      : [];
 
   return [
     /^QA-/i,
@@ -103,6 +125,7 @@ async function buildAllowLanguage(page: Page, options: { includeTitle?: boolean 
     /^DS-/i,
     /^DH[0-9A-Z]+$/i,
     /^#?[0-9A-F]{8}$/i,
+    ...titlePatterns,
     ...allowStrings.map((text) => new RegExp(`^${escapeRegExp(text)}$`)),
   ];
 }
@@ -118,19 +141,18 @@ async function ensurePlayerActiveSession(page: Page, attemptId: string): Promise
     res.url().includes(`/api/v1/me/attempts/${encodeURIComponent(attemptId)}/session`) &&
     res.request().method() === "POST";
 
-  const initialSessionPromise = page.waitForResponse(isSessionPost, { timeout: 25_000 });
-  await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(attemptId)}`);
-  const initialSessionRes = await initialSessionPromise;
+  const [initialSessionRes] = await Promise.all([
+    page.waitForResponse(isSessionPost, { timeout: 25_000 }),
+    page.goto(`${WEB_URL}/attempts/${encodeURIComponent(attemptId)}`),
+  ]);
 
   const takeoverBtn = page.getByRole("button", { name: /Tiếp tục tại đây|Continue here/i });
   if (initialSessionRes.status() === 409 || (await takeoverBtn.isVisible())) {
     await expect(takeoverBtn).toBeVisible({ timeout: 15_000 });
-    const takeoverSessionPromise = page.waitForResponse(
-      (res) => isSessionPost(res) && res.status() === 200,
-      { timeout: 25_000 },
-    );
-    await takeoverBtn.click();
-    await takeoverSessionPromise;
+    await Promise.all([
+      page.waitForResponse((res) => isSessionPost(res) && res.status() === 200, { timeout: 25_000 }),
+      takeoverBtn.click(),
+    ]);
     await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 15_000 });
   } else {
     expect(initialSessionRes.status(), `POST /session failed: ${initialSessionRes.status()}`).toBe(200);
@@ -274,7 +296,7 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
             await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
             await waitForSettled(page);
             await expectMatrixClean(page, "qa-bundle-detail", cell, {
-              allowLanguage: await buildAllowLanguage(page, { includeTitle: true }),
+              allowLanguage: await buildAllowLanguage(page, { allowProductTitle: true }),
               elementOverflow: adminOverflow,
             });
 
@@ -282,7 +304,7 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
             await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
             await waitForSettled(page);
             await expectMatrixClean(page, "qa-exam-detail", cell, {
-              allowLanguage: await buildAllowLanguage(page, { includeTitle: true }),
+              allowLanguage: await buildAllowLanguage(page, { allowProductTitle: true }),
               elementOverflow: adminOverflow,
             });
 
@@ -297,14 +319,19 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
             await ensurePlayerActiveSession(page, activeAttemptId);
             await waitForSettled(page);
             await expectMatrixClean(page, "qa-attempt", cell, {
-              allowLanguage: await buildAllowLanguage(page, { includeTitle: true }),
+              allowLanguage: await buildAllowLanguage(page),
+              elementOverflow: {
+                scope: "main",
+                allowAccessibleScroller: true,
+                ignore: "pre,input,textarea,select,.katex-display,nav.overflow-x-auto",
+              },
             });
 
             await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(scoredAttemptId)}/result`);
             await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
             await waitForSettled(page);
             await expectMatrixClean(page, "qa-result", cell, {
-              allowLanguage: await buildAllowLanguage(page, { includeTitle: true }),
+              allowLanguage: await buildAllowLanguage(page),
               elementOverflow: adminOverflow,
             });
 
@@ -368,8 +395,8 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
               allowLanguage: await buildAllowLanguage(page),
               elementOverflow: {
                 ...adminOverflow,
-                // attempt-list-view.tsx:177 truncates long learner usernames via span.truncate (tracked as P2 follow-up per AD-180 3=B)
-                ignore: "pre,input,textarea,select,.katex-display,span.truncate",
+                // attempt-list-view.tsx:176-177 applies max-w-36 + span.truncate on the learner username cell (tracked as a P2 post-wave UI follow-up under QA's zero-product-code-edits scope; AD-180 3=B specifically named exam-detail-view.tsx:198)
+                ignore: "pre,input,textarea,select,.katex-display,tbody td span.truncate",
               },
             });
           } finally {
