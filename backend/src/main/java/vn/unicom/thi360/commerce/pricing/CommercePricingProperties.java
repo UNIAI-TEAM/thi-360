@@ -7,12 +7,12 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * Commerce pricing and voucher rate-limit configuration ({@code thi360.commerce.*}).
  *
- * <p>{@code vnpayMinAmount} reads {@code THI360_VNPAY_MIN_AMOUNT} (default 5.000 VND per TM E26; 0 disables the floor
+ * <p>{@code vnpayMinAmount} reads {@code THI360_VNPAY_MIN_AMOUNT} (default 10.000 VND per TM E26; 0 disables the floor
  * rule).
  */
 @ConfigurationProperties(prefix = "thi360.commerce")
 public record CommercePricingProperties(
-        @DefaultValue("5000") long vnpayMinAmount,
+        @DefaultValue("10000") long vnpayMinAmount,
         @DefaultValue VoucherProperties voucher
 ) {
 
