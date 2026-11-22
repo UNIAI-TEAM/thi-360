@@ -123,7 +123,7 @@ test.describe("QA Core Flow — AC-4: Guest đăng ký, mua và hoàn thành DS-
     await page.waitForURL(/\/mock-vnpay/, { timeout: 20_000 });
     await page.locator('a[data-mock-action="success"]').click();
 
-    await page.waitForURL(/\/checkout\/result\?order=/, { timeout: 25_000 });
+    await page.waitForURL(/\/checkout\/result/, { timeout: 25_000 });
     await expect(page.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
 
     // 4. Vào Bài thi của tôi (`/home`) -> kiểm tra card & lượt -> vào `/prepare/[entitlementId]` -> bắt đầu làm bài

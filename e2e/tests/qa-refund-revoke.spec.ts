@@ -50,10 +50,16 @@ test.describe("QA Core Flow — AC-7: Hoàn tiền toàn bộ thu hồi lượt 
       await studentPage.waitForURL(/\/mock-vnpay/, { timeout: 20_000 });
       await studentPage.locator('a[data-mock-action="success"]').click();
 
-      await studentPage.waitForURL(/\/checkout\/result\?order=/, { timeout: 25_000 });
+      await studentPage.waitForURL(/\/checkout\/result/, { timeout: 25_000 });
       await expect(studentPage.getByRole("heading", { level: 1, name: "Đã cấp bài thi" })).toBeVisible();
 
-      const orderCode = new URL(studentPage.url()).searchParams.get("order");
+      let orderCode = new URL(studentPage.url()).searchParams.get("order");
+      if (!orderCode) {
+        const orderLink = studentPage.locator('main a[href^="/account/orders/"]').first();
+        await expect(orderLink).toBeVisible({ timeout: 10_000 });
+        const href = await orderLink.getAttribute("href");
+        orderCode = /\/account\/orders\/([^/?#]+)/.exec(href ?? "")?.[1] ?? null;
+      }
       if (!orderCode) {
         throw new Error(`Không tách được orderCode từ URL ${studentPage.url()}`);
       }

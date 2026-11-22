@@ -24,7 +24,7 @@ interface AdminOrderDetailPayload {
   needsReview: boolean;
   attentionTypes?: string[];
   payments: AdminOrderPaymentView[];
-  grants: Array<{ id: string; attemptsGranted: number; status?: string }>;
+  grants: Array<{ grantId?: string; attempts: number; status?: string }>;
 }
 
 async function extractOrderCodeFromUrlOrDom(page: Page): Promise<string> {
@@ -73,7 +73,7 @@ test.describe("AC-25 BS 14 khoản thu thừa từ thanh toán nhiều lần", (
       const txnRef1 = new URLSearchParams(payment1SuccessIpnUrl!.split("?")[1] ?? "").get("vnp_TxnRef") ?? "";
       expect(txnRef1).not.toBe("");
 
-      await studentPage.locator('a[data-mock-action="fail"]').click();
+      await studentPage.locator('a[data-mock-action="failed"]').click();
       await studentPage.waitForURL(/\/checkout\/result/);
       const orderCode = await extractOrderCodeFromUrlOrDom(studentPage);
 
@@ -148,7 +148,7 @@ test.describe("AC-25 BS 14 khoản thu thừa từ thanh toán nhiều lần", (
         const dialog = adminPage.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await expect(dialog.getByText("Khoản thu thừa cần hoàn trả").first()).toBeVisible();
-        await dialog.getByLabel(/Xác nhận đã chuyển khoản/).check();
+        await dialog.getByLabel(/Xác nhận đây là lỗi hệ thống/).check();
         await dialog.getByLabel(/Lý do hoàn tiền/).fill("Hoan rieng khoan thu thua giao dich lan 1 theo BS 14");
         await dialog.getByRole("button", { name: "Gửi yêu cầu hoàn tiền" }).click();
         await expect(dialog).toBeHidden({ timeout: 15_000 });

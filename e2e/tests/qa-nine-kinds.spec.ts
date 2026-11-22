@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 
-import { adminApi, ADMIN_URL, RUN_ID, WEB_URL } from "./helpers/editor-qa";
+import { adminApi, ADMIN_URL, WEB_URL } from "./helpers/editor-qa";
 import {
   answerCurrentUnit,
   ensureDsReady,
@@ -14,9 +14,9 @@ import { createVerifiedAccount } from "./helpers/mail";
 
 async function startAttemptHandlingPreChoice(page: Page, entitlementId: string, preferredPreChoice?: RegExp): Promise<string> {
   await page.goto(`${WEB_URL}/prepare/${encodeURIComponent(entitlementId)}`);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("h1[data-exam-content]")).toBeVisible({ timeout: 20_000 });
 
-  const radios = page.locator('main input[type="radio"]');
+  const radios = page.locator('input[type="radio"][name="preChoice"]');
   const radioCount = await radios.count();
   if (radioCount > 0) {
     if (preferredPreChoice) {
@@ -164,6 +164,14 @@ async function completeAttemptToScored(
       if ((await confirmChoiceBtn.count()) > 0 && (await confirmChoiceBtn.isVisible())) {
         const radio = page.locator('main input[type="radio"]').first();
         if ((await radio.count()) > 0) await radio.check();
+        const checkboxes = page.locator(
+          'main input[type="checkbox"]:not(:disabled), main button[role="checkbox"]:not([disabled])',
+        );
+        const checkboxCount = Math.min(3, await checkboxes.count());
+        for (let idx = 0; idx < checkboxCount; idx += 1) {
+          await checkboxes.nth(idx).check();
+        }
+        await expect(confirmChoiceBtn).toBeEnabled({ timeout: 10_000 });
         await confirmChoiceBtn.click();
       }
       await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 25_000 });
@@ -179,12 +187,16 @@ async function completeAttemptToScored(
     break;
   }
 
+  await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({ timeout: 25_000 });
+  const viewResultLink = page.getByRole("link", { name: "Xem kết quả" });
+  await expect(viewResultLink).toHaveAttribute("href", `/attempts/${attemptId}/result`);
+  await viewResultLink.click();
   await page.waitForURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 45_000 });
   const settledState = await gradePendingEssayIfNeeded(page, attemptId, admin);
   expect(settledState).toBe("SCORED");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText("Đã chấm điểm", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Đã chấm", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 }
 
 async function runStandardKindFlow(
@@ -209,15 +221,16 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
   }) => {
     test.setTimeout(600_000);
 
-    const thptqgExam = await publishThptqgMath3PartExam(`QA9_${RUN_ID}`);
-    const { cookies } = await createVerifiedAccount("qa.9kinds");
-    const context = await browser.newContext();
-    await context.addCookies(cookies);
-    const page = await context.newPage();
-    page.setDefaultTimeout(25_000);
+    const thptqgExam = await publishThptqgMath3PartExam("qa9");
     const admin = await adminApi();
+    let context: Awaited<ReturnType<typeof browser.newContext>> | undefined;
 
     try {
+      const { cookies } = await createVerifiedAccount("qa.9kinds");
+      context = await browser.newContext();
+      await context.addCookies(cookies);
+      const page = await context.newPage();
+      page.setDefaultTimeout(25_000);
       await test.step("1. HSA (DS-HSA-PART-MATH-MINI)", async () => {
         await runStandardKindFlow(page, "DS-HSA-PART-MATH-MINI", admin);
       });
@@ -264,6 +277,10 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await dialog.getByRole("button", { name: "Nộp bài" }).click();
+        await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({ timeout: 25_000 });
+        const viewResultLink = page.getByRole("link", { name: "Xem kết quả" });
+        await expect(viewResultLink).toHaveAttribute("href", `/attempts/${attemptId}/result`);
+        await viewResultLink.click();
         await page.waitForURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 45_000 });
         expect(await gradePendingEssayIfNeeded(page, attemptId, admin)).toBe("SCORED");
       });
@@ -282,16 +299,30 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
           const playBtn = audioRegion.getByRole("button", { name: /^Nghe$/ });
           await expect(playBtn).toBeEnabled({ timeout: 10_000 });
           const endPromise = page.waitForResponse(
-            (res) => res.url().endsWith("/audio/end") && res.request().method() === "POST",
+            (res) =>
+              res.url().includes(`/attempts/${attemptId}/audio/`) &&
+              res.url().endsWith("/end") &&
+              res.request().method() === "POST",
             { timeout: 90_000 },
           );
           await playBtn.click();
-          const endRes = await endPromise;
+          const resumeBtn = audioRegion.getByRole("button", { name: "Phát lại" });
+          const settled = await Promise.race([
+            endPromise.then((res) => ({ kind: "ended" as const, res })),
+            resumeBtn.waitFor({ state: "visible", timeout: 10_000 }).then(() => ({ kind: "resume" as const })),
+          ]);
+          let endRes: Awaited<typeof endPromise>;
+          if (settled.kind === "resume") {
+            await resumeBtn.click();
+            endRes = await endPromise;
+          } else {
+            endRes = settled.res;
+          }
           expect(endRes.ok(), `audio end #${playNo} failed: ${endRes.status()}`).toBe(true);
         }
 
         await expect(audioRegion.getByText(/Đã hết lượt nghe \(0\/2\)/)).toBeVisible({ timeout: 15_000 });
-        await expect(audioRegion.getByRole("button", { name: /^Nghe$/ })).toHaveCount(0);
+        await expect(audioRegion.getByRole("button", { name: /^Nghe$/ })).toBeDisabled({ timeout: 15_000 });
 
         await completeAttemptToScored(page, attemptId, admin);
       });
@@ -312,8 +343,23 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         }
       });
     } finally {
-      await admin.api.dispose();
-      await context.close();
+      try {
+        const detailRes = await admin.api.get(`${ADMIN_URL}/api/v1/admin/exams/${thptqgExam.id}`, {
+          headers: admin.headers,
+        });
+        if (detailRes.ok()) {
+          const detail = (await detailRes.json()) as { revision: number; status?: string };
+          if (detail.status === "PUBLISHED") {
+            await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${thptqgExam.id}/discontinue`, {
+              headers: { ...admin.headers, "idempotency-key": randomUUID() },
+              data: { expectedRevision: detail.revision },
+            });
+          }
+        }
+      } finally {
+        await admin.api.dispose();
+        await context?.close();
+      }
     }
   });
 });

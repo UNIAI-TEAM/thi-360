@@ -108,7 +108,7 @@ async function getAdminOrder(
   state: string;
   replacedByOrderCode?: string | null;
   needsReview?: boolean;
-  grants: Array<{ id: string; attemptsGranted: number; status?: string }>;
+  grants: Array<{ grantId?: string; attempts: number; status?: string }>;
   payments: Array<{ id: string; txnRef: string; state: string }>;
 }> {
   const res = await api.get(`${ADMIN_URL}/api/v1/admin/orders/${encodeURIComponent(orderCode)}`);
@@ -117,7 +117,7 @@ async function getAdminOrder(
     state: string;
     replacedByOrderCode?: string | null;
     needsReview?: boolean;
-    grants: Array<{ id: string; attemptsGranted: number; status?: string }>;
+    grants: Array<{ grantId?: string; attempts: number; status?: string }>;
     payments: Array<{ id: string; txnRef: string; state: string }>;
   };
 }
@@ -172,7 +172,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       const adminOrder = await getAdminOrder(admin.api, orderCode);
       expect(adminOrder.state).toBe("FULFILLED");
       expect(adminOrder.grants).toHaveLength(1);
-      expect(adminOrder.grants[0]?.attemptsGranted).toBe(3);
+      expect(adminOrder.grants[0]?.attempts).toBe(3);
 
       const examsAfter = await getMyExams(page);
       const grantedAfter = examsAfter.filter((item) => item.code === "DS-HSA-PART-MATH-MINI");
@@ -251,7 +251,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
 
       const afterLateIpn = await getAdminOrder(admin.api, orderCode1);
       expect(afterLateIpn.grants).toHaveLength(1);
-      expect(afterLateIpn.grants[0]?.attemptsGranted).toBe(3);
+      expect(afterLateIpn.grants[0]?.attempts).toBe(3);
 
       const exams = await getMyExams(page);
       const granted = exams.find((item) => item.code === "DS-HSA-PART-MATH-MINI");
@@ -367,12 +367,18 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
         await expect(dialog).toBeHidden({ timeout: 15_000 });
       }
 
-      await expect(page.getByRole("heading", { level: 1, name: /Chọn phần 3/ })).toBeVisible({ timeout: 25_000 });
-      await page.getByRole("radio", { name: /Khoa học/ }).check();
-      for (const subject of [/Vật lí/, /Hóa học/, /Sinh học/]) {
-        await page.getByRole("checkbox", { name: subject }).check();
+      await expect(page.getByRole("heading", { name: "Chọn phần thi thứ ba" })).toBeVisible({ timeout: 25_000 });
+      await page.locator('input[type="radio"][name="attempt-part-choice"][value="SCIENCE"]').check();
+      const subjectCheckboxes = page.locator(
+        'main input[type="checkbox"]:not(:disabled), main button[role="checkbox"]:not([disabled])',
+      );
+      await expect(subjectCheckboxes.nth(2)).toBeVisible({ timeout: 10_000 });
+      for (let idx = 0; idx < 3; idx += 1) {
+        await subjectCheckboxes.nth(idx).check();
       }
-      await page.getByRole("button", { name: "Xác nhận chọn phần 3" }).click();
+      const confirmPart3Btn = page.getByRole("button", { name: "Xác nhận chọn phần 3" });
+      await expect(confirmPart3Btn).toBeEnabled({ timeout: 10_000 });
+      await confirmPart3Btn.click();
       await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 25_000 });
 
       const afterStart = (await getMyExams(page)).find((item) => item.entitlementId === hsa.entitlementId);
@@ -485,7 +491,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
         await adminPage.getByRole("button", { name: "Hoàn tiền" }).first().click();
         const dialog = adminPage.getByRole("dialog");
         await expect(dialog).toBeVisible();
-        await dialog.getByLabel(/Xác nhận đã chuyển khoản/).check();
+        await dialog.getByLabel(/Xác nhận đây là lỗi hệ thống/).check();
         await dialog.getByLabel(/Lý do hoàn tiền/).fill("Hoan tien toan bo khi dang lam bai QA E2E");
         await dialog.getByRole("button", { name: "Gửi yêu cầu hoàn tiền" }).click();
         await expect(dialog).toBeHidden({ timeout: 15_000 });
@@ -505,7 +511,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       const examCard = page.locator("article", { hasText: "HSA theo phần Toán (thu nhỏ)" }).first();
       await expect(examCard).toBeVisible({ timeout: 15_000 });
       await expect(examCard.locator("strong")).toHaveText("0");
-      await expect(examCard.getByRole("link", { name: "Tiếp tục làm" })).toBeVisible();
+      await expect(examCard.getByRole("link", { name: "Tiếp tục" })).toBeVisible();
       await expect(examCard.getByRole("link", { name: "Bắt đầu" })).toHaveCount(0);
 
       const newAttemptRes = await page.request.post(`${WEB_URL}/api/v1/me/attempts`, {
@@ -520,7 +526,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       expect(newAttemptBody.code).toBe("NO_ATTEMPTS_LEFT");
 
       // Học viên quay lại lượt đang làm và nộp bài thành công tới SCORED
-      await examCard.getByRole("link", { name: "Tiếp tục làm" }).click();
+      await examCard.getByRole("link", { name: "Tiếp tục" }).click();
       await page.waitForURL(new RegExp(`/attempts/${attemptId}`));
       await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
       await page.getByRole("button", { name: "Nộp bài" }).click();
@@ -528,6 +534,10 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
       await expect(submitDialog).toBeVisible();
       await submitDialog.getByRole("button", { name: "Nộp bài" }).click();
 
+      await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({ timeout: 25_000 });
+      const viewResultLink = page.getByRole("link", { name: "Xem kết quả" });
+      await expect(viewResultLink).toHaveAttribute("href", `/attempts/${attemptId}/result`);
+      await viewResultLink.click();
       await page.waitForURL(new RegExp(`/attempts/${attemptId}/result`), { timeout: 45_000 });
       await expect
         .poll(

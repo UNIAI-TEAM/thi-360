@@ -94,6 +94,12 @@ async function buildAllowLanguage(page: Page, options: { includeTitle?: boolean 
   return [
     /^QA-/i,
     /^qa\./i,
+    /^fa\d+\./i,
+    /^FA\d+/i,
+    /^vis\./i,
+    /^flow\./i,
+    /^ac\d+/i,
+    /^E2E Student$/i,
     /^DS-/i,
     /^DH[0-9A-Z]+$/i,
     /^#?[0-9A-F]{8}$/i,
@@ -102,7 +108,8 @@ async function buildAllowLanguage(page: Page, options: { includeTitle?: boolean 
 }
 
 async function waitForSettled(page: Page): Promise<void> {
-  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator(".animate-pulse")).toHaveCount(0, { timeout: 20_000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -198,6 +205,10 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
       const submitDialog = page.getByRole("dialog");
       await expect(submitDialog).toBeVisible();
       await submitDialog.getByRole("button", { name: "Nộp bài" }).click();
+      await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toBeVisible({ timeout: 25_000 });
+      const viewResultLink = page.getByRole("link", { name: "Xem kết quả" });
+      await expect(viewResultLink).toHaveAttribute("href", `/attempts/${scoredAttemptId}/result`);
+      await viewResultLink.click();
       await page.waitForURL(new RegExp(`/attempts/${scoredAttemptId}/result`), { timeout: 45_000 });
       await expect
         .poll(
@@ -243,6 +254,7 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
             await studentCtx.addCookies(currentStudentCookies);
             await applyMatrixCookies(studentCtx, cell, WEB_URL);
             const page = await studentCtx.newPage();
+            await page.emulateMedia({ reducedMotion: "reduce" });
             page.setDefaultTimeout(25_000);
 
             await page.goto(`${WEB_URL}/`);
@@ -309,6 +321,7 @@ test.describe("AC-19 quét trực quan 12 màn hình x 8 ô ma trận", () => {
             await adminCtx.addCookies(currentAdminCookies);
             await applyMatrixCookies(adminCtx, cell, ADMIN_URL);
             const page = await adminCtx.newPage();
+            await page.emulateMedia({ reducedMotion: "reduce" });
             page.setDefaultTimeout(25_000);
 
             await page.goto(`${ADMIN_URL}/promotions`);

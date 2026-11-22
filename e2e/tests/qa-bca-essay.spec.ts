@@ -21,8 +21,8 @@ import { createVerifiedAccount } from "./helpers/mail";
 interface AttemptResultSummary {
   attemptId: string;
   state: string;
-  rawScore: number | null;
-  displayScore: number | null;
+  rawScore?: number | null;
+  displayScore?: number | null;
 }
 
 interface GradingQueueResponse {
@@ -141,9 +141,11 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
         )
         .toBe("PENDING_REVIEW");
 
-      expect(pendingSummary?.displayScore).toBeNull();
+      expect(pendingSummary?.displayScore ?? null).toBeNull();
+      expect(pendingSummary?.rawScore ?? null).toBeNull();
       await studentPage.reload();
       await expect(studentPage.getByText("Chờ chấm").first()).toBeVisible();
+      await expect(studentPage.locator("main .text-display")).toHaveCount(0);
 
       // Đợi item xuất hiện trong hàng chờ chấm trước khi mở UI admin
       let itemId: string | undefined;
@@ -182,6 +184,7 @@ test.describe("QA Core Flow — AC-6: Chấm tự luận BCA ẩn danh tới SCO
       }
 
       await expect(targetRow).toBeVisible({ timeout: 20_000 });
+      await expect(adminPage.locator('[aria-busy="true"], .animate-pulse')).toHaveCount(0, { timeout: 20_000 });
       await expect(adminPage.locator("main")).not.toContainText(account.username);
       await expect(adminPage.locator("main")).not.toContainText(account.email);
 
