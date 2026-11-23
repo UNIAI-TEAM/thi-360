@@ -7,7 +7,7 @@ import { groupEffectiveRules, revealMapidRulesTable } from "../mapid-rules";
 import type { ExamSection, MapidMode } from "../types";
 import { useMapidRuleText } from "./mapid-rules-table";
 
-export interface BlockMapidRulesProps {
+interface BlockMapidRulesProps {
   /** Môn chứa nhóm (đã có các nhóm và `mapidRules` hiện tại). */
   section: ExamSection;
   blockId: string;

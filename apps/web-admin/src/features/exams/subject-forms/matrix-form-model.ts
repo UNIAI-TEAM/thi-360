@@ -1,4 +1,4 @@
-import { apportionByPercent, countsToPercents, isFlexibleSet, type MatrixAxes } from "../matrix";
+import { convertValuesByUnit, countsToPercents, isFlexibleSet, type MatrixAxes, sum } from "../matrix";
 import type { AnswerQuotas, BlockMatrix, ExamSection, MatrixDimensionValue, MatrixUnit, QuestionBlock, QuotaEnforcement } from "../types";
 
 /**
@@ -11,10 +11,10 @@ import type { AnswerQuotas, BlockMatrix, ExamSection, MatrixDimensionValue, Matr
  * - Hàm không đổi gì thì trả lại đối tượng cũ (không tạo thay đổi giả ở bản nháp).
  */
 
-export type MatrixRole = "SINGLE" | "SET" | "FILL";
+type MatrixRole = "SINGLE" | "SET" | "FILL";
 
 /** Vai trò của nhóm trong MT; `null` với dạng ngoài ba vai trò (môn không khớp MT, xem `fit.ts`). */
-export function roleOf(block: Pick<QuestionBlock, "questionType">): MatrixRole | null {
+function roleOf(block: Pick<QuestionBlock, "questionType">): MatrixRole | null {
   if (block.questionType === null || block.questionType === "SINGLE_CHOICE") return "SINGLE";
   if (block.questionType === "QUESTION_SET") return "SET";
   if (block.questionType === "SHORT_ANSWER") return "FILL";
@@ -22,7 +22,7 @@ export function roleOf(block: Pick<QuestionBlock, "questionType">): MatrixRole |
 }
 
 /** Nhóm của từng vai trò (nhiều nhất một nhóm mỗi vai trò, R-2); vai trò đã bị xóa khỏi bài cũ là `null`. */
-export interface MatrixRoleBlocks {
+interface MatrixRoleBlocks {
   single: QuestionBlock | null;
   set: QuestionBlock | null;
   fill: QuestionBlock | null;
@@ -34,7 +34,7 @@ export function roleBlocks(section: Pick<ExamSection, "blocks">): MatrixRoleBloc
 }
 
 /** Các số của Cấu trúc câu đọc từ bản nháp. */
-export interface MatrixStructure {
+interface MatrixStructure {
   blocks: MatrixRoleBlocks;
   /** Chùm cỡ linh hoạt (H28): chỉ có tổng câu con; `setCount`, `setSize` giữ `null`. */
   flexible: boolean;
@@ -86,7 +86,7 @@ export interface StructureInput {
   fill?: number;
 }
 
-export interface StructureWrite {
+interface StructureWrite {
   section: ExamSection;
   /** T nhỏ hơn số câu con: nhóm câu đơn ghi 0, màn giữ T đã gõ ở kho nhập thô và chặn lưu (R-3). */
   choiceBelowChildren: boolean;
@@ -156,7 +156,7 @@ export function initialEnforcement(mode: "FIXED_REQUIRED" | "DECLARED_REQUIRED" 
   return mode === "FIXED_REFERENCE" || mode === "REFERENCE_WITH_APPLY" ? "REFERENCE" : undefined;
 }
 
-export interface MatrixCellEdit {
+interface MatrixCellEdit {
   dimension: MatrixDimensionKey;
   code: string;
   /** Đơn vị của giá trị vừa nhập: nhập % ở cột Tỷ lệ (V-ACT) đổi ma trận sang `PERCENT`, nhập số câu đổi về `COUNT` (R-9). `null`: ô để trống. */
@@ -164,7 +164,7 @@ export interface MatrixCellEdit {
   value: number | null;
 }
 
-export interface MatrixEditContext {
+interface MatrixEditContext {
   /** Số câu của môn: mẫu số khi đổi đơn vị. */
   total: number;
   axes: MatrixAxes;
@@ -178,8 +178,7 @@ export interface MatrixEditContext {
  */
 export function convertDeclaredDimensions(matrix: BlockMatrix, unit: MatrixUnit, total: number): BlockMatrix {
   const convert = (items: readonly MatrixDimensionValue[]): MatrixDimensionValue[] => {
-    const values = items.map((item) => item.value);
-    const next = unit === "COUNT" ? apportionByPercent(values, total).results : countsToPercents(values, total);
+    const next = convertValuesByUnit(items.map((item) => item.value), unit, total);
     return items.map((item, index) => ({ code: item.code, value: next[index] ?? 0 }));
   };
   return { ...matrix, unit, byGrade: convert(matrix.byGrade), byDifficulty: convert(matrix.byDifficulty) };
@@ -237,5 +236,5 @@ export function setDimensionEnforcement(matrix: BlockMatrix | null, dimension: M
 
 /** Tổng các ô đã khai của một chiều (đơn vị đang lưu: số câu, hoặc % khi `PERCENT`). */
 export function dimensionTotal(matrix: BlockMatrix | null, dimension: MatrixDimensionKey): number {
-  return (matrix?.[DIMENSION_FIELD[dimension]] ?? []).reduce((total, item) => total + item.value, 0);
+  return sum((matrix?.[DIMENSION_FIELD[dimension]] ?? []).map((item) => item.value));
 }

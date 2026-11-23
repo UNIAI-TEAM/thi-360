@@ -26,7 +26,7 @@ import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamT
 import { BlockEditor } from "./block-editor";
 import { blockCountsLocked } from "./block-form";
 import type { TopicQuotaServerError } from "./topic-quota-table";
-import { HsaNormalizedNote } from "./enforcement-toggle";
+import { HsaNormalizedNote } from "../subject-forms/enforcement-control";
 import {
   selectionScope,
   addBlock,
@@ -65,7 +65,7 @@ import { ExamStructureSummaryRegion } from "./exam-structure-summary";
 import { checkIssueTarget } from "./exam-structure-check-result";
 import { StructureVersionPicker } from "./structure-version-picker";
 import { SubjectChoiceNav } from "./subject-choice-nav";
-import { ReviewSubjectPanel } from "./review-subject-panel";
+import { PracticeReviewSubjectPanel } from "./practice-review-subject-panel";
 import { ScoringExamples, StrandReference } from "./scoring-examples";
 import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { formBlockingIssues, type BlockingIssue } from "../subject-forms/blocking";
@@ -623,50 +623,6 @@ function StructureEditor({
         </Button>
       </ExamEditorActions>
       <Card padding="md" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <dl aria-label={t("summary.label")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
-            <SummaryItem label={t("summary.kind")} value={kind?.name ?? exam.kind} />
-            <SummaryItem label={t("summary.scope")} value={examsT(`scope.${exam.scope}`)} />
-            <SummaryItem
-              label={t("summary.questions")}
-              value={
-                totals.printedQuestions !== totals.totalQuestions
-                  ? t("summary.questionsPrinted", { count: roundForDisplay(totals.totalQuestions), printed: roundForDisplay(totals.printedQuestions) })
-                  : format.number(totals.totalQuestions, DISPLAY_NUMBER_FORMAT)
-              }
-            />
-            <SummaryItem
-              label={t("summary.duration")}
-              value={
-                shared
-                  ? t("summary.sharedMinutes", { count: roundForDisplay(totals.totalMinutes) })
-                  : t("summary.minutes", { count: roundForDisplay(totals.totalMinutes) })
-              }
-            />
-            {reviewMode ? (
-              // Bài ôn: tổng điểm theo ngân hàng câu nên không so với thang; chỉ nêu thang khi có.
-              exam.maxScore !== null && (
-                <SummaryItem label={t("summary.scale")} value={t("summary.scaleValue", { scale: exam.maxScore })} />
-              )
-            ) : (
-              <SummaryItem
-                label={t("summary.points")}
-                value={
-                  exam.maxScore !== null
-                    ? t("summary.pointsOfScale", {
-                        points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
-                        scale: format.number(exam.maxScore, DISPLAY_NUMBER_FORMAT),
-                      })
-                    : format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT)
-                }
-                warn={exam.maxScore !== null && Math.abs(totals.totalPoints - exam.maxScore) > 1e-6}
-              />
-            )}
-          </dl>
-          <Button asChild variant="secondary">
-            <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
-          </Button>
-        </div>
         <p className="text-caption text-text-muted">
           {exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote")}
         </p>
@@ -757,7 +713,7 @@ function StructureEditor({
               combinations={structure.combinations ?? []}
             />
           ) : sectionContext && rendersReviewPanel(sectionContext.section, reviewMode) ? (
-            <ReviewSubjectPanel
+            <PracticeReviewSubjectPanel
               key={sectionContext.section.id}
               context={sectionContext}
               subjectName={lookup.subject(sectionContext.section.subjectCode)}
@@ -813,6 +769,8 @@ function StructureEditor({
                 examQuotas={quotas}
                 onExamQuotas={setQuotas}
                 examKind={exam.kind}
+                rowsLocked={rowsLocked}
+                reviewMode={reviewMode}
               />
             </>
           ) : blockContext ? (
@@ -866,6 +824,9 @@ function StructureEditor({
               labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
               examId={exam.id}
               templateLocked={templateLocked}
+              rowsLocked={rowsLocked}
+              reviewMode={reviewMode}
+              sectionForm={(sectionId) => pinnedForm(pinnedForms, sectionId).form}
               onAddSubject={(subjectCode) => {
                 setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
                 announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));
@@ -957,15 +918,6 @@ function StructureEditor({
         onDiscard={leaveAfterDiscard}
         onStay={stayHere}
       />
-    </div>
-  );
-}
-
-function SummaryItem({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div className="flex items-baseline gap-1.5">
-      <dt className="text-text-muted">{label}</dt>
-      <dd className={warn ? "m-0 font-semibold text-warning" : "m-0 font-semibold text-text"}>{value}</dd>
     </div>
   );
 }

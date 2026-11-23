@@ -14,11 +14,18 @@ export function parseNumberText(text: string, allowDecimal: boolean): number | n
   return Number(trimmed.replace(",", "."));
 }
 
-function formatNumber(value: number): string {
-  return String(value).replace(".", ",");
+/** Đọc chữ tỷ lệ % trong đoạn 0–100; ngoài khoảng hoặc sai định dạng trả `null`. */
+export function parsePercentText(text: string): number | null {
+  const parsed = parseNumberText(text, true);
+  return parsed !== null && parsed >= 0 && parsed <= 100 ? parsed : null;
 }
 
-export type BlockNumberInputProps = Omit<InputProps, "value" | "onChange" | "type" | "inputMode"> & {
+/** Chuỗi hiển thị của số theo dấu phẩy thập phân; `null` (ô để trống) là chuỗi rỗng. */
+export function formatNumberText(value: number | null): string {
+  return value === null ? "" : String(value).replace(".", ",");
+}
+
+type BlockNumberInputProps = Omit<InputProps, "value" | "onChange" | "type" | "inputMode"> & {
   value: number;
   onValueChange: (value: number) => void;
   /** Cho nhập số thập phân (tỷ lệ %), tối đa hai chữ số sau dấu phẩy. */
@@ -39,13 +46,13 @@ export function BlockNumberInput({
   className,
   ...props
 }: BlockNumberInputProps) {
-  const [text, setText] = useState(() => formatNumber(value));
+  const [text, setText] = useState(() => formatNumberText(value));
   const [lastValue, setLastValue] = useState(value);
   const parsed = parseNumberText(text, allowDecimal);
   // Giá trị đổi từ bên ngoài (quy đổi, hoàn tác): hiện giá trị mới thay cho chữ cũ.
   if (value !== lastValue) {
     setLastValue(value);
-    if (parsed !== value) setText(formatNumber(value));
+    if (parsed !== value) setText(formatNumberText(value));
   }
   const invalid = parsed === null;
 

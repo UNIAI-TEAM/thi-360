@@ -9,7 +9,7 @@ import type { SubjectFormEntry } from "./registry";
  * Nhập thô của một ô của MT (FTM R-15): chữ đã gõ mà chưa ghi được vào bản nháp (số sai, tổng % chưa đủ 100, Trắc nghiệm nhỏ hơn câu
  * con). Mục nằm trong kho nhập thô của view theo `sectionId`, nên chặn lưu và hỏi trước khi rời trang dù màn đã đóng.
  */
-export interface MatrixRawFields {
+interface MatrixRawFields {
   /** Mục đang giữ ở ô (chữ đã gõ và mã lỗi), hoặc `null`. */
   get: (field: string) => { text: string; code: string } | null;
   /** Có mục nhập thô ở một ô có tên bắt đầu bằng `prefix` (ví dụ `GRADE:` cho mọi ô khối lớp): để hiện lại hàng mà người dùng đã gõ sai. */

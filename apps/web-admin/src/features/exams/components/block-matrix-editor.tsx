@@ -16,6 +16,7 @@ import {
   hasCompetencyDimension,
   type MatrixAxes,
   type MatrixDimension,
+  sum,
   toDimension,
   validateBlock,
 } from "../matrix";
@@ -25,14 +26,14 @@ import type { AvailableQuestionCounts, BlockMatrix, MatrixMode, MatrixUnit, Ques
 import { hsaMatrixUndeclared } from "../hsa-enforcement";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
-import { EnforcementToggle } from "./enforcement-toggle";
+import { EnforcementControl } from "../subject-forms/enforcement-control";
 
 export interface MatrixLabels {
   grade: (code: string) => string;
   difficulty: (code: string) => string;
 }
 
-export interface BlockMatrixEditorProps {
+interface BlockMatrixEditorProps {
   /** Nhóm đã chuẩn hóa: chỉ tiêu riêng và số câu có giá trị (nhóm không có chỉ tiêu riêng hiện ma trận trống). */
   block: QuestionBlock & { matrix: BlockMatrix; questionCount: number };
   axes: MatrixAxes;
@@ -118,9 +119,11 @@ export function BlockMatrixEditor({
   const setBasis = (basis: QuotaBasis) => onChange({ ...matrix, basis });
 
   const sourceOf = (grade: string | null, difficulty: string | null) =>
-    (available?.cells ?? [])
-      .filter((cell) => (grade === null || cell.gradeCode === grade) && (difficulty === null || cell.difficultyCode === difficulty))
-      .reduce((total, cell) => total + cell.value, 0);
+    sum(
+      (available?.cells ?? [])
+        .filter((cell) => (grade === null || cell.gradeCode === grade) && (difficulty === null || cell.difficultyCode === difficulty))
+        .map((cell) => cell.value),
+    );
 
   const sourceHint = (id: string, need: number, grade: string | null, difficulty: string | null) => {
     if (availableState !== "ready" || !questionBasis) return null;
@@ -248,7 +251,8 @@ export function BlockMatrixEditor({
       </div>
       <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
         {matrix.mode === "COMBINED" && (
-          <EnforcementToggle
+          <EnforcementControl
+            mode="TOGGLE"
             legend={t("matrixName")}
             name={`${block.id}-enforcement`}
             value={gradeEnforcement}
@@ -398,7 +402,8 @@ export function BlockMatrixEditor({
               return (
                 <div key={dimension.key} className="flex min-w-0 flex-col gap-2">
                 {!compact && (
-                  <EnforcementToggle
+                  <EnforcementControl
+                    mode="TOGGLE"
                     legend={dimension.key === "byGrade" ? t("byGradeCaption") : t("byDifficultyCaption")}
                     name={`${block.id}-${dimension.key}-enforcement`}
                     value={dimension.key === "byGrade" ? gradeEnforcement : difficultyEnforcement}

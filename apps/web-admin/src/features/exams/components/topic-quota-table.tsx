@@ -24,13 +24,13 @@ import type { TopicQuota } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { ChoiceCardGroup } from "./create-exam-fields";
-import { EnforcementToggle } from "./enforcement-toggle";
+import { EnforcementControl } from "../subject-forms/enforcement-control";
 import { draftId } from "./exam-structure-draft";
 
 /** Lỗi do máy chủ trả về cho khối chỉ tiêu (422 `EXAM_STRUCTURE_INVALID`): quá 8 chỉ tiêu (H20) hoặc tỷ lệ ngoài 0–100. */
 export type TopicQuotaServerError = "MAX_TOPIC_QUOTAS" | "PERCENT_OUT_OF_RANGE" | null;
 
-export interface TopicQuotaTableProps {
+interface TopicQuotaTableProps {
   /** Tiền tố id và tên nhóm radio: id của môn hoặc nhóm. */
   id: string;
   quotas: readonly TopicQuota[];
@@ -297,7 +297,8 @@ export function TopicQuotaTable({
                       />
                     </td>
                     <td className="border-b border-border px-2 py-2 align-top">
-                      <EnforcementToggle
+                      <EnforcementControl
+                        mode="TOGGLE"
                         legend={label}
                         name={`${id}-${quota.id}-enforcement`}
                         value={quota.enforcement}

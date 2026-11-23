@@ -5,12 +5,11 @@ import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import type { AudioCountQuery } from "../api";
 import { ratePercent } from "../allocation";
-import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
+import { convertValuesByUnit, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
-import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
+import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, subjectAudioGroups, type QuotaRow } from "../subject-matrix";
 import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
@@ -51,6 +50,10 @@ export interface SubjectPanelProps {
   onExamQuotas?: (examQuotas: ExamQuota[]) => void;
   /** Mã kỳ thi: HSA Tiếng Anh khối lớp luôn chờ chuyên gia xác nhận. */
   examKind?: string | null;
+  /** Mẫu khóa dòng (H42, R-09): không cho thêm nhóm mới. */
+  rowsLocked?: boolean;
+  /** Bài ôn (R-09): kể cả khi >= 2 nhóm rơi về màn MD cũng không cho thêm nhóm. */
+  reviewMode?: boolean;
 }
 
 /**
@@ -74,6 +77,8 @@ export function ExamStructureSubjectPanel({
   examQuotas = [],
   onExamQuotas,
   examKind = null,
+  rowsLocked = false,
+  reviewMode = false,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
   const tGap = useTranslations("exams.structure.gap");
@@ -94,22 +99,7 @@ export function ExamStructureSubjectPanel({
   const quotaTypes = declaredTypes.filter((type) => type !== "QUESTION_SET");
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
-    groups: section.blocks.map(
-      (block): AudioCountQuery => ({
-        subjectCode: section.subjectCode,
-        questionType: block.questionType,
-        answerTypes: block.questionType === null ? quotaTypes : [],
-        childAnswerType: block.childAnswerType,
-        knowledgeScope: groupCountScope(block, section),
-        tagCodes: block.tagCodes,
-        requiredPointsPerQuestion: block.requiredPointsPerQuestion,
-        itemShape: block.itemShape,
-        answerFormats: block.answerFormats,
-        childConditions: block.childConditions,
-        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
-        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
-      }),
-    ),
+    groups: subjectAudioGroups(section, quotaTypes, groupCountScope),
   });
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
   const sourceOf = (answerType: string) => availableQuery.data?.byAnswerType.find((item) => item.answerType === answerType)?.value;
@@ -120,12 +110,7 @@ export function ExamStructureSubjectPanel({
     if (!quotas || quotas.unit === unit) return;
     const values = quotas.items.map((item) => item.value);
     const base = count ?? 0;
-    const next =
-      base <= 0
-        ? values
-        : unit === "PERCENT"
-          ? countsToPercents(values, base)
-          : apportionByPercent(values, base).results;
+    const next = base <= 0 ? values : convertValuesByUnit(values, unit, base);
     setQuotas({ unit, items: quotas.items.map((item, index) => ({ ...item, value: next[index] ?? 0 })) });
   };
   const quotaTotal = quotas ? sum(quotas.items.map((item) => item.value)) : 0;
@@ -491,7 +476,7 @@ export function ExamStructureSubjectPanel({
         total={allocation.count}
         allocationRemainder={allocation.remainder}
         onSelectBlock={onSelectBlock}
-        onAddBlock={onAddBlock}
+        onAddBlock={!rowsLocked && !reviewMode ? onAddBlock : undefined}
         reference={reference}
         mapid={mapidMode === "MATRIX"}
       />
@@ -565,7 +550,7 @@ function GroupList({
   total: number | null;
   allocationRemainder: number | null;
   onSelectBlock: (blockId: string) => void;
-  onAddBlock: () => void;
+  onAddBlock?: () => void;
   reference: ContentReference;
   /** Môn ở chế độ Theo ma trận MAPID: cột "Phạm vi nguồn" hiện quy tắc có hiệu lực. */
   mapid: boolean;
@@ -622,17 +607,19 @@ function GroupList({
       </ul>
     );
   };
-  const sumQuestions = section.blocks.reduce((sumSoFar, block) => sumSoFar + questionsOf(block), 0);
+  const sumQuestions = sum(section.blocks.map(questionsOf));
   const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap";
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id={headingId} className="text-title font-semibold text-text">{t("title")}</h3>
-        <Button type="button" variant="secondary" size="sm" aria-label={t("addAria", { subject: subjectName })} onClick={onAddBlock}>
-          <Plus />
-          <span>{t("add")}</span>
-        </Button>
+        {onAddBlock && (
+          <Button type="button" variant="secondary" size="sm" aria-label={t("addAria", { subject: subjectName })} onClick={onAddBlock}>
+            <Plus />
+            <span>{t("add")}</span>
+          </Button>
+        )}
       </div>
       {audio && (
         <div className="flex flex-wrap items-center gap-2">

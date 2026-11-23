@@ -39,7 +39,7 @@ export interface ExtraCondition {
   body: ReactNode;
 }
 
-export interface BlockConditionsProps {
+interface BlockConditionsProps {
   block: QuestionBlock;
   reference: ContentReference | undefined;
   onChange: (patch: Partial<QuestionBlock>) => void;

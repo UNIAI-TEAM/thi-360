@@ -13,13 +13,13 @@ import type { ExamPart, ExamQuota, StructureCombination } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { AllocationGap } from "./allocation-gap";
 import { BlockNumberInput } from "./block-number-input";
-import { EnforcementToggle } from "./enforcement-toggle";
+import { EnforcementControl } from "../subject-forms/enforcement-control";
 import { ExamName, richNodes } from "./exam-review-shared";
 import type { StructureNames } from "./exam-structure-issues";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
 
-export interface ExamOverviewPanelProps {
+interface ExamOverviewPanelProps {
   /** Tên bài, đứng sau "Tổng quan bài". */
   examName: string;
   /** Dòng tóm tắt dưới tiêu đề ("81 câu · 180 phút chung · 100 điểm"). */
@@ -146,7 +146,8 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                     {(quota.excludeSubjectCodes?.length ?? 0) > 0 && ` · ${t("excluding", { subjects: quota.excludeSubjectCodes?.map(names.subject).join(", ") ?? "" })}`}
                   </p>
                 </div>
-                <EnforcementToggle
+                <EnforcementControl
+                  mode="TOGGLE"
                   legend={quotaTitle}
                   name={`quota-${quota.id}-enforcement`}
                   value={quota.enforcement}

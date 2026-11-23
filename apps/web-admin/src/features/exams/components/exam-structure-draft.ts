@@ -205,7 +205,7 @@ export function setPartChoose(part: ExamPart, choose: number): ExamPart {
 }
 
 /** Gắn một lựa chọn vào phần tự chọn; số câu các môn chia đều theo phần dư lớn nhất (50 câu, 3 môn: 17–17–16). */
-export function buildOption(
+function buildOption(
   kind: ExamPartOption["kind"],
   code: string,
   subjectCodes: readonly string[],
@@ -233,7 +233,7 @@ export function buildOption(
 
 /** Số câu một lựa chọn phải có: số câu của phần trừ phần chung (THPTQG Tin học: 4 − 2 = 2). */
 export function optionQuestionCount(part: ExamPart): number {
-  return Math.max(part.questionCount - part.sections.reduce((total, section) => total + (section.questionCount ?? 0), 0), 0);
+  return Math.max(part.questionCount - sum(part.sections.map((section) => section.questionCount ?? 0)), 0);
 }
 
 /** Bật/tắt nhánh Tiếng Anh; nhánh luôn đứng đầu danh sách lựa chọn. */

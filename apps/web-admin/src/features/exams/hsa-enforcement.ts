@@ -11,13 +11,13 @@ import type { BlockMatrix, ExamPart, ExamPartOption, ExamQuota, ExamSection, Que
  * Kỳ thi HSA sinh đề luôn theo ma trận (UNI-1701): mức của phân bố là Bắt buộc và không đổi được. Mức Tham khảo chỉ còn
  * ở nơi quy tắc H6 (chỉ tiêu trải nhiều môn) hoặc H7 (đơn vị đếm không phải câu) cấm Bắt buộc. Kỳ thi khác giữ hai mức.
  */
-export const HSA_EXAM_KIND = "HSA";
+const HSA_EXAM_KIND = "HSA";
 
 export function isHsaExam(kind: string | null | undefined): boolean {
   return kind === HSA_EXAM_KIND;
 }
 
-/** Bài đang soạn có phải HSA không; `EnforcementToggle` đọc để hiện mức cố định. Ngoài trình soạn cấu trúc: không. */
+/** Bài đang soạn có phải HSA không; `EnforcementControl` đọc để hiện mức cố định. Ngoài trình soạn cấu trúc: không. */
 export const HsaExamContext = createContext(false);
 
 export function useHsaExam(): boolean {

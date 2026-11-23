@@ -23,7 +23,7 @@ export function convertForPreview(matrix: BlockMatrix | null, direction: Combine
   return base.cells.every((cell) => cell.value === 0) ? { ...converted, byGrade: [], byDifficulty: [] } : converted;
 }
 
-export interface CombinedPreviewProps {
+interface CombinedPreviewProps {
   direction: CombinedDirection;
   matrix: BlockMatrix | null;
   axes: MatrixAxes;
@@ -96,7 +96,7 @@ export function CombinedPreview({ direction, matrix, axes, labels, onConfirm, on
   );
 }
 
-export interface CombinedTableProps {
+interface CombinedTableProps {
   matrix: BlockMatrix;
   axes: MatrixAxes;
   labels: MatrixLabels;

@@ -3,18 +3,18 @@
 import { Button, Card, cn, focusRing, FormField, Input, Select } from "@thi360/ui";
 import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import type { AudioCountQuery } from "../api";
 import { applyTopicTotal } from "../allocation";
+import { examTabHref } from "../editor-tabs";
 import { emptyMatrix, isSetBlock, type MatrixAxes } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
-import { effectiveScope } from "../subject-matrix";
+import { effectiveScope, subjectAudioGroups } from "../subject-matrix";
 import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import { applyBlockPatch, resizeSets } from "./block-form";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
-import { EditOverviewLink } from "./edit-overview-link";
 import type { SectionContext } from "./exam-structure-draft";
 import { LOCKED_FIELD } from "./locked-field";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
@@ -24,7 +24,7 @@ import { KnowledgeScopeField } from "./knowledge-scope-field";
 /** Giá trị của ô dạng câu "Bất kỳ" (nhóm lấy theo chỉ tiêu dạng trả lời của môn, `questionType = null`). */
 const ANY_TYPE = "__ANY__";
 
-interface ReviewSubjectPanelProps {
+interface PracticeReviewSubjectPanelProps {
   context: SectionContext;
   subjectName: string;
   axes: MatrixAxes;
@@ -44,38 +44,35 @@ interface ReviewSubjectPanelProps {
 }
 
 /**
- * Bài ôn (R-22, bản vẽ `BaiOn2B`): màn rút gọn của bài có một phần, một môn, một nhóm. Số câu, thời lượng và thang điểm lấy từ
+ * Bài ôn (R-22, R-10.1, bản vẽ `BaiOn2B`): màn rút gọn của bài có một phần, một môn, một nhóm. Số câu, thời lượng và thang điểm lấy từ
  * bước 1 và chỉ đọc ở đây (sửa ở thông tin tổng quan). Phạm vi kiến thức, dạng câu, phân bố khối lớp, độ khó và câu chùm nằm
  * trong một vùng đóng "Tùy chọn thêm", không bắt buộc: để mặc định vẫn lưu và kiểm tra được.
  */
-export function ReviewSubjectPanel({ context, subjectName, axes, labels, reference, onChange, step1Count, examId, minutes, maxScore, headerAction, topicError = null }: ReviewSubjectPanelProps) {
+export function PracticeReviewSubjectPanel({
+  context,
+  subjectName,
+  axes,
+  labels,
+  reference,
+  onChange,
+  step1Count,
+  examId,
+  minutes,
+  maxScore,
+  headerAction,
+  topicError = null,
+}: PracticeReviewSubjectPanelProps) {
   const t = useTranslations("exams.reviewExam");
+  const tSummary = useTranslations("exams.structure.summary");
   const tContent = useTranslations("content");
   const { section } = context;
   const block: QuestionBlock | undefined = section.blocks[0];
   const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
-    groups: section.blocks.map(
-      (item): AudioCountQuery => ({
-        subjectCode: section.subjectCode,
-        questionType: item.questionType,
-        answerTypes: item.questionType === null ? quotaTypes : [],
-        childAnswerType: item.childAnswerType,
-        knowledgeScope: effectiveScope(item, section),
-        tagCodes: item.tagCodes,
-        requiredPointsPerQuestion: item.requiredPointsPerQuestion,
-        itemShape: item.itemShape,
-        answerFormats: item.answerFormats,
-        childConditions: item.childConditions,
-        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
-        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
-      }),
-    ),
+    groups: subjectAudioGroups(section, quotaTypes, effectiveScope),
   });
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
-  // Vùng tùy chọn đóng sẵn; chỉ mở sẵn khi nhóm đã lấy câu chùm (giữ như trước). Giá trị ban đầu, không đổi theo thao tác để
-  // bỏ chùm không làm vùng tự đóng lại.
   const [startOpen] = useState(() => (block ? isSetBlock(block) : false));
   if (!block) return null;
 
@@ -83,14 +80,11 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
   const isSet = isSetBlock(block);
   const updateBlock = (patch: Partial<QuestionBlock>) =>
     onChange((current) => ({ ...current, blocks: current.blocks.map((item, index) => (index === 0 ? applyBlockPatch(item, patch) : item)) }));
-  // Số câu và ma trận nằm cùng một màn, không có hộp "Áp dụng số mới / Giữ số cũ": đổi tổng là xác nhận luôn, chỉ tiêu chủ đề
-  // nhập theo tỷ lệ tính lại theo tổng mới như ở nhóm thường (R2-01, R1-03).
   const retotal = (current: ExamSection, total: number) =>
     current.topicQuotas?.some((quota) => quota.percent !== undefined && quota.percent !== null)
       ? { topicQuotas: applyTopicTotal(current.topicQuotas, total) }
       : {};
   const setScope = (knowledgeScope: KnowledgeScope | null) => onChange((current) => ({ ...current, knowledgeScope }));
-  // Đổi số chùm hoặc số câu con: điều kiện của chùm vượt số chùm mới bị bỏ như ở nhóm thường (R1-30).
   const setSets = (setCount: number, setSize: number) => {
     const { patch } = resizeSets(block, setCount, setSize);
     onChange((current) => ({
@@ -105,8 +99,6 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
     ...QUESTION_TYPES.filter((type) => type !== "QUESTION_SET" && type !== "CLOZE").map((type) => ({ value: type, label: tContent(`questionType.${type}`) })),
   ];
   const mismatch = count !== step1Count;
-  // Nhóm lưu từ trước lệch bước 1 mà không có chùm: một cú bấm đưa số câu của môn và nhóm về số của bước 1 (R1-F2). Nhóm chùm
-  // đổi số chùm hoặc số câu con ở vùng "Câu chùm".
   const applyStep1Count = () =>
     onChange((current) => ({
       ...current,
@@ -132,7 +124,9 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
           {(controlProps) => (
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <Input {...controlProps} value={String(count)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
-              <EditOverviewLink examId={examId} className="h-auto p-0" />
+              <Button asChild variant="link" size="sm" className="h-auto p-0">
+                <Link href={examTabHref(examId, "general")}>{tSummary("editOverview")}</Link>
+              </Button>
               {mismatch && !isSet && (
                 <Button type="button" variant="secondary" size="sm" onClick={applyStep1Count}>
                   {t("useStep1Count")}
@@ -151,7 +145,6 @@ export function ReviewSubjectPanel({ context, subjectName, axes, labels, referen
         )}
       </section>
 
-      {/* Mọi thứ ngoài ba giá trị của bước 1 là tùy chọn: để mặc định vẫn lưu và kiểm tra được (UNI-2752). */}
       <details className="group rounded-md border border-border" open={startOpen}>
         <summary className={cn("flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-label font-semibold text-text", focusRing)}>
           <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
+import { draftTotals } from "../components/exam-structure-draft";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { ExamsBackend } from "./fake-exams-backend";
 
@@ -33,9 +34,14 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
     const user = userEvent.setup();
     openStructure("ex-thptqg-tin-001", "?part=part-t2");
     expect(await screen.findByRole("heading", { name: "Phần II · Đúng/Sai" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /Thời lượng \(phút\)/ })).not.toBeInTheDocument();
     expect(screen.getByText("50 phút, dùng chung cả bài")).toBeInTheDocument();
-    expect(screen.getByText("28 câu làm (đề ghi 30 câu)")).toBeInTheDocument();
+    expect(draftTotals(backend.app("ex-thptqg-tin-001")!.parts)).toMatchObject({
+      totalQuestions: 28,
+      printedQuestions: 30,
+    });
+    expect(screen.getByRole("textbox", { name: /Số câu phải làm/ })).toHaveValue("4");
     expect(screen.getByRole("heading", { name: "Phần chung của mọi nhánh" })).toBeInTheDocument();
     expect(screen.getByText("Nhánh (2)")).toBeInTheDocument();
     expect(screen.getAllByText(/Khoa học máy tính/).length).toBeGreaterThan(0);
@@ -54,7 +60,10 @@ describe("Cấu trúc theo bảy kỳ thi", () => {
   it("BCA: điểm phần và thang 100", async () => {
     openStructure("ex-bca-f-001", "?part=part-b3");
     expect(await screen.findByRole("heading", { name: "Phần 3 · Tự chọn" })).toBeInTheDocument();
-    expect(screen.getByText("100 / 100 điểm")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
+    const exam = backend.app("ex-bca-f-001")!;
+    expect(exam.maxScore).toBe(100);
+    expect(draftTotals(exam.parts).totalPoints).toBe(100);
     expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("15");
   });
 

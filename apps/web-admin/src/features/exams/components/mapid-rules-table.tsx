@@ -72,10 +72,15 @@ export function useMapidRuleText(reference: ContentReference | undefined) {
     },
     [t, topics],
   );
-  return { sentence, short, topics };
+  const scopeLabel = useCallback(
+    (groups: readonly QuestionBlock[], groupId: string | null): string =>
+      groupId === null ? t("scopeSubject") : groupName(groups.find((item) => item.id === groupId) ?? null, null, true),
+    [groupName, t],
+  );
+  return { sentence, short, topics, scopeLabel };
 }
 
-export interface MapidRulesTableProps {
+interface MapidRulesTableProps {
   /** Môn đang sửa: mẫu số của quy tắc cả môn, `mapidRules` và các nhóm của môn. */
   section: ExamSection;
   /** Nhóm lấy câu của môn mà quy tắc có thể trỏ tới (thường `section.blocks`). */

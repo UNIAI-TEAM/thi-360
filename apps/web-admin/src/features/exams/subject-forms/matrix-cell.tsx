@@ -4,13 +4,10 @@ import { cn, Input, Label } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { ratePercent } from "../allocation";
-import { parseNumberText } from "../components/block-number-input";
+import { formatNumberText, parseNumberText, parsePercentText } from "../components/block-number-input";
 import { LOCKED_FIELD } from "../components/locked-field";
 
-/** Số đang lưu của ô để hiện lại: chuỗi rỗng là ô để trống (khác ô 0). */
-const textOf = (value: number | null) => (value === null ? "" : String(value).replace(".", ","));
-
-export interface MatrixCellProps {
+interface MatrixCellProps {
   /** Nhãn của ô (tên khối lớp, độ khó hay dòng của Cấu trúc câu). */
   label: string;
   /** `data-form-field` của ô: đích của lỗi và của `navigation.ts`. */
@@ -47,15 +44,15 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
   const shownCount = stored === null ? null : unit === "COUNT" ? stored : count;
   const shownPercent = stored === null ? null : unit === "PERCENT" ? stored : total ? ratePercent(stored, total) : null;
   const rawIsPercent = raw?.code === "invalidPercent";
-  const [countText, setCountText] = useState(() => (raw && !rawIsPercent ? raw.text : textOf(shownCount)));
-  const [percentText, setPercentText] = useState(() => (raw && rawIsPercent ? raw.text : textOf(unit === "PERCENT" ? shownPercent : null)));
+  const [countText, setCountText] = useState(() => (raw && !rawIsPercent ? raw.text : formatNumberText(shownCount)));
+  const [percentText, setPercentText] = useState(() => (raw && rawIsPercent ? raw.text : formatNumberText(unit === "PERCENT" ? shownPercent : null)));
   const [last, setLast] = useState({ count: shownCount, percent: shownPercent });
   const [invalid, setInvalid] = useState(raw !== null);
   // Giá trị đổi từ bên ngoài (đổi tổng, hoàn tác, ô khác quy đổi lại): hiện giá trị mới thay cho chữ cũ.
   if (last.count !== shownCount || last.percent !== shownPercent) {
     setLast({ count: shownCount, percent: shownPercent });
-    if (parseNumberText(countText, false) !== (shownCount ?? 0) || (countText.trim() === "") !== (shownCount === null)) setCountText(textOf(shownCount));
-    if (twoColumns && (percentText.trim() === "") !== (shownPercent === null || unit === "COUNT")) setPercentText(textOf(unit === "PERCENT" ? shownPercent : null));
+    if (parseNumberText(countText, false) !== (shownCount ?? 0) || (countText.trim() === "") !== (shownCount === null)) setCountText(formatNumberText(shownCount));
+    if (twoColumns && (percentText.trim() === "") !== (shownPercent === null || unit === "COUNT")) setPercentText(formatNumberText(unit === "PERCENT" ? shownPercent : null));
   }
 
   const accept = (edit: { unit: "COUNT" | "PERCENT"; value: number | null }) => {
@@ -78,8 +75,8 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
   const changePercent = (text: string) => {
     setPercentText(text);
     if (text.trim() === "") return accept({ unit: "PERCENT", value: null });
-    const parsed = parseNumberText(text, true);
-    if (parsed === null || parsed > 100) return reject(text, "invalidPercent");
+    const parsed = parsePercentText(text);
+    if (parsed === null) return reject(text, "invalidPercent");
     accept({ unit: "PERCENT", value: parsed });
   };
 
@@ -119,7 +116,7 @@ export function MatrixCell({ label, field, stored, count, unit, total, twoColumn
               inputMode="decimal"
               autoComplete="off"
               value={percentText}
-              placeholder={unit === "COUNT" && shownPercent !== null ? textOf(shownPercent) : undefined}
+              placeholder={unit === "COUNT" && shownPercent !== null ? formatNumberText(shownPercent) : undefined}
               onChange={(event) => changePercent(event.target.value)}
               className={cn("w-20 text-right tabular-nums", readOnly && LOCKED_FIELD)}
             />
