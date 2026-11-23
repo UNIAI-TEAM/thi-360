@@ -24,7 +24,7 @@ export function focusField(path: string): void {
   if (target instanceof HTMLElement) target.focus({ preventScroll: true });
 }
 
-export interface CreateExamSummaryData {
+interface CreateExamSummaryData {
   kindLabel: string;
   scopeLabel: string;
   totalQuestions: number | null;
@@ -48,7 +48,7 @@ export function CreateExamSummaryPanel({
   data: CreateExamSummaryData;
   timing: ExamTiming;
   issues: readonly CreateExamIssue[];
-  /** Chế độ sửa (`/exams/new?exam=<id>`): bỏ ghi chú "Bài được tạo ở trạng thái Nháp...". */
+  /** Chế độ sửa (`/exams/<id>`): bỏ ghi chú "Bài được tạo ở trạng thái Nháp...". */
   editing?: boolean;
 }) {
   const t = useTranslations("exams.create.summary");
@@ -57,7 +57,7 @@ export function CreateExamSummaryPanel({
   const number = (value: number | null) => (value === null ? "—" : String(value));
 
   return (
-    <section aria-labelledby={headingId} className="flex-[1_1_300px] sticky top-4">
+    <section aria-labelledby={headingId} className={cn("flex-[1_1_300px]", !editing && "sticky top-4")}>
       <Card padding="md" className="flex flex-col gap-4">
         <h2 id={headingId} className="text-title font-semibold text-text">
           {t("title")}

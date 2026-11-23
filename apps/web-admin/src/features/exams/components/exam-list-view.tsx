@@ -28,6 +28,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
+import { usePermissions } from "@/features/session/session-provider";
 import {
   FILTER_FORM,
   FILTER_SEARCH,
@@ -71,13 +72,15 @@ const CREATE_EXAM_HREF = "/exams/new";
 
 /**
  * Danh sách bài thi (bản vẽ `BaiThi`; spec 7 kỳ thi): lọc theo bảy kỳ thi của danh mục và theo môn, cột Lựa chọn (tổ
- * hợp, nhánh hoặc môn), thời lượng ghi "chung" khi bài dùng thời lượng chung, huy hiệu "Có tự luận"; bảng/thẻ, sửa,
+ * hợp, nhánh hoặc môn), thời lượng ghi "chung" khi bài dùng thời lượng chung, huy hiệu "Có tự luận"; bảng/thẻ, sửa/xem,
  * sao chép, ngừng bán, tạo bài thi.
  */
 export function ExamListView() {
   const t = useTranslations("exams");
   const common = useTranslations("common");
   const format = useFormatter();
+  const permissions = usePermissions();
+  const canModify = !permissions.isLoading && permissions.can("EXAM.MODIFY");
   const unpublishedId = useId();
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
@@ -194,7 +197,7 @@ export function ExamListView() {
         cell: ({ row }) => (
           <div className="flex min-w-48 flex-col">
             <Link
-              href={examTabHref(row.original.id, "structure")}
+              href={examTabHref(row.original.id, "general")}
               className={cn("rounded-sm font-semibold text-primary-text hover:underline", focusRing)}
             >
               <span className="line-clamp-2">{row.original.name}</span>
@@ -291,7 +294,7 @@ export function ExamListView() {
       render: (exam) => (
         <ListCard
           title={
-            <ListCardTitleLink linkComponent={Link} href={examTabHref(exam.id, "structure")}>
+            <ListCardTitleLink linkComponent={Link} href={examTabHref(exam.id, "general")}>
               {exam.name}
             </ListCardTitleLink>
           }
@@ -332,12 +335,14 @@ export function ExamListView() {
         title={t("list.title")}
         description={t("list.description")}
         actions={
-          <Button asChild>
-            <Link href={CREATE_EXAM_HREF}>
-              <Plus />
-              <span>{t("list.actions.create")}</span>
-            </Link>
-          </Button>
+          canModify ? (
+            <Button asChild>
+              <Link href={CREATE_EXAM_HREF}>
+                <Plus />
+                <span>{t("list.actions.create")}</span>
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -510,12 +515,14 @@ export function ExamListView() {
                   title={t("list.emptyTitle")}
                   description={t("list.emptyDescription")}
                   action={
-                    <Button asChild>
-                      <Link href={CREATE_EXAM_HREF}>
-                        <Plus />
-                        <span>{t("list.actions.create")}</span>
-                      </Link>
-                    </Button>
+                    canModify ? (
+                      <Button asChild>
+                        <Link href={CREATE_EXAM_HREF}>
+                          <Plus />
+                          <span>{t("list.actions.create")}</span>
+                        </Link>
+                      </Button>
+                    ) : undefined
                   }
                 />
               )

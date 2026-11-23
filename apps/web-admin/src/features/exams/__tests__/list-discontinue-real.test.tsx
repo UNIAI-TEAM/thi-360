@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithProviders } from "@/test/render";
 import { mapExamSummary } from "../api-mapping";
 import { ExamListRowActions } from "../components/exam-list-actions";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -45,7 +45,7 @@ describe("ngừng bán từ danh sách, nhánh thật", () => {
       )
       .install();
     const user = userEvent.setup();
-    renderWithProviders(<ExamListRowActions exam={exam} onAnnounce={vi.fn()} />);
+    renderExamsUi(<ExamListRowActions exam={exam} onAnnounce={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Thao tác khác với bài thi HSA-F-001" }));
     await user.click(await screen.findByRole("menuitem", { name: "Ngừng bán" }));

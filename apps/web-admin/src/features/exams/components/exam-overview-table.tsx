@@ -10,7 +10,7 @@ import { labelAfterName, labelBeforeName } from "./exam-review-shared";
 import { LOCKED_FIELD } from "./locked-field";
 import { ScrollableTable } from "./scrollable-table";
 
-export interface OverviewNumberField {
+interface OverviewNumberField {
   /** Ô số dưới bảng: "Thời lượng chung" khi `timing = SHARED`, "Điểm tối đa" khi bảng không có cột Điểm (2B 15.1). */
   value: string;
   onChange: (text: string) => void;
@@ -49,10 +49,12 @@ export interface ExamOverviewTableProps {
   /** Ô điểm tối đa của bài khi bảng không có cột Điểm (không có mẫu chia điểm theo phần). */
   maxScore?: OverviewNumberField;
   /**
-   * Chỉ đọc: mọi ô số khóa như ô của mẫu khóa (`readonly aria-readonly`, vẫn trong thứ tự Tab). Dùng khi bảng hiện số của
-   * mẫu sắp nạp (đổi phạm vi ở Thông tin chung), chưa phải số của bài.
+   * Chỉ đọc: mọi ô số của các phần khóa như ô của mẫu khóa (`readonly aria-readonly`, vẫn trong thứ tự Tab). Dùng khi bảng
+   * hiện số của mẫu sắp nạp (đổi phạm vi ở Thông tin chung), chưa phải số của bài.
    */
   readOnly?: boolean;
+  /** Chỉ đọc cho ô mức bài thi (`sharedDuration`, `maxScore`); mặc định theo `readOnly`. */
+  fieldsReadOnly?: boolean;
   /**
    * Bài Theo môn + Tự thiết lập (UNI-2752): một dòng, Điểm tối đa là cột cạnh Thời lượng (cùng trường `maxScore`, cùng lỗi),
    * không có hàng Tổng của bài và không có ô Điểm tối đa tách riêng dưới bảng.
@@ -127,12 +129,14 @@ function FooterField({
   unit,
   state,
   position,
+  locked,
 }: {
   field: string;
   label: string;
   unit: string;
   state: OverviewNumberField;
   position: "top" | "bottom";
+  locked?: boolean;
 }) {
   const id = useId();
   const errorId = useId();
@@ -148,9 +152,11 @@ function FooterField({
             {...NUMERIC}
             id={id}
             value={state.value}
+            readOnly={locked}
+            aria-readonly={locked || undefined}
             aria-invalid={Boolean(state.error)}
             aria-describedby={state.error ? errorId : state.hint ? hintId : undefined}
-            className={cellInput}
+            className={cn(cellInput, locked && LOCKED_FIELD)}
             onChange={(event) => state.onChange(event.target.value)}
           />
           <span className="text-body text-text-secondary">{unit}</span>
@@ -219,12 +225,14 @@ export function ExamOverviewTable({
   sharedDuration,
   maxScore,
   readOnly = false,
+  fieldsReadOnly,
   reviewLayout = false,
   sharedTotal,
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
   const format = useFormatter();
   const tableId = useId();
+  const lockFields = fieldsReadOnly ?? readOnly;
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? sharedTotal ?? "");
   const showDuration = timing === "PER_PART";
   const maxScoreColumn = reviewLayout && maxScore !== undefined;
@@ -264,7 +272,7 @@ export function ExamOverviewTable({
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       {sharedDuration && timing === "SHARED" && (
-        <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} position="top" />
+        <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} position="top" locked={lockFields} />
       )}
       <ScrollableTable label={t("regionLabel")}>
         <table className={cn("w-full border-collapse text-body", blockMode ? "min-w-[44rem]" : "min-w-[32rem]")}>
@@ -389,7 +397,7 @@ export function ExamOverviewTable({
                   {maxScoreColumn && (
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
-                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} locked={readOnly} /> : <span className="px-3 py-2 text-text-muted">—</span>}
+                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} locked={readOnly || lockFields} /> : <span className="px-3 py-2 text-text-muted">—</span>}
                       </div>
                     </td>
                   )}
@@ -439,7 +447,9 @@ export function ExamOverviewTable({
       {blockMode && !rows.some((row) => row.kind === "part" && row.lockedCount) && (
         <p className="border-t border-border px-3 py-2 text-caption text-text-muted">{t("blockRowsNote")}</p>
       )}
-      {maxScore && !maxScoreColumn && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" />}
+      {maxScore && !maxScoreColumn && (
+        <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" locked={lockFields} />
+      )}
     </div>
   );
 }

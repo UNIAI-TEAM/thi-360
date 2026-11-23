@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import type * as ContentApi from "@/features/content/api";
-import { renderWithProviders } from "@/test/render";
-import { ExamGeneralView } from "../components/exam-general-view";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 import { byTextContent } from "./text-content";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -66,24 +66,24 @@ beforeEach(() => {
 async function renderGeneral(exam = reviewExam()) {
   server.on("GET", EXAM_PATH, { status: 200, body: exam }).install();
   const user = userEvent.setup();
-  renderWithProviders(<ExamGeneralView examId={EXAM_ID} />);
-  const scale = await screen.findByRole("textbox", { name: /^Thang điểm/ });
+  renderExamsUi(<ExamGeneralForm mode="edit" examId={EXAM_ID} />);
+  const scale = await screen.findByRole("textbox", { name: "Điểm tối đa" });
   return { user, scale };
 }
 
 describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có thang nếu người dùng không nhập)", () => {
-  it("ô thang của bài ôn để trống, ghi là tùy chọn, không đánh dấu bắt buộc", async () => {
+  it("ô thang của bài ôn để trống, không đánh dấu bắt buộc, Tình trạng ghi Chưa đặt", async () => {
     const { scale } = await renderGeneral();
     expect(scale).toHaveValue("");
     expect(scale).not.toBeRequired();
-    expect(screen.getByText("Để trống nếu thang điểm đặt lúc thiết lập bài")).toBeInTheDocument();
+    expect(screen.getByText("Chưa đặt")).toBeInTheDocument();
   });
 
   it("đổi môn: thang vẫn trống, hộp xác nhận hiện mẫu bài ôn, PATCH gửi maxScore null", async () => {
-    const { user, scale } = await renderGeneral();
+    const { user } = await renderGeneral();
     await user.click(screen.getByRole("combobox", { name: /^Môn/ }));
     await user.click(await screen.findByRole("option", { name: /Vật lí/ }));
-    expect(scale).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Điểm tối đa" })).toHaveValue("");
 
     await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
     const dialog = await screen.findByRole("dialog");
@@ -115,9 +115,10 @@ describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có tha
 
 describe("Thông tin chung của bài ôn: đi vòng phạm vi (FE-R2-1)", () => {
   it("Toàn bài rồi Theo môn: thang vẫn trống, không bắt buộc, lưu không qua hộp xác nhận, maxScore null", async () => {
-    const { user, scale } = await renderGeneral();
+    const { user } = await renderGeneral();
     await user.click(screen.getByRole("radio", { name: /^Toàn bài/ }));
     await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
+    const scale = screen.getByRole("textbox", { name: "Điểm tối đa" });
     expect(scale).toHaveValue("");
     expect(scale).not.toBeRequired();
 

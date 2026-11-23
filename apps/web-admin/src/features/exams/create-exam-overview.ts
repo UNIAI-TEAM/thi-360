@@ -9,7 +9,7 @@ import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTiming, Item
  * hoặc `partCode`/`subjectCode`).
  */
 
-export type OverviewRowKind = "part" | "section" | "block" | "omitted";
+type OverviewRowKind = "part" | "section" | "block" | "omitted";
 
 export interface OverviewRow {
   /** Khóa ổn định cho React và cho `onRowChange`: `p:<partId|index>` hoặc `p:<…>/s:<sectionId|subject>`. */
@@ -45,7 +45,7 @@ export interface OverviewRow {
   block?: OverviewBlockInfo;
 }
 
-export interface OverviewTotals {
+interface OverviewTotals {
   questions: number | null;
   durationMinutes: number | null;
   maxPoints: number | null;
@@ -303,7 +303,7 @@ export function overviewDiff(rows: readonly OverviewRow[]): ExamOverviewRow[] {
   return diff;
 }
 
-export type OverviewIssueCode = "countInvalid" | "durationInvalid" | "pointsInvalid";
+type OverviewIssueCode = "countInvalid" | "durationInvalid" | "pointsInvalid";
 
 export interface OverviewIssue {
   rowKey: string;

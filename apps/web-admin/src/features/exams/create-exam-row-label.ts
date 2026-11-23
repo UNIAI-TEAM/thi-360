@@ -14,7 +14,7 @@ const VACT_COMPETENCY_GROUP: Array<[prefix: string, part: string]> = [
 /** Mục của phần (mẫu hoặc cấu trúc đã lưu): đủ để suy ra năng lực và môn. */
 type LabelSection = Parameters<typeof sectionCompetency>[0] & { subjectCode: string };
 
-export interface OverviewLabelContext {
+interface OverviewLabelContext {
   vact: boolean;
   /** Tên theo thông điệp (`partName`) của mã môn hoặc mã tên phần (LOGIC, REASONING, LANGUAGE, THINKING). */
   partName: (code: string) => string;

@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamListView } from "../components/exam-list-view";
 import { ExamsBackend } from "./fake-exams-backend";
+import { renderExamsUi } from "./render-exams-ui";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -45,7 +45,7 @@ function rowOf(table: HTMLElement, name: string) {
 
 describe("danh sách bài thi: bảy kỳ thi", () => {
   it("cột Lựa chọn, thời lượng chung, huy hiệu Có tự luận", async () => {
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
     const table = await screen.findByRole("table", { name: "Danh sách bài thi" });
     expect(within(table).getByRole("columnheader", { name: "Lựa chọn" })).toBeInTheDocument();
     await within(table).findByRole("link", { name: "BCA thu" });
@@ -68,7 +68,7 @@ describe("danh sách bài thi: bảy kỳ thi", () => {
 
   it("lọc theo bảy kỳ thi của danh mục và theo môn", async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
     const table = await screen.findByRole("table", { name: "Danh sách bài thi" });
     await within(table).findByRole("link", { name: "BCA thu" });
 
