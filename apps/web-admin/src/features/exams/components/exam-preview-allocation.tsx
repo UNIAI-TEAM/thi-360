@@ -5,14 +5,34 @@ import { Card, EmptyState, FormField, ListCard, Select, StatusChip, Table, type 
 import { CircleCheck, CircleMinus, CircleX } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode, useMemo, useState } from "react";
-import type { PreviewBlock, PreviewCheck, PreviewKnowledgeStat, PreviewPaper } from "../review-types";
-import { ExamPreviewSubjectQuotas } from "./exam-preview-subject-quotas";
+import type {
+  PreviewBlock,
+  PreviewCheck,
+  PreviewCompliance,
+  PreviewKnowledgeStat,
+  PreviewPaper,
+  PreviewQuestion,
+} from "../review-types";
+import { ExamPreviewCompliance, mergeSubjectQuotasIntoCompliance } from "./exam-preview-compliance";
 import { ExamName, richNodes, useLookup } from "./exam-review-shared";
 
-/** Đối chiếu phân bổ: chỉ tiêu yêu cầu với đề đã sinh theo từng khối, kiểm tra trên đề, thống kê theo kiến thức. */
-export function ExamPreviewAllocation({ paper }: { paper: PreviewPaper }) {
+/** Đối chiếu phân bổ: chỉ tiêu yêu cầu với đề đã sinh (cả bài, môn và khối), kiểm tra trên đề, thống kê theo kiến thức. */
+export function ExamPreviewAllocation({
+  paper,
+  compliance = [],
+  dropped = [],
+  examId,
+  original = false,
+}: {
+  paper: PreviewPaper;
+  compliance?: readonly PreviewCompliance[];
+  dropped?: readonly PreviewQuestion[];
+  examId?: string;
+  original?: boolean;
+}) {
   const t = useTranslations("exams.preview.allocation");
   const lookup = useLookup();
+  const mergedCompliance = useMemo(() => mergeSubjectQuotasIntoCompliance(paper, compliance), [paper, compliance]);
   const blocks = paper.parts.flatMap((part) => part.blocks);
   const [blockId, setBlockId] = useState(
     () => (blocks.find((block) => block.requirement.mode === "COMBINED") ?? blocks[0])?.blockId ?? "",
@@ -27,7 +47,13 @@ export function ExamPreviewAllocation({ paper }: { paper: PreviewPaper }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <ExamPreviewSubjectQuotas subjects={paper.subjects} />
+      <ExamPreviewCompliance
+        paper={paper}
+        compliance={mergedCompliance}
+        dropped={dropped}
+        examId={examId}
+        original={original}
+      />
       <Card padding="md" className="flex flex-col gap-3">
         <FormField label={t("blockLabel")} className="max-w-md">
           {(controlProps) => (

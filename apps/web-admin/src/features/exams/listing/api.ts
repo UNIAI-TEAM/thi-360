@@ -3,12 +3,6 @@ import { createBrowserApiClient } from "@/lib/api/client";
 import { mapListingCheckIssues, toExamsApiError } from "../review-api";
 import { RESULT_VIEWS, type ExamListing, type ListingTerms, type ResultView, type UpdateListingRequest, type UploadedCover } from "./types";
 
-/**
- * API thông tin bán và ảnh bìa của bài thi (EX-1, TM 6.3): `GET`/`PUT /api/v1/admin/exams/{id}/listing`,
- * `POST /api/v1/admin/exams/{id}/cover`. Lỗi nghiệp vụ ném `ExamsApiError` ({status, code, fieldErrors}): 412
- * `EXAM_REVISION_CONFLICT`; 422 `EXAM_LISTING_INVALID` kèm `fieldErrors` theo ô (tải ảnh: trường `file`).
- */
-
 type ApiListing = components["schemas"]["ExamListing"];
 type ApiListingSale = components["schemas"]["ExamListingSale"];
 

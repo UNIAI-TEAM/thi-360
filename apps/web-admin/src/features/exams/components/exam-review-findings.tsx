@@ -43,11 +43,6 @@ export interface ExamReviewFindingsProps {
   result: ExamCheckResult;
 }
 
-/**
- * Lỗi và cảnh báo của lần kiểm tra (bản vẽ `KiemTra2B`, 2B 7.3 và 15.2): lỗi chặn công bố tách khỏi cảnh báo, gom theo
- * môn hoặc theo mã bài thi bị ảnh hưởng. Lời lỗi là chữ chính, mã kỹ thuật là chữ phụ; mỗi lỗi có liên kết mở đúng chỗ
- * ở bước Cấu trúc.
- */
 export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
   const t = useTranslations("exams.review.findings");
   const tListing = useTranslations("exams.review.listing");
@@ -275,7 +270,6 @@ function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
   );
 }
 
-/** Trạng thái từng môn sau lần kiểm tra: một chip mỗi môn, trạng thái xấu nhất nếu môn nằm ở nhiều phần (H2). */
 function SectionStates({ states }: { states: readonly ExamSectionState[] }) {
   const t = useTranslations("exams.review.findings");
   const tState = useTranslations("exams.structure.list.state");

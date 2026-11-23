@@ -2,9 +2,10 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import { ExamGeneralView } from "../components/exam-general-view";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { ExamsBackend } from "./fake-exams-backend";
+import { renderExamsUi } from "./render-exams-ui";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -85,9 +86,10 @@ describe("Thông tin chung", () => {
     // Không chờ giữa các thao tác: bản chờ mặc định cộng dồn theo từng ký tự và làm ca này sát hạn 5 giây khi chạy cả bộ.
     const user = userEvent.setup({ delay: null });
     window.history.replaceState(null, "", "/exams/ex-qda-f-001");
-    renderWithProviders(<ExamGeneralView examId="ex-qda-f-001" />);
+    renderExamsUi(<ExamGeneralForm mode="edit" examId="ex-qda-f-001" />);
     const name = await screen.findByRole("textbox", { name: /Tên bài thi/ });
-    expect(screen.getByRole("radio", { name: /HSA/ })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: /^Kỳ thi/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /^Toàn bài/ })).toBeDisabled();
     expect(screen.getByText("Tiếng Anh + 2 tổ hợp")).toBeInTheDocument();
     await user.clear(name);
     // Dán một lần thay cho gõ từng ký tự: một lần render của biểu mẫu thay vì hơn hai mươi lần.

@@ -3,25 +3,16 @@
 import { StatusChip } from "@thi360/ui";
 import { Headphones, HeadphoneOff } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { AudioCountQuery } from "../api.http";
+import type { AudioCountQuery } from "../api";
 import { ratePercent } from "../allocation";
 import { groupCountScope } from "../mapid-rules";
 import type { ExamSection, QuestionBlock } from "../types";
-
-/**
- * Giá trị của dòng lấy câu dùng chung cho vùng sửa nhóm (`BlockEditor`) và bảng nhóm của môn (bản vẽ `NhomAudio2B`,
- * R-130, R-135, R-142): một đường tính, để số ở bảng luôn bằng số ở vùng sửa.
- */
 
 /** Điều kiện audio của phần: chỉ `REQUIRED` và `FORBIDDEN` có nhãn; `ANY` hoặc bỏ trống là phần không phân biệt audio. */
 export function sectionAudio(section: ExamSection): "REQUIRED" | "FORBIDDEN" | null {
   return section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? section.audioRequirement : null;
 }
 
-/**
- * Bộ lọc đếm nguồn của một dòng: phạm vi có hiệu lực (của nhóm, hoặc của môn khi nhóm kế thừa), dạng trả lời của nhóm và
- * điều kiện audio của môn (H38). Dòng kế thừa điều kiện audio nên đếm nguồn của dòng gửi cùng điều kiện.
- */
 export function blockAvailableInput(block: QuestionBlock, section: ExamSection, subjectCode: string): AudioCountQuery {
   const quotaTypes = section.answerQuotas?.items.map((item) => item.answerType) ?? [];
   return {

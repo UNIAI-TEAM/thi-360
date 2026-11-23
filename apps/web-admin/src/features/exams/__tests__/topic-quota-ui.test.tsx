@@ -7,7 +7,6 @@ import type { ContentReference } from "@/features/content/types";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
-import { allocationProgress } from "../allocation";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { ReferenceDistributions } from "../components/subject-allocation-extras";
 import { TopicQuotaTable } from "../components/topic-quota-table";
@@ -138,12 +137,6 @@ describe("Phân bố tham khảo (H7, K9, H21)", () => {
     expect(apply).toBeEnabled();
     await user.click(apply);
     expect(onApply).toHaveBeenCalledTimes(1);
-  });
-
-  it("tiến độ phân bổ: thiếu, đủ, vượt", () => {
-    expect(allocationProgress(27, 30).state).toBe("SHORT");
-    expect(allocationProgress(30, 30).state).toBe("MATCH");
-    expect(allocationProgress(32, 30)).toMatchObject({ state: "OVER", missing: -2 });
   });
 });
 

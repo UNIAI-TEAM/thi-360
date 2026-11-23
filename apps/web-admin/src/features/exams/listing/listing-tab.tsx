@@ -13,14 +13,8 @@ import { ListingForm } from "./listing-form";
 import { ListingPriceStrip } from "./listing-price-strip";
 import { useExamListing } from "./queries";
 
-/** Quyền sửa thông tin bán (TM 6.3 `PUT /exams/{id}/listing`); thiếu quyền thì tab chỉ xem. */
 export const LISTING_EDIT_PERMISSION = "EXAM.MODIFY";
 
-/**
- * Tab "Thông tin bán" của bài thi, `/exams/[id]/listing` (TM 6.4, bản vẽ `BaiThiThongTinBan`): dải "Giá đang bán", biểu
- * mẫu và thẻ xem trước. Đủ bốn trạng thái: đang tải, lỗi tải kèm nút thử lại, có dữ liệu, và chỉ xem khi thiếu quyền sửa.
- * Lưu bị 412 thì nạp lại bản mới và giữ thông báo trên màn tới khi người dùng đóng hoặc lưu thành công.
- */
 export function ExamListingView({ examId }: { examId: string }) {
   const t = useTranslations("exams.listing");
   const format = useFormatter();
@@ -32,11 +26,11 @@ export function ExamListingView({ examId }: { examId: string }) {
 
   if (examQuery.isPending || listingQuery.isPending) {
     return (
-      <div className="flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
+      <div className="@container flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
         <Skeleton className="h-16" />
-        <div className="flex flex-wrap gap-4">
-          <Skeleton className="h-96 min-w-0 flex-[999_1_34rem]" />
-          <Skeleton className="h-96 min-w-0 flex-[1_1_21rem]" />
+        <div className="grid grid-cols-1 gap-6 @5xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <Skeleton className="h-96 min-w-0" />
+          <Skeleton className="h-96 min-w-0" />
         </div>
       </div>
     );

@@ -2,9 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
-import { renderWithProviders } from "@/test/render";
 import { ExamListView } from "../components/exam-list-view";
 import { examDetailWire, FakeServer, type Recorded } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu để dựng màn.
@@ -65,12 +65,12 @@ beforeEach(() => {
 describe("danh sách bài thi, nhánh thật", () => {
   it("hiện bài thi và cột cấu trúc; không có cột Đường lựa chọn; Tạo bài thi mở trang riêng", async () => {
     listServer();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
 
     const table = await screen.findByRole("table", { name: "Danh sách bài thi" });
     expect(await within(table).findByRole("link", { name: "HSA FULL · Đề luyện số 1" })).toHaveAttribute(
       "href",
-      `/exams/${HSA_ID}/structure`,
+      `/exams/${HSA_ID}`,
     );
     expect(within(table).queryByRole("columnheader", { name: "Đường lựa chọn" })).not.toBeInTheDocument();
     // Máy chủ không cho biết cách tính thời gian: ghi thời lượng trung tính, không nói "chung".
@@ -82,7 +82,7 @@ describe("danh sách bài thi, nhánh thật", () => {
 
   it("thiếu thời lượng thì ghi —; thiếu phần và môn thì cột Lựa chọn rơi về gạch ngang, không vỡ", async () => {
     new FakeServer().on("GET", LIST_PATH, page([row("a1", "X-1", "Bài chưa có thời lượng", 8), row("b2", "X-2", "Bài theo phần", 10, 50)])).install();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
 
     const table = await screen.findByRole("table", { name: "Danh sách bài thi" });
     const rowOf = (name: string) => {
@@ -100,7 +100,7 @@ describe("danh sách bài thi, nhánh thật", () => {
   it("tìm theo mã gửi q cho máy chủ và thu hẹp danh sách", async () => {
     const server = listServer();
     const user = userEvent.setup();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
     await screen.findByRole("link", { name: "HSA FULL · Đề luyện số 1" });
 
     await user.type(screen.getByRole("searchbox", { name: "Tìm kiếm" }), "QDA-F-002");
@@ -113,7 +113,7 @@ describe("danh sách bài thi, nhánh thật", () => {
   it("lọc theo bảy kỳ thi của danh mục và theo môn (gửi subject cho máy chủ)", async () => {
     const server = listServer();
     const user = userEvent.setup();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
     await screen.findByRole("link", { name: "HSA FULL · Đề luyện số 1" });
 
     await user.click(screen.getByRole("combobox", { name: "Kỳ thi" }));
@@ -132,7 +132,7 @@ describe("danh sách bài thi, nhánh thật", () => {
       body: examDetailWire({ id: "00000000-0000-4000-8000-000000000009", code: "QDA-F-002-COPY" }),
     });
     const user = userEvent.setup();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
 
     await user.click(await screen.findByRole("button", { name: "Sao chép bài thi QDA-F-002" }));
 
@@ -142,12 +142,12 @@ describe("danh sách bài thi, nhánh thật", () => {
 
   it("danh sách rỗng và lỗi máy chủ có trạng thái riêng", async () => {
     new FakeServer().on("GET", LIST_PATH, page([])).install();
-    const { unmount } = renderWithProviders(<ExamListView />);
+    const { unmount } = renderExamsUi(<ExamListView />);
     expect(await screen.findByRole("heading", { name: "Chưa có bài thi" })).toBeInTheDocument();
     unmount();
 
     new FakeServer().on("GET", LIST_PATH, { status: 500, body: { code: "INTERNAL" } }).install();
-    renderWithProviders(<ExamListView />);
+    renderExamsUi(<ExamListView />);
     expect(await screen.findByRole("heading", { name: "Không tải được danh sách bài thi" })).toBeInTheDocument();
   });
 });

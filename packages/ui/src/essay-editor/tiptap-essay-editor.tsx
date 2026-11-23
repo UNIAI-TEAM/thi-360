@@ -1,31 +1,131 @@
 "use client";
 
-import { IconButton, cn } from "@thi360/ui";
-import type { EssayEditorProps } from "@thi360/ui/question";
-import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Italic, List, ListOrdered, Redo2, Undo2 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import { IconButton } from "../components/icon-button";
+import { cn } from "../lib/cn";
+import { sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "../rich-text";
 
-function normalizeEssayHtml(rawHtml: string): string {
+export interface EssayEditorLabels {
+  toolbarLabel: string;
+  bold: string;
+  italic: string;
+  bulletList: string;
+  orderedList: string;
+  undo: string;
+  redo: string;
+}
+
+export const DEFAULT_ESSAY_EDITOR_LABELS: EssayEditorLabels = {
+  toolbarLabel: "Essay formatting toolbar",
+  bold: "Bold",
+  italic: "Italic",
+  bulletList: "Bulleted list",
+  orderedList: "Numbered list",
+  undo: "Undo",
+  redo: "Redo",
+};
+
+export interface TiptapEssayEditorProps {
+  id?: string;
+  value: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  "aria-label"?: string;
+  ariaLabel?: string;
+  "aria-labelledby"?: string;
+  ariaLabelledBy?: string;
+  "aria-describedby"?: string;
+  ariaDescribedBy?: string;
+  readOnly?: boolean;
+  disabled?: boolean;
+  minHeightClass?: string;
+  minRows?: number;
+  className?: string;
+  labels?: Partial<EssayEditorLabels>;
+}
+
+export function normalizeEssayHtml(rawHtml: string): string {
   const sanitized = sanitizeQuestionHtml(rawHtml, { allowImages: false }).html;
   const trimmed = stripTrailingEmptyParagraph(sanitized);
   return trimmed === "<p></p>" ? "" : trimmed;
 }
 
-export function TrialEssayEditor({
+function buildEditorAttributes({
+  id,
+  ariaLabel,
+  ariaLabelledBy,
+  ariaDescribedBy,
+  readOnly,
+  disabled,
+  minHeightClass,
+  minRows,
+}: {
+  id: string | undefined;
+  ariaLabel: string | undefined;
+  ariaLabelledBy: string | undefined;
+  ariaDescribedBy: string | undefined;
+  readOnly: boolean;
+  disabled: boolean;
+  minHeightClass: string;
+  minRows: number | undefined;
+}): Record<string, string> {
+  const isNonEditable = readOnly || disabled;
+  return {
+    ...(id ? { id } : {}),
+    role: "textbox",
+    "aria-multiline": "true",
+    ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
+    ...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {}),
+    ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
+    ...(isNonEditable ? { "aria-readonly": "true" } : {}),
+    ...(disabled ? { "aria-disabled": "true" } : {}),
+    ...(typeof minRows === "number" && minRows > 0
+      ? { style: `min-height: ${Math.max(1, minRows) * 1.75}rem` }
+      : {}),
+    class: cn(
+      "rich-text w-full rounded-b-lg px-3.5 py-2.5 text-body text-text outline-hidden",
+      minHeightClass,
+    ),
+  };
+}
+
+export function TiptapEssayEditor({
   id,
   value,
   onChange,
-  placeholder,
-  "aria-label": ariaLabel,
-  "aria-describedby": ariaDescribedBy,
+  placeholder = "",
+  "aria-label": ariaLabelAttr,
+  ariaLabel: ariaLabelProp,
+  "aria-labelledby": ariaLabelledByAttr,
+  ariaLabelledBy: ariaLabelledByProp,
+  "aria-describedby": ariaDescribedByAttr,
+  ariaDescribedBy: ariaDescribedByProp,
   readOnly = false,
-  minHeightClass,
-}: EssayEditorProps) {
-  const t = useTranslations("exams.trial.editor");
+  disabled = false,
+  minHeightClass = "min-h-48",
+  minRows,
+  className,
+  labels,
+}: TiptapEssayEditorProps) {
+  const resolvedLabels: EssayEditorLabels = {
+    ...DEFAULT_ESSAY_EDITOR_LABELS,
+    ...labels,
+  };
+  const resolvedAriaLabel = ariaLabelAttr ?? ariaLabelProp;
+  const resolvedAriaLabelledBy = ariaLabelledByAttr ?? ariaLabelledByProp;
+  const resolvedAriaDescribedBy = ariaDescribedByAttr ?? ariaDescribedByProp;
+  const isNonEditable = Boolean(readOnly || disabled);
+
   const lastEmittedHtmlRef = useRef<string>(normalizeEssayHtml(value));
   const onChangeRef = useRef(onChange);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -37,7 +137,7 @@ export function TrialEssayEditor({
 
   const editor = useEditor({
     immediatelyRender: false,
-    editable: !readOnly,
+    editable: !isNonEditable,
     extensions: [
       StarterKit.configure({
         blockquote: false,
@@ -54,18 +154,16 @@ export function TrialEssayEditor({
     ],
     content: normalizeEssayHtml(value),
     editorProps: {
-      attributes: {
+      attributes: buildEditorAttributes({
         id,
-        role: "textbox",
-        "aria-multiline": "true",
-        "aria-label": ariaLabel,
-        ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
-        ...(readOnly ? { "aria-readonly": "true" } : {}),
-        class: cn(
-          "rich-text w-full rounded-b-lg px-3.5 py-2.5 text-body text-text outline-hidden",
-          minHeightClass,
-        ),
-      },
+        ariaLabel: resolvedAriaLabel,
+        ariaLabelledBy: resolvedAriaLabelledBy,
+        ariaDescribedBy: resolvedAriaDescribedBy,
+        readOnly,
+        disabled,
+        minHeightClass,
+        minRows,
+      }),
     },
     onUpdate({ editor: nextEditor }) {
       const normalized = normalizeEssayHtml(nextEditor.getHTML());
@@ -115,15 +213,18 @@ export function TrialEssayEditor({
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    editor.setEditable(!readOnly, false);
-  }, [editor, readOnly]);
+    editor.setEditable(!isNonEditable, false);
+  }, [editor, isNonEditable]);
 
   const attrKey = JSON.stringify({
-    id,
-    ariaLabel,
-    ariaDescribedBy: ariaDescribedBy ?? "",
+    id: id ?? "",
+    ariaLabel: resolvedAriaLabel ?? "",
+    ariaLabelledBy: resolvedAriaLabelledBy ?? "",
+    ariaDescribedBy: resolvedAriaDescribedBy ?? "",
     readOnly,
+    disabled,
     minHeightClass,
+    minRows: minRows ?? null,
   });
 
   useLayoutEffect(() => {
@@ -131,29 +232,44 @@ export function TrialEssayEditor({
     editor.setOptions({
       editorProps: {
         ...editor.options.editorProps,
-        attributes: {
+        attributes: buildEditorAttributes({
           id,
-          role: "textbox",
-          "aria-multiline": "true",
-          "aria-label": ariaLabel,
-          ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
-          ...(readOnly ? { "aria-readonly": "true" } : {}),
-          class: cn(
-            "rich-text w-full rounded-b-lg px-3.5 py-2.5 text-body text-text outline-hidden",
-            minHeightClass,
-          ),
-        },
+          ariaLabel: resolvedAriaLabel,
+          ariaLabelledBy: resolvedAriaLabelledBy,
+          ariaDescribedBy: resolvedAriaDescribedBy,
+          readOnly,
+          disabled,
+          minHeightClass,
+          minRows,
+        }),
       },
     });
-  }, [editor, attrKey, id, ariaLabel, ariaDescribedBy, readOnly, minHeightClass]);
+  }, [
+    editor,
+    attrKey,
+    id,
+    resolvedAriaLabel,
+    resolvedAriaLabelledBy,
+    resolvedAriaDescribedBy,
+    readOnly,
+    disabled,
+    minHeightClass,
+    minRows,
+  ]);
 
-  const showPlaceholder = toolbarState?.isEmpty ?? value.trim().length === 0;
+  const showPlaceholder = Boolean(placeholder) && (toolbarState?.isEmpty ?? value.trim().length === 0);
 
   function onToolbarKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const buttons = Array.from(toolbarRef.current?.querySelectorAll("button") ?? []);
     if (buttons.length === 0) return;
-    const current = buttons.indexOf(event.target as HTMLButtonElement);
+    const targetButton = (event.target as HTMLElement | null)?.closest?.("button") as HTMLButtonElement | null;
+    const activeButton =
+      typeof document !== "undefined" && document.activeElement instanceof HTMLButtonElement
+        ? document.activeElement
+        : null;
+    const resolvedButton = targetButton ?? activeButton;
+    const current = resolvedButton ? buttons.indexOf(resolvedButton) : -1;
     let next = -1;
     switch (event.key) {
       case "ArrowRight":
@@ -187,34 +303,34 @@ export function TrialEssayEditor({
   const formatButtons: ToolbarButton[] = [
     {
       key: "bold",
-      label: t("bold"),
+      label: resolvedLabels.bold,
       icon: <Bold className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.bold ?? false,
-      disabled: readOnly || !editor?.can().toggleBold(),
+      disabled: isNonEditable || !editor?.can().toggleBold(),
       onClick: () => editor?.chain().focus().toggleBold().run(),
     },
     {
       key: "italic",
-      label: t("italic"),
+      label: resolvedLabels.italic,
       icon: <Italic className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.italic ?? false,
-      disabled: readOnly || !editor?.can().toggleItalic(),
+      disabled: isNonEditable || !editor?.can().toggleItalic(),
       onClick: () => editor?.chain().focus().toggleItalic().run(),
     },
     {
       key: "bulletList",
-      label: t("bulletList"),
+      label: resolvedLabels.bulletList,
       icon: <List className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.bulletList ?? false,
-      disabled: readOnly || !editor?.can().toggleBulletList(),
+      disabled: isNonEditable || !editor?.can().toggleBulletList(),
       onClick: () => editor?.chain().focus().toggleBulletList().run(),
     },
     {
       key: "orderedList",
-      label: t("orderedList"),
+      label: resolvedLabels.orderedList,
       icon: <ListOrdered className="size-4" aria-hidden="true" />,
       pressed: toolbarState?.orderedList ?? false,
-      disabled: readOnly || !editor?.can().toggleOrderedList(),
+      disabled: isNonEditable || !editor?.can().toggleOrderedList(),
       onClick: () => editor?.chain().focus().toggleOrderedList().run(),
     },
   ];
@@ -222,16 +338,16 @@ export function TrialEssayEditor({
   const historyButtons: ToolbarButton[] = [
     {
       key: "undo",
-      label: t("undo"),
+      label: resolvedLabels.undo,
       icon: <Undo2 className="size-4" aria-hidden="true" />,
-      disabled: readOnly || !(toolbarState?.canUndo ?? false),
+      disabled: isNonEditable || !(toolbarState?.canUndo ?? false),
       onClick: () => editor?.chain().focus().undo().run(),
     },
     {
       key: "redo",
-      label: t("redo"),
+      label: resolvedLabels.redo,
       icon: <Redo2 className="size-4" aria-hidden="true" />,
-      disabled: readOnly || !(toolbarState?.canRedo ?? false),
+      disabled: isNonEditable || !(toolbarState?.canRedo ?? false),
       onClick: () => editor?.chain().focus().redo().run(),
     },
   ];
@@ -271,16 +387,19 @@ export function TrialEssayEditor({
 
   return (
     <div
+      data-disabled={disabled ? "" : undefined}
       className={cn(
         "rounded-lg border border-border-strong bg-surface transition-colors motion-reduce:transition-none",
         "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
-        readOnly && "bg-subtle",
+        isNonEditable && "bg-subtle",
+        disabled && "cursor-not-allowed opacity-70",
+        className,
       )}
     >
       <div
         ref={toolbarRef}
         role="toolbar"
-        aria-label={t("toolbarLabel")}
+        aria-label={resolvedLabels.toolbarLabel}
         onKeyDown={onToolbarKeyDown}
         className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-1.5"
       >

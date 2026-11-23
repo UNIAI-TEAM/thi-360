@@ -1,16 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { formBlockingIssues, registerFormBlockingRuleForTest, type BlockingIssue } from "../subject-forms/blocking";
+import { describe, expect, it } from "vitest";
+import { formBlockingIssues } from "../subject-forms/blocking";
 import { findFormTargetElement, focusFormTarget, formTarget } from "../subject-forms/navigation";
 import { createRawInputStore } from "../subject-forms/raw-input-store";
 import { rowFormBlockingRule } from "../subject-forms/row-blocking";
 import type { SubjectFormPins } from "../subject-forms/selection";
-import { part, scienceSection, setBlock, standardExam } from "./subject-form-builders";
+import { block, part, scienceSection, section, setBlock, standardExam } from "./subject-form-builders";
 
 /** Lõi của chặn lưu (`blocking.ts`), kho nhập thô và `navigation.ts`: hàm thuần, chưa qua `StructureEditor`. */
-const restores: Array<() => void> = [];
-afterEach(() => {
-  while (restores.length) restores.pop()!();
-});
 
 const pins = (entries: Record<string, "MATRIX" | "ROWS" | "DEFAULT">): SubjectFormPins =>
   Object.fromEntries(Object.entries(entries).map(([id, form]) => [id, { form, notice: false }]));
@@ -50,15 +46,18 @@ describe("Kho nhập thô (FTM R-15)", () => {
 });
 
 describe("Lỗi chặn lưu (blocking.ts)", () => {
-  const rule = (code: string, sectionId: string) => (target: { id: string }): BlockingIssue[] =>
-    target.id === sectionId ? [{ code, sectionId, blockId: null, field: "structure" }] : [];
+  const overLimitScience = (id: string) =>
+    section(id, "LY", [block(`${id}-single`, { questionCount: 14 }), setBlock(`${id}-set`, 3, 3), block(`${id}-fill`, { questionType: "SHORT_ANSWER", questionCount: 1 })]);
+  const zeroRow = (id: string) => section(id, "VAN", [block(`${id}-r1`, { questionCount: 0 })]);
 
   it("chỉ xét môn ghim MT/DS trên bản nháp của mọi môn, không xét môn MD", () => {
-    const parts = [part("p", [scienceSection("md"), scienceSection("mt"), scienceSection("ds")])];
-    restores.push(registerFormBlockingRuleForTest((target) => rule("BAD", "md")(target)));
-    restores.push(registerFormBlockingRuleForTest((target) => rule("BAD", "mt")(target)));
-    restores.push(registerFormBlockingRuleForTest((target) => rule("BAD", "ds")(target)));
-    const issues = formBlockingIssues({ exam: standardExam("QDA"), draft: parts, pinnedForms: pins({ md: "DEFAULT", mt: "MATRIX", ds: "ROWS" }), rawInputs: [] });
+    const parts = [part("p", [overLimitScience("md-mt"), zeroRow("md-ds"), overLimitScience("mt"), zeroRow("ds")])];
+    const issues = formBlockingIssues({
+      exam: standardExam("QDA"),
+      draft: parts,
+      pinnedForms: pins({ "md-mt": "DEFAULT", "md-ds": "DEFAULT", mt: "MATRIX", ds: "ROWS" }),
+      rawInputs: [],
+    });
     expect(issues.map((issue) => issue.sectionId)).toEqual(["mt", "ds"]);
   });
 
@@ -73,14 +72,14 @@ describe("Lỗi chặn lưu (blocking.ts)", () => {
     expect(issues).toEqual([{ code: "SET_NOT_WHOLE", sectionId: "a", blockId: "a-set", field: "count" }]);
   });
 
-  it("thứ tự theo bản nháp: lỗi luật rồi nhập thô của từng môn; mục luật chỉ chạy khi gọi, rule thử được gỡ", () => {
-    const parts = [part("p", [scienceSection("a"), scienceSection("b")])];
-    const unregister = registerFormBlockingRuleForTest((target) => rule("R", "b")(target));
-    const rawInputs = [{ sectionId: "a", blockId: null, field: "f", text: "", code: "RAW" }];
+  it("thứ tự theo bản nháp: lỗi luật rồi nhập thô của từng môn", () => {
+    const parts = [part("p", [scienceSection("a"), overLimitScience("b")])];
+    const rawInputs = [
+      { sectionId: "b", blockId: null, field: "f2", text: "", code: "RAW_B" },
+      { sectionId: "a", blockId: null, field: "f1", text: "", code: "RAW_A" },
+    ];
     const issues = formBlockingIssues({ exam: standardExam("QDA"), draft: parts, pinnedForms: pins({ a: "MATRIX", b: "MATRIX" }), rawInputs });
-    expect(issues.map((issue) => issue.code)).toEqual(["RAW", "R"]);
-    unregister();
-    expect(formBlockingIssues({ exam: standardExam("QDA"), draft: parts, pinnedForms: pins({ a: "MATRIX", b: "MATRIX" }), rawInputs: [] })).toEqual([]);
+    expect(issues.map((issue) => issue.code)).toEqual(["RAW_A", "SET_COUNT_RANGE", "RAW_B"]);
   });
 });
 

@@ -35,10 +35,6 @@ function readVersion(value: string | null): number | null {
   return value && Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-/**
- * Trang "Kiểm tra và xem trước" của bài thi: hai tab nội dung trong cùng trang, Kiểm tra cấu hình (`BaiThiKiemTra`)
- * và Đề xem trước (`BaiThiXemTruoc`). Bản vẽ vẽ hai màn riêng dưới cùng một tab điều hướng.
- */
 export function ExamReviewView({ examId }: { examId: string }) {
   const t = useTranslations("exams.review");
   const pathname = usePathname();

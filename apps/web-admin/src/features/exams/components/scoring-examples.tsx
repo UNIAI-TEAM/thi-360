@@ -8,11 +8,6 @@ import type { StrandTable } from "../reference-distribution";
 import type { ExamPart, QuestionBlock } from "../types";
 import { ScrollableTable } from "./scrollable-table";
 
-/**
- * Ví dụ chấm ở bước 2 (bản vẽ `ViDuCham2B`, R-140) và bảng "Mạch đối chiếu theo lệnh" (bản vẽ `BaiDocDungChung2B`, R-139,
- * spec 5.3). Cả hai chỉ để đọc, không có ô nhập.
- */
-
 /** Điểm tối đa một câu V-SAT khi khối không khai (VS §2: mỗi câu 6 điểm). */
 const VSAT_POINTS = 6;
 /** Bảng Đúng/Sai của V-SAT tính trên điểm tối đa 6: đúng 0, 1, 2, 3, 4 ý được 0, 1, 2, 3, 6 điểm (VS §7). */
@@ -38,10 +33,6 @@ function partBlocks(part: ExamPart): QuestionBlock[] {
   return [...sections.flatMap((section) => section.blocks), ...part.options.flatMap((option) => option.blocks ?? [])].filter((block) => !block.omitted);
 }
 
-/**
- * Dạng câu có trong phần đang mở và điểm mỗi câu của dạng đó (`null`: khối không khai). Chùm tính theo dạng câu con (dạng
- * của nhóm, hoặc dạng khai theo vị trí câu con). Ví dụ chấm chỉ hiện dạng câu có trong phần.
- */
 export function scoringTypes(part: ExamPart): Map<QuestionType, number | null> {
   const types = new Map<QuestionType, number | null>();
   const add = (type: QuestionType | null | undefined, points: number | null) => {
@@ -295,7 +286,6 @@ export interface StrandReferenceProps {
   difficultyName: (code: string) => string;
 }
 
-/** Bảng "Mạch đối chiếu theo lệnh" của môn cả môn (R-139): chỉ để đối chiếu, chưa gắn MAPID thì Chờ mapping. Không có mạch: không vẽ gì. */
 export function StrandReference({ table, subjectName, difficultyName }: StrandReferenceProps) {
   const t = useTranslations("exams.structure.strand");
   const headingId = useId();

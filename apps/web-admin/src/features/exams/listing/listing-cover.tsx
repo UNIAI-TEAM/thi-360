@@ -27,10 +27,6 @@ export interface CoverField {
   remove: () => void;
 }
 
-/**
- * Ảnh bìa đang chọn của biểu mẫu. Chọn tệp thì kiểm ngay trên web (định dạng, 2 MB), qua thì tải lên và đặt làm ảnh đang
- * chọn; lỗi (web hoặc máy chủ) giữ nguyên ảnh đang dùng. Ảnh chỉ gắn vào bài khi bấm Lưu (`PUT listing`).
- */
 export function useCoverField(examId: string, initial: CoverValue | null): CoverField {
   const [cover, setCover] = useState<CoverValue | null>(initial);
   const [failure, setFailure] = useState<CoverFailure | null>(null);
@@ -80,7 +76,6 @@ export interface ListingCoverProps {
   readOnly: boolean;
 }
 
-/** Khối ảnh bìa của biểu mẫu (bản vẽ `BaiThiThongTinBan`, mục Giới thiệu): xem, đổi hoặc chọn ảnh, bỏ ảnh. */
 export function ListingCover({ value, fallbackLabel, readOnly }: ListingCoverProps) {
   const t = useTranslations("exams.listing.cover");
   const inputId = useId();

@@ -82,11 +82,6 @@ export function resolveMapidRow(row: PreviewCompliance, rules: MapidRuleIndex): 
   return section && rule ? { section, rule, count: ref.count } : null;
 }
 
-/**
- * Mã của dòng "Chưa phân loại" ở bảng đối chiếu theo lệnh (D19, H44): câu thiếu nhãn khối lớp hoặc độ khó dồn vào dòng
- * `GRADE:UNCLASSIFIED` hoặc `DIFFICULTY:UNCLASSIFIED`. Máy chủ chỉ gửi dòng này khi có lệnh thiếu nhãn (`actual > 0`),
- * `required` là `null` và `note` là `UNCLASSIFIED`.
- */
 export const UNCLASSIFIED_CODE = "UNCLASSIFIED";
 
 /** Dòng "Chưa phân loại": không có yêu cầu để so, chỉ báo số lệnh còn thiếu nhãn. */
@@ -102,12 +97,6 @@ export interface CommandDenominator {
   total: number;
 }
 
-/**
- * Mẫu số của bảng đối chiếu theo lệnh (VS §5.1, D21): mỗi phạm vi có dòng `PROMPT` ở mức tham khảo cho một mẫu số, ví dụ
- * Toán cả môn 67 lệnh. Dòng "Chưa phân loại" và dòng chủ đề không có yêu cầu theo lệnh nên không góp vào mẫu số. Phạm
- * vi `EXAM`: chỉ tiêu cấp bài `EXAM:<id>:<mã>` nhóm theo id, đề thường mang chỉ tiêu khối lớp lẫn độ khó (cùng tổng) nên
- * lấy chỉ tiêu đầu tiên theo thứ tự máy chủ gửi (mẫu đặt khối lớp trước), không bao giờ cộng hai chỉ tiêu hay in hai dòng.
- */
 export function commandDenominators(rows: readonly PreviewCompliance[]): CommandDenominator[] {
   const byScope = new Map<string, { grade: number; difficulty: number; hasGrade: boolean; examQuotas: Map<string, number> }>();
   for (const row of rows) {
@@ -135,11 +124,6 @@ export function commandDenominators(rows: readonly PreviewCompliance[]): Command
   });
 }
 
-/**
- * Dòng đối chiếu chỉ tiêu "ít nhất": thực tế nhiều hơn yêu cầu vẫn đạt. Chỉ tiêu chủ đề kiểu cũ (K6); dòng MAPID theo quy tắc của
- * nó: "Phải có" và "Ít nhất" là ít nhất, "Đúng" là bằng, dòng "ngoài nhóm" của "Chỉ xuất hiện ở nhóm này" là bằng 0. Chưa tra
- * được quy tắc (chưa có cấu trúc, quy tắc đã xóa): yêu cầu dương là ít nhất, 0 là bằng.
- */
 export function isAtLeastRow(row: PreviewCompliance, rules?: MapidRuleIndex): boolean {
   const ref = parseCriterion(row.criterion);
   if (ref.kind === "TOPIC") return true;
@@ -151,10 +135,6 @@ export function isAtLeastRow(row: PreviewCompliance, rules?: MapidRuleIndex): bo
   return found.rule.comparator !== "EXACT";
 }
 
-/**
- * Mức lệch của một dòng. Chỉ tiêu "ít nhất" (`isAtLeastRow`): thực tế nhiều hơn yêu cầu vẫn đạt, chỉ thiếu mới lệch. Dòng
- * Bắt buộc lệch là lỗi, dòng Tham khảo lệch là cảnh báo không chặn.
- */
 export function complianceLevel(row: PreviewCompliance, rules?: MapidRuleIndex): ComplianceLevel {
   if (isUnclassifiedRow(row)) return "OK";
   const atLeast = isAtLeastRow(row, rules);
@@ -164,16 +144,11 @@ export function complianceLevel(row: PreviewCompliance, rules?: MapidRuleIndex):
   return row.enforcement === "REQUIRED" ? "REQUIRED_DEVIATION" : "REFERENCE_DEVIATION";
 }
 
-/** Chênh lệch = Thực tế − Yêu cầu (R-124); chênh lệch nhỏ hơn `EPSILON` coi là 0 như quy tắc lệch ở trên. */
 export function complianceDifference(row: PreviewCompliance): number {
   const difference = row.actual - (row.required ?? 0);
   return Math.abs(difference) > EPSILON ? difference : 0;
 }
 
-/**
- * Chỉ tiêu chủ đề của cả bài theo id (`TOPIC:<id>`): đi qua mọi môn của phần cố định, nhóm môn của phần theo mã và lựa
- * chọn, lấy chỉ tiêu ở môn và ở từng khối. `undefined` khi chưa có cấu trúc.
- */
 export function buildTopicQuotaIndex(structure: ExamStructure | undefined): TopicQuotaIndex | undefined {
   if (!structure) return undefined;
   const index: TopicQuotaIndex = new Map();
@@ -204,11 +179,6 @@ export function buildTopicQuotaIndex(structure: ExamStructure | undefined): Topi
   return index;
 }
 
-/**
- * Dòng chỉ tiêu chủ đề `REFERENCE` chưa gắn MAPID (H31): chờ mapping nên không có dữ liệu đối chiếu và không tính là
- * lệch; chỉ tiêu của dòng tra theo id (`TOPIC:<id>`) trong cấu trúc bài. `unavailable`: cấu trúc bài đang tải hoặc tải lỗi,
- * mọi dòng chỉ tiêu chủ đề `REFERENCE` hiện trung tính thay vì đoán.
- */
 export function topicQuotaPending(row: PreviewCompliance, quotas: TopicQuotaIndex | undefined, unavailable = false): boolean {
   const ref = parseCriterion(row.criterion);
   if (ref.kind !== "TOPIC" || row.enforcement !== "REFERENCE") return false;
@@ -226,10 +196,6 @@ export function droppedCount(note: string | null): number {
 
 type NameCatalog = Pick<ContentReference, "grades" | "difficulties" | "competencies">;
 
-/**
- * Tên các mã của chỉ tiêu cấp bài (`EXAM:<id>:G10,G11`): mỗi mã là khối lớp hoặc độ khó, quyết định theo danh mục khối
- * lớp chứ không theo chữ đầu của mã. Mã không có trong danh mục nào thì giữ nguyên mã.
- */
 export function examQuotaNames(codes: readonly string[], reference: Pick<NameCatalog, "grades" | "difficulties"> | undefined): string[] {
   const grades = new Map((reference?.grades ?? []).map((option) => [option.code, option.name]));
   const difficulties = new Map((reference?.difficulties ?? []).map((option) => [option.code, option.name]));
@@ -241,10 +207,6 @@ export function competencyName(code: string, reference: Pick<NameCatalog, "compe
   return reference?.competencies?.find((item) => item.code === code)?.name ?? code;
 }
 
-/**
- * Số câu được gán vào từng chỉ tiêu chủ đề: khóa là id chỉ tiêu, như `TOPIC:<id>` của bảng. Số theo đề đã đảo; `original`
- * dùng số gốc (`originalNumber`) để khớp đề đang xem thứ tự gốc (K12).
- */
 export function topicAssignments(paper: PreviewPaper, original = false): Map<string, number[]> {
   const assigned = new Map<string, number[]>();
   const add = (question: PreviewQuestion) => {

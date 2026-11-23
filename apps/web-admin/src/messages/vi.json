@@ -4749,10 +4749,14 @@
         "create": "Tạo bài thi",
         "edit": "Sửa",
         "editAria": "Sửa bài thi {code}",
+        "view": "Xem",
+        "viewAria": "Xem bài thi {code}",
         "duplicate": "Sao chép",
         "duplicateAria": "Sao chép bài thi {code}",
         "moreAria": "Thao tác khác với bài thi {code}",
         "general": "Thông tin chung",
+        "structure": "Cấu trúc và ma trận",
+        "listing": "Thông tin bán",
         "review": "Kiểm tra và xem trước",
         "versions": "Phiên bản và công bố",
         "discontinue": "Ngừng bán"
@@ -4788,6 +4792,8 @@
       "saveInvalid": "Thông tin bài thi có giá trị không hợp lệ. Kiểm tra lại các ô rồi lưu.",
       "fieldInvalid": "Giá trị không hợp lệ.",
       "scopeLocked": "Bài đã công bố nên không đổi được kỳ thi, phạm vi, phần và môn: thay đổi phạm vi phải xử lý theo quyền đã bán (UniNote mục 11.2).",
+      "workingDraftBanner": "Bài đang phục vụ v{version}: sửa thông tin hoặc bảng tổng quan ở đây sẽ cập nhật bản nháp làm việc; bản công bố cũ vẫn phục vụ tới khi công bố bản mới.",
+      "discontinuedReadOnly": "Bài đã ngừng bán nên bảng tổng quan ở trạng thái chỉ đọc.",
       "replaceTitle": "Nạp lại cấu trúc theo mẫu mới?",
       "replaceDescription": "Đổi kỳ thi, phạm vi, phần hoặc môn sẽ thay cấu trúc hiện tại bằng cấu trúc của mẫu mới nhất, gồm các phần dưới đây. Các khối và ma trận đã khai báo sẽ mất.",
       "replaceConfirm": "Nạp lại cấu trúc",
@@ -4828,7 +4834,6 @@
         "loadErrorTitle": "Không tải được cấu trúc đã lưu.",
         "loadErrorDescription": "Vẫn lưu được thông tin chung; thử lại để sửa số câu, thời lượng, điểm của các phần.",
         "infoNotSaved": "Số câu, thời lượng, điểm của các phần đã được lưu, nhưng thông tin chung chưa lưu được. Kiểm tra lại các ô rồi bấm Lưu thông tin.",
-        "publishedReadOnly": "Bài đã công bố: bảng chỉ đọc ở đây. Sửa số câu, thời lượng, điểm ở bước Cấu trúc (bản nháp).",
         "savedRecheck": "Đã lưu số câu, thời lượng, điểm của các phần. Bài thi cần kiểm tra lại trước khi công bố."
       },
       "loadErrorTitle": "Không tải được danh mục và mẫu cấu trúc",
@@ -4869,43 +4874,43 @@
       "workingNote": "Lưu tạo bản làm việc; phiên bản v{version} vẫn phục vụ học viên tới khi công bố bản mới.",
       "draftNote": "Bài chưa công bố. Lưu thường xuyên; kiểm tra cấu hình trước khi công bố.",
       "version": {
-      "expertPending": "Chờ chuyên gia xác nhận",
-      "hint": "{count, number} phiên bản khớp kỳ thi, phạm vi và môn của bài. Đổi phiên bản sẽ nạp lại cấu trúc sau khi bạn xác nhận.",
-      "label": "Phiên bản cấu trúc",
-      "overview": {
-        "cancel": "Hủy đổi phiên bản",
-        "close": "Đóng",
-        "columnEdited": "Đang có (đã sửa)",
-        "columnItem": "Mục",
-        "columnNext": "Mẫu mới",
-        "columnTemplate": "Mẫu đang dùng",
-        "confirm": "Nạp lại cấu trúc",
-        "description": "Bạn đã sửa số của mẫu đang dùng. Chọn giữ số đã sửa hay lấy số của mẫu mới.",
-        "edited": "đã sửa",
-        "keepEdited": "Giữ số đã sửa",
-        "keepEditedHint": "Giữ thời lượng {minutes, number} phút. Phần và môn còn có trong mẫu mới giữ số đã sửa; phần, môn mới lấy số của mẫu.",
-        "legend": "Cách lấy số tổng quan",
-        "rowDuration": "Thời lượng bài",
-        "rowMaxScore": "Điểm tối đa",
-        "rowQuestions": "{part} · số câu",
-        "step": "Bước 2/2 · chỉ hiện khi bạn đã sửa tổng quan ở bước 1",
-        "tableCaption": "So sánh số tổng quan",
-        "title": "Giữ số tổng quan đã sửa?",
-        "useTemplate": "Lấy số của mẫu mới",
-        "useTemplateHint": "{hasMinutes, select, yes {Thời lượng về {minutes, number} phút, số câu và điểm theo “{name}”.} other {Số câu và điểm theo “{name}”.}}",
-        "valueMinutes": "{count, number} phút"
-      },
-      "placeholder": "Chọn phiên bản",
-      "previewTitle": "Nếu chọn “{name}”",
-      "reloadCancel": "Hủy",
-      "reloadConfirm": "Nạp lại cấu trúc",
-      "reloadDescription": "Cấu trúc nạp lại theo phiên bản mới. Các phần sau bị thay toàn bộ, gồm nhóm, phân bổ và chỉ tiêu đã sửa:",
-      "reloadError": "Không nạp lại được cấu trúc. Thử lại sau.",
-      "reloadNote": "Mọi trạng thái kiểm tra của bài chuyển “Cần kiểm tra lại”.",
-      "reloadNoteDirty": "Thay đổi chưa lưu cũng mất. Mọi trạng thái kiểm tra của bài chuyển “Cần kiểm tra lại”.",
-      "reloadTitle": "Đổi sang “{name}”?",
-      "reloaded": "Đã nạp lại cấu trúc theo {name}.",
-      "step": "Bước {step, number}/2"
+        "expertPending": "Chờ chuyên gia xác nhận",
+        "hint": "{count, number} phiên bản khớp kỳ thi, phạm vi và môn của bài. Đổi phiên bản sẽ nạp lại cấu trúc sau khi bạn xác nhận.",
+        "label": "Phiên bản cấu trúc",
+        "overview": {
+          "cancel": "Hủy đổi phiên bản",
+          "close": "Đóng",
+          "columnEdited": "Đang có (đã sửa)",
+          "columnItem": "Mục",
+          "columnNext": "Mẫu mới",
+          "columnTemplate": "Mẫu đang dùng",
+          "confirm": "Nạp lại cấu trúc",
+          "description": "Bạn đã sửa số của mẫu đang dùng. Chọn giữ số đã sửa hay lấy số của mẫu mới.",
+          "edited": "đã sửa",
+          "keepEdited": "Giữ số đã sửa",
+          "keepEditedHint": "Giữ thời lượng {minutes, number} phút. Phần và môn còn có trong mẫu mới giữ số đã sửa; phần, môn mới lấy số của mẫu.",
+          "legend": "Cách lấy số tổng quan",
+          "rowDuration": "Thời lượng bài",
+          "rowMaxScore": "Điểm tối đa",
+          "rowQuestions": "{part} · số câu",
+          "step": "Bước 2/2 · chỉ hiện khi bạn đã sửa tổng quan ở bước 1",
+          "tableCaption": "So sánh số tổng quan",
+          "title": "Giữ số tổng quan đã sửa?",
+          "useTemplate": "Lấy số của mẫu mới",
+          "useTemplateHint": "{hasMinutes, select, yes {Thời lượng về {minutes, number} phút, số câu và điểm theo “{name}”.} other {Số câu và điểm theo “{name}”.}}",
+          "valueMinutes": "{count, number} phút"
+        },
+        "placeholder": "Chọn phiên bản",
+        "previewTitle": "Nếu chọn “{name}”",
+        "reloadCancel": "Hủy",
+        "reloadConfirm": "Nạp lại cấu trúc",
+        "reloadDescription": "Cấu trúc nạp lại theo phiên bản mới. Các phần sau bị thay toàn bộ, gồm nhóm, phân bổ và chỉ tiêu đã sửa:",
+        "reloadError": "Không nạp lại được cấu trúc. Thử lại sau.",
+        "reloadNote": "Mọi trạng thái kiểm tra của bài chuyển “Cần kiểm tra lại”.",
+        "reloadNoteDirty": "Thay đổi chưa lưu cũng mất. Mọi trạng thái kiểm tra của bài chuyển “Cần kiểm tra lại”.",
+        "reloadTitle": "Đổi sang “{name}”?",
+        "reloaded": "Đã nạp lại cấu trúc theo {name}.",
+        "step": "Bước {step, number}/2"
       },
       "discardTitle": "Hủy các thay đổi chưa lưu?",
       "discardDescription": "Cấu trúc trở về lần lưu gần nhất. Không hoàn tác được thao tác này.",
@@ -4922,7 +4927,6 @@
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
       "mapidGroupBlocked": "Chưa lưu được: quy tắc «{rule}» trỏ tới {hasGroup, select, yes {nhóm «{group}» đã bị xóa} other {một nhóm đã bị xóa}}. Sửa phạm vi hoặc xóa quy tắc rồi lưu lại.",
-      "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
       "rateBlocked": "Chưa lưu được: một dòng nhập theo tỷ lệ chưa ra chùm nguyên. Sửa tỷ lệ ở dòng đó rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
       "subjectAdded": "Đã thêm môn {subject} vào phần. Lưu để áp dụng.",
@@ -4939,7 +4943,6 @@
         "points": "Tổng điểm",
         "questionsPrinted": "{count, number} câu làm (đề ghi {printed, number} câu)",
         "scale": "Thang điểm",
-        "scaleValue": "{scale, number} điểm",
         "sharedMinutes": "{count, number} phút, chung cả bài",
         "pointsOfScale": "{points} / {scale} điểm"
       },
@@ -5417,13 +5420,6 @@
         "countField": {
           "locked": "Mẫu đã khóa số câu"
         },
-        "totalChange": {
-          "grades": "Khối lớp: {values}",
-          "difficulties": "Độ khó: {values}",
-          "answerTypes": "Dạng trả lời: {values}",
-          "topics": "Chủ đề: {values}",
-          "untitled": "Chưa đặt tên"
-        },
         "caseLegend": "Xem theo số câu của môn",
         "caseOption": "{count, number} câu",
         "caseHint": "Môn nhận số câu khác nhau tùy cách chọn; chỉ tiêu theo tỷ lệ quy ra số câu từng trường hợp bằng phần dư lớn nhất.",
@@ -5880,7 +5876,6 @@
         "title": "Thông tin bán",
         "description": "Kiểm riêng theo bản làm việc lúc mở tab, không dùng kết quả kiểm tra cấu hình đã lưu. Khi công bố, hệ thống kiểm lại một lần nữa.",
         "edit": "Sửa thông tin bán",
-        "detailLink": "Xem chi tiết",
         "status": {
           "PASS": "Đạt",
           "WARN": "{count, number} cảnh báo",
@@ -5909,7 +5904,6 @@
             "pass": "Đã có ảnh bìa."
           }
         },
-        "tilePass": "Giá bán, số lượt, mô tả và ảnh bìa đạt.",
         "unavailableTitle": "Không tính được nhóm Thông tin bán",
         "unavailable": "Không tải được kết quả kiểm tra thông tin bán.",
         "retry": "Thử lại",
@@ -5972,6 +5966,8 @@
       "blocks": {
         "title": "Chi tiết theo khối",
         "description": "Nguồn phù hợp đếm trước khi xử lý trùng giữa các chỉ tiêu, nên đủ nguồn từng dòng chưa chắc ghép được đề.",
+        "expand": "Hiện chi tiết theo khối",
+        "collapse": "Ẩn chi tiết theo khối",
         "tabsLabel": "Đường lựa chọn",
         "tableLabel": "Chi tiết theo khối",
         "empty": "Đường này chưa có khối câu hỏi nào",
@@ -6183,8 +6179,7 @@
       },
       "state": {
         "SERVING": "Đang phục vụ",
-        "RETIRED": "Đã thay thế",
-        "servingPaths": "Đang phục vụ: {paths}"
+        "RETIRED": "Đã thay thế"
       },
       "columns": {
         "version": "Phiên bản",
@@ -6234,6 +6229,9 @@
         "review": "Kiểm tra và xem trước",
         "versions": "Phiên bản và công bố"
       },
+      "structureSummaryLabel": "Tổng hợp cấu trúc",
+      "printedQuestionsSuffix": "({printed} câu trên đề)",
+      "scoreMismatchWarning": "Tổng điểm phần ({actual}) khác thang điểm ({expected})",
       "errorTitle": "Không tải được bài thi",
       "errorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",
@@ -6269,10 +6267,6 @@
       "FULL": "Toàn bài",
       "PART": "Theo phần",
       "SUBJECT": "Theo môn"
-    },
-    "format": {
-      "FULL": "FULL",
-      "SINGLE": "Bài lẻ"
     },
     "summary": {
       "code": "Mã",
@@ -6360,8 +6354,6 @@
       "questionPoints": "Tối đa {points} điểm",
       "simulatedQuestion": "Câu của nguồn mô phỏng: phần ngân hàng chưa nạp vào dữ liệu mẫu, không có nội dung.",
       "correct": "Đáp án đúng",
-      "trueLabel": "Đúng",
-      "falseLabel": "Sai",
       "answer": "Đáp án: {answer}",
       "solution": "Lời giải",
       "allocation": {
@@ -6386,29 +6378,6 @@
         "split": "Số câu từng môn: {list}.",
         "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh đề thử mới để thử cách chia khác.",
         "full": "Đã chọn đủ {choose, number} môn. Bỏ chọn một môn để đổi sang môn khác."
-      },
-      "subjectQuotas": {
-        "title": "Chỉ tiêu cấp môn",
-        "tableLabel": "Đối chiếu chỉ tiêu cấp môn với đề đã sinh",
-        "empty": "Đề này không đặt chỉ tiêu cấp môn",
-        "noneNote": "Các môn trên đề không khai chỉ tiêu dạng trả lời, khối lớp hay độ khó ở cấp môn.",
-        "matchAll": "Đề sinh khớp mọi chỉ tiêu cấp môn.",
-        "mismatchAll": "Đề sinh lệch {count, number} chỉ tiêu cấp môn.",
-        "questionCount": "{count, number} câu trên đề",
-        "match": "Khớp",
-        "mismatch": "Lệch",
-        "kind": {
-          "ANSWER_TYPE": "Dạng trả lời: {name}",
-          "GRADE": "Khối lớp: {name}",
-          "DIFFICULTY": "Độ khó: {name}"
-        },
-        "columns": {
-          "subject": "Môn",
-          "quota": "Chỉ tiêu",
-          "required": "Yêu cầu",
-          "generated": "Đề sinh",
-          "result": "Kết quả"
-        }
       },
       "checks": {
         "title": "Kiểm tra trên đề đã sinh",
@@ -6442,6 +6411,8 @@
       "compliance": {
         "actualAssigned": "{value} · gán câu {numbers}",
         "allPassed": "Đạt mọi tiêu chí",
+        "banner": "Đề thử lệch {count, number} tiêu chí so với cấu hình.",
+        "viewAllocation": "Xem đối chiếu phân bổ",
         "columns": {
           "actual": "Thực tế",
           "criterion": "Tiêu chí",
@@ -6463,7 +6434,6 @@
           "MAPID_OUTSIDE": "{sentence} · ngoài nhóm này",
           "MAPID_UNKNOWN": "Quy tắc MAPID {id}",
           "TOPIC": "Chỉ tiêu chủ đề",
-          "TOPIC_NAMED": "{name}",
           "UNCLASSIFIED": "Chưa phân loại"
         },
         "denominator": {
@@ -6611,8 +6581,6 @@
       "description": "Khai báo thông tin, cấu trúc phần thi và tổ hợp môn. Khối câu hỏi và ma trận soạn ở bước sau.",
       "backToList": "Danh sách bài thi",
       "formAriaLabel": "Tạo bài thi",
-      "backToStructure": "Quay lại cấu trúc",
-      "editing": "Đang sửa bài {code}. Lưu và tiếp tục để quay về bước Cấu trúc và ma trận.",
       "cancel": "Hủy",
       "submit": "Lưu và tiếp tục",
       "success": "Đã tạo bài thi {code}.",
@@ -6622,15 +6590,7 @@
       "forbiddenTitle": "Thiếu quyền tạo bài",
       "forbiddenDescription": "Bạn cần quyền {permission} để tạo bài thi. Hãy liên hệ quản trị viên hệ thống.",
       "sections": {
-        "info": "Thông tin chung",
-        "structure": "Cấu trúc khởi tạo",
-        "structureDescription": "Nạp từ mẫu {name} · đổi kỳ thi, phạm vi, phần hoặc môn sẽ nạp lại cấu trúc và hỏi xác nhận",
-        "choice": "Phần tự chọn · Phần {order}",
-        "choiceDescription": "Mỗi đường lựa chọn phải đủ {count, number} câu",
-        "timing": "Thời gian và thang điểm",
-        "timingSharedDescription": "Cả bài dùng một thời lượng chung; đặt thang điểm và điểm của từng phần nếu kỳ thi chia điểm theo phần",
-        "timingPerPartDescription": "Mỗi phần có thời lượng riêng; đặt thang điểm và điểm của từng phần nếu kỳ thi chia điểm theo phần",
-        "choiceCommonDescription": "Phần chung {common, number} câu cộng một lựa chọn {option, number} câu, học viên làm {total, number} câu"
+        "info": "Thông tin chung"
       },
       "name": "Tên bài thi",
       "namePlaceholder": "Ví dụ: HSA FULL · Đề luyện số 2",
@@ -6662,99 +6622,18 @@
       "instructionsLabel": "Hướng dẫn làm bài",
       "instructionsPlaceholder": "Ví dụ: cách chọn tổ hợp, quy định về thời gian làm bài",
       "instructionsHint": "Học viên đọc trước khi bắt đầu. Có thể để trống khi lưu nháp; chưa chèn được ảnh.",
-      "cover": {
-        "label": "Ảnh giới thiệu",
-        "hint": "Tỉ lệ 16:9 · PNG, JPG hoặc WebP, tối đa 5 MB · hiện ở danh sách và trang giới thiệu. Ảnh chỉ để xem trước, chưa được lưu cùng bài thi.",
-        "removeAria": "Bỏ ảnh {name}",
-        "size": "{size, number} KB",
-        "invalidType": "Chọn tệp ảnh PNG, JPG hoặc WebP.",
-        "tooLarge": "Ảnh tối đa 5 MB.",
-        "selected": "Đã chọn ảnh {name}.",
-        "removed": "Đã bỏ ảnh giới thiệu.",
-        "choose": "Chọn ảnh",
-        "change": "Đổi ảnh",
-        "empty": "Chưa chọn ảnh"
-      },
-      "parts": {
-        "caption": "Các phần thi theo thứ tự, số câu và thời lượng",
-        "name": "Tên phần",
-        "subject": "Môn hoặc nhánh",
-        "questionCount": "Số câu",
-        "duration": "Thời lượng (phút)",
-        "choiceWithEnglish": "Khoa học hoặc Tiếng Anh",
-        "choiceCombinations": "Khoa học theo tổ hợp",
-        "choicePaths": "Tự chọn · {count, number} đường",
-        "subjectPlaceholder": "Chọn môn",
-        "orderValue": "Phần {order}",
-        "moveUpAria": "Đưa phần {order} lên",
-        "moveDownAria": "Đưa phần {order} xuống",
-        "removeAria": "Xóa phần {order}",
-        "add": "Thêm phần",
-        "added": "Đã thêm phần {order}.",
-        "removed": "Đã xóa phần {order}.",
-        "moved": "Đã chuyển phần tới vị trí {order}.",
-        "total": "Tổng · {count, number} phần",
-        "questionsValue": "{count, number} câu",
-        "minutesValue": "{count, number} phút",
-        "templateNote": "Mẫu chỉ là cấu hình ban đầu; phải kiểm tra cấu hình trước khi công bố. Số câu và thời lượng học viên thấy lấy từ cấu trúc đã công bố.",
-        "points": "Điểm",
-        "choiceCommon": "Phần chung và nhánh",
-        "choiceBranches": "Theo nhánh",
-        "multiSubject": "Nhiều môn ({count, number} môn)",
-        "sectionsLegend": "Số câu từng môn (tổng phải bằng {count, number} câu)",
-        "templateNoteShared": "Bài dùng thời lượng chung nên phần không có thời lượng riêng. Mẫu chỉ là cấu hình ban đầu; phải kiểm tra cấu hình trước khi công bố."
-      },
-      "choice": {
-        "english": "Cho chọn Tiếng Anh ({count, number} câu)",
-        "englishHint": "Học viên được chọn Tiếng Anh thay cho Khoa học. Khối câu hỏi Tiếng Anh soạn ở bước sau.",
-        "combinations": "Tổ hợp từ danh mục",
-        "attach": "Gắn tổ hợp",
-        "emptyAllocation": "Chưa gắn tổ hợp nào. Học viên chỉ chọn được tổ hợp đã gắn vào bài.",
-        "subjectLabel": "{index, number}. {subject}",
-        "sumValue": "{actual, number} / {expected, number} câu",
-        "sumOver": "thừa {count, number} câu",
-        "sumUnder": "thiếu {count, number} câu",
-        "sumInvalid": "có ô chưa hợp lệ",
-        "removeAria": "Gỡ tổ hợp {code} khỏi bài",
-        "attached": "Đã gắn tổ hợp {code}.",
-        "detached": "Đã gỡ tổ hợp {code}.",
-        "rules": {
-          "attached": "Chỉ tổ hợp được gắn vào bài mới được học viên chọn.",
-          "total": "Tổng số câu các môn phải bằng số câu của phần ({count, number} câu). Không tự chia 51 câu rồi bỏ ngẫu nhiên.",
-          "fixed": "Số câu từng môn lưu cố định trong từng tổ hợp; hệ thống không tự chọn môn bị giảm câu ở mỗi lượt thi.",
-          "catalog": "Mã tổ hợp mới thêm trong danh mục không tự vào bài đang phục vụ."
-        },
-        "hintSubjects": "{kind}: mỗi tổ hợp {count, number} môn",
-        "hintMixed": "{kind}: tổ hợp có số môn khác nhau",
-        "commonValue": "Phần chung {count, number} câu",
-        "commonLegend": "Phần chung (mọi học viên làm)",
-        "commonHint": "Mọi học viên làm {common, number} câu chung, cộng {option, number} câu của lựa chọn đã chọn.",
-        "branches": "Nhánh nội dung",
-        "branchesHint": "Học viên chọn một nhánh; mỗi nhánh {count, number} câu",
-        "branchCode": "Mã nhánh {code}",
-        "branchCount": "Số câu",
-        "expertPending": "Chờ chuyên gia xác nhận số câu"
-      },
       "summary": {
         "title": "Tóm tắt",
         "totalQuestions": "Tổng số câu",
         "totalMinutes": "Tổng thời gian",
         "partCount": "Số phần",
-        "pathCount": "Số đường lựa chọn",
         "minutesValue": "{count, number} phút",
-        "pathsEnglishOnly": "Tiếng Anh",
-        "pathsCombinationsOnly": "{count, number} tổ hợp",
-        "pathsNone": "Chưa có đường nào",
-        "pathsFixed": "Một đường cố định",
         "issuesTitle": "Cần xử lý",
         "noIssues": "Không còn mục cần xử lý",
         "draftNote": "Bài được tạo ở trạng thái Nháp. Sửa hết các mục cần xử lý để tạo bài thi.",
         "sharedTiming": "Thời lượng chung",
         "maxScore": "Thang điểm",
-        "pointsValue": "{count, number} điểm",
-        "maxScoreUnset": "Đặt lúc thiết lập",
         "partPoints": "Các phần: {count, number} điểm",
-        "pathsBranches": "{count, number} nhánh",
         "kind": "Kỳ thi",
         "scope": "Phạm vi",
         "template": "Mẫu mặc định",
@@ -6786,11 +6665,8 @@
       "replace": {
         "title": "Nạp lại mẫu {name}?",
         "description": "Cấu trúc đang sửa ({impact}) sẽ được thay bằng mẫu mới. Tên, mã, mô tả và ảnh giữ nguyên.",
-        "impactParts": "{parts, number} phần",
-        "impactCombinations": "{parts, number} phần, {combinations, number} tổ hợp đã gắn",
         "confirm": "Nạp lại mẫu",
-        "cancel": "Giữ cấu trúc hiện tại",
-        "loaded": "Đã nạp cấu trúc theo mẫu {name}."
+        "cancel": "Giữ cấu trúc hiện tại"
       },
       "errors": {
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
@@ -6815,21 +6691,11 @@
         "codeTaken": "Mã bài thi đã được dùng. Nhập mã khác.",
         "subjectRequired": "Chọn phần của bài Theo phần.",
         "descriptionMax": "Mô tả tối đa {max} ký tự.",
-        "partNameRequired": "Nhập tên phần.",
-        "partNameMax": "Tên phần tối đa {max} ký tự.",
-        "partSubjectRequired": "Chọn môn của phần.",
-        "questionCountPositive": "Số câu phải là số nguyên dương.",
-        "durationPositive": "Thời lượng phải lớn hơn 0 phút.",
         "noOptions": "Chưa có đường lựa chọn nào: cho chọn Tiếng Anh, gắn tổ hợp hoặc giữ ít nhất một nhánh.",
-        "subjectCountPositive": "Số câu từng môn phải là số nguyên dương.",
-        "allocationTotal": "Tổng số câu các môn là {actual, number}, phải bằng {expected, number} câu của phần.",
-        "partsRequired": "Bài thi chưa có phần nào.",
         "kindSubjectRequired": "Chọn môn của bài thi.",
         "sharedDurationPositive": "Thời lượng chung phải là số phút nguyên dương.",
         "maxScoreRequired": "Nhập thang điểm.",
-        "maxScorePositive": "Thang điểm phải lớn hơn 0.",
-        "pointsPositive": "Điểm của phần phải lớn hơn 0.",
-        "commonTooLarge": "Phần chung có {common, number} câu, không còn câu cho lựa chọn trong {total, number} câu của phần."
+        "maxScorePositive": "Thang điểm phải lớn hơn 0."
       },
       "kindHintKind": "{kind}: một mẫu cấu trúc cho cả kỳ thi · {timing}",
       "kindHintSubject": "{kind}: mẫu cấu trúc theo môn và năm · {timing}",
@@ -6844,25 +6710,8 @@
         "yearsConfirmHint": "Chưa xác nhận thì kiểm tra cấu hình chặn công bố. Có thể xác nhận sau ở Thông tin chung.",
         "yearsConfirmLater": "Chuyên gia xác nhận chỉ tiêu ma trận ở Thông tin chung sau khi tạo bài."
       },
-      "timing": {
-        "sharedDuration": "Thời lượng chung (phút)",
-        "sharedHint": "Cả bài dùng một thời lượng; các phần không có thời lượng riêng",
-        "perPart": "Thời lượng theo phần",
-        "perPartHint": "Tổng thời lượng các phần; nhập từng phần ở Cấu trúc khởi tạo",
-        "minutesValue": "{count, number} phút",
-        "maxScore": "Thang điểm",
-        "maxScoreHint": "Điểm tối đa của bài",
-        "maxScoreOptionalHint": "Để trống nếu thang điểm đặt lúc thiết lập bài",
-        "pointsByPart": "Chia điểm theo phần",
-        "pointsByPartHint": "Mỗi phần có điểm tối đa riêng, nhập ở Cấu trúc khởi tạo. Tắt thì điểm tính theo khối câu hỏi.",
-        "pointsTotal": "Tổng điểm các phần: {actual, number} điểm",
-        "pointsTotalOf": "Tổng điểm các phần: {actual, number} / {expected, number} điểm",
-        "pointsMismatch": "Lệch thang điểm"
-      },
       "blocks": {
-        "title": "Khối gợi ý từ mẫu ({count, number} câu, sửa ở Cấu trúc và ma trận)",
-        "item": "{name}: {count, number} câu",
-        "essay": "chấm tay"
+        "title": "Khối gợi ý từ mẫu ({count, number} câu, sửa ở Cấu trúc và ma trận)"
       },
       "step1": {
         "sections": {
@@ -6924,11 +6773,6 @@
         "skillBothHint": "{count, number} câu · cả hai phần",
         "omittedPartNotice": "Phần viết chưa có trong V1 nên không chọn được.",
         "dedicatedPartsNotice": "{subject} chỉ luyện riêng được các phần trong danh sách. Các phần còn lại không có bài riêng."
-      },
-      "steps": {
-        "ariaLabel": "Các bước tạo bài thi",
-        "step1": "Thông tin chung",
-        "step2": "Cấu trúc và ma trận"
       },
       "overview": {
         "title": "Cấu trúc tổng quan",
@@ -7310,12 +7154,6 @@
         "expertPending": "Chờ chuyên gia xác nhận: phân bố khối lớp Tiếng Anh chỉ để tham khảo.",
         "normalized": "Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA. Lưu để áp dụng.",
         "undeclared": "Phân bổ này chưa khai báo nên không ràng buộc sinh đề."
-      },
-      "totalChange": {
-        "title": "Tổng đổi thành {total, number} câu (trước đó {old, number} câu). Số câu mới:",
-        "hint": "Áp dụng số mới: bảng nhập theo tỷ lệ tính lại theo tổng mới. Giữ số cũ: các bảng này đổi sang nhập theo số câu của tổng {old, number}, rồi báo thiếu hoặc vượt.",
-        "apply": "Áp dụng số mới",
-        "keep": "Giữ số cũ"
       },
       "reference": {
         "title": "Phân bố tham khảo",

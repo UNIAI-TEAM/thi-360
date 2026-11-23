@@ -3,10 +3,6 @@
 import { cn, focusRing } from "@thi360/ui";
 import type { ReactNode } from "react";
 
-/**
- * Một thẻ chọn của "Phạm vi sinh thử" (bản vẽ `SinhThu2B`): nút chọn kèm tên phạm vi, bên dưới là ô chọn của phạm vi đó.
- * Thẻ đang chọn viền đậm nền nhạt; thẻ bị khóa (Cả bài khi bài có phần chọn mã) chữ nhạt kèm lời nhắc.
- */
 export function PreviewScopeCard({
   name,
   value,

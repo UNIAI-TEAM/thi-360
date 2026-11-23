@@ -15,31 +15,20 @@ import type {
   TopicQuota,
 } from "./types";
 
-/**
- * Quy tắc MAPID của môn HSA (UNI-1704 v2, UNI-2758): dữ liệu và phép tính thuần của bảng "Quy tắc MAPID". Hình dạng dữ liệu khớp
- * record `MapidRule` của máy chủ (`mapidMode`, `mapidRules` trong cấu trúc); máy chủ biên dịch quy tắc thành phạm vi, chỉ tiêu,
- * giới hạn trên và loại trừ khi `mapidMode = MATRIX`.
- */
-
 /** Số quy tắc tối đa của một môn (Q5); khớp `ExamStructureValidator.DEFAULT_MAX_MAPID_RULES`. */
 export const MAX_MAPID_RULES = 20;
 
-/**
- * Môn HSA dùng ma trận MAPID: Toán, Lý, Hóa, Sinh, Sử, Địa. Văn (`VAN`) và Tiếng Anh (`ANH`) giữ phạm vi kiểu cũ; môn nào không
- * có trong danh sách này cũng không có chế độ MAPID (Q4). Quyết định theo mã môn của `section.subjectCode`.
- */
 const MATRIX_SUBJECT_CODES: Readonly<Record<string, true>> = { TOAN: true, LY: true, HOA: true, SINH: true, SU: true, DIA: true };
 
 export function usesMapidMatrix(subjectCode: string): boolean {
   return Object.hasOwn(MATRIX_SUBJECT_CODES, subjectCode);
 }
 
-// ---------------------------------------------------------------- dữ liệu cũ
 
 const hasNodes = (scope: { nodeIds: readonly string[] } | null | undefined): boolean => (scope?.nodeIds.length ?? 0) > 0;
 
 /** Môn còn phạm vi MAPID hoặc chỉ tiêu chủ đề kiểu cũ, ở môn hoặc ở nhóm. */
-export function hasLegacyMapid(section: ExamSection): boolean {
+function hasLegacyMapid(section: ExamSection): boolean {
   return (
     hasNodes(section.knowledgeScope) ||
     (section.topicQuotas?.length ?? 0) > 0 ||
@@ -47,13 +36,6 @@ export function hasLegacyMapid(section: ExamSection): boolean {
   );
 }
 
-/**
- * Chỉ tiêu kiểu cũ chuyển được sang quy tắc "ít nhất" mà không mất gì: có MAPID, mức Bắt buộc, đơn vị câu, không lọc khối lớp,
- * độ khó hay nhóm. Quy tắc của máy chủ không có các trường đó (Q3), nên môn có chỉ tiêu như vậy giữ nguyên kiểu cũ. Chỉ tiêu theo
- * tỷ lệ cần mẫu số (`units`: số câu của môn hoặc của nhóm): máy chủ tính `percent` ra số câu theo mẫu số và để `percent` thắng
- * `count`, nên khi chưa biết mẫu số (môn chọn môn có số câu theo `countsByPick`, nhóm lấy phần còn lại của môn chưa có số câu) quy
- * tắc mới ra 0 câu và chỉ tiêu bắt buộc đã lưu mất âm thầm (R1-F1); môn đó giữ kiểu cũ, nơi máy chủ dùng `count` đã lưu.
- */
 function convertibleQuota(quota: TopicQuota, units: number | null): boolean {
   const byPercent = quota.percent !== undefined && quota.percent !== null;
   return (
@@ -84,14 +66,6 @@ function withoutNodes(scope: QuestionBlock["knowledgeScope"]): QuestionBlock["kn
   return scope?.competencyCodes?.length ? { nodeIds: [], competencyCodes: scope.competencyCodes } : null;
 }
 
-/**
- * Phạm vi MAPID cũ phải lọc như quy tắc SOURCE mới thì mới chuyển được, nếu không chuyển sẽ đổi nguồn của đề (R1-2, R1-3):
- * - Quy tắc SOURCE của máy chủ áp dụng VÀ (cả môn và nhóm cùng phải khớp), còn bản cũ để phạm vi riêng của nhóm thay phạm vi của
- *   môn: môn có MAPID ở cả môn và ở một nhóm giữ kiểu cũ.
- * - Phạm vi cũ của chùm lọc theo "mọi câu con thuộc hợp các MAPID" (`everyChildInScope`), hoặc lỏng hơn khi cờ tắt (chỉ cần một
- *   câu con hoặc cả bộ); SOURCE mới đòi mọi câu con cùng nằm dưới MỘT MAPID chung. Chỉ khi chùm có đúng một MAPID và đòi mọi câu
- *   con thì hai bên lọc như nhau. Phạm vi tính theo `effectiveScope`: chùm chưa chọn MAPID kế thừa phạm vi của môn.
- */
 function sourcesUnchanged(section: ExamSection): boolean {
   if (hasNodes(section.knowledgeScope) && section.blocks.some((block) => hasNodes(block.knowledgeScope))) return false;
   return section.blocks.every((block) => {
@@ -101,14 +75,6 @@ function sourcesUnchanged(section: ExamSection): boolean {
   });
 }
 
-/**
- * Môn HSA dùng ma trận còn dữ liệu kiểu cũ thì chuyển sang quy tắc khi mở (UNI-1704 v2): phạm vi MAPID của môn thành quy tắc
- * SOURCE cả môn; chỉ tiêu chủ đề của môn thành COUNT "ít nhất" cả môn (số câu, tỷ lệ giữ nguyên); phạm vi riêng của nhóm thành
- * SOURCE nhóm; chỉ tiêu chủ đề của nhóm thành COUNT "ít nhất" của nhóm. Có quy tắc thì chế độ là MATRIX và các trường cũ bị
- * xóa (bản lưu kế tiếp ghi dạng mới). Không có gì để chuyển, hoặc chuyển sẽ mất dữ liệu (chỉ tiêu có lọc khối lớp, độ khó,
- * chưa gắn MAPID, mức Tham khảo, đơn vị lệnh hỏi hoặc điểm, quá 20 quy tắc): trả đúng `section` và môn giữ kiểu cũ. Môn đã có
- * `mapidMode` không đổi. Trả đúng tham chiếu cũ khi không đổi, để so bản nháp với bản đã lưu không báo thay đổi giả.
- */
 export function convertLegacySection(section: ExamSection): ExamSection {
   if (section.mapidMode !== undefined || !usesMapidMatrix(section.subjectCode) || !hasLegacyMapid(section)) return section;
   const sectionQuotas = section.topicQuotas ?? [];
@@ -152,23 +118,14 @@ export function convertLegacySection(section: ExamSection): ExamSection {
   return converted;
 }
 
-/**
- * Chế độ hiển thị của môn: `null` khi môn không dùng ma trận MAPID hoặc còn dữ liệu kiểu cũ không chuyển được (màn giữ phạm vi
- * và chỉ tiêu chủ đề kiểu cũ); môn chưa có `mapidMode` và không có dữ liệu cũ là `ALL`.
- */
 export function mapidViewMode(section: ExamSection): MapidMode | null {
   if (!usesMapidMatrix(section.subjectCode)) return null;
   if (section.mapidMode !== undefined) return section.mapidMode;
   return hasLegacyMapid(section) ? null : "ALL";
 }
 
-// ---------------------------------------------------------------- phạm vi và số câu
 
-/**
- * Số câu cố định của một nhóm: chùm là `số chùm × số câu con`, nhóm câu đơn là số câu của nhóm. Nhóm "lấy phần còn lại"
- * (`questionCount` rỗng, không phải chùm) không có số cố định: `null`; số của nó là `remainderUnits`.
- */
-export function groupUnits(block: QuestionBlock): number | null {
+function groupUnits(block: QuestionBlock): number | null {
   if (isSetBlock(block) && block.setCount && block.setSize) return block.setCount * block.setSize;
   return block.questionCount;
 }
@@ -178,12 +135,6 @@ function takesRemainder(block: QuestionBlock): boolean {
   return !isSetBlock(block) && block.questionCount === null;
 }
 
-/**
- * Số câu của nhóm lấy phần còn lại, tính như máy chủ: số câu của môn trừ số câu của mọi nhóm có số cố định (chùm và nhóm câu đơn
- * đã khai số câu; các nhóm lấy phần còn lại khác không bị trừ, mỗi nhóm nhận đủ phần dư; nhóm đã bỏ `omitted` không phải nhóm nên
- * cũng không bị trừ, R1-F2). `null` khi môn chưa có số câu, một nhóm cố định chưa biết số câu (chùm chưa khai cỡ), hoặc các nhóm
- * khác đã vượt số câu của môn.
- */
 function remainderUnits(section: Pick<ExamSection, "questionCount" | "blocks">, block: QuestionBlock): number | null {
   if (section.questionCount === null) return null;
   let fixed = 0;
@@ -202,7 +153,7 @@ function unitsInSection(section: Pick<ExamSection, "questionCount" | "blocks">, 
   return takesRemainder(block) ? remainderUnits(section, block) : groupUnits(block);
 }
 
-export interface GroupSize {
+interface GroupSize {
   /** Chùm: số chùm và số câu con mỗi chùm; nhóm câu đơn: `null`. */
   sets: number | null;
   size: number | null;
@@ -227,10 +178,6 @@ export function groupSize(section: ExamSection, block: QuestionBlock): GroupSize
   };
 }
 
-/**
- * Mẫu số của quy tắc: số câu của môn khi quy tắc cả môn, của nhóm khi quy tắc theo nhóm (nhóm lấy phần còn lại: phần môn còn
- * lại sau các nhóm khác); `null` khi chưa biết hoặc nhóm không còn.
- */
 export function ruleUnits(section: ExamSection, rule: Pick<MapidRule, "groupId">): number | null {
   if (!rule.groupId) return section.questionCount;
   const block = section.blocks.find((item) => item.id === rule.groupId);
@@ -246,10 +193,6 @@ export function ruleCount(section: ExamSection, rule: MapidRule): number {
   return rule.count ?? 0;
 }
 
-/**
- * Tính lại `count` của quy tắc nhập theo tỷ lệ khi số câu của môn hoặc của nhóm đổi (BA mục 5: đổi số câu thì tính lại chỉ tiêu
- * theo tỷ lệ). `percent` giữ nguyên. Trả đúng `section` khi không có gì đổi.
- */
 export function recomputeMapidRules(section: ExamSection): ExamSection {
   const rules = section.mapidRules;
   if (!rules?.length) return section;
@@ -269,7 +212,6 @@ export function normalizeMapidSection(section: ExamSection): ExamSection {
   return usesMapidMatrix(section.subjectCode) ? recomputeMapidRules(convertLegacySection(section)) : section;
 }
 
-// ---------------------------------------------------------------- nhóm đã xóa
 
 /** Quy tắc trỏ tới nhóm không còn trong môn: máy chủ từ chối `groupId` lạ nên phải sửa hoặc xóa trước khi lưu. */
 export function deletedGroupRules(section: Pick<ExamSection, "mapidRules" | "blocks">): MapidRule[] {
@@ -277,9 +219,8 @@ export function deletedGroupRules(section: Pick<ExamSection, "mapidRules" | "blo
   return (section.mapidRules ?? []).filter((rule) => !!rule.groupId && !ids.has(rule.groupId));
 }
 
-// ---------------------------------------------------------------- câu mô tả
 
-export type RuleSentenceKind =
+type RuleSentenceKind =
   | "PRESENT"
   | "COUNT_EXACT"
   | "COUNT_AT_LEAST"
@@ -369,7 +310,6 @@ export function groupEffectiveRules(section: ExamSection, blockId: string): Grou
   return result;
 }
 
-// ---------------------------------------------------------------- biểu mẫu thêm, sửa quy tắc
 
 export interface MapidRuleForm {
   id: string;
@@ -432,11 +372,6 @@ export type RuleIssue =
   | "COUNT_ABOVE_GROUP"
   | "COUNT_ABOVE_TOTAL";
 
-/**
- * Lỗi chặn nút Lưu của hộp thoại. Quy tắc của nhóm đã xóa báo `GROUP_MISSING` cho tới khi người dùng chọn lại phạm vi. Nhập theo tỷ lệ
- * mà chưa biết mẫu số (môn chưa có số câu, hoặc nhóm khác chưa khai cỡ nên không tính được phần còn lại) báo
- * `PERCENT_DENOMINATOR_UNKNOWN`: lưu lúc đó sẽ ghi 0 câu âm thầm.
- */
 export function ruleFormIssues(form: MapidRuleForm, section: ExamSection): RuleIssue[] {
   const issues: RuleIssue[] = [];
   const groupGone = !!form.groupId && !section.blocks.some((block) => block.id === form.groupId);
@@ -471,14 +406,13 @@ export function ruleFormIssues(form: MapidRuleForm, section: ExamSection): RuleI
   return issues;
 }
 
-// ---------------------------------------------------------------- mỏ neo
 
 /** Mỏ neo của dòng quy tắc (`id` và `data-field`): kết quả kiểm tra, xem thử cuộn tới đúng dòng bằng `focusMapidRule`. */
 export function mapidRuleAnchor(ruleId: string): string {
   return `mapid-rule-${ruleId}`;
 }
 
-export function mapidRuleSelector(ruleId: string): string {
+function mapidRuleSelector(ruleId: string): string {
   return `[data-field="${CSS.escape(mapidRuleAnchor(ruleId))}"]`;
 }
 
@@ -503,10 +437,6 @@ export function focusMapidRule(ruleId: string, root: ParentNode = document): boo
   return true;
 }
 
-/**
- * Từ vấn đề của kiểm tra, xem thử sang dòng quy tắc: màn môn dựng sau khi mở môn, nên chờ tối đa `frames` khung hình cho tới khi
- * dòng xuất hiện rồi cuộn tới và đưa tiêu điểm vào. Trả `false` khi không có dòng (môn ở chế độ Toàn bài, quy tắc đã xóa).
- */
 export function focusMapidRuleWhenReady(ruleId: string, root: ParentNode = document, frames = 30): Promise<boolean> {
   const { promise, resolve } = Promise.withResolvers<boolean>();
   let left = frames;
@@ -519,10 +449,6 @@ export function focusMapidRuleWhenReady(ruleId: string, root: ParentNode = docum
   return promise;
 }
 
-/**
- * Từ màn nhóm sang bảng "Quy tắc MAPID" của môn: màn môn dựng sau khi chuyển, nên chờ tối đa `frames` khung hình cho tới khi
- * bảng xuất hiện rồi cuộn tới và đưa tiêu điểm vào. Trả `false` khi không có bảng (môn ở chế độ Toàn bài).
- */
 export function revealMapidRulesTable(root: ParentNode = document, frames = 30): Promise<boolean> {
   const { promise, resolve } = Promise.withResolvers<boolean>();
   let left = frames;
@@ -542,7 +468,6 @@ export function revealMapidRulesTable(root: ParentNode = document, frames = 30):
   return promise;
 }
 
-// ---------------------------------------------------------------- phạm vi đếm nguồn
 
 const unique = (items: readonly string[]): string[] => [...new Set(items)];
 
@@ -551,13 +476,6 @@ function competencyOnly(legacy: KnowledgeScope | null): CountKnowledgeScope | nu
   return legacy ? { nodeIds: [], competencyCodes: legacy.competencyCodes ?? [] } : null;
 }
 
-/**
- * Phạm vi để đếm nguồn của một nhóm, khớp cách máy chủ biên dịch khi sinh đề (`MapidRuleCompiler`): môn có `mapidMode` thì MAPID
- * cũ của môn và nhóm bị bỏ; ở MATRIX mỗi quy tắc "Chỉ lấy từ" là MỘT nhóm MAPID (`nodeGroups`: trong một quy tắc là HOẶC), câu
- * phải khớp mọi nhóm áp dụng, tức quy tắc của cả môn và của chính nhóm (VÀ). Chùm còn đòi mọi câu con cùng một MAPID của từng nhóm.
- * `excludedNodeIds` là MAPID mà quy tắc "Chỉ xuất hiện ở nhóm này" của nhóm khác loại khỏi nhóm này. Môn chưa có `mapidMode` (kỳ
- * thi khác, Văn, Anh) giữ phạm vi kiểu cũ.
- */
 export function groupCountScope(block: QuestionBlock, section: ExamSection): CountKnowledgeScope | null {
   if (section.mapidMode === undefined) return effectiveScope(block, section);
   const rules = section.mapidMode === "MATRIX" ? (section.mapidRules ?? []) : [];

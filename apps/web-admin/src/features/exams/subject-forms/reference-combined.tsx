@@ -11,10 +11,8 @@ import { combinedGrid, convertMatrixMode, gridToCells, type MatrixAxes, sum } fr
 import type { BlockMatrix } from "../types";
 import { blankMatrix } from "./row-list-model";
 
-/** Hướng chuyển ở bước xem trước (R-10): từ riêng từng chiều sang bảng kết hợp, hoặc ngược lại. */
 export type CombinedDirection = "TO_COMBINED" | "TO_SEPARATE";
 
-/** Ma trận sau chuyển đổi; ma trận chưa có mở đầu bằng bảng trống ở mức Chỉ đối chiếu (V-SAT mặc định, R-8). */
 export function convertForPreview(matrix: BlockMatrix | null, direction: CombinedDirection, axes: MatrixAxes): BlockMatrix {
   const base = matrix ?? { ...blankMatrix(), gradeEnforcement: "REFERENCE" as const, difficultyEnforcement: "REFERENCE" as const };
   const converted = convertMatrixMode(base, direction === "TO_COMBINED" ? "COMBINED" : "SEPARATE", axes);
@@ -23,7 +21,7 @@ export function convertForPreview(matrix: BlockMatrix | null, direction: Combine
   return base.cells.every((cell) => cell.value === 0) ? { ...converted, byGrade: [], byDifficulty: [] } : converted;
 }
 
-export interface CombinedPreviewProps {
+interface CombinedPreviewProps {
   direction: CombinedDirection;
   matrix: BlockMatrix | null;
   axes: MatrixAxes;
@@ -32,10 +30,6 @@ export interface CombinedPreviewProps {
   onCancel: () => void;
 }
 
-/**
- * Bảng xem trước chuyển đổi giữa riêng từng chiều và kết hợp Lớp × Độ khó (R-10, CHUNG §7.1): hiện dữ liệu sẽ chuyển; ma trận chỉ ghi khi
- * người dùng xác nhận, hủy thì không đổi gì (AC 49).
- */
 export function CombinedPreview({ direction, matrix, axes, labels, onConfirm, onCancel }: CombinedPreviewProps) {
   const t = useTranslations("exams.subjectForm.rows.reference.combined");
   const titleId = useId();
@@ -96,7 +90,7 @@ export function CombinedPreview({ direction, matrix, axes, labels, onConfirm, on
   );
 }
 
-export interface CombinedTableProps {
+interface CombinedTableProps {
   matrix: BlockMatrix;
   axes: MatrixAxes;
   labels: MatrixLabels;
@@ -108,7 +102,6 @@ export interface CombinedTableProps {
   onBack: () => void;
 }
 
-/** Bảng kết hợp Lớp × Độ khó của một phần V-SAT (R-10): ô nhập số câu hoặc tỷ lệ theo đơn vị của ma trận; lưu `section.matrix` `COMBINED`. */
 export function CombinedTable({ matrix, axes, labels, count, percentError, onChange, onBack }: CombinedTableProps) {
   const t = useTranslations("exams.subjectForm.rows.reference.combined");
   const titleId = useId();

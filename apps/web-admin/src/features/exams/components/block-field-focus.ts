@@ -1,13 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { BLOCK_FIELDS, type BlockField } from "./block-form-fields";
 
-/**
- * Yêu cầu đưa tiêu điểm vào đúng ô của nhóm đang mở khi người dùng bấm một lỗi (FU-FE4-PREVIEW). Hai đường vào:
- * `requestBlockFieldFocus` (bấm lỗi ở vùng tổng hợp của chính màn Cấu trúc) và tham số `field` của địa chỉ
- * `?block=<id>&field=<ô>` (bấm lỗi ở tab Kiểm tra, sang trang Cấu trúc). Màn nhóm nhận yêu cầu của nhóm mình qua
- * `useBlockFieldRequest`, đặt tiêu điểm sau khi vẽ xong rồi `consumeBlockFieldRequest` để không đặt lại. Chỉ màn nhóm của
- * biểu mẫu đầy đủ (MD) đọc: MT, DS đặt tiêu điểm theo `navigation.ts` của biểu mẫu theo môn.
- */
 export const BLOCK_FIELD_FOCUS_TTL_MS = 2000;
 
 export interface BlockFieldRequest {

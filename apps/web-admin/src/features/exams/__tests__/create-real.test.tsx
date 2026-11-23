@@ -2,9 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
-import { renderWithProviders } from "@/test/render";
-import { CreateExamPage } from "../components/create-exam-page";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { EXAM_ID, examDetailWire, FakeServer } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
@@ -114,7 +114,7 @@ function createServer(templates: Wire[] = ALL_TEMPLATES) {
 
 async function renderPage() {
   const user = userEvent.setup();
-  renderWithProviders(<CreateExamPage />);
+  renderExamsUi(<ExamGeneralForm mode="create" />);
   await screen.findByRole("form", { name: "Tạo bài thi" });
   await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-FULL-001"));
   return user;
@@ -433,7 +433,7 @@ describe("trang Tạo bài thi, nhánh thật: bảng tổng quan theo kỳ thi"
 
   it("không có mẫu mặc định: báo bài vẫn tạo được, bảng một dòng trống", async () => {
     createServer([BCA_FULL]).install();
-    renderWithProviders(<CreateExamPage />);
+    renderExamsUi(<ExamGeneralForm mode="create" />);
     await screen.findByRole("form", { name: "Tạo bài thi" });
     expect(await screen.findByText(/Không có mẫu mặc định cho lựa chọn này/)).toBeInTheDocument();
     expect(screen.getAllByRole("textbox", { name: /^Số câu của/ })).toHaveLength(1);

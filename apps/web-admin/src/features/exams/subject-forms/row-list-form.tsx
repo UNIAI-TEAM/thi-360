@@ -6,13 +6,11 @@ import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import type { QuestionType } from "@/features/content/types";
-import { topicCountFor, totalChangePending } from "../allocation";
 import { AudioChip, sectionAudio } from "../components/block-row-metrics";
 import { ExamName, labelBeforeName, richNodes } from "../components/exam-review-shared";
 import { ScrollableTable } from "../components/scrollable-table";
-import { TotalChangeNotice } from "../components/subject-allocation-extras";
 import { EXAMS_QUERY_KEYS } from "../keys";
-import { apportionByPercent, computeAllocation, isFlexibleSet, isSetBlock } from "../matrix";
+import { isFlexibleSet, isSetBlock } from "../matrix";
 import { sectionCaseCounts, subjectAllocation } from "../subject-matrix";
 import type { ExamDetail, ExamTemplate, QuestionBlock } from "../types";
 import type { SubjectFormRendererProps } from "./form-renderers";
@@ -21,18 +19,11 @@ import { LockReason } from "./lock-reason";
 import { ReferenceBlock } from "./reference-block";
 import { RowEditor } from "./row-editor";
 import { COUNT_FIELD, SPLIT_FIELD } from "./row-fields";
-import { applyNewTotal, conditionSummary, gradeVisible, keepOldTotal, lockReasonsOf, readRow, rowAnswerType, rowFigures, rowLocks, rowsLockedOf, writeRow, type RowContext } from "./row-list-model";
+import { conditionSummary, lockReasonsOf, readRow, rowAnswerType, rowFigures, rowLocks, rowsLockedOf, writeRow, type RowContext } from "./row-list-model";
 import { replaceWithSplit, splitBlock, splitState } from "./row-split";
 import { subjectFormFor } from "./registry";
 import { SubjectFormHeader } from "./subject-form-header";
 
-/**
- * Danh sách dòng lấy câu (DS, FTM R-7, lát CR-3a): đầu môn, bảng dòng một mục theo thứ tự của mẫu (tiêu đề phân đoạn khi có
- * `displaySegments`, chip audio, chỉ số chỉ đọc, tóm tắt điều kiện), màn sửa dòng gọn và khối Phân bổ đối chiếu gấp sẵn. Không có nút
- * thêm, xóa, lên, xuống dòng (R-13). Số lượng của dòng nhập theo số câu hoặc tỷ lệ ở kỳ cho nhập % (R-9), tách dòng ở cặp đăng ký (R-7);
- * Phân bổ đối chiếu có Số câu / Tỷ lệ, công tắc áp dụng và bảng kết hợp của V-SAT (CR-3b). Mỗi dòng gắn `data-form-row="<blockId>"`; điều
- * hướng (`?block=`, bấm lỗi, bấm tóm tắt) báo dòng đích bằng `ROW_TARGET_EVENT` và màn mở đúng màn sửa dòng.
- */
 export function RowListForm({
   context,
   subjectName,
@@ -47,8 +38,6 @@ export function RowListForm({
   examKind = null,
   examQuotas = [],
   onExamQuotas,
-  confirmedCount = null,
-  onConfirmCount,
   rawInputs,
 }: SubjectFormRendererProps) {
   const t = useTranslations("exams.subjectForm.rows");
@@ -166,30 +155,6 @@ export function RowListForm({
     return from === undefined ? null : (segments.find((segment) => from >= segment.fromPosition && from <= segment.toPosition) ?? null);
   };
 
-  // Đổi tổng (R-9, R-122 dòng 6): chỗ nhập theo % giữ % và tính lại số, chỗ nhập theo số giữ số; hộp xác nhận chỉ hiện khi có bảng nhập theo %.
-  const sectionCount = section.questionCount;
-  const totalChanged = totalChangePending(section, confirmedCount);
-  const noticeLines: string[] = [];
-  if (totalChanged && sectionCount !== null) {
-    if (section.matrix?.unit === "PERCENT") {
-      const next = computeAllocation({ questionCount: sectionCount, matrix: section.matrix }, axes);
-      const combinedHas = section.matrix.mode === "COMBINED" && section.matrix.cells.some((cell) => cell.value > 0);
-      if (gradeVisible(entry) && (section.matrix.byGrade.length > 0 || combinedHas)) {
-        noticeLines.push(tSubject("totalChange.grades", { values: axes.grades.map((code, index) => `${labels.grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
-      }
-      if (section.matrix.byDifficulty.length > 0 || combinedHas) {
-        noticeLines.push(tSubject("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${labels.difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
-      }
-    }
-    if (section.answerQuotas?.unit === "PERCENT") {
-      const resolved = apportionByPercent(section.answerQuotas.items.map((item) => item.value), sectionCount).results;
-      noticeLines.push(tSubject("totalChange.answerTypes", { values: section.answerQuotas.items.map((item, index) => `${typeLabel(item.answerType)} ${resolved[index] ?? 0}`).join(" · ") }));
-    }
-    const topics = section.topicQuotas ?? [];
-    if (topics.some((quota) => quota.percent !== undefined && quota.percent !== null)) {
-      noticeLines.push(tSubject("totalChange.topics", { values: topics.map((quota) => `${quota.name || tSubject("totalChange.untitled")} ${topicCountFor(quota, sectionCount)}`).join(" · ") }));
-    }
-  }
   const columns = readOnlyNotice ? 4 : 5;
 
   return (
@@ -203,22 +168,6 @@ export function RowListForm({
         templateLocked={templateLocked}
         action={headerAction}
       />
-
-      {totalChanged && sectionCount !== null && confirmedCount !== null && (
-        <TotalChangeNotice
-          oldTotal={confirmedCount}
-          newTotal={sectionCount}
-          lines={noticeLines}
-          onApply={() => {
-            onChange((current) => applyNewTotal(current, sectionCount));
-            onConfirmCount?.(sectionCount);
-          }}
-          onKeep={() => {
-            onChange((current) => keepOldTotal(current, confirmedCount, axes));
-            onConfirmCount?.(sectionCount);
-          }}
-        />
-      )}
 
       <Card padding="md" className="flex flex-col gap-3 sm:p-6" data-rows-card>
         <div className="flex flex-wrap items-center justify-between gap-2">

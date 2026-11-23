@@ -4,6 +4,7 @@ import { Badge, Card } from "@thi360/ui";
 import { ArrowRight, CircleAlert, CircleCheck, Clock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
+import { useKindLabel } from "../components/create-exam-fields";
 import { reviewHref } from "../components/exam-review-shared";
 import type { ListingCheckIssue } from "../review-types";
 import type { ExamDetail } from "../types";
@@ -13,20 +14,15 @@ import type { ExamListing, ListingTerms } from "./types";
 
 export interface ListingCardPreviewProps {
   exam: ExamDetail;
-  /** Điều khoản đang nhập (chưa lưu cũng hiện). */
   terms: ListingTerms;
   coverUrl: string | null;
-  /** Bản đang bán, để so với giá sau khi công bố. */
   listing: ExamListing;
 }
 
-/**
- * Xem trước thẻ như học viên thấy ở danh mục sau khi công bố (TM 6.4): đổi theo dữ liệu đang nhập, dùng giá gốc chưa tính
- * khuyến mãi. Thẻ chỉ để xem (`inert`); hai dòng dưới thẻ so bản đang bán với bản sau khi công bố.
- */
 export function ListingCardPreview({ exam, terms, coverUrl, listing }: ListingCardPreviewProps) {
   const t = useTranslations("exams.listing.preview");
   const tExams = useTranslations("exams");
+  const kindLabel = useKindLabel();
   const format = useFormatter();
   const money = (amount: number | null) => (amount === null ? t("noPrice") : t("money", { amount: format.number(amount) }));
   const summary = (price: number | null, attempts: number | null) =>
@@ -55,7 +51,7 @@ export function ListingCardPreview({ exam, terms, coverUrl, listing }: ListingCa
         )}
         <div className="flex flex-col gap-2.5 p-4">
           <div className="flex flex-wrap gap-1.5">
-            <Badge>{tExams(`kind.${exam.kind}`)}</Badge>
+            <Badge>{kindLabel(exam.kind)}</Badge>
             <Badge>{tExams(`scope.${exam.scope}`)}</Badge>
           </div>
           <p data-exam-content className="text-label font-semibold uppercase text-text wrap-anywhere">
@@ -102,10 +98,6 @@ export function ListingCardPreview({ exam, terms, coverUrl, listing }: ListingCa
   );
 }
 
-/**
- * Kiểm tra thông tin bán của bản làm việc đã lưu (`ExamListing.checkIssues`), kèm lối sang tab Kiểm tra. Lỗi chặn công
- * bố có icon lỗi, ảnh bìa chỉ là cảnh báo.
- */
 export function ListingCheckSummary({ examId, issues }: { examId: string; issues: readonly ListingCheckIssue[] }) {
   const t = useTranslations("exams.listing.check");
   const issueText = useListingIssueText();

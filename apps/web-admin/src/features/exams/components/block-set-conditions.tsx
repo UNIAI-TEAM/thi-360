@@ -28,9 +28,7 @@ export interface BlockSetConditionsProps {
   reference: ContentReference | undefined;
   subjectCode: string;
   onChange: (patch: Partial<QuestionBlock>) => void;
-  /** Số lệnh hỏi của nhóm do máy chủ tính (R-142); `null`: chưa có hoặc bản nháp đã đổi. */
   commandCount?: number | null;
-  /** Mẫu khóa dòng (H42): dạng câu con chỉ đọc; MAPID vẫn sửa được. */
   locked?: boolean;
   /** Phần hiện: cả hai (màn nhóm của MD), chỉ điều kiện từng chùm, hoặc chỉ điều kiện theo vị trí câu con (mục riêng của "Thêm điều kiện" ở Danh sách dòng). */
   show?: "all" | "slots" | "positions";
@@ -50,11 +48,6 @@ function useKnowledgeRefs(reference: ContentReference | undefined) {
     });
 }
 
-/**
- * Điều kiện của nhóm chùm (2B 3.3): điều kiện riêng từng chùm (`slots`: nhãn, MAPID) và điều kiện MAPID theo vị trí câu
- * con (`childConditions`). Chùm không đặt gì dùng điều kiện của nhóm. Chùm cỡ linh hoạt (chỉ nhập tổng câu con) không
- * có cỡ chùm cố định nên không có hai bảng này; một dòng ghi lý do.
- */
 export function BlockSetConditions({ block, reference, subjectCode, onChange, commandCount = null, locked = false, show = "all" }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
   if (isFlexibleSet(block)) return <p className="text-caption text-text-muted">{t("flexibleNote")}</p>;
@@ -100,7 +93,6 @@ function MapidChips({ refs, onRemove, label }: { refs: readonly KnowledgeRef[]; 
   );
 }
 
-// ---------------------------------------------------------------- điều kiện riêng từng chùm
 
 function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.slots");
@@ -248,7 +240,6 @@ function SlotsEditor({ block, reference, subjectCode, onChange }: BlockSetCondit
   );
 }
 
-// ---------------------------------------------------------------- điều kiện theo vị trí câu con
 
 function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked = false }: BlockSetConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.childConditions");
@@ -261,9 +252,7 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
   const patch = (index: number, change: Partial<ChildCondition>) =>
     replace(conditions.map((condition, position) => (position === index ? { ...condition, ...change } : condition)));
   const tContent = useTranslations("content");
-  /** Mẫu khóa dòng (H42): vị trí đã khai dạng là một phần của "dạng" của dòng nên không đổi dải, không xóa; MAPID vẫn sửa. */
   const frozen = (condition: ChildCondition) => locked && condition.answerType !== undefined;
-  /** Đổi dạng câu con: hình dạng của dạng cũ không còn nghĩa nên bỏ (R-132, H39). */
   const setAnswerType = (index: number, answerType: QuestionType | undefined) =>
     replace(
       conditions.map((condition, position) => {
@@ -416,11 +405,6 @@ function ChildConditionsEditor({ block, reference, subjectCode, onChange, locked
   );
 }
 
-/**
- * Bảng chỉ đọc "Loại câu hỏi theo vị trí trong chùm" (bản vẽ `BaiDocDungChung2B`, R-132): dải vị trí, câu trên đề, dạng, hình
- * dạng, lệnh hỏi, điểm của MỘT chùm; dòng tổng tính cho CẢ khối (số câu của khối, điểm = số câu × điểm mỗi câu, lệnh hỏi do
- * máy chủ tính theo cả khối `commandCount`; chưa có thì bỏ phần lệnh). Khối nhiều chùm có một dòng nói bảng là của một chùm.
- */
 function PositionTable({ block, commandCount }: { block: QuestionBlock; commandCount: number | null }) {
   const t = useTranslations("exams.structure.blockForm.positions");
   const tContent = useTranslations("content");

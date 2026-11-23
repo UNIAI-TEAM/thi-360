@@ -2,16 +2,10 @@ import { isSetBlock } from "../matrix";
 import type { QuestionType } from "@/features/content/types";
 import type { BlockSlot, ChildCondition, ExamScope, ExamTemplate, ItemShape, QuestionBlock } from "../types";
 
-/**
- * Logic thuần của biểu mẫu nhóm (2B 3.3, 15.3): điều kiện của nhóm, điều kiện riêng từng chùm (`slots`), điều kiện theo
- * vị trí câu con (`childConditions`). Không có dạng bài (K11): loại câu được phân biệt bằng MAPID hoặc nhãn.
- */
-
 /** Các điều kiện thêm được ở menu "Thêm điều kiện". MAPID là phạm vi kiến thức của nhóm (`knowledgeScope.nodeIds`). */
 export const CONDITION_KINDS = ["MAPID", "TAGS", "ITEM_SHAPE", "ANSWER_FORMATS", "POINTS"] as const;
 export type ConditionKind = (typeof CONDITION_KINDS)[number];
 
-/** Định dạng đáp án của câu Trả lời ngắn (H11). */
 export const ANSWER_FORMATS = ["INTEGER", "DECIMAL", "FRACTION", "TEXT", "CHEM_FORMULA", "CHEM_EQUATION"] as const;
 
 /** Loại câu mà bộ lọc nguồn áp lên: câu con của nhóm chùm, hoặc chính nhóm câu đơn. `null`: chưa giới hạn. */
@@ -51,7 +45,6 @@ export function conditionState(block: QuestionBlock, kind: ConditionKind, pendin
   }
 }
 
-/** Loại câu mà hình dạng câu còn có nghĩa khi lưu: Đúng/Sai (số ý), Ghép đôi (ý trái, lựa chọn phải), câu chọn (số phương án, R-131). */
 function shapeKept(type: QuestionType | null): boolean {
   return shapeApplies(type) || type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE";
 }
@@ -67,18 +60,10 @@ function shapeFor(type: QuestionType | null, shape: ItemShape): ItemShape | unde
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-/**
- * Mẫu khóa dòng (H42, R-135): chỉ bài phạm vi `SUBJECT` từ mẫu `fixedBlockCounts` mà không phải bài ôn. Bài `PART` và bài ôn
- * cùng mẫu vẫn sửa được số lượng.
- */
 export function blockCountsLocked(template: Pick<ExamTemplate, "fixedBlockCounts"> | null | undefined, scope: ExamScope, reviewMode: boolean): boolean {
   return template?.fixedBlockCounts === true && scope === "SUBJECT" && !reviewMode;
 }
 
-/**
- * Bỏ giá trị của điều kiện không còn áp dụng sau khi đổi loại câu hoặc cách lấy: hình dạng câu chỉ cho Đúng/Sai, Ghép
- * đôi; định dạng đáp án chỉ cho Trả lời ngắn; `omitted` chỉ cho Tự luận; `slots`, `childConditions` chỉ cho nhóm chùm.
- */
 export function reconcileBlock(block: QuestionBlock): QuestionBlock {
   const type = sourceType(block);
   const next: QuestionBlock = { ...block };
@@ -102,27 +87,17 @@ export function reconcileBlock(block: QuestionBlock): QuestionBlock {
   return next;
 }
 
-/**
- * Bài ôn V-ACT bật sẵn "Mọi câu con thuộc chủ đề" (R-120): nhóm chùm có MAPID riêng mà chưa có cờ thì ghi `true` vào dữ
- * liệu, để lưu và đếm nguồn dùng đúng giá trị màn đang hiện. Đã có cờ (kể cả `false` do người dùng bỏ chọn): giữ nguyên.
- */
 export function withEveryChildDefault(block: QuestionBlock): QuestionBlock {
   const scope = block.knowledgeScope;
   if (!isSetBlock(block) || !scope || scope.nodeIds.length === 0 || scope.everyChildInScope !== undefined) return block;
   return { ...block, knowledgeScope: { ...scope, everyChildInScope: true } };
 }
 
-// ---------------------------------------------------------------- điều kiện riêng từng chùm
 
 export function slotHasCondition(slot: BlockSlot | undefined): boolean {
   return (slot?.tagCodes?.length ?? 0) > 0 || (slot?.knowledgeScope?.nodeIds.length ?? 0) > 0;
 }
 
-/**
- * Đổi cách khai chùm (H28): sang "chỉ nhập tổng" thì bỏ số chùm, cỡ chùm, điều kiện riêng từng chùm và điều kiện theo vị
- * trí câu con (cỡ chùm không cố định nên vị trí không có nghĩa), giữ tổng câu con; sang "khai số chùm × cỡ" thì dựng 1
- * chùm cỡ bằng tổng hiện có để người dùng sửa tiếp. Nhóm không bao giờ mang cả hai.
- */
 export function switchSetMode(block: QuestionBlock, mode: "total" | "sets"): Partial<QuestionBlock> {
   if (mode === "total") return { setCount: null, setSize: null, slots: undefined, childConditions: undefined };
   const size = Math.max(block.questionCount ?? 0, 1);
@@ -134,10 +109,6 @@ export function slotAt(slots: readonly BlockSlot[] | undefined, index: number): 
   return slots?.find((slot) => slot.index === index) ?? { index };
 }
 
-/**
- * `slots` gửi lên: không chùm nào có điều kiện thì bỏ hẳn (mọi chùm dùng điều kiện của nhóm); ngược lại đúng một phần
- * tử cho mỗi chùm từ 1 đến `setCount` (chùm không đặt gì là phần tử rỗng), bỏ phần tử của chùm vượt số chùm.
- */
 export function normalizeSlots(slots: readonly BlockSlot[] | undefined, setCount: number): BlockSlot[] | undefined {
   const kept = (slots ?? []).filter((slot) => slot.index >= 1 && slot.index <= setCount);
   if (!kept.some(slotHasCondition)) return undefined;
@@ -178,10 +149,6 @@ export function withSlot(
   );
 }
 
-/**
- * Đổi số chùm hoặc số câu con: số câu của nhóm là tích, `slots` theo số chùm mới. Số chùm 0 là ô đang được xóa để gõ
- * số mới, chưa phải ý định bỏ chùm: giữ nguyên `slots` để gõ lại không mất điều kiện đã đặt.
- */
 export function resizeSets(
   block: QuestionBlock,
   setCount: number,
@@ -194,7 +161,6 @@ export function resizeSets(
   };
 }
 
-// ---------------------------------------------------------------- điều kiện theo vị trí câu con
 
 export type ChildConditionIssue = "FROM_MIN" | "RANGE_ORDER" | "OUT_OF_SET" | "NO_MAPID";
 
@@ -224,7 +190,6 @@ export interface PositionRow {
   points: number;
 }
 
-/** Các dải vị trí có khai dạng câu con của chùm (chùm trộn dạng, R-132), theo thứ tự vị trí. Điểm theo `pointsEach` của khối. */
 export function positionRows(block: Pick<QuestionBlock, "childConditions">, pointsEach: number): PositionRow[] {
   return (block.childConditions ?? [])
     .filter((condition): condition is ChildCondition & { answerType: QuestionType } => condition.answerType !== undefined && condition.to >= condition.from)
@@ -249,7 +214,6 @@ export function positionRows(block: Pick<QuestionBlock, "childConditions">, poin
     });
 }
 
-// ---------------------------------------------------------------- nhập theo tỷ lệ (R-142)
 
 export interface RateSetMismatch {
   /** Số câu mà tỷ lệ ra. */
@@ -259,10 +223,6 @@ export interface RateSetMismatch {
   high: number;
 }
 
-/**
- * Tỷ lệ của dòng chùm phải ra số câu chia hết cho cỡ chùm: hệ thống chỉ lấy nguyên chùm. Trả về hai số câu gần nhất khi
- * không chia hết, `null` khi hợp lệ.
- */
 export function rateSetMismatch(count: number, setSize: number): RateSetMismatch | null {
   if (setSize < 1 || (count > 0 && count % setSize === 0)) return null;
   const low = Math.floor(count / setSize) * setSize;

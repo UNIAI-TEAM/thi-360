@@ -2,7 +2,7 @@ import type { KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
 import { ruleCount, ruleUnits } from "./mapid-rules";
 import type { ExamSection, MapidRule } from "./types";
 
-export type MapidRuleConflictCode =
+type MapidRuleConflictCode =
   | "CAPACITY_EXCEEDED"
   | "EXACT_COUNTS_DIFFER"
   | "EXACT_BELOW_MINIMUM"
@@ -13,7 +13,7 @@ export type MapidRuleConflictCode =
   | "ONLY_IN_GROUP_EXCLUDES_SOURCE"
   | "EXACT_ZERO_CONFLICTS_SOURCE";
 
-export type MapidRuleSubsumptionReason =
+type MapidRuleSubsumptionReason =
   | "EXACT_COVERS_PRESENT"
   | "AT_LEAST_COVERS_PRESENT"
   | "COVERS_PRESENT"
@@ -22,7 +22,7 @@ export type MapidRuleSubsumptionReason =
   | "ONLY_IN_GROUP_COVERS_UNNUMBERED"
   | "RULE_COVERS_RULE";
 
-export type MapidRuleCheckResult =
+type MapidRuleCheckResult =
   | { kind: "OK" }
   | {
       kind: "CONFLICT";
@@ -127,10 +127,6 @@ function normalizeRule(rule: MapidRule, section: ExamSection): NormalizedRule {
 const isCountOrPresent = (item: NormalizedRule): boolean => item.rule.type === "PRESENT" || item.rule.type === "COUNT";
 const isMinCapable = (item: NormalizedRule): boolean => isCountOrPresent(item) || item.rule.type === "ONLY_IN_GROUP";
 
-/**
- * Evaluates a candidate MAPID rule against active existing rules of a section (UNI-1707 AC-1707-7).
- * Priority: CONFLICT > EQUIVALENT > SUBSUMED_BY > SUBSUMES > OK.
- */
 export function checkMapidRuleConflicts({
   candidate,
   section,

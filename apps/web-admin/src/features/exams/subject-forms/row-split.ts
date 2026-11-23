@@ -5,13 +5,6 @@ import type { LockReasonCode } from "./lock-reason";
 import type { SubjectFormEntry } from "./registry";
 import { rowLocks, type RowContext } from "./row-list-model";
 
-/**
- * Luật tách dòng của Danh sách dòng (FTM R-7, plan CR-3b): chỉ ở cặp đăng ký (H-SCA Anh, V-ACT Tư duy khoa học) và chỉ ở dòng không
- * chịu khóa dòng, khóa dạng; dòng có điều kiện riêng, chùm cỡ linh hoạt hay đang tạm bỏ qua có nút tách khóa kèm lý do. Dòng cha bị
- * **thay** bằng n dòng con đứng ngay tại vị trí của nó; tổng đơn vị (câu, hoặc chùm với dòng chùm) giữ nguyên; mỗi dòng con là số
- * nguyên dương. Hàm thuần: màn (`row-split-panel.tsx`) chỉ nhập số và hiện lỗi.
- */
-
 export type SplitState =
   /** Cặp không đăng ký tách dòng, hoặc dòng chỉ có một đơn vị: không có nút. */
   | { status: "HIDDEN" }
@@ -74,12 +67,6 @@ export function splitIssues(units: number, parts: readonly number[]): SplitIssue
   return issues;
 }
 
-/**
- * Các dòng con của một cách chia hợp lệ. Dòng con đầu giữ `id`, `templateGroupCode`, `answerTypeLocked`, `shuffleEditable` của dòng cha;
- * các dòng sau có `id` mới và để máy chủ gán lại các trường theo mẫu (`ExamStructureOps.restoreBlock`), web không tự gán. Mọi trường
- * khác (dạng, cỡ chùm, phạm vi, nhãn, `shuffleUnits` đúng giá trị kể cả `false`, điểm mỗi câu, cách chấm, hình dạng câu, định dạng
- * đáp án) chép từ dòng cha; `positionRange` do máy chủ tính, không chép. Tên mặc định "<tên cha> 1…n".
- */
 export function splitBlock(block: QuestionBlock, parts: readonly number[], newId: () => string = () => draftId("blk")): QuestionBlock[] {
   const set = isSetBlock(block);
   return parts.map((value, index) => ({

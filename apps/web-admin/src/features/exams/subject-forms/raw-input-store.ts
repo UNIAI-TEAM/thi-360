@@ -1,11 +1,3 @@
-/**
- * Trạng thái nhập thô theo phiên của view (FTM R-15, plan B1): giá trị đã gõ mà chưa ghi được vào bản nháp, ví dụ tỷ lệ quy ra
- * không chia hết cỡ chùm. Khóa theo `sectionId`/`blockId`/`field`, không theo component đang mở, nên đóng màn sửa dòng hay
- * chuyển môn không làm mất. Không vào DTO và không bao giờ vào thân `PUT`.
- *
- * Mục có mặt trong kho nghĩa là giá trị đó **sai** (hình thức nhập đã bị chặn lưu): biểu mẫu ghi mục khi người dùng gõ giá trị
- * chưa hợp lệ và xóa mục khi giá trị trở nên hợp lệ và được ghi vào bản nháp.
- */
 export interface RawInputEntry {
   sectionId: string;
   /** `null`: ô của cả môn (Cấu trúc câu, bảng phân bổ). */

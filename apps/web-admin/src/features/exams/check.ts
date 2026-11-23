@@ -3,12 +3,6 @@ import type { BlockField } from "./components/block-form-fields";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathChoice } from "./review-types";
 import type { ExamDetail, ExamPart, ExamSection, ExamSectionState, QuestionBlock, StructureCombination } from "./types";
 
-/**
- * Tiện ích thuần còn dùng trên màn thật: liệt kê đường lựa chọn (xem trước đề) và cờ "năm cấu trúc khác năm
- * ma trận cần chuyên gia xác nhận". Bộ kiểm tra cấu hình phía client đã bị gỡ cùng lớp mock — server kiểm tra
- * thật qua `review-api.ts`.
- */
-
 /** Giới hạn dài hơn khi người dùng chọn "Kiểm tra lại với thời gian dài hơn" (mẫu gửi server). */
 export const EXTENDED_CHECK_TIME_LIMIT_SECONDS = 120;
 
@@ -82,12 +76,6 @@ export function findBlockContext(exam: Pick<ExamDetail, "parts">, blockId: strin
   return null;
 }
 
-/**
- * Điều kiện lọc của khối dùng dựng câu "ngân hàng chỉ có N câu …" (2B 7.3): hình dạng câu, định dạng đáp án, vị trí
- * câu con. Máy chủ chỉ trả mã, `required`, `available` và vị trí khối; phần còn lại đọc từ cấu hình khối
- * (`itemShape`, `answerFormats`, `childConditions`, do `api-mapping.ts` điền). Trường chưa khai thì để rỗng và câu bỏ
- * cụm tương ứng.
- */
 export interface BlockFilterConfig {
   itemShape: { statements: number | null; leftItems: number | null; rightItems: number | null } | null;
   answerFormats: string[];
@@ -109,7 +97,6 @@ export function blockFilterConfig(block: QuestionBlock | null | undefined): Bloc
   };
 }
 
-/* ---------- Lỗi và cảnh báo của tab Kiểm tra (2B 7.3, 15.2) ---------- */
 
 /** Mọi vấn đề của lần kiểm tra, mỗi khóa một lần: các nhóm kiểm tra cộng vấn đề của từng đường. */
 export function collectCheckIssues(result: Pick<ExamCheckResult, "groups" | "paths">): CheckIssue[] {
@@ -148,18 +135,10 @@ export interface IssueGroup {
   issues: CheckIssue[];
 }
 
-/** So mã và tên không phân biệt hoa thường và Đ/đ với D/d: mã `QD02` mở đầu tên `QĐ02 · Hóa học – Sinh học`. */
 function foldCode(value: string): string {
   return value.replace(/\u0110/g, "D").replace(/\u0111/g, "d").toLowerCase();
 }
 
-/**
- * Nhãn MỘT mã tổ hợp, nơi duy nhất ghép tên đường (`usePathLabel` gọi qua đây): `QĐ02 · Hóa học – Sinh học` (vi),
- * `QD02 · Chemistry – Biology` (en). `locale` là giá trị `useLocale()` của next-intl (`en-GB` cho tiếng Anh). Tên theo
- * ngôn ngữ lấy từ cấu trúc (`nameVi` / `nameEn`, không lấy tên ngôn ngữ kia), không có thì `fallback` (tên trong kết quả
- * kiểm tra hoặc danh mục, đã theo ngôn ngữ giao diện), không có nữa thì chính mã. Tên trống hoặc trùng mã chỉ in mã; tên
- * đã mở đầu bằng mã (so sau khi đổi Đ -> D, không phân biệt hoa thường) giữ nguyên, không in lặp mã.
- */
 export function combinationLabel(
   code: string,
   names: { combination?: StructureCombination; locale: string; fallback?: string | null },
@@ -172,10 +151,6 @@ export function combinationLabel(
   return foldCode(name).startsWith(foldedCode) ? name : `${code} · ${name}`;
 }
 
-/**
- * Gom vấn đề theo môn, hoặc theo mã bài thi bị ảnh hưởng (`affectedCodes`): một vấn đề của nhiều mã nằm ở mọi mã của nó.
- * Giữ thứ tự xuất hiện; nhóm "không gắn" (`value = null`) xếp cuối.
- */
 export function groupIssues(issues: readonly CheckIssue[], by: IssueGrouping): IssueGroup[] {
   const groups = new Map<string, IssueGroup>();
   const put = (value: string | null, issue: CheckIssue) => {
@@ -197,10 +172,6 @@ export function groupIssues(issues: readonly CheckIssue[], by: IssueGrouping): I
   return [...all.filter((group) => group.value !== null), ...all.filter((group) => group.value === null)];
 }
 
-/**
- * Ô của khối mà vấn đề nói tới, để bấm lỗi đưa tiêu điểm vào đúng ô (`?block=<id>&field=<ô>`). Chỉ các mã gắn với một ô
- * có mỏ neo trên màn nhóm; mã còn lại (chỉ tiêu, nguồn câu, ma trận) chỉ mở khối.
- */
 export function issueBlockField(issue: CheckIssue): BlockField | null {
   switch (issue.code) {
     case "SET_SIZE_MISMATCH":
@@ -233,10 +204,6 @@ export function issueBlockField(issue: CheckIssue): BlockField | null {
   }
 }
 
-/**
- * Chỗ sửa của một vấn đề ở bước Cấu trúc: khối (kèm ô khi biết), môn, lựa chọn của phần, rồi phần (`?block=`, `?section=`,
- * `?part=&option=`, `?part=`). Vấn đề cả bài không có chỗ sửa riêng (`null`).
- */
 export function issueStructureHref(examId: string, issue: CheckIssue): string | null {
   const base = `/exams/${encodeURIComponent(examId)}/structure`;
   if (issue.blockId) {
@@ -251,10 +218,6 @@ export function issueStructureHref(examId: string, issue: CheckIssue): string | 
   return null;
 }
 
-/**
- * Chỗ của quy tắc MAPID mà vấn đề nêu: mở môn chứa quy tắc và cuộn tới dòng của nó (`?section=&rule=`, trang Cấu trúc đọc
- * `rule`). `null` khi vấn đề không nêu quy tắc hoặc không biết môn.
- */
 export function issueRuleHref(examId: string, issue: Pick<CheckIssue, "ruleId" | "sectionId">): string | null {
   if (!issue.ruleId || !issue.sectionId) return null;
   const base = `/exams/${encodeURIComponent(examId)}/structure`;
@@ -273,7 +236,6 @@ export function findSectionById(exam: Pick<ExamDetail, "parts">, sectionId: stri
 
 const STATE_RANK: Record<ExamSectionState["state"], number> = { CHECKED: 0, NEEDS_CHECK: 1, INCOMPLETE: 2 };
 
-/** Trạng thái xấu nhất của một tập môn (spec 7.1: phần và mã lấy trạng thái xấu nhất của các môn); `null` khi không có môn nào. */
 export function worstSectionState(states: readonly ExamSectionState[]): ExamSectionState["state"] | null {
   let worst: ExamSectionState["state"] | null = null;
   for (const item of states) if (worst === null || STATE_RANK[item.state] > STATE_RANK[worst]) worst = item.state;
@@ -296,11 +258,6 @@ function partSections(part: ExamPart): ExamSection[] {
   return [...part.sections, ...(part.subjectPool ?? []), ...part.options.flatMap((option) => option.sections)];
 }
 
-/**
- * Bảng "Theo mã và phần": mỗi phần một dòng (môn theo thứ tự, trạng thái xấu nhất, số lỗi, số cảnh báo); phần theo mã có
- * thêm một dòng cho từng mã (R-24), với số lỗi tính theo `affectedCodes`. Vấn đề không có `partId` nhưng gắn khối hoặc
- * môn vẫn tính vào phần chứa khối / môn đó.
- */
 export function buildUnitRows(
   exam: Pick<ExamDetail, "parts">,
   combinations: readonly StructureCombination[],

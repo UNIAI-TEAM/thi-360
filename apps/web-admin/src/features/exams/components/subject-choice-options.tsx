@@ -12,27 +12,21 @@ import type { MatrixLabels } from "./block-matrix-editor";
 import type { StructureNames } from "./exam-structure-issues";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
-export interface SubjectChoiceOptionsProps {
+interface SubjectChoiceOptionsProps {
   option: ExamPartOption;
   names: StructureNames;
   axes: MatrixAxes;
   labels: MatrixLabels;
   onSelectSection: (sectionId: string) => void;
-  /** Trạng thái kiểm tra theo môn (H2, R-35); `null` hoặc bỏ trống: không hiện cột trạng thái. */
   sectionStates?: readonly ExamSectionState[] | null;
 }
 
-/** Ba ví dụ chia số câu của B10 (hai môn cùng nhóm, hoặc cả ba môn cùng nhóm tự nhiên). */
 const EXAMPLES: ChoiceGroup[][] = [
   ["NATURAL", "NATURAL", "SOCIAL"],
   ["NATURAL", "SOCIAL", "SOCIAL"],
   ["NATURAL", "NATURAL", "NATURAL"],
 ];
 
-/**
- * Phương án "chọn môn" của phần tự chọn (HSA Khoa học, spec D25): một phương án có 5 môn, mỗi môn soạn một lần; học viên
- * chọn 3 môn. Số câu từng môn theo quy tắc chia của B10, chỉ đọc ở đây (không còn 10 tổ hợp KH-n, không sinh tổ hợp).
- */
 export function SubjectChoiceOptions({ option, names, axes, labels, sectionStates, onSelectSection }: SubjectChoiceOptionsProps) {
   const t = useTranslations("exams.subjectChoice");
   const format = useFormatter();

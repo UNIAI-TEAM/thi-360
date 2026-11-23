@@ -3,14 +3,13 @@
 import { Badge, Button, Card, cn, focusRing, IconButton, Select, StatusChip } from "@thi360/ui";
 import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import type { AudioCountQuery } from "../api.http";
 import { ratePercent } from "../allocation";
-import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
+import { convertValuesByUnit, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
-import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, type QuotaRow } from "../subject-matrix";
+import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, subjectAudioGroups, type QuotaRow } from "../subject-matrix";
 import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
@@ -22,7 +21,6 @@ import { AllocationGap } from "./allocation-gap";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions } from "./subject-allocation-extras";
-import { useSubjectTotalChange } from "./subject-total-change";
 import { useHsaExam, isHsaExam } from "../hsa-enforcement";
 import { deletedGroupRules, groupCountScope, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
 import { MapidRulesTable, useMapidRuleText } from "./mapid-rules-table";
@@ -37,31 +35,20 @@ export interface SubjectPanelProps {
   onChange: (update: (section: ExamSection) => ExamSection) => void;
   onSelectBlock: (blockId: string) => void;
   onAddBlock: () => void;
-  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
-  /** Mã bài (cấp qua `SubjectFormRendererProps` để DS đọc bộ nhớ đệm bài thi); màn mặc định không còn ô số câu (UNI-2753). */
   examId: string;
-  /** Mẫu khóa số câu từng phần, mục (H27): dòng số câu ở đầu màn ghi "Mẫu đã khóa số câu". */
   templateLocked?: boolean;
-  /** Môn đã kiểm tra đạt và chưa sửa gì từ đó: hiện "Đủ nguồn theo ma trận" (R-122). */
   sourceVerified?: boolean;
-  /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của môn (H20). */
   topicError?: TopicQuotaServerError;
-  /** Số câu của mục đã lưu hoặc đã xác nhận gần nhất, để phát hiện tổng đổi (R-121). */
-  confirmedCount?: number | null;
-  onConfirmCount?: (count: number) => void;
   /** Chỉ tiêu cấp bài của bài, để liệt kê phân bố tham khảo của riêng môn này. */
   examQuotas?: readonly ExamQuota[];
   onExamQuotas?: (examQuotas: ExamQuota[]) => void;
   /** Mã kỳ thi: HSA Tiếng Anh khối lớp luôn chờ chuyên gia xác nhận. */
   examKind?: string | null;
+  rowsLocked?: boolean;
+  reviewMode?: boolean;
 }
 
-/**
- * Môn của phần thi (bản vẽ `BaiThiCauTruc`, UniNote PBI-04 mục 6.1, spec 9.1): khu chỉ tiêu cấp môn (dạng trả lời, khối
- * lớp, độ khó, phạm vi MAPID) kèm số đã phân bổ và còn thiếu, rồi danh sách nhóm lấy câu do mẫu khởi tạo. Câu con của
- * chùm được trừ vào chỉ tiêu dạng trả lời; nhóm mở rộng ra màn nhóm để sửa.
- */
 export function ExamStructureSubjectPanel({
   context,
   subjectName,
@@ -75,11 +62,11 @@ export function ExamStructureSubjectPanel({
   templateLocked = false,
   sourceVerified = false,
   topicError = null,
-  confirmedCount = null,
-  onConfirmCount,
   examQuotas = [],
   onExamQuotas,
   examKind = null,
+  rowsLocked = false,
+  reviewMode = false,
 }: SubjectPanelProps) {
   const t = useTranslations("exams.structure.subject");
   const tGap = useTranslations("exams.structure.gap");
@@ -100,22 +87,7 @@ export function ExamStructureSubjectPanel({
   const quotaTypes = declaredTypes.filter((type) => type !== "QUESTION_SET");
   const availableQuery = useSubjectAvailableQuestions({
     subjectCode: section.subjectCode,
-    groups: section.blocks.map(
-      (block): AudioCountQuery => ({
-        subjectCode: section.subjectCode,
-        questionType: block.questionType,
-        answerTypes: block.questionType === null ? quotaTypes : [],
-        childAnswerType: block.childAnswerType,
-        knowledgeScope: groupCountScope(block, section),
-        tagCodes: block.tagCodes,
-        requiredPointsPerQuestion: block.requiredPointsPerQuestion,
-        itemShape: block.itemShape,
-        answerFormats: block.answerFormats,
-        childConditions: block.childConditions,
-        // R-130, R-142: môn của phần Nghe chỉ đếm câu có audio, phần Đọc chỉ đếm câu không audio. `ANY` và bỏ trống: không gửi.
-        ...(section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN" ? { audioRequirement: section.audioRequirement } : {}),
-      }),
-    ),
+    groups: subjectAudioGroups(section, quotaTypes, groupCountScope),
   });
   const availableState = availableQuery.isError ? "error" : availableQuery.data ? "ready" : "loading";
   const sourceOf = (answerType: string) => availableQuery.data?.byAnswerType.find((item) => item.answerType === answerType)?.value;
@@ -126,12 +98,7 @@ export function ExamStructureSubjectPanel({
     if (!quotas || quotas.unit === unit) return;
     const values = quotas.items.map((item) => item.value);
     const base = count ?? 0;
-    const next =
-      base <= 0
-        ? values
-        : unit === "PERCENT"
-          ? countsToPercents(values, base)
-          : apportionByPercent(values, base).results;
+    const next = base <= 0 ? values : convertValuesByUnit(values, unit, base);
     setQuotas({ unit, items: quotas.items.map((item, index) => ({ ...item, value: next[index] ?? 0 })) });
   };
   const quotaTotal = quotas ? sum(quotas.items.map((item) => item.value)) : 0;
@@ -161,19 +128,6 @@ export function ExamStructureSubjectPanel({
     });
 
   const topicQuotas = section.topicQuotas ?? [];
-  // Hai nút của thông báo biến mất khi bấm: đưa tiêu điểm về tiêu đề của màn môn để người dùng bàn phím không mất chỗ (R1-26).
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const { notice: totalChangeNotice } = useSubjectTotalChange({
-    section,
-    axes,
-    labels,
-    confirmedCount,
-    onConfirmCount: (next) => {
-      onConfirmCount?.(next);
-      requestAnimationFrame(() => titleRef.current?.focus());
-    },
-    onChange,
-  });
   const references = referenceEntries(section, examQuotas, examKind);
   const copyReference = (entry: ReferenceEntry) => {
     if (entry.kind !== "quota") return;
@@ -206,7 +160,6 @@ export function ExamStructureSubjectPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2
-            ref={titleRef}
             tabIndex={-1}
             className={cn("flex flex-wrap items-center gap-2 rounded-sm text-h3 font-bold wrap-break-word text-text", focusRing)}
           >
@@ -249,8 +202,6 @@ export function ExamStructureSubjectPanel({
           {headerAction}
         </div>
       </div>
-
-      {totalChangeNotice}
 
       {varies && (
         <div className="flex flex-col gap-1">
@@ -513,7 +464,7 @@ export function ExamStructureSubjectPanel({
         total={allocation.count}
         allocationRemainder={allocation.remainder}
         onSelectBlock={onSelectBlock}
-        onAddBlock={onAddBlock}
+        onAddBlock={!rowsLocked && !reviewMode ? onAddBlock : undefined}
         reference={reference}
         mapid={mapidMode === "MATRIX"}
       />
@@ -554,7 +505,6 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
   );
 }
 
-/** Nguồn khả dụng của một dòng của phần có audio: cùng bộ lọc và cùng truy vấn với vùng sửa nhóm (R-130). */
 function AvailableSource({ block, section }: { block: QuestionBlock; section: ExamSection }) {
   const t = useTranslations("exams.structure.subject.groups");
   const query = useAvailableQuestions(blockAvailableInput(block, section, section.subjectCode));
@@ -563,10 +513,6 @@ function AvailableSource({ block, section }: { block: QuestionBlock; section: Ex
   return <>{t("availableCount", { count: query.data.total })}</>;
 }
 
-/**
- * Danh sách nhóm lấy câu của môn (khởi tạo từ mẫu): dạng trả lời, số câu, phạm vi nguồn; mở nhóm để sửa. Môn của phần có
- * điều kiện audio (bản vẽ `NhomAudio2B`) thêm nhãn audio, số lượng, tổng câu, tỷ lệ trong phần, nguồn khả dụng và dòng tổng.
- */
 function GroupList({
   section,
   subjectName,
@@ -587,7 +533,7 @@ function GroupList({
   total: number | null;
   allocationRemainder: number | null;
   onSelectBlock: (blockId: string) => void;
-  onAddBlock: () => void;
+  onAddBlock?: () => void;
   reference: ContentReference;
   /** Môn ở chế độ Theo ma trận MAPID: cột "Phạm vi nguồn" hiện quy tắc có hiệu lực. */
   mapid: boolean;
@@ -644,17 +590,19 @@ function GroupList({
       </ul>
     );
   };
-  const sumQuestions = section.blocks.reduce((sumSoFar, block) => sumSoFar + questionsOf(block), 0);
+  const sumQuestions = sum(section.blocks.map(questionsOf));
   const headCell = "border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap";
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id={headingId} className="text-title font-semibold text-text">{t("title")}</h3>
-        <Button type="button" variant="secondary" size="sm" aria-label={t("addAria", { subject: subjectName })} onClick={onAddBlock}>
-          <Plus />
-          <span>{t("add")}</span>
-        </Button>
+        {onAddBlock && (
+          <Button type="button" variant="secondary" size="sm" aria-label={t("addAria", { subject: subjectName })} onClick={onAddBlock}>
+            <Plus />
+            <span>{t("add")}</span>
+          </Button>
+        )}
       </div>
       {audio && (
         <div className="flex flex-wrap items-center gap-2">

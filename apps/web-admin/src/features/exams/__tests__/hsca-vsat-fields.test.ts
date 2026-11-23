@@ -1,9 +1,7 @@
 import type { components } from "@thi360/api-client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { updateExamStructure } from "../api";
 import { mapExamTemplate, mapParts, toApiParts } from "../api-mapping";
-import { partsFromInput } from "../create-parts";
-import { initialParts, partInputsFromValues } from "../create-exam-schema";
 import type { ExamPart } from "../types";
 import { EXAMS_FIXTURE } from "./exam-fixture";
 import { toWireTemplate } from "./fake-exams-backend";
@@ -12,10 +10,8 @@ import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-ser
 /**
  * R-146: web admin đọc, giữ và gửi lại nguyên vẹn các trường mới của cấu trúc H-SCA, V-SAT (`audioRequirement`,
  * `displaySegments`, `ChildCondition.answerType` và `itemShape`, `ItemShape.options`) ở ba đường: tải rồi lưu bước 2,
- * dữ liệu của bảy kỳ thi cũ (không sinh thêm trường), tạo bài từ mẫu có sửa bảng tổng quan.
+ * dữ liệu của bảy kỳ thi cũ (không sinh thêm trường), nạp cấu trúc từ mẫu rồi sửa số câu.
  */
-
-vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ combinations: [] }) }));
 
 type ApiPart = components["schemas"]["ExamPart"];
 type ApiTemplate = components["schemas"]["ExamTemplateResponse"];
@@ -171,7 +167,7 @@ describe("bảy kỳ thi cũ không sinh thêm trường (FE-6 dòng 8)", () => 
   });
 });
 
-describe("tạo bài từ mẫu có sửa bảng tổng quan giữ trường mới (create-parts, FE-6 dòng 9)", () => {
+describe("nạp cấu trúc từ mẫu và sửa số câu giữ trường mới (api-mapping, FE-6 dòng 9)", () => {
   const WIRE_TEMPLATE = {
     active: true,
     publishable: true,
@@ -201,26 +197,18 @@ describe("tạo bài từ mẫu có sửa bảng tổng quan giữ trường m�
     expect(part.sections![0]!.blocks![0]!.itemShape).toEqual({ options: 4 });
   });
 
-  it("sửa số câu của phần và môn ở bảng rồi dựng cấu trúc: còn audio, phân đoạn, điều kiện câu con, số phương án", () => {
+  it("nạp cấu trúc từ mẫu rồi sửa số câu của phần và môn: còn audio, phân đoạn, điều kiện câu con, số phương án", () => {
     const template = mapExamTemplate(WIRE_TEMPLATE);
-    const values = initialParts({
-      templates: [template],
-      kind: "VSAT",
-      scope: "SUBJECT",
-      partCode: "",
-      combinations: [],
-      scopeName: (code) => code,
-      template,
-      subjectCode: "ANH",
-    });
-    const edited = values.map((part) => ({
+    const wireStructure = toWireTemplate(template).structure as unknown as { parts: ApiPart[] };
+    const edited = mapParts(wireStructure.parts).map((part) => ({
       ...part,
       questionCount: 14,
+      questionCountOnPaper: 14,
+      questionCountRequired: 14,
       sections: part.sections.map((section) => ({ ...section, questionCount: 14 })),
     }));
 
-    const inputs = partInputsFromValues(edited, { timing: "SHARED", pointsByPart: false });
-    const [built] = toApiParts(partsFromInput(inputs, [], "ANH"));
+    const [built] = toApiParts(edited);
 
     expect(built!.questionCount).toBe(14);
     expect(built!.displaySegments).toEqual(DISPLAY_SEGMENTS);
@@ -250,17 +238,8 @@ describe("tạo bài từ mẫu có sửa bảng tổng quan giữ trường m�
       },
     } as unknown as ApiTemplate;
     const template = mapExamTemplate(plain);
-    const values = initialParts({
-      templates: [template],
-      kind: "VSAT",
-      scope: "SUBJECT",
-      partCode: "",
-      combinations: [],
-      scopeName: (code) => code,
-      template,
-      subjectCode: "MATH",
-    });
-    const built = toApiParts(partsFromInput(partInputsFromValues(values, { timing: "PER_PART", pointsByPart: false }), [], "MATH"));
+    const wireStructure = toWireTemplate(template).structure as unknown as { parts: ApiPart[] };
+    const built = toApiParts(mapParts(wireStructure.parts));
     expect(newFieldPaths(built)).toEqual([]);
   });
 });

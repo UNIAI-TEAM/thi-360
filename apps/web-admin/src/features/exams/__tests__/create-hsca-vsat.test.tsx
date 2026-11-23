@@ -3,10 +3,10 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContentReference } from "@/features/content/types";
 import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
-import { CreateExamPage } from "../components/create-exam-page";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { ExamsBackend } from "./fake-exams-backend";
 import { examDetailWire } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 
 /**
  * Bước 1 Tạo bài thi cho H-SCA, V-SAT (UNI-2694, FE-6; bản vẽ `TaoBaiThiHscaVsat2B`). Mẫu cấu trúc là dữ liệu giả theo spec
@@ -155,7 +155,7 @@ async function renderPage(locale: "vi" | "en" = "vi", templates: Wire[] = TEMPLA
   backend.server.on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() });
   backend.install();
   const user = userEvent.setup();
-  renderWithProviders(<CreateExamPage />, locale === "en" ? { locale, messages: en } : {});
+  renderExamsUi(<ExamGeneralForm mode="create" />, locale === "en" ? { locale, messages: en } : {});
   await screen.findByRole("form", { name: locale === "en" ? "Create exam" : "Tạo bài thi" });
   return user;
 }

@@ -5,16 +5,17 @@ import { useTranslations } from "next-intl";
 import { useId } from "react";
 import type { MatrixLabels } from "../components/block-matrix-editor";
 import { ExamName } from "../components/exam-review-shared";
+import { quotaUnitOf } from "../exam-overview";
+import { sum } from "../matrix";
 import type { ExamQuota, QuotaEnforcement } from "../types";
 import { EnforcementControl } from "./enforcement-control";
 import type { LockReasonCode } from "./lock-reason";
 
 /** Mã mức "Chưa phân loại" nếu chỉ tiêu cấp bài có mức này (câu thiếu nhãn dồn về đây). */
-export const UNCLASSIFIED_BUCKET = "UNCLASSIFIED";
+const UNCLASSIFIED_BUCKET = "UNCLASSIFIED";
 
-export interface ReferenceQuotaEntry {
+interface ReferenceQuotaEntry {
   quota: ExamQuota;
-  /** Khóa nút "Áp dụng khi sinh đề" kèm lý do (R-8): phân bố theo lệnh hỏi, hoặc chỉ tiêu nhiều môn; `null`: bật được. */
   lock: Extract<LockReasonCode, "promptBasis" | "multiSubject"> | null;
   /** Tổng các mức (số câu, lệnh hoặc %). */
   total: number;
@@ -23,37 +24,31 @@ export interface ReferenceQuotaEntry {
 }
 
 const bucketValue = (bucket: ExamQuota["buckets"][number]): number => bucket.percent ?? bucket.count ?? 0;
-const isCountBucket = (quota: ExamQuota) => quota.buckets.every((bucket) => bucket.percent === undefined || bucket.percent === null);
 
-/**
- * Phân bố cấp bài (cả môn) áp cho môn của mục (R-7, R-8): chỉ tiêu của riêng môn này, hoặc trải nhiều môn có môn này (chỉ đối chiếu,
- * khóa kèm lý do). Chiều lớp không hiện ở môn bị ẩn lớp (R-11). Phân bố theo lệnh hỏi giữ đơn vị và mẫu số của mẫu; chiều có tổng
- * thấp hơn mẫu số của môn hiện dòng "Chưa phân loại" cho số lệnh còn thiếu (câu thiếu nhãn, H44, R-139).
- */
 export function referenceQuotaEntries(subjectCode: string, examQuotas: readonly ExamQuota[], showGrade: boolean): ReferenceQuotaEntry[] {
   const applies = (quota: ExamQuota) =>
     !(quota.excludeSubjectCodes ?? []).includes(subjectCode) && ((quota.subjectCodes?.length ?? 0) === 0 || (quota.subjectCodes ?? []).includes(subjectCode));
   const mineAll = examQuotas.filter(applies);
   const single = (quota: ExamQuota) => quota.subjectCodes?.length === 1;
-  const totalOf = (quota: ExamQuota) => quota.buckets.reduce((sum, bucket) => sum + bucketValue(bucket), 0);
-  const denominator = Math.max(0, ...mineAll.filter((quota) => single(quota) && quota.basis === "PROMPT" && isCountBucket(quota)).map(totalOf));
+  const totalOf = (quota: ExamQuota) => sum(quota.buckets.map(bucketValue));
+  const denominator = Math.max(0, ...mineAll.filter((quota) => single(quota) && quota.basis === "PROMPT" && quotaUnitOf(quota) === "COUNT").map(totalOf));
   return mineAll
     .filter((quota) => showGrade || quota.dimension !== "GRADE")
     .map((quota) => {
       const total = totalOf(quota);
       const lock = !single(quota) ? "multiSubject" : quota.basis !== "QUESTION" ? "promptBasis" : null;
       const hasUnclassifiedBucket = quota.buckets.some((bucket) => bucket.codes.includes(UNCLASSIFIED_BUCKET));
-      return { quota, lock, total, unclassified: single(quota) && quota.basis === "PROMPT" && isCountBucket(quota) && !hasUnclassifiedBucket ? Math.max(0, denominator - total) : 0 };
+      return { quota, lock, total, unclassified: single(quota) && quota.basis === "PROMPT" && quotaUnitOf(quota) === "COUNT" && !hasUnclassifiedBucket ? Math.max(0, denominator - total) : 0 };
     });
 }
 
 /** Mẫu số theo lệnh của môn: tổng lớn nhất trong các phân bố theo lệnh của riêng môn (ví dụ Toán 67 lệnh); `null` khi không có. */
 export function commandDenominator(entries: readonly ReferenceQuotaEntry[]): number | null {
-  const totals = entries.filter((entry) => entry.lock !== "multiSubject" && entry.quota.basis === "PROMPT" && isCountBucket(entry.quota)).map((entry) => entry.total + entry.unclassified);
+  const totals = entries.filter((entry) => entry.lock !== "multiSubject" && entry.quota.basis === "PROMPT" && quotaUnitOf(entry.quota) === "COUNT").map((entry) => entry.total + entry.unclassified);
   return totals.length > 0 ? Math.max(...totals) : null;
 }
 
-export interface ReferenceQuotasProps {
+interface ReferenceQuotasProps {
   entries: readonly ReferenceQuotaEntry[];
   labels: MatrixLabels;
   subjectName: string;
@@ -78,7 +73,7 @@ export function ReferenceQuotas({ entries, labels, subjectName, onApply }: Refer
       <ul className="flex flex-col gap-3">
         {entries.map(({ quota, lock, unclassified }, index) => {
           const label = quota.dimension === "GRADE" ? labels.grade : labels.difficulty;
-          const percent = quota.buckets.some((bucket) => bucket.percent !== undefined && bucket.percent !== null);
+          const percent = quotaUnitOf(quota) === "PERCENT";
           const dimensionLabel = t("entryTitle", { dimension: t(quota.dimension === "GRADE" ? "grade" : "difficulty") });
           const quotaNameId = `${headingId}-quota-${index}`;
           const values = quota.buckets.map((bucket) => ({ key: bucket.codes.join("+"), text: t(percent ? "percentValue" : "value", { label: bucket.codes.map((code) => (code === UNCLASSIFIED_BUCKET ? t("unclassified") : label(code))).join(" + "), value: bucketValue(bucket) }) }));

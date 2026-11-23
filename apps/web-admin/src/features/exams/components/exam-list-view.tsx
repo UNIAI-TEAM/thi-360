@@ -28,6 +28,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
+import { usePermissions } from "@/features/session/session-provider";
 import {
   FILTER_FORM,
   FILTER_SEARCH,
@@ -55,10 +56,6 @@ const SCOPES: ExamScope[] = ["FULL", "PART", "SUBJECT"];
 const STATUSES: ExamStatus[] = ["DRAFT", "PUBLISHED", "DISCONTINUED"];
 const CHECK_STATUSES: ExamCheckStatus[] = ["UNCHECKED", "VALID", "INVALID", "NEEDS_RECHECK"];
 
-/**
- * Cột phụ ẩn theo bề rộng khung chứa bảng (DESIGN.md mục 5.9): Cập nhật ẩn trước, rồi Hình thức, Lựa chọn, Kỳ thi.
- * Khung hẹp hơn 640px thì bảng thành danh sách thẻ (thẻ vẫn có Lựa chọn).
- */
 const DROP_LOW_PRIORITY_COLUMNS = [
   "@container",
   "@max-[86rem]:[&_:is(th,td):has([data-col=updated])]:hidden",
@@ -69,15 +66,12 @@ const DROP_LOW_PRIORITY_COLUMNS = [
 
 const CREATE_EXAM_HREF = "/exams/new";
 
-/**
- * Danh sách bài thi (bản vẽ `BaiThi`; spec 7 kỳ thi): lọc theo bảy kỳ thi của danh mục và theo môn, cột Lựa chọn (tổ
- * hợp, nhánh hoặc môn), thời lượng ghi "chung" khi bài dùng thời lượng chung, huy hiệu "Có tự luận"; bảng/thẻ, sửa,
- * sao chép, ngừng bán, tạo bài thi.
- */
 export function ExamListView() {
   const t = useTranslations("exams");
   const common = useTranslations("common");
   const format = useFormatter();
+  const permissions = usePermissions();
+  const canModify = !permissions.isLoading && permissions.can("EXAM.MODIFY");
   const unpublishedId = useId();
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
@@ -167,10 +161,6 @@ export function ExamListView() {
         return t(key, { questions: exam.totalQuestions, minutes: exam.durationMinutes });
       },
       updatedText: (exam: ExamSummary) => format.dateTime(new Date(exam.updatedAt), "dateTime"),
-      /**
-       * Cột Lựa chọn: bài lẻ ghi phần/môn; bài khác ghi môn của bài (kỳ thi theo môn) và các lựa chọn của phần tự chọn
-       * (Tiếng Anh, tổ hợp, nhánh). Không có gì thì `null`.
-       */
       choiceText: (exam: ExamSummary): string | null => {
         if (exam.scope === "PART") return exam.partCode ? scopeName(exam.partCode) : null;
         const options = [
@@ -194,7 +184,7 @@ export function ExamListView() {
         cell: ({ row }) => (
           <div className="flex min-w-48 flex-col">
             <Link
-              href={examTabHref(row.original.id, "structure")}
+              href={examTabHref(row.original.id, "general")}
               className={cn("rounded-sm font-semibold text-primary-text hover:underline", focusRing)}
             >
               <span className="line-clamp-2">{row.original.name}</span>
@@ -291,7 +281,7 @@ export function ExamListView() {
       render: (exam) => (
         <ListCard
           title={
-            <ListCardTitleLink linkComponent={Link} href={examTabHref(exam.id, "structure")}>
+            <ListCardTitleLink linkComponent={Link} href={examTabHref(exam.id, "general")}>
               {exam.name}
             </ListCardTitleLink>
           }
@@ -332,12 +322,14 @@ export function ExamListView() {
         title={t("list.title")}
         description={t("list.description")}
         actions={
-          <Button asChild>
-            <Link href={CREATE_EXAM_HREF}>
-              <Plus />
-              <span>{t("list.actions.create")}</span>
-            </Link>
-          </Button>
+          canModify ? (
+            <Button asChild>
+              <Link href={CREATE_EXAM_HREF}>
+                <Plus />
+                <span>{t("list.actions.create")}</span>
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -510,12 +502,14 @@ export function ExamListView() {
                   title={t("list.emptyTitle")}
                   description={t("list.emptyDescription")}
                   action={
-                    <Button asChild>
-                      <Link href={CREATE_EXAM_HREF}>
-                        <Plus />
-                        <span>{t("list.actions.create")}</span>
-                      </Link>
-                    </Button>
+                    canModify ? (
+                      <Button asChild>
+                        <Link href={CREATE_EXAM_HREF}>
+                          <Plus />
+                          <span>{t("list.actions.create")}</span>
+                        </Link>
+                      </Button>
+                    ) : undefined
                   }
                 />
               )

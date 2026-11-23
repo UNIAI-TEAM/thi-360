@@ -1,15 +1,14 @@
 import type { components } from "@thi360/api-client";
 import {
   countWords,
-  type AnswerFormat,
+  parseRawQuestionBody,
+  readRawQuestionBody,
   type AnswerValue as KitAnswerValue,
   type ClozeAnswer as KitClozeAnswer,
   type EssayAnswer as KitEssayAnswer,
   type KitQuestion,
   type MatchingAnswer as KitMatchingAnswer,
   type MultipleChoiceAnswer as KitMultipleChoiceAnswer,
-  type MultipleChoiceRule,
-  type QuestionBody as KitQuestionBody,
   type QuestionSetAnswer as KitQuestionSetAnswer,
   type ShortAnswerAnswer as KitShortAnswerAnswer,
   type SingleChoiceAnswer as KitSingleChoiceAnswer,
@@ -54,27 +53,6 @@ export interface ItemCompletionDetail {
   totalCount: number;
 }
 
-const VALID_ANSWER_FORMATS = new Set<AnswerFormat>([
-  "INTEGER",
-  "DECIMAL",
-  "FRACTION",
-  "TEXT",
-  "CHEM_FORMULA",
-  "CHEM_EQUATION",
-]);
-
-function asAnswerFormat(raw: string | undefined | null): AnswerFormat | null {
-  if (raw && VALID_ANSWER_FORMATS.has(raw as AnswerFormat)) {
-    return raw as AnswerFormat;
-  }
-  return null;
-}
-
-function asScoringRule(raw: string | undefined | null): MultipleChoiceRule | undefined {
-  if (raw === "ALL_OR_NOTHING" || raw === "PARTIAL") return raw;
-  return undefined;
-}
-
 export function sanitizeItemAttachments(
   attachments: AttemptAttachmentView[] | undefined,
   attemptId: string,
@@ -88,30 +66,6 @@ export function sanitizeItemAttachments(
     .filter((att) => Boolean(att.url));
 }
 
-type RawOptionView = { id?: string; content?: string };
-type RawBlankView = { id?: string };
-type RawStatementView = { id?: string; content?: string };
-type RawSideView = { id?: string; content?: string };
-type RawQuestionBodyShape = {
-  type?: string;
-  options?: RawOptionView[];
-  scoringRule?: string;
-  inputHint?: string;
-  answerFormat?: string;
-  passage?: string;
-  blanks?: RawBlankView[];
-  blankNumberStart?: number;
-  statements?: RawStatementView[];
-  left?: RawSideView[];
-  right?: RawSideView[];
-  reuseRight?: boolean;
-  wordLimit?: number;
-};
-
-function readRawBody(item: AttemptItemView): RawQuestionBodyShape | undefined {
-  return item.questionBody as RawQuestionBodyShape | undefined;
-}
-
 export function toKitQuestion(
   item: AttemptItemView,
   attemptId: string,
@@ -120,96 +74,11 @@ export function toKitQuestion(
   const itemId = item.itemId ?? "";
   const displayNo = item.displayNo ?? 1;
   const stem = item.content ? rewriteQuestionHtmlAssets(item.content, attemptId) : undefined;
-  const rawBody = readRawBody(item);
-  const qType = item.questionType ?? (rawBody?.type as ApiQuestionType | undefined) ?? "SINGLE_CHOICE";
-
-  let body: KitQuestionBody;
-
-  switch (qType) {
-    case "SINGLE_CHOICE": {
-      body = {
-        type: "SINGLE_CHOICE",
-        options: (rawBody?.options ?? []).map((opt) => ({
-          id: opt.id ?? "",
-          content: rewriteQuestionHtmlAssets(opt.content, attemptId),
-        })),
-      };
-      break;
-    }
-    case "MULTIPLE_CHOICE": {
-      body = {
-        type: "MULTIPLE_CHOICE",
-        options: (rawBody?.options ?? []).map((opt) => ({
-          id: opt.id ?? "",
-          content: rewriteQuestionHtmlAssets(opt.content, attemptId),
-        })),
-        scoringRule: asScoringRule(rawBody?.scoringRule),
-      };
-      break;
-    }
-    case "SHORT_ANSWER": {
-      body = {
-        type: "SHORT_ANSWER",
-        answers: [],
-        inputHint: rawBody?.inputHint ?? null,
-        answerFormat: asAnswerFormat(rawBody?.answerFormat),
-      };
-      break;
-    }
-    case "CLOZE": {
-      body = {
-        type: "CLOZE",
-        passage: rewriteQuestionHtmlAssets(rawBody?.passage, attemptId),
-        blanks: (rawBody?.blanks ?? []).map((blank) => ({
-          id: blank.id ?? "",
-          answers: [],
-        })),
-      };
-      break;
-    }
-    case "TRUE_FALSE": {
-      body = {
-        type: "TRUE_FALSE",
-        statements: (rawBody?.statements ?? []).map((st) => ({
-          id: st.id ?? "",
-          content: rewriteQuestionHtmlAssets(st.content, attemptId),
-        })),
-      };
-      break;
-    }
-    case "MATCHING": {
-      body = {
-        type: "MATCHING",
-        left: (rawBody?.left ?? []).map((side) => ({
-          id: side.id ?? "",
-          content: rewriteQuestionHtmlAssets(side.content, attemptId),
-        })),
-        right: (rawBody?.right ?? []).map((side) => ({
-          id: side.id ?? "",
-          content: rewriteQuestionHtmlAssets(side.content, attemptId),
-        })),
-        reuseRight: rawBody?.reuseRight ?? false,
-      };
-      break;
-    }
-    case "ESSAY": {
-      body = {
-        type: "ESSAY",
-        wordLimit: rawBody?.wordLimit ?? null,
-      };
-      break;
-    }
-    case "QUESTION_SET":
-    default: {
-      body = {
-        type: "QUESTION_SET",
-        passage: rewriteQuestionHtmlAssets(rawBody?.passage, attemptId),
-        blankNumberStart: rawBody?.blankNumberStart ?? undefined,
-        childIds,
-      };
-      break;
-    }
-  }
+  const body = parseRawQuestionBody(item.questionBody, {
+    questionType: item.questionType,
+    rewriteHtml: (html) => rewriteQuestionHtmlAssets(html, attemptId),
+    childIds,
+  });
 
   return {
     id: itemId,
@@ -405,7 +274,7 @@ export function getItemCompletionDetail(
   item: AttemptItemView,
   answer: ApiAnswerValue | null | undefined,
 ): ItemCompletionDetail {
-  const rawBody = readRawBody(item);
+  const rawBody = readRawQuestionBody(item.questionBody);
   const qType = item.questionType ?? (rawBody?.type as ApiQuestionType | undefined);
   if (!qType || qType === "QUESTION_SET") {
     return { status: "blank", filledCount: 0, totalCount: 0 };
@@ -503,7 +372,7 @@ export function getEssayLimitStatus(
   if (item.questionType !== "ESSAY") {
     return { isEssay: false, wordCount: 0, wordLimit: null, underLimit: false };
   }
-  const essayBody = readRawBody(item);
+  const essayBody = readRawQuestionBody(item.questionBody);
   const wordLimit = typeof essayBody?.wordLimit === "number" ? essayBody.wordLimit : null;
   const html = answer?.type === "ESSAY" ? (answer.html ?? "") : "";
   const wordCount = countWords(html);

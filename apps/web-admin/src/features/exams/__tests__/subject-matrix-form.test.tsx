@@ -5,7 +5,6 @@ import enMessages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { registerMatrixKindSlot } from "../subject-forms/matrix-form";
-import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { EXAM_ID, type FakeServer } from "./fake-exams-server";
 import { boot, checkCalls, openStructure, putCalls, requestLog, sectionsOf, wireBlock, wirePart, wireSection, type Wire } from "./subject-form-harness";
 import { matrixOf, structureInput, wireBcaHistory, wireQdaScience } from "./subject-matrix-harness";
@@ -489,9 +488,9 @@ describe("MT: bàn phím và focus (CR-2 AC-10; R1-3, R1-6)", () => {
 
 describe("MT: số request lúc mở (FTM mục 9, plan B4; CR-2 AC-11)", () => {
   it("noExtraRequestsOnOpen: mở môn MT không gọi nhiều request hơn MD của cùng môn, cùng fixture", async () => {
-    const parts = () => [wirePart([wireQdaScience("sec-ly", "LY"), wireQdaScience("sec-hoa", "HOA")])];
-    const opened = async () => {
-      const { server } = boot({ kind: "QDA", parts: parts() });
+    const opened = async (sets: number) => {
+      const parts = [wirePart([wireQdaScience("sec-ly", "LY", { sets }), wireQdaScience("sec-hoa", "HOA")])];
+      const { server } = boot({ kind: "QDA", parts });
       const view = openStructure("?section=sec-ly");
       await screen.findByRole("heading", { level: 2, name: /Môn|Vật|LY|Lý/ });
       await waitFor(() => expect(screen.queryByText(/Đang tải/)).not.toBeInTheDocument());
@@ -499,12 +498,8 @@ describe("MT: số request lúc mở (FTM mục 9, plan B4; CR-2 AC-11)", () => 
       view.unmount();
       return log;
     };
-    const withMatrix = await opened();
-    const undoLy = patchSubjectFormEntry("QDA", "LY", { enabled: false });
-    const undoHoa = patchSubjectFormEntry("QDA", "HOA", { enabled: false });
-    const withDefault = await opened();
-    undoLy();
-    undoHoa();
+    const withMatrix = await opened(1);
+    const withDefault = await opened(3);
     const remaining = [...withDefault];
     for (const line of withMatrix) {
       const at = remaining.indexOf(line);

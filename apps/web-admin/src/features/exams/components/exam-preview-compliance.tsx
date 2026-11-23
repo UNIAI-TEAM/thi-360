@@ -1,8 +1,8 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } from "@thi360/ui";
-import { CircleCheck, Info } from "lucide-react";
+import { Button, Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } from "@thi360/ui";
+import { ArrowRight, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { skipToken, useQuery } from "@tanstack/react-query";
@@ -40,24 +40,91 @@ const LEVEL_TONE: Record<ComplianceLevel, StatusTone> = {
   REQUIRED_DEVIATION: "danger",
 };
 
+export function mergeSubjectQuotasIntoCompliance(
+  paper: PreviewPaper,
+  compliance: readonly PreviewCompliance[] = [],
+): PreviewCompliance[] {
+  const seen = new Set(compliance.map((row) => `${row.scope}|${row.criterion}`));
+  const extras: PreviewCompliance[] = [];
+  for (const subject of paper.subjects) {
+    const scope = `SECTION:${subject.sectionId}`;
+    for (const quota of subject.quotas) {
+      const criterion = `${quota.kind}:${quota.code}`;
+      const key = `${scope}|${criterion}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      extras.push({
+        criterion,
+        scope,
+        required: quota.required,
+        actual: quota.generated,
+        enforcement: "REQUIRED",
+        basis: "QUESTION",
+        independent: false,
+        note: null,
+        originalRequired: null,
+        topicName: null,
+      });
+    }
+  }
+  return extras.length > 0 ? [...compliance, ...extras] : [...compliance];
+}
+
+export function ExamPreviewComplianceBanner({
+  paper,
+  compliance,
+  examId,
+  onOpenAllocation,
+}: {
+  paper: PreviewPaper;
+  compliance: readonly PreviewCompliance[];
+  examId?: string;
+  onOpenAllocation: () => void;
+}) {
+  const t = useTranslations("exams.preview.compliance");
+  const structureQuery = useExamStructure(examId ?? "", undefined, Boolean(examId));
+  const structure = structureQuery.data;
+  const quotas = useMemo(() => buildTopicQuotaIndex(structure), [structure]);
+  const structureUnavailable = Boolean(examId) && structure === undefined;
+  const rules = useMemo(() => buildMapidRuleIndex(structure), [structure]);
+  const merged = useMemo(() => mergeSubjectQuotasIntoCompliance(paper, compliance), [paper, compliance]);
+  const deviations = useMemo(
+    () =>
+      merged.filter(
+        (row) => !topicQuotaPending(row, quotas, structureUnavailable) && complianceLevel(row, rules) !== "OK",
+      ),
+    [merged, quotas, structureUnavailable, rules],
+  );
+  if (deviations.length === 0) return null;
+  const blocking = deviations.some((row) => complianceLevel(row, rules) === "REQUIRED_DEVIATION");
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3.5 py-2 text-body ${
+        blocking ? "border-danger/30 bg-danger-bg" : "border-warning/30 bg-warning-bg"
+      }`}
+    >
+      <span className="flex items-center gap-2 text-text">
+        <TriangleAlert aria-hidden className={`size-4 shrink-0 ${blocking ? "text-danger" : "text-warning"}`} />
+        <span>{t("banner", { count: deviations.length })}</span>
+      </span>
+      <Button type="button" variant="link" size="sm" onClick={onOpenAllocation}>
+        {t("viewAllocation")}
+        <ArrowRight />
+      </Button>
+    </div>
+  );
+}
+
 export interface ExamPreviewComplianceProps {
   paper: PreviewPaper;
   compliance: readonly PreviewCompliance[];
   /** Câu đã bỏ của môn 16 câu (HSA Khoa học). */
   dropped: readonly PreviewQuestion[];
-  /** Cần tra chỉ tiêu chủ đề trong cấu trúc (dòng `REFERENCE` chờ mapping, H31). */
   examId?: string;
-  /** Xem thứ tự gốc (K12): số câu nêu ở chỉ tiêu chủ đề là số gốc, như số trên đề đang xem. */
   original?: boolean;
 }
 
 
-/**
- * Bảng Yêu cầu / Thực tế / Chênh lệch của đề thử (bản vẽ `SinhThu2B` + `SinhThuVact2B`, R-124): mọi tiêu chí kể cả
- * tham khảo, dòng lệch được đánh dấu theo mức (Bắt buộc là lỗi, Tham khảo là cảnh báo không chặn); dòng chỉ tiêu
- * `REFERENCE` chưa gắn MAPID (H31) hiện "Chưa có dữ liệu đối chiếu" và chip "Chờ mapping", không tính là lệch.
- * Môn 16 câu ghi "đã bỏ 1 câu" và nêu câu đã bỏ; chỉ tiêu chủ đề nêu các câu được gán.
- */
 export function ExamPreviewCompliance({ paper, compliance, dropped, examId, original = false }: ExamPreviewComplianceProps) {
   const t = useTranslations("exams.preview.compliance");
   const tContent = useTranslations("content");
@@ -271,10 +338,6 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   );
 }
 
-/**
- * Mẫu số của đối chiếu theo lệnh (D21): "Toán cả môn · 67 lệnh" với bài cả môn, "Toán · Phần II · 6 lệnh" với bài theo
- * phần. Chỉ hiện cho bài `SUBJECT` và `PART`, vì đó là hai phạm vi có đối chiếu theo lệnh ở mức tham khảo.
- */
 function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; compliance: readonly PreviewCompliance[]; examId: string }) {
   const t = useTranslations("exams.preview.compliance");
   const lookup = useLookup();

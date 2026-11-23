@@ -4,14 +4,11 @@ import type { ContentReference, ExamKindOption } from "@/features/content/types"
 import {
   combinationsForKind,
   findTemplate,
-  initialParts,
   latestTemplate as latestScopeTemplate,
-  partInputsFromValues,
   yearsDiffer,
 } from "../create-exam-schema";
-import { partsFromInput } from "../create-parts";
-import { sum } from "../matrix";
-import { mapExamDetail, toApiParts } from "../api-mapping";
+import { splitEvenly, sum } from "../matrix";
+import { mapExamDetail, mapParts, toApiParts } from "../api-mapping";
 import type {
   ExamBuildMode,
   ExamDetail,
@@ -152,6 +149,8 @@ function wireTemplateBlock(block: ExamTemplateBlock): WireBlock {
       wireScope(block.knowledgeScope) ?? (block.competencyCode ? { nodeIds: [], competencyCodes: [block.competencyCode] } : undefined),
     matrix: wireMatrix(block.matrix ?? null),
     childAnswerType: block.childAnswerType ?? undefined,
+    itemShape: block.itemShape ?? undefined,
+    childConditions: block.childConditions?.length ? block.childConditions : undefined,
     templateGroupCode: block.templateGroupCode ?? undefined,
     answerTypeLocked: block.answerTypeLocked,
     expectedScoring: block.expectedScoring,
@@ -163,6 +162,7 @@ function wireTemplateSection(section: ExamTemplateSection): WireSection {
   return {
     subjectCode: section.subjectCode,
     questionCount: section.questionCount ?? undefined,
+    audioRequirement: section.audioRequirement ?? undefined,
     knowledgeScope: wireScope(section.knowledgeScope ?? null),
     answerQuotas: section.answerQuotas ?? undefined,
     matrix: wireMatrix(section.matrix ?? null),
@@ -196,11 +196,11 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
     id: templateUuid(`${partKey}/section/${sectionIndex}`),
   }));
   const blocks = (part.blocks ?? []).map(wireTemplateBlock);
-  if (blocks.length && sections.length === 1) sections[0]!.blocks = [...sections[0]!.blocks ?? [], ...blocks];
+  if (blocks.length && sections.length === 1) sections[0]!.blocks = [...(sections[0]!.blocks ?? []), ...blocks];
   const options = (part.options ?? []).map((option): WireOption => {
     if (option.kind === "SUBJECT_CHOICE" && option.subjectChoice) {
       return {
-            kind: "SUBJECT_CHOICE",
+        kind: "SUBJECT_CHOICE",
         code: option.code,
         name: option.name ?? undefined,
         chooseSubjects: option.subjectChoice.chooseSubjects,
@@ -212,7 +212,7 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
     const subjects = optionSubjects(template, part, option);
     const counts = option.subjectCounts ?? [];
     return {
-        kind: option.kind,
+      kind: option.kind,
       code: option.code,
       name: option.name ?? undefined,
       sections: subjects.map((subjectCode, order) => ({
@@ -233,6 +233,7 @@ function wireTemplatePart(template: ExamTemplate, part: ExamTemplatePart, index:
     questionCountRequired: part.questionCount,
     participation: part.mode === "CHOICE" ? { mode: "CHOICE", choose: 1 } : { mode: "ALL" },
     maxPoints: part.points ?? undefined,
+    displaySegments: part.displaySegments?.length ? part.displaySegments : undefined,
     // Máy chủ không có `subjectCode` của phần: phần cố định một môn mang môn trong `sections` (kèm khối gợi ý nếu có).
     sections: sections.length
       ? sections
@@ -520,21 +521,116 @@ export class ExamsBackend {
     });
   }
 
-  /** Cấu trúc nạp theo mẫu (cùng đường dựng của trang Tạo bài thi và lớp mẫu trước đây). */
+  /** Cấu trúc nạp theo mẫu từ `FIXTURE_TEMPLATES` (máy chủ sinh cấu trúc cho bài thi mới / nạp lại mẫu). */
   private buildParts(request: ScopeRequest, template: ExamTemplate | undefined, timing: ExamTiming): ExamPart[] {
-    const inputs = initialParts({
-      templates: FIXTURE_TEMPLATES,
-      kind: request.kind,
-      scope: request.scope,
-      partCode: request.partCode ?? "",
-      combinations: combinationsForKind(reference.combinations, request.kind),
-      scopeName: (scope) => PART_NAMES[scope] ?? subjectName(scope),
-      subjectName,
-      template: request.scope === "PART" ? undefined : (template ?? null),
-      subjectCode: request.subjectCode ?? "",
+    const combinations = combinationsForKind(reference.combinations, request.kind);
+    const wireCombinationOption = (code: string, subjectCodes: readonly string[], total: number): WireOption => {
+      const counts = splitEvenly(total, subjectCodes.length);
+      return {
+        kind: "COMBINATION",
+        code,
+        sections: subjectCodes.map((subjectCode, index) => ({
+          subjectCode,
+          questionCount: counts[index],
+          blocks: [],
+        })),
+      } as unknown as WireOption;
+    };
+    if (request.scope === "PART") {
+      const full = FIXTURE_TEMPLATES.find((item) => item.kind === request.kind && item.scope === "FULL");
+      const choiceSource = full?.parts.find((part) => part.mode === "CHOICE");
+      const partCode = request.partCode ?? "";
+      const science = partCode === "SCIENCE";
+      const english = partCode === "ENGLISH";
+      const source =
+        science || english ? choiceSource : full?.parts.find((part) => part.mode === "FIXED" && part.subjectCode === partCode);
+      const fallback = FIXTURE_TEMPLATES.find((item) => item.kind === request.kind && item.scope === "PART")?.parts[0];
+      const questionCount = source?.questionCount ?? fallback?.questionCount ?? 0;
+      const durationMinutes = timing === "SHARED" ? undefined : (source?.durationMinutes ?? fallback?.durationMinutes ?? 0);
+      const name = partCode ? (PART_NAMES[partCode] ?? subjectName(partCode)) : "";
+      const wirePart: WirePart = science
+        ? ({
+            id: "part-1",
+            order: 1,
+            name,
+            durationMinutes,
+            questionCount,
+            questionCountOnPaper: questionCount,
+            questionCountRequired: questionCount,
+            participation: { mode: "CHOICE", choose: 1 },
+            sections: [],
+            options: combinations.map((comb) => wireCombinationOption(comb.code, comb.subjectCodes, questionCount)),
+          } as WirePart)
+        : ({
+            id: "part-1",
+            order: 1,
+            name,
+            durationMinutes,
+            questionCount,
+            questionCountOnPaper: questionCount,
+            questionCountRequired: questionCount,
+            participation: { mode: "ALL" },
+            sections: partCode ? [{ subjectCode: partCode, questionCount, blocks: [] }] : [],
+            options: [],
+          } as WirePart);
+      return mapParts([wirePart]);
+    }
+    if (!template) {
+      if (!request.subjectCode) return [];
+      return mapParts([
+        {
+          id: "part-1",
+          order: 1,
+          name: subjectName(request.subjectCode),
+          durationMinutes: timing === "SHARED" ? undefined : 0,
+          questionCount: 0,
+          questionCountOnPaper: 0,
+          questionCountRequired: 0,
+          participation: { mode: "ALL" },
+          sections: [{ subjectCode: request.subjectCode, questionCount: 0, blocks: [] }],
+          options: [],
+        } as WirePart,
+      ]);
+    }
+    const pointsByPart = template.parts.some((part) => part.points !== null);
+    const wireParts = template.parts.map((part, index): WirePart => {
+      const base = wireTemplatePart(template, part, index);
+      const durationMinutes = timing === "SHARED" ? undefined : (part.durationMinutes ?? 0);
+      const maxPoints = pointsByPart ? (part.points ?? 0) : undefined;
+      if (part.mode !== "CHOICE") {
+        return { ...base, durationMinutes, maxPoints };
+      }
+      const target = part.questionCount - sum((part.sections ?? []).map((section) => section.questionCount ?? 0));
+      const templateOptions = part.options ?? [];
+      const options: WireOption[] =
+        templateOptions.length === 0
+          ? [
+              {
+                kind: "SUBJECT",
+                code: "ENGLISH",
+                sections: [{ subjectCode: "ENGLISH", questionCount: target, blocks: [] }],
+              } as WireOption,
+              ...combinations.map((comb) => wireCombinationOption(comb.code, comb.subjectCodes, target)),
+            ]
+          : (base.options ?? []).map((wireOption, optIndex) => {
+              const raw = templateOptions[optIndex]!;
+              if (raw.kind === "SUBJECT_CHOICE") return wireOption;
+              const subjects = wireOption.sections ?? [];
+              const counts =
+                raw.kind === "COMBINATION"
+                  ? (raw.subjectCounts ?? splitEvenly(target, Math.max(subjects.length, 1)))
+                  : [raw.subjectCounts?.[0] ?? target];
+              return {
+                ...wireOption,
+                sections: subjects.map((section, order) => ({
+                  ...section,
+                  questionCount: counts[order] ?? target,
+                })),
+              };
+            });
+      return { ...base, durationMinutes, maxPoints, options };
     });
-    const pointsByPart = inputs.some((part) => part.points !== null);
-    return partsFromInput(partInputsFromValues(inputs, { timing, pointsByPart }), reference.combinations, request.subjectCode);
+    return mapParts(wireParts);
   }
 
   private scopeError(request: ScopeRequest): Reply | null {
@@ -730,7 +826,7 @@ export class ExamsBackend {
     this.touch(exam, {
       code,
       name: String(body.name ?? exam.name).trim(),
-      description: (body.description as string | undefined)?.trim() || undefined,
+      description: body.description === undefined ? exam.description : ((body.description as string | undefined)?.trim() || undefined),
       instructions: body.instructions === undefined ? exam.instructions : ((body.instructions as string | undefined)?.trim() || undefined),
       kind: request.kind,
       scope: request.scope,

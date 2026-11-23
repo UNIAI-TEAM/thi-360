@@ -24,13 +24,12 @@ import type { TopicQuota } from "../types";
 import { BlockNumberInput } from "./block-number-input";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { ChoiceCardGroup } from "./create-exam-fields";
-import { EnforcementToggle } from "./enforcement-toggle";
+import { EnforcementControl } from "../subject-forms/enforcement-control";
 import { draftId } from "./exam-structure-draft";
 
-/** Lỗi do máy chủ trả về cho khối chỉ tiêu (422 `EXAM_STRUCTURE_INVALID`): quá 8 chỉ tiêu (H20) hoặc tỷ lệ ngoài 0–100. */
 export type TopicQuotaServerError = "MAX_TOPIC_QUOTAS" | "PERCENT_OUT_OF_RANGE" | null;
 
-export interface TopicQuotaTableProps {
+interface TopicQuotaTableProps {
   /** Tiền tố id và tên nhóm radio: id của môn hoặc nhóm. */
   id: string;
   quotas: readonly TopicQuota[];
@@ -45,17 +44,10 @@ export interface TopicQuotaTableProps {
   labels: MatrixLabels;
   serverError?: TopicQuotaServerError;
   readOnly?: boolean;
-  /** `COUNT_ONLY` ẩn nút Số câu / Tỷ lệ (R-9: HSA, QDA, BCA, THPTQG không nhập %); mặc định giữ hành vi MD, MT. */
   entry?: "COUNT_ONLY";
-  /** Ẩn cột Giới hạn khối lớp (R-11, AD-118); dữ liệu `gradeCodes` đã có giữ nguyên. Mặc định `false` (MD, MT). */
   hideGrade?: boolean;
 }
 
-/**
- * Chỉ tiêu chủ đề của một mục hoặc một nhóm (2B 15.3, H8, H20, H30, H31; bản vẽ `ChiTieuCapBai2B`, `PhanBoVact2B`).
- * Số câu là số **ít nhất** (K6). Nhập theo số câu hoặc theo tỷ lệ; dòng Phần còn lại do màn tính, không lưu. Dòng chưa gắn
- * MAPID lưu được và ghi "Chờ mapping"; gắn mã sau thì giữ nguyên số câu. Tối đa 8 chỉ tiêu một cấp, lỗi hiện ngay ở khối.
- */
 export function TopicQuotaTable({
   id,
   quotas,
@@ -297,7 +289,8 @@ export function TopicQuotaTable({
                       />
                     </td>
                     <td className="border-b border-border px-2 py-2 align-top">
-                      <EnforcementToggle
+                      <EnforcementControl
+                        mode="TOGGLE"
                         legend={label}
                         name={`${id}-${quota.id}-enforcement`}
                         value={quota.enforcement}

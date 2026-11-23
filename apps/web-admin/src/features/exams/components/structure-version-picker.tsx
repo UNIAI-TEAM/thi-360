@@ -6,13 +6,13 @@ import { useState } from "react";
 import { matchingTemplates } from "../create-exam-schema";
 import { partTypeCounts } from "../part-type-counts";
 import { useApplyExamTemplate } from "../queries";
-import { ExamsApiError } from "../review-api";
+import { ExamsApiError } from "../errors";
 import type { ExamDetail, ExamPart, ExamTemplate, StructureOverviewPolicy } from "../types";
 import { ExamName, richNodes } from "./exam-review-shared";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
 import { StructureOverviewConfirmDialog } from "./structure-overview-confirm-dialog";
 
-export interface StructureVersionPickerProps {
+interface StructureVersionPickerProps {
   exam: ExamDetail;
   templates: readonly ExamTemplate[];
   /** Bản nháp đang có thay đổi chưa lưu: sẽ mất khi nạp lại. */
@@ -52,13 +52,6 @@ function versionLabel(template: ExamTemplate): string {
   return template.label?.trim() || template.name;
 }
 
-/**
- * Phiên bản cấu trúc của bài (spec 15.2 vùng (a), 5.4, K8; bản vẽ `BaiThiBuoc2`, `DoiPhienBan2B`): các mẫu khớp kỳ thi,
- * phạm vi, phần hoặc môn, kèm nhãn và mô tả của máy chủ, và "Nếu chọn …" cho từng phiên bản khác; ẩn khi chỉ có một phiên
- * bản. Đổi phiên bản qua hai bước: (1) hộp thoại liệt kê từng phần trước → sau, (2) nếu máy chủ trả 409
- * `EXAM_OVERVIEW_CONFIRM` (tổng quan đã sửa tay khác mẫu mới) thì so sánh số và hỏi giữ số đã sửa hay lấy số của mẫu, rồi
- * gửi lại kèm `overviewPolicy`. Hủy ở bước nào thì cấu trúc giữ nguyên.
- */
 export function StructureVersionPicker({ exam, templates, dirty, currentParts, onApplied, onAnnounce }: StructureVersionPickerProps) {
   const t = useTranslations("exams.structure.version");
   const apply = useApplyExamTemplate(exam.id);

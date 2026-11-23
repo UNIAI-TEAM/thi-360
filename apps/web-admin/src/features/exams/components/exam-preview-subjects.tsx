@@ -9,17 +9,12 @@ import type { ExamPartOption } from "../types";
 import { useLookup } from "./exam-review-shared";
 
 export interface ExamPreviewSubjectsProps {
-  /** Phương án `SUBJECT_CHOICE`: các môn của phương án, số môn học viên chọn, số câu theo B10. */
   option: ExamPartOption;
   /** Mã môn đang chọn, theo thứ tự cấu trúc. */
   value: readonly string[];
   onChange: (codes: string[]) => void;
 }
 
-/**
- * Chọn các môn để xem trước một phương án `SUBJECT_CHOICE` (HSA Khoa học: 5 môn, chọn 3). Đủ số môn thì hiện số câu
- * từng môn theo quy tắc chia B10, chỉ đọc; ba môn cùng nhóm có nhiều cách chia nên lần sinh chọn một cách theo hạt giống.
- */
 export function ExamPreviewSubjects({ option, value, onChange }: ExamPreviewSubjectsProps) {
   const t = useTranslations("exams.preview.subjects");
   const lookup = useLookup();

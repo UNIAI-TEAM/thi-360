@@ -10,8 +10,7 @@ import { labelAfterName, labelBeforeName } from "./exam-review-shared";
 import { LOCKED_FIELD } from "./locked-field";
 import { ScrollableTable } from "./scrollable-table";
 
-export interface OverviewNumberField {
-  /** Ô số dưới bảng: "Thời lượng chung" khi `timing = SHARED`, "Điểm tối đa" khi bảng không có cột Điểm (2B 15.1). */
+interface OverviewNumberField {
   value: string;
   onChange: (text: string) => void;
   /** Chữ lỗi của ô; có thì ô báo `aria-invalid` và dòng lỗi nằm cạnh ô, nối bằng `aria-describedby`. */
@@ -26,7 +25,6 @@ export interface ExamOverviewTableProps {
   timing: ExamTiming;
   /** Cột Điểm chỉ hiện khi mẫu chia điểm theo phần hoặc người dùng đã nhập điểm. */
   showPoints: boolean;
-  /** Cột tỷ lệ của dòng so với cả bài (R-123): mẫu `fixedCounts` hoặc mẫu bài riêng có tiểu mục (V-ACT). */
   showPercents?: boolean;
   /** Đầu cột `showPercents`; mặc định "Tỷ lệ toàn bài", bài riêng V-ACT là "Tỷ lệ trong bài" (TaoBaiThiVact2B). */
   percentExamHeader?: string;
@@ -39,24 +37,14 @@ export interface ExamOverviewTableProps {
   issues: ReadonlyMap<string, { questionCount?: string; durationMinutes?: string; maxPoints?: string }>;
   /** Tra tên môn từ `subjectCode` cho dòng môn thụt vào. */
   subjectName: (code: string) => string;
-  /**
-   * Tên hiển thị của dòng phần hoặc tiểu mục theo ngôn ngữ đang chọn (V-ACT: tên phần, môn, Logic, Suy luận tách theo
-   * năng lực); `undefined` thì dòng tiểu mục dùng `subjectName`, dòng phần dùng tên của mẫu.
-   */
   rowLabel?: (row: OverviewRow) => string | undefined;
   /** Ô thời lượng chung ở cuối bảng; bỏ trống khi `timing = PER_PART`. */
   sharedDuration?: OverviewNumberField;
   /** Ô điểm tối đa của bài khi bảng không có cột Điểm (không có mẫu chia điểm theo phần). */
   maxScore?: OverviewNumberField;
-  /**
-   * Chỉ đọc: mọi ô số khóa như ô của mẫu khóa (`readonly aria-readonly`, vẫn trong thứ tự Tab). Dùng khi bảng hiện số của
-   * mẫu sắp nạp (đổi phạm vi ở Thông tin chung), chưa phải số của bài.
-   */
   readOnly?: boolean;
-  /**
-   * Bài Theo môn + Tự thiết lập (UNI-2752): một dòng, Điểm tối đa là cột cạnh Thời lượng (cùng trường `maxScore`, cùng lỗi),
-   * không có hàng Tổng của bài và không có ô Điểm tối đa tách riêng dưới bảng.
-   */
+  /** Chỉ đọc cho ô mức bài thi (`sharedDuration`, `maxScore`); mặc định theo `readOnly`. */
+  fieldsReadOnly?: boolean;
   reviewLayout?: boolean;
   /** Thời lượng chung chỉ để cộng vào hàng Tổng khi bảng không có ô nhập thời lượng chung (ô nằm ở biểu mẫu bên ngoài). */
   sharedTotal?: string;
@@ -78,7 +66,6 @@ function NumberCell({
   field: "questionCount" | "durationMinutes" | "maxPoints";
   nameId: string;
   error: string | undefined;
-  /** Mẫu `fixedCounts` (H27): ô chỉ đọc — không cho sửa; vẫn trong thứ tự tab như bản vẽ (`readonly aria-readonly`). */
   locked?: boolean;
   onCellChange: ExamOverviewTableProps["onCellChange"];
 }) {
@@ -117,22 +104,20 @@ function NumberCell({
   );
 }
 
-/**
- * Ô số ngoài bảng (thời lượng chung phía trên bảng, điểm tối đa phía dưới); `data-field` để tóm tắt dẫn con trỏ tới ô lỗi.
- * Gợi ý nằm ngay dưới ô; ô nối với lỗi nếu có, không thì nối với gợi ý bằng `aria-describedby` (R-141, FE-6 R2-2).
- */
 function FooterField({
   field,
   label,
   unit,
   state,
   position,
+  locked,
 }: {
   field: string;
   label: string;
   unit: string;
   state: OverviewNumberField;
   position: "top" | "bottom";
+  locked?: boolean;
 }) {
   const id = useId();
   const errorId = useId();
@@ -148,9 +133,11 @@ function FooterField({
             {...NUMERIC}
             id={id}
             value={state.value}
+            readOnly={locked}
+            aria-readonly={locked || undefined}
             aria-invalid={Boolean(state.error)}
             aria-describedby={state.error ? errorId : state.hint ? hintId : undefined}
-            className={cellInput}
+            className={cn(cellInput, locked && LOCKED_FIELD)}
             onChange={(event) => state.onChange(event.target.value)}
           />
           <span className="text-body text-text-secondary">{unit}</span>
@@ -198,12 +185,6 @@ function MaxScoreCell({ state, locked }: { state: OverviewNumberField; locked?: 
 
 const PERCENT = { style: "percent", maximumFractionDigits: 1 } as const;
 
-/**
- * "Bảng tổng quan" (2B 15.1): dòng phần và dòng môn thụt vào (phần cố định nhiều môn), sửa số câu, thời lượng và
- * điểm trên dòng; có hàng Tổng ở cuối. `timing = SHARED` thay cột thời lượng từng phần bằng ô thời lượng chung dưới
- * bảng. Không đăng ký submit: trang gọi `overviewDiff` khi gửi. Mẫu `fixedCounts` (H27) khóa ô số câu và hiện tỷ
- * lệ trong phần / toàn bài của từng tiểu mục (V-ACT toàn bài, R-118, R-123).
- */
 export function ExamOverviewTable({
   rows,
   timing,
@@ -219,12 +200,14 @@ export function ExamOverviewTable({
   sharedDuration,
   maxScore,
   readOnly = false,
+  fieldsReadOnly,
   reviewLayout = false,
   sharedTotal,
 }: ExamOverviewTableProps) {
   const t = useTranslations("exams.create.overview");
   const format = useFormatter();
   const tableId = useId();
+  const lockFields = fieldsReadOnly ?? readOnly;
   const totals = overviewTotals(rows, timing, sharedDuration?.value ?? sharedTotal ?? "");
   const showDuration = timing === "PER_PART";
   const maxScoreColumn = reviewLayout && maxScore !== undefined;
@@ -264,7 +247,7 @@ export function ExamOverviewTable({
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       {sharedDuration && timing === "SHARED" && (
-        <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} position="top" />
+        <FooterField field="sharedDuration" label={t("sharedDuration")} unit={t("minutes")} state={sharedDuration} position="top" locked={lockFields} />
       )}
       <ScrollableTable label={t("regionLabel")}>
         <table className={cn("w-full border-collapse text-body", blockMode ? "min-w-[44rem]" : "min-w-[32rem]")}>
@@ -389,7 +372,7 @@ export function ExamOverviewTable({
                   {maxScoreColumn && (
                     <td className="px-3 py-2 align-top">
                       <div className="flex justify-end">
-                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} locked={readOnly} /> : <span className="px-3 py-2 text-text-muted">—</span>}
+                        {row.kind === "part" && maxScore ? <MaxScoreCell state={maxScore} locked={readOnly || lockFields} /> : <span className="px-3 py-2 text-text-muted">—</span>}
                       </div>
                     </td>
                   )}
@@ -439,7 +422,9 @@ export function ExamOverviewTable({
       {blockMode && !rows.some((row) => row.kind === "part" && row.lockedCount) && (
         <p className="border-t border-border px-3 py-2 text-caption text-text-muted">{t("blockRowsNote")}</p>
       )}
-      {maxScore && !maxScoreColumn && <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" />}
+      {maxScore && !maxScoreColumn && (
+        <FooterField field="maxScore" label={t("maxScore")} unit={t("points")} state={maxScore} position="bottom" locked={lockFields} />
+      )}
     </div>
   );
 }

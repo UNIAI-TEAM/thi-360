@@ -20,7 +20,7 @@ import {
   type Wire,
 } from "./subject-form-harness";
 import { MatrixFormHsa } from "../subject-forms/matrix-form-hsa";
-import { patchSubjectFormEntry, subjectFormFor } from "../subject-forms/registry";
+import { subjectFormFor } from "../subject-forms/registry";
 import { subjectFormLimits } from "../subject-forms/limits";
 import { structureInput } from "./subject-matrix-harness";
 
@@ -64,12 +64,12 @@ const type = async (user: UserEvent, input: HTMLElement, text: string) => {
   if (text !== "") await user.type(input, text);
 };
 
-function wireHsaMath(id = "sec-toan", over: Wire = {}): Wire {
+function wireHsaMath(id = "sec-toan", over: Wire = {}, singleOver: Wire = {}): Wire {
   return wireSection(
     id,
     "TOAN",
     [
-      wireBlock(`${id}-single`, { name: "Trắc nghiệm độc lập", questionType: "SINGLE_CHOICE", questionCount: 32, templateGroupCode: "HSA_MATH_SINGLE" }),
+      wireBlock(`${id}-single`, { name: "Trắc nghiệm độc lập", questionType: "SINGLE_CHOICE", questionCount: 32, templateGroupCode: "HSA_MATH_SINGLE", ...singleOver }),
       wireBlock(`${id}-fill`, { name: "Trả lời ngắn", questionType: "SHORT_ANSWER", questionCount: 15, templateGroupCode: "HSA_MATH_SINGLE" }),
       wireBlock(`${id}-set`, { name: "Chùm cuối", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3, templateGroupCode: "HSA_MATH_CONTEXT" }),
     ],
@@ -353,21 +353,17 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
   });
 
   it("noExtraRequestsOnOpen: mở HSA MT gọi <= số HTTP request so với HSA MD trên cùng dữ liệu", async () => {
-    const parts = [wirePart([wireHsaMath()])];
-    const mtBoot = await openHsa("sec-toan", parts);
+    const mtParts = [wirePart([wireHsaMath()])];
+    const mtBoot = await openHsa("sec-toan", mtParts);
     const mtRequests = requestLog(mtBoot.server);
     mtBoot.view.unmount();
 
-    const undo = patchSubjectFormEntry("HSA", "TOAN", { enabled: false });
-    try {
-      const mdBoot = boot({ kind: "HSA", parts });
-      openStructure("?section=sec-toan");
-      await screen.findByRole("button", { name: /Thêm nhóm/ });
-      const mdRequests = requestLog(mdBoot.server);
-      expect(mtRequests.length).toBeLessThanOrEqual(mdRequests.length);
-    } finally {
-      undo();
-    }
+    const mdParts = [wirePart([wireHsaMath("sec-toan", {}, { tagCodes: ["MD"] })])];
+    const mdBoot = boot({ kind: "HSA", parts: mdParts });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("button", { name: /Thêm nhóm/ });
+    const mdRequests = requestLog(mdBoot.server);
+    expect(mtRequests.length).toBeLessThanOrEqual(mdRequests.length);
   });
 });
 

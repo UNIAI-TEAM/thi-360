@@ -77,7 +77,7 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
   const baseline = await continueToReviewInUi(page, id);
   expect(baseline.status, `lỗi chặn: ${blockingCodes(baseline).join(", ")}`).toBe("VALID");
 
-  // Đặt thang 150 qua tab "Thông tin chung" (ô "Thang điểm" luôn hiện, lưu bằng "Lưu thông tin"): thang là đầu vào của
+  // Đặt thang 150 qua tab "Thông tin chung" (ô "Điểm tối đa" luôn hiện ở chế độ sửa, lưu bằng "Lưu thông tin"): thang là đầu vào của
   // kết quả kiểm tra đang thử, nên đi qua màn hình chứ không ghi thẳng bằng API.
   await setMaxScoreInGeneralTab(page, admin, id, 150);
 

@@ -15,10 +15,6 @@ import { ExamContentText } from "./exam-content-text";
 import { useMapidIssueText } from "./use-mapid-issue-text";
 import type { ExamDetail, ExamPart, ExamSection } from "../types";
 
-/**
- * Tên do mẫu hoặc người soạn đặt (phần, mục, khối, lựa chọn, tên bài) là nội dung đề: hiện đúng như đã lưu ở mọi ngôn
- * ngữ giao diện (DESIGN.md mục 8). Chỉ bọc phần tên, không bọc nhãn giao diện đi kèm.
- */
 export function ExamName({ children }: { children: ReactNode }) {
   return <span data-exam-content>{children}</span>;
 }
@@ -38,11 +34,6 @@ function splitAroundName(t: LabelTranslator, key: string, slot: string): { befor
   return { before: text.slice(0, at).trim(), after: text.slice(at + marker.length).trim() };
 }
 
-/**
- * Nhãn giao diện đứng trước tên đối tượng trong câu dịch ("Mở khối " của "Mở khối {block}"). Điều khiển ghép nhãn với tên
- * đang hiện trên màn bằng `aria-labelledby="<id điều khiển> <id của tên>"` (id của chính nó lấy `aria-label`), nên tên nằm
- * trong `ExamName` thay vì trong thuộc tính.
- */
 export function labelBeforeName(t: LabelTranslator, key: string, slot: string): string {
   return splitAroundName(t, key, slot).before;
 }
@@ -52,10 +43,6 @@ export function labelAfterName(t: LabelTranslator, key: string, slot: string): s
   return splitAroundName(t, key, slot).after;
 }
 
-/**
- * `t.rich` với giá trị là nút React (tên trong `ExamName`): ICU chèn nút vào chỗ đối số đơn giản `{name}`, câu dịch giữ
- * nguyên. Kiểu của use-intl chỉ khai báo chuỗi, số, ngày cho đối số, nên ép kiểu ở đây một lần.
- */
 export function richNodes(
   t: { rich: (key: string, values?: RichTranslationValues) => ReactNode },
   key: string,
@@ -86,7 +73,7 @@ export function richNodes(
 }
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
-export const PATH_RESULT_TONE: Record<PathCheckResult, StatusTone> = {
+const PATH_RESULT_TONE: Record<PathCheckResult, StatusTone> = {
   VALID: "success",
   INVALID: "danger",
   UNCONFIRMED: "warning",
@@ -152,11 +139,6 @@ function usePathLabelParts(examId?: string) {
   );
 }
 
-/**
- * Tên một đường: "QD02 · Hóa học – Sinh học", "Tiếng Anh"; bài không có phần tự chọn: "Đề chung". Có `examId` thì tên mã
- * lấy theo ngôn ngữ từ cấu trúc của bài; kết quả kiểm tra chỉ có tên = mã, không in lặp "QD01 · QD01". Dạng chuỗi,
- * cho chỗ cần chữ thuần; hiển thị dùng `usePathNode`.
- */
 export function usePathLabel(examId?: string) {
   const parts = usePathLabelParts(examId);
   return useCallback((path: ExamPathRef) => parts(path).map((part) => part.text).join(" + "), [parts]);
@@ -209,11 +191,6 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
   return value ? value.split("+").map(nameOf).join(" + ") : "";
 }
 
-/**
- * Dựng câu mô tả một vấn đề lúc hiển thị để đổi theo ngôn ngữ đang chọn (DESIGN.md 5.13). Truyền `exam` thì vấn đề
- * chỉ có `blockId` (lỗi nguồn của bộ giải) lấy tên khối, tên phần và điều kiện lọc của khối từ cấu trúc. `text` trả chuỗi;
- * `node` trả nút React có tên phần, khối, phân đoạn nằm trong `ExamName` (nội dung đề), tên môn và danh mục ở ngoài.
- */
 function useIssueTranslate(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
@@ -391,10 +368,6 @@ export function useIssueWithPath(paths: readonly ExamPathRef[], exam?: Pick<Exam
   );
 }
 
-export function blockLabel(subjectName: string, blockName: string): string {
-  return `${subjectName} · ${blockName}`;
-}
-
 /** Liệt kê mã ngắn của các đường ("Tiếng Anh, KH-1, KH-2") cho bảng phiên bản. */
 export function pathLabelCodes(paths: readonly ExamPathRef[], single: string): string {
   if (paths.length === 0) return "";
@@ -425,11 +398,6 @@ export function pathLabelCodeNodes(paths: readonly ExamPathRef[], single: string
   ));
 }
 
-/**
- * Liên kết chỉ có icon trong cột Thao tác: cùng cỡ, vòng focus, tooltip với `IconButton` của kit (DESIGN.md 5.9),
- * nhưng là `<Link>` vì dẫn sang trang khác. `label` là phần giao diện của nhãn; `nameId` (id của tên đối tượng đang hiện
- * trên màn, trong `ExamName`) ghép tên vào nhãn bằng `aria-labelledby`.
- */
 export function IconLink({
   href,
   label,
@@ -540,17 +508,6 @@ function useChangeWhereParts(exam: ExamDetail) {
   );
 }
 
-/**
- * Nhãn dễ đọc cho vị trí của một thay đổi (`ExamChange.where`): tên phần, môn, khối, lựa chọn lấy từ cấu trúc hiện tại,
- * không có thì chữ chung ("Khối"); sau đó là nhãn của trường. Không bao giờ in id. `where` không phải đường dẫn (dữ liệu
- * mẫu đã là chữ mô tả) giữ nguyên.
- */
-export function useChangeWhere(exam: ExamDetail) {
-  const parts = useChangeWhereParts(exam);
-  return useCallback((where: string) => parts(where).map((item) => item.text).join(" · "), [parts]);
-}
-
-/** Như `useChangeWhere` nhưng tên phần, khối, lựa chọn của mẫu nằm trong `ExamName`. */
 export function useChangeWhereNode(exam: ExamDetail) {
   const parts = useChangeWhereParts(exam);
   return useCallback(

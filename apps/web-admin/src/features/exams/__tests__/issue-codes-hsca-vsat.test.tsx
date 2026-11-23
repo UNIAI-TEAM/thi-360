@@ -8,8 +8,8 @@ import { renderWithProviders } from "@/test/render";
 import { mapExamDetail, mapPart } from "../api-mapping";
 import { ExamReviewCheck } from "../components/exam-review-check";
 import { useIssueText } from "../components/exam-review-shared";
-import { getExamCheck } from "../review-api";
-import { CHECK_ISSUE_CODES, type CheckIssue, type CheckIssueCode } from "../review-types";
+import { getExamCheck, mapIssue } from "../review-api";
+import type { CheckIssue, CheckIssueCode } from "../review-types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
 
 // Nhà máy của `vi.mock` được nâng lên đầu tệp nên không dùng được import tĩnh cho dữ liệu mẫu (cùng cách các test khác).
@@ -82,7 +82,8 @@ const SEGMENT_EXAM = {
 
 describe("mã kiểm tra mới có câu chữ vi và en", () => {
   it("web biết cả năm mã, mỗi mã một lần, và giữ nguyên khi đọc từ máy chủ", async () => {
-    for (const code of NEW_CODES) expect(CHECK_ISSUE_CODES.filter((item) => item === code)).toHaveLength(1);
+    expect(new Set(NEW_CODES).size).toBe(NEW_CODES.length);
+    for (const code of NEW_CODES) expect(mapIssue({ code }).code).toBe(code);
     const issues = NEW_CODES.map((code) => ({ code, severity: "ERROR", group: "SOURCE" }));
     new FakeServer()
       .on("GET", `${EXAM_PATH}/check`, {
@@ -336,7 +337,7 @@ describe("bấm vào lỗi của mã mới dẫn tới đúng dòng ở bước 
 
 describe("STORED_ID_COLLISION: id đã lưu trùng tên giữ chỗ của chùm trực tiếp (ADV:CR-4:21)", () => {
   it("web biết mã đúng một lần và giữ nguyên khi đọc từ máy chủ, id nằm ở blockId", async () => {
-    expect(CHECK_ISSUE_CODES.filter((item) => item === "STORED_ID_COLLISION")).toHaveLength(1);
+    expect(mapIssue({ code: "STORED_ID_COLLISION" }).code).toBe("STORED_ID_COLLISION");
     new FakeServer()
       .on("GET", `${EXAM_PATH}/check`, {
         status: 200,

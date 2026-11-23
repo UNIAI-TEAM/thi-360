@@ -3,7 +3,7 @@ import reference from "@/test/fixtures/content-reference.json";
 import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
 import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-panel";
-import { ReviewSubjectPanel } from "../components/review-subject-panel";
+import { PracticeReviewSubjectPanel } from "../components/practice-review-subject-panel";
 import type { AudioRequirement, ExamPart, ExamSection, QuestionBlock } from "../types";
 
 /** FE-7 R-130, R-142: đếm nguồn cả môn (`count-subject`) mang điều kiện audio của môn, khớp số đếm từng dòng. */
@@ -77,7 +77,7 @@ function renderSubjectPanel(current: ExamSection) {
 }
 
 function renderReviewPanel(current: ExamSection) {
-  renderWithProviders(<ReviewSubjectPanel {...common} context={contextOf(current)} step1Count={10} minutes={15} maxScore={null} />);
+  renderWithProviders(<PracticeReviewSubjectPanel {...common} context={contextOf(current)} step1Count={10} minutes={15} maxScore={null} />);
   return subjectCounts.queries.at(-1)!;
 }
 

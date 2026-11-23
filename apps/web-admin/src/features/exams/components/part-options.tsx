@@ -17,10 +17,11 @@ import {
 } from "@thi360/ui";
 import { CircleMinus, Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
+import { examTabHref } from "../editor-tabs";
 import { countOf, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamPartOption } from "../types";
-import { EditOverviewLink } from "./edit-overview-link";
 import { BranchDialog } from "./exam-structure-branch-dialog";
 import { ENGLISH_CODE, firstBlockId, optionQuestionCount } from "./exam-structure-draft";
 import type { StructureNames } from "./exam-structure-issues";
@@ -28,7 +29,6 @@ import { LOCKED_FIELD } from "./locked-field";
 
 export interface PartOptionsProps {
   part: ExamPart;
-  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh số câu từng môn chỉ đọc của các nhánh (UNI-2753). */
   examId: string;
   names: StructureNames;
   issues: readonly StructureIssue[];
@@ -51,11 +51,6 @@ function optionIssueCount(issues: readonly StructureIssue[], optionId: string): 
   ).length;
 }
 
-/**
- * Lựa chọn của phần tự chọn không theo mã: nhánh Tiếng Anh và nhánh nội dung (THPTQG Tin học, học viên làm phần chung
- * cộng một nhánh), số câu từng môn theo thứ tự, tổng phải bằng số câu của phần. Phần theo mã (QDA, BCA) không còn thao
- * tác chọn mã hay gán môn cho mã: dùng `CodedPartPanel`. Khối của từng môn sửa ở cột Cấu trúc.
- */
 export function PartOptions({
   part,
   examId,
@@ -276,6 +271,7 @@ function OptionGroup({
   onEditBlocks: (blockId: string) => void;
 }) {
   const t = useTranslations("exams.combinations");
+  const tSummary = useTranslations("exams.structure.summary");
   const [cardsRef, cardMode] = useCardMode<HTMLDivElement>(true, 640);
 
   const subjectInputs = (option: ExamPartOption) => (
@@ -326,7 +322,9 @@ function OptionGroup({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-label font-semibold text-text">{title}</h4>
         <div className="flex flex-wrap items-center gap-2">
-          <EditOverviewLink examId={examId} />
+          <Button asChild variant="link" size="sm">
+            <Link href={examTabHref(examId, "general")}>{tSummary("editOverview")}</Link>
+          </Button>
           {actions}
         </div>
       </div>

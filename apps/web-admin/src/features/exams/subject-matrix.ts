@@ -1,30 +1,13 @@
 import type { QuestionType } from "@/features/content/types";
+import type { AudioCountQuery } from "./api";
 import { apportionByPercent, computeAllocation, type MatrixAxes, sum } from "./matrix";
-import type { AnswerQuotas, ExamPartOption, ExamSection, KnowledgeScope, QuestionBlock } from "./types";
-
-/**
- * Số đã phân bổ và còn thiếu của một môn (spec 5.2 "Ma trận theo môn", B9). Chỉ để soạn: khả năng sinh đề do kiểm tra
- * cấu hình kết luận.
- *
- * Quy tắc tính số câu (B9): một đơn vị đếm tính một lần vào tổng và đóng góp cùng lúc vào mọi chỉ tiêu của môn. Nhóm
- * câu chùm đếm theo câu con: mỗi câu con trừ vào chỉ tiêu dạng trả lời của chính nó (`childAnswerType`; `null` là chưa
- * giới hạn dạng của câu con nên chưa trừ được vào dạng nào). Nhóm câu đơn không có dạng trả lời (`questionType = null`,
- * Toán HSA) lấy theo chỉ tiêu dạng trả lời của môn: các câu của nhóm lấp phần chỉ tiêu còn thiếu.
- *
- * Điểm tạm chờ BA (spec 12, A7), gom ở đây để đổi một chỗ: chỉ tiêu theo tỉ lệ quy ra số câu bằng phần dư lớn nhất
- * (`resolveQuotaCounts`); số câu từng trường hợp của môn trong `SUBJECT_CHOICE` lấy từ `countsByPick` (B10,
- * `sectionCaseCounts`).
- */
+import type { AnswerQuotas, CountKnowledgeScope, ExamPartOption, ExamSection, KnowledgeScope, QuestionBlock } from "./types";
 
 /** Quy chỉ tiêu cấp môn ra số câu: số câu giữ nguyên, tỉ lệ % quy theo phần dư lớn nhất trên số câu của môn. */
 export function resolveQuotaCounts(unit: AnswerQuotas["unit"], values: readonly number[], count: number): number[] {
   return unit === "PERCENT" ? apportionByPercent(values, count).results : [...values];
 }
 
-/**
- * Các số câu mà một môn có thể có: môn thường một số; môn của `SUBJECT_CHOICE` (số câu để `null`) nhận các giá trị khác
- * nhau của `countsByPick`, nhỏ trước (HSA: 16 và 17).
- */
 export function sectionCaseCounts(section: Pick<ExamSection, "questionCount">, option: ExamPartOption | null): number[] {
   if (section.questionCount !== null) return [section.questionCount];
   if (option?.kind === "SUBJECT_CHOICE" && option.countsByPick) {
@@ -65,26 +48,17 @@ export interface SubjectAllocation {
   openAllocated: number;
   /** Phần chỉ tiêu dạng trả lời còn thiếu mà nhóm mở chưa phủ hết; `null` khi môn không khai chỉ tiêu này. */
   openMissing: number | null;
-  /**
-   * Cách nhóm chưa xác định dạng chia theo dạng trả lời khi vừa đủ phủ phần chỉ tiêu còn thiếu (Toán HSA: 26 Một đáp án
-   * + 15 Trả lời ngắn sau khi chùm trừ 9 vào chỉ tiêu 35); rỗng khi không có nhóm mở hoặc phần còn thiếu chưa khớp.
-   */
   openSplit: Array<{ key: string; count: number }>;
   /** Theo khối lớp và độ khó của môn, đã phân bổ ở chỉ tiêu riêng của nhóm; `null` khi môn không khai. */
   grades: QuotaRow[] | null;
   difficulties: QuotaRow[] | null;
 }
 
-/**
- * Số câu của từng nhóm: nhóm có số câu cố định giữ nguyên; nhóm "lấy phần còn lại" duy nhất nhận phần còn lại của môn.
- * Hơn một nhóm như vậy là sai cấu hình: không nhóm nào nhận.
- */
 function blockUnits(blocks: readonly QuestionBlock[], remainder: number | null): number[] {
   const single = remainderGroupCount(blocks) === 1;
   return blocks.map((block) => block.questionCount ?? (single ? (remainder ?? 0) : 0));
 }
 
-/** Số nhóm "lấy phần còn lại" của môn; tối đa một (spec 5.2). */
 export function remainderGroupCount(blocks: readonly QuestionBlock[]): number {
   return blocks.filter((block) => block.questionCount === null).length;
 }
@@ -96,8 +70,6 @@ export function subjectAllocation(section: ExamSection, axes: MatrixAxes, count:
   const units = blockUnits(blocks, remainder);
   const allocated = sum(units);
 
-  // Môn khai dòng "Bộ câu hỏi" ở chỉ tiêu dạng trả lời (UNI-2754): câu con của nhóm chùm chỉ tính vào dòng này, không tính vào
-  // dạng của câu con. Môn không khai dòng này giữ cách tính cũ để bản nháp và bản đã công bố không đổi nghĩa.
   const hasSetRow = section.answerQuotas?.items.some((item) => item.answerType === "QUESTION_SET") ?? false;
   const typed = new Map<string, number>();
   let openAllocated = 0;
@@ -169,15 +141,36 @@ export function effectiveScopeSource(
   return section.knowledgeScope !== null && section.knowledgeScope.nodeIds.length > 0 ? "SECTION" : "NONE";
 }
 
-/**
- * Phạm vi MAPID có hiệu lực của nhóm (D21; R1-3, R1-4): phạm vi riêng của nhóm khi nhóm đã chọn nút (không giao với
- * phạm vi của môn); nhóm chưa chọn nút nào (`null` hoặc `nodeIds` rỗng) kế thừa nút và cách đối chiếu của môn và giữ lọc
- * năng lực riêng (`competencyCodes`), nên đặt năng lực hay hủy hộp chọn không làm mất kế thừa. Cả hai trống: không giới hạn.
- */
 export function effectiveScope(block: Pick<QuestionBlock, "knowledgeScope">, section: Pick<ExamSection, "knowledgeScope">): KnowledgeScope | null {
   const own = block.knowledgeScope;
   if (own && own.nodeIds.length > 0) return own;
   const base = section.knowledgeScope;
   if (!base) return own;
   return own?.competencyCodes?.length ? { ...base, competencyCodes: own.competencyCodes } : base;
+}
+
+export function subjectAudioGroups(
+  section: ExamSection,
+  quotaTypes: readonly QuestionType[],
+  scopeOf: (block: QuestionBlock, section: ExamSection) => CountKnowledgeScope | null,
+): AudioCountQuery[] {
+  const audio =
+    section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN"
+      ? { audioRequirement: section.audioRequirement }
+      : {};
+  return section.blocks.map(
+    (block): AudioCountQuery => ({
+      subjectCode: section.subjectCode,
+      questionType: block.questionType,
+      answerTypes: block.questionType === null ? [...quotaTypes] : [],
+      childAnswerType: block.childAnswerType,
+      knowledgeScope: scopeOf(block, section),
+      tagCodes: block.tagCodes,
+      requiredPointsPerQuestion: block.requiredPointsPerQuestion,
+      itemShape: block.itemShape,
+      answerFormats: block.answerFormats,
+      childConditions: block.childConditions,
+      ...audio,
+    }),
+  );
 }

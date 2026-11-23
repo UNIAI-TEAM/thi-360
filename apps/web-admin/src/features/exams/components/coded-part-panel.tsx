@@ -21,15 +21,9 @@ export interface CodedPartPanelProps {
   sectionStates?: readonly ExamSectionState[] | null;
   /** Mở môn để soạn ma trận ("Thiết lập"). */
   onSelectSection: (sectionId: string) => void;
-  /** Thêm môn còn thiếu của một mã vào danh sách môn của phần (D12). */
   onAddSubject: (subjectCode: string) => void;
 }
 
-/**
- * Phần theo mã (QDA phần 3, BCA phần 3; bản vẽ `PhanCoMa2B`): danh sách môn thay cho ma trận theo từng mã. Mỗi môn một ma
- * trận dùng chung cho mọi mã có môn đó. Mã của kỳ thi chỉ xem, kèm vị trí câu theo thứ tự môn của mã. Không có thao tác
- * chọn mã hay gán môn cho mã ở đây (R-24, H1).
- */
 export function CodedPartPanel({ part, names, axes, combinations, sectionStates, onSelectSection, onAddSubject }: CodedPartPanelProps) {
   const t = useTranslations("exams.codedPart");
   const format = useFormatter();

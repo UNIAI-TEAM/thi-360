@@ -1,20 +1,21 @@
 import {
   countWords,
-  type AnswerFormat,
+  parseRawQuestionBody,
+  readRawQuestionBody,
+  statementLetter,
   type AnswerValue as KitAnswerValue,
   type ClozeAnswer as KitClozeAnswer,
   type EssayAnswer as KitEssayAnswer,
   type KitQuestion,
   type MatchingAnswer as KitMatchingAnswer,
   type MultipleChoiceAnswer as KitMultipleChoiceAnswer,
-  type MultipleChoiceRule,
-  type QuestionBody as KitQuestionBody,
   type QuestionOutcome,
   type QuestionSetAnswer as KitQuestionSetAnswer,
   type ShortAnswerAnswer as KitShortAnswerAnswer,
   type SingleChoiceAnswer as KitSingleChoiceAnswer,
   type TrueFalseAnswer as KitTrueFalseAnswer,
 } from "@thi360/ui/question";
+import { mapAttachments } from "../review-api";
 import type { PreviewAttachment } from "../review-types";
 import type {
   PreviewGradeResponse,
@@ -32,158 +33,18 @@ import type {
   PreviewTrialSegment,
 } from "./types";
 
-const VALID_ANSWER_FORMATS = new Set<AnswerFormat>([
-  "INTEGER",
-  "DECIMAL",
-  "FRACTION",
-  "TEXT",
-  "CHEM_FORMULA",
-  "CHEM_EQUATION",
-]);
-
-function asAnswerFormat(raw: string | undefined | null): AnswerFormat | null {
-  if (raw && VALID_ANSWER_FORMATS.has(raw as AnswerFormat)) {
-    return raw as AnswerFormat;
-  }
-  return null;
-}
-
-function asScoringRule(raw: string | undefined | null): MultipleChoiceRule | undefined {
-  if (raw === "ALL_OR_NOTHING" || raw === "PARTIAL") return raw;
-  return undefined;
-}
-
-interface RawOptionView {
-  id?: string;
-  content?: string;
-}
-interface RawBlankView {
-  id?: string;
-}
-interface RawStatementView {
-  id?: string;
-  content?: string;
-}
-interface RawSideView {
-  id?: string;
-  content?: string;
-}
-interface RawQuestionBodyShape {
-  type?: string;
-  options?: RawOptionView[];
-  scoringRule?: string;
-  inputHint?: string;
-  answerFormat?: string;
-  passage?: string;
-  blanks?: RawBlankView[];
-  statements?: RawStatementView[];
-  left?: RawSideView[];
-  right?: RawSideView[];
-  reuseRight?: boolean;
-  wordLimit?: number;
-}
-
-/**
- * Map sanitized `PreviewTrialQuestion` to `@thi360/ui/question` `KitQuestion`.
- * Strictly keeps only prompt/choice fields — no solutions, keys, or rubrics.
- */
 export function toKitTrialQuestion(q: PreviewTrialQuestion): KitQuestion {
-  const id = q.questionId ?? "";
-  const displayNo = q.number ?? 1;
-  const rawBody = q.body as RawQuestionBodyShape | undefined;
-  const qType: PreviewTrialQuestionType =
-    q.type ?? (rawBody?.type as PreviewTrialQuestionType | undefined) ?? "SINGLE_CHOICE";
-
-  let body: KitQuestionBody;
-  switch (qType) {
-    case "SINGLE_CHOICE": {
-      body = {
-        type: "SINGLE_CHOICE",
-        options: (rawBody?.options ?? []).map((opt) => ({
-          id: opt.id ?? "",
-          content: opt.content ?? "",
-        })),
-      };
-      break;
-    }
-    case "MULTIPLE_CHOICE": {
-      body = {
-        type: "MULTIPLE_CHOICE",
-        options: (rawBody?.options ?? []).map((opt) => ({
-          id: opt.id ?? "",
-          content: opt.content ?? "",
-        })),
-        scoringRule: asScoringRule(rawBody?.scoringRule),
-      };
-      break;
-    }
-    case "SHORT_ANSWER": {
-      body = {
-        type: "SHORT_ANSWER",
-        answers: [],
-        inputHint: rawBody?.inputHint ?? null,
-        answerFormat: asAnswerFormat(rawBody?.answerFormat),
-      };
-      break;
-    }
-    case "CLOZE": {
-      body = {
-        type: "CLOZE",
-        passage: rawBody?.passage ?? "",
-        blanks: (rawBody?.blanks ?? []).map((blank) => ({
-          id: blank.id ?? "",
-          answers: [],
-        })),
-      };
-      break;
-    }
-    case "TRUE_FALSE": {
-      body = {
-        type: "TRUE_FALSE",
-        statements: (rawBody?.statements ?? []).map((st) => ({
-          id: st.id ?? "",
-          content: st.content ?? "",
-        })),
-      };
-      break;
-    }
-    case "MATCHING": {
-      body = {
-        type: "MATCHING",
-        left: (rawBody?.left ?? []).map((side) => ({
-          id: side.id ?? "",
-          content: side.content ?? "",
-        })),
-        right: (rawBody?.right ?? []).map((side) => ({
-          id: side.id ?? "",
-          content: side.content ?? "",
-        })),
-        reuseRight: rawBody?.reuseRight ?? false,
-      };
-      break;
-    }
-    case "ESSAY": {
-      body = {
-        type: "ESSAY",
-        wordLimit: rawBody?.wordLimit ?? null,
-      };
-      break;
-    }
-    case "QUESTION_SET":
-    default: {
-      body = {
-        type: "QUESTION_SET",
-        passage: rawBody?.passage ?? "",
-      };
-      break;
-    }
-  }
+  const body = parseRawQuestionBody(q.body, { questionType: q.type });
+  const stem =
+    body.type === "CLOZE" && (!q.content || q.content === body.passage)
+      ? undefined
+      : (q.content ?? undefined);
 
   return {
-    id,
-    displayNo,
+    id: q.questionId ?? "",
+    displayNo: q.number ?? 1,
     points: q.points,
-    stem: q.content ?? undefined,
+    stem,
     body,
     optionOrder: q.optionOrder && q.optionOrder.length > 0 ? q.optionOrder : undefined,
   };
@@ -198,37 +59,29 @@ export function toKitTrialSet(setItem: PreviewTrialQuestionSet): {
   const childIds = childQuestions.map((c) => c.id).filter(Boolean);
   const childNumbers = children.map((c) => c.number ?? 0).filter((n) => n > 0);
   const displayNo = childNumbers.length > 0 ? Math.min(...childNumbers) : 1;
+  const body = parseRawQuestionBody((setItem as { body?: unknown }).body, {
+    questionType: "QUESTION_SET",
+    fallbackPassage: setItem.passage,
+    blankNumberStart: setItem.blankNumberStart,
+    childIds,
+  });
 
   return {
     setQuestion: {
       id: setItem.questionId ?? "",
       displayNo,
       stem: setItem.content ?? undefined,
-      body: {
-        type: "QUESTION_SET",
-        passage: setItem.passage ?? "",
-        blankNumberStart: setItem.blankNumberStart,
-        childIds,
-      },
+      body,
     },
     childQuestions,
   };
 }
 
-export function toTrialAttachments(
-  attachments: readonly PreviewTrialAttachment[] | undefined,
-): PreviewAttachment[] {
-  if (!attachments || attachments.length === 0) return [];
-  return attachments
-    .map((att) => ({
-      id: att.id ?? "",
-      name: att.name ?? "",
-      mime: att.mime ?? "",
-    }))
-    .filter((att) => Boolean(att.id && att.mime));
+export function toTrialAttachments(attachments?: readonly PreviewTrialAttachment[]): PreviewAttachment[] {
+  return mapAttachments(attachments).filter((att) => Boolean(att.id && att.mime));
 }
 
-export interface TrialSegmentSlice {
+interface TrialSegmentSlice {
   segment: PreviewTrialSegment;
   blocks: PreviewTrialBlock[];
 }
@@ -543,13 +396,18 @@ export function extractClozeResultEntries(
   question: PreviewTrialQuestion | undefined,
   blanks: Readonly<Record<string, unknown>> | undefined,
 ): Array<{ index: number; value: string }> {
-  const schemaBlanks = (question?.body as RawQuestionBodyShape | undefined)?.blanks;
+  const rawBody = readRawQuestionBody(question?.body);
+  const start =
+    typeof rawBody?.blankNumberStart === "number" && Number.isInteger(rawBody.blankNumberStart) && rawBody.blankNumberStart >= 1
+      ? rawBody.blankNumberStart
+      : 1;
+  const schemaBlanks = rawBody?.blanks;
   if (schemaBlanks && schemaBlanks.length > 0) {
     return schemaBlanks
       .map((blank, idx) => {
         const raw = blank.id ? blanks?.[blank.id] : undefined;
         return typeof raw === "string" && raw.trim().length > 0
-          ? { index: idx + 1, value: raw.trim() }
+          ? { index: start + idx, value: raw.trim() }
           : null;
       })
       .filter((entry): entry is { index: number; value: string } => entry !== null);
@@ -557,7 +415,7 @@ export function extractClozeResultEntries(
   return Object.entries(blanks ?? {})
     .map(([, raw], idx) =>
       typeof raw === "string" && raw.trim().length > 0
-        ? { index: idx + 1, value: raw.trim() }
+        ? { index: start + idx, value: raw.trim() }
         : null,
     )
     .filter((entry): entry is { index: number; value: string } => entry !== null);
@@ -575,8 +433,7 @@ export function extractTrueFalseEntries(
   answer: KitAnswerValue | undefined,
   gradedItem: PreviewGradedItem | undefined,
 ): TrueFalseStatementEntry[] {
-  const rawBody = question?.body as RawQuestionBodyShape | undefined;
-  const statements = rawBody?.statements ?? [];
+  const statements = readRawQuestionBody(question?.body)?.statements ?? [];
   const tfAnswer = (answer as KitTrueFalseAnswer | undefined)?.statements ?? {};
   const resultById = new Map<string, { answered?: boolean; matched?: boolean }>();
   for (const r of gradedItem?.gradingDetail?.statementResults ?? []) {
@@ -585,7 +442,7 @@ export function extractTrueFalseEntries(
 
   return statements.map((st, index) => {
     const id = st.id ?? `s-${index}`;
-    const letter = String.fromCharCode(97 + index);
+    const letter = statementLetter(index);
     const chosen = typeof tfAnswer[id] === "boolean" ? tfAnswer[id] : null;
     const detail = resultById.get(id);
     let outcome: QuestionOutcome = "BLANK";
@@ -608,56 +465,3 @@ export const TRIAL_OUTCOME_TONE: Record<PreviewTrialOutcome, TrialOutcomeTone> =
   BLANK: "neutral",
   PENDING_REVIEW: "warning",
 };
-
-export function optionLetterList(question: PreviewTrialQuestion): Map<string, string> {
-  const rawBody = question.body as RawQuestionBodyShape | undefined;
-  const options = rawBody?.options ?? [];
-  const order = question.optionOrder ?? [];
-  const byId = new Map<string, RawOptionView>();
-  for (const opt of options) {
-    if (opt.id) byId.set(opt.id, opt);
-  }
-  const orderedIds: string[] = [];
-  for (const id of order) {
-    if (byId.has(id) && !orderedIds.includes(id)) orderedIds.push(id);
-  }
-  for (const opt of options) {
-    if (opt.id && !orderedIds.includes(opt.id)) orderedIds.push(opt.id);
-  }
-  const letters = new Map<string, string>();
-  orderedIds.forEach((id, idx) => {
-    letters.set(id, String.fromCharCode(65 + idx));
-  });
-  return letters;
-}
-
-export function matchingLabelMaps(question: PreviewTrialQuestion): {
-  leftLabels: Map<string, string>;
-  rightLabels: Map<string, string>;
-} {
-  const rawBody = question.body as RawQuestionBodyShape | undefined;
-  const left = rawBody?.left ?? [];
-  const right = rawBody?.right ?? [];
-  const order = question.optionOrder ?? [];
-  const rightById = new Map<string, RawSideView>();
-  for (const item of right) {
-    if (item.id) rightById.set(item.id, item);
-  }
-  const orderedRightIds: string[] = [];
-  for (const id of order) {
-    if (rightById.has(id) && !orderedRightIds.includes(id)) orderedRightIds.push(id);
-  }
-  for (const item of right) {
-    if (item.id && !orderedRightIds.includes(item.id)) orderedRightIds.push(item.id);
-  }
-
-  const leftLabels = new Map<string, string>();
-  left.forEach((item, idx) => {
-    if (item.id) leftLabels.set(item.id, String(idx + 1));
-  });
-  const rightLabels = new Map<string, string>();
-  orderedRightIds.forEach((id, idx) => {
-    rightLabels.set(id, String.fromCharCode(65 + idx));
-  });
-  return { leftLabels, rightLabels };
-}

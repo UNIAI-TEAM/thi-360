@@ -324,24 +324,23 @@ describe("Bài ôn: lưu không ghi điểm mỗi câu, đầu trang chỉ nêu 
     expect(screen.queryByText(/Mỗi câu .* điểm/)).not.toBeInTheDocument();
   });
 
-  it("đầu trang: có thang thì chỉ nêu thang, không so tổng điểm với thang (không 10 / 150)", async () => {
+  it("panel bài ôn: có thang thì chỉ nêu thang chỉ đọc, không còn dải tổng hợp phụ ở đầu Tab 2 và không so tổng điểm với thang", async () => {
     boot(fresh, 200, {}, { maxScore: 150 });
     open();
     await screen.findByRole("combobox", { name: "Dạng câu" });
-    const summary = screen.getByLabelText("Tổng hợp cấu trúc");
-    expect(within(summary).getByText("Thang điểm")).toBeInTheDocument();
-    expect(within(summary).getByText("150 điểm")).toBeInTheDocument();
-    expect(within(summary).queryByText("Tổng điểm")).not.toBeInTheDocument();
-    expect(summary.textContent).not.toMatch(/\d\s*\/\s*150/);
+    expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Thang điểm" })).toHaveValue("150");
+    expect(screen.queryByText("Tổng điểm")).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/\d\s*\/\s*150/);
   });
 
-  it("đầu trang: không có thang thì không hiện mục điểm", async () => {
+  it("panel bài ôn: không có thang thì ẩn ô Thang điểm và không hiện mục điểm", async () => {
     boot(fresh, 200, {}, { maxScore: undefined });
     open();
     await screen.findByRole("combobox", { name: "Dạng câu" });
-    const summary = screen.getByLabelText("Tổng hợp cấu trúc");
-    expect(within(summary).queryByText("Tổng điểm")).not.toBeInTheDocument();
-    expect(summary.textContent).not.toMatch(/\/\s*\d/);
+    expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Thang điểm" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Tổng điểm")).not.toBeInTheDocument();
   });
 
   it("bài ôn chưa đụng tới (chưa chọn dạng câu) không tự thành thay đổi chưa lưu", async () => {

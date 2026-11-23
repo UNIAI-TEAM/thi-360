@@ -1,31 +1,129 @@
 "use client";
 
-import { Button, Card, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { Button, Card, cn, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
+import { ArrowLeft, Lock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { EXAM_EDITOR_TABS, examTabFromPathname, examTabHref } from "../editor-tabs";
-import { useExam } from "../queries";
+import { useExam, useExamStructure } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
 import type { ExamDetail } from "../types";
+import { useKindLabel } from "./create-exam-fields";
 import { ExamEditorActionsSlot } from "./exam-editor-actions";
+import { draftTotals } from "./exam-structure-draft";
 
-/**
- * Khung chung của trang soạn bài thi `/exams/[id]/...`: tiêu đề, chip trạng thái, dải tóm tắt (`<dl>`), thanh
- * NavTabs bốn trang con (Thông tin chung · Cấu trúc và ma trận · Kiểm tra và xem trước · Phiên bản và công bố).
- * Trang con đọc bài thi bằng `useExam(id)` (cùng khóa truy vấn, không gọi lại).
- */
-export function ExamEditorLayout({ examId, children }: { examId: string; children: ReactNode }) {
+const DISPLAY_NUMBER_FORMAT = { maximumFractionDigits: 2 } as const;
+
+export function ExamEditorLayout({ examId, children }: { examId?: string; children: ReactNode }) {
+  if (!examId) {
+    return <ExamEditorCreateLayout>{children}</ExamEditorCreateLayout>;
+  }
+  return <ExamEditorExistingLayout examId={examId}>{children}</ExamEditorExistingLayout>;
+}
+
+function ExamEditorCreateLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("exams");
+  const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col gap-3">
+        <Link
+          href="/exams"
+          className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          {t("editor.backToList")}
+        </Link>
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h1 className="min-w-0 text-page-title font-bold wrap-break-word text-text">{t("create.title")}</h1>
+            <p className="text-body text-text-secondary">{t("create.description")}</p>
+          </div>
+          <div ref={setActionsSlot} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
+        </div>
+      </header>
+      <NavTabs aria-label={t("editor.tabsLabel")}>
+        {EXAM_EDITOR_TABS.map((tab) =>
+          tab === "general" ? (
+            <NavTab key={tab} asChild current>
+              <Link href="/exams/new">{t(`editor.tabs.${tab}`)}</Link>
+            </NavTab>
+          ) : (
+            <NavTab key={tab} disabled>
+              {t(`editor.tabs.${tab}`)}
+            </NavTab>
+          ),
+        )}
+      </NavTabs>
+      <ExamEditorActionsSlot.Provider value={actionsSlot}>
+        <div>{children}</div>
+      </ExamEditorActionsSlot.Provider>
+    </div>
+  );
+}
+
+function ExamEditorExistingLayout({ examId, children }: { examId: string; children: ReactNode }) {
+  const t = useTranslations("exams");
+  const tForbidden = useTranslations("forbidden");
   const pathname = usePathname();
   const activeTab = examTabFromPathname(pathname);
   const examQuery = useExam(examId);
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
+  const [retriedError, setRetriedError] = useState<unknown>(null);
 
-  if (examQuery.isPending) {
+  const hasExamData = Boolean(examQuery.data);
+  const liveError = hasExamData ? null : examQuery.isError ? examQuery.error : null;
+  const examError = hasExamData ? null : (liveError ?? (examQuery.isFetching ? retriedError : null));
+
+  if (examError) {
+    const status = getErrorStatus(examError);
+    const forbidden = status === 403;
+    const notFound = status === 404;
+    return (
+      <div className="flex flex-col gap-4">
+        <Link
+          href="/exams"
+          className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          {t("editor.backToList")}
+        </Link>
+        <Card>
+          <EmptyState
+            icon={forbidden ? <Lock /> : <TriangleAlert />}
+            title={forbidden ? tForbidden("title") : notFound ? t("editor.notFoundTitle") : t("editor.errorTitle")}
+            description={
+              forbidden ? tForbidden("descriptionAnonymous") : notFound ? t("editor.notFoundDescription") : t("editor.errorDescription")
+            }
+            action={
+              forbidden || notFound ? (
+                <Button asChild variant="secondary">
+                  <Link href="/exams">{t("editor.backToList")}</Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  loading={examQuery.isFetching}
+                  onClick={() => {
+                    setRetriedError(examError);
+                    void examQuery.refetch();
+                  }}
+                >
+                  {t("editor.retry")}
+                </Button>
+              )
+            }
+          />
+        </Card>
+      </div>
+    );
+  }
+
+  if (!examQuery.data) {
     return (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-8 w-80 max-w-full" />
@@ -33,30 +131,6 @@ export function ExamEditorLayout({ examId, children }: { examId: string; childre
         <Skeleton className="h-10 w-full max-w-xl" />
         <Skeleton className="h-96" />
       </div>
-    );
-  }
-
-  if (examQuery.isError) {
-    const notFound = getErrorStatus(examQuery.error) === 404;
-    return (
-      <Card>
-        <EmptyState
-          icon={<TriangleAlert />}
-          title={notFound ? t("editor.notFoundTitle") : t("editor.errorTitle")}
-          description={notFound ? t("editor.notFoundDescription") : t("editor.errorDescription")}
-          action={
-            notFound ? (
-              <Button asChild variant="secondary">
-                <Link href="/exams">{t("editor.backToList")}</Link>
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={() => void examQuery.refetch()}>
-                {t("editor.retry")}
-              </Button>
-            )
-          }
-        />
-      </Card>
     );
   }
 
@@ -78,9 +152,43 @@ export function ExamEditorLayout({ examId, children }: { examId: string; childre
   );
 }
 
-function ExamEditorHeader({ exam, actionsRef }: { exam: ExamDetail; actionsRef: (node: HTMLDivElement | null) => void }) {
+function ExamEditorHeader({
+  exam,
+  actionsRef,
+}: {
+  exam: ExamDetail;
+  actionsRef: (node: HTMLDivElement | null) => void;
+}) {
   const t = useTranslations("exams");
   const format = useFormatter();
+  const kindLabel = useKindLabel();
+  const structureQuery = useExamStructure(exam.id);
+  const structure = structureQuery.data;
+
+  const partsSource = structure?.parts ?? exam.parts;
+  const hasParts = partsSource.length > 0;
+  const totals = draftTotals(partsSource, {
+    sharedDuration: exam.timing === "SHARED" ? exam.durationMinutes : null,
+    combinations: structure?.combinations ?? [],
+  });
+
+  const totalQuestions = hasParts ? totals.totalQuestions : exam.totalQuestions;
+  const questionsValue =
+    hasParts && totals.printedQuestions !== totals.totalQuestions
+      ? `${format.number(totalQuestions, DISPLAY_NUMBER_FORMAT)} ${t("editor.printedQuestionsSuffix", {
+          printed: format.number(totals.printedQuestions, DISPLAY_NUMBER_FORMAT),
+        })}`
+      : format.number(totalQuestions, DISPLAY_NUMBER_FORMAT);
+
+  const durationMinutes = structure && totals.totalMinutes > 0 ? totals.totalMinutes : exam.durationMinutes;
+  const hasCodedParts = exam.parts.some((part) => Boolean(part.codeSource));
+  const showScoreMismatch =
+    exam.buildMode !== "REVIEW" &&
+    (!hasCodedParts || Boolean(structure)) &&
+    exam.maxScore !== null &&
+    totals.totalPoints > 0 &&
+    Math.abs(totals.totalPoints - exam.maxScore) > 1e-6;
+
   return (
     <header className="flex flex-col gap-3">
       <Link
@@ -92,7 +200,9 @@ function ExamEditorHeader({ exam, actionsRef }: { exam: ExamDetail; actionsRef: 
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 data-exam-content className="min-w-0 text-page-title font-bold wrap-break-word text-text">{exam.name}</h1>
+          <h1 data-exam-content className="min-w-0 text-page-title font-bold wrap-break-word text-text">
+            {exam.name}
+          </h1>
           <StatusChip tone={EXAM_STATUS_TONE[exam.status]}>
             {exam.status === "PUBLISHED" && exam.servingVersion !== null
               ? t("status.servingVersion", { version: exam.servingVersion })
@@ -104,26 +214,46 @@ function ExamEditorHeader({ exam, actionsRef }: { exam: ExamDetail; actionsRef: 
               ? t("checkStatus.issues", { count: exam.check.issueCount })
               : t(`checkStatus.${exam.check.status}`)}
           </StatusChip>
+          {showScoreMismatch && exam.maxScore !== null && (
+            <StatusChip tone="warning">
+              {t("editor.scoreMismatchWarning", {
+                actual: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
+                expected: format.number(exam.maxScore, DISPLAY_NUMBER_FORMAT),
+              })}
+            </StatusChip>
+          )}
         </div>
         <div ref={actionsRef} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
       </div>
-      <dl className="flex flex-wrap gap-x-6 gap-y-2 text-body">
+      <dl
+        aria-label={t("editor.structureSummaryLabel")}
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-body"
+      >
         <SummaryItem label={t("summary.code")} value={exam.code} />
-        <SummaryItem label={t("summary.kind")} value={t(`kind.${exam.kind}`)} />
+        <SummaryItem label={t("summary.kind")} value={kindLabel(exam.kind)} />
         <SummaryItem label={t("summary.format")} value={t(`scope.${exam.scope}`)} />
-        <SummaryItem label={t("summary.questions")} value={format.number(exam.totalQuestions)} />
-        <SummaryItem label={t("summary.duration")} value={t("summary.minutes", { count: exam.durationMinutes })} />
-        <SummaryItem label={t("summary.attempts")} value={format.number(exam.attemptCount)} />
+        <SummaryItem label={t("summary.questions")} value={questionsValue} numeric />
+        {durationMinutes > 0 && (
+          <SummaryItem label={t("summary.duration")} value={t("summary.minutes", { count: durationMinutes })} numeric />
+        )}
+        {exam.maxScore !== null && (
+          <SummaryItem
+            label={t("general.facts.maxScore")}
+            value={t("general.facts.maxScoreValue", { count: exam.maxScore })}
+            numeric
+          />
+        )}
+        <SummaryItem label={t("summary.attempts")} value={format.number(exam.attemptCount)} numeric />
       </dl>
     </header>
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function SummaryItem({ label, value, numeric = false }: { label: string; value: string; numeric?: boolean }) {
   return (
-    <div className="flex items-baseline gap-1.5">
-      <dt className="text-text-muted">{label}</dt>
-      <dd className="m-0 font-semibold text-text">{value}</dd>
+    <div className="flex items-baseline gap-1.5 not-last:sm:border-r not-last:sm:border-border not-last:sm:pr-4">
+      <dt className="text-caption text-text-muted">{label}</dt>
+      <dd className={cn("m-0 font-semibold text-text", numeric && "tabular-nums")}>{value}</dd>
     </div>
   );
 }

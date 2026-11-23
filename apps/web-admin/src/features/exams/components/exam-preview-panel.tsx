@@ -20,8 +20,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
-import { errorCodeOf } from "../review-api";
-import { defaultPreviewTrialApiDeps, trialPageHref, type PreviewTrialApiDeps } from "../trial/api";
+import { errorCodeOf } from "../errors";
+import { extendPreviewForTrial, trialPageHref } from "../trial/api";
 import { usePreviewMinutesLeft } from "../preview-retention";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
@@ -29,13 +29,13 @@ import type { CheckIssue, ExamCheckResult, ExamPathRef, PathCheckResult, Preview
 import type { ExamDetail, ExamPartOption } from "../types";
 import { ExamContentText } from "./exam-content-text";
 import { ExamPreviewAllocation } from "./exam-preview-allocation";
-import { ExamPreviewCompliance } from "./exam-preview-compliance";
+import { ExamPreviewComplianceBanner } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
 import { PreviewScopeCard } from "./exam-preview-scope-card";
 import { ExamName, richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
-export interface ExamPreviewPanelProps {
+interface ExamPreviewPanelProps {
   exam: ExamDetail;
   /** Kết quả kiểm tra gần nhất (trạng thái từng đường); `null` khi chưa kiểm tra. */
   check: ExamCheckResult | null;
@@ -46,7 +46,6 @@ export interface ExamPreviewPanelProps {
   version: number | null;
   onClearVersion: () => void;
   onShowCheck: () => void;
-  trialDeps?: PreviewTrialApiDeps;
 }
 
 interface PathOption {
@@ -56,14 +55,8 @@ interface PathOption {
 
 type ScopeKind = PreviewTarget["kind"];
 
-/** Đề thử giữ ở máy chủ 30 phút (2B mục 8). */
 const PREVIEW_RETENTION_MINUTES = 30;
 
-/**
- * Sinh thử (bản vẽ `SinhThu2B`, 2B mục 8 và 15.4): chọn phạm vi (một môn, một mã hoặc nhánh, cả bài), sinh bằng cùng quy
- * tắc với lượt thi thật, xem bảng Yêu cầu / Thực tế và đề đã sinh. Đề thử không trừ lượt, không tạo kết quả học tập.
- * Đổi mã trên cùng đề thử chỉ sinh lại các phần phụ thuộc mã (R-15); "Sinh đề thử mới" sinh lại cả bài.
- */
 export function ExamPreviewPanel({
   exam,
   check,
@@ -72,7 +65,6 @@ export function ExamPreviewPanel({
   version,
   onClearVersion,
   onShowCheck,
-  trialDeps = defaultPreviewTrialApiDeps,
 }: ExamPreviewPanelProps) {
   const t = useTranslations("exams.preview");
   const tIssue = useTranslations("exams.review.issue");
@@ -99,7 +91,7 @@ export function ExamPreviewPanel({
   const extendTrial = useMutation({
     networkMode: "always",
     mutationFn: (previewId: string) =>
-      trialDeps.extendPreviewForTrial({ examId: exam.id, previewId }),
+      extendPreviewForTrial({ examId: exam.id, previewId }),
     onSuccess: (res, previewId) => {
       if (activePreviewIdRef.current !== previewId) return;
       setTrialErrorCode(null);
@@ -159,7 +151,6 @@ export function ExamPreviewPanel({
   const pathId = selected && options.some((option) => option.path.pathId === selected) ? selected : (fallback ?? null);
   const selectedPath = options.find((option) => option.path.pathId === pathId)?.path ?? null;
 
-  /** Phương án `SUBJECT_CHOICE` của đường: đường có phương án này phải gửi đúng số môn muốn xem (spec 5.2). */
   function subjectChoiceOf(candidatePathId: string | null): ExamPartOption | null {
     const path = options.find((option) => option.path.pathId === candidatePathId)?.path;
     const choice = path?.choices.find((item) => item.kind === "SUBJECT_CHOICE");
@@ -173,7 +164,6 @@ export function ExamPreviewPanel({
     if (pickedSubjects?.optionId === option.id) return pickedSubjects.codes;
     return option.sections.slice(0, option.chooseSubjects ?? 0).map((section) => section.subjectCode);
   }
-  /** 422 `PREVIEW_SUBJECTS_INVALID` (spec 5.2): số môn gửi lên không khớp phương án; còn lại là lỗi chung. */
   function generateErrorText(error: unknown): string {
     return errorCodeOf(error) === "PREVIEW_SUBJECTS_INVALID" ? tIssue("PREVIEW_SUBJECTS_INVALID") : t("error");
   }
@@ -471,11 +461,22 @@ export function ExamPreviewPanel({
             <TabsTrigger value="allocation">{t("tabs.allocation")}</TabsTrigger>
           </TabsList>
           <TabsContent value="paper" className="flex flex-col gap-6">
-            <ExamPreviewCompliance paper={data.paper} compliance={data.compliance} dropped={data.droppedQuestions} examId={exam.id} original={original} />
+            <ExamPreviewComplianceBanner
+              paper={data.paper}
+              compliance={data.compliance}
+              examId={exam.id}
+              onOpenAllocation={() => setTab("allocation")}
+            />
             <ExamPreviewPaper paper={data.paper} original={original} />
           </TabsContent>
           <TabsContent value="allocation">
-            <ExamPreviewAllocation paper={data.paper} />
+            <ExamPreviewAllocation
+              paper={data.paper}
+              compliance={data.compliance}
+              dropped={data.droppedQuestions}
+              examId={exam.id}
+              original={original}
+            />
           </TabsContent>
         </Tabs>
       </div>

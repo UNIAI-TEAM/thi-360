@@ -42,13 +42,6 @@ function addDirectBlockCounts(blocks: readonly QuestionBlock[], counts: Map<Type
   }
 }
 
-/**
- * Số câu theo dạng câu của một phần ở cấu trúc đang có, cùng quy tắc với `ExamTemplateService.partSummaries` của máy
- * chủ (phía mẫu): nhóm không lược, theo thứ tự xuất hiện; phần tự chọn tính theo lựa chọn đầu tiên (trừ `SUBJECT_CHOICE`
- * và `subjectPool` trả rỗng); `QUESTION_SET`/`CLOZE` ưu tiên `setCount * setSize`; nhóm lấy phần còn lại tính từ
- * `section.questionCount - fixed`; bỏ qua số `<= 0`. Hai phía cùng một cách đếm nên so "trước → sau" khi đổi phiên bản
- * không lệch vì cách tính.
- */
 export function partTypeCounts(part: ExamPart): TypeCount[] {
   const counts = new Map<TypeCount["questionType"], number>();
   const choice = part.participation?.mode === "CHOICE" || part.mode === "CHOICE" || (part.sections.length === 0 && part.options.length > 0);

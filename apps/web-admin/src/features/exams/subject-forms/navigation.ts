@@ -1,23 +1,9 @@
 import { focusMapidRule, mapidRuleAnchor } from "../mapid-rules";
 import type { SubjectFormSelection } from "./selection";
 
-/**
- * Điều hướng theo biểu mẫu (FTM R-15, plan B1). `?block=`, bấm lỗi kiểm tra, bấm dòng tóm tắt và đích của lỗi chặn lưu đều
- * đi qua đây: biểu mẫu được chọn theo môn cha cho cả môn và nhóm.
- *
- * - MT: mở môn và đưa focus tới ô (`data-form-field` = `field.name`); không mở editor nhóm đầy đủ.
- * - DS: mở môn và mở dòng (`data-form-row` = `blockId`).
- * - MD, ON: đích cũ (editor nhóm, hoặc màn bài ôn của môn).
- */
-
-/** Ô của MT mà đích trỏ tới. CR-2 thêm tên ô cho phần của mình (Nguồn chùm...), CR-2H thêm Quy tắc MAPID của HSA. */
 export interface MatrixField {
   sectionId: string;
   name: string;
-  /**
-   * Nhóm mà đích trỏ tới (`?block=`, bấm lỗi hay tóm tắt của một nhóm): màn MT gắn `data-form-block="<blockId>"` lên ô của vai trò nhóm đó
-   * (Trắc nghiệm, Số chùm, Điền đáp án). Không có ô của nhóm thì dùng ô `name`.
-   */
   blockId?: string;
   /** Quy tắc MAPID đích của HSA MT (`data-field="mapid-rule-<id>"`). */
   ruleId?: string;
@@ -38,18 +24,12 @@ export interface FormTargetRef {
   issueCode?: string | null;
 }
 
-/** Tên ô mặc định của MT khi lỗi không nêu ô: khối Cấu trúc câu (R-3). */
 export const MATRIX_DEFAULT_FIELD = "STRUCTURE";
 
-/** Tên vùng Quy tắc MAPID của HSA MT (FTM B9, CR-2H AC-10). */
 export const MATRIX_MAPID_RULES_FIELD = "MAPID_RULES";
 
 const MAPID_RULE_ISSUE_CODES = new Set(["MAPID_RULE_CONFLICT", "MAPID_RULE_GROUP_MISSING"]);
 
-/**
- * Đích của một nơi cần tới theo biểu mẫu đã ghim của môn chứa nó. `null`: không có ô hay dòng cụ thể, chỉ mở môn
- * (lỗi cấp môn ở DS, hoặc ở MD/ON không có nhóm).
- */
 export function formTarget(selection: SubjectFormSelection, ref: FormTargetRef): FormTarget | null {
   if (selection.form === "MATRIX") {
     const mapidTarget = Boolean(ref.ruleId) || (ref.issueCode ? MAPID_RULE_ISSUE_CODES.has(ref.issueCode) : false);
@@ -94,11 +74,6 @@ export function findFormTargetElement(root: ParentNode, target: FormTarget): HTM
 
 const FOCUSABLE = "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex='-1']), a[href]";
 
-/**
- * Sự kiện báo dòng đích cho Danh sách dòng (R-15: mở màn sửa đúng dòng). Phát trên phần tử `data-form-row` của dòng; màn DS nhận ở
- * khung của mình, mở màn sửa dòng rồi tự đặt focus (màn sửa vẽ sau khung, nên không đợi focus của khung), và gọi `preventDefault` để
- * khung bỏ bước đặt focus vào nút của dòng.
- */
 export const ROW_TARGET_EVENT = "thi360:form-row-target";
 
 /** Đặt focus vào phần tử đích; phần tử không nhận focus thì vào điều khiển đầu tiên bên trong, không có thì vào chính nó. */

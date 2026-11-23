@@ -53,7 +53,7 @@ import {
 } from "react";
 import { Controller, type FieldErrors, useForm, useWatch } from "react-hook-form";
 
-import { BlockRadioGroup } from "@/features/exams/components/block-radio-group";
+import { ChoiceCardGroup } from "@/features/exams/components/choice-card-group";
 
 import {
   bundleErrorCode,
@@ -1552,7 +1552,8 @@ export function BundleForm({
               control={control}
               name="resultView"
               render={({ field }) => (
-                <BlockRadioGroup
+                <ChoiceCardGroup
+                  variant="pill"
                   legend={t("form.resultView.legend")}
                   value={field.value}
                   disabled={isReadOnly}

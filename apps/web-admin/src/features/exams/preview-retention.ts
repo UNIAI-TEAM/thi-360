@@ -11,10 +11,6 @@ export function previewMinutesLeft(expiresAt: string | null, now: number): numbe
   return Math.max(0, Math.ceil((end - now) / 60_000));
 }
 
-/**
- * Đếm ngược thời gian giữ đề thử (FU-FE4-PREVIEW): hạn `expiresAt` do máy chủ gửi, không tự cộng 30 phút ở trình duyệt.
- * Số phút dừng ở 0 khi quá hạn; trả `null` ở SSR và không mở bộ đếm khi chưa có hạn hoặc đã hết hạn.
- */
 export function usePreviewMinutesLeft(expiresAt: string | null, maxMinutes?: number): number | null {
   const end = expiresAt ? Date.parse(expiresAt) : Number.NaN;
   const subscribe = useCallback(

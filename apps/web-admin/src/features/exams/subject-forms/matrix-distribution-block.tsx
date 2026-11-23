@@ -28,7 +28,6 @@ interface DimensionProps extends MatrixBlockProps {
   codeLabel: (code: string) => string;
 }
 
-/** Một hàng của MT (khối lớp hoặc độ khó): các ô, mức áp dụng theo kỳ (R-8), "Đã khai x/y" hoặc "Tổng x%, cần 100%" ngay dưới. */
 function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, kindCode, total, axes, raw, onChange }: DimensionProps) {
   const t = useTranslations("exams.subjectForm.matrix.distribution");
   const tHsa = useTranslations("exams.subjectForm.matrix.hsa");
@@ -95,10 +94,6 @@ function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, k
   );
 }
 
-/**
- * Hàng Khối lớp và Độ khó của MT (FTM R-4): hai hàng ô số, không có nút Khai báo/Bỏ, kết hợp hay đơn vị đếm (R-13). Liên lớp chỉ có ở V-ACT
- * Toán; khối lớp ẩn theo R-11; V-ACT Tiếng Việt chỉ hiện hàng khối lớp khi bài đã khai số hoặc người dùng thêm từ "Thêm điều kiện".
- */
 export function MatrixDistributionBlock(props: MatrixBlockProps) {
   const { entry, section, axes, labels, raw } = props;
   const t = useTranslations("exams.subjectForm.matrix.distribution");

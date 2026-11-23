@@ -1,9 +1,3 @@
-/**
- * Vị trí của một thay đổi giữa hai phiên bản (`ExamVersionChange.where`). Máy chủ ghi đường dẫn trong bản chụp cấu hình,
- * ví dụ `config/durationMinutes` hay `parts/parts/<id phần>/sections/<id môn>/blocks/<id khối>/name`: đoạn đầu là gốc của
- * bản chụp (`config` hoặc `parts`), tên bộ sưu tập (`parts`, `sections`, `blocks`, `options`) đứng trước id của phần tử,
- * các đoạn sau là tên trường. Màn không in đường dẫn thô mà dựng nhãn từ cấu trúc (`useChangeWhere`).
- */
 
 export type ChangeLevel = "part" | "section" | "block" | "option";
 

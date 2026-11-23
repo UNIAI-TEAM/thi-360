@@ -1,29 +1,11 @@
 import { createBrowserApiClient } from "@/lib/api/client";
-import { toExamsApiError } from "../review-api";
+import { toExamsApiError } from "../errors";
 import type {
   PreviewGradeRequest,
   PreviewGradeResponse,
   PreviewTrialPaperResponse,
   PreviewTrialResponse,
 } from "./types";
-
-export const PREVIEW_TRIAL_QUERY_KEYS = {
-  paper: (examId: string, previewId: string) => ["exams", examId, "preview", previewId, "trial-paper"] as const,
-};
-
-export interface PreviewTrialApiDeps {
-  extendPreviewForTrial: (args: { examId: string; previewId: string }) => Promise<PreviewTrialResponse>;
-  getPreviewTrialPaper: (args: {
-    examId: string;
-    previewId: string;
-    signal?: AbortSignal;
-  }) => Promise<PreviewTrialPaperResponse>;
-  gradePreviewTrial: (args: {
-    examId: string;
-    previewId: string;
-    answers: NonNullable<PreviewGradeRequest["answers"]>;
-  }) => Promise<PreviewGradeResponse>;
-}
 
 export async function extendPreviewForTrial({
   examId,
@@ -90,12 +72,6 @@ export async function gradePreviewTrial({
   }
   return data;
 }
-
-export const defaultPreviewTrialApiDeps: PreviewTrialApiDeps = {
-  extendPreviewForTrial,
-  getPreviewTrialPaper,
-  gradePreviewTrial,
-};
 
 export function trialPageHref(
   examId: string,

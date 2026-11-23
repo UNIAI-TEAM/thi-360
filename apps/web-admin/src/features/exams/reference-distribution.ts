@@ -2,18 +2,7 @@ import { quotaUnitOf } from "./exam-overview";
 import { convertMatrixMode, dimensionValues, emptyMatrix, type MatrixAxes, sum, toDimension } from "./matrix";
 import type { BlockMatrix, ExamQuota, ExamScope, ExamSection, MatrixUnit, TopicQuota } from "./types";
 
-/**
- * Phân bố tham khảo của một môn và hai nút chuyển (2B 15.3, H6, H7): "Dùng ma trận tham khảo" chép số của phân bố tham
- * khảo vào ma trận bắt buộc của môn và giữ lại bản tham khảo; "Áp dụng phân bổ này" đổi chính phân bố đó thành bắt buộc.
- *
- * Phân bố tham khảo của một môn nằm ở hai nơi:
- * - chỉ tiêu cấp bài chỉ có một môn (`examQuotas`, `subjectCodes = [môn]`): mức gộp mã được ghi theo bucket (HSA Tiếng
- *   Anh: lớp 10 + 11 là 30%, lớp 12 là 70%);
- * - chiều lớp hoặc độ khó của ma trận môn đang ở mức `REFERENCE` (SP2E Hóa học theo lệnh hỏi).
- */
-
 export type ReferenceReason =
-  /** Đơn vị lệnh hỏi hoặc điểm: phân bố bắt buộc phải tính theo câu (H7). */
   | "BASIS"
   /** Chưa có số nào (chờ chuyên gia xác nhận). */
   | "NO_VALUES"
@@ -49,10 +38,6 @@ function otherDimensionConflicts(matrix: BlockMatrix | null, dimension: "GRADE" 
   return sum(other.map((item) => item.value)) > 0 || matrix.cells.some((cell) => cell.value > 0);
 }
 
-/**
- * Phân bố khối lớp của HSA Tiếng Anh luôn chờ chuyên gia xác nhận (ADV:FE-3b:2): chip hiện cả khi đã có số (30/70); hai nút
- * chỉ khóa khi chưa có số.
- */
 export function awaitsExpert(examKind: string | null, subjectCode: string, dimension: "GRADE" | "DIFFICULTY"): boolean {
   return examKind === "HSA" && subjectCode === "ANH" && dimension === "GRADE";
 }
@@ -102,10 +87,6 @@ export function referenceEntries(section: ExamSection, examQuotas: readonly Exam
   return entries;
 }
 
-/**
- * Chép số của chỉ tiêu tham khảo vào ma trận bắt buộc của môn theo từng mã (ma trận riêng từng chiều, đơn vị câu); chỉ
- * tiêu cấp bài giữ nguyên, tức là giữ lại bản tham khảo. Chiều kia giữ số và mức của nó.
- */
 export function referenceToMatrix(section: ExamSection, quota: ExamQuota, axes: MatrixAxes): BlockMatrix {
   const grade = quota.dimension === "GRADE";
   const codes = grade ? axes.grades : axes.difficulties;
@@ -135,13 +116,11 @@ export function referenceToMatrix(section: ExamSection, quota: ExamQuota, axes: 
   };
 }
 
-// ---------------------------------------------------------------- mạch đối chiếu theo lệnh (V-SAT, spec 5.3, H44)
 
 export interface StrandRow {
   id: string;
   name: string;
   commands: number;
-  /** Chưa gắn MAPID nào: trạng thái "Chờ mapping" (H31). */
   pending: boolean;
 }
 
@@ -174,11 +153,6 @@ function promptDifficulty(section: ExamSection, examQuotas: readonly ExamQuota[]
   return matrix?.basis === "PROMPT" ? matrix.byDifficulty.filter((item) => item.value > 0) : [];
 }
 
-/**
- * Bảng "Mạch đối chiếu theo lệnh" của một môn (V-SAT Ngữ văn, Địa lí, Tiếng Anh, bản vẽ `BaiDocDungChung2B`): các chỉ tiêu chủ
- * đề cấp môn đặt theo lệnh (`basis = PROMPT`, chỉ ở mức `REFERENCE`). Chỉ bài cả môn có bảng này (ADV:BE-18:1): bài `PART` hay
- * môn không có mạch trả `null` để màn không vẽ gì, không báo lỗi, không khung rỗng.
- */
 export function strandTable(section: ExamSection, examQuotas: readonly ExamQuota[], examScope: ExamScope): StrandTable | null {
   if (examScope !== "SUBJECT") return null;
   const strands = (section.topicQuotas ?? []).filter(isStrandQuota);

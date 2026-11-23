@@ -3,7 +3,6 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { BlockMatrixEditor } from "../components/block-matrix-editor";
-import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { boot, checkCalls, openStructure, putCalls, sectionsOf, wireBlock, wireSection, type Wire } from "./subject-form-harness";
 import { oneSection, qdaLiteratureSection, thptqgPhysicsParts } from "./subject-row-builders";
 
@@ -18,10 +17,7 @@ const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 /** CR-3a AC-2, AC-6 (FTM AC 21, 25, 52b) và bàn phím của "Thêm điều kiện": màn sửa dòng thật trên `StructureEditor` thật. */
-const restores: Array<() => void> = [];
-afterEach(() => {
-  while (restores.length) restores.pop()!();
-});
+afterEach(() => routerMock.push.mockReset());
 
 const rowOf = (id: string) => document.querySelector<HTMLElement>(`[data-form-row="${id}"]`)!;
 const edit = async (user: UserEvent, id: string, name: string) => {
@@ -133,7 +129,6 @@ describe("Danh sách dòng: màn sửa dòng", () => {
 
   it("sp2eMathPartTwoSwitch: SP2E Toán Phần II đổi được Câu đơn ↔ Câu chùm, giữ tổng câu", async () => {
     const user = userEvent.setup();
-    restores.push(patchSubjectFormEntry("SP2E", "TOAN", { enabled: true }));
     const { server } = boot({ kind: "SP2E", parts: oneSection(wireSection("sec-toan", "TOAN", [wireBlock("p2", { name: "Phan II", questionCount: 6 })])) });
     openStructure("?section=sec-toan");
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });

@@ -1,11 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -17,12 +16,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: 
 
 const STRUCTURE = `${EXAM_PATH}/structure`;
 
-// CR-3a bật DS cho HSA Tiếng Anh; các ca này kiểm hành vi MD của HSA-C (nút "Áp dụng phân bổ này", chip lớp Tiếng Anh) nên ghim MD, chỉ đổi fixture (AD-76), không đổi assert.
-let restoreForm: () => void;
-beforeEach(() => {
-  restoreForm = patchSubjectFormEntry("HSA", "ANH", { enabled: false });
-});
-afterEach(() => restoreForm());
+afterEach(() => vi.restoreAllMocks());
 
 const referenceMatrix = {
   mode: "SEPARATE",
@@ -52,7 +46,16 @@ function boot(kind: string, matrix: object = referenceMatrix, subjectCode?: stri
     ...(subjectCode ? { subjectCode } : {}),
     questionCount: 30,
     matrix,
-    blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 30, requiredPointsPerQuestion: 1 }],
+    blocks: [
+      {
+        id: "blk-1",
+        name: "Choice",
+        questionType: "SINGLE_CHOICE",
+        questionCount: 30,
+        requiredPointsPerQuestion: 1,
+        ...(subjectCode === "ANH" ? { childConditions: [{ from: 1, to: 1, nodeIds: ["n1"] }] } : {}),
+      },
+    ],
   };
   const part = { ...FIXED_PART, questionCount: 30, sections: [section] };
   return new FakeServer()

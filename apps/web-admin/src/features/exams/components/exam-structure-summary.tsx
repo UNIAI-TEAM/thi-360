@@ -5,7 +5,7 @@ import { TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
-import type { StructureIssue } from "../matrix";
+import { type StructureIssue, sum } from "../matrix";
 import { structureIssueBlockField } from "./block-form-fields";
 import type { ExamCheckResult } from "../review-types";
 import type { ExamPart, ExamStructureSummary, ExamStructureSummaryRow } from "../types";
@@ -16,9 +16,9 @@ import { ExamStructureCheckResult, type CheckResultNames } from "./exam-structur
 import { requestBlockFieldFocus } from "./block-field-focus";
 import { ExamName, labelBeforeName } from "./exam-review-shared";
 
-export type SummaryLoad = "loading" | "ready" | "unavailable";
+type SummaryLoad = "loading" | "ready" | "unavailable";
 
-export interface ExamStructureSummaryProps {
+interface ExamStructureSummaryProps {
   /** Tổng hợp từ `structure/summary`; `null` khi chưa tải xong hoặc tải lỗi (dùng số tính trên màn hình). */
   summary: ExamStructureSummary | null;
   load: SummaryLoad;
@@ -35,8 +35,7 @@ export interface ExamStructureSummaryProps {
   onSelect: (selection: StructureSelection) => void;
 }
 
-/** Dòng bấm được: khối → khối, môn → môn, phần → phần (R-04). */
-export function summaryRowTarget(row: ExamStructureSummaryRow): StructureSelection | null {
+function summaryRowTarget(row: ExamStructureSummaryRow): StructureSelection | null {
   if (row.blockId) return { kind: "block", blockId: row.blockId };
   if (row.sectionId) return { kind: "section", sectionId: row.sectionId };
   if (row.partId) return { kind: "part", partId: row.partId };
@@ -52,11 +51,6 @@ function headlineOf(allocated: number, target: number): Headline {
   return { state: missing > 0 ? "missing" : extra > 0 ? "over" : "ok", ...rounded, missing, extra };
 }
 
-/**
- * Vùng (d) của bước Cấu trúc (spec 15.2, R-04): đọc `structure/summary` (số câu đã phân bổ so với chỉ tiêu theo phần,
- * môn, nhóm), liệt kê lỗi cấu trúc trên màn hình và kết quả kiểm tra gần nhất; bấm một dòng hoặc một lỗi thì chọn đúng
- * phần, môn, nhóm trong danh sách và vùng sửa. Máy chủ chưa có tổng hợp thì dùng số tính trên màn hình.
- */
 export function ExamStructureSummaryRegion({
   summary,
   load,
@@ -85,8 +79,8 @@ export function ExamStructureSummaryRegion({
   const headline =
     summary && summary.rows.length > 0
       ? headlineOf(
-          partRows.reduce((total, row) => total + (row.allocated ?? 0), 0),
-          partRows.reduce((total, row) => total + (row.target ?? 0), 0),
+          sum(partRows.map((row) => row.allocated ?? 0)),
+          sum(partRows.map((row) => row.target ?? 0)),
         )
       : headlineOf(local.allocated, local.total);
 

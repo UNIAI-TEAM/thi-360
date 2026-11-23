@@ -1,13 +1,14 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { mapExamDetail } from "../api-mapping";
 import { ExamPreviewAllocation } from "../components/exam-preview-allocation";
 import { ExamPreviewCompliance } from "../components/exam-preview-compliance";
-import { ExamPreviewSubjectQuotas } from "../components/exam-preview-subject-quotas";
+import { ExamPreviewPanel } from "../components/exam-preview-panel";
 import { ExamReviewCheck } from "../components/exam-review-check";
 import type { PreviewBlock, PreviewCompliance, PreviewPaper, PreviewSubject } from "../review-types";
-import { checkResultWire, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
+import { checkResultWire, EXAM_ID, EXAM_PATH, examDetailWire, FakeServer } from "./fake-exams-server";
 
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -89,8 +90,8 @@ describe("AC-1: bảng đối chiếu Yêu cầu / Thực tế / Chênh lệch",
   });
 });
 
-describe("AC-2: bảng chỉ tiêu cấp môn", () => {
-  it("tiêu đề và giá trị của Yêu cầu, Đề sinh đều căn phải", async () => {
+describe("AC-2: chỉ tiêu cấp môn gộp vào bảng đối chiếu ở tab Đối chiếu phân bổ (R-10.3)", () => {
+  it("gộp subjects[].quotas vào bảng Yêu cầu và thực tế của đề thử, ba cột số đều căn phải", async () => {
     const subjects: PreviewSubject[] = [
       {
         sectionId: "s1",
@@ -102,15 +103,89 @@ describe("AC-2: bảng chỉ tiêu cấp môn", () => {
         ],
       },
     ];
-    renderWithProviders(<ExamPreviewSubjectQuotas subjects={subjects} />);
+    renderWithProviders(<ExamPreviewAllocation paper={paperOf({ subjects })} />);
 
-    const table = await screen.findByRole("table", { name: "Đối chiếu chỉ tiêu cấp môn với đề đã sinh" });
-    expectRightAligned(table, ["Yêu cầu", "Đề sinh"]);
+    const table = await screen.findByRole("table", { name: "Yêu cầu và thực tế của đề thử" });
+    expectRightAligned(table, ["Yêu cầu", "Thực tế", "Chênh lệch"]);
+    expect(screen.getByText("1 dòng lệch")).toBeInTheDocument();
+  });
+});
+
+describe("R-10.3 & AC-16: tab Đề đã sinh chỉ hiện banner 1 dòng khi lệch và nút nhảy sang Đối chiếu phân bổ", () => {
+  it("có lệch tiêu chí thì hiện banner 1 dòng thay cho bảng đầy đủ, bấm nút chuyển sang Đối chiếu phân bổ; không lệch thì ẩn banner", async () => {
+    const user = userEvent.setup();
+    const exam = mapExamDetail(examDetailWire());
+    const makeGenerated = (actual: number) => ({
+      examId: EXAM_ID,
+      status: "GENERATED",
+      version: null,
+      seed: 1,
+      generatedAt: "2026-11-17T01:00:00Z",
+      previewId: "55555555-5555-4555-8555-555555555555",
+      path: { pathId: "default", choices: [] },
+      compliance: [
+        {
+          criterion: "GRADE:GRADE_12",
+          scope: "EXAM",
+          required: 10,
+          actual,
+          enforcement: "REFERENCE",
+          basis: "QUESTION",
+        },
+      ],
+      droppedQuestions: [],
+      paper: {
+        totalQuestions: 10,
+        totalPoints: 10,
+        totalMinutes: 45,
+        sharedDuration: false,
+        hasManualGrading: false,
+        checks: [],
+        knowledgeStats: [],
+        subjects: [],
+        parts: [],
+      },
+    });
+
+    let call = 0;
+    new FakeServer()
+      .on("GET", `${EXAM_PATH}/structure`, { status: 200, body: { examId: EXAM_ID, revision: 1, parts: [] } })
+      .on("POST", `${EXAM_PATH}/preview`, () => ({
+        status: 200,
+        body: makeGenerated(call++ === 0 ? 8 : 10),
+      }))
+      .install();
+
+    renderWithProviders(
+      <ExamPreviewPanel
+        exam={exam}
+        check={null}
+        initialPathId={null}
+        autoGenerate={false}
+        version={null}
+        onClearVersion={() => {}}
+        onShowCheck={() => {}}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
+    expect(await screen.findByText("Đề thử lệch 1 tiêu chí so với cấu hình.")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Yêu cầu và thực tế của đề thử" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Xem đối chiếu phân bổ" }));
+    expect(screen.getByRole("tab", { name: "Đối chiếu phân bổ" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("table", { name: "Yêu cầu và thực tế của đề thử" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Đề đã sinh" }));
+    await user.click(screen.getByRole("button", { name: "Sinh đề thử mới" }));
+    await screen.findByText(/Lần sinh thứ 2/);
+    expect(screen.queryByText(/Đề thử lệch .* tiêu chí so với cấu hình/)).not.toBeInTheDocument();
   });
 });
 
 describe("AC-3: bảng Chi tiết theo khối", () => {
   it("Số câu yêu cầu, Nguồn phù hợp căn phải ở tiêu đề và ô; giá trị không xuống dòng", async () => {
+    const user = userEvent.setup();
     const block = (over: Record<string, unknown>) => ({
       partId: "part-1",
       partName: "Part 1",
@@ -139,6 +214,7 @@ describe("AC-3: bảng Chi tiết theo khối", () => {
       ],
     });
 
+    await user.click(await screen.findByRole("button", { name: "Hiện chi tiết theo khối" }));
     const table = await screen.findByRole("table", { name: "Chi tiết theo khối" });
     expectRightAligned(table, ["Số câu yêu cầu", "Nguồn phù hợp"]);
     for (const name of ["Số câu yêu cầu", "Nguồn phù hợp"]) {

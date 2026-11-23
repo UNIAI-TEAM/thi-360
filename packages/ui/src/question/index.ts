@@ -87,3 +87,22 @@ export type {
   TrueFalseMethod,
   TrueFalseStatement,
 } from "./types";
+export {
+  asAnswerFormat,
+  asQuestionType,
+  asScoringRule,
+  asTrueFalseMethod,
+  filterAudioAttachments,
+  isAudioMime,
+  parseRawQuestionBody,
+  readRawQuestionBody,
+  type ParseRawQuestionBodyOptions,
+  type RawAttachmentLike,
+  type RawChoiceOptionShape,
+  type RawClozeBlankShape,
+  type RawEssayCriterionShape,
+  type RawMatchingItemShape,
+  type RawMatchingPairShape,
+  type RawQuestionBodyShape,
+  type RawTrueFalseStatementShape,
+} from "./wire-parsers";

@@ -2,7 +2,6 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContentReference } from "@/features/content/types";
-import { patchSubjectFormEntry } from "../subject-forms/registry";
 import {
   boot,
   openStructure,
@@ -32,12 +31,12 @@ vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 afterEach(() => routerMock.push.mockReset());
 
-function hsaMathSection(over: Wire = {}): Wire {
+function hsaMathSection(over: Wire = {}, singleOver: Wire = {}): Wire {
   return wireSection(
     "sec-toan",
     "TOAN",
     [
-      wireBlock("b-single", { name: "Trắc nghiệm độc lập", questionType: "SINGLE_CHOICE", questionCount: 32, templateGroupCode: "HSA_MATH_SINGLE" }),
+      wireBlock("b-single", { name: "Trắc nghiệm độc lập", questionType: "SINGLE_CHOICE", questionCount: 32, templateGroupCode: "HSA_MATH_SINGLE", ...singleOver }),
       wireBlock("b-short", { name: "Điền đáp án", questionType: "SHORT_ANSWER", questionCount: 15, templateGroupCode: "HSA_MATH_SINGLE" }),
       wireBlock("b-set", { name: "Chùm cuối", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3, templateGroupCode: "HSA_MATH_CONTEXT" }),
     ],
@@ -91,7 +90,10 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
   it("sameRulesAsDefaultForm: thao tác hệt nhau ở MT và MD sinh mapidMode và mapidRules giống hệt nhau trong thân PUT", async () => {
     const runActions = async (expectMatrix: boolean) => {
       const user = userEvent.setup();
-      const { server } = boot({ kind: "HSA", parts: [wirePart([hsaMathSection()])] });
+      const { server } = boot({
+        kind: "HSA",
+        parts: [wirePart([hsaMathSection({}, expectMatrix ? {} : { tagCodes: ["MD"] })])],
+      });
       const view = openStructure("?section=sec-toan");
       try {
         await screen.findByTestId("mapid-mode-matrix");
@@ -111,17 +113,12 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
     };
 
     const mtResult = await runActions(true);
-    const undo = patchSubjectFormEntry("HSA", "TOAN", { enabled: false });
-    try {
-      const mdResult = await runActions(false);
-      expect(mtResult.mapidMode).toBe(mdResult.mapidMode);
-      expect(mtResult.mapidRules).toHaveLength(2);
-      expect(mtResult.mapidRules).toEqual(
-        (mdResult.mapidRules as Wire[]).map((rule, idx) => ({ ...rule, id: (mtResult.mapidRules as Wire[])[idx]!.id })),
-      );
-    } finally {
-      undo();
-    }
+    const mdResult = await runActions(false);
+    expect(mtResult.mapidMode).toBe(mdResult.mapidMode);
+    expect(mtResult.mapidRules).toHaveLength(2);
+    expect(mtResult.mapidRules).toEqual(
+      (mdResult.mapidRules as Wire[]).map((rule, idx) => ({ ...rule, id: (mtResult.mapidRules as Wire[])[idx]!.id })),
+    );
   }, 20_000);
 
   it("percentRulesFollowStructure & zeroKeepsRuleTarget: đổi Điền đáp án 15 -> 12 và 15 -> 0 -> 12 tính lại count của quy tắc % và giữ nguyên groupId", async () => {

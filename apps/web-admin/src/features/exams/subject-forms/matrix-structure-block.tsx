@@ -30,11 +30,6 @@ function ReadOnlyCount({ label, value, hint, footer }: { label: string; value: n
   );
 }
 
-/**
- * Cấu trúc câu của MT (FTM R-3): Trắc nghiệm T, Số chùm k (cỡ chùm cố định theo mẫu), Điền đáp án S; Trắc nghiệm đơn tự tính, chỉ đọc.
- * Mỗi vai trò chỉ hiện khi bài có nhóm của vai trò đó. V-ACT nhập hai cột Số câu / Tỷ lệ cho từng vai trò (R-9): tỷ lệ chỉ quy ra
- * số khi các vai trò cộng đủ 100%, chưa đủ thì giữ ở kho nhập thô và chặn lưu.
- */
 export function MatrixStructureBlock({ compact = false, renderRoleFooter, ...props }: MatrixBlockProps & { compact?: boolean; renderRoleFooter?: (block: QuestionBlock) => ReactNode }) {
   const { section, entry, kindCode, total, raw, onChange, templateLocked } = props;
   const t = useTranslations("exams.subjectForm.matrix.structure");
@@ -70,8 +65,6 @@ export function MatrixStructureBlock({ compact = false, renderRoleFooter, ...pro
   const write = (input: StructureInput) => onChange((current) => writeStructure(current, input).section);
   const rawInputOf = (field: string) => (rawInput: { text: string; code: string } | null) => (rawInput ? raw.set(field, rawInput.text, rawInput.code) : raw.clear(field));
 
-  // T đang chờ (R-3): chữ đã gõ ở ô Trắc nghiệm nhỏ hơn câu con còn ở kho nhập thô, không thì T của bản nháp. Đổi số chùm hay câu con tính theo T này,
-  // nên không bao giờ tự nâng T lên theo câu con; câu con vượt T thì lỗi ở ô Trắc nghiệm và chặn lưu.
   const choiceRaw = raw.get(MATRIX_FIELDS.choice);
   const belowRaw = choiceRaw?.code === MATRIX_ISSUE_CODES.choiceBelowChildren ? choiceRaw : null;
   const pendingChoice = belowRaw ? (parseNumberText(belowRaw.text, false) ?? structure.choice) : structure.choice;

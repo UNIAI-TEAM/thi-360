@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
+  type AudioCountQuery,
   countAvailableQuestions,
   countSubjectAvailableQuestions,
   createExam,
@@ -12,16 +13,9 @@ import {
   updateExamInfo,
   updateExamStructure,
 } from "../api";
-import type { AudioCountQuery } from "../api.http";
-import { ExamStructureSaveError, ExamsApiError } from "../review-api";
+import { ExamsApiError } from "../errors";
 import type { AvailableQuestionsQuery, CreateExamRequest } from "../types";
 import { ExamsBackend } from "./fake-exams-backend";
-
-// Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu để createExam nở tổ hợp.
-vi.mock(import("@/features/content/api"), async () => {
-  const { getContentReferenceFixture: getContentReference } = await import("@/test/fixtures/content-reference");
-  return { getContentReference, defaultContentApiDeps: { getContentReference } };
-});
 
 let backend: ExamsBackend;
 
@@ -89,75 +83,6 @@ describe("tạo bài thi", () => {
     expect(await suggestExamCode({ kind: "QDA", scope: "PART", partCode: "SCIENCE" })).toBe("QDA-P-KH-001");
   });
 
-  it("tạo theo cấu trúc khởi tạo đã chỉnh: phần cố định, Tiếng Anh, tổ hợp với số câu từng môn", async () => {
-    const exam = await createExam({
-      ...NEW_EXAM,
-      kind: "QDA",
-      code: "QDA-F-009",
-      parts: [
-        { name: "Toán", questionCount: 40, durationMinutes: 70, mode: "FIXED", subjectCode: "MATH", englishOption: false, combinations: [] },
-        {
-          name: "Khoa học hoặc Tiếng Anh",
-          questionCount: 50,
-          durationMinutes: 60,
-          mode: "CHOICE",
-          subjectCode: null,
-          englishOption: true,
-          combinations: [{ code: "QD01", subjectCounts: [26, 24] }],
-        },
-      ],
-    });
-    expect(exam).toMatchObject({ totalQuestions: 90, durationMinutes: 130, englishOption: true, combinationCount: 1 });
-    expect(exam.parts[1]!.options.map((option) => [option.code, option.sections.map((section) => section.questionCount)])).toEqual([
-      ["ENGLISH", [50]],
-      ["QD01", [26, 24]],
-    ]);
-  });
-
-  it("cấu trúc khởi tạo sai bị chặn 422; mã tổ hợp lạ được giữ như phương án COMBINATION", async () => {
-    const choice = {
-      name: "Khoa học",
-      questionCount: 50,
-      durationMinutes: 60,
-      mode: "CHOICE" as const,
-      subjectCode: null,
-      englishOption: false,
-      combinations: [{ code: "KH-1", subjectCounts: [17, 17, 17] }],
-    };
-    // KH-1 là tổ hợp 3 môn của HSA: partsFromInput nở thành COMBINATION với số câu từng môn (máy chủ tin client).
-    const exam = await createExam({ ...NEW_EXAM, code: "HSA-F-010", parts: [choice] });
-    expect(exam.parts[0]!.options).toMatchObject([{ kind: "COMBINATION", code: "KH-1" }]);
-    expect(exam.parts[0]!.options[0]!.sections.map((section) => section.questionCount)).toEqual([17, 17, 17]);
-    // POST tạo xong thì PUT cấu trúc chặn: bài Nháp vẫn còn (ExamStructureSaveError bọc ExamsApiError 422).
-    await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-011", parts: [{ ...choice, combinations: [] }] }), 422, "EXAM_STRUCTURE_INVALID");
-    await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-012", parts: [] }), 422, "EXAM_STRUCTURE_INVALID");
-  });
-
-  it("N2-4: lưu cấu trúc lỗi sau khi tạo thì gửi lại với bài đã tạo chỉ lưu cấu trúc, không POST lại", async () => {
-    const choice = {
-      name: "Khoa học",
-      questionCount: 50,
-      durationMinutes: 60,
-      mode: "CHOICE" as const,
-      subjectCode: null,
-      englishOption: false,
-      combinations: [{ code: "KH-1", subjectCounts: [17, 17, 17] }],
-    };
-    const request = { ...NEW_EXAM, code: "HSA-F-013", parts: [{ ...choice, combinations: [] }] };
-    const failure = await createExam(request).then(
-      () => null,
-      (error: unknown) => error,
-    );
-    expect(failure).toBeInstanceOf(ExamStructureSaveError);
-    const created = (failure as ExamStructureSaveError).exam;
-
-    // POST lại cùng mã sẽ trùng (409); gửi kèm bài đã tạo thì chỉ PUT cấu trúc đã sửa.
-    await rejectsWith(createExam({ ...request, parts: [choice] }), 409, "EXAM_CODE_TAKEN");
-    const exam = await createExam({ ...request, parts: [choice], existing: created });
-    expect(exam.id).toBe(created.id);
-    expect(exam.parts[0]!.options).toMatchObject([{ kind: "COMBINATION", code: "KH-1" }]);
-  });
-
   it("chặn mã trùng và phạm vi không hợp lệ", async () => {
     await rejectsWith(createExam({ ...NEW_EXAM, code: "HSA-F-001" }), 409, "EXAM_CODE_TAKEN");
     await rejectsWith(createExam({ ...NEW_EXAM, kind: "VACT", scope: "SUBJECT" }), 422, "EXAM_SCOPE_NOT_ALLOWED");
@@ -214,6 +139,19 @@ describe("sửa bài thi", () => {
     expect(renamed.parts).toEqual(exam.parts);
   });
 
+  it("PATCH từng phần xác nhận năm không làm mất mô tả và tên hiện có của bài thi (S2-2)", async () => {
+    const created = await createExam({ ...NEW_EXAM, code: "HSA-F-099", description: "Mô tả quan trọng" });
+    expect(created.description).toBe("Mô tả quan trọng");
+    const confirmed = await updateExamInfo(created.id, { yearsConfirmed: true, expectedRevision: created.revision });
+    expect(confirmed).toMatchObject({
+      name: created.name,
+      code: "HSA-F-099",
+      description: "Mô tả quan trọng",
+      yearsConfirmed: true,
+      revision: created.revision + 1,
+    });
+  });
+
   it("bài chưa công bố đổi kỳ thi thì nạp lại cấu trúc theo mẫu mới", async () => {
     const exam = await getExam("ex-hsa-f-002");
     const changed = await updateExamInfo(exam.id, {
@@ -263,16 +201,28 @@ describe("sao chép và ngừng bán", () => {
 
   it("chỉ ngừng bán được bài Đang bán; revision cũ của nơi gọi thì máy chủ trả 412", async () => {
     const published = await getExam("ex-qda-f-001");
-    await rejectsWith(discontinueExam(published.id, published.revision + 4), 412, "EXAM_REVISION_CONFLICT");
+    await rejectsWith(
+      discontinueExam({ examId: published.id, expectedRevision: published.revision + 4, idempotencyKey: "disc-1" }),
+      412,
+      "EXAM_REVISION_CONFLICT",
+    );
 
     // Nơi gọi gửi revision của bản đang xem: không đọc lại chi tiết, POST mang revision cũ.
     const posts = backend.calls("POST", "/api/v1/admin/exams/ex-qda-f-001/discontinue");
     expect(posts[0]!.body).toMatchObject({ expectedRevision: published.revision + 4 });
+    expect(posts[0]!.headers.get("Idempotency-Key")).toBe("disc-1");
     expect(backend.calls("GET", "/api/v1/admin/exams/ex-qda-f-001")).toHaveLength(1);
 
-    expect((await discontinueExam(published.id, published.revision)).status).toBe("DISCONTINUED");
+    expect(
+      (await discontinueExam({ examId: published.id, expectedRevision: published.revision, idempotencyKey: "disc-2" }))
+        .status,
+    ).toBe("DISCONTINUED");
     const draft = await getExam("ex-hsa-f-002");
-    await rejectsWith(discontinueExam(draft.id, draft.revision), 409, "EXAM_NOT_PUBLISHED");
+    await rejectsWith(
+      discontinueExam({ examId: draft.id, expectedRevision: draft.revision, idempotencyKey: "disc-3" }),
+      409,
+      "EXAM_NOT_PUBLISHED",
+    );
   });
 });
 

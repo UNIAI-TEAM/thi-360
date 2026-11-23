@@ -13,19 +13,13 @@ export interface SubjectFormHeaderProps {
   count: number | null;
   /** Số câu đã phân bổ vào các nhóm. */
   allocated: number;
-  /** Mã bài tùy chọn để giữ tương thích với MT/DS; đầu môn không còn ô số câu hay đường dẫn (UNI-2753). */
   examId?: string;
-  /** Mẫu khóa số câu của mục (H27): dòng số câu ở đầu môn ghi lý do. */
   templateLocked?: boolean;
   /** Nút bên phải đầu môn (Kiểm tra môn). */
   action?: ReactNode;
   children?: ReactNode;
 }
 
-/**
- * Đầu môn dùng chung của MT và DS (FTM R-7, R-15): tên môn, dòng số câu của môn (kèm lý do khi mẫu khóa), "Đã phân bổ x/y câu" kèm thiếu
- * hoặc vượt (chữ, không chỉ màu). Không có ô số câu: số câu chỉ sửa ở bước 1 (UNI-2753). Dùng cùng khóa chữ với màn môn mặc định.
- */
 export function SubjectFormHeader({ subjectName, choiceGroupLabel = null, count, allocated, templateLocked = false, action, children }: SubjectFormHeaderProps) {
   const t = useTranslations("exams.structure.subject");
   const tGap = useTranslations("exams.structure.gap");

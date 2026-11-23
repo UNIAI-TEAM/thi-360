@@ -11,14 +11,10 @@ import type { KnowledgeScope, MapidMode } from "../types";
 
 const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [] };
 
-export interface KnowledgeScopeFieldProps {
+interface KnowledgeScopeFieldProps {
   /** Phạm vi riêng; `null` hoặc `nodeIds` rỗng: "Toàn môn" (nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID). */
   value: KnowledgeScope | null;
   onChange: (scope: KnowledgeScope | null) => void;
-  /**
-   * Chỉ nhóm có: phạm vi của môn mà nhóm kế thừa khi nhóm chưa chọn nút nào (B9). Bỏ trống: môn, không có gì để kế thừa.
-   * Nút đã chọn khớp câu gắn nút đó hoặc nút con của nó (D23); câu khớp khi có ít nhất một mã đã chọn (2B 3.2).
-   */
   inherited?: { scope: KnowledgeScope | null };
   reference: ContentReference | undefined;
   subjectCode: string;
@@ -28,25 +24,10 @@ export interface KnowledgeScopeFieldProps {
   anchor?: string;
   /** SP2E và SPT gọi lựa chọn thứ hai là "Theo mạch kiến thức" thay cho "Theo chủ đề". */
   strand?: boolean;
-  /**
-   * Số tăng dần: mỗi lần tăng, trường chuyển sang "Theo chủ đề" và mở hộp chọn (menu "Thêm điều kiện" → MAPID).
-   * Mở hộp chọn không đổi `value` (R1-3): hủy giữ nguyên.
-   */
   openRequest?: number;
-  /**
-   * Nhóm chùm và phạm vi của môn: ô "Mọi câu con thuộc chủ đề" (`knowledgeScope.everyChildInScope`). Chỉ hiện khi đã chọn
-   * MAPID ở "Theo chủ đề"; Toàn môn không có chủ đề nào để câu con thuộc về. Bỏ trống (nhóm câu đơn): không có ô.
-   */
   everyChild?: { checked: boolean; onChange: (checked: boolean) => void; anchor?: string };
 }
 
-/**
- * Phạm vi sau khi đặt lại danh sách MAPID: mọi đường làm rỗng `nodeIds` (chọn "Toàn môn", bỏ chip cuối, áp dụng hộp chọn
- * với 0 mục) đi qua đây. Còn MAPID: giữ nguyên các khóa khác. Hết MAPID: giữ lọc năng lực (R1-4) và quy về `null` khi không
- * còn gì. Cờ `everyChildInScope` khác nhau theo cấp: phạm vi của môn giữ cờ (đã đặt thì còn qua lưu và tải lại dù ô đang
- * ẩn); phạm vi của nhóm (`blockLevel`) bỏ cờ, vì máy chủ coi mọi phạm vi nhóm khác `null` là ghi đè phạm vi của môn, nên
- * `{ nodeIds: [], everyChildInScope }` làm nhóm mất kế thừa.
- */
 function withNodeIds(scope: KnowledgeScope | null, nodeIds: string[], blockLevel: boolean): KnowledgeScope | null {
   if (nodeIds.length > 0) return { ...(scope ?? EMPTY_SCOPE), nodeIds };
   const kept: Omit<KnowledgeScope, "nodeIds"> = {
@@ -56,11 +37,6 @@ function withNodeIds(scope: KnowledgeScope | null, nodeIds: string[], blockLevel
   return Object.keys(kept).length > 0 ? { nodeIds: [], ...kept } : null;
 }
 
-/**
- * Phạm vi kiến thức của môn hoặc của nhóm lấy câu (2B 15.3): hai lựa chọn "Toàn môn" và "Theo chủ đề". Toàn môn: nhóm
- * dùng phạm vi của môn, môn không giới hạn MAPID. Theo chủ đề: chọn nhiều MAPID qua hộp chọn kiến thức (có tìm kiếm).
- * Không có công tắc "khớp tất cả / khớp một": câu khớp khi có ít nhất một mã đã chọn.
- */
 export function KnowledgeScopeField({
   value,
   onChange,
@@ -208,7 +184,7 @@ export function KnowledgeScopeField({
   );
 }
 
-export interface MapidModeFieldProps {
+interface MapidModeFieldProps {
   mode: MapidMode;
   onModeChange: (mode: MapidMode) => void;
   /** Số quy tắc đang nằm trong bản nháp; ở "Toàn bài" hiện ghi chú "N quy tắc tạm ngừng áp dụng". */
@@ -218,10 +194,6 @@ export interface MapidModeFieldProps {
   anchor?: string;
 }
 
-/**
- * Phạm vi kiến thức của môn HSA dùng ma trận (UNI-1704 v2): "Không giới hạn MAPID" hoặc "Theo ma trận MAPID".
- * Chế độ Không giới hạn MAPID giữ quy tắc trong bản nháp nhưng không áp dụng. Thay cho `KnowledgeScopeField` ở các môn này.
- */
 export function MapidModeField({ mode, onModeChange, ruleCount, invalidCount, anchor }: MapidModeFieldProps) {
   const t = useTranslations("exams.mapidRules.mode");
   const radioName = useId();

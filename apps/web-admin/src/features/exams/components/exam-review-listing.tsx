@@ -13,8 +13,8 @@ import type { ExamCheckResult, ListingCheckGroup, ListingCheckIssue } from "../r
 import type { ExamDetail } from "../types";
 import { domId, IconLink, labelAfterName, labelBeforeName, structureHref, useLookup } from "./exam-review-shared";
 
-export const REVIEW_LISTING_ANCHOR = "review-listing";
-export const REVIEW_MANUAL_ANCHOR = "review-manual-grading";
+const REVIEW_LISTING_ANCHOR = "review-listing";
+const REVIEW_MANUAL_ANCHOR = "review-manual-grading";
 
 const LISTING_TONE: Record<ListingCheckGroup["status"], StatusTone> = { PASS: "success", WARN: "warning", FAIL: "danger" };
 
@@ -24,7 +24,7 @@ export function listingErrorCount(group: ListingCheckGroup | null | undefined): 
 }
 
 /** Chip tổng của nhóm: "Đạt", "n cảnh báo" hoặc "n lỗi". */
-export function useListingStatusText() {
+function useListingStatusText() {
   const t = useTranslations("exams.review.listing.status");
   return (group: ListingCheckGroup): string =>
     group.status === "PASS"
@@ -42,11 +42,6 @@ interface ListingCheckSectionProps {
   reloading: boolean;
 }
 
-/**
- * Nhóm "Thông tin bán" của tab Kiểm tra (bản vẽ `BaiThiKiemTraThuongMai`): đọc từ `listingCheck`, không qua `groups[]`.
- * Bốn hàng Giá bán, Số lượt, Mô tả, Ảnh bìa; lỗi chặn công bố có icon lỗi, thiếu ảnh bìa chỉ là cảnh báo. Máy chủ không
- * trả nhóm này thì hiện trạng thái lỗi kèm nút thử lại, các nhóm còn lại vẫn dùng được.
- */
 export function ListingCheckSection({ exam, group, onReload, reloading }: ListingCheckSectionProps) {
   const t = useTranslations("exams.review.listing");
   const issueText = useListingIssueText();
@@ -151,11 +146,6 @@ interface ManualRow {
   blockId: string | null;
 }
 
-/**
- * Cảnh báo "Có câu chấm tay" (`MANUAL_GRADING_REQUIRED`, 2B H18; LT 9.3, AC-12.08) theo bản vẽ
- * `BaiThiKiemTraThuongMai`: tiêu đề, câu "Bài có câu tự luận. Điểm tổng hiện sau khi người chấm chấm xong." và bảng phần,
- * môn, khối có câu tự luận. Cảnh báo không chặn công bố; không có câu tự luận thì không hiện mục này.
- */
 export function ManualGradingSection({ exam, result }: { exam: ExamDetail; result: ExamCheckResult }) {
   const t = useTranslations("exams.review.manual");
   const lookup = useLookup();

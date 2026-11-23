@@ -15,11 +15,6 @@ import {
 } from "../matrix";
 import type { ExamPart, ExamPartOption, ExamSection, QuestionBlock, StructureCombination } from "../types";
 
-/**
- * Bản nháp của Cấu trúc và ma trận: các hàm cập nhật bất biến trên `ExamPart[]`. Màn chỉ lưu khi bấm Lưu
- * (`updateExamStructure`). Mã tạm của phần tử mới sinh ở trình duyệt; backend thay bằng mã thật khi lưu.
- */
-
 let draftSequence = 0;
 export function draftId(prefix: string): string {
   draftSequence += 1;
@@ -28,10 +23,6 @@ export function draftId(prefix: string): string {
 
 export const ENGLISH_CODE = "ENGLISH";
 
-/**
- * Đang sửa gì: tổng quan bài (điểm theo môn, chỉ tiêu cấp bài), một phần (thông tin phần, lựa chọn), một phương án chọn
- * môn (tổng quan Khoa học), một môn (chỉ tiêu cấp môn và các nhóm) hoặc một nhóm lấy câu.
- */
 export type StructureSelection =
   | { kind: "exam" }
   | { kind: "part"; partId: string }
@@ -39,13 +30,8 @@ export type StructureSelection =
   | { kind: "section"; sectionId: string }
   | { kind: "block"; blockId: string };
 
-/** Vị trí môn trong bản nháp; `pool`: môn nằm trong `subjectPool` của phần theo mã (R-24), không phải `sections`. */
 export type DraftLocation = SectionLocation & { pool?: boolean };
 
-/**
- * Nhóm môn theo vị trí lưu như `sectionGroups` của `matrix.ts`, thêm nhóm `subjectPool` của phần theo mã (`pool: true`).
- * Phần theo mã không có `sections` hay lựa chọn: các môn nằm trong `subjectPool`.
- */
 export function sectionGroups(part: ExamPart): Array<{ optionId: string | null; sections: ExamSection[]; pool?: boolean }> {
   if (part.codeSource) return [{ optionId: null, sections: part.subjectPool ?? [], pool: true }];
   return storedSectionGroups(part);
@@ -167,10 +153,6 @@ export function addBlock(parts: readonly ExamPart[], location: DraftLocation, bl
   return updateSection(parts, location, (section) => ({ ...section, blocks: [...section.blocks, block] }));
 }
 
-/**
- * Xóa nhóm. Quy tắc MAPID của môn trỏ tới nhóm đó được giữ lại (máy chủ từ chối `groupId` lạ nên bản lưu bị chặn cho tới khi người
- * dùng sửa hoặc xóa quy tắc) và mang tên nhóm vừa xóa để thông báo gọi đúng tên.
- */
 export function removeBlock(parts: readonly ExamPart[], blockId: string): ExamPart[] {
   const context = findBlock(parts, blockId);
   if (!context) return [...parts];
@@ -184,7 +166,6 @@ export function removeBlock(parts: readonly ExamPart[], blockId: string): ExamPa
   }));
 }
 
-/** Dời khối lên/xuống trong môn (thứ tự khối là thứ tự trong đề, UniNote mục 6.2). */
 export function moveBlock(parts: readonly ExamPart[], blockId: string, offset: -1 | 1): ExamPart[] {
   const context = findBlock(parts, blockId);
   if (!context) return [...parts];
@@ -205,7 +186,7 @@ export function setPartChoose(part: ExamPart, choose: number): ExamPart {
 }
 
 /** Gắn một lựa chọn vào phần tự chọn; số câu các môn chia đều theo phần dư lớn nhất (50 câu, 3 môn: 17–17–16). */
-export function buildOption(
+function buildOption(
   kind: ExamPartOption["kind"],
   code: string,
   subjectCodes: readonly string[],
@@ -233,7 +214,7 @@ export function buildOption(
 
 /** Số câu một lựa chọn phải có: số câu của phần trừ phần chung (THPTQG Tin học: 4 − 2 = 2). */
 export function optionQuestionCount(part: ExamPart): number {
-  return Math.max(part.questionCount - part.sections.reduce((total, section) => total + (section.questionCount ?? 0), 0), 0);
+  return Math.max(part.questionCount - sum(part.sections.map((section) => section.questionCount ?? 0)), 0);
 }
 
 /** Bật/tắt nhánh Tiếng Anh; nhánh luôn đứng đầu danh sách lựa chọn. */
@@ -271,10 +252,6 @@ export function selectionExists(parts: readonly ExamPart[], selection: Structure
   return findBlock(parts, selection.blockId) !== null;
 }
 
-/**
- * Khóa "đang ở môn hay phần nào" của một mục: chuyển sang khóa khác khi còn thay đổi chưa lưu thì hỏi lại (R-05). Nhóm
- * thuộc môn chứa nó nên mở nhóm của cùng môn không phải chuyển môn.
- */
 export function selectionScope(parts: readonly ExamPart[], selection: StructureSelection): string {
   if (selection.kind === "exam") return "exam";
   if (selection.kind === "part") return `part:${selection.partId}`;
@@ -284,11 +261,6 @@ export function selectionScope(parts: readonly ExamPart[], selection: StructureS
   return context ? `section:${context.section.id}` : `block:${selection.blockId}`;
 }
 
-/**
- * Mục mở mặc định (bản vẽ `BaiThiBuoc2`): bài một môn → môn đó; bài FULL (nhiều môn, không chọn) → môn của phần đầu
- * tiên; phần đầu tiên theo mã → môn đầu của `subjectPool`; phần đầu tiên chỉ có phương án chọn môn (HSA Khoa học) →
- * phương án đó (tổng quan chọn môn). Không khớp → phần đầu tiên.
- */
 export function defaultSelection(parts: readonly ExamPart[]): StructureSelection | null {
   const first = parts[0];
   if (!first) return null;
@@ -304,11 +276,6 @@ export function defaultSelection(parts: readonly ExamPart[]): StructureSelection
   return all.length ? { kind: "section", sectionId: all[0]!.id } : { kind: "part", partId: first.id };
 }
 
-/**
- * Kiểm tra cấu trúc trên máy như `validateStructure`, nhưng với phần theo mã (QDA, BCA): các môn nằm trong
- * `subjectPool`; mỗi mã chỉ lấy một phần số câu của phần nên không so tổng môn với số câu của phần (R-24, lỗi này do
- * kiểm tra cấu hình báo theo từng mã).
- */
 export function validateDraft(
   parts: readonly ExamPart[],
   axes: MatrixAxes,
@@ -333,12 +300,6 @@ export interface DraftTotalsOptions extends StructureTotalsOptions {
   combinations?: readonly StructureCombination[];
 }
 
-/**
- * Điểm của một phần theo mã, cùng cách tính với `structure/summary` của máy chủ: điểm các môn chung, cộng điểm các môn
- * của một mã (học viên chọn một mã). Các mã cho cùng số điểm thì đó là điểm của phần; lệch nhau thì máy chủ không có số
- * (hiện "–"), còn tổng trên màn hình lấy mã đầu tiên như phần tự chọn thường (`structureTotals`). Chưa có mã nào: chỉ
- * môn chung.
- */
 function codedPartPoints(part: ExamPart, combinations: readonly StructureCombination[]): number {
   const pool = part.subjectPool ?? [];
   const common = sectionsPoints(part.sections);
@@ -348,10 +309,6 @@ function codedPartPoints(part: ExamPart, combinations: readonly StructureCombina
   return common + sectionsPoints(selected);
 }
 
-/**
- * Tổng bài từ bản nháp; phần theo mã tính số câu, thời lượng và điểm theo các mã của phần (như `structure/summary`), phân
- * bổ từng mã do máy chủ tính.
- */
 export function draftTotals(parts: readonly ExamPart[], options: DraftTotalsOptions = {}): StructureTotals {
   const plain = structureTotals(
     parts.filter((part) => !part.codeSource),

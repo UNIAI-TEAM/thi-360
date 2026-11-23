@@ -153,7 +153,7 @@ export function ClozeQuestion({
         <ClozePassage
           html={body.passage}
           renderBlank={(blankId, ordinal) => {
-            const number = question.displayNo + ordinal;
+            const number = (body.blankNumberStart ?? question.displayNo) + ordinal;
             const part = resolved?.gradingDetail?.[blankId];
             return (
               <span className="relative mx-1 inline-flex items-center align-baseline">
@@ -228,7 +228,7 @@ function ClozeReviewTable({
         {question.body.blanks.map((blank, ordinal) => {
           const part = review?.gradingDetail?.[blank.id];
           const text = blanks[blank.id] ?? "";
-          const number = question.displayNo + ordinal;
+          const number = (question.body.blankNumberStart ?? question.displayNo) + ordinal;
           return (
             <ReviewRow key={blank.id}>
               <ReviewCell className="font-semibold tabular-nums">{strings.questionLabel(number)}</ReviewCell>

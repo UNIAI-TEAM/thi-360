@@ -3,11 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContentReference } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
-import { ExamGeneralView } from "../components/exam-general-view";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { ExamStructureView } from "../components/exam-structure-view";
 import type { ExamDetail, ExamPart, ExamSection, ExamTemplate, QuestionBlock } from "../types";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
+import { renderExamsUi } from "./render-exams-ui";
 import { sp2eVanExam } from "./sp2e-van-fixture";
 import { byTextContent } from "./text-content";
 
@@ -180,7 +181,7 @@ function setupThptqgMath(configure?: (backend: ExamsBackend) => void) {
 
 function open() {
   window.history.replaceState(null, "", `/exams/${EXAM_ID}`);
-  return renderWithProviders(<ExamGeneralView examId={EXAM_ID} />);
+  return renderExamsUi(<ExamGeneralForm mode="edit" examId={EXAM_ID} />);
 }
 
 beforeEach(() => {
@@ -252,7 +253,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     await tableRegion();
     await user.clear(countOf(MATH));
     await user.type(countOf(MATH), "abc");
-    expect(await screen.findByText("Số câu phải là số nguyên dương.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Số câu phải là số nguyên dương.")).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: SAVE }));
     expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
     expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
@@ -272,15 +273,18 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     }
   }, 20_000);
 
-  it("AC-6: bài đã công bố trên mẫu khóa số câu thì mọi ô chỉ đọc, có ghi chú đã công bố và không hiện chip khóa của mẫu", async () => {
+  it("R-08 (B-06): bài đã công bố trên mẫu khóa số câu hiện banner bản nháp đang soạn, khóa số câu của mẫu nhưng mở sửa thời lượng", async () => {
     setup({ servingVersion: 1, lockCounts: true });
     open();
     const table = await tableRegion();
-    expect(screen.getByText(/Bài đã công bố: bảng chỉ đọc ở đây/)).toBeInTheDocument();
-    const inputs = within(table).getAllByRole("textbox");
-    expect(inputs.length).toBeGreaterThan(0);
-    for (const input of inputs) expect(input).toHaveAttribute("readonly");
-    expect(screen.queryByText("Mẫu đã khóa số câu")).not.toBeInTheDocument();
+    expect(screen.getByText(/cập nhật bản nháp làm việc/)).toBeInTheDocument();
+    expect(screen.getByText("Mẫu đã khóa số câu")).toBeInTheDocument();
+    for (const input of within(table).getAllByRole("textbox", { name: /^Số câu của/ })) {
+      expect(input).toHaveAttribute("readonly");
+    }
+    for (const input of within(table).getAllByRole("textbox", { name: /^Thời lượng của/ })) {
+      expect(input).not.toHaveAttribute("readonly");
+    }
   }, 20_000);
 
   it("AC-10: PUT bị 412 thì hiện câu xung đột, không gửi PATCH và giữ nguyên giá trị đã gõ", async () => {
@@ -472,11 +476,11 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
 
     // Bài theo phần không có thời lượng mặc định: ô bắt buộc, câu như bước 1; chưa gửi gì, chưa mở hộp xác nhận.
     await user.click(screen.getByRole("button", { name: SAVE }));
-    expect(await screen.findByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.")).length).toBeGreaterThan(0);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
 
-    await user.type(screen.getByRole("textbox", { name: /^Thời lượng chung \(phút\)/ }), "40");
+    await user.type(screen.getByRole("textbox", { name: /^Thời lượng chung/ }), "40");
     await user.click(screen.getByRole("button", { name: SAVE }));
     const dialog = await screen.findByRole("dialog");
     // Hộp nạp lại liệt kê đúng phần và số câu của bản xem trước (P1, 12 câu), không phải "0 câu".
@@ -511,24 +515,26 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     open();
     await tableRegion();
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
-    await user.type(await screen.findByRole("textbox", { name: /^Thời lượng chung \(phút\)/ }), "40");
+    await user.type(await screen.findByRole("textbox", { name: /^Thời lượng chung/ }), "40");
     await user.click(screen.getByRole("button", { name: SAVE }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Nạp lại cấu trúc" }));
 
-    expect(await screen.findByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Không lưu được thông tin chung. Thử lại sau.")).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   }, 30_000);
 
-  it("VIS R2-3: sang Theo phần thì Thang điểm lấy điểm của phần cắt (3), như bước 1", async () => {
+  it("VIS R2-3: sang Theo phần thì Điểm tối đa lấy điểm của phần cắt (3), như bước 1", async () => {
     setupThptqgMath();
     const user = userEvent.setup();
     open();
     await tableRegion();
-    expect(screen.getByRole("textbox", { name: /^Thang điểm/ })).toHaveValue("10");
+    expect(screen.getByRole("textbox", { name: /^Điểm tối đa/ })).toHaveValue("10");
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
     expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /^Thang điểm/ })).toHaveValue("3");
+    expect(screen.getByRole("textbox", { name: "Điểm của P1 Trac nghiem" })).toHaveValue("3");
+    const summary = screen.getByRole("region", { name: "Tóm tắt" });
+    expect(within(summary).getByText("Thang điểm").parentElement).toHaveTextContent("3");
   }, 30_000);
 
   it("RV-2: lưu cả bảng và thông tin khi bài đã kiểm tra thì cũng nhắc kiểm tra lại", async () => {
@@ -554,7 +560,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
     await tableRegion();
     await user.clear(countOf(MATH));
     await user.type(countOf(MATH), "abc");
-    expect(await screen.findByText("Số câu phải là số nguyên dương.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Số câu phải là số nguyên dương.")).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("radio", { name: /^Theo phần/ }));
     expect(await screen.findByText(/Đang chọn phạm vi khác/)).toBeInTheDocument();
     expect(screen.queryByText("Số câu phải là số nguyên dương.")).not.toBeInTheDocument();

@@ -1,17 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocateSubjectCounts, pickAllocation } from "../subject-choice";
-
-/** Số ngẫu nhiên có hạt giống (mulberry32) — từng là `seededRandom` của bộ sinh đề mock đã gỡ; test giữ bản sao cục bộ. */
-function seededRandom(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { allocateSubjectCounts } from "../subject-choice";
 
 const COUNTS = [17, 17, 16];
 
@@ -49,20 +37,5 @@ describe("allocateSubjectCounts (B10, D25)", () => {
     expect(allocateSubjectCounts(["NATURAL", "NATURAL", "SOCIAL", "SOCIAL"], [13, 13, 12, 12])).toEqual([]);
     expect(allocateSubjectCounts(["NATURAL", "NATURAL", "SOCIAL", "SOCIAL", "SOCIAL"], COUNTS)).toEqual([]);
     expect(allocateSubjectCounts([], [])).toEqual([]);
-  });
-});
-
-describe("pickAllocation", () => {
-  const all = allocateSubjectCounts(["NATURAL", "NATURAL", "NATURAL"], COUNTS);
-
-  it("cùng hạt giống chọn cùng môn nhận 16; qua nhiều hạt giống mỗi môn đều có lúc nhận 16", () => {
-    const lowIndexOf = (seed: number) => pickAllocation(all, seededRandom(seed))!.indexOf(16);
-    expect(lowIndexOf(7)).toBe(lowIndexOf(7));
-    expect(new Set(Array.from({ length: 30 }, (_, seed) => lowIndexOf(seed + 1)))).toEqual(new Set([0, 1, 2]));
-  });
-
-  it("chỉ có một cách chia thì dùng cách đó; không có cách nào thì null", () => {
-    expect(pickAllocation([[17, 17, 16]], () => 0.99)).toEqual([17, 17, 16]);
-    expect(pickAllocation([], () => 0.5)).toBeNull();
   });
 });

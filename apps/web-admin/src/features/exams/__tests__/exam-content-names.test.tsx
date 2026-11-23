@@ -84,12 +84,14 @@ beforeEach(() => {
 
 describe("tab Kiểm tra bản en: tên của mẫu nằm trong data-exam-content", () => {
   async function renderCheck() {
+    const user = userEvent.setup();
     new FakeServer().on("GET", CHECK_PATH, { status: 200, body: CHECK_WITH_MANUAL }).install();
     const view = renderWithProviders(<ExamReviewCheck exam={mapExamDetail(examDetailWire())} onPreview={() => {}} active />, {
       locale: "en",
       messages: en,
     });
     await screen.findByRole("heading", { name: "Details by block" });
+    await user.click(screen.getByRole("button", { name: "Show details by block" }));
     return view;
   }
 

@@ -10,11 +10,9 @@ import { findBlock, type StructureSelection } from "./exam-structure-draft";
 import { optionLabel, type StructureNames } from "./exam-structure-issues";
 import { ExamName } from "./exam-review-shared";
 
-export interface ExamStructureListProps {
+interface ExamStructureListProps {
   parts: readonly ExamPart[];
-  /** Mã bài thi của các phần theo mã trong bản làm việc (R-24). */
   combinations: readonly StructureCombination[];
-  /** Trạng thái kiểm tra theo môn (H2); `null` khi BE-5 chưa triển khai — không hiện trạng thái. */
   sectionStates: readonly ExamSectionState[] | null;
   selection: StructureSelection | null;
   issues: readonly StructureIssue[];
@@ -24,18 +22,12 @@ export interface ExamStructureListProps {
   showOverview?: boolean;
 }
 
-/** Màu huy hiệu trạng thái môn (H2, spec 7.3); chữ luôn đi kèm (DESIGN.md mục 8). */
 export const SECTION_STATE_TONES = {
   CHECKED: "success",
   NEEDS_CHECK: "warning",
   INCOMPLETE: "danger",
 } as const;
 
-/**
- * Vùng danh sách (b) của bước Cấu trúc (bản vẽ `BaiThiBuoc2`, R-03, R-24): Phần → (phương án) → môn, kèm các mã bài
- * thi chỉ đọc của phần theo mã. Bấm phần mở thông tin phần, bấm môn mở chỉ tiêu cấp môn, bấm phương án chọn môn mở
- * tổng quan phương án. Mục đang mở có `aria-current`; điều hướng bằng phím mũi tên (R-04: danh sách dài có thể cuộn).
- */
 export function ExamStructureList({
   parts,
   combinations,
@@ -184,7 +176,7 @@ export function ExamStructureList({
   };
 
   return (
-    <Card padding="none" className="flex flex-col @5xl:sticky @5xl:top-4 @5xl:max-h-[calc(100dvh-6rem)]">
+    <Card padding="none" className="flex flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-5rem)]">
       <nav aria-labelledby={titleId} className="flex min-h-0 flex-col">
         <div className="flex items-baseline justify-between gap-2 border-b border-border px-4 py-3">
           <h2 id={titleId} className="text-title font-semibold text-text">

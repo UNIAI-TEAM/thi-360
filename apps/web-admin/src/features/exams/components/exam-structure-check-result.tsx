@@ -50,10 +50,6 @@ function groupBySubject(issues: readonly CheckIssue[]): IssueGroup[] {
   return [...groups.values()];
 }
 
-/**
- * Kết quả kiểm tra gần nhất ở vùng tổng hợp (spec 15.2): lỗi và cảnh báo tách riêng, gom theo môn, kèm các mã bài thi bị
- * ảnh hưởng (`affectedCodes`, R-24). Chi tiết đầy đủ nằm ở tab Kiểm tra và xem trước.
- */
 export function ExamStructureCheckResult({ result, names, parts, onSelect }: ExamStructureCheckResultProps) {
   const t = useTranslations("exams.structure.check");
   const structureT = useTranslations("exams.structure");

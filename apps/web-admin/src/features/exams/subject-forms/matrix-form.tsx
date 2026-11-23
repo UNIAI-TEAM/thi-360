@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo, useSyncExternalStore, type ComponentType } from "react";
-import { useSubjectTotalChange } from "../components/subject-total-change";
 import { recomputeMapidRules } from "../mapid-rules";
 import { sectionCaseCounts } from "../subject-matrix";
 import type { SubjectFormRendererProps } from "./form-renderers";
@@ -15,21 +14,12 @@ import { MatrixStructureBlock } from "./matrix-structure-block";
 import { subjectFormFor } from "./registry";
 import { SubjectFormHeader } from "./subject-form-header";
 
-/**
- * Chỗ gắn phần riêng theo kỳ của MT (CR-2H, HSA). Màn vẽ phần này sau Cấu trúc câu, trước khối lớp và độ khó, với cùng dữ liệu của các khối
- * khác. Tra theo mã kỳ; kỳ không có phần riêng (QDA, BCA, V-ACT) không vẽ gì.
- * Phần gắn vào không đổi hành vi của QDA, BCA, V-ACT: nó chỉ được vẽ ở kỳ của mình.
- *
- * Hợp đồng của phần gắn: ghi vào bản nháp qua `onChange` của môn; đặt `data-form-field` / `data-form-block` lên ô của mình để `navigation.ts`
- * đưa focus tới; không tự thêm hay xóa nhóm (R-3); nhập thô sai ghi vào kho nhập thô qua `raw`.
- */
-export type MatrixKindSlot = ComponentType<MatrixBlockProps>;
+type MatrixKindSlot = ComponentType<MatrixBlockProps>;
 
 const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotOptionsResolver }> = {
   HSA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
 };
 
-/** Đăng ký phần riêng của một kỳ (CR-2H) kèm tuỳ chọn vị trí và biến thể Cấu trúc câu (`MatrixKindSlotOptionsResolver`); trả hàm gỡ. */
 export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, options: MatrixKindSlotOptionsResolver = {}): () => void {
   const previous = kindSlots[kindCode];
   kindSlots[kindCode] = { slot, options };
@@ -39,13 +29,8 @@ export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, o
   };
 }
 
-/**
- * Biểu mẫu Ma trận môn (FTM R-3, R-4, R-6, R-8, R-9, R-15) của QDA, BCA, V-ACT: đầu môn, Cấu trúc câu (kèm Nguồn chùm), khối lớp và độ khó,
- * phạm vi và chỉ tiêu chủ đề. Không có bảng dạng trả lời, danh sách nhóm, Khai báo/Bỏ, kết hợp, đơn vị đếm (R-13). Mọi thay đổi đi qua
- * `matrix-form-model.ts`; lỗi nhập thô nằm ở kho nhập thô của view nên môn đóng hay chuyển môn vẫn chặn lưu.
- */
 export function MatrixForm(props: SubjectFormRendererProps) {
-  const { context, subjectName, axes, labels, reference, onChange, headerAction, examId, templateLocked = false, topicError = null, confirmedCount = null, onConfirmCount, examKind, rawInputs } = props;
+  const { context, subjectName, axes, labels, reference, onChange, headerAction, examId, templateLocked = false, topicError = null, examKind, rawInputs } = props;
   const { section, option } = context;
   const t = useTranslations("exams.structure.subject");
   const rawEntries = useSyncExternalStore(rawInputs.subscribe, rawInputs.getSnapshot, rawInputs.getSnapshot);
@@ -64,8 +49,6 @@ export function MatrixForm(props: SubjectFormRendererProps) {
 
   const kindCode = examKind ?? "";
   const entry = subjectFormFor(kindCode, section.subjectCode);
-  // Mọi hook chạy trước khi trả về sớm: môn không có mục (không xảy ra với MT đã chọn) không vẽ gì.
-  const { notice: totalChangeNotice, countRef } = useSubjectTotalChange({ section, axes, labels, confirmedCount, onConfirmCount, onChange, declaredOnly: true });
   if (!entry) return null;
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
@@ -88,15 +71,12 @@ export function MatrixForm(props: SubjectFormRendererProps) {
       action={headerAction}
     >
       <div data-form-kind="MATRIX" className="flex flex-col gap-6">
-        {totalChangeNotice}
         {beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
-        <div ref={countRef}>
-          <MatrixStructureBlock
-            {...blockProps}
-            compact={slotOptions.structureVariant === "compact"}
-            renderRoleFooter={entry.mapidFlow === "HSA_RULES" ? (block) => <HsaRoleScopeFooter section={section} block={block} reference={reference} /> : undefined}
-          />
-        </div>
+        <MatrixStructureBlock
+          {...blockProps}
+          compact={slotOptions.structureVariant === "compact"}
+          renderRoleFooter={entry.mapidFlow === "HSA_RULES" ? (block) => <HsaRoleScopeFooter section={section} block={block} reference={reference} /> : undefined}
+        />
         {!beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <MatrixDistributionBlock {...blockProps} />
         {/* QDA, BCA, V-ACT dùng Phạm vi và Chỉ tiêu chủ đề (R-6); HSA dùng Quy tắc MAPID của HSA-D (R-5) qua chỗ gắn. */}

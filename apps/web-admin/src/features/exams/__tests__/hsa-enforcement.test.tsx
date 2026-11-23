@@ -6,7 +6,6 @@ import referenceFixture from "@/test/fixtures/content-reference.json";
 import type { ContentReference } from "@/features/content/types";
 import { renderWithProviders } from "@/test/render";
 import { BlockMatrixEditor } from "../components/block-matrix-editor";
-import { EnforcementToggle } from "../components/enforcement-toggle";
 import { TopicQuotaTable } from "../components/topic-quota-table";
 import {
   HsaExamContext,
@@ -17,6 +16,7 @@ import {
   useHsaNormalizedDraft,
 } from "../hsa-enforcement";
 import { emptyMatrix } from "../matrix";
+import { EnforcementControl } from "../subject-forms/enforcement-control";
 import type { BlockMatrix, ExamPart, ExamQuota, QuestionBlock, QuotaEnforcement, TopicQuota } from "../types";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
@@ -91,11 +91,11 @@ const topic = (over: Partial<TopicQuota> = {}): TopicQuota => ({
   ...over,
 });
 
-describe("EnforcementToggle: mức cố định của kỳ thi HSA (UNI-1701 AC-2, AC-3)", () => {
+describe("EnforcementControl (TOGGLE): mức cố định của kỳ thi HSA (UNI-1701 AC-2, AC-3)", () => {
   it("HSA, đơn vị câu: không chip, không chú thích, không nút radio nào", () => {
     renderWithProviders(
       <HsaExamContext.Provider value>
-        <EnforcementToggle legend="ma trận" name="m" value="REQUIRED" onChange={() => undefined} basis="QUESTION" />
+        <EnforcementControl mode="TOGGLE" legend="ma trận" name="m" value="REQUIRED" onChange={() => undefined} basis="QUESTION" />
       </HsaExamContext.Provider>,
     );
     expect(screen.queryByRole("group", { name: "Mức của ma trận" })).not.toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("EnforcementToggle: mức cố định của kỳ thi HSA (UNI-1701 AC-
   it("H7: HSA nhưng đơn vị không phải câu: Tham khảo cố định kèm lý do của H7", () => {
     renderWithProviders(
       <HsaExamContext.Provider value>
-        <EnforcementToggle legend="ma trận" name="m" value="REFERENCE" onChange={() => undefined} basis="POINTS" />
+        <EnforcementControl mode="TOGGLE" legend="ma trận" name="m" value="REFERENCE" onChange={() => undefined} basis="POINTS" />
       </HsaExamContext.Provider>,
     );
     const group = screen.getByRole("group", { name: "Mức của ma trận" });
@@ -120,7 +120,8 @@ describe("EnforcementToggle: mức cố định của kỳ thi HSA (UNI-1701 AC-
   it("H6: HSA, chỉ tiêu trải nhiều môn: Tham khảo cố định kèm lý do của H6", () => {
     renderWithProviders(
       <HsaExamContext.Provider value>
-        <EnforcementToggle
+        <EnforcementControl
+          mode="TOGGLE"
           legend="Lớp"
           name="q"
           value="REFERENCE"
@@ -139,7 +140,7 @@ describe("EnforcementToggle: mức cố định của kỳ thi HSA (UNI-1701 AC-
   it("kỳ thi khác HSA: vẫn là hai nút radio và chuyển mức được", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn<(value: QuotaEnforcement) => void>();
-    renderWithProviders(<EnforcementToggle legend="ma trận" name="m" value="REQUIRED" onChange={onChange} basis="QUESTION" />);
+    renderWithProviders(<EnforcementControl mode="TOGGLE" legend="ma trận" name="m" value="REQUIRED" onChange={onChange} basis="QUESTION" />);
     expect(screen.getAllByRole("radio")).toHaveLength(2);
     await user.click(screen.getByRole("radio", { name: "Tham khảo" }));
     expect(onChange).toHaveBeenCalledWith("REFERENCE");
@@ -308,10 +309,10 @@ describe("normalizeHsaParts, normalizeHsaQuotas (UNI-1701 AC-4)", () => {
       expect(hsaQuotaAwaitsExpert(mathDifficulty)).toBe(false);
     });
 
-    it("EnforcementToggle: Tham khảo cố định kèm lý do chờ chuyên gia, không nút radio", () => {
+    it("EnforcementControl (TOGGLE): Tham khảo cố định kèm lý do chờ chuyên gia, không nút radio", () => {
       renderWithProviders(
         <HsaExamContext.Provider value>
-          <EnforcementToggle legend="Lớp Tiếng Anh" name="e" value="REFERENCE" basis="QUESTION" expertPending onChange={() => {}} />
+          <EnforcementControl mode="TOGGLE" legend="Lớp Tiếng Anh" name="e" value="REFERENCE" basis="QUESTION" expertPending onChange={() => {}} />
         </HsaExamContext.Provider>,
       );
       expect(screen.queryByRole("radio")).not.toBeInTheDocument();

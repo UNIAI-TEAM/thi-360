@@ -3,7 +3,9 @@
 import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
 import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { examTabHref } from "../editor-tabs";
 import { countOf, type MatrixAxes, sectionsPoints, sum, type StructureIssue } from "../matrix";
 import type { ExamPart, ExamSectionState, ExamSection, ExamTiming, StructureCombination } from "../types";
 import { BlockNumberInput } from "./block-number-input";
@@ -11,7 +13,6 @@ import type { MatrixLabels } from "./block-matrix-editor";
 import { CodedPartPanel } from "./coded-part-panel";
 import { AllocationGap } from "./allocation-gap";
 import { OptionalNumberInput } from "./create-exam-fields";
-import { EditOverviewLink } from "./edit-overview-link";
 import { PartOptions, type PartOptionsProps } from "./part-options";
 import { SubjectChoiceOptions } from "./subject-choice-options";
 import { LOCKED_FIELD } from "./locked-field";
@@ -20,7 +21,7 @@ import { ExamName, richNodes } from "./exam-review-shared";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
 
-export interface PartPanelProps
+interface PartPanelProps
   extends Pick<PartOptionsProps, "showEnglish" | "branchSubjects" | "onAddBranch" | "onConfirm"> {
   part: ExamPart;
   /** `SHARED`: phần không có ô thời lượng, bài dùng thời lượng chung `sharedMinutes`. */
@@ -33,9 +34,7 @@ export interface PartPanelProps
   labels: MatrixLabels;
   /** Mã bài: đường dẫn "Sửa thông tin tổng quan" của các ô số câu chỉ đọc. */
   examId: string;
-  /** Mẫu khóa số câu từng mục (H27): thêm dòng "Mẫu đã khóa số câu" cạnh các ô số câu (luôn chỉ đọc, kể cả khi không khóa). */
   templateLocked?: boolean;
-  /** Thêm môn còn thiếu của một mã vào danh sách môn của phần theo mã (D12). */
   onAddSubject: (subjectCode: string) => void;
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
@@ -44,22 +43,18 @@ export interface PartPanelProps
   onToggleEnglish: (enabled: boolean) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
-  /** Trạng thái kiểm tra theo môn (H2); `null` hoặc bỏ trống: không hiện cột trạng thái. */
   sectionStates?: readonly ExamSectionState[] | null;
   /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
   onSelectSection: (sectionId: string) => void;
   onPoints: (points: number | null) => void;
   onChoose: (choose: number) => void;
-  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra phần"). */
   headerAction?: ReactNode;
-  /** Lỗi 422 của chỉ tiêu chủ đề (H20): panel của phần không có bảng chỉ tiêu, nên báo ngay trong panel. */
   topicError?: TopicQuotaServerError;
+  rowsLocked?: boolean;
+  reviewMode?: boolean;
+  sectionForm?: (sectionId: string) => "REVIEW" | "MATRIX" | "ROWS" | "DEFAULT";
 }
 
-/**
- * Thông tin một phần thi (UniNote PBI-04 mục 5.2): tên, thứ tự, số câu, thời lượng. Phần cố định: bảng môn và số câu
- * của từng môn; phần tự chọn: nhánh Tiếng Anh và tổ hợp (bản vẽ `BaiThiToHop`).
- */
 export function ExamStructurePartPanel({
   part,
   timing,
@@ -88,6 +83,9 @@ export function ExamStructurePartPanel({
   onConfirm,
   headerAction,
   topicError = null,
+  rowsLocked = false,
+  reviewMode = false,
+  sectionForm,
 }: PartPanelProps) {
   const t = useTranslations("exams.structure.part");
   const partIssues = issues.filter((issue) => issue.code !== "BLOCK");
@@ -234,6 +232,7 @@ export function ExamStructurePartPanel({
           names={names}
           examId={examId}
           templateLocked={templateLocked}
+          canAddBlock={(section) => !rowsLocked && !reviewMode && (!sectionForm || sectionForm(section.id) === "DEFAULT")}
           onAddBlock={onAddBlock}
           onSelectSection={onSelectSection}
         />
@@ -246,6 +245,7 @@ export function ExamStructurePartPanel({
               common
               examId={examId}
               templateLocked={templateLocked}
+              canAddBlock={(section) => !rowsLocked && !reviewMode && (!sectionForm || sectionForm(section.id) === "DEFAULT")}
               onAddBlock={onAddBlock}
               onSelectSection={onSelectSection}
             />
@@ -289,6 +289,7 @@ function SectionsTable({
   common = false,
   examId,
   templateLocked,
+  canAddBlock,
   onAddBlock,
   onSelectSection,
 }: {
@@ -297,19 +298,24 @@ function SectionsTable({
   common?: boolean;
   examId: string;
   templateLocked: boolean;
+  canAddBlock: (section: ExamSection) => boolean;
   onAddBlock: PartPanelProps["onAddBlock"];
   onSelectSection: PartPanelProps["onSelectSection"];
 }) {
   const t = useTranslations("exams.structure.part");
+  const tSummary = useTranslations("exams.structure.summary");
   const single = !common && part.sections.length === 1;
   const total = sum(part.sections.map(countOf));
   const title = common ? t("commonTitle") : t("sectionsTitle");
   const totalMismatch = !common && total !== part.questionCount;
+  const anyCanAddBlock = part.sections.some(canAddBlock);
   return (
     <section className="flex flex-col gap-2" aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-title font-semibold text-text">{title}</h3>
-        <EditOverviewLink examId={examId} />
+        <Button asChild variant="link" size="sm">
+          <Link href={examTabHref(examId, "general")}>{tSummary("editOverview")}</Link>
+        </Button>
       </div>
       {single && <p className="text-caption text-text-muted">{t("singleSectionHint")}</p>}
       {common && <p className="text-caption text-text-muted">{t("commonHint")}</p>}
@@ -329,9 +335,11 @@ function SectionsTable({
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold">
                 {t("allocated")}
               </th>
-              <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold">
-                {t("actions")}
-              </th>
+              {anyCanAddBlock && (
+                <th scope="col" className="border-b border-border bg-subtle px-3 py-2 text-right font-semibold">
+                  {t("actions")}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -371,18 +379,22 @@ function SectionsTable({
                       </span>
                     )}
                   </td>
-                  <td className="border-b border-border px-3 py-1 text-right">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      aria-label={t("addBlockTarget", { subject })}
-                      onClick={() => onAddBlock(null, section)}
-                    >
-                      <Plus />
-                      <span>{t("addBlock")}</span>
-                    </Button>
-                  </td>
+                  {anyCanAddBlock && (
+                    <td className="border-b border-border px-3 py-1 text-right">
+                      {canAddBlock(section) && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          aria-label={t("addBlockTarget", { subject })}
+                          onClick={() => onAddBlock(null, section)}
+                        >
+                          <Plus />
+                          <span>{t("addBlock")}</span>
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -404,7 +416,7 @@ function SectionsTable({
                   </span>
                 )}
               </td>
-              <td colSpan={2} />
+              <td colSpan={anyCanAddBlock ? 2 : 1} />
             </tr>
           </tfoot>
         </table>
@@ -413,7 +425,6 @@ function SectionsTable({
   );
 }
 
-/** Số câu của phần ở bước 2: chỉ đọc (đặt ở thông tin tổng quan, UNI-2753), kèm đường dẫn sửa; mẫu khóa số câu thì thêm dòng nêu lý do (H27). */
 function LockedCount({
   value,
   examId,
@@ -421,6 +432,7 @@ function LockedCount({
   ...controlProps
 }: { value: number; examId: string; templateLocked: boolean } & Omit<ComponentProps<typeof Input>, "value">) {
   const t = useTranslations("exams.structure.part");
+  const tSummary = useTranslations("exams.structure.summary");
   return (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />
@@ -430,7 +442,9 @@ function LockedCount({
           {t("countLocked")}
         </span>
       )}
-      <EditOverviewLink examId={examId} className="h-auto p-0" />
+      <Button asChild variant="link" size="sm" className="h-auto p-0">
+        <Link href={examTabHref(examId, "general")}>{tSummary("editOverview")}</Link>
+      </Button>
     </span>
   );
 }
