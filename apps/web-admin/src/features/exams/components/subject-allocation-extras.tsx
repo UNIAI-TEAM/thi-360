@@ -1,57 +1,12 @@
 "use client";
 
 import { Button, StatusChip } from "@thi360/ui";
-import { Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { ReferenceEntry, ReferenceReason } from "../reference-distribution";
 import type { MatrixUnit } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
-
-/**
- * Tổng của mục đổi (R-122 dòng 6): bảng nhập theo tỷ lệ hiện số câu mới và chờ xác nhận; bảng nhập theo số câu giữ số cũ
- * và báo thiếu hoặc vượt ở bảng. "Áp dụng số mới" ghi nhận tổng mới; "Giữ số cũ" đổi các bảng tỷ lệ về số câu của tổng cũ.
- */
-export function TotalChangeNotice({
-  oldTotal,
-  newTotal,
-  lines,
-  onApply,
-  onKeep,
-}: {
-  oldTotal: number;
-  newTotal: number;
-  /** Số câu mới của từng bảng nhập theo tỷ lệ, ví dụ "Độ khó: NB 5 · TH 10". */
-  lines: readonly string[];
-  onApply: () => void;
-  onKeep: () => void;
-}) {
-  const t = useTranslations("exams.allocation.totalChange");
-  const headingId = useId();
-  return (
-    <section aria-labelledby={headingId} role="alert" className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-3">
-      <p id={headingId} className="flex items-start gap-2 text-body font-semibold text-text">
-        <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-        {t("title", { total: newTotal, old: oldTotal })}
-      </p>
-      <ul className="ml-6 list-disc text-body text-text-secondary">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-      <p className="text-caption text-text-muted">{t("hint", { old: oldTotal })}</p>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={onApply}>
-          {t("apply")}
-        </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={onKeep}>
-          {t("keep")}
-        </Button>
-      </div>
-    </section>
-  );
-}
 
 const REASON_KEYS: Record<ReferenceReason, string> = {
   BASIS: "reasonBasis",

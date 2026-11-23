@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { ExamVersionDetailDialog } from "../components/exam-versions-detail-dialog";
-import { defaultExamReviewApiDeps } from "../review-api";
+import * as reviewApi from "../review-api";
 import type { ExamVersionDetail } from "../review-types";
 import { ExamsBackend } from "./fake-exams-backend";
 
@@ -21,7 +21,7 @@ beforeEach(() => {
     for (const option of part.options) if (option.kind === "SUBJECT_CHOICE") option.name = null;
   }
   parts[0]!.sections[0]!.blocks[0]!.questionType = null;
-  vi.spyOn(defaultExamReviewApiDeps, "getExamVersion").mockResolvedValue({
+  vi.spyOn(reviewApi, "getExamVersion").mockResolvedValue({
     examId: "ex-hsa-f-001",
     row: { version: 1, state: "RETIRED", publishedAt: null, publishedBy: null, attemptCount: 0, note: null, publishedPaths: [] },
     parts,

@@ -4922,7 +4922,6 @@
       "blockRemoved": "Removed group {name}. Save to apply.",
       "allocationBlocked": "Not saved: an allocation table still has an error. Fix it in the table and save again.",
       "mapidGroupBlocked": "Not saved: the rule “{rule}” points to {hasGroup, select, yes {the deleted group “{group}”} other {a deleted group}}. Change its scope or delete the rule, then save again.",
-      "totalChangeBlocked": "Not saved: the question count of {subject} changed. Choose Apply new numbers or Keep old numbers for this subject, then save again.",
       "rateBlocked": "Not saved: a row entered by percentage does not give whole sets. Fix the percentage in that row and save again.",
       "overviewSummary": "{count, number} questions · {minutes, number} min{shared, select, yes { shared} other {}} · {points} points",
       "subjectAdded": "Added subject {subject} to the part. Save to apply.",
@@ -5416,13 +5415,6 @@
         "sourceEnough": "Enough source questions for the matrix",
         "countField": {
           "locked": "Template locks the count"
-        },
-        "totalChange": {
-          "grades": "Grades: {values}",
-          "difficulties": "Difficulty: {values}",
-          "answerTypes": "Answer types: {values}",
-          "topics": "Topics: {values}",
-          "untitled": "Untitled"
         },
         "caseLegend": "View by the subject's question count",
         "caseOption": "{count, plural, one {# question} other {# questions}}",
@@ -6234,6 +6226,9 @@
         "review": "Check and preview",
         "versions": "Versions and publishing"
       },
+      "structureSummaryLabel": "Structure summary",
+      "printedQuestionsSuffix": "({printed} on paper)",
+      "scoreMismatchWarning": "Part points ({actual}) differ from max score ({expected})",
       "errorTitle": "Could not load the exam",
       "errorDescription": "Check your connection and try again.",
       "retry": "Retry",
@@ -7310,12 +7305,6 @@
         "expertPending": "Waiting for expert confirmation: the English grade split is for reference only.",
         "normalized": "Reference levels were switched to Required as HSA rules demand. Save to apply.",
         "undeclared": "This distribution is not declared, so it does not constrain generation."
-      },
-      "totalChange": {
-        "title": "The total changed to {total, number} questions (was {old, number}). New counts:",
-        "hint": "Apply new numbers: percentage tables are recalculated on the new total. Keep old numbers: those tables switch to counts of the old total of {old, number}, then report what is short or over.",
-        "apply": "Apply new numbers",
-        "keep": "Keep old numbers"
       },
       "reference": {
         "title": "Reference distributions",

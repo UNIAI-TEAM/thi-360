@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Checkbox, cn, focusRing, FormField, Input, type InputProps, Select, Textarea } from "@thi360/ui";
+import { Button, Checkbox, cn, FormField, Input, type InputProps, Select, Textarea } from "@thi360/ui";
 import { Info, TriangleAlert, WandSparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
@@ -23,6 +23,9 @@ import {
   yearsDiffer,
 } from "../create-exam-schema";
 import type { ExamKind, ExamScope, ExamTemplate, ExamTiming } from "../types";
+import { ChoiceCardGroup, type ChoiceCardGroupProps, type ChoiceCardOption } from "./choice-card-group";
+
+export { ChoiceCardGroup, type ChoiceCardGroupProps, type ChoiceCardOption };
 
 /** Chữ báo lỗi của Thông tin chung (`exams.create.validation`). */
 export function useExamInfoMessages(): ExamInfoSchemaMessages {
@@ -97,93 +100,6 @@ export function usePartNames() {
     [t, subjects],
   );
   return { partName };
-}
-
-export interface ChoiceCardOption<T extends string> {
-  value: T;
-  label: string;
-  description?: string;
-}
-
-/**
- * Nhóm radio có tên (DESIGN.md mục 5.2: chọn một trong vài giá trị là nhóm radio, không dùng Tabs). `card` là thẻ chọn
- * của bản vẽ TaoBaiThi, `pill` là nút viên thuốc của ma trận. Mục đang chọn có viền đậm và nền nhạt.
- */
-export function ChoiceCardGroup<T extends string>({
-  legend,
-  name,
-  value,
-  onChange,
-  options,
-  required,
-  disabled,
-  hint,
-  variant = "card",
-  className,
-}: {
-  legend: string;
-  name: string;
-  value: T;
-  onChange: (value: T) => void;
-  options: readonly ChoiceCardOption<T>[];
-  required?: boolean;
-  disabled?: boolean;
-  hint?: string;
-  variant?: "card" | "pill";
-  className?: string;
-}) {
-  const hintId = useId();
-  return (
-    <fieldset
-      className={cn("flex min-w-0 flex-col gap-1.5", className)}
-      aria-describedby={hint ? hintId : undefined}
-      disabled={disabled}
-    >
-      <legend className="mb-1.5 text-field-label font-medium text-text-secondary">
-        {legend}
-        {required && (
-          <span aria-hidden className="ml-0.5 text-danger">
-            *
-          </span>
-        )}
-      </legend>
-      <div className={cn(variant === "card" ? "grid grid-cols-[repeat(auto-fit,minmax(min(9rem,100%),1fr))] gap-2" : "flex flex-wrap gap-2")}>
-        {options.map((option) => {
-          const checked = option.value === value;
-          return (
-            <label
-              key={option.value}
-              className={cn(
-                "flex min-w-0 cursor-pointer items-start gap-2.5 rounded-md border transition-colors duration-150 motion-reduce:transition-none",
-                variant === "card" ? "p-3" : "min-h-10 items-center px-3.5",
-                checked ? "border-primary-text bg-primary-50" : "border-border bg-surface hover:border-border-strong",
-                disabled && "cursor-not-allowed opacity-60",
-              )}
-            >
-              <input
-                type="radio"
-                name={name}
-                value={option.value}
-                checked={checked}
-                required={required}
-                onChange={() => onChange(option.value)}
-                className={cn("mt-0.5 size-4 shrink-0 accent-primary-fill", variant === "pill" && "mt-0", focusRing)}
-              />
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className={cn("font-semibold", checked ? "text-primary-text" : "text-text")}>{option.label}</span>
-                {option.description && <span className="text-caption text-text-muted">{option.description}</span>}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-      {hint && (
-        <p id={hintId} className="text-caption text-text-muted">
-          {hint}
-        </p>
-      )}
-    </fieldset>
-  );
 }
 
 /** Nút "Tự sinh mã" cạnh ô Mã bài thi. */

@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo, useSyncExternalStore, type ComponentType } from "react";
-import { useSubjectTotalChange } from "../components/subject-total-change";
 import { recomputeMapidRules } from "../mapid-rules";
 import { sectionCaseCounts } from "../subject-matrix";
 import type { SubjectFormRendererProps } from "./form-renderers";
@@ -23,7 +22,7 @@ import { SubjectFormHeader } from "./subject-form-header";
  * Hợp đồng của phần gắn: ghi vào bản nháp qua `onChange` của môn; đặt `data-form-field` / `data-form-block` lên ô của mình để `navigation.ts`
  * đưa focus tới; không tự thêm hay xóa nhóm (R-3); nhập thô sai ghi vào kho nhập thô qua `raw`.
  */
-export type MatrixKindSlot = ComponentType<MatrixBlockProps>;
+type MatrixKindSlot = ComponentType<MatrixBlockProps>;
 
 const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotOptionsResolver }> = {
   HSA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
@@ -45,7 +44,7 @@ export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, o
  * `matrix-form-model.ts`; lỗi nhập thô nằm ở kho nhập thô của view nên môn đóng hay chuyển môn vẫn chặn lưu.
  */
 export function MatrixForm(props: SubjectFormRendererProps) {
-  const { context, subjectName, axes, labels, reference, onChange, headerAction, examId, templateLocked = false, topicError = null, confirmedCount = null, onConfirmCount, examKind, rawInputs } = props;
+  const { context, subjectName, axes, labels, reference, onChange, headerAction, examId, templateLocked = false, topicError = null, examKind, rawInputs } = props;
   const { section, option } = context;
   const t = useTranslations("exams.structure.subject");
   const rawEntries = useSyncExternalStore(rawInputs.subscribe, rawInputs.getSnapshot, rawInputs.getSnapshot);
@@ -64,8 +63,6 @@ export function MatrixForm(props: SubjectFormRendererProps) {
 
   const kindCode = examKind ?? "";
   const entry = subjectFormFor(kindCode, section.subjectCode);
-  // Mọi hook chạy trước khi trả về sớm: môn không có mục (không xảy ra với MT đã chọn) không vẽ gì.
-  const { notice: totalChangeNotice, countRef } = useSubjectTotalChange({ section, axes, labels, confirmedCount, onConfirmCount, onChange, declaredOnly: true });
   if (!entry) return null;
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
@@ -88,15 +85,12 @@ export function MatrixForm(props: SubjectFormRendererProps) {
       action={headerAction}
     >
       <div data-form-kind="MATRIX" className="flex flex-col gap-6">
-        {totalChangeNotice}
         {beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
-        <div ref={countRef}>
-          <MatrixStructureBlock
-            {...blockProps}
-            compact={slotOptions.structureVariant === "compact"}
-            renderRoleFooter={entry.mapidFlow === "HSA_RULES" ? (block) => <HsaRoleScopeFooter section={section} block={block} reference={reference} /> : undefined}
-          />
-        </div>
+        <MatrixStructureBlock
+          {...blockProps}
+          compact={slotOptions.structureVariant === "compact"}
+          renderRoleFooter={entry.mapidFlow === "HSA_RULES" ? (block) => <HsaRoleScopeFooter section={section} block={block} reference={reference} /> : undefined}
+        />
         {!beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <MatrixDistributionBlock {...blockProps} />
         {/* QDA, BCA, V-ACT dùng Phạm vi và Chỉ tiêu chủ đề (R-6); HSA dùng Quy tắc MAPID của HSA-D (R-5) qua chỗ gắn. */}

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import { examEditHref, examTabHref } from "../editor-tabs";
+import { examTabHref } from "../editor-tabs";
 import { ExamStructureList } from "../components/exam-structure-list";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { defaultSelection } from "../components/exam-structure-draft";
@@ -378,10 +378,10 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
     await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
-    expect(within(dialog).getByText(/Bạn đang rời trang soạn bài thi\./)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examEditHref(QDA)));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
   });
 
@@ -428,7 +428,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examEditHref(QDA)));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
   });
 

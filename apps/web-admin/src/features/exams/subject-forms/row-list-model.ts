@@ -1,5 +1,4 @@
 import type { QuestionType } from "@/features/content/types";
-import { applyTopicTotal, convertTopicEntry } from "../allocation";
 import { applyBlockPatch, blockCountsLocked } from "../components/block-form";
 import { apportionByPercent, convertMatrixUnit, countsToPercents, isFlexibleSet, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { isTemplateOmittedGroup } from "../omitted-part";
@@ -24,7 +23,7 @@ export interface RowContext {
  * Khóa của một dòng (R-7 bảng "Khóa"). Khóa tổng (`fixed_counts`) thuộc đầu môn, không thuộc dòng nên không có ở đây; nhóm
  * tự luận lược của SP2E, SPT không khóa gì cả.
  */
-export interface RowLocks {
+interface RowLocks {
   /** Khóa dòng (H42): Cách lấy, Số câu, Số chùm, Số câu con chỉ đọc. */
   counts: boolean;
   /** Khóa dạng (`answerTypeLocked`): Cách lấy chỉ đọc. */
@@ -87,7 +86,7 @@ export function modePatch(block: QuestionBlock, mode: "single" | "set"): Partial
 
 // ---------------------------------------------------------------- chỉ số chỉ đọc, tóm tắt điều kiện
 
-export interface RowFigures {
+interface RowFigures {
   /** Số câu của nhóm (câu con của chùm tính vào). */
   questions: number;
   /** Số ý của câu Đúng/Sai (số câu × số ý mỗi câu); `null` khi nhóm không phải Đúng/Sai hoặc mẫu chưa đặt số ý. */
@@ -118,9 +117,9 @@ export function rowFigures(block: QuestionBlock): RowFigures {
   };
 }
 
-export type ConditionKey = "tags" | "scope" | "topicQuotas" | "difficulty" | "grade" | "slots" | "positions";
+type ConditionKey = "tags" | "scope" | "topicQuotas" | "difficulty" | "grade" | "slots" | "positions";
 
-export interface RowConditionSummary {
+interface RowConditionSummary {
   key: ConditionKey;
   /** Số mục của điều kiện (nhãn, MAPID, dòng chỉ tiêu, chùm có điều kiện, dải vị trí); `null`: điều kiện không đếm. */
   count: number | null;
@@ -251,28 +250,6 @@ export function resolvedDimension(matrix: BlockMatrix | null, dimension: MatrixD
   const items = matrix?.[keyOf(dimension)] ?? [];
   if (matrix?.unit !== "PERCENT" || items.length === 0 || !(count > 0) || Math.abs(sum(items.map((item) => item.value)) - 100) > 1e-6) return null;
   return apportionByPercent(items.map((item) => item.value), count).results;
-}
-
-/**
- * "Áp dụng số mới" khi tổng của mục đổi (R-9, R-122 dòng 6): chỉ tiêu chủ đề nhập theo % tính lại số câu theo tổng mới và giữ % gốc; ma
- * trận `PERCENT` tự quy ra số theo tổng mới ở máy chủ; dòng DS nhập theo số câu giữ số, đầu môn hiện thiếu hoặc vượt.
- */
-export function applyNewTotal(section: ExamSection, total: number): ExamSection {
-  if (section.topicQuotas === undefined) return section;
-  return { ...section, topicQuotas: applyTopicTotal(section.topicQuotas, total) };
-}
-
-/** "Giữ số cũ": các bảng nhập theo % đổi sang nhập theo số câu của tổng cũ `oldTotal`, rồi báo thiếu hoặc vượt. */
-export function keepOldTotal(section: ExamSection, oldTotal: number, axes: MatrixAxes): ExamSection {
-  const quotas = section.answerQuotas;
-  const counts = quotas?.unit === "PERCENT" ? apportionByPercent(quotas.items.map((item) => item.value), oldTotal).results : [];
-  const answerQuotas = quotas?.unit === "PERCENT" ? { unit: "COUNT" as const, items: quotas.items.map((item, index) => ({ ...item, value: counts[index] ?? 0 })) } : quotas;
-  return {
-    ...section,
-    matrix: section.matrix?.unit === "PERCENT" ? convertReferenceUnit(section.matrix, "COUNT", oldTotal, axes) : section.matrix,
-    answerQuotas,
-    ...(section.topicQuotas !== undefined ? { topicQuotas: convertTopicEntry(applyTopicTotal(section.topicQuotas, oldTotal), "COUNT", oldTotal) } : {}),
-  };
 }
 
 function codeOrder(codes: readonly string[], code: string): number {

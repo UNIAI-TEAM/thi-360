@@ -33,8 +33,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { useExam } from "../queries";
-import { useDiscontinueExam, useExamVersions, useIdempotencyKey } from "../review-queries";
+import { useDiscontinueExam, useExam } from "../queries";
+import { useExamVersions, useIdempotencyKey } from "../review-queries";
 import type { ExamChange, ExamChangeKind, ExamVersionList, ExamVersionRow } from "../review-types";
 import { EXAM_CHECK_TONE } from "../status";
 import type { ExamDetail } from "../types";
@@ -61,7 +61,7 @@ export function ExamVersionsView({ examId }: { examId: string }) {
   const t = useTranslations("exams.versions");
   const examQuery = useExam(examId);
   const versionsQuery = useExamVersions(examId);
-  const discontinue = useDiscontinueExam(examId);
+  const discontinue = useDiscontinueExam();
   const discontinueKey = useIdempotencyKey();
   const [publishOpen, setPublishOpen] = useState(false);
   const [viewVersion, setViewVersion] = useState<number | null>(null);
@@ -146,7 +146,7 @@ export function ExamVersionsView({ examId }: { examId: string }) {
         onConfirm={() =>
           // Thử lại sau lỗi mạng giữ khóa; đổi bản sửa (`revision`) thì khóa mới.
           discontinue.mutate(
-            { expectedRevision: exam.revision, idempotencyKey: discontinueKey.keyFor(String(exam.revision)) },
+            { examId: exam.id, expectedRevision: exam.revision, idempotencyKey: discontinueKey.keyFor(`${exam.id}:${exam.revision}`) },
             {
               onSuccess: () => {
                 discontinueKey.release();

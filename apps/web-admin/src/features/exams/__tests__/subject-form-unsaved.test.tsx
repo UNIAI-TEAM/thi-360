@@ -1,12 +1,11 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { examTabHref } from "../editor-tabs";
 import { EXAM_ID, examDetailWire } from "./fake-exams-server";
 import {
   boot,
   checkCalls,
-  installForms,
   openStructure,
   putCalls,
   sectionsOf,
@@ -25,17 +24,9 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-/**
- * CR-1 AC-12 (FTM AC 59 phần thay đổi chưa lưu), trên `StructureEditor` thật: bản nháp sạch chỉ có nhập thô lỗi mà chuyển tab, tải lại,
- * chuyển mục, đổi mẫu đều phải hỏi; Ở lại giữ chữ đã gõ; Hủy thay đổi và nạp mẫu đã xác nhận xóa nhập thô và ghim lại biểu mẫu; dữ liệu
- * nền tải lại không thay bản nháp đang sửa; giá trị chưa hợp lệ không vào thân `PUT`.
- */
-let restore: () => void;
 beforeEach(() => {
   routerMock.push.mockReset();
-  restore = installForms();
 });
-afterEach(() => restore());
 
 const template = (code: string, year: number) => ({
   code,
@@ -55,9 +46,11 @@ const template = (code: string, year: number) => ({
 });
 const TEMPLATES = [template("QDA_2026", 2026), template("QDA_2025", 2025)];
 
-/** Mở môn Lý (MT thử) và gõ chữ sai: bản nháp vẫn sạch, chỉ có nhập thô. */
+const fillInput = () => screen.findByRole("textbox", { name: "Điền đáp án" });
+
+/** Mở môn Lý (MT thật) và gõ chữ sai vào Điền đáp án: bản nháp vẫn sạch, chỉ có nhập thô. */
 async function typeBadValue(user: UserEvent) {
-  const input = await screen.findByRole("textbox", { name: "MT LY cau don" });
+  const input = await fillInput();
   await user.clear(input);
   await user.type(input, "abc");
   expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
@@ -69,7 +62,7 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     const user = userEvent.setup();
     boot();
     openStructure("?section=sec-ly");
-    await screen.findByRole("textbox", { name: "MT LY cau don" });
+    await fillInput();
     const clean = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(clean);
     expect(clean.defaultPrevented).toBe(false);
@@ -133,7 +126,7 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     await user.click(screen.getByRole("button", { name: "Hủy thay đổi" }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Hủy thay đổi" }));
     await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
-    expect(await screen.findByRole("textbox", { name: "MT LY cau don" })).toHaveValue("14");
+    expect(await fillInput()).toHaveValue("1");
     await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
     await waitFor(() => expect(checkCalls(server)).toHaveLength(1));
   });
@@ -153,9 +146,8 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     await user.click(await screen.findByRole("option", { name: /QDA 2025/ }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Nạp lại cấu trúc" }));
     await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
-    // Môn của mẫu mới được ghim lại: vẫn MT (cờ bật), không còn lỗi từ id cũ nên Kiểm tra chạy.
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /LY/ }));
-    expect(await screen.findByRole("textbox", { name: "MT LY cau don" })).toHaveValue("14");
+    expect(await fillInput()).toHaveValue("1");
     await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
     await waitFor(() => expect(checkCalls(server)).toHaveLength(1));
   });
@@ -164,19 +156,18 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     const user = userEvent.setup();
     const { server, state } = boot();
     const view = openStructure("?section=sec-ly");
-    await screen.findByRole("textbox", { name: "MT LY cau don" });
+    await fillInput();
     state.parts = [{ ...(state.parts[0] as object), name: "Part tu may chu" }];
     await act(() => view.client.invalidateQueries());
     expect(await screen.findAllByText(/Part tu may chu/)).not.toHaveLength(0);
 
-    // Còn nhập thô: lần tải lại kế tiếp không thay bản nháp.
     await typeBadValue(user);
     state.parts = [{ ...(state.parts[0] as object), name: "Part lan hai" }];
     const loadsBefore = server.calls("GET", STRUCTURE).length;
     await act(() => view.client.invalidateQueries());
     await waitFor(() => expect(server.calls("GET", STRUCTURE).length).toBeGreaterThan(loadsBefore));
     expect(screen.queryAllByText(/Part lan hai/)).toHaveLength(0);
-    expect(screen.getByRole("textbox", { name: "MT LY cau don" })).toHaveValue("abc");
+    expect(screen.getByRole("textbox", { name: "Điền đáp án" })).toHaveValue("abc");
   });
 
   it("giá trị chưa hợp lệ không bao giờ vào thân PUT: sửa đúng thì PUT mang số, không mang chữ đã gõ", async () => {
@@ -187,12 +178,12 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.clear(input);
-    await user.type(input, "12");
+    await user.type(input, "2");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(JSON.stringify(putCalls(server)[0]!.body)).not.toContain("abc");
     const ly = sectionsOf(putCalls(server)[0]!.body)["sec-ly"] as { blocks: Array<{ id: string; questionCount: number }> };
-    expect(ly.blocks.find((block) => block.id === "sec-ly-single")?.questionCount).toBe(12);
+    expect(ly.blocks.find((block) => block.id === "sec-ly-fill")?.questionCount).toBe(2);
     expect(JSON.stringify(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"])).not.toContain("abc");
   });
 });

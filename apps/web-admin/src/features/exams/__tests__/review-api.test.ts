@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { getExam } from "../api";
+import { discontinueExam, getExam } from "../api";
+import { ExamsApiError } from "../errors";
 import {
-  discontinueExam,
   getCheckRun,
   getExamCheck,
   getExamVersion,
@@ -11,7 +11,6 @@ import {
   runExamCheck,
   startDeepCheck,
 } from "../review-api";
-import { ExamsApiError } from "../review-api";
 import { ExamsBackend } from "./fake-exams-backend";
 
 let backend: ExamsBackend;
@@ -186,10 +185,16 @@ describe("publishExam", () => {
 describe("discontinueExam", () => {
   it("ngừng bán bài đang phục vụ, bài chưa công bố thì báo 409", async () => {
     const exam = await getExam("ex-qda-f-001");
-    const updated = await discontinueExam({ examId: "ex-qda-f-001", expectedRevision: exam.revision });
+    const updated = await discontinueExam({
+      examId: "ex-qda-f-001",
+      expectedRevision: exam.revision,
+      idempotencyKey: "disc-1",
+    });
     expect(updated.status).toBe("DISCONTINUED");
     const draft = await getExam("ex-hsa-f-002");
-    await expect(discontinueExam({ examId: "ex-hsa-f-002", expectedRevision: draft.revision })).rejects.toMatchObject({
+    await expect(
+      discontinueExam({ examId: "ex-hsa-f-002", expectedRevision: draft.revision, idempotencyKey: "disc-2" }),
+    ).rejects.toMatchObject({
       status: 409,
       code: "EXAM_NOT_PUBLISHED",
     });
@@ -197,7 +202,9 @@ describe("discontinueExam", () => {
 
   it("revision cũ báo 412 EXAM_REVISION_CONFLICT", async () => {
     const exam = await getExam("ex-qda-f-001");
-    await expect(discontinueExam({ examId: "ex-qda-f-001", expectedRevision: exam.revision + 3 })).rejects.toMatchObject({
+    await expect(
+      discontinueExam({ examId: "ex-qda-f-001", expectedRevision: exam.revision + 3, idempotencyKey: "disc-3" }),
+    ).rejects.toMatchObject({
       status: 412,
       code: "EXAM_REVISION_CONFLICT",
     });

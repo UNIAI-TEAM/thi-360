@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,13 +7,11 @@ import type { ContentReference } from "@/features/content/types";
 import type * as ContentApi from "@/features/content/api";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
-import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-panel";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { saveBlockers } from "../allocation";
 import { ReferenceDistributions } from "../components/subject-allocation-extras";
 import { TopicQuotaTable } from "../components/topic-quota-table";
 import { referenceEntries } from "../reference-distribution";
-import type { ExamPart, ExamQuota, ExamSection, TopicQuota } from "../types";
+import type { ExamQuota, ExamSection, TopicQuota } from "../types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -85,112 +83,6 @@ describe("Row 5: tổng tỷ lệ khác 100% (R-118)", () => {
     await user.type(grade, "100");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
-  });
-});
-
-describe("Row 6: đổi tổng từ 30 xuống 20 (R-121)", () => {
-  // Số câu của mục chỉ đọc ở bước 2 (UNI-2753): màn không còn ô nào đổi tổng của môn. Hộp "Áp dụng số mới / Giữ số cũ" vẫn là
-  // phần của panel môn khi tổng khác số đã xác nhận, nên các phép thử đưa thẳng tổng mới (20) và số đã xác nhận (30) vào panel.
-  const section = (over: Partial<ExamSection> = {}): ExamSection => ({
-    id: "sec-1",
-    subjectCode: "MATH",
-    questionCount: 20,
-    knowledgeScope: null,
-    answerQuotas: null,
-    matrix: { ...percentMatrix(100, [25, 50, 25, 0]), cells: [] } as unknown as ExamSection["matrix"],
-    choiceGroup: null,
-    topicQuotas: [{ id: "t1", name: "Xác suất", nodeIds: [], count: 3, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" }] as TopicQuota[],
-    blocks: [{ id: "blk-1", name: "Choice", questionType: "SINGLE_CHOICE", questionCount: 30, setCount: null, setSize: null, requiredPointsPerQuestion: 1, knowledgeScope: null, tagCodes: [], matrix: null, childAnswerType: null, templateGroupCode: null, answerTypeLocked: false }],
-    ...over,
-  });
-  const name = (list: ReadonlyArray<{ code: string; name: string }>) => (code: string) => list.find((item) => item.code === code)?.name ?? code;
-
-  function renderPanel(initial: ExamSection) {
-    const latest = { section: initial };
-    function Harness() {
-      const [current, setCurrent] = useState(initial);
-      const [confirmed, setConfirmed] = useState(30);
-      return (
-        <ExamStructureSubjectPanel
-          examId={EXAM_ID}
-          context={{ part: { id: "part-1", sections: [current], options: [] } as unknown as ExamPart, option: null, section: current, location: { partId: "part-1", optionId: null, sectionId: "sec-1" } }}
-          subjectName="Toán học"
-          axes={axes}
-          labels={{ grade: name(reference.grades), difficulty: name(reference.difficulties) }}
-          reference={reference}
-          onChange={(update) => {
-            latest.section = update(latest.section);
-            setCurrent(latest.section);
-          }}
-          onSelectBlock={() => {}}
-          onAddBlock={() => {}}
-          confirmedCount={confirmed}
-          onConfirmCount={setConfirmed}
-        />
-      );
-    }
-    renderWithProviders(<Harness />);
-    return latest;
-  }
-
-  it("hiện thông báo với số câu mới theo tỷ lệ", () => {
-    renderPanel(section());
-    const notice = screen.getByRole("alert");
-    expect(notice).toHaveTextContent("Tổng đổi thành 20 câu (trước đó 30 câu)");
-    expect(notice).toHaveTextContent("Độ khó: Nhận biết 5 · Thông hiểu 10 · Vận dụng 5 · Vận dụng cao 0");
-    expect(notice).toHaveTextContent("Xác suất 2");
-  });
-
-  it("Áp dụng số mới: chỉ tiêu chủ đề đổi count và giữ percent, ma trận vẫn theo tỷ lệ", async () => {
-    const user = userEvent.setup();
-    const latest = renderPanel(section());
-    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
-    expect(screen.queryByText(/Tổng đổi thành/)).not.toBeInTheDocument();
-    expect(screen.getByText("2 câu")).toBeInTheDocument();
-    expect(latest.section.matrix?.unit).toBe("PERCENT");
-    expect(latest.section.topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
-  });
-
-  it("Giữ số cũ: bảng đổi sang số câu của tổng 30 và chỉ tiêu chủ đề giữ 3 câu, bỏ percent", async () => {
-    const user = userEvent.setup();
-    const latest = renderPanel(section());
-    await user.click(screen.getByRole("button", { name: "Giữ số cũ" }));
-    expect(screen.queryByText(/Tổng đổi thành/)).not.toBeInTheDocument();
-    const difficulty = ["Nhận biết", "Thông hiểu", "Vận dụng"].map((label) => (screen.getByRole("textbox", { name: new RegExp(`${label} · số câu`) }) as HTMLInputElement).value);
-    expect(difficulty).toEqual(["8", "15", "7"]);
-    expect(latest.section.matrix?.unit).toBe("COUNT");
-    expect(latest.section.topicQuotas?.[0]).toMatchObject({ count: 3 });
-    expect(latest.section.topicQuotas?.[0]?.percent).toBeUndefined();
-  });
-
-  it("R1-02: chưa chọn Áp dụng hay Giữ thì môn chặn lưu; chọn xong thì hết chặn", async () => {
-    const user = userEvent.setup();
-    const initial = section();
-    const part = { id: "part-1", sections: [initial], options: [] } as unknown as ExamPart;
-    expect(saveBlockers([part], axes, () => 30)).toContainEqual({ kind: "TOTAL_CHANGE", sectionId: "sec-1", blockId: null });
-    expect(saveBlockers([part], axes, () => 20)).toEqual([]);
-    renderPanel(initial);
-    await user.click(screen.getByRole("button", { name: "Áp dụng số mới" }));
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("R2-07: sau Áp dụng số mới hoặc Giữ số cũ tiêu điểm về tiêu đề màn môn, không rơi về thân trang", async () => {
-    for (const action of ["Áp dụng số mới", "Giữ số cũ"]) {
-      const user = userEvent.setup();
-      renderPanel(section());
-      await user.click(screen.getByRole("button", { name: action }));
-      await waitFor(() => expect(screen.getByRole("heading", { level: 2 })).toHaveFocus());
-      expect(screen.getByRole("heading", { level: 2 })).toHaveClass("focus-visible:ring-3");
-      cleanup();
-    }
-  });
-
-  it("R1-25: chỉ tiêu dạng trả lời nhập theo tỷ lệ cũng hiện trong thông báo; Giữ số cũ đổi sang số câu của tổng 30", async () => {
-    const user = userEvent.setup();
-    const latest = renderPanel(section({ answerQuotas: { unit: "PERCENT", items: [{ answerType: "SINGLE_CHOICE", value: 50 }, { answerType: "TRUE_FALSE", value: 50 }] } }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/Dạng trả lời: .* 10 · .* 10/);
-    await user.click(screen.getByRole("button", { name: "Giữ số cũ" }));
-    expect(latest.section.answerQuotas).toMatchObject({ unit: "COUNT", items: [{ value: 15 }, { value: 15 }] });
   });
 });
 

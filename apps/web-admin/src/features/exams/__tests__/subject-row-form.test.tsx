@@ -1,7 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { patchSubjectFormEntry } from "../subject-forms/registry";
 import { boot, openStructure, putCalls, requestLog, sectionsOf, wireBlock, wireSection, type Wire } from "./subject-form-harness";
 import { bcaLiteratureSection, hsaLiteratureSection, oneSection, qdaLiteratureSection, thptqgLiteratureSection, thptqgPhysicsParts } from "./subject-row-builders";
 
@@ -15,14 +14,14 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-/**
- * CR-3 lát CR-3a, Danh sách dòng thật (`row-list-form.tsx`) trên `StructureEditor` thật: cờ `enabled` của HSA, QDA, BCA (VAN, ANH) và THPTQG đã bật
- * ở sản phẩm, nên các ca này không cần chỗ cắm cờ; cặp của lát CR-3b (HSCA, V-SAT, SP2E) chỉ bật bằng `patchSubjectFormEntry` để kiểm khóa.
- */
-const restores: Array<() => void> = [];
-afterEach(() => {
-  while (restores.length) restores.pop()!();
-});
+afterEach(() => routerMock.push.mockReset());
+
+function qdaLiteratureMdSection(): Wire {
+  const sec = qdaLiteratureSection();
+  const blocks = [...(sec.blocks as Wire[])];
+  blocks[0] = { ...blocks[0], childConditions: [{ from: 1, to: 1, nodeIds: ["n1"] }] };
+  return { ...sec, blocks };
+}
 
 const rowNames = () => Array.from(document.querySelectorAll<HTMLElement>("[data-form-row]")).map((row) => row.querySelector("[data-exam-content]")?.textContent);
 const rowOf = (id: string) => document.querySelector<HTMLElement>(`[data-form-row="${id}"]`)!;
@@ -174,7 +173,6 @@ describe("Danh sách dòng: khóa theo nguồn (R-7)", () => {
 
   it("locksBySource: khóa tổng (H27) khóa số câu của mục ở đầu môn nhưng dòng vẫn sửa được", async () => {
     const user = userEvent.setup();
-    restores.push(patchSubjectFormEntry("HSCA", "TOAN", { enabled: true }));
     boot({ kind: "HSCA", parts: hscaMath(), templates: [wireTemplate("HSCA_TOAN", { fixedCounts: true })], examOverrides: { scope: "SUBJECT", templateCode: "HSCA_TOAN" } });
     openStructure("?section=sec-toan");
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
@@ -198,7 +196,6 @@ describe("Danh sách dòng: khóa theo nguồn (R-7)", () => {
 
   it.each(["HSCA", "VSAT"])("locksBySource: nhóm Viết %s đã lược không bật lại; SP2E không khóa", async (kind) => {
     const user = userEvent.setup();
-    restores.push(patchSubjectFormEntry(kind, "VAN", { enabled: true }), patchSubjectFormEntry("SP2E", "VAN", { enabled: true }));
     const writing = wireBlock("write-1", { name: "Viet", questionType: "ESSAY", questionCount: 1, omitted: true, templateGroupCode: "VAN_WRITE" });
     const writingPart = (): Wire[] => oneSection(wireSection("sec-van", "VAN", [writing], { questionCount: 0 }));
     const omittedTemplate = (kindCode: string, omittedLocked: boolean) => wireTemplate(`${kindCode}_VAN`, { kindCode, omittedLocked }, [{ ...writing, id: null }]);
@@ -582,19 +579,17 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
 
 describe("Danh sách dòng: số request, trường đã dọn (R-13)", () => {
   it("noExtraRequestsOnOpen: mở DS thật không gọi nhiều request hơn MD của cùng môn, cùng fixture", async () => {
-    const open = async (enabled: boolean) => {
-      const restore = patchSubjectFormEntry("QDA", "VAN", { enabled });
-      try {
-        const { server } = boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
-        const rendered = openStructure("?section=sec-van");
-        await rendered.findByRole("heading", { name: enabled ? "Các dòng lấy câu" : "Nhóm lấy câu" });
-        await waitFor(() => expect(server.requests.length).toBeGreaterThan(0));
-        const log = requestLog(server);
-        rendered.unmount();
-        return log;
-      } finally {
-        restore();
-      }
+    const open = async (useRows: boolean) => {
+      const { server } = boot({
+        kind: "QDA",
+        parts: oneSection(useRows ? qdaLiteratureSection() : qdaLiteratureMdSection()),
+      });
+      const rendered = openStructure("?section=sec-van");
+      await rendered.findByRole("heading", { name: useRows ? "Các dòng lấy câu" : "Nhóm lấy câu" });
+      await waitFor(() => expect(server.requests.length).toBeGreaterThan(0));
+      const log = requestLog(server);
+      rendered.unmount();
+      return log;
     };
     const md = await open(false);
     const rows = await open(true);
@@ -634,8 +629,7 @@ describe("Danh sách dòng: số request, trường đã dọn (R-13)", () => {
   });
 
   it("noRemovedFields: MD của cùng môn vẫn hiện đủ các trường đó", async () => {
-    restores.push(patchSubjectFormEntry("QDA", "VAN", { enabled: false }));
-    boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
+    boot({ kind: "QDA", parts: oneSection(qdaLiteratureMdSection()) });
     openStructure("?section=sec-van");
     expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Khai chỉ tiêu" }).length).toBeGreaterThan(0);

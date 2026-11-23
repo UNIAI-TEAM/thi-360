@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getContentReferenceFixture } from "@/test/fixtures/content-reference";
 import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
@@ -7,46 +7,35 @@ import type { SectionContext } from "../components/exam-structure-draft";
 import { fitsForm } from "../subject-forms/fit";
 import { createRawInputStore } from "../subject-forms/raw-input-store";
 import { RowListForm } from "../subject-forms/row-list-form";
-import { listSubjectFormPairs, patchSubjectFormEntry, subjectFormFor } from "../subject-forms/registry";
+import { listSubjectFormPairs, subjectFormFor } from "../subject-forms/registry";
 import { selectAllSubjectForms } from "../subject-forms/selection";
 import type { ExamPart, ExamSection } from "../types";
 import { block, part, section, standardFixtureTemplates, standardExam } from "./subject-form-builders";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-/**
- * B7 của CR-3a và CR-3b trên mọi mẫu chuẩn của fixture B8: trước khi bật cặp mở MD; sau khi bật mở DS và vẽ đủ dòng.
- */
-const restores: Array<() => void> = [];
-afterEach(() => {
-  while (restores.length) restores.pop()!();
-});
-
 const ENABLED_KINDS = ["HSA", "QDA", "BCA", "THPTQG", "VACT", "SP2E", "SPT", "HSCA", "VSAT"] as const;
-const isEnabledRowPair = (kind: string, subject: string) => {
-  const entry = subjectFormFor(kind, subject);
-  return entry?.form === "ROWS" && entry.enabled === true;
-};
+const isRowPair = (kind: string, subject: string) => subjectFormFor(kind, subject)?.form === "ROWS";
 
-/** Mọi mục DS của cặp đã bật trong mọi mẫu chuẩn (cả `sections`, `subjectPool`, `options[].sections`). */
-function enabledRowSections(): Array<{ code: string; kind: string; part: ExamPart; section: ExamSection }> {
+/** Mọi mục DS trong mọi mẫu chuẩn (cả `sections`, `subjectPool`, `options[].sections`). */
+function rowSections(): Array<{ code: string; kind: string; part: ExamPart; section: ExamSection }> {
   const found: Array<{ code: string; kind: string; part: ExamPart; section: ExamSection }> = [];
   for (const template of standardFixtureTemplates()) {
     for (const item of template.parts) {
       for (const candidate of [...item.sections, ...(item.subjectPool ?? []), ...item.options.flatMap((option) => option.sections)]) {
-        if (isEnabledRowPair(template.kindCode, candidate.subjectCode)) found.push({ code: template.code, kind: template.kindCode, part: item, section: candidate });
+        if (isRowPair(template.kindCode, candidate.subjectCode)) found.push({ code: template.code, kind: template.kindCode, part: item, section: candidate });
       }
     }
   }
   return found;
 }
 
-describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
-  it("mọi cặp DS và MT (HSA, QDA, BCA, V-ACT) đang bật", () => {
-    const enabled = listSubjectFormPairs().filter(({ entry }) => entry.enabled);
-    const enabledRows = enabled.filter(({ entry }) => entry.form === "ROWS");
-    const enabledMatrix = enabled.filter(({ entry }) => entry.form === "MATRIX");
-    expect(enabledRows.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
+describe("Phủ bảng đăng ký và chọn DS trên mọi mẫu chuẩn", () => {
+  it("mọi cặp DS và MT (HSA, QDA, BCA, V-ACT) đăng ký đúng dạng", () => {
+    const pairs = listSubjectFormPairs();
+    const rowPairs = pairs.filter(({ entry }) => entry.form === "ROWS");
+    const matrixPairs = pairs.filter(({ entry }) => entry.form === "MATRIX");
+    expect(rowPairs.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
       [
         ...["HSA", "QDA", "BCA"].flatMap((kind) => ["VAN", "ANH"].map((subject) => `${kind}:${subject}`)),
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `THPTQG:${subject}`),
@@ -57,7 +46,7 @@ describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"].map((subject) => `VSAT:${subject}`),
       ].toSorted(),
     );
-    expect(enabledMatrix.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
+    expect(matrixPairs.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).toSorted()).toEqual(
       [
         ...["HSA", "QDA", "BCA"].flatMap((kind) => ["TOAN", "LY", "HOA", "SINH", "SU", "DIA"].map((subject) => `${kind}:${subject}`)),
         "VACT:TOAN",
@@ -66,36 +55,29 @@ describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
     );
   });
 
-  it("trước khi bật: cờ tắt thì mọi mục DS của mọi mẫu mở MD, không dòng chữ; sau khi bật mở DS, không rơi về MD", () => {
-    const rows = enabledRowSections();
+  it("mọi mục DS của mọi mẫu mở DS, không rơi về MD", () => {
+    const rows = rowSections();
     expect(rows.length).toBeGreaterThan(20);
     const kinds = new Set(rows.map((item) => item.kind));
     expect([...kinds].toSorted()).toEqual([...ENABLED_KINDS].toSorted());
     for (const { kind, part: owner, section: item, code } of rows) {
-      const after = selectAllSubjectForms(standardExam(kind), [owner])[item.id];
-      expect(after, `${code} ${item.subjectCode} sau khi bật`).toEqual({ form: "ROWS", notice: false });
-      const undo = patchSubjectFormEntry(kind, item.subjectCode, { enabled: false });
-      const before = selectAllSubjectForms(standardExam(kind), [owner])[item.id];
-      undo();
-      expect(before, `${code} ${item.subjectCode} trước khi bật`).toEqual({ form: "DEFAULT", notice: false });
+      const picked = selectAllSubjectForms(standardExam(kind), [owner])[item.id];
+      expect(picked, `${code} ${item.subjectCode}`).toEqual({ form: "ROWS", notice: false });
     }
   });
 
   it.each([["SP2E", "TOAN"], ["HSCA", "ANH"], ["VACT", "SCIENTIFIC_THINKING"], ["VSAT", "TOAN"]])(
-    "bài % của %s %s mở MD trước bật và DS sau bật",
+    "bài % của %s %s mở DS",
     (kind, subject) => {
       const item = section("s", subject, [block("b")], {
         matrix: { mode: "SEPARATE", unit: "PERCENT", cells: [], byGrade: [], byDifficulty: [{ code: "NB", value: 100 }] },
       });
       const owner = part("p", [item]);
-      const undo = patchSubjectFormEntry(kind, subject, { enabled: false });
-      expect(selectAllSubjectForms(standardExam(kind), [owner]).s).toEqual({ form: "DEFAULT", notice: false });
-      undo();
       expect(selectAllSubjectForms(standardExam(kind), [owner]).s).toEqual({ form: "ROWS", notice: false });
     },
   );
 
-  it("bài có tỷ lệ ở kỳ không cho nhập % mở MD kèm dòng chữ ở cả trước và sau khi bật (PERCENT_ENTRY)", () => {
+  it("bài có tỷ lệ ở kỳ không cho nhập % mở MD kèm dòng chữ (PERCENT_ENTRY)", () => {
     const percent = section("s", "VAN", [block("b", { matrix: null })], {
       matrix: { mode: "SEPARATE", unit: "PERCENT", cells: [], byGrade: [], byDifficulty: [{ code: "NB", value: 100 }] },
     });
@@ -106,10 +88,10 @@ describe("B7 lát CR-3a và CR-3b: trước và sau khi bật", () => {
     }
   });
 
-  it("sau khi bật: DS thật vẽ đủ dòng của mọi mục DS trong mọi mẫu chuẩn của cặp bật, mỗi dòng gắn data-form-row", async () => {
+  it("DS thật vẽ đủ dòng của mọi mục DS trong mọi mẫu chuẩn, mỗi dòng gắn data-form-row", async () => {
     const reference: ContentReference = await getContentReferenceFixture();
     const axes = { grades: reference.grades.map((grade) => grade.code), difficulties: reference.difficulties.map((difficulty) => difficulty.code) };
-    const rows = enabledRowSections();
+    const rows = rowSections();
     for (const { code, kind, part: owner, section: item } of rows) {
       const context: SectionContext = { part: owner, option: null, section: item, location: { partId: owner.id, optionId: null, sectionId: item.id } };
       const view = renderWithProviders(

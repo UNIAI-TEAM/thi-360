@@ -10,31 +10,25 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { errorCodeOf } from "../review-api";
-import {
-  defaultPreviewTrialApiDeps,
-  PREVIEW_TRIAL_QUERY_KEYS,
-  reviewPreviewHref,
-  type PreviewTrialApiDeps,
-} from "./api";
+import { errorCodeOf } from "../errors";
+import { PREVIEW_TRIAL_QUERY_KEYS } from "../keys";
+import { getPreviewTrialPaper, gradePreviewTrial, reviewPreviewHref } from "./api";
 import { toApiTrialAnswers } from "./mappers";
 import { useTrialAudioRegistry } from "./trial-audio";
 import { TrialPaperView } from "./trial-paper-view";
 import { TrialResultView } from "./trial-result-view";
 import type { PreviewGradeResponse } from "./types";
 
-export interface PreviewTrialViewProps {
+interface PreviewTrialViewProps {
   examId: string;
   previewId: string;
   initialExpiresAt?: string | null;
-  deps?: PreviewTrialApiDeps;
 }
 
 export function PreviewTrialView({
   examId,
   previewId,
   initialExpiresAt = null,
-  deps = defaultPreviewTrialApiDeps,
 }: PreviewTrialViewProps) {
   const t = useTranslations("exams.trial");
   useSetBreadcrumbLeaf(t("title"));
@@ -48,7 +42,6 @@ export function PreviewTrialView({
         examId={examId}
         previewId={previewId}
         initialExpiresAt={initialExpiresAt}
-        deps={deps}
         announce={setAnnouncement}
       />
     </>
@@ -59,13 +52,11 @@ function PreviewTrialSession({
   examId,
   previewId,
   initialExpiresAt,
-  deps,
   announce,
 }: {
   examId: string;
   previewId: string;
   initialExpiresAt: string | null;
-  deps: PreviewTrialApiDeps;
   announce: (message: string) => void;
 }) {
   const t = useTranslations("exams.trial");
@@ -88,7 +79,7 @@ function PreviewTrialSession({
 
   const paperQuery = useQuery({
     queryKey: PREVIEW_TRIAL_QUERY_KEYS.paper(examId, previewId),
-    queryFn: ({ signal }) => deps.getPreviewTrialPaper({ examId, previewId, signal }),
+    queryFn: ({ signal }) => getPreviewTrialPaper({ examId, previewId, signal }),
     retry: false,
   });
 
@@ -117,7 +108,7 @@ function PreviewTrialSession({
         throw new Error("Trial paper is not loaded");
       }
       const apiAnswers = toApiTrialAnswers(paperQuery.data, answers);
-      return deps.gradePreviewTrial({ examId, previewId, answers: apiAnswers });
+      return gradePreviewTrial({ examId, previewId, answers: apiAnswers });
     },
     onSuccess: (result) => {
       setSubmitErrorMsg(null);

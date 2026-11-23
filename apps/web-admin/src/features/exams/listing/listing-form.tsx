@@ -7,9 +7,9 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { BlockRadioGroup } from "../components/block-radio-group";
+import { ChoiceCardGroup } from "../components/choice-card-group";
 import { ExamEditorActions } from "../components/exam-editor-actions";
-import { ExamsApiError } from "../review-api";
+import { ExamsApiError } from "../errors";
 import type { ExamDetail } from "../types";
 import {
   FORM_FIELD_OF,
@@ -27,7 +27,7 @@ import { ListingCardPreview, ListingCheckSummary } from "./listing-aside";
 import { useSaveExamListing } from "./queries";
 import { RESULT_VIEWS, type ExamListing } from "./types";
 
-export interface ListingFormProps {
+interface ListingFormProps {
   exam: ExamDetail;
   listing: ExamListing;
   /** Có `EXAM.MODIFY`; không thì tab chỉ xem (AC-8). */
@@ -283,7 +283,8 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
             control={control}
             name="resultView"
             render={({ field }) => (
-              <BlockRadioGroup
+              <ChoiceCardGroup
+                variant="pill"
                 legend={t("result.legend")}
                 value={field.value}
                 disabled={disabled}

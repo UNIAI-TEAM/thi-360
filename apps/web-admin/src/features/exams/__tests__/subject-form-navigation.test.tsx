@@ -1,10 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EXAM_ID } from "./fake-exams-server";
-import { registerFormBlockingRuleForTest } from "../subject-forms/blocking";
 import { findFormTargetElement, focusFormTarget, formTarget, MATRIX_MAPID_RULES_FIELD } from "../subject-forms/navigation";
-import { boot, checkCalls, installForms, openStructure, putCalls, qdaParts } from "./subject-form-harness";
+import { boot, checkCalls, openStructure, putCalls, qdaParts } from "./subject-form-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -16,17 +15,9 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-/**
- * CR-1 AC-8 (FTM AC 59 phần điều hướng), trên `StructureEditor` thật: `?block=`, bấm lỗi kiểm tra đi qua `navigation.ts`; MD giữ đích
- * cũ (màn nhóm); MT mở môn và đặt focus vào ô; DS mở môn và đặt focus vào dòng; khung không lộ nút thêm, xóa nhóm trái dạng. Màn MT/DS ở đây là
- * màn thử đăng ký qua `form-renderers.ts`; đích compact của màn thật là phần của CR-2, CR-2H, CR-3. Ca ON: `review-step2.test.tsx`.
- */
-let restore: () => void;
 beforeEach(() => {
   routerMock.push.mockReset();
-  restore = installForms();
 });
-afterEach(() => restore());
 
 const issue = (blockId: string, sectionId: string, subjectCode: string) => ({
   key: `GROUP_ANSWER_TYPE_MISSING|${blockId}`,
@@ -60,50 +51,14 @@ describe("Điều hướng theo biểu mẫu (FTM R-15)", () => {
     boot();
     openStructure("?block=toan-b1");
     expect(await screen.findByRole("textbox", { name: "Tên nhóm" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /^(MT|DS) / })).toBeNull();
-  });
-
-  it("MT: ?block= của nhóm thuộc môn MT mở môn, đặt focus vào ô, không mở editor nhóm đầy đủ", async () => {
-    boot();
-    openStructure("?block=sec-ly-set");
-    expect(await screen.findByRole("heading", { name: "MT LY" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "MT LY cau don" })).toHaveFocus());
-    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
-  });
-
-  it("DS: ?block= của nhóm thuộc môn DS mở môn, đặt focus vào đúng dòng", async () => {
-    boot();
-    openStructure("?block=van-r2");
-    expect(await screen.findByRole("heading", { name: "DS VAN" })).toBeInTheDocument();
-    await waitFor(() => expect(document.querySelector('[data-form-row="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
-    expect(screen.queryByRole("textbox", { name: "Tên nhóm" })).toBeNull();
-  });
-
-  it("bấm lỗi kiểm tra của nhóm thuộc môn MT: vào ô của MT, không mở màn nhóm", async () => {
-    const user = userEvent.setup();
-    boot({ checkBody: failedCheck("sec-ly-set", "sec-ly", "LY") });
-    openStructure("?section=sec-toan");
-    await screen.findByRole("heading", { level: 2, name: /TOAN/ });
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    expect(await screen.findByRole("heading", { name: "MT LY" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "MT LY cau don" })).toHaveFocus());
-    expect(window.location.search).toBe("?block=sec-ly-set");
-  });
-
-  it("bấm lỗi kiểm tra của nhóm thuộc môn DS: mở dòng; môn MD: mở màn nhóm như cũ", async () => {
-    const user = userEvent.setup();
-    boot({ checkBody: failedCheck("van-r1", "sec-van", "VAN") });
-    openStructure("?section=sec-toan");
-    await screen.findByRole("heading", { level: 2, name: /TOAN/ });
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
-    await waitFor(() => expect(document.querySelector('[data-form-row="van-r1"]')).toContainElement(document.activeElement as HTMLElement));
+    expect(screen.queryByRole("heading", { name: /Cấu trúc câu|Các dòng lấy câu/ })).toBeNull();
   });
 
   it("bấm lỗi kiểm tra của nhóm thuộc môn MD: mở màn nhóm (đích cũ)", async () => {
     const user = userEvent.setup();
     boot({ checkBody: failedCheck("toan-b1", "sec-toan", "TOAN") });
     openStructure("?section=sec-ly");
-    await screen.findByRole("heading", { name: "MT LY" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
     await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
     expect(await screen.findByRole("textbox", { name: "Tên nhóm" })).toBeInTheDocument();
   });
@@ -112,37 +67,13 @@ describe("Điều hướng theo biểu mẫu (FTM R-15)", () => {
     const user = userEvent.setup();
     boot();
     openStructure("?section=sec-ly");
-    await screen.findByRole("heading", { name: "MT LY" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
     expect(screen.queryByRole("button", { name: /Thêm nhóm|Xóa nhóm|Lên|Xuống/ })).toBeNull();
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /VAN/ }));
-    await screen.findByRole("heading", { name: "DS VAN" });
+    await screen.findByRole("heading", { name: "Các dòng lấy câu" });
     expect(screen.queryByRole("button", { name: /Thêm nhóm|Xóa nhóm|Lên|Xuống/ })).toBeNull();
     await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
     expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
-  });
-
-  it("dạng bật mà chưa có màn vẽ: giữ MD, không để môn trống", async () => {
-    restore();
-    restore = installForms({ renderers: false });
-    boot();
-    openStructure("?section=sec-ly");
-    expect(await screen.findByRole("heading", { level: 2, name: /LY/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
-    expect(screen.queryByTestId("full-form-notice")).toBeNull();
-  });
-  it("(R1-5) dạng bật mà chưa có màn: ?block= mở màn nhóm MD và luật MT/DS không chặn lưu", async () => {
-    const user = userEvent.setup();
-    restore();
-    restore = installForms({ renderers: false });
-    const { server } = boot({ parts: qdaParts({ lySingle: 13 }) });
-    // ?block= của môn bật nhưng không có màn: vẫn mở editor nhóm đầy đủ của MD, không mở "môn".
-    openStructure("?block=sec-ly-single");
-    expect(await screen.findByRole("textbox", { name: "Tên nhóm" })).toBeInTheDocument();
-    // Luật MT coi 13 là sai, nhưng mục đang vẽ MD nên không bị xét: sửa chỗ khác (ở TOAN) rồi lưu được.
-    await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
-    await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(server.calls("PUT", `/api/v1/admin/exams/${EXAM_ID}/structure`)).toHaveLength(1));
   });
 });
 
@@ -154,7 +85,6 @@ describe("Điều hướng tới dòng của Danh sách dòng thật (CR-3 AC-13
   const editorOf = (name: RegExp) => screen.findByRole("heading", { name: new RegExp("Sửa dòng: " + name.source) });
 
   it("rowTargets: ?block= của nhóm thuộc môn DS mở màn sửa đúng dòng và focus nằm trong màn sửa", async () => {
-    restore();
     boot();
     openStructure("?block=van-r2");
     const heading = await editorOf(/Van dong 2/);
@@ -164,7 +94,6 @@ describe("Điều hướng tới dòng của Danh sách dòng thật (CR-3 AC-13
   });
 
   it("rowTargets: bấm lỗi kiểm tra của nhóm thuộc môn DS (từ môn MD) mở đúng dòng và đặt focus vào màn sửa", async () => {
-    restore();
     const user = userEvent.setup();
     boot({ checkBody: failedCheck("van-r2", "sec-van", "VAN") });
     openStructure("?section=sec-toan");
@@ -176,35 +105,25 @@ describe("Điều hướng tới dòng của Danh sách dòng thật (CR-3 AC-13
   });
 
   it("rowTargets: lỗi chặn lưu của một dòng DS không gửi request, mở đúng dòng và đặt focus; chọn dòng khác thì màn sửa chuyển dòng và focus theo", async () => {
-    restore();
     const user = userEvent.setup();
-    const undo = registerFormBlockingRuleForTest((section, context) =>
-      context.form === "ROWS" && section.id === "sec-van" ? [{ code: "ROW_X", sectionId: section.id, blockId: "van-r2", field: null }] : [],
-    );
-    try {
-      const { server } = boot();
-      openStructure("?section=sec-toan");
-      await screen.findByRole("heading", { level: 2, name: /TOAN/ });
-      await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
-      const heading = await editorOf(/Van dong 2/);
-      await waitFor(() => expect(heading).toHaveFocus());
-      expect(checkCalls(server)).toHaveLength(0);
-      expect(putCalls(server)).toHaveLength(0);
-      await user.click(within(document.querySelector<HTMLElement>('[data-form-row="van-r1"]')!).getByRole("button", { name: /Sửa dòng/ }));
-      expect(await editorOf(/Van dong 1/)).toHaveFocus();
-    } finally {
-      undo();
-    }
+    const { server } = boot({ parts: qdaParts({ vanR2: 0 }) });
+    openStructure("?section=sec-toan");
+    await screen.findByRole("heading", { level: 2, name: /TOAN/ });
+    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await editorOf(/Van dong 2/);
+    await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
+    expect(checkCalls(server)).toHaveLength(0);
+    expect(putCalls(server)).toHaveLength(0);
+    await user.click(within(document.querySelector<HTMLElement>('[data-form-row="van-r1"]')!).getByRole("button", { name: /Sửa dòng/ }));
+    expect(await editorOf(/Van dong 1/)).toHaveFocus();
   });
 });
 
 /**
  * CR-2 AC-9 (FTM AC 59 cho MT): `?block=`, bấm lỗi kiểm tra và tóm tắt của nhóm thuộc môn MT thật vào đúng ô của vai trò nhóm và đặt focus,
- * cả khi đi qua Lưu và chuyển; không mở editor nhóm đầy đủ. Cờ và màn của sản phẩm (đỏ trước: ở gốc `?block=` của nhóm QDA mở editor nhóm).
+ * cả khi đi qua Lưu và chuyển; không mở editor nhóm đầy đủ.
  */
 describe("Đích MT thật (CR-2 AC-9)", () => {
-  beforeEach(() => restore());
-
   it.each([
     ["sec-ly-set", "Số chùm"],
     ["sec-ly-fill", "Điền đáp án"],
@@ -254,7 +173,6 @@ describe("Đích MT thật (CR-2 AC-9)", () => {
  * bấm "Đi tới quy tắc" mở HSA MT và đặt focus đúng dòng `[data-field="mapid-rule-<id>"]`.
  */
 describe("Đích HSA MT và quy tắc MAPID (CR-2H AC-10)", () => {
-  beforeEach(() => restore());
 
   const hsaParts = () => [
     {

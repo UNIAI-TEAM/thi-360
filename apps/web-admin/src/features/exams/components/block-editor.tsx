@@ -26,7 +26,7 @@ import { BlockConditions } from "./block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { ExamName, labelAfterName, labelBeforeName, richNodes } from "./exam-review-shared";
 import { BlockNumberInput, parseNumberText } from "./block-number-input";
-import { BlockRadioGroup } from "./block-radio-group";
+import { ChoiceCardGroup } from "./choice-card-group";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { BlockScoringEditor, expectedScoringFor } from "./block-scoring-editor";
 import { BlockSetConditions } from "./block-set-conditions";
@@ -50,7 +50,7 @@ const STRAND_KINDS: readonly string[] = ["SP2E", "SPT"];
 /** Mẫu cấu trúc bật sẵn ô "Mọi câu con thuộc chủ đề" (R-120): bài ôn V-ACT theo chủ đề. */
 const EVERY_CHILD_DEFAULT_TEMPLATES: readonly string[] = ["VACT_REVIEW"];
 
-export interface BlockEditorProps {
+interface BlockEditorProps {
   block: QuestionBlock;
   /** Môn chứa nhóm: nhóm không đặt phạm vi MAPID thì dùng phạm vi của môn. */
   section: ExamSection;
@@ -353,7 +353,8 @@ export function BlockEditor({
             />
           )}
         </FormField>
-        <BlockRadioGroup
+        <ChoiceCardGroup
+          variant="pill"
           legend={tForm("mode.legend")}
           value={isSet ? "set" : "single"}
           disabled={block.answerTypeLocked || rowsLocked}
@@ -401,7 +402,8 @@ export function BlockEditor({
         {isSet ? (
           <>
             {block.questionType === "QUESTION_SET" && (
-              <BlockRadioGroup
+              <ChoiceCardGroup
+          variant="pill"
                 legend={tForm("setMode.legend")}
                 disabled={rowsLocked}
                 value={flexible ? "total" : "sets"}
@@ -808,7 +810,8 @@ function BlockRowInfo({ block, section, partTotal, rowsLocked, lockId, available
         <p className="text-body text-text-secondary tabular-nums">{t("available", { count: available.total, audio })}</p>
       )}
       {canRate && (
-        <BlockRadioGroup
+        <ChoiceCardGroup
+          variant="pill"
           legend={t("entry.legend")}
           value={rateMode ? "RATE" : "COUNT"}
           onChange={pickMode}
