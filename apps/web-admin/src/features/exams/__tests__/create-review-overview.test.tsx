@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithProviders } from "@/test/render";
-import { CreateExamPage } from "../components/create-exam-page";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
+import { renderExamsUi } from "./render-exams-ui";
 
 /**
  * UNI-2752 (BA 1698): Theo môn + Tự thiết lập là một dòng: Số câu, Thời lượng (phút) và Điểm tối đa là ba cột của cùng bảng,
@@ -58,7 +58,7 @@ beforeEach(() => {
 });
 
 async function openReview(user: UserEvent) {
-  renderWithProviders(<CreateExamPage />);
+  renderExamsUi(<ExamGeneralForm mode="create" />);
   await screen.findByRole("form", { name: "Tạo bài thi" });
   await user.click(screen.getByRole("radio", { name: /^Theo môn/ }));
   await user.click(screen.getByRole("combobox", { name: /^Môn/ }));

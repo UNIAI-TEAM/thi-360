@@ -3,11 +3,12 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContentReference } from "@/features/content/types";
 import en from "@/messages/en.json";
-import { renderWithProviders } from "@/test/render";
-import { CreateExamPage } from "../components/create-exam-page";
+import { ExamEditorLayout } from "../components/exam-editor-layout";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, templateUuid } from "./fake-exams-backend";
 import { examDetailWire } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 const referenceMock = vi.hoisted(() => ({
@@ -54,7 +55,11 @@ beforeEach(() => {
 
 async function renderPage() {
   const user = userEvent.setup();
-  renderWithProviders(<CreateExamPage />);
+  renderExamsUi(
+    <ExamEditorLayout>
+      <ExamGeneralForm mode="create" />
+    </ExamEditorLayout>,
+  );
   await screen.findByRole("form", { name: "Tạo bài thi" });
   await waitFor(() => expect(screen.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue("HSA-F-003"));
   return user;
@@ -278,12 +283,19 @@ describe("trang Tạo bài thi, bước 1: đổi lựa chọn nạp lại bản
 });
 
 describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
+  const renderCreateShell = () =>
+    renderExamsUi(
+      <ExamEditorLayout>
+        <ExamGeneralForm mode="create" />
+      </ExamEditorLayout>,
+    );
+
   it("lỗi tải mẫu: báo ngay trong khối tổng quan, biểu mẫu vẫn dùng được, thử lại nạp bảng", async () => {
     const failing = new ExamsBackend();
     failing.server.on("GET", TEMPLATES_PATH, { status: 500, body: { code: "BOOM" } }, { status: 200, body: [] });
     failing.install();
     const user = userEvent.setup();
-    renderWithProviders(<CreateExamPage />);
+    renderCreateShell();
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText("Không tải được bảng tổng quan.")).toBeInTheDocument();
     expect(screen.queryByText("Không tải được mẫu cấu trúc")).toBeNull();
@@ -299,7 +311,7 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
 
   it("lỗi tải dữ liệu kỳ thi: cả trang báo lỗi dữ liệu tham chiếu, không nhắc mẫu cấu trúc", async () => {
     referenceMock.error = new Error("boom");
-    renderWithProviders(<CreateExamPage />);
+    renderCreateShell();
     expect(await screen.findByText("Không tải được dữ liệu kỳ thi")).toBeInTheDocument();
     expect(screen.queryByText(/mẫu cấu trúc/)).toBeNull();
     expect(screen.queryByRole("form", { name: "Tạo bài thi" })).toBeNull();
@@ -310,7 +322,7 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
     const denied = new ExamsBackend();
     denied.server.on("GET", TEMPLATES_PATH, { status: 403, body: { code: "FORBIDDEN" } });
     denied.install();
-    renderWithProviders(<CreateExamPage />);
+    renderCreateShell();
     expect(await screen.findByText("Thiếu quyền tạo bài")).toBeInTheDocument();
     expect(screen.getByText(/Bạn cần quyền EXAM\.MODIFY để tạo bài thi/)).toBeInTheDocument();
     expect(screen.queryByRole("form", { name: "Tạo bài thi" })).toBeNull();
@@ -321,7 +333,7 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
     const slow = new ExamsBackend();
     slow.server.on("GET", TEMPLATES_PATH, () => new Promise(() => {}));
     slow.install();
-    renderWithProviders(<CreateExamPage />);
+    renderCreateShell();
     expect(await screen.findByRole("form", { name: "Tạo bài thi" })).toBeInTheDocument();
     expect(screen.getByText("Đang tải bảng tổng quan")).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
@@ -329,21 +341,21 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
   });
 
   it("đang tải hiện khung chờ có aria-busy", () => {
-    renderWithProviders(<CreateExamPage />);
+    renderCreateShell();
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 });
 
 describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi2B", () => {
-  it("thanh bước ở đầu trang: 1 Thông tin chung đang làm, 2 Cấu trúc và ma trận", async () => {
+  it("thanh 5 tab ở đầu trang: Thông tin chung đang chọn, 4 tab sau khóa tĩnh (AC-01)", async () => {
     await renderPage();
-    const steps = screen.getByRole("list", { name: "Các bước tạo bài thi" });
-    const items = within(steps).getAllByRole("listitem");
-    expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent("1Thông tin chung");
-    expect(items[1]).toHaveTextContent("2Cấu trúc và ma trận");
-    expect(items[0]!.querySelector('[aria-current="step"]')).not.toBeNull();
-    expect(items[1]!.querySelector('[aria-current="step"]')).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Các phần của bài thi" });
+    expect(within(nav).getByRole("link", { name: "Thông tin chung" })).toHaveAttribute("aria-current", "page");
+    for (const label of ["Cấu trúc và ma trận", "Thông tin bán", "Kiểm tra và xem trước", "Phiên bản và công bố"]) {
+      const disabledTab = within(nav).getByText(label);
+      expect(disabledTab).toHaveAttribute("aria-disabled", "true");
+      expect(disabledTab.closest("a")).toBeNull();
+    }
   });
 
   it("kỳ thi là ô chọn trong khối Thông tin chung; đổi kỳ thi nạp lại bảng", async () => {
@@ -510,7 +522,12 @@ async function renderWithTemplates(templates: Wire[], locale: "vi" | "en" = "vi"
   backend.server.on("POST", EXAMS_PATH, { status: 201, body: examDetailWire() });
   backend.install();
   const user = userEvent.setup();
-  renderWithProviders(<CreateExamPage />, locale === "en" ? { locale, messages: en } : {});
+  renderExamsUi(
+    <ExamEditorLayout>
+      <ExamGeneralForm mode="create" />
+    </ExamEditorLayout>,
+    locale === "en" ? { locale, messages: en } : {},
+  );
   await screen.findByRole("form", { name: locale === "en" ? "Create exam" : "Tạo bài thi" });
   return user;
 }

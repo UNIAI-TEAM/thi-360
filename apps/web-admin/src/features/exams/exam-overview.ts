@@ -104,7 +104,7 @@ export function pointsRows(parts: readonly ExamPart[], combinations: readonly St
   return rows;
 }
 
-export interface QuotaScope {
+interface QuotaScope {
   /** Mẫu số: số câu của các môn thuộc tập câu áp dụng trên một đường (một mã, một lựa chọn). */
   count: number;
   subjectCodes: string[];

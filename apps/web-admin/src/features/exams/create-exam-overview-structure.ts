@@ -29,7 +29,7 @@ export function overviewRowsFromParts(
     const base = {
       questionCount: part.questionCount,
       durationMinutes: part.durationMinutes ?? null,
-      maxPoints: part.maxPoints ?? null,
+      maxPoints: part.maxPoints !== null && part.maxPoints !== undefined && part.maxPoints > 0 ? part.maxPoints : null,
     };
     rows.push({
       key: `p:${index}`,
@@ -97,9 +97,16 @@ export function applyOverviewToParts(parts: readonly ExamPart[], rows: readonly 
       if (edited !== undefined) return { ...section, questionCount: edited };
       return propagate ? { ...section, questionCount } : section;
     });
+    const countChanged = partChange?.questionCount !== undefined;
+    // Khớp ExamOverview.onPaper của backend: phần có codeSource (QDA/BCA) hoặc CHOICE lấy số câu trên đề theo đường lựa chọn;
+    // phần FIXED không mã tăng số câu vượt questionCountOnPaper cũ thì kéo questionCountOnPaper lên theo.
+    const fixed = !part.codeSource && part.participation?.mode !== "CHOICE" && part.mode !== "CHOICE";
+    const questionCountOnPaper =
+      countChanged && fixed && part.questionCountOnPaper < questionCount ? questionCount : part.questionCountOnPaper;
     return {
       ...part,
       questionCount,
+      questionCountOnPaper,
       durationMinutes: partChange?.durationMinutes ?? part.durationMinutes,
       maxPoints: partChange?.maxPoints ?? part.maxPoints,
       sections,

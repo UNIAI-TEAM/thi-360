@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getContentReferenceFixture as getContentReference } from "@/test/fixtures/content-reference";
 import type * as ContentApi from "@/features/content/api";
 import { renderWithProviders } from "@/test/render";
-import { ExamGeneralView } from "../components/exam-general-view";
+import { ExamGeneralForm } from "../components/exam-general-form";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
+import { renderExamsUi } from "./render-exams-ui";
 
 // Danh mục tham chiếu là dữ liệu của FE-1 (Nội dung): dùng bản mẫu cố định làm dữ liệu nền, không phụ thuộc cờ.
 vi.mock("@/features/content/api", async (importOriginal) => ({
@@ -80,7 +81,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
   async function renameAndSave() {
     const user = userEvent.setup();
     window.history.replaceState(null, "", `/exams/${EXAM_ID}`);
-    renderWithProviders(<ExamGeneralView examId={EXAM_ID} />);
+    renderExamsUi(<ExamGeneralForm mode="edit" examId={EXAM_ID} />);
     const name = await screen.findByRole("textbox", { name: /Tên bài thi/ });
     await user.clear(name);
     await user.type(name, "HSA đề 1 (sửa)");
@@ -111,7 +112,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
     });
     const { name } = await renameAndSave();
 
-    expect(await screen.findByText("Giá trị không hợp lệ.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Giá trị không hợp lệ.")).length).toBeGreaterThan(0);
     expect(name).toBeInvalid();
     expect(screen.queryByText(/name too long/)).not.toBeInTheDocument();
   });
@@ -135,7 +136,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
         .install();
     }
     window.history.replaceState(null, "", `/exams/${EXAM_ID}`);
-    renderWithProviders(<ExamGeneralView examId={EXAM_ID} />);
+    renderExamsUi(<ExamGeneralForm mode="edit" examId={EXAM_ID} />);
     const code = await screen.findByRole("textbox", { name: /Mã bài thi/ });
     await user.clear(code);
     await user.type(code, "HSA-DUPLICATE");
@@ -147,7 +148,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
     server.on("PATCH", EXAM_PATH, { status: 409, body: { code: "EXAM_CODE_TAKEN", message: "taken" } });
     const { code } = await changeCodeAndSave(false);
 
-    expect(await screen.findByText("Mã bài thi đã được dùng. Nhập mã khác.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).length).toBeGreaterThan(0);
     expect(code).toBeInvalid();
     expect(code).toHaveFocus();
     expect(screen.queryByText(/Không lưu được thông tin chung/)).not.toBeInTheDocument();
@@ -156,7 +157,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
   it("409 EXAM_CODE_TAKEN trên bài đã công bố (lockScope): vẫn báo lỗi và focus vào ô Mã", async () => {
     const { code } = await changeCodeAndSave(true);
 
-    expect(await screen.findByText("Mã bài thi đã được dùng. Nhập mã khác.")).toBeInTheDocument();
+    expect((await screen.findAllByText("Mã bài thi đã được dùng. Nhập mã khác.")).length).toBeGreaterThan(0);
     expect(code).toBeInvalid();
     expect(code).toHaveFocus();
     expect(screen.queryByText(/Không lưu được thông tin chung/)).not.toBeInTheDocument();

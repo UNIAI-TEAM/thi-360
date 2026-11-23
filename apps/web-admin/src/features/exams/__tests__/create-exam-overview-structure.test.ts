@@ -110,4 +110,44 @@ describe("applyOverviewToParts", () => {
     const next = apply(parts, {});
     expect(next[0]).toBe(parts[0]);
   });
+
+  it("AC-12 (R-08.2): đồng bộ questionCountOnPaper khớp ExamOverview.onPaper khi questionCount tăng ở phần FIXED không mã", () => {
+    // Bài ôn (từ 0 lên 30) hoặc bài chuẩn tăng từ 45 lên 60: questionCountOnPaper tăng theo questionCount mới.
+    const reviewParts = [part("p-rev", 0, [section("s-rev", "MATH", 0)], { questionCountOnPaper: 0 })];
+    const [nextReview] = apply(reviewParts, { "p:0": { questionCount: "30" } });
+    expect(nextReview!.questionCount).toBe(30);
+    expect(nextReview!.questionCountOnPaper).toBe(30);
+
+    const grownParts = [part("p-std", 45, [section("s-std", "MATH", 45)], { questionCountOnPaper: 45 })];
+    const [nextGrown] = apply(grownParts, { "p:0": { questionCount: "60" } });
+    expect(nextGrown!.questionCount).toBe(60);
+    expect(nextGrown!.questionCountOnPaper).toBe(60);
+
+    // Giảm số câu (45 -> 40 khi onPaper = 50): giữ nguyên 50.
+    const shrunkParts = [part("p-shrunk", 45, [section("s-shrunk", "MATH", 45)], { questionCountOnPaper: 50 })];
+    const [nextShrunk] = apply(shrunkParts, { "p:0": { questionCount: "40" } });
+    expect(nextShrunk!.questionCountOnPaper).toBe(50);
+
+    // Phần có codeSource (QDA/BCA) hoặc CHOICE: không tự kéo questionCountOnPaper.
+    const codedParts = [
+      part("p-coded", 50, [section("s-coded", "PHYSICS", 17)], {
+        codeSource: { source: "GLOBAL_LIST", branch: null },
+        questionCountOnPaper: 17,
+      }),
+    ];
+    const [nextCoded] = apply(codedParts, { "p:0": { questionCount: "60" } });
+    expect(nextCoded!.questionCountOnPaper).toBe(17);
+
+    const choiceParts = [
+      part("p-choice", 30, [section("s-choice", "ICT_COMMON", 28)], {
+        mode: "CHOICE",
+        options: [branch],
+        participation: { mode: "CHOICE", choose: 1 },
+        questionCountOnPaper: 28,
+      }),
+    ];
+    const [nextChoice] = apply(choiceParts, { "p:0": { questionCount: "35" } });
+    expect(nextChoice!.questionCountOnPaper).toBe(28);
+  });
 });
+

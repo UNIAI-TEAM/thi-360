@@ -18,7 +18,7 @@ import {
   templateCountBySubject,
 } from "../create-exam-schema";
 import type { ExamBuildMode, ExamScope, ExamTemplate } from "../types";
-import { ChoiceCardGroup, type ChoiceCardOption, KindField, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
+import { ChoiceCardGroup, type ChoiceCardOption, ScopeField, useKindLabel, usePartNames } from "./create-exam-fields";
 
 /** Giá trị thẻ "Nghe và Đọc" trong nhóm phạm vi tách theo audio; thẻ còn lại mang mã phần (`P<thứ tự>`). */
 const WHOLE_SUBJECT = "SUBJECT";
@@ -54,7 +54,7 @@ export function CreateExamScopeFields({
   errors: { partCode?: string; subjectCode?: string };
   disabled?: boolean;
   showBuildMode?: boolean;
-  /** Bài đã có phiên bản công bố (`/exams/new?exam=`): cách dựng bài chỉ đọc; `buildModeHint` nêu lý do ngay dưới nhóm. */
+  /** Bài đã có phiên bản công bố: cách dựng bài chỉ đọc; `buildModeHint` nêu lý do ngay dưới nhóm. */
   buildModeLocked?: boolean;
   buildModeHint?: string;
   onChange: (change: Partial<ScopeSelection>) => void;
@@ -286,46 +286,6 @@ export function CreateExamScopeFields({
           onChange={(buildMode) => onChange({ buildMode })}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * Kỳ thi và phạm vi của tab Thông tin chung: cùng nhóm chọn phạm vi, môn, phần với bước 1 (`CreateExamScopeFields`: phần
- * của môn theo mẫu Theo môn, môn chọn trước phần, thẻ Nghe, Đọc), thêm thẻ chọn kỳ thi; không có thẻ kiểu xây bài.
- */
-export function ExamKindScopeFields({
-  kinds,
-  subjects,
-  templates,
-  selection,
-  errors,
-  disabled,
-  onChange,
-}: {
-  kinds: readonly ExamKindOption[];
-  subjects: readonly CatalogOption[];
-  templates: readonly ExamTemplate[];
-  selection: ScopeSelection;
-  errors: { partCode?: string; subjectCode?: string };
-  disabled?: boolean;
-  onChange: (change: Partial<ScopeSelection>) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div data-field="kind">
-        <KindField kinds={kinds} value={selection.kind} disabled={disabled} onChange={(kind) => onChange({ kind })} />
-      </div>
-      <CreateExamScopeFields
-        kinds={kinds}
-        subjects={subjects}
-        templates={templates}
-        selection={selection}
-        errors={errors}
-        disabled={disabled}
-        showBuildMode={false}
-        onChange={onChange}
-      />
     </div>
   );
 }
