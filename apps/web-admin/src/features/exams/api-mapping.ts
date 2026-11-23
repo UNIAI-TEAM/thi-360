@@ -193,15 +193,15 @@ function mapItemShape(shape: Schemas["ItemShape"]): ItemShape {
   };
 }
 
-function mapDisplaySegment(segment: Schemas["DisplaySegment"]): DisplaySegment {
-  return {
-    code: segment.code,
-    name: segment.name,
-    fromPosition: segment.fromPosition,
-    toPosition: segment.toPosition,
-    commandCount: segment.commandCount,
-    maxPoints: segment.maxPoints,
-  };
+export function mapDisplaySegments(segments: readonly Partial<Schemas["DisplaySegment"]>[] | undefined): DisplaySegment[] {
+  return (segments ?? []).map((segment) => ({
+    code: segment.code ?? "",
+    name: segment.name ?? "",
+    fromPosition: segment.fromPosition ?? 0,
+    toPosition: segment.toPosition ?? 0,
+    commandCount: segment.commandCount ?? 0,
+    maxPoints: segment.maxPoints ?? 0,
+  }));
 }
 
 export function mapBlock(block: ApiBlock): QuestionBlock {
@@ -285,7 +285,7 @@ export function mapSection(section: ApiSection): ExamSection {
   };
 }
 
-export function mapOption(option: ApiOption): ExamPartOption {
+function mapOption(option: ApiOption): ExamPartOption {
   return {
     id: option.id ?? "",
     kind: option.kind ?? "SUBJECT",
@@ -324,7 +324,7 @@ export function mapPart(part: ApiPart, index: number): ExamPart {
           subjectPool: (part.subjectPool ?? []).map(mapSection),
         }
       : {}),
-    ...(part.displaySegments?.length ? { displaySegments: part.displaySegments.map(mapDisplaySegment) } : {}),
+    ...(part.displaySegments?.length ? { displaySegments: mapDisplaySegments(part.displaySegments) } : {}),
   };
 }
 

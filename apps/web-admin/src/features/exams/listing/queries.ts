@@ -1,14 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EXAMS_QUERY_KEYS } from "../keys";
+import { EXAMS_QUERY_KEYS, LISTING_QUERY_KEYS } from "../keys";
 import { getExamListing, updateExamListing, uploadExamCover } from "./api";
 import type { ExamListing, UpdateListingRequest } from "./types";
-
-/** Nằm dưới nhóm `exams`: mọi thao tác ghi của bài thi làm mới luôn cả thông tin bán. */
-export const LISTING_QUERY_KEYS = {
-  detail: (examId: string) => ["exams", "listing", examId] as const,
-};
 
 /**
  * Bản làm việc của thông tin bán. Không tự tải lại khi quay lại cửa sổ: biểu mẫu đang sửa không bị đè, và hai người

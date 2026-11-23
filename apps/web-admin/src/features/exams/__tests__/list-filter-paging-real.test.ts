@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { listExams } from "../api.http";
+import { listExams } from "../api";
 import { FakeServer } from "./fake-exams-server";
 
 const LIST_PATH = "/api/v1/admin/exams";

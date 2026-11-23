@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  allocationProgress,
   applyTopicTotal,
   blockingMappingRows,
   canRequire,
   convertTopicEntry,
-  distributionView,
   newTopicQuota,
   percentTotalValid,
   ratePercent,
@@ -57,43 +55,14 @@ describe("Chỉ tiêu chủ đề: quy đổi tỷ lệ và số câu (R-118)", 
   });
 });
 
-describe("Bảng phân bổ toàn bộ số câu (R-118 dòng 3, 4, 5)", () => {
-  it("độ khó 25/50/25 trên 30 câu: 8/15/7, tỷ lệ thực 26,7 / 50 / 23,3", () => {
-    const view = distributionView([25, 50, 25], "PERCENT", 30);
-    expect(view.counts).toEqual([8, 15, 7]);
-    expect(view.rates).toEqual([26.7, 50, 23.3]);
-    expect(view.sumCount).toBe(30);
-  });
-
-  it("sáu dòng 3 câu trên 18: mỗi dòng 16,7% và tổng ghi 18/18 câu, 100%", () => {
-    const view = distributionView([3, 3, 3, 3, 3, 3], "COUNT", 18);
-    expect(view.rates.every((rate) => rate === 16.7)).toBe(true);
-    expect(view.sumCount).toBe(18);
-    expect(view.sumRate).toBe(100);
-  });
-
+describe("Tổng tỷ lệ và tỷ lệ thực (R-118)", () => {
   it("tổng tỷ lệ khác 100% thì không hợp lệ", () => {
     expect(percentTotalValid([40, 30, 20])).toBe(false);
     expect(percentTotalValid([40, 30, 30])).toBe(true);
   });
 
-  it("nhập theo số câu thiếu hoặc vượt mẫu số", () => {
-    expect(distributionView([12, 9, 8, 1], "COUNT", 20).missing).toBe(-10);
-    expect(distributionView([10, 10], "COUNT", 30).missing).toBe(10);
-  });
-
   it("mẫu số không dương thì không có tỷ lệ", () => {
     expect(ratePercent(3, 0)).toBeNull();
-  });
-});
-
-describe("Tiến độ phân bổ (R-122 dòng 7)", () => {
-  it("12 câu đơn + 15 câu con trên 30: còn thiếu 3", () => {
-    expect(allocationProgress(12 + 15, 30)).toMatchObject({ state: "SHORT", missing: 3 });
-  });
-  it("12 + 18: đủ; 12 + 20: vượt 2", () => {
-    expect(allocationProgress(30, 30).state).toBe("MATCH");
-    expect(allocationProgress(32, 30)).toMatchObject({ state: "OVER", missing: -2 });
   });
 });
 

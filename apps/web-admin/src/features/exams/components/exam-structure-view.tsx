@@ -15,12 +15,12 @@ import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, nor
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
-import { examEditHref, examTabFromPathname, examTabHref } from "../editor-tabs";
+import { examTabFromPathname, examTabHref } from "../editor-tabs";
 import { addPoolSection } from "../coded-part";
 import type { MatrixAxes } from "../matrix";
 import { useExam, useExamStructure, useExamStructureSummary, useExamTemplates, useUpdateExamStructure } from "../queries";
 import { useRunExamCheck } from "../review-queries";
-import { ExamsApiError } from "../review-api";
+import { ExamsApiError } from "../errors";
 import type { ExamCheckResult, RunExamCheckRequest } from "../review-types";
 import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamStructure, ExamTemplate } from "../types";
 import { BlockEditor } from "./block-editor";
@@ -69,11 +69,11 @@ import { ReviewSubjectPanel } from "./review-subject-panel";
 import { ScoringExamples, StrandReference } from "./scoring-examples";
 import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
 import { formBlockingIssues, type BlockingIssue } from "../subject-forms/blocking";
-import { hasSubjectFormRenderer, SubjectFormScreen } from "../subject-forms/form-renderers";
+import { SubjectFormScreen } from "../subject-forms/form-renderers";
 import { FullFormNotice } from "../subject-forms/full-form-notice";
 import { focusFormTarget, formTarget, type FormTarget } from "../subject-forms/navigation";
 import { createRawInputStore } from "../subject-forms/raw-input-store";
-import { applyEffectivePins, pinnedForm, selectAllSubjectForms, type SubjectFormPins } from "../subject-forms/selection";
+import { pinnedForm, selectAllSubjectForms, type SubjectFormPins } from "../subject-forms/selection";
 
 const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block", rule: "rule" } as const;
 
@@ -267,8 +267,6 @@ function StructureEditor({
   // Lỗi 422 `EXAM_QUOTA_SCOPE_INVALID` của chỉ tiêu cấp bài: hiện ở khối chỉ tiêu cấp bài khi danh sách còn như lúc lưu lỗi.
   const [quotaScopeFailure, setQuotaScopeFailure] = useState<string | null>(null);
   const quotaScopeError = quotaScopeFailure !== null && quotaScopeFailure === JSON.stringify(quotas);
-  // Tổng số câu của mục đã xác nhận sau khi đổi (R-121): bảng nhập theo tỷ lệ chờ xác nhận khi tổng khác số này.
-  const [confirmedCounts, setConfirmedCounts] = useState<Record<string, number>>({});
   const baselineParts = useMemo(() => JSON.parse(baseline) as ExamPart[], [baseline]);
   // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
   const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
@@ -276,7 +274,7 @@ function StructureEditor({
   // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C), ghim trong phiên; sửa bản nháp không đổi.
   const selectionExam = useMemo(() => ({ kind: exam.kind, buildMode: exam.buildMode }), [exam.kind, exam.buildMode]);
   const pinForms = (parts: readonly ExamPart[]): SubjectFormPins =>
-    applyEffectivePins(selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts));
+    selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts);
   const [pinnedForms, setPinnedForms] = useState<SubjectFormPins>(() => pinForms(structure.parts));
   const [focusRequest, setFocusRequest] = useState<{ target: FormTarget; nonce: number } | null>(null);
   const formRegionRef = useRef<HTMLDivElement>(null);
@@ -415,7 +413,6 @@ function StructureEditor({
   const discardAll = () => {
     setDraft(JSON.parse(baseline) as ExamPart[]);
     setQuotas(JSON.parse(quotaBaseline) as ExamQuota[]);
-    setConfirmedCounts({});
     setTopicFailure(null);
     // Bỏ thay đổi bỏ cả nhập thô và ghim lại biểu mẫu theo bản đã lưu (R-2, R-15): không còn lỗi chặn nào từ `id` cũ.
     rawInputs.clearAll();
@@ -434,16 +431,14 @@ function StructureEditor({
       return;
     }
     // Bảng phân bổ còn lỗi người dùng phải sửa (tổng tỷ lệ khác 100%, quá 8 chỉ tiêu): mở đúng chỗ, không gửi lên máy chủ.
-    const blocker = saveBlockers(draft, axes, (sectionId) => confirmedCounts[sectionId] ?? savedCountOf(sectionId), reviewMode)[0];
+    const blocker = saveBlockers(draft, axes)[0];
     const quotaBlocked = blocker ? false : examQuotaBlockers(quotas).length > 0;
     if (blocker || quotaBlocked) {
-      const found = blocker?.kind === "TOTAL_CHANGE" ? findSection(draft, blocker.sectionId) : null;
       // Quy tắc MAPID trỏ tới nhóm đã xóa: nêu câu của quy tắc và tên nhóm đã xóa, không đẩy người dùng sang bảng phân bổ (R1-F4).
       const orphanSection = blocker?.kind === "MAPID_GROUP" ? findSection(draft, blocker.sectionId)?.section : undefined;
       const orphan = orphanSection?.mapidRules?.find((rule) => rule.id === blocker?.ruleId);
-      const message = found
-        ? t("totalChangeBlocked", { subject: lookup.subject(found.section.subjectCode) })
-        : orphanSection && orphan
+      const message =
+        orphanSection && orphan
           ? t("mapidGroupBlocked", {
               rule: mapidText.sentence(orphanSection, orphan),
               hasGroup: orphan.deletedGroupName ? "yes" : "no",
@@ -586,8 +581,6 @@ function StructureEditor({
   const selectedPart =
     current?.kind === "part" || current?.kind === "option" ? draft.find((part) => part.id === current.partId) : null;
   const sectionStates = checkResult?.sectionStates ?? structure.sectionStates ?? null;
-  /** Số câu của mục ở bản đã lưu (mốc để phát hiện tổng đổi, R-121). */
-  const savedCountOf = (sectionId: string): number | null => findSection(baselineParts, sectionId)?.section.questionCount ?? null;
   /** "Đủ nguồn theo ma trận" chỉ khi môn đã kiểm tra đạt và chưa sửa gì kể từ bản đã lưu (R-122 dòng 8). */
   const sourceVerified = (section: ExamSection): boolean => {
     if (sectionStates?.find((item) => item.sectionId === section.id)?.state !== "CHECKED") return false;
@@ -671,7 +664,7 @@ function StructureEditor({
             )}
           </dl>
           <Button asChild variant="secondary">
-            <Link href={examEditHref(exam.id)}>{t("summary.editOverview")}</Link>
+            <Link href={examTabHref(exam.id, "general")}>{t("summary.editOverview")}</Link>
           </Button>
         </div>
         <p className="text-caption text-text-muted">
@@ -692,7 +685,6 @@ function StructureEditor({
             // Chỉ tiêu cấp bài đang sửa thuộc mẫu cũ: bỏ để lần tải lại cấu trúc kế tiếp đưa chỉ tiêu của mẫu mới vào, không
             // để lần lưu sau ghi đè `examQuotas` của mẫu mới (R1-10).
             setQuotas(JSON.parse(loaded.quotas) as ExamQuota[]);
-            setConfirmedCounts({});
             setTopicFailure(null);
             // Nạp mẫu đã xác nhận bỏ nhập thô và ghim lại biểu mẫu theo cấu trúc mới (R-2, R-15).
             rawInputs.clearAll();
@@ -780,7 +772,7 @@ function StructureEditor({
               headerAction={checkAction}
               topicError={topicError}
             />
-          ) : sectionContext && formKind && hasSubjectFormRenderer(formKind) ? (
+          ) : sectionContext && formKind ? (
             <SubjectFormScreen
               kind={formKind}
               key={`${sectionContext.section.id}:${formEpoch}`}
@@ -795,8 +787,6 @@ function StructureEditor({
               templateLocked={templateLocked}
               sourceVerified={sourceVerified(sectionContext.section)}
               topicError={topicError}
-              confirmedCount={confirmedCounts[sectionContext.section.id] ?? savedCountOf(sectionContext.section.id)}
-              onConfirmCount={(count) => setConfirmedCounts((counts) => ({ ...counts, [sectionContext.section.id]: count }))}
               examQuotas={quotas}
               onExamQuotas={setQuotas}
               examKind={exam.kind}
@@ -820,8 +810,6 @@ function StructureEditor({
                 templateLocked={templateLocked}
                 sourceVerified={sourceVerified(sectionContext.section)}
                 topicError={topicError}
-                confirmedCount={confirmedCounts[sectionContext.section.id] ?? savedCountOf(sectionContext.section.id)}
-                onConfirmCount={(count) => setConfirmedCounts((counts) => ({ ...counts, [sectionContext.section.id]: count }))}
                 examQuotas={quotas}
                 onExamQuotas={setQuotas}
                 examKind={exam.kind}

@@ -10,7 +10,7 @@ import { resizeSets } from "../components/block-form";
 import { BlockConditions, type ExtraCondition } from "../components/block-conditions";
 import { BlockMatrixEditor, type MatrixLabels } from "../components/block-matrix-editor";
 import { BlockNumberInput } from "../components/block-number-input";
-import { BlockRadioGroup } from "../components/block-radio-group";
+import { ChoiceCardGroup } from "../components/choice-card-group";
 import { BlockSetConditions } from "../components/block-set-conditions";
 import { BlockSwitches } from "../components/block-switches";
 import { AudioChip, sectionAudio } from "../components/block-row-metrics";
@@ -49,7 +49,7 @@ const STRAND_KINDS: readonly string[] = ["SP2E", "SPT"];
 /** Điều khiển nhận focus trong ô được điều hướng tới. */
 const CONTROLS = "input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled])";
 
-export interface RowEditorProps {
+interface RowEditorProps {
   block: QuestionBlock;
   section: ExamSection;
   kindCode: string;
@@ -349,7 +349,8 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
             <Input {...controlProps} data-field={anchor("name")} value={block.name} autoComplete="off" maxLength={200} onChange={(event) => onChange({ name: event.target.value })} />
           )}
         </FormField>
-        <BlockRadioGroup
+        <ChoiceCardGroup
+          variant="pill"
           legend={tForm("mode.legend")}
           value={isSet ? "set" : "single"}
           disabled={modeLocked}

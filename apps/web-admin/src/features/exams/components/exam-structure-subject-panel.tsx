@@ -3,9 +3,9 @@
 import { Badge, Button, Card, cn, focusRing, IconButton, Select, StatusChip } from "@thi360/ui";
 import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import type { AudioCountQuery } from "../api.http";
+import type { AudioCountQuery } from "../api";
 import { ratePercent } from "../allocation";
 import { apportionByPercent, countsToPercents, emptyMatrix, isSetBlock, type MatrixAxes, sum } from "../matrix";
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
@@ -22,7 +22,6 @@ import { AllocationGap } from "./allocation-gap";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions } from "./subject-allocation-extras";
-import { useSubjectTotalChange } from "./subject-total-change";
 import { useHsaExam, isHsaExam } from "../hsa-enforcement";
 import { deletedGroupRules, groupCountScope, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
 import { MapidRulesTable, useMapidRuleText } from "./mapid-rules-table";
@@ -47,9 +46,6 @@ export interface SubjectPanelProps {
   sourceVerified?: boolean;
   /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của môn (H20). */
   topicError?: TopicQuotaServerError;
-  /** Số câu của mục đã lưu hoặc đã xác nhận gần nhất, để phát hiện tổng đổi (R-121). */
-  confirmedCount?: number | null;
-  onConfirmCount?: (count: number) => void;
   /** Chỉ tiêu cấp bài của bài, để liệt kê phân bố tham khảo của riêng môn này. */
   examQuotas?: readonly ExamQuota[];
   onExamQuotas?: (examQuotas: ExamQuota[]) => void;
@@ -75,8 +71,6 @@ export function ExamStructureSubjectPanel({
   templateLocked = false,
   sourceVerified = false,
   topicError = null,
-  confirmedCount = null,
-  onConfirmCount,
   examQuotas = [],
   onExamQuotas,
   examKind = null,
@@ -161,19 +155,6 @@ export function ExamStructureSubjectPanel({
     });
 
   const topicQuotas = section.topicQuotas ?? [];
-  // Hai nút của thông báo biến mất khi bấm: đưa tiêu điểm về tiêu đề của màn môn để người dùng bàn phím không mất chỗ (R1-26).
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const { notice: totalChangeNotice } = useSubjectTotalChange({
-    section,
-    axes,
-    labels,
-    confirmedCount,
-    onConfirmCount: (next) => {
-      onConfirmCount?.(next);
-      requestAnimationFrame(() => titleRef.current?.focus());
-    },
-    onChange,
-  });
   const references = referenceEntries(section, examQuotas, examKind);
   const copyReference = (entry: ReferenceEntry) => {
     if (entry.kind !== "quota") return;
@@ -206,7 +187,6 @@ export function ExamStructureSubjectPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2
-            ref={titleRef}
             tabIndex={-1}
             className={cn("flex flex-wrap items-center gap-2 rounded-sm text-h3 font-bold wrap-break-word text-text", focusRing)}
           >
@@ -249,8 +229,6 @@ export function ExamStructureSubjectPanel({
           {headerAction}
         </div>
       </div>
-
-      {totalChangeNotice}
 
       {varies && (
         <div className="flex flex-col gap-1">

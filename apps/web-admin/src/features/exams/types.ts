@@ -1,3 +1,4 @@
+import type { components } from "@thi360/api-client";
 import type {
   ExamBuildMode,
   ExamScope,
@@ -13,8 +14,7 @@ import type { ApiPage } from "@/lib/api/page";
 export type { ExamBuildMode, ExamScope, ExamTiming, PracticeScoring } from "@/features/content/types";
 
 /**
- * Bài thi và ma trận đề (PBI-04), dữ liệu mẫu. Ma trận nằm trong bài thi (UniNote PBI-04).
- * Khi có OpenAPI của backend, đổi các kiểu dưới đây thành bí danh của `components["schemas"][...]`.
+ * Kiểu miền của Bài thi và ma trận đề (PBI-04).
  */
 
 /**
@@ -105,15 +105,9 @@ export interface ChildCondition {
   itemShape?: ItemShape;
 }
 
-export interface ItemShape {
-  statements?: number;
-  leftItems?: number;
-  rightItems?: number;
-  /** Số phương án của câu chọn một (H-SCA: đúng bốn phương án, R-131); bỏ trống: không lọc. */
-  options?: number;
-}
+export type ItemShape = components["schemas"]["ItemShape"];
 
-export interface PositionRange {
+interface PositionRange {
   from: number;
   to: number;
 }
@@ -187,7 +181,7 @@ export interface ExamQuota {
   excludeSubjectCodes?: string[];
 }
 
-export interface ExamQuotaBucket {
+interface ExamQuotaBucket {
   codes: string[];
   count?: number | null;
   percent?: number | null;
@@ -360,7 +354,7 @@ export interface ExamPartOption {
 }
 
 /** Quy tắc tham gia của phần: làm tất cả (`ALL`), hoặc chọn `choose` trong các phương án (`CHOICE`). */
-export interface PartParticipation {
+interface PartParticipation {
   mode: "ALL" | "CHOICE";
   /** Số phương án phải chọn khi `mode = CHOICE`; `null` khi `ALL`. */
   choose: number | null;
@@ -406,20 +400,12 @@ export interface ExamPart {
   displaySegments?: DisplaySegment[];
 }
 
-/** Một phân đoạn hiển thị: dải số thứ tự câu trong phần (từ 1), số lệnh và điểm khai báo. */
-export interface DisplaySegment {
-  code: string;
-  name: string;
-  fromPosition: number;
-  toPosition: number;
-  commandCount: number;
-  maxPoints: number;
-}
+export type DisplaySegment = components["schemas"]["DisplaySegment"];
 
 /** Điều kiện audio của môn (H38): `REQUIRED` chỉ lấy câu có tệp âm thanh, `FORBIDDEN` chỉ lấy câu không có. */
 export type AudioRequirement = "ANY" | "REQUIRED" | "FORBIDDEN";
 
-export type ExamVersionState = "WORKING" | "SERVING" | "RETIRED";
+type ExamVersionState = "WORKING" | "SERVING" | "RETIRED";
 
 export interface ExamVersion {
   /** Số phiên bản; bản làm việc chưa công bố để `null`. */
@@ -641,44 +627,24 @@ export interface CreateExamRequest {
    * các dòng này. Bỏ trống: giữ nguyên số của mẫu.
    */
   overview?: ExamOverviewRow[];
-  /** Cấu trúc khởi tạo đã chỉnh ở trang Tạo bài thi. Bỏ trống thì nạp nguyên mẫu mới nhất. */
-  parts?: CreateExamPartInput[];
-  /**
-   * Bài đã tạo ở lần gửi trước mà bước lưu cấu trúc lỗi (`ExamStructureSaveError`): gửi lại chỉ lưu cấu trúc lên bài này,
-   * không POST lại (sẽ trùng mã), nên các chỉnh sửa cấu trúc trên trang không mất (N2-4).
-   */
-  existing?: ExamDetail;
 }
 
-/**
- * Một dòng chỉnh trong "Bảng tổng quan" (2B 15.1): chỉ phần tử khác giá trị của mẫu đã nạp được gửi, so khớp theo
- * `partId` (mẫu cũ không gán id thì theo `partCode` của phần thứ `order`) hoặc `sectionId`/`subjectCode` (dòng môn).
- * `questionCount` là số câu của phần (dòng phần) hoặc của môn (dòng môn); `durationMinutes`/`maxPoints` ghi đè mẫu.
- */
-export interface ExamOverviewRow {
-  partId?: string;
-  partCode?: string;
-  sectionId?: string;
-  subjectCode?: string;
-  questionCount?: number;
-  durationMinutes?: number;
-  maxPoints?: number;
-}
+export type ExamOverviewRow = components["schemas"]["ExamOverviewRow"];
 
 /**
- * Sửa Thông tin chung. Đổi kỳ thi, phạm vi, phần, môn hoặc cách dựng bài thì cấu trúc được nạp lại theo mẫu (giao diện
- * hỏi xác nhận trước, `confirmReplace`); bài đã công bố không đổi được (409 `EXAM_SCOPE_LOCKED`).
+ * Sửa Thông tin chung (hỗ trợ cả PATCH từng phần như chỉ xác nhận năm ma trận). Trường không gửi (`undefined`) được giữ
+ * nguyên trên máy chủ; `description: ""` / `null` xóa mô tả.
  */
 export interface UpdateExamInfoRequest {
-  name: string;
-  code: string;
-  kind: ExamKind;
-  scope: ExamScope;
+  name?: string;
+  code?: string;
+  kind?: ExamKind;
+  scope?: ExamScope;
   partCode?: string | null;
   subjectCode?: string | null;
   /** Kiểu xây bài Theo môn; đổi thì cấu trúc dựng lại như tạo mới. Phạm vi khác gửi `STANDARD` (REVIEW chỉ hợp lệ khi Theo môn). */
   buildMode?: ExamBuildMode | null;
-  description: string | null;
+  description?: string | null;
   instructions?: string | null;
   durationMinutes?: number | null;
   maxScore?: number | null;
@@ -774,9 +740,14 @@ export interface UpdateExamStructureRequest {
   expectedRevision: number;
 }
 
-export interface DuplicateExamRequest {
-  /** Tên bài mới; mã do hệ thống sinh. */
-  name: string;
+export type DuplicateExamRequest = components["schemas"]["DuplicateExamRequest"];
+
+export interface DiscontinueExamRequest {
+  examId: string;
+  /** `revision` của bản đang xem; lệch thì máy chủ trả 412 `EXAM_REVISION_CONFLICT`. */
+  expectedRevision: number;
+  /** Khóa idempotency của lần xác nhận ngừng bán (spec 7.1); thử lại cùng lần bấm giữ cùng khóa. */
+  idempotencyKey: string;
 }
 
 export interface SuggestExamCodeQuery {
@@ -843,39 +814,4 @@ export interface AvailableQuestionCounts {
   byAnswerType: Array<{ answerType: QuestionType; value: number }>;
   /** Số câu theo năng lực (V-ACT), cho chiều năng lực của ma trận; bỏ trống khi không có câu gắn năng lực. */
   byCompetency?: MatrixDimensionValue[];
-}
-
-/** Một phần của cấu trúc khởi tạo khi tạo bài thi: tên, số câu, thời lượng, môn cố định hoặc các lựa chọn. */
-export interface CreateExamPartInput {
-  name: string;
-  questionCount: number;
-  /** `null` khi bài dùng thời lượng chung. */
-  durationMinutes: number | null;
-  points?: number | null;
-  mode: "FIXED" | "CHOICE";
-  /** Môn của phần cố định; phần tự chọn để `null`. */
-  subjectCode: string | null;
-  /** Phần tự chọn: có nhánh Tiếng Anh. */
-  englishOption: boolean;
-  /**
-   * Phần tự chọn: tổ hợp đã gắn, số câu từng môn theo thứ tự môn của tổ hợp (tổng bằng số câu của phần trừ phần
-   * chung). `blocks`: khối gợi ý từ mẫu (môn đầu tiên của tổ hợp); `expertConfirmed` như `ExamPartOption`.
-   */
-  combinations: Array<{ code: string; subjectCounts: number[]; blocks?: ExamTemplateBlock[]; expertConfirmed?: boolean }>;
-  /**
-   * Phần tự chọn có phương án chọn môn (HSA Khoa học, thay cho 10 tổ hợp KH-n): mã, tên, các môn kèm nhóm, số môn
-   * chọn, số câu theo thứ tự môn, xác nhận của chuyên gia. `null` hoặc bỏ trống: không có.
-   */
-  subjectChoice?: ({ code: string; name?: string | null } & TemplateSubjectChoice) | null;
-  /**
-   * Phần cố định nhiều môn (BCA Phần 2: Toán 35, Lịch sử 10, Tiếng Anh 20; tổng bằng số câu của phần) hoặc phần chung
-   * của phần tự chọn (THPTQG Tin học). Bỏ trống: phần một môn theo `subjectCode`.
-   */
-  sections?: ExamTemplateSection[];
-  /** Khối gợi ý từ mẫu của phần cố định một môn. */
-  blocks?: ExamTemplateBlock[];
-  /** Phần tự chọn: nhánh nội dung (THPTQG Tin học), số câu của nhánh bằng số câu của phần trừ phần chung. */
-  branches?: Array<{ code: string; name: string; questionCount: number; blocks?: ExamTemplateBlock[] }>;
-  /** Phân đoạn hiển thị của phần (H40), chép từ mẫu. */
-  displaySegments?: DisplaySegment[];
 }

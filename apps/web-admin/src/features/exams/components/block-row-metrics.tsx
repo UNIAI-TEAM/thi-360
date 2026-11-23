@@ -3,7 +3,7 @@
 import { StatusChip } from "@thi360/ui";
 import { Headphones, HeadphoneOff } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { AudioCountQuery } from "../api.http";
+import type { AudioCountQuery } from "../api";
 import { ratePercent } from "../allocation";
 import { groupCountScope } from "../mapid-rules";
 import type { ExamSection, QuestionBlock } from "../types";

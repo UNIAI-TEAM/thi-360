@@ -4922,7 +4922,6 @@
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
       "allocationBlocked": "Chưa lưu được: bảng phân bổ còn lỗi. Sửa ở bảng rồi lưu lại.",
       "mapidGroupBlocked": "Chưa lưu được: quy tắc «{rule}» trỏ tới {hasGroup, select, yes {nhóm «{group}» đã bị xóa} other {một nhóm đã bị xóa}}. Sửa phạm vi hoặc xóa quy tắc rồi lưu lại.",
-      "totalChangeBlocked": "Chưa lưu được: tổng số câu của môn {subject} đã đổi. Chọn Áp dụng số mới hoặc Giữ số cũ ở môn này rồi lưu lại.",
       "rateBlocked": "Chưa lưu được: một dòng nhập theo tỷ lệ chưa ra chùm nguyên. Sửa tỷ lệ ở dòng đó rồi lưu lại.",
       "overviewSummary": "{count, number} câu · {minutes, number} phút{shared, select, yes { chung} other {}} · {points} điểm",
       "subjectAdded": "Đã thêm môn {subject} vào phần. Lưu để áp dụng.",
@@ -5416,13 +5415,6 @@
         "sourceEnough": "Đủ nguồn theo ma trận",
         "countField": {
           "locked": "Mẫu đã khóa số câu"
-        },
-        "totalChange": {
-          "grades": "Khối lớp: {values}",
-          "difficulties": "Độ khó: {values}",
-          "answerTypes": "Dạng trả lời: {values}",
-          "topics": "Chủ đề: {values}",
-          "untitled": "Chưa đặt tên"
         },
         "caseLegend": "Xem theo số câu của môn",
         "caseOption": "{count, number} câu",
@@ -6234,6 +6226,9 @@
         "review": "Kiểm tra và xem trước",
         "versions": "Phiên bản và công bố"
       },
+      "structureSummaryLabel": "Tổng hợp cấu trúc",
+      "printedQuestionsSuffix": "({printed} câu trên đề)",
+      "scoreMismatchWarning": "Tổng điểm phần ({actual}) khác thang điểm ({expected})",
       "errorTitle": "Không tải được bài thi",
       "errorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",
@@ -7310,12 +7305,6 @@
         "expertPending": "Chờ chuyên gia xác nhận: phân bố khối lớp Tiếng Anh chỉ để tham khảo.",
         "normalized": "Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA. Lưu để áp dụng.",
         "undeclared": "Phân bổ này chưa khai báo nên không ràng buộc sinh đề."
-      },
-      "totalChange": {
-        "title": "Tổng đổi thành {total, number} câu (trước đó {old, number} câu). Số câu mới:",
-        "hint": "Áp dụng số mới: bảng nhập theo tỷ lệ tính lại theo tổng mới. Giữ số cũ: các bảng này đổi sang nhập theo số câu của tổng {old, number}, rồi báo thiếu hoặc vượt.",
-        "apply": "Áp dụng số mới",
-        "keep": "Giữ số cũ"
       },
       "reference": {
         "title": "Phân bố tham khảo",

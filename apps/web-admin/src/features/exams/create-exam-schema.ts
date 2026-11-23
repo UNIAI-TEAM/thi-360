@@ -4,7 +4,6 @@ import { questionHtmlText } from "@thi360/ui/rich-text";
 import { splitEvenly, sum } from "./matrix";
 import { isAllOmittedTemplatePart } from "./create-exam-overview";
 import type {
-  CreateExamPartInput,
   CreateExamRequest,
   ExamBuildMode,
   ExamKind,
@@ -949,58 +948,6 @@ export function partsEdited(parts: readonly CreatePartValues[], baseline: readon
 
 // ---------------------------------------------------------------- gửi lên máy chủ
 
-/**
- * Cấu trúc khởi tạo gửi lên máy chủ: thời lượng phần bỏ khi bài dùng thời lượng chung; điểm phần bỏ khi không chia
- * điểm theo phần; môn, phần chung, lựa chọn và khối gợi ý của mẫu đi kèm.
- */
-export function partInputsFromValues(
-  parts: readonly CreatePartValues[],
-  scoring: { timing: ExamTiming; pointsByPart: boolean },
-): CreateExamPartInput[] {
-  const shared = scoring.timing === "SHARED";
-  return parts.map((part) => {
-    const choice = part.mode === "CHOICE";
-    const multi = part.sections.length > 0;
-    return {
-      name: part.name.trim(),
-      questionCount: part.questionCount,
-      durationMinutes: shared ? null : part.durationMinutes,
-      points: scoring.pointsByPart ? part.points : null,
-      mode: part.mode,
-      subjectCode: !choice && !multi ? part.subjectCode : null,
-      englishOption: choice && part.englishOption,
-      combinations: choice
-        ? part.combinations.map((item) => ({
-            code: item.code,
-            subjectCounts: [...item.subjectCounts],
-            ...(item.blocks?.length ? { blocks: item.blocks } : {}),
-            ...(item.expertConfirmed !== undefined ? { expertConfirmed: item.expertConfirmed } : {}),
-          }))
-        : [],
-      ...(choice && part.subjectChoice ? { subjectChoice: part.subjectChoice } : {}),
-      ...(multi
-        ? {
-            sections: part.sections.map((section) => ({
-              ...section,
-              blocks: section.blocks.length ? section.blocks : undefined,
-            })),
-          }
-        : {}),
-      ...(!choice && !multi && part.blocks.length ? { blocks: part.blocks } : {}),
-      ...(choice && part.branches.length
-        ? {
-            branches: part.branches.map((branch) => ({
-              code: branch.code,
-              name: branch.name,
-              questionCount: branch.questionCount,
-              ...(branch.blocks.length ? { blocks: branch.blocks } : {}),
-            })),
-          }
-        : {}),
-      ...(part.displaySegments?.length ? { displaySegments: part.displaySegments } : {}),
-    };
-  });
-}
 
 /**
  * Yêu cầu tạo bài (bước 1, 2B 15.1). Mẫu và xác nhận năm không đi theo yêu cầu: máy chủ nạp mẫu `isDefault` khớp kỳ

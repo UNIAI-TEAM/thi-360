@@ -6,13 +6,11 @@ import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import type { QuestionType } from "@/features/content/types";
-import { topicCountFor, totalChangePending } from "../allocation";
 import { AudioChip, sectionAudio } from "../components/block-row-metrics";
 import { ExamName, labelBeforeName, richNodes } from "../components/exam-review-shared";
 import { ScrollableTable } from "../components/scrollable-table";
-import { TotalChangeNotice } from "../components/subject-allocation-extras";
 import { EXAMS_QUERY_KEYS } from "../keys";
-import { apportionByPercent, computeAllocation, isFlexibleSet, isSetBlock } from "../matrix";
+import { isFlexibleSet, isSetBlock } from "../matrix";
 import { sectionCaseCounts, subjectAllocation } from "../subject-matrix";
 import type { ExamDetail, ExamTemplate, QuestionBlock } from "../types";
 import type { SubjectFormRendererProps } from "./form-renderers";
@@ -21,7 +19,7 @@ import { LockReason } from "./lock-reason";
 import { ReferenceBlock } from "./reference-block";
 import { RowEditor } from "./row-editor";
 import { COUNT_FIELD, SPLIT_FIELD } from "./row-fields";
-import { applyNewTotal, conditionSummary, gradeVisible, keepOldTotal, lockReasonsOf, readRow, rowAnswerType, rowFigures, rowLocks, rowsLockedOf, writeRow, type RowContext } from "./row-list-model";
+import { conditionSummary, lockReasonsOf, readRow, rowAnswerType, rowFigures, rowLocks, rowsLockedOf, writeRow, type RowContext } from "./row-list-model";
 import { replaceWithSplit, splitBlock, splitState } from "./row-split";
 import { subjectFormFor } from "./registry";
 import { SubjectFormHeader } from "./subject-form-header";
@@ -47,8 +45,6 @@ export function RowListForm({
   examKind = null,
   examQuotas = [],
   onExamQuotas,
-  confirmedCount = null,
-  onConfirmCount,
   rawInputs,
 }: SubjectFormRendererProps) {
   const t = useTranslations("exams.subjectForm.rows");
@@ -166,30 +162,6 @@ export function RowListForm({
     return from === undefined ? null : (segments.find((segment) => from >= segment.fromPosition && from <= segment.toPosition) ?? null);
   };
 
-  // Đổi tổng (R-9, R-122 dòng 6): chỗ nhập theo % giữ % và tính lại số, chỗ nhập theo số giữ số; hộp xác nhận chỉ hiện khi có bảng nhập theo %.
-  const sectionCount = section.questionCount;
-  const totalChanged = totalChangePending(section, confirmedCount);
-  const noticeLines: string[] = [];
-  if (totalChanged && sectionCount !== null) {
-    if (section.matrix?.unit === "PERCENT") {
-      const next = computeAllocation({ questionCount: sectionCount, matrix: section.matrix }, axes);
-      const combinedHas = section.matrix.mode === "COMBINED" && section.matrix.cells.some((cell) => cell.value > 0);
-      if (gradeVisible(entry) && (section.matrix.byGrade.length > 0 || combinedHas)) {
-        noticeLines.push(tSubject("totalChange.grades", { values: axes.grades.map((code, index) => `${labels.grade(code)} ${next.byGrade[index] ?? 0}`).join(" · ") }));
-      }
-      if (section.matrix.byDifficulty.length > 0 || combinedHas) {
-        noticeLines.push(tSubject("totalChange.difficulties", { values: axes.difficulties.map((code, index) => `${labels.difficulty(code)} ${next.byDifficulty[index] ?? 0}`).join(" · ") }));
-      }
-    }
-    if (section.answerQuotas?.unit === "PERCENT") {
-      const resolved = apportionByPercent(section.answerQuotas.items.map((item) => item.value), sectionCount).results;
-      noticeLines.push(tSubject("totalChange.answerTypes", { values: section.answerQuotas.items.map((item, index) => `${typeLabel(item.answerType)} ${resolved[index] ?? 0}`).join(" · ") }));
-    }
-    const topics = section.topicQuotas ?? [];
-    if (topics.some((quota) => quota.percent !== undefined && quota.percent !== null)) {
-      noticeLines.push(tSubject("totalChange.topics", { values: topics.map((quota) => `${quota.name || tSubject("totalChange.untitled")} ${topicCountFor(quota, sectionCount)}`).join(" · ") }));
-    }
-  }
   const columns = readOnlyNotice ? 4 : 5;
 
   return (
@@ -203,22 +175,6 @@ export function RowListForm({
         templateLocked={templateLocked}
         action={headerAction}
       />
-
-      {totalChanged && sectionCount !== null && confirmedCount !== null && (
-        <TotalChangeNotice
-          oldTotal={confirmedCount}
-          newTotal={sectionCount}
-          lines={noticeLines}
-          onApply={() => {
-            onChange((current) => applyNewTotal(current, sectionCount));
-            onConfirmCount?.(sectionCount);
-          }}
-          onKeep={() => {
-            onChange((current) => keepOldTotal(current, confirmedCount, axes));
-            onConfirmCount?.(sectionCount);
-          }}
-        />
-      )}
 
       <Card padding="md" className="flex flex-col gap-3 sm:p-6" data-rows-card>
         <div className="flex flex-wrap items-center justify-between gap-2">

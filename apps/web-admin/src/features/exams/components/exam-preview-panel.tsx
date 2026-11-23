@@ -20,8 +20,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
-import { errorCodeOf } from "../review-api";
-import { defaultPreviewTrialApiDeps, trialPageHref, type PreviewTrialApiDeps } from "../trial/api";
+import { errorCodeOf } from "../errors";
+import { extendPreviewForTrial, trialPageHref } from "../trial/api";
 import { usePreviewMinutesLeft } from "../preview-retention";
 import { useExamVersion, useGeneratePreview } from "../review-queries";
 import { changedPartIds, examNeedsPathChoice, listPreviewSections } from "../review-scope";
@@ -35,7 +35,7 @@ import { ExamPreviewSubjects } from "./exam-preview-subjects";
 import { PreviewScopeCard } from "./exam-preview-scope-card";
 import { ExamName, richNodes, useChoiceNameResolver, useIssueText, useLookup, usePathLabel, usePathNode } from "./exam-review-shared";
 
-export interface ExamPreviewPanelProps {
+interface ExamPreviewPanelProps {
   exam: ExamDetail;
   /** Kết quả kiểm tra gần nhất (trạng thái từng đường); `null` khi chưa kiểm tra. */
   check: ExamCheckResult | null;
@@ -46,7 +46,6 @@ export interface ExamPreviewPanelProps {
   version: number | null;
   onClearVersion: () => void;
   onShowCheck: () => void;
-  trialDeps?: PreviewTrialApiDeps;
 }
 
 interface PathOption {
@@ -72,7 +71,6 @@ export function ExamPreviewPanel({
   version,
   onClearVersion,
   onShowCheck,
-  trialDeps = defaultPreviewTrialApiDeps,
 }: ExamPreviewPanelProps) {
   const t = useTranslations("exams.preview");
   const tIssue = useTranslations("exams.review.issue");
@@ -99,7 +97,7 @@ export function ExamPreviewPanel({
   const extendTrial = useMutation({
     networkMode: "always",
     mutationFn: (previewId: string) =>
-      trialDeps.extendPreviewForTrial({ examId: exam.id, previewId }),
+      extendPreviewForTrial({ examId: exam.id, previewId }),
     onSuccess: (res, previewId) => {
       if (activePreviewIdRef.current !== previewId) return;
       setTrialErrorCode(null);

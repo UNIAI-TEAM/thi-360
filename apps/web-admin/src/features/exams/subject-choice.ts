@@ -1,14 +1,12 @@
 import type { ChoiceGroup } from "./types";
 
 /**
- * Số câu từng môn của một cách chọn môn trong phương án `SUBJECT_CHOICE` (spec B10, D25). Đây là MỘT hàm riêng chứa
- * quy tắc chia, để đổi được khi BA chốt phần còn là đề xuất (ba môn cùng nhóm tự nhiên).
+ * Số câu từng môn của một cách chọn môn trong phương án `SUBJECT_CHOICE` (spec B10, D25).
  *
  * `groups` là nhóm của các môn đã chọn theo thứ tự môn trong cấu trúc; `countsByPick` là các số câu của phương án
  * (HSA: 17, 17, 16). Nhóm có nhiều môn được chọn hơn nhận số câu lớn nhất mỗi môn, môn của nhóm còn lại nhận số câu nhỏ
  * nhất. Cả ba môn cùng nhóm thì một môn nhận số câu nhỏ nhất: mỗi môn có thể là môn đó, nên trả về một cách chia cho từng
- * môn (HSA: 3). Lần sinh đề chọn một cách theo hạt giống (`pickAllocation`); kiểm tra cấu hình không biết trước môn nào
- * nên chứng minh mọi cách.
+ * môn (HSA: 3). Kiểm tra cấu hình không biết trước môn nào nên chứng minh mọi cách.
  *
  * Môn chưa đặt nhóm (`null`) cả tổ hợp được coi là một nhóm chung như `ChoiceGroupAllocator` của máy chủ (R3-1): chia như
  * ba môn cùng nhóm. Lẫn môn `null` với môn có nhóm thì không chia được.
@@ -37,10 +35,4 @@ export function allocateSubjectCounts(
 
   const expected = [...countsByPick].sort((a, b) => a - b).join();
   return allocations.filter((counts) => [...counts].sort((a, b) => a - b).join() === expected);
-}
-
-/** Chọn một cách chia theo hạt giống của lần sinh đề: `random` là số ngẫu nhiên có hạt giống trong [0, 1). */
-export function pickAllocation(allocations: readonly number[][], random: () => number): number[] | null {
-  if (allocations.length === 0) return null;
-  return allocations[Math.min(allocations.length - 1, Math.floor(random() * allocations.length))]!;
 }

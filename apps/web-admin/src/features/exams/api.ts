@@ -1,67 +1,295 @@
-import * as http from "./api.http";
-import { discontinueExam as discontinueReviewedExam } from "./review-api";
-import type { ExamDetail, ExamListPage, ListExamsQuery } from "./types";
+import type { components } from "@thi360/api-client";
+import { createBrowserApiClient } from "@/lib/api/client";
+import {
+  mapAvailableCounts,
+  mapExamDetail,
+  mapExamQuotas,
+  mapExamSummary,
+  mapExamTemplate,
+  mapParts,
+  mapSectionStates,
+  mapStructureSummary,
+  toApiExamQuotas,
+  toApiParts,
+} from "./api-mapping";
+import { toExamsApiError } from "./errors";
+import type {
+  ApplyExamTemplateRequest,
+  AvailableQuestionCounts,
+  AvailableQuestionsQuery,
+  CreateExamRequest,
+  DiscontinueExamRequest,
+  DuplicateExamRequest,
+  ExamDetail,
+  ExamListPage,
+  ExamStructure,
+  ExamStructureSummary,
+  ExamTemplate,
+  ListExamsQuery,
+  SuggestExamCodeQuery,
+  UpdateExamInfoRequest,
+  UpdateExamStructureRequest,
+} from "./types";
 
 /**
- * API của Bài thi (danh sách, chi tiết, mẫu cấu trúc, tạo, sửa thông tin, sửa cấu trúc, nạp mẫu, sao chép, ngừng bán,
- * đếm nguồn): `api.http.ts` gọi API thật. Kiểm tra, xem trước, phiên bản và công bố nằm ở `review-api.ts`.
- * Lớp dữ liệu mẫu và cờ `NEXT_PUBLIC_THI360_CONTENT_MOCK` đã gỡ ở QA (UNI-2621).
+ * API của Bài thi (`/api/v1/admin/exams/**`, `/exam-templates`). Lỗi nghiệp vụ ném `ExamsApiError` (`./errors`).
+ * Kiểm tra cấu hình, xem trước, phiên bản và công bố nằm ở `review-api.ts`.
  */
 
-export { EXAMS_QUERY_KEYS } from "./keys";
-export { toExamSummary } from "./exam-summary";
+const idempotencyKey = () => globalThis.crypto.randomUUID();
 
-export const listExams = (query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> =>
-  http.listExams(query, signal);
-export const getExam = http.getExam;
-export const listExamTemplates = http.listExamTemplates;
-export const getExamStructure = http.getExamStructure;
-export const getExamStructureSummary = http.getExamStructureSummary;
-export const suggestExamCode = http.suggestExamCode;
-export const createExam = http.createExam;
-export const updateExamInfo = http.updateExamInfo;
-export const updateExamStructure = http.updateExamStructure;
-export const applyExamTemplate = http.applyExamTemplate;
-export const duplicateExam = http.duplicateExam;
-/**
- * Ngừng bán. `expectedRevision` là `revision` của bản đang xem (dòng danh sách hoặc màn Phiên bản): lệch thì máy chủ
- * trả 412 `EXAM_REVISION_CONFLICT`. `idempotencyKey` do nơi gọi giữ: thử lại cùng một lần bấm dùng cùng khóa.
- */
-export const discontinueExam = (id: string, expectedRevision: number, idempotencyKey?: string): Promise<ExamDetail> =>
-  discontinueReviewedExam({ examId: id, expectedRevision, idempotencyKey });
-export const countAvailableQuestions = http.countAvailableQuestions;
-export const countSubjectAvailableQuestions = http.countSubjectAvailableQuestions;
-
-export interface ExamsApiDeps {
-  listExams: typeof listExams;
-  getExam: typeof getExam;
-  listExamTemplates: typeof listExamTemplates;
-  getExamStructure: typeof getExamStructure;
-  getExamStructureSummary: typeof getExamStructureSummary;
-  suggestExamCode: typeof suggestExamCode;
-  createExam: typeof createExam;
-  updateExamInfo: typeof updateExamInfo;
-  updateExamStructure: typeof updateExamStructure;
-  applyExamTemplate: typeof applyExamTemplate;
-  duplicateExam: typeof duplicateExam;
-  discontinueExam: typeof discontinueExam;
-  countAvailableQuestions: typeof countAvailableQuestions;
-  countSubjectAvailableQuestions: typeof countSubjectAvailableQuestions;
+export async function listExams(query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams", {
+    params: {
+      query: {
+        q: query.q,
+        kind: query.kind,
+        subject: query.subjectCode,
+        scope: query.scope,
+        status: query.status,
+        checkStatus: query.checkStatus,
+        hasUnpublishedChanges: query.hasUnpublishedChanges || undefined,
+        sort: query.sort,
+        page: query.page ?? 0,
+        size: query.size ?? 20,
+      },
+    },
+    signal,
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return {
+    content: data.items.map(mapExamSummary),
+    page: data.page,
+    size: data.size,
+    totalElements: data.totalItems,
+    totalPages: data.totalPages,
+  };
 }
 
-export const defaultExamsApiDeps: ExamsApiDeps = {
-  listExams,
-  getExam,
-  listExamTemplates,
-  getExamStructure,
-  getExamStructureSummary,
-  suggestExamCode,
-  createExam,
-  updateExamInfo,
-  updateExamStructure,
-  applyExamTemplate,
-  duplicateExam,
-  discontinueExam,
-  countAvailableQuestions,
-  countSubjectAvailableQuestions,
-};
+export async function getExam(id: string): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}", { params: { path: { id } } });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+export async function listExamTemplates(): Promise<ExamTemplate[]> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exam-templates", { params: { query: {} } });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return data.map(mapExamTemplate);
+}
+
+export async function getExamStructure(id: string): Promise<ExamStructure> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure", {
+    params: { path: { id } },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return {
+    examId: data.examId,
+    revision: data.revision,
+    parts: mapParts(data.parts),
+    combinations: (data.combinations ?? []).map((item) => ({
+      code: item.code ?? "",
+      examCode: item.examCode ?? null,
+      partId: item.partId ?? null,
+      subjectCodes: item.subjectCodes ?? [],
+      missingSubjects: item.missingSubjects ?? [],
+      nameVi: item.nameVi ?? null,
+      nameEn: item.nameEn ?? null,
+    })),
+    sectionStates: mapSectionStates(data.sectionStates),
+    examQuotas: mapExamQuotas(data.examQuotas),
+  };
+}
+
+export async function getExamStructureSummary(id: string): Promise<ExamStructureSummary> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/{id}/structure/summary", {
+    params: { path: { id } },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapStructureSummary(data);
+}
+
+export async function suggestExamCode(query: SuggestExamCodeQuery): Promise<string> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/admin/exams/suggested-code", {
+    params: {
+      query: {
+        kind: query.kind,
+        scope: query.scope,
+        partCode: query.partCode ?? undefined,
+        subjectCode: query.subjectCode ?? undefined,
+      },
+    },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return data.code;
+}
+
+export async function updateExamStructure(id: string, request: UpdateExamStructureRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PUT("/api/v1/admin/exams/{id}/structure", {
+    params: { path: { id } },
+    body: {
+      expectedRevision: request.expectedRevision,
+      parts: toApiParts(request.parts),
+      ...(request.examQuotas ? { examQuotas: toApiExamQuotas(request.examQuotas) } : {}),
+    },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+export async function createExam(request: CreateExamRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/admin/exams", {
+    params: { header: { "Idempotency-Key": idempotencyKey() } },
+    body: {
+      code: request.code,
+      name: request.name,
+      kind: request.kind,
+      scope: request.scope,
+      partCode: request.partCode ?? undefined,
+      subjectCode: request.subjectCode ?? undefined,
+      buildMode: request.buildMode ?? undefined,
+      description: request.description ?? undefined,
+      instructions: request.instructions ?? undefined,
+      durationMinutes: request.durationMinutes ?? undefined,
+      maxScore: request.maxScore ?? undefined,
+      ...(request.overview?.length ? { overview: request.overview } : {}),
+    },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+export async function updateExamInfo(id: string, request: UpdateExamInfoRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.PATCH("/api/v1/admin/exams/{id}", {
+    params: { path: { id } },
+    body: {
+      expectedRevision: request.expectedRevision,
+      // `PATCH` chỉ khai các trường không bắt buộc ở kiểu cục bộ dù OpenAPI đánh dấu `code`/`name`/`kind`/`scope` required.
+      name: request.name as string,
+      code: request.code as string,
+      kind: request.kind as string,
+      scope: request.scope as NonNullable<UpdateExamInfoRequest["scope"]>,
+      partCode: request.partCode ?? undefined,
+      subjectCode: request.subjectCode ?? undefined,
+      buildMode: request.buildMode ?? undefined,
+      // Chuỗi trống hoặc `null` xóa mô tả và hướng dẫn; `undefined` giữ nguyên giá trị đang lưu.
+      description: request.description === undefined ? undefined : (request.description ?? ""),
+      instructions: request.instructions === undefined ? undefined : (request.instructions ?? ""),
+      durationMinutes: request.durationMinutes ?? undefined,
+      maxScore: request.maxScore ?? undefined,
+      yearsConfirmed: request.yearsConfirmed,
+      confirmReplace: request.confirmReplace,
+    },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+export async function applyExamTemplate(id: string, request: ApplyExamTemplateRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/admin/exams/{id}/structure/template", {
+    params: { path: { id } },
+    body: {
+      templateCode: request.templateCode,
+      confirmReplace: request.confirmReplace,
+      overviewPolicy: request.overviewPolicy ?? undefined,
+      expectedRevision: request.expectedRevision,
+    },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+export async function duplicateExam(id: string, request: DuplicateExamRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/admin/exams/{id}/duplicate", {
+    params: { path: { id }, header: { "Idempotency-Key": idempotencyKey() } },
+    body: { name: request.name },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+export async function discontinueExam({
+  examId,
+  expectedRevision,
+  idempotencyKey: key,
+}: DiscontinueExamRequest): Promise<ExamDetail> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/admin/exams/{examId}/discontinue", {
+    params: {
+      path: { examId },
+      header: { "Idempotency-Key": key },
+    },
+    body: { expectedRevision },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapExamDetail(data);
+}
+
+type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
+
+/** Bộ lọc đếm của một dòng: bộ lọc nhóm kèm điều kiện audio của phần (H38, R-130). */
+export type AudioCountQuery = AvailableQuestionsQuery & Pick<ApiAvailableQuestionsQuery, "audioRequirement">;
+
+interface AudioSubjectCountQuery {
+  subjectCode: string;
+  groups: AudioCountQuery[];
+}
+
+function toCountBody(query: AudioCountQuery): ApiAvailableQuestionsQuery {
+  return {
+    subjectCode: query.subjectCode,
+    questionType: query.questionType ?? undefined,
+    answerTypes: query.answerTypes.length ? query.answerTypes : undefined,
+    childAnswerType: query.childAnswerType ?? undefined,
+    knowledgeScope: query.knowledgeScope
+      ? {
+          nodeIds: query.knowledgeScope.nodeIds,
+          competencyCodes: query.knowledgeScope.competencyCodes,
+          ...(query.knowledgeScope.nodeGroups?.length ? { nodeGroups: query.knowledgeScope.nodeGroups } : {}),
+          ...(query.knowledgeScope.everyChildInScope ? { everyChildInScope: true } : {}),
+          ...(query.knowledgeScope.everyChildSameNode ? { everyChildSameNode: true } : {}),
+          ...(query.knowledgeScope.excludedNodeIds?.length ? { excludedNodeIds: query.knowledgeScope.excludedNodeIds } : {}),
+        }
+      : undefined,
+    tagCodes: query.tagCodes?.length ? query.tagCodes : undefined,
+    competencyCodes: query.competencyCodes?.length ? query.competencyCodes : undefined,
+    requiredPointsPerQuestion: query.requiredPointsPerQuestion ?? undefined,
+    itemShape: query.itemShape ?? undefined,
+    answerFormats: query.answerFormats?.length
+      ? (query.answerFormats as ApiAvailableQuestionsQuery["answerFormats"])
+      : undefined,
+    childConditions: query.childConditions?.length ? query.childConditions : undefined,
+    audioRequirement: query.audioRequirement === "REQUIRED" || query.audioRequirement === "FORBIDDEN" ? query.audioRequirement : undefined,
+  };
+}
+
+export async function countAvailableQuestions(query: AudioCountQuery): Promise<AvailableQuestionCounts> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count", {
+    body: toCountBody(query),
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapAvailableCounts(data);
+}
+
+export async function countSubjectAvailableQuestions(
+  query: AudioSubjectCountQuery,
+): Promise<AvailableQuestionCounts> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.POST("/api/v1/admin/exams/available-questions/count-subject", {
+    body: { subjectCode: query.subjectCode, groups: query.groups.map(toCountBody) },
+  });
+  if (!response.ok || !data) throw toExamsApiError(response.status, error);
+  return mapAvailableCounts(data);
+}

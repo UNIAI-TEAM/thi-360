@@ -5,7 +5,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { QUESTION_TYPES, type ContentReference, type QuestionType } from "@/features/content/types";
-import type { AudioCountQuery } from "../api.http";
+import type { AudioCountQuery } from "../api";
 import { applyTopicTotal } from "../allocation";
 import { emptyMatrix, isSetBlock, type MatrixAxes } from "../matrix";
 import { useSubjectAvailableQuestions } from "../queries";
@@ -24,7 +24,7 @@ import { KnowledgeScopeField } from "./knowledge-scope-field";
 /** Giá trị của ô dạng câu "Bất kỳ" (nhóm lấy theo chỉ tiêu dạng trả lời của môn, `questionType = null`). */
 const ANY_TYPE = "__ANY__";
 
-export interface ReviewSubjectPanelProps {
+interface ReviewSubjectPanelProps {
   context: SectionContext;
   subjectName: string;
   axes: MatrixAxes;

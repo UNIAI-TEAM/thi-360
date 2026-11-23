@@ -2,12 +2,29 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
+import {
+  applyExamTemplate,
+  countAvailableQuestions,
+  countSubjectAvailableQuestions,
+  createExam,
+  discontinueExam,
+  duplicateExam,
+  getExam,
+  getExamStructure,
+  getExamStructureSummary,
+  listExams,
+  listExamTemplates,
+  suggestExamCode,
+  updateExamInfo,
+  updateExamStructure,
+} from "./api";
+import { EXAM_REVIEW_QUERY_KEYS, EXAMS_QUERY_KEYS } from "./keys";
 import { useTemplateLabel } from "./template-name";
-import { defaultExamsApiDeps, EXAMS_QUERY_KEYS, type ExamsApiDeps } from "./api";
 import type {
   ApplyExamTemplateRequest,
   AvailableQuestionsQuery,
   CreateExamRequest,
+  DiscontinueExamRequest,
   ListExamsQuery,
   SubjectAvailableQuestionsQuery,
   SuggestExamCodeQuery,
@@ -15,27 +32,27 @@ import type {
   UpdateExamStructureRequest,
 } from "./types";
 
-export function useExamList(query: ListExamsQuery, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useExamList(query: ListExamsQuery) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.list(query),
-    queryFn: ({ signal }) => deps.listExams(query, signal),
+    queryFn: ({ signal }) => listExams(query, signal),
     placeholderData: keepPreviousWhileSameScope(EXAMS_QUERY_KEYS.list(query)),
   });
 }
 
-export function useExam(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useExam(id: string) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.detail(id),
-    queryFn: () => deps.getExam(id),
+    queryFn: () => getExam(id),
   });
 }
 
-/** Mẫu cấu trúc; mẫu chưa có tên (API thật) lấy tên theo ngôn ngữ giao diện (`useTemplateLabel`), đổi ngôn ngữ thì đổi ngay. */
-export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
+/** Mẫu cấu trúc; mẫu chưa có tên lấy tên theo ngôn ngữ giao diện (`useTemplateLabel`). */
+export function useExamTemplates() {
   const label = useTemplateLabel();
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.templates(),
-    queryFn: () => deps.listExamTemplates(),
+    queryFn: () => listExamTemplates(),
     staleTime: 5 * 60_000,
     select: (templates) =>
       templates.map((template) => (template.name ? template : { ...template, name: label(template) })),
@@ -43,10 +60,11 @@ export function useExamTemplates(deps: ExamsApiDeps = defaultExamsApiDeps) {
 }
 
 /** Bản làm việc của cấu trúc; không tự tải lại khi quay lại cửa sổ để không đè bản nháp đang sửa. */
-export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps, enabled = true) {
+export function useExamStructure(id: string, enabledOrUnused?: boolean, maybeEnabled?: boolean) {
+  const enabled = typeof enabledOrUnused === "boolean" ? enabledOrUnused : (maybeEnabled ?? true);
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.structure(id),
-    queryFn: () => deps.getExamStructure(id),
+    queryFn: () => getExamStructure(id),
     refetchOnWindowFocus: false,
     enabled,
   });
@@ -56,99 +74,105 @@ export function useExamStructure(id: string, deps: ExamsApiDeps = defaultExamsAp
  * Tổng hợp cấu trúc vùng (d) (spec 15.2). Không thử lại: vùng (d) dùng được khi bảng này lỗi (số tính trên màn hình),
  * và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
  */
-export function useExamStructureSummary(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useExamStructureSummary(id: string) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.structureSummary(id),
-    queryFn: () => deps.getExamStructureSummary(id),
+    queryFn: () => getExamStructureSummary(id),
     retry: false,
   });
 }
 
-export function useSuggestedExamCode(query: SuggestExamCodeQuery, enabled: boolean, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useSuggestedExamCode(query: SuggestExamCodeQuery, enabled: boolean) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.suggestedCode(query),
-    queryFn: () => deps.suggestExamCode(query),
+    queryFn: () => suggestExamCode(query),
     enabled,
   });
 }
 
-export function useAvailableQuestions(query: AvailableQuestionsQuery | null, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useAvailableQuestions(query: AvailableQuestionsQuery | null) {
   return useQuery({
     queryKey: query ? EXAMS_QUERY_KEYS.available(query) : ["exams", "available-questions", null],
     queryFn: () =>
-      query ? deps.countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
+      query ? countAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
     enabled: query !== null,
     placeholderData: (previous) => previous,
   });
 }
 
 /** Đếm nguồn cho cả môn: hợp nguồn của các nhóm trong môn, mỗi câu đếm một lần (soạn chỉ tiêu cấp môn). */
-export function useSubjectAvailableQuestions(
-  query: SubjectAvailableQuestionsQuery | null,
-  deps: ExamsApiDeps = defaultExamsApiDeps,
-) {
+export function useSubjectAvailableQuestions(query: SubjectAvailableQuestionsQuery | null) {
   return useQuery({
     queryKey: query ? EXAMS_QUERY_KEYS.subjectAvailable(query) : ["exams", "available-questions", "subject", null],
     queryFn: () =>
-      query ? deps.countSubjectAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
+      query ? countSubjectAvailableQuestions(query) : Promise.resolve({ total: 0, cells: [], byAnswerType: [] }),
     enabled: query !== null,
     placeholderData: (previous) => previous,
   });
 }
 
-/** Mọi thao tác ghi làm mới cả nhóm `exams` (danh sách, chi tiết, cấu trúc, kết quả kiểm tra của lane khác). */
+/** Mọi thao tác ghi làm mới cả nhóm `exams` (danh sách, chi tiết, cấu trúc, kết quả kiểm tra, phiên bản). */
 function useInvalidateExams() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.all });
 }
 
-export function useCreateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useCreateExam() {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: (request: CreateExamRequest) => deps.createExam(request),
-    // Cũng khi lỗi: bài có thể đã tạo xong rồi mới lỗi ở bước lưu cấu trúc (`ExamStructureSaveError`).
-    onSettled: () => invalidate(),
-  });
-}
-
-export function useUpdateExamInfo(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
-  const invalidate = useInvalidateExams();
-  return useMutation({
-    mutationFn: (request: UpdateExamInfoRequest) => deps.updateExamInfo(id, request),
+    mutationFn: (request: CreateExamRequest) => createExam(request),
     onSuccess: () => invalidate(),
   });
 }
 
-export function useUpdateExamStructure(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useUpdateExamInfo(id: string) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: (request: UpdateExamStructureRequest) => deps.updateExamStructure(id, request),
+    mutationFn: (request: UpdateExamInfoRequest) => updateExamInfo(id, request),
     onSuccess: () => invalidate(),
   });
 }
 
-export function useApplyExamTemplate(id: string, deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useUpdateExamStructure(id: string) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: (request: ApplyExamTemplateRequest) => deps.applyExamTemplate(id, request),
+    mutationFn: (request: UpdateExamStructureRequest) => updateExamStructure(id, request),
     onSuccess: () => invalidate(),
   });
 }
 
-export function useDuplicateExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useApplyExamTemplate(id: string) {
   const invalidate = useInvalidateExams();
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => deps.duplicateExam(id, { name }),
+    mutationFn: (request: ApplyExamTemplateRequest) => applyExamTemplate(id, request),
     onSuccess: () => invalidate(),
   });
 }
 
-export function useDiscontinueExam(deps: ExamsApiDeps = defaultExamsApiDeps) {
+export function useDuplicateExam() {
   const invalidate = useInvalidateExams();
   return useMutation({
-    // `expectedRevision`: revision của bản đang xem (dòng danh sách hoặc màn Phiên bản); lệch thì máy chủ trả 412.
-    mutationFn: ({ id, expectedRevision, idempotencyKey }: { id: string; expectedRevision: number; idempotencyKey?: string }) =>
-      deps.discontinueExam(id, expectedRevision, idempotencyKey),
+    mutationFn: ({ id, name }: { id: string; name: string }) => duplicateExam(id, { name }),
     onSuccess: () => invalidate(),
+  });
+}
+
+/**
+ * Ngừng bán bài thi (dùng chung cho dòng danh sách và tab Phiên bản, AC-17): bắt buộc truyền `idempotencyKey`,
+ * làm mới chi tiết, danh sách, kết quả kiểm tra và danh sách phiên bản.
+ */
+export function useDiscontinueExam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: DiscontinueExamRequest) => discontinueExam(request),
+    onSuccess: async (_data, { examId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.detail(examId) }),
+        queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.lists() }),
+        queryClient.invalidateQueries({ queryKey: EXAM_REVIEW_QUERY_KEYS.check(examId) }),
+        queryClient.invalidateQueries({ queryKey: EXAM_REVIEW_QUERY_KEYS.versions(examId) }),
+        queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.all }),
+      ]);
+    },
   });
 }

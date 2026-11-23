@@ -23,7 +23,6 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { createContext, Fragment, type RefObject, useCallback, useContext, useId, useMemo, useRef, useState } from "react";
 import { EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "../check";
-import type { ExamReviewApiDeps } from "../review-api";
 import { type DeepCheck, useDeepCheck, useExamCheck, useRunExamCheck } from "../review-queries";
 import type {
   BlockCheck,
@@ -59,23 +58,22 @@ import {
 import { ExamEditorActions } from "./exam-editor-actions";
 import { ExamReviewFindings } from "./exam-review-findings";
 
-export interface ExamReviewCheckProps {
+interface ExamReviewCheckProps {
   exam: ExamDetail;
   /** Chuyển sang tab Đề xem trước và sinh đề cho đường này (`null`: giữ đường đang chọn). */
   onPreview: (pathId: string | null) => void;
   /** `false` khi tab bị che: kiểm tra kỹ ngừng hỏi kết quả, hỏi tiếp khi quay lại. */
   active?: boolean;
-  deps?: ExamReviewApiDeps;
 }
 
 /**
  * Kiểm tra cấu hình (bản vẽ `BaiThiKiemTra`): kết quả theo từng đường lựa chọn, tám nhóm kiểm tra, chi tiết theo khối
  * của từng đường, liên kết tới chỗ cần sửa.
  */
-export function ExamReviewCheck({ exam, onPreview, active = true, deps }: ExamReviewCheckProps) {
+export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCheckProps) {
   const t = useTranslations("exams.review");
-  const checkQuery = useExamCheck(exam.id, deps);
-  const runCheck = useRunExamCheck(exam.id, deps);
+  const checkQuery = useExamCheck(exam.id);
+  const runCheck = useRunExamCheck(exam.id);
   const [liveMessage, setLiveMessage] = useState("");
   const blocksRef = useRef<HTMLHeadingElement>(null);
   const [blockTab, setBlockTab] = useState<string | null>(null);
@@ -86,7 +84,7 @@ export function ExamReviewCheck({ exam, onPreview, active = true, deps }: ExamRe
       t("live.done", { valid: count("VALID"), invalid: count("INVALID"), unconfirmed: count("UNCONFIRMED") }),
     );
   };
-  const deep = useDeepCheck(exam.id, { active, deps, onDone: announceDone });
+  const deep = useDeepCheck(exam.id, { active, onDone: announceDone });
   // Kiểm tra kỹ đang chạy hay vừa lỗi thì thông báo theo trạng thái; còn lại là câu của lần chạy gần nhất.
   const announcement =
     deep.phase === "running" ? t("deep.live.running") : deep.phase === "failed" ? t("deep.live.failed") : liveMessage;

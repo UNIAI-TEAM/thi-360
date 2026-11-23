@@ -1,17 +1,16 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getExamStructure, updateExamStructure } from "../api.http";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getExamStructure, updateExamStructure } from "../api";
 import { selectAllSubjectForms } from "../subject-forms/selection";
 import { EXAM_ID } from "./fake-exams-server";
 import { sectionGroups } from "../components/exam-structure-draft";
-import { patchSubjectFormEntry, subjectFormFor } from "../subject-forms/registry";
+import { subjectFormFor } from "../subject-forms/registry";
 import { block, part, scienceSection, standardExam, standardFixtureTemplates } from "./subject-form-builders";
 import { bcaLiteratureSection, hsaLiteratureSection, oneSection, qdaLiteratureSection, thptqgLiteratureSection, thptqgPhysicsParts } from "./subject-row-builders";
 import standardTemplates from "./fixtures/exam-templates-dot3.json";
 import {
   boot,
-  installForms,
   openStructure,
   putCalls,
   requestLog,
@@ -36,17 +35,9 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
-/**
- * CR-1 AC-6, AC-10 (FTM AC 6, AC 55; plan B4): thân `PUT /structure` bằng bản đã nạp, chặn ở `api.http.ts`, và chọn biểu mẫu không gọi
- * request. Loại trừ khi so wire, gọi tên: `null`/thiếu trường và hai mặc định `tagCodes: []`, `answerTypeLocked: false` mà
- * `api-mapping.ts` điền (`MAPPING_DEFAULTED_FIELDS`); trường `mode` của phần do `toApiParts` bỏ (suy ra từ `participation`).
- */
-let restore: () => void;
 beforeEach(() => {
   routerMock.push.mockReset();
-  restore = installForms();
 });
-afterEach(() => restore());
 
 /** Khác biệt hai wire theo đường dẫn, sau khi bỏ các điểm loại trừ có tên. */
 function diffWire(before: unknown, after: unknown, path = "$"): string[] {
@@ -153,7 +144,7 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     expect(diffWire(body.parts, (putCalls(server)[1]!.body as { parts: Wire[] }).parts)).toEqual(["$[0].maxPoints: undefined -> 55"]);
   });
 
-  it("defaultFormSaveIsIdentity ở api.http.ts: bài MD, H-SCA Anh (Nghe REQUIRED, Đọc FORBIDDEN) và SPT mã GDKTPL giữ nguyên wire qua tải rồi lưu", async () => {
+  it("defaultFormSaveIsIdentity ở api.ts: bài MD, H-SCA Anh (Nghe REQUIRED, Đọc FORBIDDEN) và SPT mã GDKTPL giữ nguyên wire qua tải rồi lưu", async () => {
     const cases: Array<{ name: string; kind: string; parts: Wire[]; check: (body: Wire[]) => void }> = [
       { name: "MD QDA", kind: "QDA", parts: [wirePart([wireScience("sec-ly", "LY"), wireSection("sec-toan", "TOAN", [wireBlock("t", { questionCount: 10 })], { matrix: matrix("REQUIRED") })])], check: () => undefined },
       {
@@ -186,11 +177,10 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     const user = userEvent.setup();
     const parts = [wirePart([wireSection("sec-kt", "GDKTPL", [wireBlock("k-1", { name: "Dong KT", questionCount: 20 })]), wireSection("sec-toan", "TOAN", [wireBlock("t", { questionCount: 10 })])])];
     const { server } = boot({ kind: "SPT", parts });
-    const undo = patchSubjectFormEntry("SPT", "ECON_LAW", { enabled: true });
     openStructure("?section=sec-kt");
-    expect(await screen.findByRole("heading", { name: "DS GDKTPL" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Sua Dong KT" }));
-    const field = screen.getByRole("textbox", { name: "DS Dong KT so luong" });
+    expect(await screen.findByRole("heading", { name: "Các dòng lấy câu" })).toBeInTheDocument();
+    await user.click(document.querySelector<HTMLElement>('[data-form-row="k-1"] button')!);
+    const field = await screen.findByRole("textbox", { name: "Số câu" });
     await user.clear(field);
     await user.type(field, "18");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
@@ -200,7 +190,6 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     const seeded = parts[0]!.sections as Wire[];
     expect(diffWire(seeded[0], sent["sec-kt"])).toEqual(["$.blocks[0].questionCount: 20 -> 18"]);
     expect(diffWire(seeded[1], sent["sec-toan"])).toEqual([]);
-    undo();
   });
 });
 
@@ -213,7 +202,6 @@ describe("Thân PUT của Danh sách dòng thật (CR-3 AC-12, FTM AC 6, AC 40)"
   ];
 
   it.each(cases)("rowFormSaveIsIdentity: $name mở bằng DS thật, sửa tên một dòng rồi Lưu: thân PUT chỉ khác ở tên, lưu rồi GET lại bằng thân đã gửi", async ({ kind, parts, section, row }) => {
-    restore();
     const user = userEvent.setup();
     const original = parts();
     const { server, state } = boot({ kind, parts: original });
@@ -231,7 +219,6 @@ describe("Thân PUT của Danh sách dòng thật (CR-3 AC-12, FTM AC 6, AC 40)"
   });
 
   it("THPTQG Văn (chỉ đọc): không có nút Sửa nên không có gì để sửa, và Kiểm tra không gửi PUT khi bản nháp sạch", async () => {
-    restore();
     const { server } = boot({ kind: "THPTQG", parts: oneSection(thptqgLiteratureSection()) });
     openStructure("?section=sec-van");
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
@@ -240,7 +227,6 @@ describe("Thân PUT của Danh sách dòng thật (CR-3 AC-12, FTM AC 6, AC 40)"
   });
 
   it("noRowFormRequests: mở môn DS thật và mở dòng chỉ gọi GET (tải bài, cấu trúc, mẫu, danh mục)", async () => {
-    restore();
     const user = userEvent.setup();
     const { server } = boot({ kind: "QDA", parts: oneSection(qdaLiteratureSection()) });
     openStructure("?section=sec-van");
@@ -254,7 +240,7 @@ describe("Thân PUT của Danh sách dòng thật (CR-3 AC-12, FTM AC 6, AC 40)"
 describe("Chọn biểu mẫu không gọi request (FTM mục 9)", () => {
   it("selectionMakesNoRequests: tính biểu mẫu của mọi môn là hàm thuần, không đụng fetch", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const parts = [part("p", [scienceSection("a", "LY"), scienceSection("b", "HOA"), { ...scienceSection("c", "TOAN"), blocks: [block("x")] }])];
+    const parts = [part("p", [scienceSection("a", "LY"), scienceSection("b", "HOA"), { ...scienceSection("c", "TOAN"), blocks: [block("x", { tagCodes: ["MD"] })] }])];
     const pins = selectAllSubjectForms(standardExam("QDA"), parts);
     expect(Object.keys(pins)).toEqual(["a", "b", "c"]);
     expect(Object.values(pins).map((pin) => pin.form)).toEqual(["MATRIX", "MATRIX", "DEFAULT"]);
@@ -262,9 +248,9 @@ describe("Chọn biểu mẫu không gọi request (FTM mục 9)", () => {
     fetchSpy.mockRestore();
   });
 
-  it("selectionMakesNoRequests: mở màn Cấu trúc với mọi dạng bật gọi đúng các request như khi mọi dạng tắt", async () => {
-    const opened = async () => {
-      const { server } = boot();
+  it("selectionMakesNoRequests: mở màn Cấu trúc với các môn MT/DS gọi đúng các request như khi toàn bộ môn là MD", async () => {
+    const opened = async (parts?: Wire[]) => {
+      const { server } = boot(parts ? { parts } : {});
       const view = openStructure("?exam=1");
       await screen.findByRole("heading", { level: 2, name: /Tổng quan bài/ });
       await waitFor(() => expect(server.calls("GET", `${STRUCTURE}/summary`).length).toBeGreaterThan(0));
@@ -273,9 +259,7 @@ describe("Chọn biểu mẫu không gọi request (FTM mục 9)", () => {
       return log;
     };
     const withForms = await opened();
-    // Gỡ chỗ cắm: bảng đăng ký của sản phẩm, mọi dạng tắt.
-    restore();
-    const withoutForms = await opened();
+    const withoutForms = await opened([wirePart([wireSection("sec-math", "MATH", [wireBlock("m-1")])])]);
     expect(withForms).toEqual(withoutForms);
     expect(withForms).toContain(`GET ${STRUCTURE}`);
     expect(withForms.some((line) => line.includes(TEMPLATES))).toBe(true);
@@ -284,10 +268,9 @@ describe("Chọn biểu mẫu không gọi request (FTM mục 9)", () => {
 
 /**
  * CR-2 AC-8 (FTM AC 6, AC 40 cho MT; plan B4): mở môn MT thật của mọi mẫu chuẩn QDA, BCA trong fixture rồi Lưu không sửa gì thì thân `PUT`
- * (chặn ở `api.http.ts`) bằng bản đã nạp, so toàn bộ wire với các loại trừ có tên của `diffWire`. Cờ và màn của sản phẩm.
+ * bằng bản đã nạp, so toàn bộ wire với các loại trừ có tên của `diffWire`.
  */
 describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
-  beforeEach(() => restore());
   const MATRIX_KINDS = ["QDA", "BCA", "VACT"];
 
   it("matrixFormSaveIsIdentity: mọi mẫu MT của QDA, BCA, V-ACT mở môn MT đầu tiên không ghi gì vào bản nháp, và wire qua tải rồi lưu không đổi", async () => {
@@ -297,20 +280,15 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
       const target = mapped
         .get(template.code)!
         .parts.flatMap((item) => sectionGroups(item).flatMap((group) => group.sections))
-        .find((candidate) => {
-          const entry = subjectFormFor(template.kindCode, candidate.subjectCode);
-          return entry?.enabled === true && entry.form === "MATRIX";
-        });
+        .find((candidate) => subjectFormFor(template.kindCode, candidate.subjectCode)?.form === "MATRIX");
       if (!target) continue;
       const wireParts = template.structure.parts as unknown as Wire[];
       const { server } = boot({ kind: template.kindCode, parts: wireParts });
       const view = openStructure(`?section=${target.id}`);
       await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
-      // Mở MT không ghi gì vào bản nháp: nút Lưu vẫn khóa, không có "thay đổi chưa lưu".
       expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
       expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
       view.unmount();
-      // Thân PUT bằng bản đã nạp, chặn ở `api.http.ts` (không đổi gì trên đường tải rồi lưu).
       const loaded = await getExamStructure(EXAM_ID);
       await updateExamStructure(EXAM_ID, { parts: loaded.parts, examQuotas: loaded.examQuotas ?? [], expectedRevision: loaded.revision });
       const sent = putCalls(server)[0]!.body as { parts: Wire[] };
@@ -357,12 +335,10 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
 });
 
 /**
- * CR-2H AC-9 (FTM AC 6, AC 40, B4, B7 cho HSA): mọi mẫu HSA dùng MT mở MT không dirty nháp, qua tải rồi lưu không đổi wire;
- * HSA có dữ liệu cũ chuyển đổi chỉ qua HSA-D `convertLegacySection`; tắt cờ HSA:TOAN mở MD không banner cảnh báo.
+ * CR-2H AC-9 (FTM AC 6, AC 40, B4 cho HSA): mọi mẫu HSA dùng MT mở MT không dirty nháp, qua tải rồi lưu không đổi wire;
+ * HSA có dữ liệu cũ chuyển đổi chỉ qua HSA-D `convertLegacySection`; môn không đăng ký mở MD không banner cảnh báo.
  */
-describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9, B7)", () => {
-  beforeEach(() => restore());
-
+describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9)", () => {
   it("hsaMatrixSaveIsIdentity: mọi mẫu chuẩn HSA (FULL, PART, SUBJECT của TOAN, LY, HOA, SINH, SU, DIA) mở MT không dirty và qua get->put giữ nguyên wire", async () => {
     const covered: string[] = [];
     const mapped = new Map(standardFixtureTemplates().map((template) => [template.code, template]));
@@ -370,10 +346,7 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9, B7)", () => {
       const targets = mapped
         .get(template.code)!
         .parts.flatMap((item) => sectionGroups(item).flatMap((group) => group.sections))
-        .filter((candidate) => {
-          const entry = subjectFormFor("HSA", candidate.subjectCode);
-          return entry?.enabled === true && entry.form === "MATRIX";
-        });
+        .filter((candidate) => subjectFormFor("HSA", candidate.subjectCode)?.form === "MATRIX");
       if (targets.length === 0) continue;
       const wireParts = template.structure.parts as unknown as Wire[];
       const { server } = boot({ kind: "HSA", parts: wireParts });
@@ -437,21 +410,17 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9, B7)", () => {
     expect((saved.topicQuotas as unknown[] | null) ?? []).toEqual([]);
   });
 
-  it("B7 cờ enabled: khi tắt HSA:TOAN mở MD không full-form-notice; bật lại mở MT không full-form-notice", async () => {
+  it("mã môn không đăng ký (MATH) mở MD không full-form-notice; HSA:TOAN mở MT không full-form-notice", async () => {
     const template = standardTemplates.templates.find((item) => item.code === "HSA_SUBJECT_TOAN")!;
     const wireParts = template.structure.parts as unknown as Wire[];
     const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
+    const unregisteredParts = [wirePart([wireSection("sec-math", "MATH", [wireBlock("m1")])])];
 
-    const undo = patchSubjectFormEntry("HSA", "TOAN", { enabled: false });
-    try {
-      boot({ kind: "HSA", parts: wireParts });
-      const offView = openStructure(`?section=${sectionId}`);
-      expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
-      expect(screen.queryByTestId("full-form-notice")).toBeNull();
-      offView.unmount();
-    } finally {
-      undo();
-    }
+    boot({ kind: "HSA", parts: unregisteredParts });
+    const offView = openStructure("?section=sec-math");
+    expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
+    expect(screen.queryByTestId("full-form-notice")).toBeNull();
+    offView.unmount();
 
     boot({ kind: "HSA", parts: wireParts });
     openStructure(`?section=${sectionId}`);

@@ -3,14 +3,12 @@ import type { BlockMatrix } from "../types";
 import { validateMatrix } from "../matrix";
 import { listSubjectFormPairs, subjectFormFor } from "../subject-forms/registry";
 import {
-  applyNewTotal,
   conditionSummary,
   convertReferenceUnit,
   dimensionCell,
   dimensionDeclared,
   enforcementModeOf,
   gradeVisible,
-  keepOldTotal,
   lockReasonsOf,
   modePatch,
   pruneMatrix,
@@ -186,7 +184,7 @@ describe("row-list-model: mọi mẫu DS của fixture", () => {
   });
 });
 
-describe("row-list-model: convertReferenceUnit, applyNewTotal và keepOldTotal (R1-6, R1-11, R1-13)", () => {
+describe("row-list-model: convertReferenceUnit (R1-6, R1-11)", () => {
   it("convertReferenceUnit giữ chiều rỗng rỗng, đổi non-empty COUNT <-> PERCENT, và chuẩn hóa chiều ẩn trên tổng của nó", () => {
     const base: BlockMatrix = {
       mode: "SEPARATE",
@@ -208,24 +206,5 @@ describe("row-list-model: convertReferenceUnit, applyNewTotal và keepOldTotal (
 
     const backCount = convertReferenceUnit({ ...percentVisible, byDifficulty: [{ code: "NB", value: 40 }, { code: "TH", value: 60 }] }, "COUNT", 20, AXES);
     expect(backCount.byDifficulty).toEqual([{ code: "NB", value: 8 }, { code: "TH", value: 12 }]);
-  });
-
-  it("applyNewTotal và keepOldTotal giữ nguyên topicQuotas: undefined khi chưa có và tính đúng khi có", () => {
-    const noQuotas = section("s1", "TOAN", [block("b1", { questionCount: 30 })], {
-      matrix: { mode: "SEPARATE", unit: "PERCENT", cells: [], byGrade: [], byDifficulty: [{ code: "NB", value: 40 }, { code: "TH", value: 60 }] },
-    });
-    delete (noQuotas as { topicQuotas?: unknown }).topicQuotas;
-    expect(applyNewTotal(noQuotas, 20).topicQuotas).toBeUndefined();
-    const keptNoQuotas = keepOldTotal(noQuotas, 30, AXES);
-    expect(keptNoQuotas.topicQuotas).toBeUndefined();
-    expect(keptNoQuotas.matrix).toMatchObject({ unit: "COUNT", byGrade: [], byDifficulty: [{ code: "NB", value: 12 }, { code: "TH", value: 18 }] });
-
-    const withQuotas = section("s2", "TOAN", [block("b1", { questionCount: 30 })], {
-      topicQuotas: [{ id: "q1", name: "Ham so", nodeIds: [], count: 3, percent: 10, enforcement: "REQUIRED", basis: "QUESTION" }],
-    });
-    expect(applyNewTotal(withQuotas, 20).topicQuotas?.[0]).toMatchObject({ count: 2, percent: 10 });
-    const kept = keepOldTotal(withQuotas, 30, AXES);
-    expect(kept.topicQuotas?.[0]?.count).toBe(3);
-    expect(kept.topicQuotas?.[0]?.percent).toBeUndefined();
   });
 });

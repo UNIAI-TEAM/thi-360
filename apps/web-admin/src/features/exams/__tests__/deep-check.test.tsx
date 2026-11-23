@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { getExam } from "../api";
 import { ExamReviewCheck } from "../components/exam-review-check";
-import { defaultExamReviewApiDeps, ExamsApiError, type ExamReviewApiDeps, getExamCheck } from "../review-api";
+import { ExamsApiError } from "../errors";
+import * as reviewApi from "../review-api";
 import type { ExamCheckResult, ExamCheckRun } from "../review-types";
 import { ExamsBackend } from "./fake-exams-backend";
 import { HSA_001_CHECK } from "./review-fixtures";
@@ -25,6 +26,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -50,29 +52,24 @@ async function setup({
   check,
 }: { startFails?: boolean; check?: (result: ExamCheckResult) => ExamCheckResult } = {}) {
   const exam = await getExam(HSA);
-  const stored = (await getExamCheck({ examId: HSA }))!;
+  const stored = (await reviewApi.getExamCheck({ examId: HSA }))!;
   const initial = check ? check(stored) : stored;
   // `shouldAdvanceTime`: waitFor của Testing Library chạy trên đồng hồ thật; chu kỳ hỏi 2 giây do test tiến tay.
   vi.useFakeTimers({ shouldAdvanceTime: true });
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-  const getCheckRun = vi.fn(async (_examId: string, runId: string): Promise<ExamCheckRun> => ({ ...running, runId }));
+  vi.spyOn(reviewApi, "getExamCheck").mockImplementation(async () => initial);
+  const getCheckRun = vi
+    .spyOn(reviewApi, "getCheckRun")
+    .mockImplementation(async (_examId: string, runId: string): Promise<ExamCheckRun> => ({ ...running, runId }));
   let started = 0;
-  const startDeepCheck = vi.fn(async () => {
+  const startDeepCheck = vi.spyOn(reviewApi, "startDeepCheck").mockImplementation(async () => {
     if (startFails) throw new ExamsApiError(503, "", "UNAVAILABLE");
     started += 1;
     return { runId: `run-${started}` };
   });
-  const deps: ExamReviewApiDeps = {
-    ...defaultExamReviewApiDeps,
-    getExamCheck: vi.fn(async () => initial),
-    startDeepCheck,
-    getCheckRun,
-  };
-  const element = (active = true) => (
-    <ExamReviewCheck exam={exam} onPreview={() => {}} deps={deps} active={active} />
-  );
+  const element = (active = true) => <ExamReviewCheck exam={exam} onPreview={() => {}} active={active} />;
   const view = renderWithProviders(element());
-  return { user, getCheckRun, startDeepCheck, initial, view, element, deps };
+  return { user, getCheckRun, startDeepCheck, initial, view, element };
 }
 
 async function tick(ms = POLL_MS) {
@@ -276,16 +273,16 @@ describe("Kiểm tra kỹ", () => {
 
   it("đang kiểm tra thường thì nút Kiểm tra kỹ của từng đường cũng tắt", async () => {
     const gate = Promise.withResolvers<ExamCheckResult>();
-    const { user, deps, initial } = await setup({
+    const { user, initial } = await setup({
       check: (result) => ({ ...result, paths: result.paths.map((path) => ({ ...path, result: "UNCONFIRMED" })) }),
     });
-    deps.runExamCheck = vi.fn(async () => gate.promise);
+    const runExamCheck = vi.spyOn(reviewApi, "runExamCheck").mockImplementation(async () => gate.promise);
 
     const rowButtons = await screen.findAllByRole("button", { name: /Kiểm tra kỹ đường .+/ });
     rowButtons.forEach((button) => expect(button).not.toHaveAttribute("aria-disabled"));
     await user.click(screen.getAllByRole("button", { name: "Kiểm tra lại" })[0]!);
 
-    expect(deps.runExamCheck).toHaveBeenCalledTimes(1);
+    expect(runExamCheck).toHaveBeenCalledTimes(1);
     // Nút của dòng được bảng dựng lại sau khi trạng thái đổi: hỏi lại trong waitFor, không giữ tham chiếu cũ.
     const rowButtonsAfter = () => screen.getAllByRole("button", { name: /Kiểm tra kỹ đường .+/ });
     await waitFor(() =>

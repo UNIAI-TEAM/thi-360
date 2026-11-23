@@ -60,6 +60,6 @@ describe("thẻ lựa chọn của phần tự chọn: số câu từng môn ch�
 
   it("có đường dẫn 'Sửa thông tin tổng quan' về bước Thông tin chung của bài", () => {
     renderOptions();
-    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute("href", "/exams/new?exam=exam-1");
+    expect(screen.getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute("href", "/exams/exam-1");
   });
 });

@@ -1,9 +1,7 @@
 import * as real from "./api.real";
 
 /**
- * API của Ngân hàng câu hỏi: `api.real.ts` gọi `/api/v1/admin/questions`. Lớp dữ liệu mẫu và cờ
- * `NEXT_PUBLIC_THI360_CONTENT_MOCK` đã gỡ ở QA (UNI-2621). Chữ ký giữ nguyên để hook trong `queries.ts` và
- * giao diện không đổi.
+ * API của Ngân hàng câu hỏi (`/api/v1/admin/questions`).
  */
 
 export { QUESTIONS_QUERY_KEYS } from "./keys";

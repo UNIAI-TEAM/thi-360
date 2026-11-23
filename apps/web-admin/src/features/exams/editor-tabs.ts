@@ -7,11 +7,6 @@ export function examTabHref(examId: string, tab: ExamEditorTab): string {
   return tab === "general" ? base : `${base}/${tab}`;
 }
 
-/** Bước 1 (màn Tạo bài thi) ở chế độ sửa bài đã tạo: đường quay lại từ bước Cấu trúc (UNI-2751). Tab Thông tin chung không đổi. */
-export function examEditHref(examId: string): string {
-  return `/exams/new?exam=${encodeURIComponent(examId)}`;
-}
-
 export function examTabFromPathname(pathname: string): ExamEditorTab {
   const last = pathname.replace(/\/+$/, "").split("/").at(-1);
   return (EXAM_EDITOR_TABS as readonly string[]).includes(last ?? "") ? (last as ExamEditorTab) : "general";

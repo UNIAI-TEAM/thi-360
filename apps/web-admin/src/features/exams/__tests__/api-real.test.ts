@@ -1,11 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { createExam, discontinueExam, updateExamInfo, updateExamStructure } from "../api";
-import { ExamsApiError } from "../review-api";
-import type { CreateExamPartInput } from "../types";
+import { ExamsApiError } from "../errors";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FIXED_PART, FakeServer } from "./fake-exams-server";
-
-// Danh mục tổ hợp là dữ liệu của FE-1 (Nội dung); bài lẻ không dùng tổ hợp nên chỉ cần danh sách rỗng.
-vi.mock("@/features/content/api", () => ({ getContentReference: async () => ({ combinations: [] }) }));
 
 let server: FakeServer;
 
@@ -92,6 +88,17 @@ describe("sửa thông tin chung (nhánh thật)", () => {
     expect(server.calls("PATCH", EXAM_PATH)[0]!.body).toMatchObject({ expectedRevision: 7, description: "" });
   });
 
+  it("PATCH từng phần (chỉ gửi yearsConfirmed và expectedRevision) không gửi description rỗng và giữ nguyên mô tả (S2-2)", async () => {
+    server.on("PATCH", EXAM_PATH, {
+      status: 200,
+      body: examDetailWire({ description: "Mô tả hiện có", yearsConfirmed: true, revision: 8 }),
+    });
+    const exam = await updateExamInfo(EXAM_ID, { yearsConfirmed: true, expectedRevision: 7 });
+
+    expect(server.calls("PATCH", EXAM_PATH)[0]!.body).toEqual({ expectedRevision: 7, yearsConfirmed: true });
+    expect(exam).toMatchObject({ description: "Mô tả hiện có", yearsConfirmed: true, revision: 8 });
+  });
+
   it("412 và 422 theo trường được giữ nguyên mã", async () => {
     server.on(
       "PATCH",
@@ -110,19 +117,8 @@ describe("sửa thông tin chung (nhánh thật)", () => {
 
 describe("tạo bài từ mẫu (nhánh thật)", () => {
   const base = { name: "HSA đề 2", code: "HSA-F-002", kind: "HSA", scope: "FULL" as const, description: null };
-  const edited: CreateExamPartInput[] = [
-    {
-      name: "Phần 1 đã sửa",
-      questionCount: 12,
-      durationMinutes: 45,
-      mode: "FIXED",
-      subjectCode: "MATH",
-      englishOption: false,
-      combinations: [],
-    },
-  ];
 
-  it("chưa sửa cấu trúc: chỉ POST, có Idempotency-Key, không gửi cấu trúc", async () => {
+  it("POST tạo bài từ mẫu kèm Idempotency-Key, không gửi parts", async () => {
     server.on("POST", "/api/v1/admin/exams", { status: 201, body: examDetailWire({ revision: 1, parts: [FIXED_PART] }) });
     const exam = await createExam(base);
 
@@ -132,45 +128,19 @@ describe("tạo bài từ mẫu (nhánh thật)", () => {
     expect(post!.headers.get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/);
     expect(post!.body).not.toHaveProperty("parts");
   });
-
-  it("đã sửa cấu trúc: POST rồi PUT cấu trúc với revision của bài vừa tạo", async () => {
-    server
-      .on("POST", "/api/v1/admin/exams", { status: 201, body: examDetailWire({ revision: 3 }) })
-      .on("PUT", STRUCTURE_PATH, { status: 200, body: examDetailWire({ revision: 4 }) });
-    const exam = await createExam({ ...base, parts: edited });
-
-    expect(server.requests.map((item) => `${item.method} ${item.url.pathname}`)).toEqual([
-      "POST /api/v1/admin/exams",
-      `PUT ${STRUCTURE_PATH}`,
-    ]);
-    expect(exam.revision).toBe(4);
-    expect(server.requests[1]!.body).toMatchObject({
-      expectedRevision: 3,
-      parts: [{ name: "Phần 1 đã sửa", questionCount: 12, durationMinutes: 45, sections: [{ subjectCode: "MATH" }] }],
-    });
-  });
-
-  it("lưu cấu trúc lỗi thì báo lỗi của bước đó; bài đã tạo không bị tạo lại", async () => {
-    server
-      .on("POST", "/api/v1/admin/exams", { status: 201, body: examDetailWire({ revision: 3 }) })
-      .on("PUT", STRUCTURE_PATH, { status: 422, body: { code: "EXAM_STRUCTURE_INVALID" } });
-
-    expect(await rejected(createExam({ ...base, parts: edited }))).toMatchObject({ status: 422, code: "EXAM_STRUCTURE_INVALID" });
-    expect(server.calls("POST", "/api/v1/admin/exams")).toHaveLength(1);
-  });
 });
 
 describe("ngừng bán từ danh sách (nhánh thật)", () => {
   it("gửi Idempotency-Key và expectedRevision của dòng danh sách, không đọc lại bài", async () => {
     server.on("POST", `${EXAM_PATH}/discontinue`, { status: 200, body: examDetailWire({ status: "DISCONTINUED", revision: 10 }) });
 
-    const exam = await discontinueExam(EXAM_ID, 9);
+    const exam = await discontinueExam({ examId: EXAM_ID, expectedRevision: 9, idempotencyKey: "disc-key-1" });
 
     expect(exam.status).toBe("DISCONTINUED");
     expect(server.calls("GET", EXAM_PATH)).toHaveLength(0);
     const [post] = server.calls("POST", `${EXAM_PATH}/discontinue`);
     expect(post!.body).toEqual({ expectedRevision: 9 });
-    expect(post!.headers.get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/);
+    expect(post!.headers.get("Idempotency-Key")).toBe("disc-key-1");
   });
 
   it("bài thời gian theo phần: thời lượng trả về là tổng các phần, không lấy số đã lưu của mẫu (F-4)", async () => {
@@ -185,7 +155,7 @@ describe("ngừng bán từ danh sách (nhánh thật)", () => {
       }),
     });
 
-    const exam = await discontinueExam(EXAM_ID, 9);
+    const exam = await discontinueExam({ examId: EXAM_ID, expectedRevision: 9, idempotencyKey: "disc-key-2" });
 
     expect(exam.durationMinutes).toBe(200);
   });
