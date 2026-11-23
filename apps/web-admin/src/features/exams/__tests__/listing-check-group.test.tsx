@@ -97,14 +97,16 @@ describe("tab Kiểm tra: nhóm Thông tin bán", () => {
     expect(group.getByRole("link", { name: /Sửa thông tin bán/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/listing`);
   });
 
-  it("đọc từ listingCheck, không qua groups[]: nhóm có ở ô các nhóm kiểm tra dù groups[] chỉ có tám nhóm", async () => {
+  it("R-10.2: Các nhóm kiểm tra giữ đúng 8 nhóm cấu hình, không nhân bản Thông tin bán vốn đã có mục riêng", async () => {
     renderCheck(checkWire([issue("LISTING_PRICE_MISSING", "listPriceVnd")]));
     const heading = await screen.findByRole("heading", { name: "Các nhóm kiểm tra" });
     const tiles = within(heading.closest("section")!).getAllByRole("listitem");
-    expect(tiles).toHaveLength(9);
-    expect(tiles.at(-1)).toHaveTextContent("Thông tin bán");
-    expect(tiles.at(-1)).toHaveTextContent("Chưa nhập giá bán.");
-    expect(tiles.slice(0, 8).map((tile) => tile.textContent).join(" ")).not.toContain("Chưa nhập giá bán.");
+    expect(tiles).toHaveLength(8);
+    expect(tiles.map((tile) => tile.textContent).join(" ")).not.toContain("Thông tin bán");
+    expect(tiles.map((tile) => tile.textContent).join(" ")).not.toContain("Chưa nhập giá bán.");
+    const group = await listingSection();
+    expect(group.getByRole("heading", { name: "Thông tin bán" })).toBeInTheDocument();
+    expect(group.getByText("Chưa nhập giá bán.")).toBeInTheDocument();
   });
 });
 

@@ -15,6 +15,10 @@ import {
 } from "@thi360/ui";
 import {
   countWords,
+  matchLetter,
+  optionLetter,
+  orderById,
+  readRawQuestionBody,
   type AnswerValue as KitAnswerValue,
   type ClozeAnswer as KitClozeAnswer,
   type EssayAnswer as KitEssayAnswer,
@@ -35,8 +39,6 @@ import {
   extractClozeResultEntries,
   extractTrueFalseEntries,
   listPaperLeafQuestions,
-  matchingLabelMaps,
-  optionLetterList,
   TRIAL_OUTCOME_TONE,
   type TrialLeafDescriptor,
 } from "./mappers";
@@ -45,7 +47,33 @@ import type {
   PreviewGradedItem,
   PreviewTrialOutcome,
   PreviewTrialPaperResponse,
+  PreviewTrialQuestion,
 } from "./types";
+
+function optionLetters(question: PreviewTrialQuestion): Map<string, string> {
+  const options = (readRawQuestionBody(question.body)?.options ?? [])
+    .map((opt) => ({ id: opt.id ?? "" }))
+    .filter((opt) => opt.id.length > 0);
+  return new Map(orderById(options, question.optionOrder).map((opt, idx) => [opt.id, optionLetter(idx)]));
+}
+
+function matchingLabels(question: PreviewTrialQuestion): {
+  leftLabels: Map<string, string>;
+  rightLabels: Map<string, string>;
+} {
+  const raw = readRawQuestionBody(question.body);
+  const leftLabels = new Map<string, string>();
+  (raw?.left ?? []).forEach((item, idx) => {
+    if (item.id) leftLabels.set(item.id, String(idx + 1));
+  });
+  const rightItems = (raw?.right ?? [])
+    .map((item) => ({ id: item.id ?? "" }))
+    .filter((item) => item.id.length > 0);
+  const rightLabels = new Map(
+    orderById(rightItems, question.optionOrder).map((item, idx) => [item.id, matchLetter(idx)]),
+  );
+  return { leftLabels, rightLabels };
+}
 
 interface GradedQuestionRow {
   questionId: string;
@@ -416,7 +444,7 @@ function TrialResultAnswerCell({ row }: { row: GradedQuestionRow }) {
     case "SINGLE_CHOICE": {
       const a = row.answer as KitSingleChoiceAnswer;
       if (!a.optionId) return <span className="text-text-muted">{t("result.blank")}</span>;
-      const letters = row.descriptor ? optionLetterList(row.descriptor.question) : new Map<string, string>();
+      const letters = row.descriptor ? optionLetters(row.descriptor.question) : new Map<string, string>();
       const letter = letters.get(a.optionId) ?? a.optionId;
       return <span className="font-medium text-text">{letter}</span>;
     }
@@ -424,7 +452,7 @@ function TrialResultAnswerCell({ row }: { row: GradedQuestionRow }) {
       const a = row.answer as KitMultipleChoiceAnswer;
       const ids = a.optionIds ?? [];
       if (ids.length === 0) return <span className="text-text-muted">{t("result.blank")}</span>;
-      const letters = row.descriptor ? optionLetterList(row.descriptor.question) : new Map<string, string>();
+      const letters = row.descriptor ? optionLetters(row.descriptor.question) : new Map<string, string>();
       return (
         <span className="font-medium text-text">
           {ids.map((id) => letters.get(id) ?? id).join(", ")}
@@ -465,7 +493,7 @@ function TrialResultAnswerCell({ row }: { row: GradedQuestionRow }) {
       );
       if (pairs.length === 0) return <span className="text-text-muted">{t("result.blank")}</span>;
       const maps = row.descriptor
-        ? matchingLabelMaps(row.descriptor.question)
+        ? matchingLabels(row.descriptor.question)
         : { leftLabels: new Map<string, string>(), rightLabels: new Map<string, string>() };
       return (
         <span className="wrap-anywhere text-text">

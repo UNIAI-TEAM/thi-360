@@ -13,8 +13,8 @@ import type { ExamCheckResult, ListingCheckGroup, ListingCheckIssue } from "../r
 import type { ExamDetail } from "../types";
 import { domId, IconLink, labelAfterName, labelBeforeName, structureHref, useLookup } from "./exam-review-shared";
 
-export const REVIEW_LISTING_ANCHOR = "review-listing";
-export const REVIEW_MANUAL_ANCHOR = "review-manual-grading";
+const REVIEW_LISTING_ANCHOR = "review-listing";
+const REVIEW_MANUAL_ANCHOR = "review-manual-grading";
 
 const LISTING_TONE: Record<ListingCheckGroup["status"], StatusTone> = { PASS: "success", WARN: "warning", FAIL: "danger" };
 
@@ -24,7 +24,7 @@ export function listingErrorCount(group: ListingCheckGroup | null | undefined): 
 }
 
 /** Chip tổng của nhóm: "Đạt", "n cảnh báo" hoặc "n lỗi". */
-export function useListingStatusText() {
+function useListingStatusText() {
   const t = useTranslations("exams.review.listing.status");
   return (group: ListingCheckGroup): string =>
     group.status === "PASS"

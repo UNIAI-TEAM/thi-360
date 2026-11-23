@@ -18,10 +18,11 @@ import {
   TabsTrigger,
   type TableCards,
 } from "@thi360/ui";
-import { ArrowRight, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronDown, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { createContext, Fragment, type RefObject, useCallback, useContext, useId, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "../check";
 import { type DeepCheck, useDeepCheck, useExamCheck, useRunExamCheck } from "../review-queries";
 import type {
@@ -48,13 +49,7 @@ import {
   useLookup,
   usePathNode,
 } from "./exam-review-shared";
-import { useListingIssueText } from "../listing/issue-text";
-import {
-  ListingCheckSection,
-  ManualGradingSection,
-  REVIEW_LISTING_ANCHOR,
-  useListingStatusText,
-} from "./exam-review-listing";
+import { ListingCheckSection, ManualGradingSection } from "./exam-review-listing";
 import { ExamEditorActions } from "./exam-editor-actions";
 import { ExamReviewFindings } from "./exam-review-findings";
 
@@ -77,6 +72,7 @@ export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCh
   const [liveMessage, setLiveMessage] = useState("");
   const blocksRef = useRef<HTMLHeadingElement>(null);
   const [blockTab, setBlockTab] = useState<string | null>(null);
+  const [blocksOpen, setBlocksOpen] = useState(false);
 
   const announceDone = (result: ExamCheckResult) => {
     const count = (value: PathCheckResult) => result.paths.filter((path) => path.result === value).length;
@@ -98,7 +94,10 @@ export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCh
   }
 
   function showOverlap(pathId: string) {
-    setBlockTab(pathId);
+    flushSync(() => {
+      setBlocksOpen(true);
+      setBlockTab(pathId);
+    });
     blocksRef.current?.scrollIntoView({ block: "start" });
     blocksRef.current?.focus();
   }
@@ -162,6 +161,8 @@ export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCh
         blocksRef={blocksRef}
         blockTab={blockTab}
         onBlockTabChange={setBlockTab}
+        blocksOpen={blocksOpen}
+        onBlocksOpenChange={setBlocksOpen}
         showActions={active}
       />
     );
@@ -190,6 +191,8 @@ interface CheckResultViewProps {
   blocksRef: RefObject<HTMLHeadingElement | null>;
   blockTab: string | null;
   onBlockTabChange: (pathId: string) => void;
+  blocksOpen: boolean;
+  onBlocksOpenChange: (open: boolean) => void;
   /** Nút Kiểm tra lại nằm ở hàng tiêu đề của bài, chỉ khi tab Kiểm tra đang mở. */
   showActions: boolean;
 }
@@ -208,6 +211,8 @@ function CheckResultView({
   blocksRef,
   blockTab,
   onBlockTabChange,
+  blocksOpen,
+  onBlocksOpenChange,
   showActions,
 }: CheckResultViewProps) {
   const t = useTranslations("exams.review");
@@ -335,6 +340,8 @@ function CheckResultView({
         headingRef={blocksRef}
         value={blockTab}
         onValueChange={onBlockTabChange}
+        open={blocksOpen}
+        onOpenChange={onBlocksOpenChange}
       />
 
       <div className="flex flex-wrap justify-end gap-2">
@@ -739,9 +746,6 @@ function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckRe
   const t = useTranslations("exams.review");
   const issueWithPath = useIssueWithPath(result.paths, exam, true);
   const first = result.paths[0];
-  const listingStatusText = useListingStatusText();
-  const listingIssueText = useListingIssueText();
-  const listing = result.listingCheck;
 
   const passText = (group: CheckGroupResult) =>
     t(`groups.pass.${group.group}`, {
@@ -785,35 +789,6 @@ function GroupsSection({ exam, result }: { exam: ExamDetail; result: ExamCheckRe
             </li>
           );
         })}
-        <li className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4">
-          <PathResultIcon
-            result={!listing ? "UNCONFIRMED" : listing.status === "PASS" ? "VALID" : listing.status === "FAIL" ? "INVALID" : "UNCONFIRMED"}
-            className="mt-0.5 size-[18px] shrink-0"
-          />
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-text">{t("listing.title")}</span>
-              {listing && (
-                <StatusChip tone={listing.status === "PASS" ? "success" : listing.status === "FAIL" ? "danger" : "warning"}>
-                  {listingStatusText(listing)}
-                </StatusChip>
-              )}
-              <a href={`#${REVIEW_LISTING_ANCHOR}`} className="rounded-sm text-label font-semibold text-primary-text hover:underline">
-                {t("listing.detailLink")}
-              </a>
-            </div>
-            <p className="text-body text-text-secondary">
-              {!listing
-                ? t("listing.unavailable")
-                : listing.issues.length
-                  ? listingIssueText(listing.issues.find((issue) => issue.severity === "ERROR") ?? listing.issues[0]!)
-                  : t("listing.tilePass")}
-            </p>
-            {listing && listing.issues.length > 1 && (
-              <p className="text-caption text-text-muted">{t("moreIssues", { count: listing.issues.length - 1 })}</p>
-            )}
-          </div>
-        </li>
       </ul>
     </section>
   );
@@ -825,12 +800,16 @@ function BlocksSection({
   headingRef,
   value,
   onValueChange,
+  open,
+  onOpenChange,
 }: {
   exam: ExamDetail;
   result: ExamCheckResult;
   headingRef: RefObject<HTMLHeadingElement | null>;
   value: string | null;
   onValueChange: (pathId: string) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("exams.review");
   const pathNode = usePathNode(exam.id);
@@ -839,33 +818,51 @@ function BlocksSection({
 
   return (
     <section aria-labelledby="review-blocks-title" className="flex flex-col gap-3">
-      <div>
-        <h2
-          id="review-blocks-title"
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-h3 font-bold text-text outline-hidden"
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2
+            id="review-blocks-title"
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-h3 font-bold text-text outline-hidden"
+          >
+            {t("blocks.title")}
+          </h2>
+          <p className="text-body text-text-muted">{t("blocks.description")}</p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          aria-expanded={open}
+          aria-controls="review-blocks-panel"
+          onClick={() => onOpenChange(!open)}
         >
-          {t("blocks.title")}
-        </h2>
-        <p className="text-body text-text-muted">{t("blocks.description")}</p>
+          {t(open ? "blocks.collapse" : "blocks.expand")}
+          <ChevronDown
+            aria-hidden
+            className={`transition-transform duration-150 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+          />
+        </Button>
       </div>
-      <Tabs value={active} onValueChange={onValueChange}>
-        <TabsList aria-label={t("blocks.tabsLabel")}>
+      <div id="review-blocks-panel" hidden={!open}>
+        <Tabs value={active} onValueChange={onValueChange}>
+          <TabsList aria-label={t("blocks.tabsLabel")}>
+            {result.paths.map((path) => (
+              <TabsTrigger key={path.pathId} value={path.pathId} className="gap-1.5">
+                {path.result !== "VALID" && <PathResultIcon result={path.result} className="size-3.5 shrink-0" />}
+                {pathNode(path)}
+                {path.result !== "VALID" && <span className="sr-only">{`: ${t(`result.${path.result}`)}`}</span>}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           {result.paths.map((path) => (
-            <TabsTrigger key={path.pathId} value={path.pathId} className="gap-1.5">
-              {path.result !== "VALID" && <PathResultIcon result={path.result} className="size-3.5 shrink-0" />}
-              {pathNode(path)}
-              {path.result !== "VALID" && <span className="sr-only">{`: ${t(`result.${path.result}`)}`}</span>}
-            </TabsTrigger>
+            <TabsContent key={path.pathId} value={path.pathId}>
+              <BlockTable exam={exam} path={path} />
+            </TabsContent>
           ))}
-        </TabsList>
-        {result.paths.map((path) => (
-          <TabsContent key={path.pathId} value={path.pathId}>
-            <BlockTable exam={exam} path={path} />
-          </TabsContent>
-        ))}
-      </Tabs>
+        </Tabs>
+      </div>
     </section>
   );
 }

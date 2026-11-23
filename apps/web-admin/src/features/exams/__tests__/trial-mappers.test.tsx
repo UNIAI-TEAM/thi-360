@@ -7,6 +7,7 @@ import {
   sliceTrialPartSegments,
   toApiTrialAnswers,
   toKitTrialQuestion,
+  toKitTrialSet,
   trialPartKey,
 } from "../trial/mappers";
 import type { PreviewGradeResponse, PreviewTrialPaperResponse, PreviewTrialPart } from "../trial/types";
@@ -259,4 +260,58 @@ describe("trial mappers (R1-4, R1-5, R1-14, R1-17, R1-33, R1-38, R1-39)", () => 
     });
     expect(emptyOrder.optionOrder).toBeUndefined();
   });
+
+  it("RF-10 & AC-20: parseRawQuestionBody giữ nguyên blankNumberStart cho CLOZE, QUESTION_SET và extractClozeResultEntries", () => {
+    const cloze = toKitTrialQuestion({
+      questionId: "q-cl-21",
+      number: 5,
+      type: "CLOZE",
+      body: {
+        type: "CLOZE",
+        blankNumberStart: 21,
+        passage: "<p>Từ [[b1]] đến [[b2]].</p>",
+        blanks: [{ id: "b1" }, { id: "b2" }],
+      } as never,
+    });
+    expect(cloze.body).toEqual({
+      type: "CLOZE",
+      blankNumberStart: 21,
+      passage: "<p>Từ [[b1]] đến [[b2]].</p>",
+      blanks: [
+        { id: "b1", answers: [] },
+        { id: "b2", answers: [] },
+      ],
+    });
+
+    const { setQuestion } = toKitTrialSet({
+      questionId: "set-23",
+      passage: "<p>Đoạn [[1]] và [[2]].</p>",
+      blankNumberStart: 23,
+      children: [
+        { questionId: "c-23", number: 6, type: "SINGLE_CHOICE" },
+        { questionId: "c-24", number: 7, type: "SINGLE_CHOICE" },
+      ],
+    });
+    expect(setQuestion.body).toEqual({
+      type: "QUESTION_SET",
+      passage: "<p>Đoạn [[1]] và [[2]].</p>",
+      blankNumberStart: 23,
+      childIds: ["c-23", "c-24"],
+    });
+
+    expect(
+      extractClozeResultEntries(
+        {
+          questionId: "q-cl-21",
+          type: "CLOZE",
+          body: { type: "CLOZE", blankNumberStart: 21, blanks: [{ id: "b1" }, { id: "b2" }] } as never,
+        },
+        { b1: "Hà Nội", b2: "Huế" },
+      ),
+    ).toEqual([
+      { index: 21, value: "Hà Nội" },
+      { index: 22, value: "Huế" },
+    ]);
+  });
 });
+

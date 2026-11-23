@@ -291,4 +291,31 @@ describe("Kiểm tra kỹ", () => {
     gate.resolve(initial);
     await waitFor(() => rowButtonsAfter().forEach((button) => expect(button).not.toHaveAttribute("aria-disabled")));
   });
+
+  it("R-10.2 & S1-6: Chi tiết theo khối đóng mặc định; bấm Xem nguồn giao nhau tự mở đúng đường và chuyển tiêu điểm tới tiêu đề", async () => {
+    const scrollSpy = vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
+    const { user } = await setup({
+      check: (result) => ({
+        ...result,
+        paths: result.paths.map((path, index) =>
+          index === 1 ? { ...path, result: "UNCONFIRMED" } : { ...path, result: "VALID", issues: [] },
+        ),
+      }),
+    });
+
+    const toggle = await screen.findByRole("button", { name: "Hiện chi tiết theo khối" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("table", { name: "Chi tiết theo khối" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Xem nguồn giao nhau" }));
+
+    expect(screen.getByRole("button", { name: "Ẩn chi tiết theo khối" })).toHaveAttribute("aria-expanded", "true");
+    const blocksPanel = document.getElementById("review-blocks-panel")!;
+    expect(within(blocksPanel).getByRole("table", { name: "Chi tiết theo khối" })).toBeInTheDocument();
+    const tabs = within(blocksPanel).getAllByRole("tab");
+    expect(tabs[1]).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Chi tiết theo khối" })).toHaveFocus();
+    expect(scrollSpy).toHaveBeenCalled();
+  });
 });
+

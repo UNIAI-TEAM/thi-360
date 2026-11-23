@@ -86,7 +86,7 @@ export function richNodes(
 }
 
 /** Chip và icon cho ba kết quả kiểm tra (DESIGN.md 2.4); chữ luôn đi kèm màu. */
-export const PATH_RESULT_TONE: Record<PathCheckResult, StatusTone> = {
+const PATH_RESULT_TONE: Record<PathCheckResult, StatusTone> = {
   VALID: "success",
   INVALID: "danger",
   UNCONFIRMED: "warning",
@@ -391,10 +391,6 @@ export function useIssueWithPath(paths: readonly ExamPathRef[], exam?: Pick<Exam
   );
 }
 
-export function blockLabel(subjectName: string, blockName: string): string {
-  return `${subjectName} · ${blockName}`;
-}
-
 /** Liệt kê mã ngắn của các đường ("Tiếng Anh, KH-1, KH-2") cho bảng phiên bản. */
 export function pathLabelCodes(paths: readonly ExamPathRef[], single: string): string {
   if (paths.length === 0) return "";
@@ -541,16 +537,8 @@ function useChangeWhereParts(exam: ExamDetail) {
 }
 
 /**
- * Nhãn dễ đọc cho vị trí của một thay đổi (`ExamChange.where`): tên phần, môn, khối, lựa chọn lấy từ cấu trúc hiện tại,
- * không có thì chữ chung ("Khối"); sau đó là nhãn của trường. Không bao giờ in id. `where` không phải đường dẫn (dữ liệu
- * mẫu đã là chữ mô tả) giữ nguyên.
+ * Nhãn dễ đọc cho vị trí của một thay đổi (`ExamChange.where`), giữ tên phần, khối, lựa chọn của mẫu trong `ExamName`.
  */
-export function useChangeWhere(exam: ExamDetail) {
-  const parts = useChangeWhereParts(exam);
-  return useCallback((where: string) => parts(where).map((item) => item.text).join(" · "), [parts]);
-}
-
-/** Như `useChangeWhere` nhưng tên phần, khối, lựa chọn của mẫu nằm trong `ExamName`. */
 export function useChangeWhereNode(exam: ExamDetail) {
   const parts = useChangeWhereParts(exam);
   return useCallback(

@@ -29,7 +29,7 @@ import type { CheckIssue, ExamCheckResult, ExamPathRef, PathCheckResult, Preview
 import type { ExamDetail, ExamPartOption } from "../types";
 import { ExamContentText } from "./exam-content-text";
 import { ExamPreviewAllocation } from "./exam-preview-allocation";
-import { ExamPreviewCompliance } from "./exam-preview-compliance";
+import { ExamPreviewComplianceBanner } from "./exam-preview-compliance";
 import { ExamPreviewPaper } from "./exam-preview-paper";
 import { ExamPreviewSubjects } from "./exam-preview-subjects";
 import { PreviewScopeCard } from "./exam-preview-scope-card";
@@ -469,11 +469,22 @@ export function ExamPreviewPanel({
             <TabsTrigger value="allocation">{t("tabs.allocation")}</TabsTrigger>
           </TabsList>
           <TabsContent value="paper" className="flex flex-col gap-6">
-            <ExamPreviewCompliance paper={data.paper} compliance={data.compliance} dropped={data.droppedQuestions} examId={exam.id} original={original} />
+            <ExamPreviewComplianceBanner
+              paper={data.paper}
+              compliance={data.compliance}
+              examId={exam.id}
+              onOpenAllocation={() => setTab("allocation")}
+            />
             <ExamPreviewPaper paper={data.paper} original={original} />
           </TabsContent>
           <TabsContent value="allocation">
-            <ExamPreviewAllocation paper={data.paper} />
+            <ExamPreviewAllocation
+              paper={data.paper}
+              compliance={data.compliance}
+              dropped={data.droppedQuestions}
+              examId={exam.id}
+              original={original}
+            />
           </TabsContent>
         </Tabs>
       </div>

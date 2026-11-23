@@ -1,8 +1,8 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } from "@thi360/ui";
-import { CircleCheck, Info } from "lucide-react";
+import { Button, Card, ListCard, StatusChip, Table, type StatusTone, type TableCards } from "@thi360/ui";
+import { ArrowRight, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { skipToken, useQuery } from "@tanstack/react-query";
@@ -39,6 +39,85 @@ const LEVEL_TONE: Record<ComplianceLevel, StatusTone> = {
   REFERENCE_DEVIATION: "warning",
   REQUIRED_DEVIATION: "danger",
 };
+
+/**
+ * Gộp `paper.subjects[].quotas` vào danh sách `compliance` ở phạm vi `SECTION:<sectionId>` (không nhân bản dòng đã có),
+ * để tab Đối chiếu phân bổ dùng một bảng duy nhất mà vẫn giữ đủ chỉ tiêu cấp môn của các đề chỉ trả `paper.subjects`.
+ */
+export function mergeSubjectQuotasIntoCompliance(
+  paper: PreviewPaper,
+  compliance: readonly PreviewCompliance[] = [],
+): PreviewCompliance[] {
+  const seen = new Set(compliance.map((row) => `${row.scope}|${row.criterion}`));
+  const extras: PreviewCompliance[] = [];
+  for (const subject of paper.subjects) {
+    const scope = `SECTION:${subject.sectionId}`;
+    for (const quota of subject.quotas) {
+      const criterion = `${quota.kind}:${quota.code}`;
+      const key = `${scope}|${criterion}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      extras.push({
+        criterion,
+        scope,
+        required: quota.required,
+        actual: quota.generated,
+        enforcement: "REQUIRED",
+        basis: "QUESTION",
+        independent: false,
+        note: null,
+        originalRequired: null,
+        topicName: null,
+      });
+    }
+  }
+  return extras.length > 0 ? [...compliance, ...extras] : [...compliance];
+}
+
+export function ExamPreviewComplianceBanner({
+  paper,
+  compliance,
+  examId,
+  onOpenAllocation,
+}: {
+  paper: PreviewPaper;
+  compliance: readonly PreviewCompliance[];
+  examId?: string;
+  onOpenAllocation: () => void;
+}) {
+  const t = useTranslations("exams.preview.compliance");
+  const structureQuery = useExamStructure(examId ?? "", undefined, Boolean(examId));
+  const structure = structureQuery.data;
+  const quotas = useMemo(() => buildTopicQuotaIndex(structure), [structure]);
+  const structureUnavailable = Boolean(examId) && structure === undefined;
+  const rules = useMemo(() => buildMapidRuleIndex(structure), [structure]);
+  const merged = useMemo(() => mergeSubjectQuotasIntoCompliance(paper, compliance), [paper, compliance]);
+  const deviations = useMemo(
+    () =>
+      merged.filter(
+        (row) => !topicQuotaPending(row, quotas, structureUnavailable) && complianceLevel(row, rules) !== "OK",
+      ),
+    [merged, quotas, structureUnavailable, rules],
+  );
+  if (deviations.length === 0) return null;
+  const blocking = deviations.some((row) => complianceLevel(row, rules) === "REQUIRED_DEVIATION");
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3.5 py-2 text-body ${
+        blocking ? "border-danger/30 bg-danger-bg" : "border-warning/30 bg-warning-bg"
+      }`}
+    >
+      <span className="flex items-center gap-2 text-text">
+        <TriangleAlert aria-hidden className={`size-4 shrink-0 ${blocking ? "text-danger" : "text-warning"}`} />
+        <span>{t("banner", { count: deviations.length })}</span>
+      </span>
+      <Button type="button" variant="link" size="sm" onClick={onOpenAllocation}>
+        {t("viewAllocation")}
+        <ArrowRight />
+      </Button>
+    </div>
+  );
+}
 
 export interface ExamPreviewComplianceProps {
   paper: PreviewPaper;

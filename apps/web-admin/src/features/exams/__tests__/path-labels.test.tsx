@@ -101,6 +101,7 @@ describe.each(["vi", "en"] as const)("nhãn đường theo cấu trúc (%s)", (l
   }
 
   it("Kiểm tra: 'Kết quả theo đường lựa chọn' (bảng, nút thao tác) và 'Chi tiết theo khối'", async () => {
+    const user = userEvent.setup();
     const wire = {
       ...checkResultWire("VALID"),
       groups: [],
@@ -115,6 +116,7 @@ describe.each(["vi", "en"] as const)("nhãn đường theo cấu trúc (%s)", (l
     await vi.waitFor(() => expect(table.textContent).toContain(expected.QD02));
     for (const code of ["QD02", "QD01"] as const) expectLocalized(table.textContent ?? "", code);
 
+    await user.click(screen.getByRole("button", { name: lang === "en" ? "Show details by block" : "Hiện chi tiết theo khối" }));
     await vi.waitFor(() => expect(screen.getAllByRole("tab")[0]!.textContent).toContain(expected.QD02));
     const tabs = screen.getAllByRole("tab");
     const tabText = tabs.map((tab) => tab.textContent ?? "").join("|");

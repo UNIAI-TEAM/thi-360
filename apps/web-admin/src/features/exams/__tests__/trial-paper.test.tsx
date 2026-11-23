@@ -649,7 +649,7 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     expect(await screen.findByText("Thủ đô của Việt Nam là thành phố nào?")).toBeInTheDocument();
   });
 
-  it("R1-30 & R1-39: TrialEssayEditor toolbar chỉ có 1 Tab stop với roving ArrowRight và part thiếu partId vẫn nhảy phần đúng", async () => {
+  it("R1-30 & R1-39: TiptapEssayEditor toolbar chỉ có 1 Tab stop với roving ArrowRight và part thiếu partId vẫn nhảy phần đúng", async () => {
     const user = userEvent.setup();
     const fixture = buildTrialPaperFixture();
     delete fixture.parts![0]!.partId;
@@ -915,4 +915,113 @@ describe("Trang làm thử như học viên (/exams/[id]/preview/[previewId]/try
     await user.click(screen.getByRole("link", { name: "Danh sách bài thi" }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
+
+  it("RF-10 & AC-20: CLOZE và QUESTION_SET trong phiên Làm thử hiển thị đúng số chỗ trống theo blankNumberStart ở cả đề và bảng kết quả", async () => {
+    const user = userEvent.setup();
+    const paper: PreviewTrialPaperResponse = {
+      examId: EXAM_ID,
+      previewId: PREVIEW_ID,
+      versionNo: 1,
+      kindCode: "HSCA",
+      timing: "SHARED",
+      durationMinutes: 45,
+      parts: [
+        {
+          partId: "part-cloze",
+          name: "Phần 1 · Điền khuyết",
+          order: 1,
+          firstNumber: 5,
+          lastNumber: 6,
+          points: 2,
+          blocks: [
+            {
+              blockId: "blk-cloze",
+              name: "Đọc điền từ",
+              questionType: "CLOZE",
+              firstNumber: 5,
+              lastNumber: 6,
+              questionCount: 2,
+              items: [
+                {
+                  kind: "QUESTION",
+                  question: {
+                    number: 5,
+                    questionId: "q-cloze-5",
+                    code: "CL5",
+                    versionNo: 1,
+                    type: "CLOZE",
+                    points: 1,
+                    body: {
+                      type: "CLOZE",
+                      blankNumberStart: 21,
+                      passage: "<p>Điền từ [[b1]] và [[b2]].</p>",
+                      blanks: [{ id: "b1" }, { id: "b2" }],
+                    } as never,
+                  },
+                },
+                {
+                  kind: "SET",
+                  set: {
+                    questionId: "set-6",
+                    passage: '<p>Ngữ liệu chùm có ô <span class="blank" data-blank="1"></span>.</p>',
+                    blankNumberStart: 25,
+                    children: [
+                      {
+                        number: 6,
+                        questionId: "q-child-6",
+                        code: "SC6",
+                        versionNo: 1,
+                        type: "SINGLE_CHOICE",
+                        content: "<p>Chọn từ cho ô (25):</p>",
+                        points: 1,
+                        body: {
+                          type: "SINGLE_CHOICE",
+                          options: [{ id: "o-25a", content: "<p>however</p>" }],
+                        } as never,
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const grade: PreviewGradeResponse = {
+      examId: EXAM_ID,
+      previewId: PREVIEW_ID,
+      kindCode: "HSCA",
+      rawScore: 2,
+      maxScore: 2,
+      hasPendingManualGrading: false,
+      items: [
+        { questionId: "q-cloze-5", number: 5, type: "CLOZE", outcome: "CORRECT", earnedPoints: 1, maxPoints: 1, pendingReview: false },
+        { questionId: "q-child-6", number: 6, type: "SINGLE_CHOICE", outcome: "CORRECT", earnedPoints: 1, maxPoints: 1, pendingReview: false },
+      ],
+    };
+
+    new FakeServer()
+      .on("GET", PAPER_PATH, { status: 200, body: paper })
+      .on("POST", GRADE_PATH, { status: 200, body: grade })
+      .install();
+
+    const { container } = renderWithProviders(<PreviewTrialView examId={EXAM_ID} previewId={PREVIEW_ID} />);
+    const inputs = await screen.findAllByRole("textbox");
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]).toHaveAccessibleName(/\b21\b/);
+    expect(inputs[1]).toHaveAccessibleName(/\b22\b/);
+    await waitFor(() => {
+      expect([...container.querySelectorAll(".blank")].map((el) => el.textContent?.trim())).toEqual(["(25) ____"]);
+    });
+
+    await user.type(inputs[1]!, "tự học");
+    await user.click(screen.getByRole("button", { name: "Nộp bài & Chấm thử" }));
+
+    await screen.findByRole("heading", { level: 1, name: "Kết quả làm thử" });
+    expect(screen.getByText(/Ô 22:/)).toBeInTheDocument();
+    expect(screen.getByText(/tự học/)).toBeInTheDocument();
+  });
 });
+

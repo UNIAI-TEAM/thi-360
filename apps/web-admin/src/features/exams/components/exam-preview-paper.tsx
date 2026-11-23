@@ -2,24 +2,23 @@
 
 import { Badge, Button, StatusChip } from "@thi360/ui";
 import {
+  filterAudioAttachments,
+  parseRawQuestionBody,
   Question,
   QuestionSet,
   type ChildQuestionProps,
-  type ChoiceOption,
-  type ClozeBlank,
   type EssayCriterion,
   type KitQuestion,
   type KitQuestionOf,
   type QuestionBody as KitQuestionBody,
   type QuestionReview,
-  type TrueFalseStatement,
 } from "@thi360/ui/question";
 import { ListOrdered, PenLine } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { Fragment, useMemo, useState } from "react";
 import { DISPLAY_NUMBER_FORMAT } from "../display-number";
 import type { PreviewBlock, PreviewDisplaySegment, PreviewItem, PreviewPaper, PreviewPart, PreviewQuestion } from "../review-types";
-import { audioAttachments, PreviewAudioList } from "./exam-preview-audio";
+import { PreviewAudioList } from "./exam-preview-audio";
 import { ExamName, richNodes, useLookup } from "./exam-review-shared";
 
 /** Số mục (câu hoặc bộ) hiện sẵn của mỗi khối; phần còn lại mở bằng "Hiện tất cả". */
@@ -48,160 +47,26 @@ function resolveEssayRubric(question: PreviewQuestion): EssayCriterion[] | null 
 }
 
 function buildKitQuestion(question: PreviewQuestion, original: boolean): KitQuestion {
-  const number = displayNumber(question, original);
-  const optionOrder = resolveOptionOrder(question, original);
-  const rawBody = question.body;
-
-  let body: KitQuestionBody;
-  let stem: string | undefined = question.content ?? undefined;
-
-  switch (question.type) {
-    case "SINGLE_CHOICE": {
-      const sourceOptions =
-        rawBody?.type === "SINGLE_CHOICE" ? rawBody.options : (question.options ?? []);
-      const options: ChoiceOption[] = sourceOptions.map((opt) => ({
-        id: opt.id,
-        content: opt.content,
-        correct: opt.correct ?? question.options?.find((fallback) => fallback.id === opt.id)?.correct,
-      }));
-      body = {
-        type: "SINGLE_CHOICE",
-        options,
-        ...(rawBody?.type === "SINGLE_CHOICE" && rawBody.shuffleOptions !== undefined
-          ? { shuffleOptions: rawBody.shuffleOptions }
-          : {}),
-      };
-      break;
-    }
-    case "MULTIPLE_CHOICE": {
-      const sourceOptions =
-        rawBody?.type === "MULTIPLE_CHOICE" ? rawBody.options : (question.options ?? []);
-      const options: ChoiceOption[] = sourceOptions.map((opt) => ({
-        id: opt.id,
-        content: opt.content,
-        correct: opt.correct ?? question.options?.find((fallback) => fallback.id === opt.id)?.correct,
-      }));
-      body = {
-        type: "MULTIPLE_CHOICE",
-        options,
-        ...(rawBody?.type === "MULTIPLE_CHOICE"
-          ? {
-              scoringRule: rawBody.scoringRule,
-              ...(rawBody.shuffleOptions !== undefined ? { shuffleOptions: rawBody.shuffleOptions } : {}),
-            }
-          : {}),
-      };
-      break;
-    }
-    case "SHORT_ANSWER": {
-      const answers =
-        rawBody?.type === "SHORT_ANSWER" && rawBody.answers.length > 0
-          ? rawBody.answers
-          : question.answer
-            ? [question.answer]
-            : [];
-      body = {
-        type: "SHORT_ANSWER",
-        answers,
-        inputHint: rawBody?.type === "SHORT_ANSWER" ? rawBody.inputHint : null,
-        answerFormat: rawBody?.type === "SHORT_ANSWER" ? (rawBody.answerFormat ?? null) : null,
-      };
-      break;
-    }
-    case "CLOZE": {
-      const passage = rawBody?.type === "CLOZE" ? rawBody.passage : (question.content ?? "");
-      const blanks: ClozeBlank[] =
-        rawBody?.type === "CLOZE"
-          ? rawBody.blanks.map((blank) => ({
-              id: blank.id,
-              answers: blank.answers,
-              points: blank.points,
-            }))
-          : question.answer
-            ? [{ id: "blank-1", answers: [question.answer] }]
-            : [];
-      body = { type: "CLOZE", passage, blanks };
-      if (!question.content || question.content === passage) {
-        stem = undefined;
-      }
-      break;
-    }
-    case "TRUE_FALSE": {
-      const statements: TrueFalseStatement[] =
-        rawBody?.type === "TRUE_FALSE"
-          ? rawBody.statements.map((statement) => ({
-              id: statement.id,
-              content: statement.content,
-              answer: statement.answer,
-              points: statement.points ?? null,
-            }))
-          : (question.options ?? []).map((opt) => ({
-              id: opt.id,
-              content: opt.content,
-              answer: opt.correct,
-              points: null,
-            }));
-      body = {
-        type: "TRUE_FALSE",
-        statements,
-        ...(rawBody?.type === "TRUE_FALSE"
-          ? { scoringMethod: rawBody.scoringMethod, scoreTable: rawBody.scoreTable }
-          : {}),
-      };
-      break;
-    }
-    case "MATCHING": {
-      body =
-        rawBody?.type === "MATCHING"
-          ? {
-              type: "MATCHING",
-              left: rawBody.left,
-              right: rawBody.right,
-              pairs: rawBody.pairs,
-              reuseRight: rawBody.reuseRight,
-            }
-          : { type: "MATCHING", left: [], right: [], pairs: [], reuseRight: false };
-      break;
-    }
-    case "ESSAY": {
-      const rubric = resolveEssayRubric(question) ?? [];
-      body =
-        rawBody?.type === "ESSAY"
-          ? {
-              type: "ESSAY",
-              gradingGuide: rawBody.gradingGuide,
-              rubric,
-              sampleAnswer: rawBody.sampleAnswer,
-              wordLimit: rawBody.wordLimit,
-            }
-          : {
-              type: "ESSAY",
-              rubric,
-            };
-      break;
-    }
-    case "QUESTION_SET":
-    default: {
-      body =
-        rawBody?.type === "QUESTION_SET"
-          ? {
-              type: "QUESTION_SET",
-              passage: rawBody.passage,
-              blankNumberStart: rawBody.blankNumberStart,
-              childIds: rawBody.childIds,
-            }
-          : { type: "QUESTION_SET", passage: question.content ?? "" };
-      break;
-    }
-  }
+  const body = parseRawQuestionBody(question.body, {
+    questionType: question.type,
+    includeAnswers: true,
+    fallbackOptions: question.options,
+    fallbackAnswer: question.answer,
+    fallbackPassage: question.content,
+    fallbackRubric: resolveEssayRubric(question) ?? undefined,
+  });
+  const stem =
+    body.type === "CLOZE" && (!question.content || question.content === body.passage)
+      ? undefined
+      : (question.content ?? undefined);
 
   return {
     id: question.questionId,
-    displayNo: number,
+    displayNo: displayNumber(question, original),
     points: question.points,
     stem,
     body,
-    optionOrder,
+    optionOrder: resolveOptionOrder(question, original),
   };
 }
 
@@ -454,7 +319,7 @@ function PreviewItemView({
           {t("setHeading", { index: setIndex, count: item.children.length })}
         </SetHeading>
         {/* "Có audio" đứng ngay sau số câu như bản vẽ `SinhThuAudio2B` (V-8). */}
-        {audioAttachments(item.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
+        {filterAudioAttachments(item.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
         <Badge className="whitespace-normal wrap-anywhere">{item.version !== null ? `${item.code} · v${item.version}` : item.code}</Badge>
       </div>
       <PreviewAudioList attachments={item.attachments} name={t("audio.forSet", { first: setFirst, last: setLast })} />
@@ -574,7 +439,7 @@ function PreviewQuestionCard({
           </SimulatedHeading>
         )}
         {/* "Có audio" đứng ngay sau số câu như bản vẽ `SinhThuAudio2B` (V-8). */}
-        {audioAttachments(question.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
+        {filterAudioAttachments(question.attachments).length > 0 && <StatusChip tone="info">{t("audio.badge")}</StatusChip>}
         {/* R-112: điểm tối đa của câu (chip thông tin, như bản vẽ `SinhThuVact2B`). */}
         <StatusChip tone="info">
           {t("questionPoints", { points: format.number(question.points, DISPLAY_NUMBER_FORMAT), value: question.points })}

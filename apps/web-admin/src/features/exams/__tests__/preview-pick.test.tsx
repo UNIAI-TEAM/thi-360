@@ -80,21 +80,28 @@ describe("xem trước đường Khoa học: chọn 3 môn", () => {
     expect(await within(preview).findByText("150 câu · 150 điểm · 195 phút")).toBeInTheDocument();
     await user.click(within(preview).getByRole("tab", { name: "Đối chiếu phân bổ" }));
 
-    const table = await within(preview).findByRole("table", { name: "Đối chiếu chỉ tiêu cấp môn với đề đã sinh" });
+    const table = await within(preview).findByRole("table", { name: "Yêu cầu và thực tế của đề thử" });
+    const rows = within(table).getAllByRole("row").slice(1);
     const subjectsOnTable = new Set(
-      within(table)
-        .getAllByRole("row")
-        .slice(1)
-        .map((row) => within(row).getAllByRole("cell")[0]!.firstElementChild?.firstElementChild?.textContent),
+      rows.map((row) => within(row).getAllByRole("cell")[1]!.textContent?.trim()),
     );
     expect(subjectsOnTable.has("Vật lí")).toBe(true);
     expect(subjectsOnTable.has("Hóa học")).toBe(true);
     expect(subjectsOnTable.has("Địa lí")).toBe(true);
     expect(subjectsOnTable.has("Sinh học")).toBe(false);
     expect(subjectsOnTable.has("Lịch sử")).toBe(false);
-    expect(within(table).getAllByText("16 câu trên đề").length).toBeGreaterThan(0);
-    expect(within(table).getAllByText("17 câu trên đề").length).toBeGreaterThan(0);
-    expect(within(preview).getByText("Đề sinh khớp mọi chỉ tiêu cấp môn.")).toBeInTheDocument();
+    // Vật lí và Hóa học nhận 17 câu (3 + 5 + 9 = 17 theo khối lớp); Địa lí nhận 16 câu (3 + 5 + 8 = 16 theo khối lớp).
+    const gradeTotal = (subject: string) =>
+      rows
+        .filter((row) => {
+          const cells = within(row).getAllByRole("cell");
+          return cells[1]!.textContent?.trim() === subject && (cells[0]!.textContent ?? "").startsWith("Khối lớp ");
+        })
+        .reduce((sum, row) => sum + Number(within(row).getAllByRole("cell")[4]!.textContent), 0);
+    expect(gradeTotal("Vật lí")).toBe(17);
+    expect(gradeTotal("Hóa học")).toBe(17);
+    expect(gradeTotal("Địa lí")).toBe(16);
+    expect(within(preview).getByText("Đạt mọi tiêu chí")).toBeInTheDocument();
   });
 
   it("đường không có phương án chọn môn không hiện ô chọn môn", async () => {

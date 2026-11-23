@@ -5872,7 +5872,6 @@
         "title": "Listing",
         "description": "Checked separately against the working copy when the tab opens, not from the saved configuration check. Publishing checks it again.",
         "edit": "Edit listing",
-        "detailLink": "See details",
         "status": {
           "PASS": "Passed",
           "WARN": "{count, plural, one {# warning} other {# warnings}}",
@@ -5901,7 +5900,6 @@
             "pass": "A cover image is set."
           }
         },
-        "tilePass": "Price, attempts, description and cover image passed.",
         "unavailableTitle": "Could not compute the Listing group",
         "unavailable": "Could not load the listing check result.",
         "retry": "Try again",
@@ -5964,6 +5962,8 @@
       "blocks": {
         "title": "Details by block",
         "description": "Matching source is counted before resolving overlaps between quotas, so enough source per row does not guarantee a paper.",
+        "expand": "Show details by block",
+        "collapse": "Hide details by block",
         "tabsLabel": "Choice path",
         "tableLabel": "Details by block",
         "empty": "This path has no question block yet",
@@ -6382,29 +6382,6 @@
         "splitSeeded": "All {choose, number} subjects are in one group: one of them gets {low, number} questions, chosen by the seed of the run. Select Generate a new trial paper to try another split.",
         "full": "All {choose, number} subjects picked. Clear one to switch to another subject."
       },
-      "subjectQuotas": {
-        "title": "Subject quotas",
-        "tableLabel": "Subject quotas compared with the generated paper",
-        "empty": "This paper sets no subject quotas",
-        "noneNote": "The subjects on this paper declare no answer type, grade or difficulty quota at subject level.",
-        "matchAll": "The generated paper matches every subject quota.",
-        "mismatchAll": "The generated paper misses {count, plural, one {# subject quota} other {# subject quotas}}.",
-        "questionCount": "{count, plural, one {# question} other {# questions}} on the paper",
-        "match": "Match",
-        "mismatch": "Mismatch",
-        "kind": {
-          "ANSWER_TYPE": "Answer type: {name}",
-          "GRADE": "Grade: {name}",
-          "DIFFICULTY": "Difficulty: {name}"
-        },
-        "columns": {
-          "subject": "Subject",
-          "quota": "Quota",
-          "required": "Required",
-          "generated": "Generated",
-          "result": "Result"
-        }
-      },
       "checks": {
         "title": "Checks on the generated paper",
         "name": {
@@ -6437,6 +6414,8 @@
       "compliance": {
         "actualAssigned": "{value} · assigned to question {numbers}",
         "allPassed": "All criteria met",
+        "banner": "The trial paper deviates on {count, plural, one {# criterion} other {# criteria}}.",
+        "viewAllocation": "View allocation comparison",
         "columns": {
           "actual": "Actual",
           "criterion": "Criterion",

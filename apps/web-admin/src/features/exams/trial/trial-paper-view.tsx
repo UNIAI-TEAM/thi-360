@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Card, cn, focusRing, StatusChip } from "@thi360/ui";
+import { TiptapEssayEditor, type EssayEditorLabels } from "@thi360/ui/essay-editor";
 import {
   Question,
   QuestionSet,
@@ -30,7 +31,6 @@ import {
   useTrialAudioRegistry,
   type TrialAudioRegistry,
 } from "./trial-audio";
-import { TrialEssayEditor } from "./trial-essay-editor";
 import type {
   PreviewTrialBlock,
   PreviewTrialItem,
@@ -39,8 +39,25 @@ import type {
   PreviewTrialQuestion,
 } from "./types";
 
-function renderTrialEssayEditor(props: EssayEditorProps) {
-  return <TrialEssayEditor {...props} />;
+function LocalizedEssayEditor(props: EssayEditorProps) {
+  const t = useTranslations("exams.trial.editor");
+  const labels = useMemo<EssayEditorLabels>(
+    () => ({
+      toolbarLabel: t("toolbarLabel"),
+      bold: t("bold"),
+      italic: t("italic"),
+      bulletList: t("bulletList"),
+      orderedList: t("orderedList"),
+      undo: t("undo"),
+      redo: t("redo"),
+    }),
+    [t],
+  );
+  return <TiptapEssayEditor {...props} labels={labels} />;
+}
+
+function renderLocalizedEssayEditor(props: EssayEditorProps) {
+  return <LocalizedEssayEditor {...props} />;
 }
 
 export interface TrialPaperViewProps {
@@ -628,7 +645,7 @@ function TrialItemView({
                 onChange={childProps.onChange}
                 review={childProps.review}
                 headingLevel={childProps.headingLevel}
-                renderEditor={renderTrialEssayEditor}
+                renderEditor={renderLocalizedEssayEditor}
               />
             );
             if (!hasChildAudio) return childQuestionEl;
@@ -680,7 +697,7 @@ function TrialItemView({
           mode="answer"
           headingLevel={3}
           value={answers[qId] ?? null}
-          renderEditor={renderTrialEssayEditor}
+          renderEditor={renderLocalizedEssayEditor}
           onChange={(val) => onAnswerChange(qId, val)}
         />
       </div>

@@ -5872,7 +5872,6 @@
         "title": "Thông tin bán",
         "description": "Kiểm riêng theo bản làm việc lúc mở tab, không dùng kết quả kiểm tra cấu hình đã lưu. Khi công bố, hệ thống kiểm lại một lần nữa.",
         "edit": "Sửa thông tin bán",
-        "detailLink": "Xem chi tiết",
         "status": {
           "PASS": "Đạt",
           "WARN": "{count, number} cảnh báo",
@@ -5901,7 +5900,6 @@
             "pass": "Đã có ảnh bìa."
           }
         },
-        "tilePass": "Giá bán, số lượt, mô tả và ảnh bìa đạt.",
         "unavailableTitle": "Không tính được nhóm Thông tin bán",
         "unavailable": "Không tải được kết quả kiểm tra thông tin bán.",
         "retry": "Thử lại",
@@ -5964,6 +5962,8 @@
       "blocks": {
         "title": "Chi tiết theo khối",
         "description": "Nguồn phù hợp đếm trước khi xử lý trùng giữa các chỉ tiêu, nên đủ nguồn từng dòng chưa chắc ghép được đề.",
+        "expand": "Hiện chi tiết theo khối",
+        "collapse": "Ẩn chi tiết theo khối",
         "tabsLabel": "Đường lựa chọn",
         "tableLabel": "Chi tiết theo khối",
         "empty": "Đường này chưa có khối câu hỏi nào",
@@ -6382,29 +6382,6 @@
         "splitSeeded": "Cả {choose, number} môn cùng nhóm: một môn nhận {low, number} câu, chọn theo hạt giống của lần sinh. Bấm Sinh đề thử mới để thử cách chia khác.",
         "full": "Đã chọn đủ {choose, number} môn. Bỏ chọn một môn để đổi sang môn khác."
       },
-      "subjectQuotas": {
-        "title": "Chỉ tiêu cấp môn",
-        "tableLabel": "Đối chiếu chỉ tiêu cấp môn với đề đã sinh",
-        "empty": "Đề này không đặt chỉ tiêu cấp môn",
-        "noneNote": "Các môn trên đề không khai chỉ tiêu dạng trả lời, khối lớp hay độ khó ở cấp môn.",
-        "matchAll": "Đề sinh khớp mọi chỉ tiêu cấp môn.",
-        "mismatchAll": "Đề sinh lệch {count, number} chỉ tiêu cấp môn.",
-        "questionCount": "{count, number} câu trên đề",
-        "match": "Khớp",
-        "mismatch": "Lệch",
-        "kind": {
-          "ANSWER_TYPE": "Dạng trả lời: {name}",
-          "GRADE": "Khối lớp: {name}",
-          "DIFFICULTY": "Độ khó: {name}"
-        },
-        "columns": {
-          "subject": "Môn",
-          "quota": "Chỉ tiêu",
-          "required": "Yêu cầu",
-          "generated": "Đề sinh",
-          "result": "Kết quả"
-        }
-      },
       "checks": {
         "title": "Kiểm tra trên đề đã sinh",
         "name": {
@@ -6437,6 +6414,8 @@
       "compliance": {
         "actualAssigned": "{value} · gán câu {numbers}",
         "allPassed": "Đạt mọi tiêu chí",
+        "banner": "Đề thử lệch {count, number} tiêu chí so với cấu hình.",
+        "viewAllocation": "Xem đối chiếu phân bổ",
         "columns": {
           "actual": "Thực tế",
           "criterion": "Tiêu chí",
