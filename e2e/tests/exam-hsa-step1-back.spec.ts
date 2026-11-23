@@ -58,7 +58,7 @@ async function editFirstCountAndContinue(page: Page, id: string, newCount: numbe
   ]);
   expect(savedStructure.status(), await savedStructure.text()).toBe(200);
   await expect(page).toHaveURL(new RegExp(`/exams/${id}$`));
-  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await expect(page.locator("main header").getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
   await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   const after = await getStructure(admin, id);
@@ -150,7 +150,7 @@ test("HSA Toàn bài: đổi sang Theo môn ở bước 1 hỏi nạp lại cấ
   ]);
   expect(reloaded.status(), await reloaded.text()).toBe(200);
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await expect(page.locator("main header").getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
   await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   const exam = await getExam(await adminApi(), id);
@@ -205,7 +205,7 @@ test("AC-1697-5a HSA Theo môn: đổi sang Tự thiết lập bài ôn cảnh b
   ]);
   expect(recreated.status(), await recreated.text()).toBe(200);
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await expect(page.locator("main header").getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
   await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   await expect(page.getByRole("heading", { level: 2, name: /^Bài ôn · Toán học/ })).toBeVisible();
@@ -242,7 +242,7 @@ test("AC-1697-5a HSA Theo môn + Tự thiết lập: đổi lại sang cấu tr�
   ]);
   expect(recreated.status(), await recreated.text()).toBe(200);
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await expect(page.locator("main header").getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
   await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   await expect(page.getByRole("navigation", { name: "Cấu trúc" })).toBeVisible();
@@ -314,6 +314,6 @@ test("tab Thông tin chung của bài đã lưu hợp nhất: hiển thị cả 
   await page.goto(`${ADMIN_URL}/exams/${id}`);
   await expect(page.getByRole("region", { name: "Tóm tắt" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Tình trạng" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await expect(page.locator("main header").getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Lưu thông tin", exact: true })).toBeVisible();
 });

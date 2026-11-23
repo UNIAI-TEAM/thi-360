@@ -596,7 +596,7 @@ export async function createExamInUi(page: Page, spec: UiExamSpec): Promise<stri
 /** Bước 2 vừa mở: dòng "Số câu" của khối Tổng hợp cấu trúc ở đầu trang khớp `questions`. */
 export async function expectStructureQuestions(page: Page, questions: RegExp): Promise<void> {
   const summary = page.getByLabel("Tổng hợp cấu trúc");
-  await expect(summary.locator("div").filter({ has: summary.locator("dt", { hasText: /^Số câu$/ }) }).locator("dd")).toHaveText(questions);
+  await expect(summary.locator("div").filter({ has: page.locator("dt", { hasText: /^Số câu$/ }) }).locator("dd")).toHaveText(questions);
 }
 
 /** Bấm "Lưu" của bước 2 và đợi máy chủ nhận (PUT 200); sau lưu không còn thay đổi chưa lưu nên nút Lưu tắt. */
