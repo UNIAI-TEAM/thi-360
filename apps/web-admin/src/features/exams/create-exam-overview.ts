@@ -2,13 +2,6 @@ import type { QuestionType } from "@/features/content/types";
 import { isAllOmittedPart } from "./omitted-part";
 import type { ExamOverviewRow, ExamTemplate, ExamTemplateBlock, ExamTiming, ItemShape, KnowledgeScope } from "./types";
 
-/**
- * "Bảng tổng quan" của bước 1 (2B 15.1): một dòng cho mỗi phần của mẫu và, khi phần cố định có nhiều môn (BCA Phần 2,
- * phần chung THPTQG Tin học), một dòng thụt vào cho từng môn. Ô Số câu, Thời lượng và Điểm sửa trên dòng; sửa một ô
- * không nạp lại mẫu. Chỉ phần tử khác giá trị mẫu được gửi trong `overview` của `POST /exams` (so khớp theo `partId`
- * hoặc `partCode`/`subjectCode`).
- */
-
 type OverviewRowKind = "part" | "section" | "block" | "omitted";
 
 export interface OverviewRow {
@@ -39,7 +32,6 @@ export interface OverviewRow {
   choice: boolean;
   /** Dòng phần có dòng môn con: số câu của phần là tổng các môn, không nhập ở dòng phần. */
   group: boolean;
-  /** Mẫu `fixedCounts` (H27): ô số câu chỉ đọc — V-ACT toàn bài khóa số câu từng tiểu mục. */
   lockedCount: boolean;
   /** Dòng lấy câu của mẫu H-SCA, V-SAT (`kind = "block"`): chỉ đọc, không vào `overview` và không vào tổng số câu. */
   block?: OverviewBlockInfo;
@@ -102,11 +94,6 @@ export function sectionCompetency(
   );
 }
 
-/**
- * Dòng của một môn/tiểu mục trong phần (con của `parentKey`). Chỉ mẫu `fixedCounts` (V-ACT toàn bài, H27: "Điểm tối
- * đa bằng số câu nhân 10") mới chia điểm của phần cho mục theo tỷ lệ số câu; mẫu khác không ghi điểm từng môn nên ô
- * Điểm của dòng môn để trống (hiện "—").
- */
 function sectionRow(part: ExamTemplate["parts"][number], partIndex: number, sectionIndex: number, locked: boolean): OverviewRow {
   const section = part.sections?.[sectionIndex];
   const partPoints = locked ? (part.maxPoints ?? part.points ?? null) : null;
@@ -171,13 +158,6 @@ export function isAllOmittedTemplatePart(part: ExamTemplate["parts"][number]): b
   );
 }
 
-/**
- * Dòng tổng quan của mẫu đã chọn. `scope = PART` gắn `partCode` của bài vào dòng phần (khóa so khớp của mẫu theo
- * phần). Phần cố định nhiều môn thêm dòng môn ngay sau dòng phần; dòng phần khi đó chỉ là dòng nhóm (tổng môn), ô
- * số câu của phần không sửa — sửa ở dòng môn. Mẫu `fixedCounts` (H27, V-ACT toàn bài) hiện dòng cho mọi tiểu mục
- * và khóa ô số câu của phần lẫn mục. Mẫu `fixedBlockCounts` (H42, H-SCA, V-SAT) khóa ô số câu của phần chỉ khi bài là
- * phạm vi `SUBJECT`: bài `PART` và bài ôn cùng mẫu vẫn nhập được.
- */
 export function overviewRowsFromTemplate(
   template: ExamTemplate | undefined | null,
   scope: "FULL" | "PART" | "SUBJECT",
@@ -225,10 +205,6 @@ export function overviewRowsFromTemplate(
   return rows;
 }
 
-/**
- * Bảng trống khi không có mẫu (bài ôn `REVIEW` chưa có mẫu `<KỲ>_REVIEW`, 2B 15.1): một phần trống, mọi ô nhập được.
- * `partCode` của bài Theo phần đi kèm để máy chủ so khớp.
- */
 export function overviewRowsEmpty(scope: "FULL" | "PART" | "SUBJECT", subjectCode: string, partCode = ""): OverviewRow[] {
   return [
     {
@@ -252,27 +228,6 @@ export function updateRowCell(rows: readonly OverviewRow[], key: string, field: 
   return rows.map((row) => (row.key === key ? { ...row, [field]: text } : row));
 }
 
-/** Cập nhật mốc `base` theo giá trị số hợp lệ vừa lưu vào cấu trúc để ô đã lưu không còn tính là chưa lưu. */
-export function rebaseOverviewRows(rows: readonly OverviewRow[]): OverviewRow[] {
-  return rows.map((row) => {
-    const questionCount = numberOrNull(row.questionCount);
-    const durationMinutes = numberOrNull(row.durationMinutes);
-    const maxPoints = numberOrNull(row.maxPoints);
-    return {
-      ...row,
-      base: {
-        questionCount: row.questionCount.trim() !== "" && questionCount !== null ? questionCount : row.base.questionCount,
-        durationMinutes: row.durationMinutes.trim() !== "" && durationMinutes !== null ? durationMinutes : row.base.durationMinutes,
-        maxPoints: row.maxPoints.trim() !== "" && maxPoints !== null ? maxPoints : row.base.maxPoints,
-      },
-    };
-  });
-}
-
-/**
- * Sửa nội dung nhập (bảng tổng quan, thời lượng chung, thang điểm, mô tả, hướng dẫn) kể từ lần nạp mẫu gần nhất.
- * Đổi kỳ thi/phạm vi/môn/phần/`buildMode` khi `dirty` phải hỏi xác nhận vì nạp lại bảng (2B 15.1).
- */
 export function rowsDifferFromTemplate(rows: readonly OverviewRow[]): boolean {
   return rows.some(
     (row) =>
@@ -311,10 +266,6 @@ export interface OverviewIssue {
   code: OverviewIssueCode;
 }
 
-/**
- * Kiểm tra ô nhập: số phải là số nguyên dương (điểm cho phép thập phân 0,25); để trống hợp lệ — mẫu/máy chủ quyết.
- * Không ràng buộc tổng điểm các phần với thang điểm của mẫu: dòng sửa được, tổng của bài là tổng các dòng (2B 5.2).
- */
 export function validateOverview(rows: readonly OverviewRow[]): OverviewIssue[] {
   const issues: OverviewIssue[] = [];
   const integer = (text: string) => {
@@ -344,10 +295,6 @@ function sumColumn(values: ReadonlyArray<string>): number | null {
   return seen ? Math.round(total * 100) / 100 : null;
 }
 
-/**
- * Tổng ở cuối bảng; `null` cho cột không có số nào. Số câu cộng dòng không có dòng con (dòng môn, dòng phần thường);
- * dòng nhóm bỏ qua nhóm tạm bỏ qua. `sharedDuration`: thời lượng chung khi `timing = SHARED`.
- */
 export function overviewTotals(rows: readonly OverviewRow[], timing: ExamTiming, sharedDuration: string): OverviewTotals {
   const counted = rows.filter((row) => row.kind !== "omitted");
   const parts = counted.filter((row) => row.kind === "part");
@@ -378,7 +325,6 @@ function commandsPerQuestion(type: QuestionType | null | undefined, shape?: Item
   return 1;
 }
 
-/** Lệnh hỏi của dòng: chùm trộn dạng tính theo dạng khai ở từng vị trí câu con (H39), vị trí không khai tính một lệnh. */
 function blockCommands(block: ExamTemplateBlock, questions: number): number {
   const typed = (block.childConditions ?? []).filter((condition) => condition.answerType !== undefined && condition.to >= condition.from);
   if (typed.length > 0 && block.setCount) {

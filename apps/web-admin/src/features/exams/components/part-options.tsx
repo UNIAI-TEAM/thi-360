@@ -29,7 +29,6 @@ import { LOCKED_FIELD } from "./locked-field";
 
 export interface PartOptionsProps {
   part: ExamPart;
-  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh số câu từng môn chỉ đọc của các nhánh (UNI-2753). */
   examId: string;
   names: StructureNames;
   issues: readonly StructureIssue[];
@@ -52,11 +51,6 @@ function optionIssueCount(issues: readonly StructureIssue[], optionId: string): 
   ).length;
 }
 
-/**
- * Lựa chọn của phần tự chọn không theo mã: nhánh Tiếng Anh và nhánh nội dung (THPTQG Tin học, học viên làm phần chung
- * cộng một nhánh), số câu từng môn theo thứ tự, tổng phải bằng số câu của phần. Phần theo mã (QDA, BCA) không còn thao
- * tác chọn mã hay gán môn cho mã: dùng `CodedPartPanel`. Khối của từng môn sửa ở cột Cấu trúc.
- */
 export function PartOptions({
   part,
   examId,

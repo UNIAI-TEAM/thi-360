@@ -3,11 +3,6 @@ import { draftId } from "./components/exam-structure-draft";
 import { isSetBlock } from "./matrix";
 import type { ExamPart, ExamSection, ExamSectionState, StructureCombination } from "./types";
 
-/**
- * Phần theo mã (QDA, BCA; 2B 3.1, 15.3, D12): mỗi môn một ma trận trong `subjectPool`, dùng chung cho mọi mã có môn đó.
- * Mã và quan hệ mã–môn đọc từ Global List, chỉ xem ở bước Cấu trúc; không có thao tác chọn mã hay gán môn cho mã.
- */
-
 export type SectionStateName = ExamSectionState["state"];
 
 /** Một mục trong cột "Cách lấy" của môn: chùm (`sets × size`) hoặc câu đơn theo dạng trả lời. */
@@ -58,7 +53,6 @@ export interface CodePosition {
   to: number;
 }
 
-/** Vị trí câu của từng môn trong mã theo thứ tự môn của mã: QĐ02 có Hóa học ở câu 1–25, Sinh học ở câu 26–50 (R-27). */
 export function codePositions(combination: StructureCombination, pool: readonly ExamSection[]): CodePosition[] {
   let next = 1;
   const positions: CodePosition[] = [];
@@ -70,15 +64,10 @@ export function codePositions(combination: StructureCombination, pool: readonly 
   return positions;
 }
 
-/** Các mã dùng một môn của phần, theo tên mã đầy đủ (`QD01`) hoặc mã nguồn. */
 export function codesUsing(subjectCode: string, combinations: readonly StructureCombination[]): string[] {
   return combinations.filter((item) => item.subjectCodes.includes(subjectCode)).map((item) => item.examCode ?? item.code);
 }
 
-/**
- * Thêm môn còn thiếu của một mã vào `subjectPool` (D12: danh mục vừa thêm mã mới). Môn mới chưa có nhóm nên "Chưa hoàn
- * tất"; số câu theo môn đầu tiên của phần để người dùng sửa tiếp.
- */
 export function addPoolSection(parts: readonly ExamPart[], partId: string, subjectCode: string): ExamPart[] {
   return parts.map((part) => {
     if (part.id !== partId) return part;

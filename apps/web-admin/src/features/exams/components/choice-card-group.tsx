@@ -40,9 +40,6 @@ const COLUMN_CLASSES: Record<1 | 2 | 3 | 4, string> = {
   4: "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4",
 };
 
-/**
- * Nhóm radio dùng chung (DESIGN.md §5.2): `card` cho thẻ chọn nhiều thông tin, `pill` cho lựa chọn gọn trên một hàng.
- */
 export function ChoiceCardGroup<T extends string>({
   legend,
   name,

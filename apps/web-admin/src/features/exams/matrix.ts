@@ -11,12 +11,6 @@ import type {
   QuestionBlock,
 } from "./types";
 
-/**
- * Phép tính thuần của cấu trúc và ma trận bài thi (UniNote PBI-04 mục 6, 7): quy đổi tỷ lệ theo phần dư lớn nhất,
- * tổng dòng/cột, kiểm tra một khối và cả cấu trúc. Không phụ thuộc giao diện để test riêng và dùng lại khi nối backend
- * (backend vẫn là nơi kiểm tra cuối cùng).
- */
-
 /** Trục của ma trận: mã khối lớp (dòng) và mã độ khó (cột) theo thứ tự hiển thị của danh mục. */
 export interface MatrixAxes {
   grades: readonly string[];
@@ -46,10 +40,6 @@ export function sum(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
-/**
- * Quy đổi tỷ lệ % thành số câu nguyên theo phần dư lớn nhất (UniNote PBI-04 mục 7.3): tính số câu lý thuyết, lấy phần
- * nguyên, phân phần còn thiếu cho mục có phần thập phân lớn nhất; bằng nhau thì theo thứ tự hiển thị.
- */
 export function apportionByPercent(percents: readonly number[], total: number): Apportionment {
   const theoretical = percents.map((percent) => roundPrecision((percent * total) / 100));
   const floors = theoretical.map((value) => Math.floor(value + EPSILON));
@@ -85,7 +75,6 @@ export function countsToPercents(counts: readonly number[], blockCount: number):
   ).results;
 }
 
-// ---------------------------------------------------------------- lưới ma trận
 
 /** Lưới giá trị đã nhập của chế độ kết hợp: dòng là khối lớp, cột là độ khó. Ô không có trong `cells` là 0. */
 export function combinedGrid(matrix: BlockMatrix, axes: MatrixAxes): number[][] {
@@ -157,10 +146,6 @@ interface BlockAllocation {
   total: number;
   gradeTotal: number;
   difficultyTotal: number;
-  /**
-   * Chiều năng lực (V-ACT), cộng thêm vào ma trận Lớp × Độ khó: mã theo thứ tự đã khai báo, số câu sau quy đổi, tổng
-   * đã nhập và tổng số câu. Khối không dùng chiều này: `null`.
-   */
   competency: {
     codes: string[];
     input: number[];
@@ -192,15 +177,10 @@ function competencyAllocation(matrix: BlockMatrix, questionCount: number): Block
   };
 }
 
-/** Nhóm câu chùm (B9): lấy nguyên chùm, số câu là `setCount × setSize`. */
 export function isSetBlock(block: Pick<QuestionBlock, "questionType">): boolean {
   return block.questionType === "QUESTION_SET" || block.questionType === "CLOZE";
 }
 
-/**
- * Chùm cỡ linh hoạt (H28): nhóm Bộ câu hỏi chỉ khai tổng câu con (`questionCount`), để trống cả `setCount` và `setSize`;
- * bộ giải chọn các chùm nguyên có tổng đúng bằng số đó. Chế độ suy ra từ dữ liệu, không lưu riêng.
- */
 export function isFlexibleSet(block: Pick<QuestionBlock, "questionType" | "setCount" | "setSize">): boolean {
   return block.questionType === "QUESTION_SET" && block.setCount === null && block.setSize === null;
 }
@@ -268,13 +248,7 @@ export function computeAllocation(
   };
 }
 
-// ---------------------------------------------------------------- chuyển cách khai báo
 
-/**
- * Đổi cách khai báo của ma trận (UniNote PBI-04 mục 7.1): dữ liệu được chuyển để quản trị viên kiểm tra, không giữ
- * hai bộ ràng buộc. Kết hợp → riêng: tổng dòng và tổng cột. Riêng → kết hợp: chia ô theo tích hai chiều, làm tròn bằng
- * phần dư lớn nhất. Giữ nguyên đơn vị đang nhập.
- */
 export function convertMatrixMode(matrix: BlockMatrix, mode: MatrixMode, axes: MatrixAxes): BlockMatrix {
   if (matrix.mode === mode) return matrix;
   if (mode === "SEPARATE") {
@@ -298,11 +272,6 @@ export function convertMatrixMode(matrix: BlockMatrix, mode: MatrixMode, axes: M
   };
 }
 
-/**
- * Lưới số nguyên có tổng dòng và tổng cột đúng bằng hai chiều đã khai báo (khi hai chiều cùng tổng): lấy phần nguyên
- * của tích tỷ lệ, rồi cộng từng đơn vị còn thiếu vào ô có phần thập phân lớn nhất mà dòng và cột đều còn thiếu.
- * Hai chiều lệch tổng thì chia theo tích tỷ lệ trên tổng của chiều lớp.
- */
 function fillToMarginals(rows: readonly number[], columns: readonly number[]): number[][] {
   const total = sum(rows);
   const columnTotal = sum(columns);
@@ -370,7 +339,6 @@ export function convertMatrixUnit(
   };
 }
 
-// ---------------------------------------------------------------- kiểm tra một khối
 
 export type MatrixDimension = "COMBINED" | "GRADE" | "DIFFICULTY" | "COMPETENCY";
 
@@ -391,7 +359,6 @@ function matrixValues(matrix: BlockMatrix): number[] {
 
 const PERCENT_TOLERANCE = 1e-6;
 
-/** Kiểm tra một khối với số câu của nó (UniNote PBI-04 mục 6.2, 7.3). */
 export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssue[] {
   const issues: BlockIssue[] = [];
   // `questionCount = null`: nhóm "lấy phần còn lại" của môn, số câu do môn quyết định.
@@ -407,10 +374,6 @@ export function validateBlock(block: QuestionBlock, axes: MatrixAxes): BlockIssu
   return [...issues, ...validateMatrix(block.matrix, block.questionCount, axes)];
 }
 
-/**
- * Kiểm tra ma trận với số câu của khối hoặc của môn: giá trị hợp lệ, tổng tỷ lệ bằng 100, tổng số câu bằng số câu. Số
- * câu `null` (nhóm lấy phần còn lại) và ma trận trống thì không có gì để so.
- */
 export function validateMatrix(matrix: BlockMatrix | null, questionCount: number | null, axes: MatrixAxes): BlockIssue[] {
   const issues: BlockIssue[] = [];
   // Chỉ tiêu riêng của nhóm là tùy chọn; chỉ tiêu theo % không cần số câu của nhóm khi nhóm lấy phần còn lại.
@@ -451,7 +414,6 @@ export function validateMatrix(matrix: BlockMatrix | null, questionCount: number
   return issues;
 }
 
-// ---------------------------------------------------------------- cấu trúc
 
 /** Vị trí của một môn: phần, lựa chọn của phần tự chọn (nếu có), môn. Môn chung của phần tự chọn có `optionId` null. */
 export interface SectionLocation {
@@ -473,40 +435,21 @@ export type StructureIssue =
   | { code: "SUBJECT_TRIM_IMPOSSIBLE"; location: SectionLocation; declared: number; allocated: number }
   | { code: "BLOCK"; location: SectionLocation; blockId: string; issue: BlockIssue };
 
-/**
- * Nhóm môn theo vị trí lưu: phần cố định có một nhóm (`optionId` null); phần tự chọn có nhóm môn chung (`optionId` null,
- * khi `sections` khác rỗng) rồi mỗi lựa chọn một nhóm. Dùng để tìm, sửa, liệt kê khối; mỗi khối nằm đúng một nhóm.
- */
 export function sectionGroups(part: ExamPart): Array<{ optionId: string | null; sections: ExamSection[] }> {
   if (part.mode !== "CHOICE") return [{ optionId: null, sections: part.sections }];
   const common = part.sections.length ? [{ optionId: null, sections: part.sections }] : [];
   return [...common, ...part.options.map((option) => ({ optionId: option.id, sections: option.sections }))];
 }
 
-/**
- * Các môn học viên làm theo từng lựa chọn của phần: phần cố định một nhóm; phần tự chọn mỗi lựa chọn một nhóm gồm môn
- * chung cộng môn của lựa chọn (THPTQG Tin học: 2 câu chung + 2 câu của nhánh).
- */
 export function choiceGroups(part: ExamPart): Array<{ optionId: string | null; sections: ExamSection[] }> {
   if (part.mode !== "CHOICE") return [{ optionId: null, sections: part.sections }];
   return part.options.map((option) => ({ optionId: option.id, sections: [...part.sections, ...option.sections] }));
 }
 
-/** Số câu của môn hoặc nhóm khi khai báo sẵn; `null` (nhóm lấy phần còn lại, dữ liệu trước H3) tính 0 ở tổng cố định. */
 export function countOf(item: { questionCount: number | null }): number {
   return item.questionCount ?? 0;
 }
 
-/**
- * Số câu từng nhóm khi môn nhận `count` câu và phần câu thừa chưa bỏ được (`excess` > 0 nghĩa là không có câu đơn nào
- * để bỏ): nhóm câu đơn `questionCount = null` ("lấy phần còn lại", dữ liệu trước H3) nhận phần chênh giữa số câu của
- * môn và tổng nhóm cố định; môn có hơn một nhóm như vậy không chia được. Tổng nhóm cố
- * định vượt `count` (môn `SUBJECT_CHOICE` khai 17 nhưng nhận 16, H3) thì bỏ câu từ cuối, chỉ ở nhóm câu đơn; chùm giữ
- * nguyên, cùng nguyên tắc với `TrimPolicy` của máy chủ.
- *
- * Chỉ là ước lượng cho bản xem trước: máy chủ chọn câu bị bỏ bằng hạt giống trong mọi nhóm câu đơn (ưu tiên câu không
- * góp vào chỉ tiêu bắt buộc), nên nhóm nào mất câu — và điểm theo nhóm — trên đề thật có thể khác. Tổng số câu thì đúng.
- */
 function trimGroupCounts(section: ExamSection, count: number): { counts: number[]; excess: number } {
   const remainderGroups = section.blocks.filter((block) => block.questionCount === null);
   const remainder = remainderGroups.length === 1 ? Math.max(0, count - sum(section.blocks.map(countOf))) : 0;
@@ -527,23 +470,11 @@ export function groupCounts(section: ExamSection, count: number): number[] {
   return trimGroupCounts(section, count).counts;
 }
 
-/**
- * Cách chia số câu của môn trên các nhóm đang tính: lọc nhóm `omitted` trước `groupCounts` để nhóm bỏ qua không lấy mất
- * phần số câu của môn và không vào tổng điểm (2B 3.3, 5; R2-06). `count` `null` (môn không khai số câu) trả về số câu khai
- * báo của nhóm; `count` 0 (môn của `SUBJECT_CHOICE` không được chọn) trả về toàn 0. Hàm chung của `pointsRows` và
- * `structureTotals` để hai nơi không lệch nhau.
- */
 export function activeGroupCounts(section: ExamSection, count: number | null): { blocks: QuestionBlock[]; counts: number[] } {
   const blocks = section.blocks.filter((block) => !block.omitted);
   return { blocks, counts: count === null ? blocks.map(countOf) : count === 0 ? blocks.map(() => 0) : groupCounts({ ...section, blocks }, count) };
 }
 
-/**
- * Cách chia số câu `countsByPick` cho các môn được chọn của phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong
- * `option.sections`; môn không được chọn không có mục. Duyệt các tổ hợp `chooseSubjects` môn theo thứ tự cấu trúc và lấy
- * cách chia hợp lệ đầu tiên — cùng quy tắc B10 của máy chủ (`ChoiceGroupAllocator`). Không có cách chia hợp lệ (cấu
- * hình sai) trả bảng rỗng.
- */
 function subjectChoiceAllocations(option: ExamPart["options"][number]): Map<number, number> {
   const allocations = new Map<number, number>();
   if (!option.countsByPick) return allocations;
@@ -571,16 +502,6 @@ function subjectChoiceAllocations(option: ExamPart["options"][number]): Map<numb
   return allocations;
 }
 
-/**
- * Số câu học viên làm của từng môn trong phương án `SUBJECT_CHOICE`, ánh xạ theo chỉ số môn trong `option.sections`;
- * môn không được chọn nhận 0. Quy tắc HSA 17 − 1 (H3): mỗi môn khai `questionCount` là số câu cần giải (17), còn số
- * câu lên đề do cách chia `countsByPick` quyết — môn nhận cách chia nhỏ hơn lên đề ít hơn (17 → 16, máy chủ giải 17
- * rồi `TrimPolicy` bỏ một câu). Số câu trên đề của môn là `min(questionCount, cách chia)`; dữ liệu cũ để `null`
- * (trước H3) vẫn nhận trọn cách chia. Khai nhiều hơn cách chia quá một câu, hoặc không bỏ được câu đơn nào, là cấu hình
- * máy chủ từ chối; `validateStructure` báo, còn đây vẫn cắt về cách chia để bản xem trước có số.
- *
- * Không có cách chia hợp lệ (cấu hình sai) trả bảng rỗng: người gọi lùi về số câu khai báo để tiêu đề lộ phần thiếu.
- */
 export function subjectChoiceCounts(option: ExamPart["options"][number]): Map<number, number> {
   const allocations = subjectChoiceAllocations(option);
   const counts = new Map<number, number>();
@@ -598,7 +519,6 @@ function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
   return sections.flatMap((section) => section.blocks.filter((block) => !block.omitted));
 }
 
-/** Điểm mỗi câu mặc định (B5) khi khối không đặt điểm mỗi câu yêu cầu. */
 const DEFAULT_POINTS_PER_QUESTION = 1;
 
 /** Điểm mỗi câu của khối: điểm mỗi câu yêu cầu nếu có, không thì mặc định 1 (điểm thật lấy từ phiên bản câu khi sinh đề). */
@@ -616,11 +536,6 @@ export function partPoints(part: ExamPart): number | null {
   return part.maxPoints ?? null;
 }
 
-/**
- * Phần cố định mà mọi nhóm đều `omitted` (SP2E Ngữ văn Phần II · Viết, F5/S3-2): số câu của phần và của môn là 0 theo thiết
- * kế nên `validateStructure` không đòi số câu dương. Cùng quy tắc `isAllOmittedPart` với màn tạo bài. Phần tự chọn hoặc
- * theo mã không thuộc loại này.
- */
 export function isAllOmittedStructurePart(part: ExamPart): boolean {
   if (part.mode !== "FIXED" || part.options.length > 0 || (part.subjectPool?.length ?? 0) > 0) return false;
   return isAllOmittedPart(
@@ -633,10 +548,6 @@ export interface ValidateStructureOptions {
   timing?: ExamTiming;
 }
 
-/**
- * Kiểm tra cấu trúc trên máy (mục 6.2, 5.3): số câu phần = tổng môn (mỗi lựa chọn tính cả môn chung), môn = tổng khối,
- * điểm phần = tổng điểm khối khi phần có điểm riêng (BCA), từng khối hợp lệ.
- */
 export function validateStructure(
   parts: readonly ExamPart[],
   axes: MatrixAxes,
@@ -696,8 +607,6 @@ export function validateStructure(
     for (const group of sectionGroups(part)) {
       for (const section of group.sections) {
         const location = { partId: part.id, optionId: group.optionId, sectionId: section.id };
-        // Môn của `SUBJECT_CHOICE` khai `questionCount` là số cần giải (HSA: 17, H3) nên vẫn đối chiếu tổng nhóm;
-        // chỉ dữ liệu cũ để `null` thì tổng nhóm do kiểm tra cấu hình báo theo từng cách chọn.
         if (section.questionCount !== null) {
           // Nhóm `omitted` không có câu trên đề nên không vào tổng nhóm (SPT: 4 câu + Tự luận bỏ qua vẫn là 4).
           const blocksTotal = sum(section.blocks.filter((block) => !block.omitted).map(countOf));
@@ -735,10 +644,6 @@ export interface StructureTotals {
   partCount: number;
   /** Số câu học viên làm (mỗi phần tự chọn tính một lựa chọn). */
   totalQuestions: number;
-  /**
-   * Số câu in trên đề: phần tự chọn theo nhánh nội dung (`BRANCH`) in cả môn chung và mọi nhánh (THPTQG Tin học in 30,
-   * học viên làm 28). Phần chọn môn hoặc tổ hợp là các đề riêng, tính như số câu học viên làm.
-   */
   printedQuestions: number;
   /** Bài dùng thời lượng chung: thời lượng chung; không thì tổng thời lượng các phần. */
   totalMinutes: number;
@@ -767,8 +672,6 @@ export function structureTotals(parts: readonly ExamPart[], options: StructureTo
     const groups = choiceGroups(part);
     const counts = groups.map((group) => {
       const option = part.options.find((item) => item.id === group.optionId);
-      // `SUBJECT_CHOICE`: số câu từng môn tính theo `countsByPick`, không có trên môn (D25). Hai vế cộng số câu khai
-      // báo của các nhóm đang tính (không gồm nhóm `omitted`): nhóm "lấy phần còn lại" góp 0, chênh lệch lộ ở `missing`.
       if (option?.kind === "SUBJECT_CHOICE")
         return sum(option.countsByPick ?? []) + sum(part.sections.map((section) => sum(activeGroupCounts(section, null).counts)));
       return sum(group.sections.map((section) => sum(activeGroupCounts(section, null).counts)));

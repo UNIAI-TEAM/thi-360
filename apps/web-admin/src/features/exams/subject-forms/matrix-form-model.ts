@@ -1,16 +1,6 @@
 import { convertValuesByUnit, countsToPercents, isFlexibleSet, type MatrixAxes, sum } from "../matrix";
 import type { AnswerQuotas, BlockMatrix, ExamSection, MatrixDimensionValue, MatrixUnit, QuestionBlock, QuotaEnforcement } from "../types";
 
-/**
- * Mô hình của biểu mẫu Ma trận môn (FTM R-3, R-4, R-8, R-9): hàm thuần từ bản nháp của một môn tới các ô nhập và ngược lại. Màn
- * (`matrix-form.tsx`) chỉ vẽ và gọi các hàm này; không có chỗ nào khác ghi nhóm của môn MT.
- *
- * Quy ước chung:
- * - Cập nhật nhóm theo `id`, giữ thứ tự và mọi trường không chỉnh. Không xóa, không tạo nhóm: câu đơn và câu điền về 0 vẫn
- *   giữ nhóm; chùm cỡ cố định không về 0 (lỗi "Ít nhất 1 chùm" ở `matrix-blocking.ts`).
- * - Hàm không đổi gì thì trả lại đối tượng cũ (không tạo thay đổi giả ở bản nháp).
- */
-
 type MatrixRole = "SINGLE" | "SET" | "FILL";
 
 /** Vai trò của nhóm trong MT; `null` với dạng ngoài ba vai trò (môn không khớp MT, xem `fit.ts`). */
@@ -21,7 +11,6 @@ function roleOf(block: Pick<QuestionBlock, "questionType">): MatrixRole | null {
   return null;
 }
 
-/** Nhóm của từng vai trò (nhiều nhất một nhóm mỗi vai trò, R-2); vai trò đã bị xóa khỏi bài cũ là `null`. */
 interface MatrixRoleBlocks {
   single: QuestionBlock | null;
   set: QuestionBlock | null;
@@ -36,7 +25,6 @@ export function roleBlocks(section: Pick<ExamSection, "blocks">): MatrixRoleBloc
 /** Các số của Cấu trúc câu đọc từ bản nháp. */
 interface MatrixStructure {
   blocks: MatrixRoleBlocks;
-  /** Chùm cỡ linh hoạt (H28): chỉ có tổng câu con; `setCount`, `setSize` giữ `null`. */
   flexible: boolean;
   /** Số chùm (cỡ cố định); `null` khi không có chùm hoặc chùm cỡ linh hoạt. */
   sets: number | null;
@@ -88,7 +76,6 @@ export interface StructureInput {
 
 interface StructureWrite {
   section: ExamSection;
-  /** T nhỏ hơn số câu con: nhóm câu đơn ghi 0, màn giữ T đã gõ ở kho nhập thô và chặn lưu (R-3). */
   choiceBelowChildren: boolean;
 }
 
@@ -97,11 +84,6 @@ function setBlock(block: QuestionBlock, patch: Partial<QuestionBlock>): Question
   return changed ? { ...block, ...patch } : block;
 }
 
-/**
- * `answerQuotas` tính lại cho Cấu trúc câu mới, giữ đúng dạng đang lưu (FTM R-3, G1-6): trống thì để trống; có dòng "Bộ câu hỏi"
- * (dạng HSA-B, cả QDA Toán) thì Trắc nghiệm đơn, Bộ câu hỏi và Điền đáp án đếm riêng; không có dòng này (dạng cũ) thì câu con của
- * chùm đếm vào Trắc nghiệm. Đơn vị `PERCENT` quy lại thành % của số câu của môn. Dòng của vai trò không còn nhóm giữ nguyên.
- */
 export function recomputeAnswerQuotas(quotas: AnswerQuotas | null, structure: MatrixStructure, sectionCount: number | null): AnswerQuotas | null {
   if (quotas === null) return null;
   const hsaShape = quotas.items.some((item) => item.answerType === "QUESTION_SET");
@@ -116,12 +98,6 @@ export function recomputeAnswerQuotas(quotas: AnswerQuotas | null, structure: Ma
   return { unit: "PERCENT", items: quotas.items.map((item, index) => ({ ...item, value: percents[index] ?? 0 })) };
 }
 
-/**
- * Ghi Cấu trúc câu (R-3). `choice` mặc định là T hiện có, nên đổi số chùm giữ T và chia lại câu đơn (BCA Sử T = 10, 1 → 2 chùm: nhóm
- * chùm 2 × 3 = 6, nhóm đơn 4). Chùm cỡ cố định ghi nhất quán `setCount`, `setSize`, `questionCount = setCount × setSize`; chùm cỡ
- * linh hoạt chỉ ghi `questionCount` (tổng câu con), `setCount`, `setSize` vẫn `null`. `answerQuotas` tính lại ở đây và chỉ ở đây: gọi
- * hàm này khi người dùng đổi một ô của Cấu trúc câu, không gọi khi lưu không sửa.
- */
 export function writeStructure(section: ExamSection, input: StructureInput): StructureWrite {
   const current = structureOf(section);
   const { single, set, fill } = current.blocks;
@@ -144,7 +120,6 @@ export function writeStructure(section: ExamSection, input: StructureInput): Str
   return { section: { ...next, answerQuotas: recomputeAnswerQuotas(section.answerQuotas, structureOf(next), section.questionCount) }, choiceBelowChildren };
 }
 
-// ---------------------------------------------------------------- khối lớp, độ khó
 
 export type MatrixDimensionKey = "grade" | "difficulty";
 
@@ -159,7 +134,6 @@ export function initialEnforcement(mode: "FIXED_REQUIRED" | "DECLARED_REQUIRED" 
 interface MatrixCellEdit {
   dimension: MatrixDimensionKey;
   code: string;
-  /** Đơn vị của giá trị vừa nhập: nhập % ở cột Tỷ lệ (V-ACT) đổi ma trận sang `PERCENT`, nhập số câu đổi về `COUNT` (R-9). `null`: ô để trống. */
   unit: MatrixUnit;
   value: number | null;
 }
@@ -172,10 +146,6 @@ interface MatrixEditContext {
   enforcement?: QuotaEnforcement;
 }
 
-/**
- * Đổi đơn vị của ma trận SEPARATE: chỉ các ô đã khai được quy đổi (% → số câu theo phần dư lớn nhất, số câu → % nguyên tổng 100);
- * chiều chưa khai giữ mảng rỗng và ô để trống giữ trống, không biến thành ô 0 (khác `convertMatrixUnit` của màn MD).
- */
 export function convertDeclaredDimensions(matrix: BlockMatrix, unit: MatrixUnit, total: number): BlockMatrix {
   const convert = (items: readonly MatrixDimensionValue[]): MatrixDimensionValue[] => {
     const next = convertValuesByUnit(items.map((item) => item.value), unit, total);
@@ -184,11 +154,6 @@ export function convertDeclaredDimensions(matrix: BlockMatrix, unit: MatrixUnit,
   return { ...matrix, unit, byGrade: convert(matrix.byGrade), byDifficulty: convert(matrix.byDifficulty) };
 }
 
-/**
- * Sửa một ô của ma trận khối lớp hoặc độ khó của môn (R-4, R-8). Ma trận luôn `SEPARATE`, `COUNT` (hoặc `PERCENT` khi nhập % ở
- * V-ACT). Ô để trống không có trong mảng (khác ô 0): chiều đã khai là Bắt buộc và ô trống tính 0; chiều không khai ghi mảng rỗng.
- * Ma trận `null` đã lưu giữ `null` cho tới khi có ô được nhập.
- */
 export function editMatrixCell(matrix: BlockMatrix | null, edit: MatrixCellEdit, context: MatrixEditContext): BlockMatrix | null {
   if (matrix === null && edit.value === null) return null;
   const base: BlockMatrix =
@@ -228,7 +193,6 @@ export function dimensionEnforcement(matrix: BlockMatrix | null, dimension: Matr
   return matrix?.[ENFORCEMENT_FIELD[dimension]] ?? "REQUIRED";
 }
 
-/** "Áp dụng khi sinh đề" của một chiều (V-ACT, R-8): ghi mức của riêng chiều đó. Ma trận `null` không có gì để áp dụng. */
 export function setDimensionEnforcement(matrix: BlockMatrix | null, dimension: MatrixDimensionKey, enforcement: QuotaEnforcement): BlockMatrix | null {
   if (matrix === null || dimensionEnforcement(matrix, dimension) === enforcement) return matrix;
   return { ...matrix, [ENFORCEMENT_FIELD[dimension]]: enforcement };

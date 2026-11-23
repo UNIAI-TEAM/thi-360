@@ -33,11 +33,6 @@ function parseStoredTexts(raw: string, units: number): string[] {
   return legacy.length >= 2 ? legacy : evenSplit(units, 2).map(String);
 }
 
-/**
- * Khối "Tách dòng" của màn sửa dòng (FTM R-7, AC 51): chọn số dòng (2 tới số đơn vị của dòng cha, nên 4 chùm không thành 5 dòng), chia đều
- * sẵn, sửa được số của từng dòng con. Cách chia sai (dòng con không phải số nguyên dương, tổng khác dòng cha) hiện lỗi tại dòng và ghi
- * vào kho nhập thô để chặn mọi đường lưu cho tới khi sửa hoặc hủy (R-15); nút Tách chỉ bật khi cách chia hợp lệ.
- */
 export function RowSplitPanel({ block, units, sectionId, rawInputs, onApply, onCancel }: RowSplitPanelProps) {
   const t = useTranslations("exams.subjectForm.rows.split");
   const titleId = useId();

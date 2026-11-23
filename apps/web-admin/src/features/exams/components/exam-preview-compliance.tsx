@@ -40,10 +40,6 @@ const LEVEL_TONE: Record<ComplianceLevel, StatusTone> = {
   REQUIRED_DEVIATION: "danger",
 };
 
-/**
- * Gộp `paper.subjects[].quotas` vào danh sách `compliance` ở phạm vi `SECTION:<sectionId>` (không nhân bản dòng đã có),
- * để tab Đối chiếu phân bổ dùng một bảng duy nhất mà vẫn giữ đủ chỉ tiêu cấp môn của các đề chỉ trả `paper.subjects`.
- */
 export function mergeSubjectQuotasIntoCompliance(
   paper: PreviewPaper,
   compliance: readonly PreviewCompliance[] = [],
@@ -124,19 +120,11 @@ export interface ExamPreviewComplianceProps {
   compliance: readonly PreviewCompliance[];
   /** Câu đã bỏ của môn 16 câu (HSA Khoa học). */
   dropped: readonly PreviewQuestion[];
-  /** Cần tra chỉ tiêu chủ đề trong cấu trúc (dòng `REFERENCE` chờ mapping, H31). */
   examId?: string;
-  /** Xem thứ tự gốc (K12): số câu nêu ở chỉ tiêu chủ đề là số gốc, như số trên đề đang xem. */
   original?: boolean;
 }
 
 
-/**
- * Bảng Yêu cầu / Thực tế / Chênh lệch của đề thử (bản vẽ `SinhThu2B` + `SinhThuVact2B`, R-124): mọi tiêu chí kể cả
- * tham khảo, dòng lệch được đánh dấu theo mức (Bắt buộc là lỗi, Tham khảo là cảnh báo không chặn); dòng chỉ tiêu
- * `REFERENCE` chưa gắn MAPID (H31) hiện "Chưa có dữ liệu đối chiếu" và chip "Chờ mapping", không tính là lệch.
- * Môn 16 câu ghi "đã bỏ 1 câu" và nêu câu đã bỏ; chỉ tiêu chủ đề nêu các câu được gán.
- */
 export function ExamPreviewCompliance({ paper, compliance, dropped, examId, original = false }: ExamPreviewComplianceProps) {
   const t = useTranslations("exams.preview.compliance");
   const tContent = useTranslations("content");
@@ -350,10 +338,6 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
   );
 }
 
-/**
- * Mẫu số của đối chiếu theo lệnh (D21): "Toán cả môn · 67 lệnh" với bài cả môn, "Toán · Phần II · 6 lệnh" với bài theo
- * phần. Chỉ hiện cho bài `SUBJECT` và `PART`, vì đó là hai phạm vi có đối chiếu theo lệnh ở mức tham khảo.
- */
 function DenominatorNotes({ paper, compliance, examId }: { paper: PreviewPaper; compliance: readonly PreviewCompliance[]; examId: string }) {
   const t = useTranslations("exams.preview.compliance");
   const lookup = useLookup();

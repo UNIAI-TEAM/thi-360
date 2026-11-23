@@ -38,36 +38,18 @@ interface BlockMatrixEditorProps {
   block: QuestionBlock & { matrix: BlockMatrix; questionCount: number };
   axes: MatrixAxes;
   labels: MatrixLabels;
-  /**
-   * Năng lực cho chiều năng lực (V-ACT): năng lực đã lọc ở phạm vi của khối, hoặc mọi năng lực của môn. Rỗng: kỳ thi
-   * không dùng năng lực, không hiện chiều này.
-   */
   competencies: ReadonlyArray<{ code: string; name: string }>;
   onChange: (matrix: BlockMatrix) => void;
   /** Số câu Sẵn sàng khớp bộ lọc của khối; `undefined` khi đang tải hoặc lỗi. */
   available: AvailableQuestionCounts | undefined;
   availableState: "loading" | "error" | "ready";
-  /**
-   * `false`: chỉ tiêu riêng tùy chọn của nhóm chưa được khai (ma trận trống chỉ để nhập): chưa cảnh báo tổng lệch.
-   * Mặc định `true`.
-   */
   declared?: boolean;
-  /** Chiều hiện ở riêng từng chiều; mặc định cả lớp và độ khó. Chiều không hiện giữ nguyên dữ liệu và không tính vào cảnh báo tổng (FTM R-11). */
   dimensions?: readonly ("GRADE" | "DIFFICULTY")[];
-  /**
-   * Dạng gọn của Danh sách dòng (FTM R-13): riêng từng chiều theo câu, không có lựa chọn Kết hợp/Riêng, Số câu/Tỷ lệ, mức áp dụng,
-   * đơn vị đếm và phân bổ theo năng lực; chiều không còn ô nào ghi mảng rỗng. Mặc định `false`: hành vi của màn nhóm (MD).
-   */
   compact?: boolean;
 }
 
 const CELL_INPUT = "h-9 w-16 px-2";
 
-/**
- * Ma trận phân bổ của một khối (bản vẽ `BaiThiCauTruc`, UniNote PBI-04 mục 7): kết hợp Khối lớp × Độ khó hoặc riêng
- * từng chiều; nhập số câu hoặc tỷ lệ %. Tỷ lệ quy đổi thành số câu nguyên theo phần dư lớn nhất, có bảng quy đổi và các
- * bước. Mỗi ô có gợi ý số câu nguồn; tổng lệch số câu của khối thì cảnh báo.
- */
 export function BlockMatrixEditor({
   block,
   axes,

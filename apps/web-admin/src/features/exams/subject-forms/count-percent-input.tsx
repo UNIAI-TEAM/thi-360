@@ -8,7 +8,6 @@ import { parseNumberText, parsePercentText } from "../components/block-number-in
 import { percentToCount, wholeSetCount } from "./percent";
 import type { SubjectFormEntry } from "./registry";
 
-/** Chữ đã gõ mà chưa ghi được vào bản nháp (FTM R-15): biểu mẫu đưa vào kho nhập thô để chặn lưu và hỏi trước khi rời trang. */
 interface CountPercentRaw {
   text: string;
   code: "invalidNumber" | "setNotWhole";
@@ -18,13 +17,11 @@ interface CountPercentRaw {
 interface CountPercentInputProps {
   /** Nhãn của hàng (ví dụ "Trắc nghiệm"); nhóm điều khiển lấy nhãn này. */
   label: string;
-  /** Kiểu nhập % của cặp (`SubjectFormEntry.percentEntry`, R-9). `NONE`: một ô số câu, % chỉ đọc bên cạnh. */
   entry: SubjectFormEntry["percentEntry"];
   /** Mẫu số của hàng (số câu của mục chứa hàng). */
   total: number;
   /** Số câu đã lưu trong bản nháp. */
   count: number;
-  /** Cỡ chùm cố định của dòng chùm: số câu quy ra phải chia hết (R-142). */
   setSize?: number | null;
   /** Tên ô để đưa focus tới (`data-form-field`). */
   fieldName: string;
@@ -32,21 +29,13 @@ interface CountPercentInputProps {
   onChange: (next: { count: number; percent: number | null }) => void;
   /** Báo chữ chưa ghi được (`null`: ô đã hợp lệ, xóa mục nhập thô). */
   onRawInput?: (raw: CountPercentRaw | null) => void;
-  /** Lỗi từ nơi gọi (giới hạn R-12...), hiện tại ô. */
   error?: string;
-  /** Chữ đã gõ còn giữ ở kho nhập thô khi ô mở lại (R-15): hiện thay cho số đã lưu. */
   rawText?: string;
-  /** Ô chứa chữ nhập thô; mặc định COUNT để giữ hành vi của CR-2. */
   rawSource?: "COUNT" | "PERCENT";
 }
 
 type Problem = { code: CountPercentRaw["code"]; count: number } | null;
 
-/**
- * Ô số câu / tỷ lệ của biểu mẫu theo môn (FTM R-9). Kỳ cho nhập %: hai ô cạnh nhau (Số câu, Tỷ lệ), nhập % thì hiện ngay số nguyên
- * quy ra và mẫu số trước khi lưu ("30% của 40 câu = 12 câu"); quy đổi dùng `percent.ts`. Giá trị sai (không phải số, tỷ lệ quy ra
- * không chia hết cỡ chùm) không vào bản nháp mà báo qua `onRawInput`.
- */
 export function CountPercentInput({ label, entry, total, count, setSize = null, fieldName, onChange, onRawInput, error, rawText, rawSource }: CountPercentInputProps) {
   const t = useTranslations("exams.subjectForm.common.countPercent");
   const id = useId();

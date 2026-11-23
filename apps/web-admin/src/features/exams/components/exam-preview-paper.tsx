@@ -30,7 +30,6 @@ function clampHeadingLevel(level: number): HeadingLevel {
   return Math.min(6, Math.max(1, level)) as HeadingLevel;
 }
 
-/** Số câu hiện trên đề: số đã đảo của đề thật, hoặc vị trí gốc khi xem thứ tự gốc (K12). */
 function displayNumber(question: PreviewQuestion, original: boolean): number {
   return original ? (question.originalNumber ?? question.number) : question.number;
 }
@@ -84,11 +83,6 @@ export interface SegmentSlice {
   blocks: PreviewBlock[];
 }
 
-/**
- * Chia các khối của một phần theo `displaySegments` (H40): câu nằm ở phân đoạn có dải chứa vị trí của câu (số trên đề
- * trừ số đầu của phần cộng 1). Bộ bị ranh giới cắt giữa chừng xuất hiện ở cả hai phân đoạn, mỗi nơi chỉ giữ câu con của
- * mình, nên ngữ liệu hiện ở cả hai. Không đổi số câu. `null` khi phần không có phân đoạn: hiện như trước.
- */
 export function sliceBySegments(part: PreviewPart, original: boolean): SegmentSlice[] | null {
   const segments = part.displaySegments;
   if (!segments || segments.length === 0) return null;
@@ -127,7 +121,6 @@ export function sliceBySegments(part: PreviewPart, original: boolean): SegmentSl
     });
 }
 
-/** Đề đã sinh: phần › khối › câu theo đúng thứ tự thực tế, kèm đáp án và lời giải (chế độ quản trị). `original`: thứ tự gốc (K12). */
 export function ExamPreviewPaper({ paper, original = false }: { paper: PreviewPaper; original?: boolean }) {
   const t = useTranslations("exams.preview");
   return (

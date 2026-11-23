@@ -9,11 +9,6 @@ import { TopicQuotaTable, type TopicQuotaServerError } from "../components/topic
 import type { MatrixBlockProps } from "./matrix-block-props";
 import { MATRIX_FIELDS } from "./matrix-blocking";
 
-/**
- * Phạm vi và chỉ tiêu chủ đề của MT ngoài HSA (FTM R-6). Phạm vi kiến thức (Toàn môn / Theo chủ đề) luôn hiện; nút "Thêm chỉ tiêu chủ đề"
- * mới hiện bảng chỉ tiêu (bài đã có dòng thì bảng hiện sẵn). V-ACT Tiếng Việt: bảng mạch (các dòng chỉ tiêu, có cột độ khó trong mạch)
- * là phần chính nên luôn hiện, dòng chưa gắn MAPID hiện "Chờ mapping" (H31). HSA dùng Quy tắc MAPID của HSA-D (R-5), không vẽ ở đây.
- */
 export function MatrixScopeBlock({ section, subjectName, total, axes, labels, reference, onChange, topicError }: MatrixBlockProps & { topicError: TopicQuotaServerError }) {
   const t = useTranslations("exams.subjectForm.matrix.scope");
   const quotas = section.topicQuotas ?? [];

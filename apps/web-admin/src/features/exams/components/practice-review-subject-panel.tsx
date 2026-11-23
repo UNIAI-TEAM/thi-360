@@ -33,21 +33,14 @@ interface PracticeReviewSubjectPanelProps {
   onChange: (update: (section: ExamSection) => ExamSection) => void;
   /** Số câu bước 1 đặt cho bài ôn: ô Số lượng chỉ đọc, báo lệch khi nhóm khác số này. */
   step1Count: number;
-  /** Mã bài: đường dẫn "Sửa thông tin tổng quan" cạnh ô Số lượng chỉ đọc (UNI-2753). */
   examId: string;
   headerAction?: ReactNode;
-  /** Lỗi 422 của chỉ tiêu chủ đề (H20): màn này không có bảng chỉ tiêu, nên báo ngay trong panel. */
   topicError?: TopicQuotaServerError;
   /** Thời lượng của bài (phút) và thang điểm (`null`: bước 1 không đặt), chỉ để xem: sửa ở thông tin tổng quan. */
   minutes: number;
   maxScore: number | null;
 }
 
-/**
- * Bài ôn (R-22, R-10.1, bản vẽ `BaiOn2B`): màn rút gọn của bài có một phần, một môn, một nhóm. Số câu, thời lượng và thang điểm lấy từ
- * bước 1 và chỉ đọc ở đây (sửa ở thông tin tổng quan). Phạm vi kiến thức, dạng câu, phân bố khối lớp, độ khó và câu chùm nằm
- * trong một vùng đóng "Tùy chọn thêm", không bắt buộc: để mặc định vẫn lưu và kiểm tra được.
- */
 export function PracticeReviewSubjectPanel({
   context,
   subjectName,

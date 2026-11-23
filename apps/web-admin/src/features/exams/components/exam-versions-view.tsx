@@ -53,10 +53,6 @@ const CHANGE_ICON: Record<ExamChangeKind, typeof Plus> = {
   QUESTIONS_REPLACED: Replace,
 };
 
-/**
- * Phiên bản và công bố (bản vẽ `BaiThiPhienBan`): bản làm việc, thay đổi so với bản đang phục vụ, lịch sử công bố,
- * công bố (`CongBoBaiThi`), ngừng bán, xem cấu hình một phiên bản (chỉ đọc).
- */
 export function ExamVersionsView({ examId }: { examId: string }) {
   const t = useTranslations("exams.versions");
   const examQuery = useExam(examId);
@@ -197,7 +193,7 @@ function WorkingCopySection({
         </div>
         {working ? (
           <>
-            <dl className="flex flex-wrap gap-x-6 gap-y-2 text-body">
+            <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg bg-subtle/60 px-3.5 py-2.5 text-body">
               <div className="flex items-baseline gap-1.5">
                 <dt className="text-text-muted">{t("working.editedBy")}</dt>
                 <dd className="m-0 font-semibold text-text">{working.editedBy.name}</dd>

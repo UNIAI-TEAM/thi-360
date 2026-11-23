@@ -75,6 +75,7 @@ describe("ExamEditorLayout & ExamEditorHeader (AC-01, AC-02)", () => {
       </ExamEditorLayout>,
     );
 
+    expect(screen.getByRole("banner", { name: "Tạo bài thi" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danh sách bài thi" })).toHaveAttribute("href", "/exams");
     expect(screen.getByRole("heading", { name: "Tạo bài thi", level: 1 })).toBeInTheDocument();
     expect(screen.getByTestId("create-child")).toBeInTheDocument();
@@ -207,5 +208,40 @@ describe("ExamEditorLayout & ExamEditorHeader (AC-01, AC-02)", () => {
     backend.server.release("GET", `/api/v1/admin/exams/${qda.id}/structure`);
     await waitFor(() => expect(backend.calls("GET", STRUCTURE_PATH.replace(EXAM_ID, qda.id))).toHaveLength(1));
     expect(screen.queryByText(/Tổng điểm phần/)).toBeNull();
+  });
+
+  it("SF-4: hiện thời lượng từ structure.parts khi exam.durationMinutes = 0 nhưng cấu trúc bản làm việc có tổng phút > 0", async () => {
+    const baseExam: ExamDetail = {
+      ...backend.app("ex-hsa-f-001"),
+      id: EXAM_ID,
+      code: "HSA-SF4-001",
+      timing: "PER_PART",
+      durationMinutes: 0,
+      parts: [makePart({ id: "part-1", order: 1, name: "Toán", durationMinutes: null, questionCount: 50 })],
+    };
+    const { FakeServer } = await import("./fake-exams-server");
+    new FakeServer()
+      .on("GET", EXAM_PATH, { status: 200, body: toWireExam(baseExam) })
+      .on("GET", STRUCTURE_PATH, {
+        status: 200,
+        body: {
+          examId: EXAM_ID,
+          revision: baseExam.revision,
+          combinations: [],
+          parts: [makePart({ id: "part-1", order: 1, name: "Toán", durationMinutes: 45, questionCount: 50 })],
+          examQuotas: [],
+        },
+      })
+      .install();
+
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure`);
+    renderExamsUi(
+      <ExamEditorLayout examId={EXAM_ID}>
+        <div>Tab 2</div>
+      </ExamEditorLayout>,
+    );
+
+    const dl = await screen.findByLabelText("Tổng hợp cấu trúc");
+    expect(await within(dl).findByText("45 phút")).toBeInTheDocument();
   });
 });

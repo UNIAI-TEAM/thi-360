@@ -70,10 +70,6 @@ export function useExamStructure(id: string, enabledOrUnused?: boolean, maybeEna
   });
 }
 
-/**
- * Tổng hợp cấu trúc vùng (d) (spec 15.2). Không thử lại: vùng (d) dùng được khi bảng này lỗi (số tính trên màn hình),
- * và thử lại làm chậm mọi thao tác ghi đang chờ làm mới nhóm `exams`.
- */
 export function useExamStructureSummary(id: string) {
   return useQuery({
     queryKey: EXAMS_QUERY_KEYS.structureSummary(id),
@@ -157,10 +153,6 @@ export function useDuplicateExam() {
   });
 }
 
-/**
- * Ngừng bán bài thi (dùng chung cho dòng danh sách và tab Phiên bản, AC-17): bắt buộc truyền `idempotencyKey`,
- * làm mới chi tiết, danh sách, kết quả kiểm tra và danh sách phiên bản.
- */
 export function useDiscontinueExam() {
   const queryClient = useQueryClient();
   return useMutation({

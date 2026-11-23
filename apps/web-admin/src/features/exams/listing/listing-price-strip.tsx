@@ -7,11 +7,6 @@ import { examTabHref } from "../editor-tabs";
 import { differingTerms, type ListingTermField } from "./form";
 import type { ExamListing } from "./types";
 
-/**
- * Dải "Giá đang bán: … · Sẽ đổi khi công bố" (TM 6.4, AC-3): chỉ hiện khi bản đang bán có thông tin bán và khác bản làm
- * việc đã lưu. Chưa công bố, hoặc phiên bản đang phục vụ có trước thông tin bán, hoặc hai bản giống nhau thì không hiện.
- * Tab chỉ xem vẫn hiện dải này.
- */
 export function ListingPriceStrip({ listing }: { listing: ExamListing }) {
   const t = useTranslations("exams.listing.strip");
   const format = useFormatter();

@@ -31,11 +31,6 @@ import type {
   UpdateExamStructureRequest,
 } from "./types";
 
-/**
- * API của Bài thi (`/api/v1/admin/exams/**`, `/exam-templates`). Lỗi nghiệp vụ ném `ExamsApiError` (`./errors`).
- * Kiểm tra cấu hình, xem trước, phiên bản và công bố nằm ở `review-api.ts`.
- */
-
 const idempotencyKey = () => globalThis.crypto.randomUUID();
 
 export async function listExams(query: ListExamsQuery, signal?: AbortSignal): Promise<ExamListPage> {
@@ -238,7 +233,6 @@ export async function discontinueExam({
 
 type ApiAvailableQuestionsQuery = components["schemas"]["AvailableQuestionsQuery"];
 
-/** Bộ lọc đếm của một dòng: bộ lọc nhóm kèm điều kiện audio của phần (H38, R-130). */
 export type AudioCountQuery = AvailableQuestionsQuery & Pick<ApiAvailableQuestionsQuery, "audioRequirement">;
 
 interface AudioSubjectCountQuery {

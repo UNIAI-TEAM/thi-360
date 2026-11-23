@@ -31,11 +31,6 @@ interface ComparisonRow {
   minutes: boolean;
 }
 
-/**
- * Bước 2/2 của đổi phiên bản cấu trúc (bản vẽ `DoiPhienBan2B`), chỉ hiện khi máy chủ trả 409 `EXAM_OVERVIEW_CONFIRM`
- * (tổng quan đã sửa tay khác mẫu mới): bảng so sánh số của mẫu đang dùng, của bài hiện tại và của mẫu mới (chỉ hàng có số
- * từ máy chủ), rồi hai lựa chọn giữ số đã sửa hoặc lấy số của mẫu mới.
- */
 export function StructureOverviewConfirmDialog({
   open,
   exam,

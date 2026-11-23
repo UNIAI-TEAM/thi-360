@@ -34,11 +34,6 @@ interface CreateExamSummaryData {
   templateName: string | null;
 }
 
-/**
- * Tóm tắt của bước 1 (TaoBaiThi2B): kỳ thi, phạm vi, tổng số câu, thời lượng (ghi "chung" khi dùng một đồng hồ),
- * điểm tối đa, mẫu mặc định và các mục cần xử lý, mỗi mục đưa tới ô nhập tương ứng. Nằm ngay dưới bảng tổng quan,
- * trước nút Hủy / Lưu và tiếp tục.
- */
 export function CreateExamSummaryPanel({
   data,
   timing,
@@ -48,7 +43,6 @@ export function CreateExamSummaryPanel({
   data: CreateExamSummaryData;
   timing: ExamTiming;
   issues: readonly CreateExamIssue[];
-  /** Chế độ sửa (`/exams/<id>`): bỏ ghi chú "Bài được tạo ở trạng thái Nháp...". */
   editing?: boolean;
 }) {
   const t = useTranslations("exams.create.summary");
@@ -57,7 +51,7 @@ export function CreateExamSummaryPanel({
   const number = (value: number | null) => (value === null ? "—" : String(value));
 
   return (
-    <section aria-labelledby={headingId} className={cn("flex-[1_1_300px]", !editing && "sticky top-4")}>
+    <section aria-labelledby={headingId}>
       <Card padding="md" className="flex flex-col gap-4">
         <h2 id={headingId} className="text-title font-semibold text-text">
           {t("title")}

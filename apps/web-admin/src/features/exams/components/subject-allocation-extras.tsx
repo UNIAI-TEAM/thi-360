@@ -16,10 +16,6 @@ const REASON_KEYS: Record<ReferenceReason, string> = {
   IN_MATRIX: "reasonInMatrix",
 };
 
-/**
- * Phân bố tham khảo của môn và hai nút chuyển (2B 15.3, H7). Mỗi dòng ghi đơn vị, các mức và số; nút bị khóa kèm lý do
- * (đơn vị lệnh hỏi hoặc điểm, chưa có số, mức gộp nhiều mã).
- */
 export function ReferenceDistributions({
   entries,
   labels,

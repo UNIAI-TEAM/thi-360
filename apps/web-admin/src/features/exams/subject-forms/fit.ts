@@ -2,20 +2,13 @@ import type { BlockMatrix, ExamSection, KnowledgeScope, QuestionBlock, TopicQuot
 import { limitsOfEntry, limitViolations } from "./limits";
 import type { SubjectFormEntry } from "./registry";
 
-/**
- * Khớp biểu mẫu (FTM R-2): cấu trúc đã lưu của môn có biểu diễn được bằng biểu mẫu của cặp mà không mất hay đổi nghĩa dữ liệu
- * không. Hàm thuần trên dữ liệu đã nạp (sau chuẩn hóa HSA-C), không gọi request. Một điều không khớp là đủ để vẽ MD kèm dòng chữ.
- */
 export type FitReason =
-  /** Ma trận kết hợp ở kỳ không có bảng kết hợp, hoặc ở cấp mà R-10 không cho (ma trận của nhóm). */
   | "COMBINED_MATRIX"
   /** Nhóm có số câu để trống ("lấy phần còn lại"). */
   | "COUNT_NULL"
-  /** Nhập theo tỷ lệ ở kỳ không cho nhập % (R-9). */
   | "PERCENT_ENTRY"
   /** Đơn vị đếm khác `QUESTION` ở phân bố Bắt buộc. */
   | "COUNT_BASIS"
-  /** Điều kiện lớp đang Bắt buộc ở chỗ R-11 ẩn khối lớp. */
   | "GRADE_REQUIRED_HIDDEN"
   /** MT: hai nhóm cùng vai trò. */
   | "ROLE_DUPLICATE"
@@ -23,7 +16,6 @@ export type FitReason =
   | "ROLE_UNKNOWN"
   /** MT: nhóm có ma trận riêng. */
   | "BLOCK_MATRIX"
-  /** MT: nhóm có chỉ tiêu chủ đề riêng (trừ HSA, R-5). */
   | "BLOCK_TOPIC_QUOTAS"
   /** MT: nhóm có điều kiện vị trí câu con. */
   | "POSITION_CONDITION"
@@ -35,7 +27,6 @@ export type FitReason =
   | "ANSWER_QUOTAS_SHAPE"
   /** Nhóm chùm cỡ cố định có `setCount` ≤ 0 hoặc số câu khác số chùm × cỡ chùm. */
   | "SET_SIZE_MISMATCH"
-  /** Mục đang vi phạm giới hạn R-12 ngay khi nạp. */
   | "LIMITS_VIOLATED"
   /** DS: nhóm có điều kiện mà màn sửa dòng không có mục tương ứng. */
   | "ROW_CONDITION_UNSUPPORTED";
@@ -49,7 +40,6 @@ export interface FitContext {
 
 const FITS: FitResult = { fits: true };
 
-/** Điều kiện theo vị trí câu con (`childConditions`) chỉ có ở SP2E Tiếng Anh và V-SAT Tiếng Anh (mẫu khóa) trong màn sửa dòng (R-7). */
 const CHILD_CONDITION_PAIRS: readonly string[] = ["SP2E:ANH", "VSAT:ANH"];
 
 const unfit = (reason: FitReason): FitResult => ({ fits: false, reason });
@@ -88,7 +78,6 @@ function topicQuotaReason(quotas: readonly TopicQuota[] | undefined, entry: Subj
   return null;
 }
 
-/** Điều kiện chung của R-2, cho cả MT và DS. */
 function commonReason(section: ExamSection, entry: SubjectFormEntry): FitReason | null {
   const sectionReason = matrixReason(section.matrix, entry, false) ?? topicQuotaReason(section.topicQuotas, entry);
   if (sectionReason) return sectionReason;
@@ -101,7 +90,6 @@ function commonReason(section: ExamSection, entry: SubjectFormEntry): FitReason 
   return null;
 }
 
-/** Nhóm chùm cỡ cố định: `setCount` ≤ 0 hoặc số câu khác `setCount` × `setSize`. Cỡ linh hoạt (cả hai `null`, H28) không xét. */
 function setSizeMismatch(block: QuestionBlock): boolean {
   if (block.questionType !== "QUESTION_SET" || (block.setCount === null && block.setSize === null)) return false;
   const count = block.setCount ?? 0;
@@ -149,10 +137,6 @@ function rowsFormReason(section: ExamSection, context: FitContext): FitReason | 
   return section.blocks.some(setSizeMismatch) ? "SET_SIZE_MISMATCH" : null;
 }
 
-/**
- * Môn có khớp biểu mẫu của mục không (R-2). Không xét cờ `enabled` (đó là bước 3 của thứ tự chọn, `selection.ts`): bảng phủ
- * của fixture kiểm cả cặp chưa bật.
- */
 export function fitsForm(section: ExamSection, entry: SubjectFormEntry, context: FitContext): FitResult {
   const reason = commonReason(section, entry) ?? (entry.form === "MATRIX" ? matrixFormReason(section, entry, context) : rowsFormReason(section, context));
   return reason ? unfit(reason) : FITS;

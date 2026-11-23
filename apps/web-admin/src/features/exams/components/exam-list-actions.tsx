@@ -21,13 +21,6 @@ import { useDiscontinueExam, useDuplicateExam } from "../queries";
 import { useIdempotencyKey } from "../review-queries";
 import type { ExamSummary } from "../types";
 
-/**
- * Thao tác của một dòng (cột Thao tác và thẻ ở khung hẹp):
- * - Nút chính mở `/exams/<id>` (`Sửa` với `Pencil` khi có `EXAM.MODIFY`; `Xem` với `Eye` khi chỉ có `EXAM.VIEW`).
- * - `Sao chép` chỉ hiện khi có `EXAM.MODIFY`.
- * - Menu `"⋯"` liệt kê đủ 5 tab theo thứ tự (`general`, `structure`, `listing`, `review`, `versions`) và chỉ hiện
- *   `Ngừng bán` khi `status === "PUBLISHED"` kèm `EXAM.PUBLISH`.
- */
 export function ExamListRowActions({ exam, onAnnounce }: { exam: ExamSummary; onAnnounce: (message: string) => void }) {
   const t = useTranslations("exams.list");
   const router = useRouter();

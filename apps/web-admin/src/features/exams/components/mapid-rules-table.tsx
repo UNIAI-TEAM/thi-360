@@ -20,11 +20,6 @@ import { ExamContentText, markExamContent } from "./exam-content-text";
 import { MapidRuleDialog } from "./mapid-rule-dialog";
 import { ScrollableTable } from "./scrollable-table";
 
-/**
- * Chữ của quy tắc MAPID: câu đầy đủ ("Trả lời ngắn · Đúng 3/15 câu thuộc Hàm số") cho bảng quy tắc, câu ngắn không có phạm vi cho
- * cột "Phạm vi nguồn" của bảng nhóm. Tên MAPID lấy từ cây kiến thức; mã lạ hiện chính mã. Các MAPID của một quy tắc hiểu theo
- * nghĩa "hoặc" nên nối bằng "hoặc".
- */
 export function useMapidRuleText(reference: ContentReference | undefined) {
   const t = useTranslations("exams.mapidRules");
   const format = useFormatter();
@@ -91,12 +86,6 @@ interface MapidRulesTableProps {
   onChange: (rules: MapidRule[]) => void;
 }
 
-/**
- * Bảng "Quy tắc MAPID" của một môn HSA ở chế độ Theo ma trận MAPID (UNI-1704 v2): mỗi quy tắc một dòng, đọc thành câu, có Sửa
- * và Xóa; "Thêm quy tắc" mở hộp thoại. Tối đa `MAX_MAPID_RULES` quy tắc một môn (Q5). Quy tắc trỏ tới nhóm đã xóa hiện chip
- * "Nhóm đã xóa" và chặn lưu cho tới khi sửa hoặc xóa. Dùng được riêng (không phụ thuộc trạng thái màn môn) để màn khác nhúng lại.
- * Mỏ neo mỗi dòng: `mapid-rule-<id>` (`id` và `data-field`), xem `focusMapidRule`.
- */
 export function MapidRulesTable({ section, groups, subjectName, reference, onChange }: MapidRulesTableProps) {
   const t = useTranslations("exams.mapidRules");
   const headingId = useId();

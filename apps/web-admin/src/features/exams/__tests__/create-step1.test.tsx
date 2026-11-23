@@ -358,12 +358,12 @@ describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi
     }
   });
 
-  it("kỳ thi là ô chọn trong khối Thông tin chung; đổi kỳ thi nạp lại bảng", async () => {
+  it("kỳ thi là ô chọn đặt đầu khối Phạm vi bài thi; đổi kỳ thi nạp lại bảng", async () => {
     const user = await renderPage();
     expect(screen.queryByRole("radio", { name: /^HSA/ })).toBeNull();
     expect(kindSelect()).toHaveTextContent(/\(HSA\)/);
-    const info = screen.getByRole("region", { name: "Thông tin chung" });
-    expect(within(info).getByRole("combobox", { name: /^Kỳ thi/ })).toBeInTheDocument();
+    const scope = screen.getByRole("region", { name: "Phạm vi bài thi" });
+    expect(within(scope).getByRole("combobox", { name: /^Kỳ thi/ })).toBeInTheDocument();
     await pickKind(user, "QDA");
     await waitFor(() => expect(kindSelect()).toHaveTextContent(/\(QDA\)/));
     expect(countInputs()[0]).toHaveValue("50");

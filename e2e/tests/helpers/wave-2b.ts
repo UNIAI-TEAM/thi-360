@@ -519,6 +519,7 @@ async function fillOverviewCell(page: Page, name: RegExp, value: number | undefi
  */
 export async function fillExamStep1InUi(page: Page, spec: UiExamSpec): Promise<void> {
   await page.goto(`${ADMIN_URL}/exams/new`);
+  await expect(page.getByRole("banner", { name: "Tạo bài thi" })).toBeVisible();
   await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
   await page.getByRole("combobox", { name: /^Kỳ thi/ }).click();
   await page.getByRole("option", { name: KIND_LABEL[spec.kind] }).click();
@@ -968,12 +969,12 @@ export async function forceBlockOmitted(admin: AdminApi, examId: string, blockId
 }
 
 /**
- * Đặt thang điểm của bài qua tab "Thông tin chung": ô "Thang điểm" rồi "Lưu thông tin", đợi máy chủ nhận (200) và đọc lại
+ * Đặt thang điểm của bài qua tab "Thông tin chung": ô "Điểm tối đa" rồi "Lưu thông tin", đợi máy chủ nhận (200) và đọc lại
  * `maxScore` ở API để xác nhận giá trị đã lưu.
  */
 export async function setMaxScoreInGeneralTab(page: Page, admin: AdminApi, examId: string, maxScore: number): Promise<void> {
   await openEditorTab(page, "Thông tin chung", /\/exams\/[^/]+$/);
-  const field = page.getByRole("textbox", { name: /^Thang điểm/ });
+  const field = page.getByRole("textbox", { name: /^Điểm tối đa$/ });
   await expect(field).toBeVisible();
   await field.fill(String(maxScore));
   const [response] = await Promise.all([

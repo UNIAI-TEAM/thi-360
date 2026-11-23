@@ -35,7 +35,6 @@ interface ExamStructureSummaryProps {
   onSelect: (selection: StructureSelection) => void;
 }
 
-/** Dòng bấm được: khối → khối, môn → môn, phần → phần (R-04). */
 function summaryRowTarget(row: ExamStructureSummaryRow): StructureSelection | null {
   if (row.blockId) return { kind: "block", blockId: row.blockId };
   if (row.sectionId) return { kind: "section", sectionId: row.sectionId };
@@ -52,11 +51,6 @@ function headlineOf(allocated: number, target: number): Headline {
   return { state: missing > 0 ? "missing" : extra > 0 ? "over" : "ok", ...rounded, missing, extra };
 }
 
-/**
- * Vùng (d) của bước Cấu trúc (spec 15.2, R-04): đọc `structure/summary` (số câu đã phân bổ so với chỉ tiêu theo phần,
- * môn, nhóm), liệt kê lỗi cấu trúc trên màn hình và kết quả kiểm tra gần nhất; bấm một dòng hoặc một lỗi thì chọn đúng
- * phần, môn, nhóm trong danh sách và vùng sửa. Máy chủ chưa có tổng hợp thì dùng số tính trên màn hình.
- */
 export function ExamStructureSummaryRegion({
   summary,
   load,

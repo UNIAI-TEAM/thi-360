@@ -5,12 +5,6 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-/**
- * Chặn rời trang khi còn thay đổi chưa lưu (Cấu trúc và ma trận, Thông tin chung): `beforeunload` cho tải lại/đóng tab,
- * và bắt cú bấm liên kết nội bộ (tab của trang soạn, menu, breadcrumb) để hỏi lại trước khi chuyển trang. Cùng cách với
- * bước kết quả của Cấp hàng loạt. `hasUnsavedChanges` ở bước Cấu trúc gồm cả trạng thái nhập thô của biểu mẫu theo môn (FTM R-15),
- * không chỉ bản nháp khác bản đã lưu.
- */
 export function useUnsavedChangesGuard(hasUnsavedChanges: boolean) {
   const router = useRouter();
   const [pendingHref, setPendingHref] = useState<string | null>(null);

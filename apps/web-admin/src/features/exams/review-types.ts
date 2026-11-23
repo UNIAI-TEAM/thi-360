@@ -1,130 +1,44 @@
 import type { components } from "@thi360/api-client";
 import type { PersonRef, QuestionType } from "@/features/content/types";
 import type { QuestionBody } from "@/features/questions/types";
-import type { DiscontinueExamRequest, DisplaySegment, ExamCheckStatus, ExamPart, ExamSectionState, ExamVersion, MatrixMode } from "./types";
-
-/**
- * Kiểu của Kiểm tra cấu hình, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11).
- */
+import type viMessages from "@/messages/vi.json";
+import type {
+  DiscontinueExamRequest,
+  DisplaySegment,
+  ExamCheckStatus,
+  ExamCheckSummary,
+  ExamPart,
+  ExamPartOption,
+  ExamSectionState,
+  ExamVersion,
+  MatrixMode,
+  QuotaBasis,
+  QuotaEnforcement,
+} from "./types";
 
 type Schema = components["schemas"];
 
 export type { DiscontinueExamRequest };
 
-/* ---------- Đường lựa chọn ---------- */
+export type PathChoice = Required<Omit<Schema["ExamPreviewPathChoice"], "kind">> & { kind: ExamPartOption["kind"] };
 
-/** Một lựa chọn của phần tự chọn nằm trong đường; `name` là tên môn hoặc tên tổ hợp (dữ liệu danh mục). */
-export interface PathChoice {
-  partId: string;
-  optionId: string;
-  kind: "SUBJECT" | "COMBINATION" | "BRANCH" | "SUBJECT_CHOICE";
-  code: string;
-  name: string;
-}
-
-/** Một đường lựa chọn = một cách ghép các phần tự chọn. Bài không có phần tự chọn có đúng một đường (`choices` rỗng). */
 export interface ExamPathRef {
   pathId: string;
   choices: PathChoice[];
 }
 
-/* ---------- Kết quả kiểm tra ---------- */
-
 export type PathCheckResult = "VALID" | "INVALID" | "UNCONFIRMED";
 export type BlockCheckResult = "FOUND" | "NOT_FOUND" | "UNCONFIRMED";
 
-/** Tám nhóm kiểm tra của UniNote PBI-04 mục 9.2. */
-export const CHECK_GROUPS = [
-  "INFO",
-  "STRUCTURE",
-  "MATRIX",
-  "SOURCE",
-  "QUESTION_SET",
-  "OVERLAP",
-  "POINTS",
-  "DISPLAY",
-] as const;
+export const CHECK_GROUPS = ["INFO", "STRUCTURE", "MATRIX", "SOURCE", "QUESTION_SET", "OVERLAP", "POINTS", "DISPLAY"] as const;
 export type CheckGroup = (typeof CHECK_GROUPS)[number];
 
-/** Mã vấn đề của kiểm tra cấu hình và xem trước. */
-export const CHECK_ISSUE_CODES = [
-  "INFO_MISSING",
-  "OPTION_EMPTY",
-  "PATH_TOTAL_MISMATCH",
-  "PART_TOTAL_MISMATCH",
-  "SECTION_TOTAL_MISMATCH",
-  "MATRIX_TOTAL_MISMATCH",
-  "MATRIX_NEGATIVE",
-  "PERCENT_TOTAL_INVALID",
-  "SET_SIZE_MISMATCH",
-  "CELL_SHORTAGE",
-  "DIMENSION_SHORTAGE",
-  "MATRIX_INFEASIBLE",
-  "SET_SHORTAGE",
-  "OVERLAP_UNCONFIRMED",
-  "YEARS_UNCONFIRMED",
-  "OPTION_UNCONFIRMED",
-  "PART_POINTS_MISMATCH",
-  "POINTS_TOTAL_MISMATCH",
-  "COMPETENCY_SHORTAGE",
-  "RUBRIC_MISSING",
-  "SCORING_MISMATCH",
-  "ANSWER_QUOTA_TOTAL_MISMATCH",
-  "SUBJECT_MATRIX_TOTAL_MISMATCH",
-  "GROUP_ANSWER_TYPE_MISSING",
-  "SUBJECT_CHOICE_COUNTS_INVALID",
-  "ANSWER_TYPE_SHORTAGE",
-  "SUBJECT_QUOTA_INFEASIBLE",
-  "PREVIEW_SUBJECTS_INVALID",
-  "MATRIX_NON_INTEGER",
-  "MATRIX_INCOMPLETE",
-  "PART_EMPTY",
-  "SHARED_PART_DURATION",
-  "ANSWER_QUOTA_DUPLICATE",
-  "ATTACHMENT_MISSING",
-  "COMBINATION_LIST_CHANGED",
-  "COMBINATION_SUBJECT_MISSING",
-  "QUESTION_NOT_PLAYABLE",
-  "REQUIRED_BASIS_UNSUPPORTED",
-  "SECTION_INCOMPLETE",
-  "SUBJECT_CHOICE_TRIM_IMPOSSIBLE",
-  "TOPIC_QUOTA_INFEASIBLE",
-  "TOPIC_QUOTA_NESTED",
-  "ITEM_SHAPE_SHORTAGE",
-  "ANSWER_FORMAT_SHORTAGE",
-  "CHILD_CONDITION_SHORTAGE",
-  "SLOT_SOURCE_SHORTAGE",
-  "DISTRIBUTION_DEVIATION",
-  "EXAM_QUOTA_DEVIATION",
-  "MANUAL_GRADING_REQUIRED",
-  "OMITTED_GROUPS_PRESENT",
-  "TEMPLATE_NOT_PUBLISHABLE",
-  "STRUCTURE_COUNT_LOCKED",
-  "TOPIC_QUOTA_MAPPING_MISSING",
-  "AUDIO_SHORTAGE",
-  "POINTS_SHORTAGE",
-  "BLOCK_COUNT_LOCKED",
-  "OMITTED_BLOCK_LOCKED",
-  "SCALE_INCLUDES_EXCLUDED_PART",
-  "DISPLAY_SEGMENT_MISMATCH",
-  "SECTION_SET_COUNT_RANGE",
-  "SHORT_ANSWER_MIN",
-  "STORED_ID_COLLISION",
-  "MAPID_RULE_CONFLICT",
-  "MAPID_RULE_GROUP_MISSING",
-  "STATEMENT_POINTS_UNEVEN",
-] as const;
-export type CheckIssueCode = (typeof CHECK_ISSUE_CODES)[number];
+export type CheckIssueCode = keyof (typeof viMessages)["exams"]["review"]["issue"] | "PREVIEW_SUBJECTS_INVALID";
 
-interface TopicQuotaRef {
-  name: string;
-  enforcement: "REQUIRED" | "REFERENCE";
-  nodeIds: string[];
-  difficultyCodes: string[];
-}
-
-/** Chỉ tiêu chủ đề của bài theo id: dựng từ cấu trúc đã chuyển đổi bằng `buildTopicQuotaIndex`. */
-export type TopicQuotaIndex = Map<string, TopicQuotaRef>;
+export type TopicQuotaIndex = Map<
+  string,
+  { name: string; enforcement: QuotaEnforcement; nodeIds: string[]; difficultyCodes: string[] }
+>;
 
 export type CheckIssueSeverity = "ERROR" | "UNCONFIRMED" | "WARNING";
 
@@ -164,20 +78,11 @@ export interface CheckIssue {
   availableSingles?: number | null;
 }
 
-interface RequiredCell {
-  gradeCode: string;
-  difficultyCode: string;
-  required: number;
-}
-
-interface RequiredDimension {
-  code: string;
-  required: number;
-}
+type RequiredDimension = Required<Schema["ExamPreviewRequirementDimension"]>;
 
 export interface BlockRequirement {
   mode: MatrixMode;
-  cells: RequiredCell[];
+  cells: Required<Schema["ExamPreviewRequirementCell"]>[];
   byGrade: RequiredDimension[];
   byDifficulty: RequiredDimension[];
   byCompetency: RequiredDimension[];
@@ -281,21 +186,11 @@ export interface ExamCheckRun {
   errorCode: string | null;
 }
 
-export interface StartDeepCheckResponse {
-  runId: string;
-}
-
-/* ---------- Đề xem trước ---------- */
-
-interface PreviewOption {
-  id: string;
-  content: string;
-  correct: boolean;
-}
+export type StartDeepCheckResponse = Required<Pick<Schema["ExamCheckStarted"], "runId">>;
 
 export type PreviewAttachment = Required<Schema["ExamPreviewAttachment"]>;
-
 export type PreviewDisplaySegment = DisplaySegment;
+export type PreviewKnowledgeStat = Required<Schema["ExamPreviewKnowledgeStat"]>;
 
 export interface PreviewQuestion {
   number: number;
@@ -307,12 +202,12 @@ export interface PreviewQuestion {
   content: string | null;
   gradeCode: string;
   difficultyCode: string;
-  knowledge: { nodeId: string; code: string; name: string } | null;
+  knowledge: Required<Schema["ExamPreviewKnowledgeRef"]> | null;
   points: number;
-  options: PreviewOption[] | null;
+  options: Required<Schema["ExamPreviewOption"]>[] | null;
   answer: string | null;
   solution: string | null;
-  rubric: Array<{ id: string; description: string; points: number }> | null;
+  rubric: Required<Schema["ExamPreviewRubricItem"]>[] | null;
   body: QuestionBody | null;
   originalNumber: number | null;
   optionOrder: string[] | null;
@@ -381,14 +276,6 @@ export interface PreviewCheck {
   value: number | null;
 }
 
-export interface PreviewKnowledgeStat {
-  nodeId: string;
-  code: string;
-  name: string;
-  subjectCode: string;
-  count: number;
-}
-
 export interface PreviewSubjectQuota {
   kind: "ANSWER_TYPE" | "GRADE" | "DIFFICULTY";
   code: string;
@@ -429,8 +316,8 @@ export interface PreviewCompliance {
   scope: string;
   required: number | null;
   actual: number;
-  enforcement: "REQUIRED" | "REFERENCE";
-  basis: "QUESTION" | "PROMPT" | "POINTS";
+  enforcement: QuotaEnforcement;
+  basis: QuotaBasis;
   independent: boolean;
   note: string | null;
   originalRequired: number | null;
@@ -438,11 +325,7 @@ export interface PreviewCompliance {
 }
 
 export type PreviewTarget =
-  | {
-      kind: "SECTION";
-      sectionId: string;
-      sectionQuestionCount?: number;
-    }
+  | { kind: "SECTION"; sectionId: string; sectionQuestionCount?: number }
   | { kind: "PATH"; pathId: string; subjectCodes?: string[] }
   | { kind: "EXAM" };
 
@@ -455,8 +338,6 @@ export type PreviewResult =
       droppedQuestions: PreviewQuestion[];
     })
   | (PreviewBase & { status: "FAILED"; reason: "INVALID" | "UNCONFIRMED"; issues: CheckIssue[] });
-
-/* ---------- Phiên bản và công bố ---------- */
 
 export interface ExamVersionRow extends ExamVersion {
   version: number;
@@ -489,7 +370,7 @@ export interface ExamWorkingCopy {
   savedAt: string;
   baseVersion: number | null;
   note: string | null;
-  check: { status: ExamCheckStatus; issueCount: number; checkedAt: string | null };
+  check: ExamCheckSummary;
   unpublishedPaths: ExamPathRef[];
 }
 
@@ -530,9 +411,6 @@ export interface PublishExamRequest {
   idempotencyKey?: string;
 }
 
-export interface PublishExamResponse {
-  examId: string;
-  version: number;
-  publishedPathIds: string[];
-  keptPaths: Array<{ pathId: string; version: number }>;
-}
+export type PublishExamResponse = Required<Omit<Schema["ExamPublishResponse"], "keptPaths">> & {
+  keptPaths: Required<Schema["ExamPublishKeptPath"]>[];
+};

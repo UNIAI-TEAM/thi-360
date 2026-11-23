@@ -16,7 +16,6 @@ const UNCLASSIFIED_BUCKET = "UNCLASSIFIED";
 
 interface ReferenceQuotaEntry {
   quota: ExamQuota;
-  /** Khóa nút "Áp dụng khi sinh đề" kèm lý do (R-8): phân bố theo lệnh hỏi, hoặc chỉ tiêu nhiều môn; `null`: bật được. */
   lock: Extract<LockReasonCode, "promptBasis" | "multiSubject"> | null;
   /** Tổng các mức (số câu, lệnh hoặc %). */
   total: number;
@@ -26,11 +25,6 @@ interface ReferenceQuotaEntry {
 
 const bucketValue = (bucket: ExamQuota["buckets"][number]): number => bucket.percent ?? bucket.count ?? 0;
 
-/**
- * Phân bố cấp bài (cả môn) áp cho môn của mục (R-7, R-8): chỉ tiêu của riêng môn này, hoặc trải nhiều môn có môn này (chỉ đối chiếu,
- * khóa kèm lý do). Chiều lớp không hiện ở môn bị ẩn lớp (R-11). Phân bố theo lệnh hỏi giữ đơn vị và mẫu số của mẫu; chiều có tổng
- * thấp hơn mẫu số của môn hiện dòng "Chưa phân loại" cho số lệnh còn thiếu (câu thiếu nhãn, H44, R-139).
- */
 export function referenceQuotaEntries(subjectCode: string, examQuotas: readonly ExamQuota[], showGrade: boolean): ReferenceQuotaEntry[] {
   const applies = (quota: ExamQuota) =>
     !(quota.excludeSubjectCodes ?? []).includes(subjectCode) && ((quota.subjectCodes?.length ?? 0) === 0 || (quota.subjectCodes ?? []).includes(subjectCode));

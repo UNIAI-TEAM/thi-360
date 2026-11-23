@@ -56,11 +56,6 @@ const blockRest = (block: QuestionBlock): string => JSON.stringify(omit(block, [
 const sameOrder = (before: readonly { id: string }[], after: readonly { id: string }[]): boolean =>
   before.length === after.length && before.every((item, index) => item.id === after[index]?.id);
 
-/**
- * Các thay đổi của bản nháp so với bản đã lưu, theo thứ tự phần → môn → nhóm. Phần và môn có ở cả hai bản (cùng `id`)
- * được so từng trường; phần, môn, nhóm thêm hoặc xóa và nhóm đổi thứ tự được báo riêng. `subjectName` đổi mã môn thành
- * tên theo ngôn ngữ đang chọn.
- */
 export function describeStructureChanges(
   baseline: readonly ExamPart[],
   draft: readonly ExamPart[],

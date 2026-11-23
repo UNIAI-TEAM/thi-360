@@ -52,11 +52,6 @@ export function useRunExamCheck(examId: string) {
   });
 }
 
-/**
- * Khóa `Idempotency-Key` của một hành động ghi (spec 7.1): một khóa cho mỗi lần người dùng bấm, giữ nguyên khi thử lại
- * cùng nội dung (mất mạng, 5xx) để máy chủ không làm hai lần. Đổi nội dung (`signature` khác) hoặc hành động xong
- * (`release`) thì lần sau sinh khóa mới.
- */
 export function useIdempotencyKey() {
   const current = useRef<{ signature: string; key: string } | null>(null);
   return {

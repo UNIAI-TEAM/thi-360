@@ -8,8 +8,8 @@ import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
 import { useIssueText } from "../components/exam-review-shared";
 import { mapBlock } from "../api-mapping";
-import { getExamCheck } from "../review-api";
-import { CHECK_ISSUE_CODES, type CheckIssue, type CheckIssueCode } from "../review-types";
+import { getExamCheck, mapIssue } from "../review-api";
+import type { CheckIssue, CheckIssueCode } from "../review-types";
 import type { ExamDetail } from "../types";
 import { checkResultWire, EXAM_ID, EXAM_PATH, FakeServer } from "./fake-exams-server";
 
@@ -111,7 +111,8 @@ function examWithBlock(wire: Partial<components["schemas"]["QuestionBlock"]>): P
 
 describe("danh sách mã vấn đề của đợt 2B", () => {
   it("chứa đủ mười bảy mã máy chủ phát, mỗi mã một lần", () => {
-    for (const code of CODES_2B) expect(CHECK_ISSUE_CODES.filter((item) => item === code)).toHaveLength(1);
+    expect(new Set(CODES_2B).size).toBe(CODES_2B.length);
+    for (const code of CODES_2B) expect(mapIssue({ code }).code).toBe(code);
   });
 
   it("mỗi mã có câu riêng ở vi và en, khác câu INFO_MISSING và không còn ký tự ICU thô", () => {

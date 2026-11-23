@@ -13,11 +13,6 @@ import type {
   ExamTiming,
 } from "./types";
 
-/**
- * Kiểm tra và dựng dữ liệu của trang Tạo bài thi và tab Thông tin chung (UniNote PBI-04 mục 4; 9 kỳ thi).
- * Không phụ thuộc React để kiểm thử riêng; chữ báo lỗi truyền vào từ `exams.create.validation`.
- */
-
 export const EXAM_SCOPES: readonly ApiExamScope[] = ["FULL", "PART", "SUBJECT"];
 
 export function scopesForKind(kinds: readonly ExamKindOption[], kind: ExamKind): ApiExamScope[] {
@@ -29,7 +24,6 @@ export function scopesForKind(kinds: readonly ExamKindOption[], kind: ExamKind):
 export const EXAM_NAME_MAX = 200;
 export const EXAM_CODE_MAX = 50;
 export const EXAM_DESCRIPTION_MAX = 1000;
-/** Ảnh bìa bài thi: jpg, png hoặc webp, tối đa 2 MB (TM 6.2); máy chủ kiểm lại khi tải lên. */
 export const COVER_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9-]*$/;
 
@@ -42,7 +36,6 @@ export function isPartCode(value: string): value is PartCode {
 
 const positiveInteger = (value: number) => Number.isInteger(value) && value > 0;
 
-// ---------------------------------------------------------------- kỳ thi, phạm vi và mẫu
 
 export function kindOptionFor(kinds: readonly ExamKindOption[], kind: ExamKind): ExamKindOption | undefined {
   return kinds.find((option) => option.code === kind);
@@ -56,7 +49,6 @@ export interface ScopeSelection {
   partCode: string;
   /** Môn của bài Theo môn hoặc môn chọn trước phần (SP2E, SPT Theo phần); phạm vi khác để trống. */
   subjectCode: string;
-  /** Kiểu xây bài Theo môn (2B 15.1): `STANDARD` cấu trúc môn, `REVIEW` bài ôn rút gọn. Bỏ trống: `STANDARD`. */
   buildMode?: ExamBuildMode;
 }
 
@@ -70,12 +62,6 @@ export function sameSelection(a: ScopeSelection, b: ScopeSelection): boolean {
   );
 }
 
-/**
- * Các mẫu (phiên bản năm) khớp kỳ thi, phạm vi, phần hoặc môn và `buildMode` của bài (2B K8). Theo phần của kỳ thi
- * `templateBy = SUBJECT` (SPT, SP2E) còn khớp môn đã chọn; `buildMode` chỉ lọc khi phạm vi Theo môn. Mẫu không ghi
- * `buildMode` coi như `STANDARD`. Bài ôn (`REVIEW`) khớp mẫu `<KỲ>_REVIEW` của kỳ thi: mẫu đó không ghi môn
- * (`subjectCode` null) và dùng chung cho mọi môn, nên môn chỉ lọc mẫu `STANDARD`. Năm cấu trúc mới nhất trước.
- */
 export function matchingTemplates(templates: readonly ExamTemplate[], selection: ScopeSelection): ExamTemplate[] {
   const buildMode = selection.scope === "SUBJECT" ? (selection.buildMode ?? "STANDARD") : null;
   return templates
@@ -91,7 +77,6 @@ export function matchingTemplates(templates: readonly ExamTemplate[], selection:
     .sort((a, b) => (b.structureYear ?? 0) - (a.structureYear ?? 0));
 }
 
-/** Mẫu mặc định khớp phạm vi (K8): mẫu `isDefault` (Văn SP2E mặc định là đề minh họa cũ, K15); không có cờ thì mẫu năm mới nhất. */
 export function latestTemplate(templates: readonly ExamTemplate[], selection: ScopeSelection): ExamTemplate | undefined {
   const matches = matchingTemplates(templates, selection);
   return matches.find((template) => template.isDefault) ?? matches[0];
@@ -99,15 +84,6 @@ export function latestTemplate(templates: readonly ExamTemplate[], selection: Sc
 
 const subjectPartCode = (order: number): string => `P${order}`;
 
-/**
- * Mẫu nạp cho bảng tổng quan. Bài Theo phần của kỳ thi chọn môn trước (SP2E, SPT, THPTQG, H-SCA, V-SAT):
- * môn có mẫu Theo phần riêng (V-SAT Tiếng Anh, H41) thì lấy mẫu đó; không thì lấy mẫu Theo môn mặc định của môn, thu về
- * đúng phần đã chọn (`P<thứ tự>`) và thang điểm của phần. Các trường hợp khác là `latestTemplate`.
- *
- * Thời lượng theo mẫu và phạm vi, không theo mã kỳ thi (R-141): mẫu Theo môn dùng một đồng hồ chung (`SHARED`) thì phần
- * cắt ra không thừa hưởng thời lượng của cả môn, chỉ lấy thời lượng riêng của phần (mẫu không ghi thì để trống, người tạo
- * nhập); mẫu tính thời lượng theo phần thì giữ thời lượng của phần.
- */
 export function scopeTemplate(
   templates: readonly ExamTemplate[],
   kinds: readonly ExamKindOption[],
@@ -234,13 +210,11 @@ export function subjectAudioParts(templates: readonly ExamTemplate[], kind: Exam
   return split ? options : [];
 }
 
-/** Môn có phần viết đã lược không bật lại được (`omittedLocked`, H43): các phần đó không chào ở Theo phần. */
 export function hasLockedOmittedPart(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): boolean {
   const template = latestTemplate(templates, { kind, scope: "SUBJECT", partCode: "", subjectCode, buildMode: "STANDARD" });
   return template?.omittedLocked === true && template.parts.some(isAllOmittedTemplatePart);
 }
 
-/** Môn có mẫu Theo phần riêng (V-SAT Tiếng Anh, H41): chỉ luyện riêng các phần có mẫu, phần còn lại không có bài riêng. */
 export function hasDedicatedParts(templates: readonly ExamTemplate[], kind: ExamKind, subjectCode: string): boolean {
   return dedicatedPartTemplates(templates, kind, subjectCode).length > 0;
 }
@@ -334,7 +308,6 @@ export function combinationsForKind(combinations: readonly CombinationOption[], 
   return combinations.filter((combination) => combination.examKindCode === kind);
 }
 
-// ---------------------------------------------------------------- Thông tin chung
 
 export interface ExamInfoFormValues {
   name: string;
@@ -430,7 +403,6 @@ export function createExamInfoSchema(
     .superRefine((values, context) => refineInfo(values, context, messages, kinds));
 }
 
-// ---------------------------------------------------------------- gửi lên máy chủ
 
 interface Step1RequestInput {
   name: string;

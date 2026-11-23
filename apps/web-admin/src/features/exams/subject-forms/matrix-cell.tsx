@@ -20,23 +20,15 @@ interface MatrixCellProps {
   unit: "COUNT" | "PERCENT";
   /** Mẫu số của tỷ lệ (số câu của mục); `null` khi chưa biết. */
   total: number | null;
-  /** Hai cột Số câu / Tỷ lệ (V-ACT, R-9); không thì một ô số câu kèm % chỉ đọc bên cạnh. */
   twoColumns: boolean;
-  /** Ô chỉ đọc (mẫu khóa số câu của mục, H27). */
   readOnly?: boolean;
   /** Giá trị hợp lệ vừa nhập: `unit` là cột đã gõ, `value` `null` khi xóa ô. */
   onEdit: (edit: { unit: "COUNT" | "PERCENT"; value: number | null }) => void;
   /** Báo chữ chưa ghi được (`null`: ô đã hợp lệ, xóa mục nhập thô). Mã `invalidPercent` cho cột Tỷ lệ, `invalidNumber` cho cột Số câu. */
   onRaw: (raw: { text: string; code: string } | null) => void;
-  /** Mục nhập thô đang giữ ở ô (kho nhập thô của view, R-15): ô mở lại hiện đúng chữ đã gõ và lỗi, không hiện lại số đã lưu. */
   raw?: { text: string; code: string } | null;
 }
 
-/**
- * Một ô số của MT: ô của khối lớp, độ khó hay dòng Cấu trúc câu. Ô trống là ô chưa khai (không ghi), "0" là ô khai 0. Hai cột Số câu /
- * Tỷ lệ (V-ACT, R-9): gõ ở cột nào thì ghi theo đơn vị đó và cột kia hiện số quy đổi (cột Tỷ lệ chưa gõ hiện % tính từ số làm gợi ý);
- * các kỳ khác một ô số câu kèm % chỉ đọc bên cạnh. Số không hợp lệ không vào bản nháp mà báo qua `onRaw`.
- */
 export function MatrixCell({ label, field, stored, count, unit, total, twoColumns, readOnly = false, onEdit, onRaw, raw = null }: MatrixCellProps) {
   const t = useTranslations("exams.subjectForm.matrix.distribution");
   const tCommon = useTranslations("exams.subjectForm.common.countPercent");

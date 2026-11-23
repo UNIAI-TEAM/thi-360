@@ -5,6 +5,7 @@ import {
   examCode,
   getExam,
   getStructure,
+  openEditorTab,
   subjectCombobox,
   type StructurePart,
   type UiExamSpec,
@@ -13,7 +14,7 @@ import { examByCode } from "./helpers/published-exam-set";
 
 test.setTimeout(240_000);
 
-/** Ô số câu đầu tiên của bảng "Cấu trúc tổng quan" ở bước 1. */
+/** Ô số câu đầu tiên của bảng "Cấu trúc tổng quan" ở tab Thông tin chung. */
 const overviewCount = (page: Page) =>
   page.getByRole("region", { name: "Bảng cấu trúc tổng quan của bài thi" }).getByRole("textbox", { name: /^Số câu của/ }).first();
 
@@ -22,25 +23,25 @@ const blockCounts = (part: StructurePart) =>
   (part.sections ?? []).flatMap((section) => (section.blocks ?? []).map((block) => block.questionCount ?? null));
 
 /**
- * UNI-2751: "Sửa thông tin tổng quan" ở bước 2 mở lại đúng màn Tạo bài thi (`/exams/new?exam=<id>`): thanh bước ở bước 1,
- * ba khối đánh số, cột Tóm tắt, điền sẵn theo bài đã lưu. Tab Thông tin chung của bài đã lưu không đổi.
+ * R-01 / R-02 (UNI-2776): quay về tab "Thông tin chung" (`/exams/<id>`) từ tab Cấu trúc mở biểu mẫu hợp nhất `ExamGeneralForm`
+ * kèm cột Tóm tắt và thẻ Tình trạng, điền sẵn theo bài đã lưu.
  */
 async function backToStep1(page: Page, id: string, spec: UiExamSpec): Promise<void> {
-  await page.getByLabel("Tổng hợp cấu trúc").locator("..").getByRole("link", { name: "Sửa thông tin tổng quan" }).click();
-  await page.waitForURL(new RegExp(`/exams/new\\?exam=${id}$`));
-  await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Các bước tạo bài thi" }).locator('[aria-current="step"]')).toContainText("Thông tin chung");
+  await openEditorTab(page, "Thông tin chung", new RegExp(`/exams/${id}$`));
+  await expect(page.getByRole("form", { name: "Thông tin bài thi" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Các phần của bài thi" }).getByRole("link", { name: "Thông tin chung" }),
+  ).toHaveAttribute("aria-current", "page");
   for (const heading of ["Thông tin chung", "Phạm vi bài thi", "Cấu trúc tổng quan"]) {
     await expect(page.getByRole("heading", { name: heading, level: 2 }).first()).toBeVisible();
   }
   await expect(page.getByRole("region", { name: "Tóm tắt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tình trạng" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /Mã bài thi/ })).toHaveValue(spec.code);
   await expect(page.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue(spec.name);
-  // Không phải tab Thông tin chung: không có cột Tình trạng.
-  await expect(page.getByRole("heading", { name: "Tình trạng" })).toHaveCount(0);
 }
 
-/** Từ bước 1 đã mở lại: đặt số câu của phần đầu rồi "Lưu và tiếp tục"; cấu trúc đổi đúng số đó (khối lấy câu giữ nguyên). */
+/** Từ tab Thông tin chung: đặt số câu của phần đầu rồi "Lưu thông tin" (giữ ở `/exams/<id>`), sau đó sang tab Cấu trúc kiểm chứng. */
 async function editFirstCountAndContinue(page: Page, id: string, newCount: number): Promise<void> {
   const admin = await adminApi();
   const before = await getStructure(admin, id);
@@ -49,8 +50,16 @@ async function editFirstCountAndContinue(page: Page, id: string, newCount: numbe
   await expect(count).not.toHaveValue(String(newCount));
 
   await count.fill(String(newCount));
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
-  await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+  const [savedStructure] = await Promise.all([
+    page.waitForResponse(
+      (item) => new URL(item.url()).pathname === `/api/v1/admin/exams/${id}/structure` && item.request().method() === "PUT",
+    ),
+    page.getByRole("button", { name: "Lưu thông tin", exact: true }).click(),
+  ]);
+  expect(savedStructure.status(), await savedStructure.text()).toBe(200);
+  await expect(page).toHaveURL(new RegExp(`/exams/${id}$`));
+  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   const after = await getStructure(admin, id);
   expect(after.parts[0]!.questionCount).toBe(newCount);
@@ -129,14 +138,20 @@ test("HSA Toàn bài: đổi sang Theo môn ở bước 1 hỏi nạp lại cấ
   await page.getByRole("radio", { name: /^Theo môn/ }).check();
   await subjectCombobox(page).click();
   await page.getByRole("option", { name: "Toán học", exact: true }).click();
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  await page.getByRole("button", { name: "Lưu thông tin", exact: true }).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   // Chưa xác nhận thì chưa đổi gì ở máy chủ.
   expect((await getExam(await adminApi(), id)).scope).toBe("FULL");
-  await dialog.getByRole("button", { name: "Nạp lại cấu trúc" }).click();
-  await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+  const [reloaded] = await Promise.all([
+    page.waitForResponse((item) => new URL(item.url()).pathname === `/api/v1/admin/exams/${id}` && item.request().method() === "PATCH"),
+    dialog.getByRole("button", { name: "Nạp lại cấu trúc" }).click(),
+  ]);
+  expect(reloaded.status(), await reloaded.text()).toBe(200);
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   const exam = await getExam(await adminApi(), id);
   expect(exam.scope).toBe("SUBJECT");
@@ -162,10 +177,10 @@ async function buildModeOf(id: string): Promise<string | undefined> {
   return body.buildMode;
 }
 
-/** Bước 1 mở lại, đổi cách dựng bài rồi "Lưu và tiếp tục": hộp cảnh báo hiện trước khi gửi gì; trả hộp để kịch bản xác nhận hay hủy. */
+/** Tab Thông tin chung mở lại, đổi cách dựng bài rồi "Lưu thông tin": hộp cảnh báo hiện trước khi gửi gì; trả hộp để kịch bản xác nhận hay hủy. */
 async function changeBuildModeAndContinue(page: Page, mode: RegExp) {
   await page.getByRole("radio", { name: mode }).check();
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  await page.getByRole("button", { name: "Lưu thông tin", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(
@@ -184,8 +199,14 @@ test("AC-1697-5a HSA Theo môn: đổi sang Tự thiết lập bài ôn cảnh b
   const dialog = await changeBuildModeAndContinue(page, /^Tự thiết lập bài ôn/);
   // Chưa xác nhận thì chưa đổi gì ở máy chủ.
   expect(await buildModeOf(id)).toBe("STANDARD");
-  await dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click();
-  await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+  const [recreated] = await Promise.all([
+    page.waitForResponse((item) => new URL(item.url()).pathname === `/api/v1/admin/exams/${id}` && item.request().method() === "PATCH"),
+    dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click(),
+  ]);
+  expect(recreated.status(), await recreated.text()).toBe(200);
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   await expect(page.getByRole("heading", { level: 2, name: /^Bài ôn · Toán học/ })).toBeVisible();
   await expect(page.getByText("Số câu, thời lượng và thang điểm lấy từ bước 1. Bài ôn có một phần, một môn, một nhóm.")).toBeVisible();
@@ -215,8 +236,14 @@ test("AC-1697-5a HSA Theo môn + Tự thiết lập: đổi lại sang cấu tr�
   await backToStep1(page, id, spec);
 
   const dialog = await changeBuildModeAndContinue(page, /^Dùng cấu trúc môn/);
-  await dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click();
-  await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
+  const [recreated] = await Promise.all([
+    page.waitForResponse((item) => new URL(item.url()).pathname === `/api/v1/admin/exams/${id}` && item.request().method() === "PATCH"),
+    dialog.getByRole("button", { name: "Tạo lại cấu trúc" }).click(),
+  ]);
+  expect(recreated.status(), await recreated.text()).toBe(200);
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await openEditorTab(page, "Cấu trúc và ma trận", new RegExp(`/exams/${id}/structure$`));
 
   await expect(page.getByRole("navigation", { name: "Cấu trúc" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: /^Môn Toán học/ })).toBeVisible();
@@ -228,7 +255,7 @@ test("AC-1697-5a HSA Theo môn + Tự thiết lập: đổi lại sang cấu tr�
   expect(exam.questionCount).toBeGreaterThan(10);
 });
 
-test("AC-1697-5b HSA Theo môn: Quay lại ở hộp cảnh báo không lưu gì, màn vẫn ở bước 1 và cách dựng bài giữ nguyên", async ({ context, page }) => {
+test("AC-1697-5b HSA Theo môn: Quay lại ở hộp cảnh báo không lưu gì, màn vẫn ở tab Thông tin chung và cách dựng bài giữ nguyên", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const spec: UiExamSpec = { kind: "HSA", scope: "SUBJECT", subject: "TOAN", code: examCode("E2E-HSA-MCANCEL"), name: "HSA hủy đổi cách dựng bài nghiệm thu" };
   const id = await createExamInUi(page, spec);
@@ -238,7 +265,7 @@ test("AC-1697-5b HSA Theo môn: Quay lại ở hộp cảnh báo không lưu gì
   const dialog = await changeBuildModeAndContinue(page, /^Tự thiết lập bài ôn/);
   await dialog.getByRole("button", { name: "Quay lại" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page).toHaveURL(new RegExp(`/exams/new\\?exam=${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/exams/${id}$`));
 
   const after = await getExam(await adminApi(), id);
   expect(await buildModeOf(id)).toBe("STANDARD");
@@ -246,7 +273,7 @@ test("AC-1697-5b HSA Theo môn: Quay lại ở hộp cảnh báo không lưu gì
   expect(after.templateCode).toBe(before.templateCode);
 });
 
-test("AC-1697-5c bài đã công bố: cách dựng bài chỉ đọc kèm lý do, máy chủ từ chối đổi trực tiếp bằng API", async ({ context, page }) => {
+test("AC-1697-5c bài đã công bố: /exams/new?exam=<id> chuyển hướng về /exams/<id>, cách dựng bài chỉ đọc kèm lý do, máy chủ từ chối đổi trực tiếp bằng API", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const admin = await adminApi();
   const published = examByCode("DS-HSA-SUBJECT-TOAN");
@@ -260,7 +287,8 @@ test("AC-1697-5c bài đã công bố: cách dựng bài chỉ đọc kèm lý d
   expect(exam.servingVersion ?? null).not.toBeNull();
 
   await page.goto(`${ADMIN_URL}/exams/new?exam=${id}`);
-  await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/exams/${id}$`));
+  await expect(page.getByRole("form", { name: "Thông tin bài thi" })).toBeVisible();
   const buildModeGroup = page.getByRole("group", { name: /^Cách dựng bài/ });
   // Chromium không xem `<fieldset disabled>` là disabled trên `role="group"`, nên kiểm cả thuộc tính lẫn từng radio bên trong.
   await expect(buildModeGroup).toHaveAttribute("disabled");
@@ -279,11 +307,13 @@ test("AC-1697-5c bài đã công bố: cách dựng bài chỉ đọc kèm lý d
   expect(await buildModeOf(id)).toBe("STANDARD");
 });
 
-test("tab Thông tin chung của bài đã lưu không đổi: vẫn là bố cục tab với cột Tình trạng", async ({ context, page }) => {
+test("tab Thông tin chung của bài đã lưu hợp nhất: hiển thị cả Tóm tắt, Tình trạng, Hoàn tác và Lưu thông tin", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const spec: UiExamSpec = { kind: "HSA", scope: "FULL", code: examCode("E2E-HSA-GENERAL"), name: "HSA tab thông tin chung nghiệm thu" };
   const id = await createExamInUi(page, spec);
   await page.goto(`${ADMIN_URL}/exams/${id}`);
+  await expect(page.getByRole("region", { name: "Tóm tắt" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Tình trạng" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Lưu thông tin" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hoàn tác", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Lưu thông tin", exact: true })).toBeVisible();
 });

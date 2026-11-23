@@ -12,7 +12,6 @@ import {
 import { useFormatter, useTranslations } from "next-intl";
 import { MAX_CHANGE_LINES, type StructureChange } from "./exam-structure-changes";
 
-/** Nơi người dùng đang chuyển tới: câu đầu của hộp thoại đổi theo đích (bản vẽ `HopThoaiChuaLuu2B`). */
 export type LeaveDestination =
   | { kind: "item"; name: string }
   | { kind: "tab"; tab: string }
@@ -23,7 +22,6 @@ export interface ExamStructureLeaveDialogProps {
   open: boolean;
   /** Đang lưu ("Lưu và chuyển"): khóa các nút và không đóng được hộp thoại. */
   saving: boolean;
-  /** Lỗi của lần lưu vừa rồi; hộp thoại ở lại và hiện lỗi (R-05). */
   error: string | null;
   /** Môn hoặc phần đang mở, hiện trong tiêu đề; `null` khi không có mục nào đang mở. */
   itemName: string | null;
@@ -35,12 +33,6 @@ export interface ExamStructureLeaveDialogProps {
   onStay: () => void;
 }
 
-/**
- * Hộp thoại ba nút khi còn thay đổi chưa lưu (R-05, bản vẽ `HopThoaiChuaLuu2B`): **Lưu và chuyển**, **Bỏ thay đổi**,
- * **Ở lại**. Tiêu đề gọi tên môn hoặc phần đang mở, câu đầu nói đích đến, rồi liệt kê thay đổi. Hiện khi chuyển môn hoặc
- * phần, quay lại bước 1, đổi tab và rời trang trong ứng dụng; đóng tab hoặc tải lại trang dùng hộp thoại của trình
- * duyệt. "Lưu và chuyển" lỗi thì ở lại và hiện lỗi.
- */
 export function ExamStructureLeaveDialog({
   open,
   saving,

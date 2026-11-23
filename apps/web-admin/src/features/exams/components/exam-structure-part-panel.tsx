@@ -34,9 +34,7 @@ interface PartPanelProps
   labels: MatrixLabels;
   /** Mã bài: đường dẫn "Sửa thông tin tổng quan" của các ô số câu chỉ đọc. */
   examId: string;
-  /** Mẫu khóa số câu từng mục (H27): thêm dòng "Mẫu đã khóa số câu" cạnh các ô số câu (luôn chỉ đọc, kể cả khi không khóa). */
   templateLocked?: boolean;
-  /** Thêm môn còn thiếu của một mã vào danh sách môn của phần theo mã (D12). */
   onAddSubject: (subjectCode: string) => void;
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
@@ -45,28 +43,18 @@ interface PartPanelProps
   onToggleEnglish: (enabled: boolean) => void;
   onRemoveOption: (optionId: string) => void;
   onSelectBlock: (blockId: string) => void;
-  /** Trạng thái kiểm tra theo môn (H2); `null` hoặc bỏ trống: không hiện cột trạng thái. */
   sectionStates?: readonly ExamSectionState[] | null;
   /** Mở môn để soạn chỉ tiêu cấp môn và các nhóm. */
   onSelectSection: (sectionId: string) => void;
   onPoints: (points: number | null) => void;
   onChoose: (choose: number) => void;
-  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra phần"). */
   headerAction?: ReactNode;
-  /** Lỗi 422 của chỉ tiêu chủ đề (H20): panel của phần không có bảng chỉ tiêu, nên báo ngay trong panel. */
   topicError?: TopicQuotaServerError;
-  /** Mẫu khóa dòng (H42, R-09): không cho thêm nhóm ở mọi môn của phần. */
   rowsLocked?: boolean;
-  /** Bài ôn (R-09): không cho thêm nhóm ở mọi môn của phần. */
   reviewMode?: boolean;
-  /** Biểu mẫu đã ghim của từng môn (R-09): chỉ môn dùng MD (`"DEFAULT"`) mới có nút "+ Thêm nhóm". */
   sectionForm?: (sectionId: string) => "REVIEW" | "MATRIX" | "ROWS" | "DEFAULT";
 }
 
-/**
- * Thông tin một phần thi (UniNote PBI-04 mục 5.2): tên, thứ tự, số câu, thời lượng. Phần cố định: bảng môn và số câu
- * của từng môn; phần tự chọn: nhánh Tiếng Anh và tổ hợp (bản vẽ `BaiThiToHop`).
- */
 export function ExamStructurePartPanel({
   part,
   timing,
@@ -437,7 +425,6 @@ function SectionsTable({
   );
 }
 
-/** Số câu của phần ở bước 2: chỉ đọc (đặt ở thông tin tổng quan, UNI-2753), kèm đường dẫn sửa; mẫu khóa số câu thì thêm dòng nêu lý do (H27). */
 function LockedCount({
   value,
   examId,

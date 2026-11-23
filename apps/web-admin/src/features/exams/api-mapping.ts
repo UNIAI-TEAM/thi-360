@@ -31,11 +31,6 @@ import type {
   TypeCount,
 } from "./types";
 
-/**
- * Chuyển đổi giữa kiểu sinh từ OpenAPI (`packages/api-client`) và kiểu của màn (`types.ts`). Máy chủ bỏ trường `null`
- * (`NON_NULL`), màn dùng `null` cho "không có": đọc thì điền mặc định, ghi thì bỏ `null` (`toApiParts`).
- */
-
 type Schemas = components["schemas"];
 type ApiPart = Schemas["ExamPart"];
 type ApiSection = Schemas["ExamSection"];
@@ -46,7 +41,6 @@ type ApiScope = Schemas["KnowledgeScope"];
 
 const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
 
-/** `null` khi máy chủ chưa tính trạng thái môn (BE-5): màn không hiện huy hiệu (khác danh sách rỗng). */
 export function mapSectionStates(
   states: readonly Schemas["ExamSectionState"][] | null | undefined,
 ): ExamSectionState[] | null {
@@ -183,7 +177,6 @@ function mapExpectedScoring(scoring: Schemas["BlockExpectedScoring"] | null | un
   };
 }
 
-/** Hình dạng câu: chỉ chép trường máy chủ có gửi, kể cả `options` (số phương án, R-131). */
 function mapItemShape(shape: Schemas["ItemShape"]): ItemShape {
   return {
     ...(shape.statements !== undefined ? { statements: shape.statements } : {}),
@@ -316,8 +309,6 @@ export function mapPart(part: ApiPart, index: number): ExamPart {
     mode: choice ? "CHOICE" : "FIXED",
     sections: (part.sections ?? []).map(mapSection),
     options: (part.options ?? []).map(mapOption),
-    // Phần theo mã (R-24): môn nằm trong `subjectPool`; bỏ hai trường này thì phần bị coi là phần chọn rỗng và lưu cấu
-    // trúc sẽ xóa môn của phần.
     ...(part.codeSource
       ? {
           codeSource: { source: part.codeSource.source ?? "GLOBAL_LIST", branch: part.codeSource.branch ?? null },
@@ -332,10 +323,6 @@ export function mapParts(parts: readonly ApiPart[] | undefined): ExamPart[] {
   return (parts ?? []).map(mapPart);
 }
 
-/**
- * Cấu trúc gửi lên: bỏ `null` (máy chủ coi trường thiếu là `null`) và `mode` của phần (suy ra từ `participation`);
- * trường của mẫu (`answerTypeLocked`, `templateGroupCode`) máy chủ giữ theo mẫu.
- */
 export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
   const strip = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(strip);
@@ -356,7 +343,6 @@ export function toApiParts(parts: readonly ExamPart[]): ApiPart[] {
   });
 }
 
-// ---------------------------------------------------------------- bài thi
 
 function branchCountOf(parts: readonly ExamPart[]): number {
   return parts.flatMap((part) => (part.mode === "CHOICE" ? part.options : [])).filter((option) => option.kind === "BRANCH").length;
@@ -368,7 +354,6 @@ function sumDurations(parts: readonly ExamPart[]): number {
 
 const person = (value: Schemas["PersonRef"] | undefined) => value ?? { id: "", name: "" };
 
-/** Dòng danh sách: máy chủ trả đủ `revision`, `timing`, `partCode`, `subjectCode`, `referenceMax`, `practiceScoring`. */
 export function mapExamSummary(row: Schemas["ExamSummaryResponse"]): ExamSummary {
   return {
     id: row.id,
@@ -411,38 +396,12 @@ function mapVersion(version: Schemas["ExamVersionResponse"]): ExamVersion {
 
 export function mapExamDetail(response: Schemas["ExamDetailResponse"]): ExamDetail {
   const parts = mapParts(response.parts);
+  const sum = sumDurations(parts);
   return {
-    id: response.id,
-    code: response.code,
-    name: response.name,
-    kind: response.kind,
-    scope: response.scope as ExamScope,
-    status: response.status as ExamStatus,
-    revision: response.revision,
-    servingVersion: nullable(response.servingVersion),
-    hasUnpublishedChanges: response.hasUnpublishedChanges,
-    totalQuestions: response.questionCount,
-    // F-4: thời lượng chung chỉ có nghĩa khi `timing = SHARED`; thời gian theo phần thì tổng các phần (khớp xem trước và
-    // kiểm tra cấu hình), không lấy `durationMinutes` lưu trên bài (có thể là số của mẫu).
-    durationMinutes: response.timing === "SHARED" ? (response.durationMinutes ?? sumDurations(parts)) : sumDurations(parts),
-    englishOption: response.hasEnglishOption,
-    combinationCount: response.combinationCount,
-    partCode: nullable(response.partCode),
-    subjectCode: nullable(response.subjectCode),
-    timing: response.timing as ExamTiming,
-    maxScore: nullable(response.maxScore),
-    referenceMax: nullable(response.referenceMax),
-    practiceScoring: response.practiceScoring as PracticeScoring,
-    hasEssay: response.hasEssay,
+    ...mapExamSummary(response),
+    // `timing = SHARED` dùng thời lượng chung của bài; `PER_PART` luôn cộng thời lượng từng phần để khớp xem trước & kiểm tra.
+    durationMinutes: response.timing === "SHARED" ? (response.durationMinutes ?? sum) : sum,
     branchCount: branchCountOf(parts),
-    check: {
-      status: response.check.status as ExamCheckStatus,
-      issueCount: response.check.issueCount,
-      checkedAt: nullable(response.check.checkedAt),
-    },
-    attemptCount: response.attemptCount,
-    updatedAt: response.updatedAt,
-    updatedBy: person(response.updatedBy),
     description: nullable(response.description),
     instructions: nullable(response.instructions),
     templateCode: nullable(response.templateCode),
@@ -470,7 +429,6 @@ export function mapAvailableCounts(response: Schemas["AvailableQuestionsResponse
   };
 }
 
-// ---------------------------------------------------------------- mẫu
 
 function templateBlock(block: QuestionBlock): ExamTemplateBlock {
   return {

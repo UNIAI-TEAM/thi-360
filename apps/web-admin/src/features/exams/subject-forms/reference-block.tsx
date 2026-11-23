@@ -47,10 +47,8 @@ interface ReferenceBlockProps {
   axes: MatrixAxes;
   labels: MatrixLabels;
   subjectName: string;
-  /** Số câu của mục: mẫu số của "Đã khai x/y" và của tỷ lệ (R-9). */
   count: number | null;
   reference: ContentReference;
-  /** Chỉ tiêu cấp bài của bài: phân bố cả môn của môn này (R-8). */
   examQuotas: readonly ExamQuota[];
   onExamQuotas?: (examQuotas: ExamQuota[]) => void;
   topicError: TopicQuotaServerError;
@@ -60,13 +58,6 @@ interface ReferenceBlockProps {
 /** Chỉ tiêu mạch theo lệnh (V-SAT, chỉ đối chiếu): màn vẽ riêng ở khung (bảng "Mạch đối chiếu theo lệnh"), không nằm trong bảng chỉ tiêu chủ đề của mục. */
 const isStrand = (quota: TopicQuota) => quota.basis === "PROMPT" && quota.enforcement === "REFERENCE";
 
-/**
- * Phân bổ đối chiếu của mục (FTM R-7 đến R-11): khối gấp sẵn ở cuối Danh sách dòng. Phân bố lớp và độ khó của mục với mức áp dụng theo
- * kỳ (`EnforcementControl`, không có nút Bắt buộc/Tham khảo chung; công tắc "Áp dụng khi sinh đề" ở kỳ mặc định Chỉ đối chiếu), phân bố
- * cấp bài của môn, và ở kỳ cho nhập % thì chọn Số câu / Tỷ lệ (ghi `unit: PERCENT`; tổng chưa đủ 100% giữ guard `MATRIX_PERCENT`, khối mở
- * sẵn để thấy lỗi). Khối lớp không hiện ở môn bị ẩn nhưng dữ liệu lớp giữ nguyên khi lưu. Ô để trống khác ô nhập 0; chiều không còn ô
- * nào ghi mảng rỗng. V-SAT mở bảng kết hợp Lớp × Độ khó từ "Thêm điều kiện" ở cấp phần, có xem trước chuyển đổi (R-10).
- */
 export function ReferenceBlock({ section, entry, axes, labels, subjectName, count, reference, examQuotas, onExamQuotas, topicError, onChange }: ReferenceBlockProps) {
   const t = useTranslations("exams.subjectForm.rows.reference");
   const headingId = useId();

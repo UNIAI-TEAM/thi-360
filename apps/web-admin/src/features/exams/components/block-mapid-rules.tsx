@@ -19,10 +19,6 @@ interface BlockMapidRulesProps {
   anchor?: string;
 }
 
-/**
- * Thay cho "Phạm vi kiến thức" và "Chỉ tiêu chủ đề" của nhóm khi môn HSA dùng ma trận MAPID (UNI-1704 v2): máy chủ bỏ qua hai mục
- * đó ở cả hai chế độ, nên màn chỉ nói nhóm đang chịu quy tắc nào của môn và dẫn tới bảng Quy tắc MAPID để sửa.
- */
 export function BlockMapidRules({ section, blockId, mode, reference, onOpenSection, anchor }: BlockMapidRulesProps) {
   const t = useTranslations("exams.mapidRules.group");
   const text = useMapidRuleText(reference);

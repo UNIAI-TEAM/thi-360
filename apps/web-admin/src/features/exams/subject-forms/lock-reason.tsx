@@ -4,10 +4,6 @@ import { cn } from "@thi360/ui";
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-/**
- * Lý do khóa bằng chữ (FTM R-15: khóa nào cũng có lý do, không chỉ dựa vào màu hay ô mờ). Mã là khóa của
- * `exams.subjectForm.common.lock`; nơi khóa gắn `id` vào `aria-describedby` của điều khiển bị khóa.
- */
 export type LockReasonCode =
   | "answerType"
   | "multiSubject"

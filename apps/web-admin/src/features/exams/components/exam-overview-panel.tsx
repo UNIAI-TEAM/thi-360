@@ -31,17 +31,11 @@ interface ExamOverviewPanelProps {
   labels: MatrixLabels;
   /** Lỗi máy chủ của chỉ tiêu cấp bài (422 `EXAM_QUOTA_SCOPE_INVALID`). */
   scopeError?: boolean;
-  /** Lỗi 422 của chỉ tiêu chủ đề (H20): hiện ở khối chỉ tiêu cấp bài (hoặc đầu panel khi bài không có chỉ tiêu cấp bài). */
   topicError?: TopicQuotaServerError;
   /** Mã bài thi của phần theo mã, để lấy một mã làm đường tính điểm và mẫu số. */
   combinations?: readonly StructureCombination[];
 }
 
-/**
- * Tổng quan bài ở bước 2 (bản vẽ `ChiTieuCapBai2B`): điểm theo môn, tách Tự luận và Trắc nghiệm (R-49); khối chỉ tiêu cấp
- * bài (R-52, 3.4). Chỉ tiêu của mẫu không thêm, xóa hay đổi tiêu chí được: chỉ sửa được giá trị từng mức và mức Bắt buộc
- * hay Tham khảo. Chỉ tiêu trải nhiều môn khóa nút Bắt buộc (H6).
- */
 export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, names, labels, scopeError = false, topicError = null, combinations = [] }: ExamOverviewPanelProps) {
   const t = useTranslations("exams.examQuota");
   const format = useFormatter();
@@ -57,7 +51,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
 
   return (
     <Card padding="md" className="flex flex-col gap-6 sm:p-6">
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 border-b border-border pb-4">
         <h2 className="text-h3 font-bold wrap-break-word text-text">{richNodes(t, "title", { name: <ExamName>{examName}</ExamName> })}</h2>
         <p className="text-caption text-text-muted">{summary}</p>
       </div>
@@ -157,14 +151,17 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                   onChange={(enforcement) => patch(quota.id, (current) => ({ ...current, enforcement }))}
                 />
               </div>
-              <ul className="flex flex-col gap-2">
+              <ul className="divide-y divide-border rounded-lg border border-border bg-subtle/40 px-3">
                 {quota.buckets.map((bucket, index) => {
                   const bucketName = bucket.codes.map(label).join(" + ");
                   const value = percent ? (bucket.percent ?? 0) : (bucket.count ?? 0);
                   const rate = ratePercent(counts[index] ?? 0, scope.count);
                   return (
-                    <li key={bucket.codes.join("+")} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="min-w-28 text-body font-medium text-text">{bucketName}</span>
+                    <li
+                      key={bucket.codes.join("+")}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-2 sm:grid-cols-[minmax(8rem,1fr)_auto_minmax(6.5rem,auto)]"
+                    >
+                      <span className="min-w-0 text-body font-medium text-text">{bucketName}</span>
                       <span className="flex items-center gap-1">
                         <BlockNumberInput
                           className="h-9 w-20 px-2"
@@ -180,7 +177,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                         />
                         {percent && <span aria-hidden className="text-text-muted">%</span>}
                       </span>
-                      <span className="text-caption text-text-muted">
+                      <span className="col-span-2 text-caption text-text-muted tabular-nums sm:col-span-1 sm:text-right">
                         {percent ? t("approx", { count: roundForDisplay(counts[index] ?? 0) }) : rate === null ? "" : t("realRate", { value: format.number(rate, { maximumFractionDigits: 1 }) })}
                       </span>
                     </li>

@@ -11,9 +11,6 @@ import {
 } from "./create-exam-schema";
 import type { ExamDetail, ExamTemplate, UpdateExamInfoRequest } from "./types";
 
-/**
- * Giá trị biểu mẫu Thông tin bài thi lấy từ bài đã lưu. Bài ôn nhận ra qua `buildMode` máy chủ trả (không đoán từ mẫu).
- */
 export function examToFormValues(exam: ExamDetail): ExamInfoFormValues {
   return {
     name: exam.name,
@@ -43,11 +40,6 @@ export function examScope(exam: ExamDetail): ScopeSelection {
   };
 }
 
-/**
- * Yêu cầu `PATCH /exams/{id}` từ biểu mẫu Thông tin bài thi. `changed`: kỳ thi, phạm vi, phần, môn hoặc cách dựng bài đã
- * đổi nên máy chủ nạp lại cấu trúc theo mẫu mới nhất (`confirmReplace`). Cách dựng bài chỉ gửi khi Theo môn; phạm vi khác
- * gửi `STANDARD` như máy chủ chuẩn hóa (`requireBuildMode`).
- */
 export function buildUpdateInfoRequest({
   exam,
   submitted,
@@ -85,11 +77,6 @@ export function buildUpdateInfoRequest({
   };
 }
 
-/**
- * Các phần mà phạm vi mới sẽ nạp lại (hộp xác nhận), cùng mẫu với bảng xem trước (`scopeTemplate`) và với máy chủ: Theo
- * phần lấy các phần của mẫu riêng của phần hoặc phần cắt từ mẫu Theo môn (SP2E, SPT, THPTQG); phạm vi khác đọc trực tiếp
- * các phần từ mẫu đích (hoặc một phần trống mang tên môn khi môn chưa có mẫu).
- */
 export function reloadPartRows({
   templates,
   kinds,

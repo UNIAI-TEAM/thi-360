@@ -11,10 +11,6 @@ export interface StructureNames {
   combination: (code: string) => string;
 }
 
-/**
- * Tên một lựa chọn của phần tự chọn: "Tiếng Anh", "KH-1 · Vật lí – Hóa học – Sinh học", hoặc tên nhánh ("Khoa học máy
- * tính").
- */
 export function optionLabel(
   option: { kind: ExamPartOption["kind"]; code: string; name?: string | null },
   names: StructureNames,
@@ -28,7 +24,6 @@ export function optionLabel(
   return `${option.code} · ${catalogName !== option.code ? catalogName : (option.name ?? catalogName)}`;
 }
 
-/** Chữ của một lỗi cấu trúc, kèm vị trí (phần · lựa chọn · môn · khối), theo mẫu thông báo của UniNote mục 9.4. */
 export function useStructureIssueText(parts: readonly ExamPart[], names: StructureNames) {
   const t = useTranslations("exams.structure.issues");
   const format = useFormatter();

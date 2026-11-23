@@ -11,21 +11,10 @@ import { blockFieldAnchor } from "./block-form-fields";
 export interface BlockSwitchesProps {
   block: QuestionBlock;
   onChange: (patch: Partial<QuestionBlock>) => void;
-  /** Mẫu của bài; khi mẫu đặt `omittedLocked` (H43), bản sao nhóm đã lược của mẫu không bật lại được. */
   template?: ExamTemplate | null;
-  /** Danh sách dòng (R-7): nhóm đã lược theo mẫu không có công tắc bật lại, chỉ còn dòng chữ lý do. Mặc định: công tắc khóa (màn nhóm của MD). */
   lockedOmittedAsText?: boolean;
 }
 
-/**
- * Hai công tắc của nhóm (2B 3.3, 15.3). "Đảo thứ tự các chùm" chỉ hiện khi mẫu đặt `shuffleEditable` (Văn HSA và Văn
- * QDA nhóm 5); nhóm khác luôn đảo và chỉ có dòng chú thích. "Tạm bỏ qua" chỉ cho nhóm Tự luận (K1). Khi mẫu khóa nhóm
- * đã lược (`omittedLocked`), chỉ bản sao của nhóm mà chính mẫu đã lược (cùng id, hoặc cùng mã nhóm mẫu duy nhất) đang tạm
- * bỏ qua là không bật lại được: công tắc khóa kèm lý do. Nhóm Tự luận khác, kể cả nhóm có mã nhóm mẫu nhưng mẫu không lược
- * (Đọc hiểu của H-SCA Văn đổi sang Tự luận), vẫn bật tắt tự do. Nhóm đã bật
- * (bản nháp lưu trước khi có khóa) vẫn tắt/bật được để sửa lại. Kiểm tra cấu hình (`OMITTED_BLOCK_LOCKED`) vẫn là lớp
- * chặn cuối cho ghi qua API và bản nháp cũ.
- */
 export function BlockSwitches({ block, onChange, template = null, lockedOmittedAsText = false }: BlockSwitchesProps) {
   const t = useTranslations("exams.structure.blockForm.switches");
   const shuffleId = useId();

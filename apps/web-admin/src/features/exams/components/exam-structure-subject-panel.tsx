@@ -35,32 +35,20 @@ export interface SubjectPanelProps {
   onChange: (update: (section: ExamSection) => ExamSection) => void;
   onSelectBlock: (blockId: string) => void;
   onAddBlock: () => void;
-  /** Nút nằm ở đầu vùng chi tiết (bản vẽ `BaiThiBuoc2`: "Kiểm tra môn"). */
   headerAction?: ReactNode;
-  /** Mã bài (cấp qua `SubjectFormRendererProps` để DS đọc bộ nhớ đệm bài thi); màn mặc định không còn ô số câu (UNI-2753). */
   examId: string;
-  /** Mẫu khóa số câu từng phần, mục (H27): dòng số câu ở đầu màn ghi "Mẫu đã khóa số câu". */
   templateLocked?: boolean;
-  /** Môn đã kiểm tra đạt và chưa sửa gì từ đó: hiện "Đủ nguồn theo ma trận" (R-122). */
   sourceVerified?: boolean;
-  /** Lỗi máy chủ ở khối chỉ tiêu chủ đề của môn (H20). */
   topicError?: TopicQuotaServerError;
   /** Chỉ tiêu cấp bài của bài, để liệt kê phân bố tham khảo của riêng môn này. */
   examQuotas?: readonly ExamQuota[];
   onExamQuotas?: (examQuotas: ExamQuota[]) => void;
   /** Mã kỳ thi: HSA Tiếng Anh khối lớp luôn chờ chuyên gia xác nhận. */
   examKind?: string | null;
-  /** Mẫu khóa dòng (H42, R-09): không cho thêm nhóm mới. */
   rowsLocked?: boolean;
-  /** Bài ôn (R-09): kể cả khi >= 2 nhóm rơi về màn MD cũng không cho thêm nhóm. */
   reviewMode?: boolean;
 }
 
-/**
- * Môn của phần thi (bản vẽ `BaiThiCauTruc`, UniNote PBI-04 mục 6.1, spec 9.1): khu chỉ tiêu cấp môn (dạng trả lời, khối
- * lớp, độ khó, phạm vi MAPID) kèm số đã phân bổ và còn thiếu, rồi danh sách nhóm lấy câu do mẫu khởi tạo. Câu con của
- * chùm được trừ vào chỉ tiêu dạng trả lời; nhóm mở rộng ra màn nhóm để sửa.
- */
 export function ExamStructureSubjectPanel({
   context,
   subjectName,
@@ -517,7 +505,6 @@ function DimensionTable({ title, rows, label }: { title: string; rows: QuotaRow[
   );
 }
 
-/** Nguồn khả dụng của một dòng của phần có audio: cùng bộ lọc và cùng truy vấn với vùng sửa nhóm (R-130). */
 function AvailableSource({ block, section }: { block: QuestionBlock; section: ExamSection }) {
   const t = useTranslations("exams.structure.subject.groups");
   const query = useAvailableQuestions(blockAvailableInput(block, section, section.subjectCode));
@@ -526,10 +513,6 @@ function AvailableSource({ block, section }: { block: QuestionBlock; section: Ex
   return <>{t("availableCount", { count: query.data.total })}</>;
 }
 
-/**
- * Danh sách nhóm lấy câu của môn (khởi tạo từ mẫu): dạng trả lời, số câu, phạm vi nguồn; mở nhóm để sửa. Môn của phần có
- * điều kiện audio (bản vẽ `NhomAudio2B`) thêm nhãn audio, số lượng, tổng câu, tỷ lệ trong phần, nguồn khả dụng và dòng tổng.
- */
 function GroupList({
   section,
   subjectName,

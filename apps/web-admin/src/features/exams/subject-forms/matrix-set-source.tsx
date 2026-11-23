@@ -15,11 +15,6 @@ type SourceCondition = "MAPID" | "TAGS";
 
 const hasScope = (scope: KnowledgeScope | null) => (scope?.nodeIds.length ?? 0) > 0;
 
-/**
- * "Nguồn chùm" của MT (FTM R-3; QDA, BCA, V-ACT): mục trong "Thêm điều kiện" của dòng Câu chùm, sửa MAPID (`knowledgeScope`) và nhãn
- * (`tagCodes`) của riêng nhóm câu chùm. Có sẵn giá trị thì mục hiện mở. Phạm vi môn và nguồn của nhóm câu đơn không đổi theo; chỉ đúng
- * hai trường này của nhóm chùm được ghi.
- */
 export function MatrixSetSource({ section, subjectName, reference, onChange }: MatrixBlockProps) {
   const t = useTranslations("exams.subjectForm.matrix.setSource");
   const set = roleBlocks(section).set;

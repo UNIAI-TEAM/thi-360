@@ -16,10 +16,6 @@ export interface BlockTagPickerProps {
   anchor?: string;
 }
 
-/**
- * Chọn nhiều nhãn của nhóm hoặc của một chùm (H22): câu khớp khi có ít nhất một nhãn đã chọn. Ô tìm lọc theo mã và tên;
- * nhãn đã chọn hiện thành thẻ có nút bỏ. Nhãn đã lưu mà danh mục không còn vẫn hiện (theo mã) để bỏ được.
- */
 export function BlockTagPicker({ value, onChange, options, scopeName, anchor }: BlockTagPickerProps) {
   const t = useTranslations("exams.structure.blockForm.tags");
   const listId = useId();

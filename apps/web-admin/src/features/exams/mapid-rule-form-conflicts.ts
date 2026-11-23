@@ -127,10 +127,6 @@ function normalizeRule(rule: MapidRule, section: ExamSection): NormalizedRule {
 const isCountOrPresent = (item: NormalizedRule): boolean => item.rule.type === "PRESENT" || item.rule.type === "COUNT";
 const isMinCapable = (item: NormalizedRule): boolean => isCountOrPresent(item) || item.rule.type === "ONLY_IN_GROUP";
 
-/**
- * Evaluates a candidate MAPID rule against active existing rules of a section (UNI-1707 AC-1707-7).
- * Priority: CONFLICT > EQUIVALENT > SUBSUMED_BY > SUBSUMES > OK.
- */
 export function checkMapidRuleConflicts({
   candidate,
   section,

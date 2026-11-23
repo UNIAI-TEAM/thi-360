@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
+import { Button, Card, cn, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
 import { ArrowLeft, Lock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -17,12 +17,6 @@ import { draftTotals } from "./exam-structure-draft";
 
 const DISPLAY_NUMBER_FORMAT = { maximumFractionDigits: 2 } as const;
 
-/**
- * Khung chung của trang soạn bài thi `/exams/new` (`!examId`) và `/exams/[id]/**` (`examId` có mặt):
- * - Ở `/exams/new`: liên kết quay lại `/exams`, tiêu đề tạo bài thi và thanh 5 tab trong đó tab `Thông tin chung` mở
- *   (`aria-current="page"`) còn 4 tab sau khóa tĩnh (`disabled`, không bọc `<Link>`).
- * - Ở `/exams/[id]/**`: tiêu đề bài thi, chip trạng thái, `<dl aria-label="Tổng hợp cấu trúc">` và 5 tab điều hướng.
- */
 export function ExamEditorLayout({ examId, children }: { examId?: string; children: ReactNode }) {
   if (!examId) {
     return <ExamEditorCreateLayout>{children}</ExamEditorCreateLayout>;
@@ -36,7 +30,7 @@ function ExamEditorCreateLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-3">
+      <header aria-label={t("create.title")} className="flex flex-col gap-3">
         <Link
           href="/exams"
           className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"
@@ -231,31 +225,35 @@ function ExamEditorHeader({
         </div>
         <div ref={actionsRef} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
       </div>
-      <dl aria-label={t("editor.structureSummaryLabel")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
+      <dl
+        aria-label={t("editor.structureSummaryLabel")}
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-body"
+      >
         <SummaryItem label={t("summary.code")} value={exam.code} />
         <SummaryItem label={t("summary.kind")} value={kindLabel(exam.kind)} />
         <SummaryItem label={t("summary.format")} value={t(`scope.${exam.scope}`)} />
-        <SummaryItem label={t("summary.questions")} value={questionsValue} />
-        {exam.durationMinutes > 0 && (
-          <SummaryItem label={t("summary.duration")} value={t("summary.minutes", { count: durationMinutes })} />
+        <SummaryItem label={t("summary.questions")} value={questionsValue} numeric />
+        {durationMinutes > 0 && (
+          <SummaryItem label={t("summary.duration")} value={t("summary.minutes", { count: durationMinutes })} numeric />
         )}
         {exam.maxScore !== null && (
           <SummaryItem
             label={t("general.facts.maxScore")}
             value={t("general.facts.maxScoreValue", { count: exam.maxScore })}
+            numeric
           />
         )}
-        <SummaryItem label={t("summary.attempts")} value={format.number(exam.attemptCount)} />
+        <SummaryItem label={t("summary.attempts")} value={format.number(exam.attemptCount)} numeric />
       </dl>
     </header>
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function SummaryItem({ label, value, numeric = false }: { label: string; value: string; numeric?: boolean }) {
   return (
-    <div className="flex items-baseline gap-1.5">
-      <dt className="text-text-muted">{label}</dt>
-      <dd className="m-0 font-semibold text-text">{value}</dd>
+    <div className="flex items-baseline gap-1.5 not-last:sm:border-r not-last:sm:border-border not-last:sm:pr-4">
+      <dt className="text-caption text-text-muted">{label}</dt>
+      <dd className={cn("m-0 font-semibold text-text", numeric && "tabular-nums")}>{value}</dd>
     </div>
   );
 }

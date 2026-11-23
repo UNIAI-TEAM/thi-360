@@ -15,10 +15,6 @@ interface SubjectChoiceNavProps {
   onOpenSection: (sectionId: string) => void;
 }
 
-/**
- * Thanh chuyển môn ở đầu màn một môn của phương án chọn môn (HSA Khoa học, R-35, bản vẽ `KhoaHocHSA2B`): vị trí của môn
- * trong 5 môn, về tổng quan, sang môn tiếp theo. Còn thay đổi chưa lưu thì việc chuyển đi qua hộp thoại ba nút.
- */
 export function SubjectChoiceNav({ option, sectionId, names, onOpenOption, onOpenSection }: SubjectChoiceNavProps) {
   const t = useTranslations("exams.structure.science");
   const index = option.sections.findIndex((section) => section.id === sectionId);

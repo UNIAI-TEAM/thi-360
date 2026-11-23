@@ -61,10 +61,6 @@ interface ExamReviewCheckProps {
   active?: boolean;
 }
 
-/**
- * Kiểm tra cấu hình (bản vẽ `BaiThiKiemTra`): kết quả theo từng đường lựa chọn, tám nhóm kiểm tra, chi tiết theo khối
- * của từng đường, liên kết tới chỗ cần sửa.
- */
 export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCheckProps) {
   const t = useTranslations("exams.review");
   const checkQuery = useExamCheck(exam.id);
@@ -402,10 +398,6 @@ function DeepCheckStatus({ deep }: { deep: DeepCheck }) {
   );
 }
 
-/**
- * Kết quả từng cách chọn môn của đường có `SUBJECT_CHOICE` (spec 5.3, B10): mỗi bộ môn học viên có thể chọn một dòng
- * kèm số câu từng môn; bộ ba môn cùng nhóm có đủ ba cách chia. Quy tắc chia chỉ đọc.
- */
 function SelectionsSection({ exam, path }: { exam: ExamDetail; path: PathCheck }) {
   const t = useTranslations("exams.review.selections");
   const tReview = useTranslations("exams.review");

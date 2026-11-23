@@ -15,6 +15,7 @@ import {
   type SingleChoiceAnswer as KitSingleChoiceAnswer,
   type TrueFalseAnswer as KitTrueFalseAnswer,
 } from "@thi360/ui/question";
+import { mapAttachments } from "../review-api";
 import type { PreviewAttachment } from "../review-types";
 import type {
   PreviewGradeResponse,
@@ -32,10 +33,6 @@ import type {
   PreviewTrialSegment,
 } from "./types";
 
-/**
- * Map sanitized `PreviewTrialQuestion` to `@thi360/ui/question` `KitQuestion`.
- * Strictly keeps only prompt/choice fields — no solutions, keys, or rubrics.
- */
 export function toKitTrialQuestion(q: PreviewTrialQuestion): KitQuestion {
   const body = parseRawQuestionBody(q.body, { questionType: q.type });
   const stem =
@@ -80,20 +77,11 @@ export function toKitTrialSet(setItem: PreviewTrialQuestionSet): {
   };
 }
 
-export function toTrialAttachments(
-  attachments: readonly PreviewTrialAttachment[] | undefined,
-): PreviewAttachment[] {
-  if (!attachments || attachments.length === 0) return [];
-  return attachments
-    .map((att) => ({
-      id: att.id ?? "",
-      name: att.name ?? "",
-      mime: att.mime ?? "",
-    }))
-    .filter((att) => Boolean(att.id && att.mime));
+export function toTrialAttachments(attachments?: readonly PreviewTrialAttachment[]): PreviewAttachment[] {
+  return mapAttachments(attachments).filter((att) => Boolean(att.id && att.mime));
 }
 
-export interface TrialSegmentSlice {
+interface TrialSegmentSlice {
   segment: PreviewTrialSegment;
   blocks: PreviewTrialBlock[];
 }

@@ -44,7 +44,7 @@ test("HSA Tự thiết lập: chỉ số câu, thời lượng, thang điểm �
     await expect(field).toHaveValue(value);
     await expect(field).toHaveAttribute("readonly", "");
   }
-  await expect(page.getByRole("link", { name: "Sửa thông tin tổng quan" }).first()).toHaveAttribute("href", `/exams/new?exam=${id}`);
+  await expect(page.getByRole("link", { name: "Sửa thông tin tổng quan" }).first()).toHaveAttribute("href", `/exams/${id}`);
   // Mọi thứ khác (phạm vi, dạng câu, phân bố, câu chùm) nằm trong vùng đóng, không bắt buộc.
   await expect(page.locator("details").filter({ hasText: "Tùy chọn thêm (không bắt buộc)" }).first()).not.toHaveAttribute("open", "");
 
@@ -67,13 +67,14 @@ test("HSA dùng cấu trúc môn: màn môn không còn ô Số câu của mục
   const list = page.getByRole("navigation", { name: "Cấu trúc" });
   await expect(list).toBeVisible();
 
-  // Màn môn: không còn ô Số câu của mục (UNI-2753); tiêu đề vẫn nêu số câu, đường dẫn Sửa thông tin tổng quan ở đầu màn vẫn về bước 1.
+  // Màn môn: không còn ô Số câu của mục (UNI-2753); thanh tab dẫn thẳng về Thông tin chung (/exams/[id]), không còn link lặp dưới Tổng hợp cấu trúc (R-10).
   await expect(page.getByRole("heading", { name: /^Môn / })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Số câu của mục" })).toHaveCount(0);
-  await expect(page.getByLabel("Tổng hợp cấu trúc").locator("..").getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveAttribute(
+  await expect(page.getByRole("navigation", { name: "Các phần của bài thi" }).getByRole("link", { name: "Thông tin chung" })).toHaveAttribute(
     "href",
-    `/exams/new?exam=${id}`,
+    `/exams/${id}`,
   );
+  await expect(page.getByLabel("Tổng hợp cấu trúc").locator("..").getByRole("link", { name: "Sửa thông tin tổng quan" })).toHaveCount(0);
 
   // Màn phần: số câu phải làm và trên đề chỉ đọc. Mục đầu danh sách là "Tổng quan bài" (FE-3b), không phải phần.
   await list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]").first().click();

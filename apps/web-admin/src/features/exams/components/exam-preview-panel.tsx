@@ -55,14 +55,8 @@ interface PathOption {
 
 type ScopeKind = PreviewTarget["kind"];
 
-/** Đề thử giữ ở máy chủ 30 phút (2B mục 8). */
 const PREVIEW_RETENTION_MINUTES = 30;
 
-/**
- * Sinh thử (bản vẽ `SinhThu2B`, 2B mục 8 và 15.4): chọn phạm vi (một môn, một mã hoặc nhánh, cả bài), sinh bằng cùng quy
- * tắc với lượt thi thật, xem bảng Yêu cầu / Thực tế và đề đã sinh. Đề thử không trừ lượt, không tạo kết quả học tập.
- * Đổi mã trên cùng đề thử chỉ sinh lại các phần phụ thuộc mã (R-15); "Sinh đề thử mới" sinh lại cả bài.
- */
 export function ExamPreviewPanel({
   exam,
   check,
@@ -157,7 +151,6 @@ export function ExamPreviewPanel({
   const pathId = selected && options.some((option) => option.path.pathId === selected) ? selected : (fallback ?? null);
   const selectedPath = options.find((option) => option.path.pathId === pathId)?.path ?? null;
 
-  /** Phương án `SUBJECT_CHOICE` của đường: đường có phương án này phải gửi đúng số môn muốn xem (spec 5.2). */
   function subjectChoiceOf(candidatePathId: string | null): ExamPartOption | null {
     const path = options.find((option) => option.path.pathId === candidatePathId)?.path;
     const choice = path?.choices.find((item) => item.kind === "SUBJECT_CHOICE");
@@ -171,7 +164,6 @@ export function ExamPreviewPanel({
     if (pickedSubjects?.optionId === option.id) return pickedSubjects.codes;
     return option.sections.slice(0, option.chooseSubjects ?? 0).map((section) => section.subjectCode);
   }
-  /** 422 `PREVIEW_SUBJECTS_INVALID` (spec 5.2): số môn gửi lên không khớp phương án; còn lại là lỗi chung. */
   function generateErrorText(error: unknown): string {
     return errorCodeOf(error) === "PREVIEW_SUBJECTS_INVALID" ? tIssue("PREVIEW_SUBJECTS_INVALID") : t("error");
   }

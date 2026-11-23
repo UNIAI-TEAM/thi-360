@@ -5,10 +5,6 @@ import { useCallback } from "react";
 import { useContentReference } from "@/features/content/queries";
 import type { ExamTemplate } from "./types";
 
-/**
- * Tên hiển thị của mẫu cấu trúc theo ngôn ngữ giao diện: máy chủ không trả tên mẫu, nên dựng từ kỳ thi, phạm vi,
- * phần hoặc môn và năm cấu trúc (phân biệt các phiên bản năm của cùng một phạm vi).
- */
 export function useTemplateLabel(): (template: ExamTemplate) => string {
   const t = useTranslations("exams.templateName");
   const tKind = useTranslations("exams.kind");

@@ -21,10 +21,6 @@ import { BlockNumberInput } from "./block-number-input";
 import { BlockTagPicker } from "./block-tag-picker";
 import { OptionalNumberInput } from "./create-exam-fields";
 
-/**
- * Mục điều kiện thêm ngoài năm điều kiện của màn nhóm (Danh sách dòng, FTM R-7: MAPID lọc, Phân bổ theo MAPID, Độ khó, Khối lớp,
- * điều kiện từng chùm, theo vị trí câu con). Mục có giá trị sẵn (`state = "added"`) hiện mở; mục vừa thêm hiện cho tới khi gỡ.
- */
 export interface ExtraCondition {
   key: string;
   label: string;
@@ -59,11 +55,6 @@ function initialShown(block: QuestionBlock): Set<ConditionKind> {
   return new Set(CONDITION_KINDS.filter((kind) => kind !== "MAPID" && conditionState(block, kind, none) === "added"));
 }
 
-/**
- * "Điều kiện của nhóm" (2B 15.3): menu "Thêm điều kiện" gồm MAPID, nhãn (chọn nhiều, khớp một trong các nhãn, H22),
- * hình dạng câu, định dạng đáp án, điểm mỗi câu. Mỗi điều kiện thêm và bỏ riêng; mọi câu của nhóm phải thỏa các điều kiện.
- * Điều kiện không áp cho loại câu của nhóm (hình dạng câu, định dạng đáp án) bị khóa trong menu.
- */
 export function BlockConditions({ block, reference, onChange, onAddMapid, kinds = CONDITION_KINDS, extras = [], mapidManaged = false }: BlockConditionsProps) {
   const t = useTranslations("exams.structure.blockForm.conditions");
   const [shown, setShown] = useState(() => initialShown(block));

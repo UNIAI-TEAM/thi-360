@@ -43,10 +43,6 @@ export interface PublishExamDialogProps {
   onPublished: (response: PublishExamResponse) => void;
 }
 
-/**
- * Công bố bản làm việc (bản vẽ `CongBoBaiThi`): chọn đường lựa chọn được công bố. Chỉ đường Hợp lệ chọn được;
- * đường không chọn tiếp tục dùng phiên bản đang phục vụ. Lượt đang làm giữ bản chụp cũ.
- */
 export function PublishExamDialog({ open, onOpenChange, exam, versions, onPublished }: PublishExamDialogProps) {
   const t = useTranslations("exams.publish");
   const [submitting, setSubmitting] = useState(false);

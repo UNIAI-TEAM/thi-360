@@ -20,11 +20,6 @@ export interface MapidIssueText {
   text: string | null;
 }
 
-/**
- * Phần chữ của vấn đề liên quan quy tắc MAPID (UNI-2758): quy tắc gọi bằng câu mô tả của nó («Toàn môn · Phải có Hàm số»), lấy từ
- * `mapidRules` của môn trong cấu trúc (`exam`); không có cấu trúc thì gọi bằng mã quy tắc. MAPID của quy tắc bị thiếu nguồn
- * nêu bằng mã trong cây kiến thức.
- */
 export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.mapidRules.issue");
   const format = useFormatter();

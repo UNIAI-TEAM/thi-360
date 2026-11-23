@@ -21,11 +21,6 @@ function isHsaStrandSubject(subjectCode: string): boolean {
   return subjectCode === "SU" || subjectCode === "DIA";
 }
 
-/**
- * Tuỳ chọn vị trí theo môn trong HSA (AD-98):
- * - Sử, Địa đặt Mạch kiến thức trước Cấu trúc câu gọn (`placement: "before-structure"`, `structureVariant: "compact"`).
- * - Toán, Lý, Hóa, Sinh giữ thứ tự chuẩn (`placement: "after-structure"`, `structureVariant: "default"`).
- */
 export function hsaMatrixSlotOptions(section: ExamSection): MatrixKindSlotOptions {
   return isHsaStrandSubject(section.subjectCode)
     ? { placement: "before-structure", structureVariant: "compact" }
@@ -74,14 +69,6 @@ function tightestCoveringParent(
   return best;
 }
 
-/**
- * Số câu đã phân bổ vào các quy tắc MAPID của môn HSA (UNI-1707 §4, AD-98):
- * - Bỏ quy tắc trỏ tới nhóm đã xóa (`!rule.groupId || blockIds.has(rule.groupId)`).
- * - Gộp các quy tắc trùng nút trong cùng phạm vi (`max`), và tránh cộng dồn các quy tắc nhóm lồng dưới quy tắc toàn môn
- *   bao phủ nó: nhu cầu của một nút phủ là `max(nhu_cầu_chính_nó, tổng_nhu_cầu_các_nhánh_con_trực_tiếp)`, nên 1 nhóm 2 câu
- *   dưới toàn môn 3 câu tính 3 (không phải 5), còn 2 nhóm riêng 2 + 2 dưới toàn môn 3 tính 4.
- * - Các quy tắc không có quy tắc bao phủ (hoặc nút không liên hệ) giữ cận trên cộng dồn an toàn.
- */
 function hsaAllocatedRuleQuestions(
   section: ExamSection,
   knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
@@ -120,7 +107,6 @@ function hsaAllocatedRuleQuestions(
   return unkeyedDemand + nodes.reduce((sum, _, idx) => (parentOf[idx] === -1 ? sum + effective(idx) : sum), 0);
 }
 
-/** Phạm vi nguồn hiệu lực của từng nhóm vai trò dưới ô vai trò trong `MatrixStructureBlock` (FTM R-5, AC-6). */
 export function HsaRoleScopeFooter({ section, block, reference }: { section: ExamSection; block: QuestionBlock; reference: ContentReference }) {
   const tHsa = useTranslations("exams.subjectForm.matrix.hsa");
   const tGroups = useTranslations("exams.structure.subject.groups");
@@ -238,13 +224,6 @@ function DiaMaterialSection({
   );
 }
 
-/**
- * Chỗ gắn riêng của HSA trong Ma trận môn (CR-2H):
- * - Nhúng nguyên vẹn HSA-D/HSA-G (`MapidModeField` + `MapidRulesTable`) cho mọi môn HSA khi `mapidMode !== null`.
- * - Đổi sang fallback `KnowledgeScopeField` + `TopicQuotaTable` chỉ khi bài cũ không chuyển đổi được (`mapidMode === null`).
- * - Sử, Địa (AD-98): bọc trong khối Mạch kiến thức, đếm số câu đã phân bổ / còn tự do.
- * - Địa (AD-99): thêm khối điều kiện tư liệu tuỳ chọn ghi `set.tagCodes` từ `reference.tags`.
- */
 export function MatrixFormHsa({ section, kindCode, subjectName, total, axes, labels, reference, onChange, topicError = null }: MatrixBlockProps) {
   const tHsa = useTranslations("exams.subjectForm.matrix.hsa");
   const tScope = useTranslations("exams.subjectForm.matrix.scope");

@@ -6,12 +6,6 @@ import type { BlockMatrix, ExamScope, ExamSection, ExamTemplate, QuestionBlock }
 import type { LockReasonCode } from "./lock-reason";
 import type { SubjectFormEntry } from "./registry";
 
-/**
- * Mô hình thuần của Danh sách dòng lấy câu (DS, FTM R-7, R-8, R-11, plan B1): đọc và ghi nhóm của môn theo `id`, năm loại khóa của
- * R-7 tách riêng (mỗi loại một lý do), ẩn lớp mà giữ dữ liệu lớp, chiều ma trận trống ghi mảng rỗng. Không phụ thuộc giao diện nên
- * test riêng; màn (`row-list-form.tsx`, `row-editor.tsx`, `reference-block.tsx`) chỉ vẽ kết quả.
- */
-
 /** Chỗ cắm của bài đang soạn mà khóa của dòng phụ thuộc: phạm vi, bài ôn, mẫu. */
 export interface RowContext {
   scope: ExamScope;
@@ -19,16 +13,10 @@ export interface RowContext {
   template: Pick<ExamTemplate, "fixedBlockCounts" | "omittedLocked" | "parts"> | null;
 }
 
-/**
- * Khóa của một dòng (R-7 bảng "Khóa"). Khóa tổng (`fixed_counts`) thuộc đầu môn, không thuộc dòng nên không có ở đây; nhóm
- * tự luận lược của SP2E, SPT không khóa gì cả.
- */
 interface RowLocks {
-  /** Khóa dòng (H42): Cách lấy, Số câu, Số chùm, Số câu con chỉ đọc. */
   counts: boolean;
   /** Khóa dạng (`answerTypeLocked`): Cách lấy chỉ đọc. */
   mode: boolean;
-  /** Khóa nhóm đã lược (H43, H49): dòng "Viết – tạm bỏ qua" không có công tắc bật lại. */
   omitted: boolean;
 }
 
@@ -41,7 +29,6 @@ export function rowLocks(block: QuestionBlock, context: RowContext): RowLocks {
   return { counts: rowsLockedOf(context), mode: block.answerTypeLocked, omitted };
 }
 
-/** Lý do chữ của các khóa đang áp lên dòng, theo thứ tự hiện (FTM R-15: khóa nào cũng có lý do). */
 export function lockReasonsOf(locks: RowLocks): LockReasonCode[] {
   const reasons: LockReasonCode[] = [];
   if (locks.counts) reasons.push("rowCounts");
@@ -53,16 +40,11 @@ export function lockReasonsOf(locks: RowLocks): LockReasonCode[] {
 /** Cách lấy (Câu đơn / Câu chùm) chỉ đọc. */
 export const modeReadOnly = (locks: RowLocks): boolean => locks.counts || locks.mode;
 
-// ---------------------------------------------------------------- đọc, ghi theo id
 
 export function readRow(section: ExamSection, blockId: string): QuestionBlock | null {
   return section.blocks.find((block) => block.id === blockId) ?? null;
 }
 
-/**
- * Ghi một phần thay đổi vào nhóm có `id` trong môn; nhóm khác, môn và thứ tự giữ nguyên. Đi qua `applyBlockPatch` như màn nhóm
- * (dọn điều kiện không còn áp khi đổi dạng).
- */
 export function writeRow(section: ExamSection, blockId: string, patch: Partial<QuestionBlock>): ExamSection {
   let changed = false;
   const blocks = section.blocks.map((block) => {
@@ -84,7 +66,6 @@ export function modePatch(block: QuestionBlock, mode: "single" | "set"): Partial
   return { questionType: "SINGLE_CHOICE", setCount: null, setSize: null, childAnswerType: null, questionCount: Math.max(count, 1), expectedScoring: undefined };
 }
 
-// ---------------------------------------------------------------- chỉ số chỉ đọc, tóm tắt điều kiện
 
 interface RowFigures {
   /** Số câu của nhóm (câu con của chùm tính vào). */
@@ -102,7 +83,6 @@ function round(value: number): number {
   return Math.round(value * 10_000) / 10_000;
 }
 
-/** Chỉ số chỉ đọc của dòng (R-7, 2B-HV R-133/139/140): ví dụ "4 câu Đ/S · 16 ý · thang 4 điểm". Không có ô sửa điểm. */
 export function rowFigures(block: QuestionBlock): RowFigures {
   const questions = block.questionCount ?? 0;
   const trueFalse = block.questionType === "TRUE_FALSE";
@@ -125,7 +105,6 @@ interface RowConditionSummary {
   count: number | null;
 }
 
-/** Điều kiện đang có giá trị của dòng, theo thứ tự của bảng R-7; màn ghép thành một dòng tóm tắt. */
 export function conditionSummary(block: QuestionBlock): RowConditionSummary[] {
   const summary: RowConditionSummary[] = [];
   if (block.tagCodes.length > 0) summary.push({ key: "tags", count: block.tagCodes.length });
@@ -146,9 +125,7 @@ export function rowAnswerType(block: Pick<QuestionBlock, "questionType" | "child
   return block.questionType === "QUESTION_SET" ? block.childAnswerType : block.questionType;
 }
 
-// ---------------------------------------------------------------- Phân bổ đối chiếu: ẩn lớp, chiều trống, mức áp dụng
 
-/** Khối lớp có hiện ở DS của cặp không (R-11). Dữ liệu lớp vẫn giữ nguyên khi không hiện. */
 export const gradeVisible = (entry: Pick<SubjectFormEntry, "hideGrade">): boolean => !entry.hideGrade;
 
 export type MatrixDimensionKey = "GRADE" | "DIFFICULTY";
@@ -179,14 +156,6 @@ export function dimensionDeclared(matrix: BlockMatrix | null, dimension: MatrixD
   return { total: sum(values.map((item) => item.value)), cells: values.length };
 }
 
-/**
- * Ghi một ô của chiều ma trận (R-8). Ô để trống (`null`) bị bỏ khỏi chiều, ô nhập 0 giữ giá trị 0; chiều không còn ô nào ghi mảng
- * rỗng (đúng kiểu `BlockMatrix`), không `null`. Chiều kia, ô kết hợp, đơn vị và mức không đụng tới: lớp bị ẩn giữ nguyên dữ liệu
- * (R-11). `matrix = null` mở đầu bằng ma trận trống riêng từng chiều theo câu. Mức áp dụng chỉ ghi khi cặp đặt mức mặc định:
- * `FIXED_REFERENCE` (BCA) ghi `REFERENCE` ở chiều vừa khai; `REFERENCE_WITH_APPLY` (V-ACT, SP2E, SPT, H-SCA, V-SAT, mặc định Chỉ đối chiếu)
- * ghi `REFERENCE` cho cả hai chiều chưa có mức, để chiều chưa khai không bị coi là Bắt buộc, và đặt lại chiều vừa xóa hết ô về `REFERENCE`
- * (tránh kẹt `REQUIRED` khi công tắc đã ẩn); HSA có HSA-C, QDA và THPTQG để mặc định `REQUIRED` (trường thiếu).
- */
 export function setDimensionCell(
   matrix: BlockMatrix | null,
   dimension: MatrixDimensionKey,
@@ -210,17 +179,11 @@ export function setDimensionCell(
   };
 }
 
-/** Ghi mức áp dụng của một chiều (`REFERENCE_WITH_APPLY`: công tắc "Áp dụng khi sinh đề"); ma trận kết hợp có một mức cho cả hai chiều (spec 3.2). */
 export function setDimensionEnforcement(matrix: BlockMatrix, dimension: MatrixDimensionKey, value: "REQUIRED" | "REFERENCE"): BlockMatrix {
   if (matrix.mode === "COMBINED") return { ...matrix, gradeEnforcement: value, difficultyEnforcement: value };
   return { ...matrix, [enforcementKeyOf(dimension)]: value };
 }
 
-/**
- * Đổi đơn vị nhập của ma trận ở Phân bổ đối chiếu (R-9, `Số câu` ↔ `Tỷ lệ`): chỉ các ô đã khai đổi, chiều để trống giữ mảng rỗng và ô
- * trống giữ trống (khác `convertMatrixUnit` của màn nhóm, vốn điền mọi mã). % → số câu theo phần dư lớn nhất trên `count`; số câu → %
- * nguyên tổng 100. Ma trận kết hợp đi qua `convertMatrixUnit`. `count` không dương: chỉ đổi nhãn đơn vị, không quy đổi.
- */
 export function convertReferenceUnit(
   matrix: BlockMatrix,
   unit: BlockMatrix["unit"],
@@ -262,10 +225,6 @@ export function dimensionEnforcement(matrix: BlockMatrix | null, dimension: Matr
   return matrix?.[enforcementKeyOf(dimension)] ?? "REQUIRED";
 }
 
-/**
- * Cách vẽ mức áp dụng của một chiều: mức đã ghi `REFERENCE` ở kỳ mức cố định Bắt buộc (ngoại lệ HSA-C: lớp Tiếng Anh chờ chuyên
- * gia) hiện chip Tham khảo như hôm nay, không đổi thành Bắt buộc (R-2, R-8).
- */
 export function enforcementModeOf(entry: SubjectFormEntry, matrix: BlockMatrix | null, dimension: MatrixDimensionKey): SubjectFormEntry["enforcement"] {
   if ((entry.enforcement === "FIXED_REQUIRED" || entry.enforcement === "DECLARED_REQUIRED") && dimensionEnforcement(matrix, dimension) === "REFERENCE") return "FIXED_REFERENCE";
   return entry.enforcement;

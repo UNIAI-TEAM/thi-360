@@ -26,10 +26,6 @@ export function toExamsApiError(status: number, error: unknown): ExamsApiError {
   return new ExamsApiError(status);
 }
 
-/**
- * Tạo bài từ mẫu đã xong (POST 201) nhưng lưu cấu trúc tiếp theo thất bại: `exam` là bài Nháp đã có.
- * Nơi gọi chuyển sang bài đó thay vì POST lại (tránh trùng mã).
- */
 export class ExamStructureSaveError extends ExamsApiError {
   readonly exam: ExamDetail;
 
@@ -49,11 +45,6 @@ export function errorCodeOf(error: unknown): string | undefined {
   return typeof code === "string" ? code : undefined;
 }
 
-/**
- * Lý do của 409 `CHECK_REQUIRED` khi công bố: backend gửi trong `fieldErrors[0]` (`{field: "reason", code: lý do}`;
- * spec 5.2 — `NO_CHECK`, `STRUCTURE_CHANGED`, `CONFIG_CHANGED`, `SOURCE_CHANGED`, `RULES_CHANGED`, `PATH_NOT_VALID`...).
- * `null` khi không phải lỗi đó; `"UNKNOWN"` khi thiếu lý do.
- */
 export function checkRequiredReason(error: unknown): string | null {
   if (!(error instanceof ApiStatusError) || error.status !== 409 || errorCodeOf(error) !== "CHECK_REQUIRED") {
     return null;

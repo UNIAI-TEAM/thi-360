@@ -24,10 +24,6 @@ interface ReloadPartSide {
   typeCounts?: readonly TypeCount[];
 }
 
-/**
- * Một phần sẽ được nạp lại. `before` có mặt (đổi phiên bản cấu trúc): hiện "trước → sau"; `before: null` là phần mới
- * chưa có trong cấu trúc hiện tại; bỏ trống thì chỉ hiện phần sẽ nạp.
- */
 export interface ReloadPartRow extends ReloadPartSide {
   before?: ReloadPartSide | null;
 }
@@ -98,7 +94,6 @@ interface ReloadStructureDialogProps {
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description: string;
-  /** Các phần sẽ thay cấu trúc hiện tại (PBI-04 mục 5.3, mục 6: chỉ thay sau khi quản trị viên xác nhận). */
   parts: readonly ReloadPartRow[];
   confirmLabel: string;
   /** Nhãn nút hủy; bỏ trống dùng "Giữ cấu trúc hiện tại". */
@@ -113,10 +108,6 @@ interface ReloadStructureDialogProps {
   onConfirm: () => void;
 }
 
-/**
- * Hộp xác nhận nạp lại cấu trúc theo mẫu (đổi kỳ thi, phạm vi, phần, môn hoặc phiên bản năm): liệt kê các phần sẽ được
- * nạp lại để quản trị viên đối chiếu trước khi cấu trúc đang sửa bị thay.
- */
 export function ReloadStructureDialog({
   open,
   onOpenChange,
@@ -134,10 +125,6 @@ export function ReloadStructureDialog({
   const t = useTranslations("exams.reload");
   const tType = useTranslations("content.questionType");
   const typeLabel = (type: TypeCount["questionType"]) => (type === "ANY" ? t("typeAny") : tType.has(type) ? tType(type) : type);
-  /**
-   * Dòng thay đổi theo dạng câu của một phần (bản vẽ `DoiPhienBan2B`: "10 trắc nghiệm → 5 ghép đôi"): mỗi dạng có ở một
-   * trong hai phía mà số câu khác nhau; phần mới chưa có phía trước thì liệt kê dạng của phần sẽ nạp.
-   */
   const typeChanges = (part: ReloadPartRow): Array<{ type: TypeCount["questionType"]; from: number | null; to: number }> => {
     const after = part.typeCounts ?? [];
     const before = part.before ? (part.before.typeCounts ?? []) : null;

@@ -12,7 +12,6 @@ import { LockReason, type LockReasonCode } from "./lock-reason";
 import type { SubjectFormEntry } from "./registry";
 
 interface SubjectEnforcementProps {
-  /** Cách áp dụng của kỳ (`SubjectFormEntry.enforcement`, FTM R-8). */
   mode: SubjectFormEntry["enforcement"];
   /** Tên bảng đứng trong nhãn nhóm, để đọc màn hình phân biệt các phân bố cùng trang. */
   name: string;
@@ -33,9 +32,7 @@ interface ToggleEnforcementProps {
   name: string;
   value: QuotaEnforcement;
   onChange: (value: QuotaEnforcement) => void;
-  /** Đơn vị đếm của bảng: mức Bắt buộc chỉ nhận đơn vị câu (H7), đơn vị khác thì khóa nút kèm lý do. */
   basis?: QuotaBasis;
-  /** Chỉ tiêu trải nhiều môn không đặt Bắt buộc được (H6): khóa nút kèm lý do riêng. */
   lockRequiredReason?: string;
   /** Chỉ tiêu chờ chuyên gia xác nhận (HSA Tiếng Anh): trong bài HSA cố định Tham khảo kèm lý do chờ chuyên gia. */
   expertPending?: boolean;
@@ -46,12 +43,6 @@ interface ToggleEnforcementProps {
 
 type EnforcementControlProps = SubjectEnforcementProps | ToggleEnforcementProps;
 
-/**
- * Điều khiển mức áp dụng thống nhất cho phân bố trong Tab 2 (`RF-07`):
- * - Các chế độ theo kỳ (`SubjectFormEntry.enforcement`, FTM R-8): chip cố định hoặc công tắc "Áp dụng khi sinh đề".
- * - Chế độ `"TOGGLE"` (K9, H21): cặp radio "Bắt buộc / Tham khảo" ở màn MD, bảng chỉ tiêu chủ đề và chỉ tiêu cấp bài; tự chuyển
- *   sang mức cố định khi bài thuộc kỳ thi HSA.
- */
 export function EnforcementControl(props: EnforcementControlProps) {
   return props.mode === "TOGGLE" ? <ToggleEnforcement {...props} /> : <SubjectEnforcement {...props} />;
 }

@@ -105,10 +105,6 @@ function snapshotsEqual(a: AudioPlaybackSnapshot, b: AudioPlaybackSnapshot): boo
   );
 }
 
-/**
- * In-memory audio state & adapters for admin trial mode (FA-5 AC-4, BS 17.2).
- * Lifted above `TrialPaperView` so switching parts preserves play counts without DB writes.
- */
 export function useTrialAudioRegistry(
   paper: PreviewTrialPaperResponse | undefined,
   resetEpoch: number,

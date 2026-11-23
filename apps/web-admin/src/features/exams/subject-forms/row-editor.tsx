@@ -41,7 +41,6 @@ import {
   type RowContext,
 } from "./row-list-model";
 
-/** Kỳ có điều kiện theo vị trí câu con trong màn sửa dòng (R-7): SP2E Anh sửa được, V-SAT Anh do mẫu khóa. */
 const POSITION_PAIRS: Readonly<Record<string, "EDITABLE" | "TEMPLATE">> = { "SP2E:ANH": "EDITABLE", "VSAT:ANH": "TEMPLATE" };
 /** SP2E và SPT gọi phạm vi theo chủ đề là "Theo mạch kiến thức". */
 const STRAND_KINDS: readonly string[] = ["SP2E", "SPT"];
@@ -66,22 +65,14 @@ interface RowEditorProps {
   onClose: () => void;
   /** Tăng mỗi lần điều hướng báo lại đúng dòng đang mở: màn đặt focus lại vào tiêu đề. */
   focusNonce: number;
-  /** Số câu của mục chứa dòng: mẫu số của tỷ lệ (R-9); `null` khi chưa biết. */
   sectionCount: number | null;
   rawInputs: RawInputStore;
-  /** Nút tách dòng (R-7): ẩn, khóa kèm lý do, hoặc mở. */
   split: SplitState;
   onSplit: (parts: number[]) => void;
   /** Ô của màn sửa nhận focus khi điều hướng báo lỗi tại ô (`data-form-field`); `null`: tiêu đề của màn. */
   focusField: string | null;
 }
 
-/**
- * Màn sửa dòng gọn (FTM R-7): Tên, Cách lấy (Câu đơn / Câu chùm theo khóa), Số câu hoặc Số chùm và Số câu con, nút Thêm điều kiện
- * (Nhãn hoặc loại văn bản, MAPID lọc, Phân bổ theo MAPID, Độ khó, Khối lớp, điều kiện từng chùm, theo vị trí câu con), công tắc
- * đảo chùm và tạm bỏ qua theo mẫu. Trường do mẫu đặt hiện thành một dòng chữ chỉ đọc. Không có Lên, Xuống, Xóa dòng (R-13).
- * Khung gắn `data-form-row-editor`; mở màn thì focus vào tiêu đề để người dùng bàn phím không mất chỗ.
- */
 export function RowEditor({ block, section, kindCode, entry, position, total, context, template, axes, labels, reference, topicError, onChange, onClose, focusNonce, sectionCount, rawInputs, split, onSplit, focusField }: RowEditorProps) {
   const t = useTranslations("exams.subjectForm.rows.editor");
   const tBlock = useTranslations("exams.structure.block");

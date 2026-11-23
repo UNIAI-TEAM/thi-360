@@ -2,13 +2,6 @@ import { type OverviewRow, omittedRow, overviewDiff, sectionCompetency } from ".
 import { isAllOmittedStructurePart } from "./matrix";
 import type { ExamPart, ExamSection } from "./types";
 
-/**
- * "Bảng tổng quan" dựng từ cấu trúc ĐÃ LƯU của bài (tab Thông tin chung), cùng hình dạng dòng với bảng ở bước 1 để dùng
- * chung `ExamOverviewTable`, `validateOverview` và `overviewDiff`. `base` là số đang lưu, nên dòng "khác" là dòng người
- * dùng vừa sửa. Phần mà mọi nhóm đều tạm bỏ qua (SP2E Ngữ văn Phần II · Viết, số câu 0 theo thiết kế) là dòng `omitted` chỉ
- * đọc như ở bước 1: không kiểm tra, không vào tổng, không vào `overviewDiff`. Chỉ hiện dòng phần và, với phần cố định nhiều môn (hoặc mọi phần của mẫu `fixedCounts`), dòng môn; dòng
- * lấy câu và nhóm không vào bảng này.
- */
 export function overviewRowsFromParts(
   parts: readonly ExamPart[],
   options: { fixedCounts: boolean; countsLocked: boolean },
@@ -70,12 +63,6 @@ export function overviewRowsFromParts(
   return rows;
 }
 
-/**
- * Cấu trúc đã lưu sau khi áp các ô người dùng sửa ở bảng tổng quan. Cùng quy tắc với máy chủ khi nhận `overview` ở bước
- * 1 (`ExamOverview.applyChanges`): chỉ đổi số câu, thời lượng, điểm của phần và số câu của môn; phần cố định đúng một môn
- * thì số câu môn đi theo số câu phần (trừ khi môn đó cũng được sửa). Không đụng nhóm lấy câu, ma trận, chỉ tiêu, số câu
- * trên đề: số câu phần lệch với phân bổ thì bước Cấu trúc báo lệch, không tự giảm câu (spec 5.3).
- */
 export function applyOverviewToParts(parts: readonly ExamPart[], rows: readonly OverviewRow[]): ExamPart[] {
   const changes = overviewDiff(rows);
   return parts.map((part) => {

@@ -4,62 +4,58 @@ import type { QuestionBody } from "@/features/questions/types";
 import { createBrowserApiClient } from "@/lib/api/client";
 import { mapDisplaySegments, mapParts, mapSectionStates } from "./api-mapping";
 import { checkRequiredReason, errorCodeOf, ExamsApiError, toExamsApiError } from "./errors";
-import type {
-  BlockCheck,
-  BlockCheckResult,
-  BlockRequirement,
-  CheckGroup,
-  CheckGroupResult,
-  CheckInvalidReason,
-  CheckIssue,
-  CheckIssueCode,
-  CheckIssueSeverity,
-  CheckRunState,
-  ExamChange,
-  ExamChangeKind,
-  ExamCheckResult,
-  ExamCheckRun,
-  ExamPathRef,
-  ExamVersionDetail,
-  ExamVersionList,
-  ExamVersionRow,
-  ExamWorkingCopy,
-  GeneratePreviewRequest,
-  ListingCheckGroup,
-  ListingCheckIssue,
-  PathCheck,
-  PathCheckResult,
-  PathChoice,
-  PathSelectionCheck,
-  PreviewAllocationCell,
-  PreviewAttachment,
-  PreviewBlock,
-  PreviewCheck,
-  PreviewCheckCode,
-  PreviewCompliance,
-  PreviewItem,
-  PreviewPaper,
-  PreviewPart,
-  PreviewQuestion,
-  PreviewResult,
-  PreviewSubject,
-  PreviewSubjectQuota,
-  PublishExamRequest,
-  PublishExamResponse,
-  RunExamCheckRequest,
-  StartDeepCheckResponse,
-  SubjectCheck,
+import {
+  CHECK_GROUPS,
+  type BlockCheck,
+  type BlockCheckResult,
+  type BlockRequirement,
+  type CheckGroup,
+  type CheckGroupResult,
+  type CheckInvalidReason,
+  type CheckIssue,
+  type CheckIssueCode,
+  type CheckIssueSeverity,
+  type CheckRunState,
+  type ExamChange,
+  type ExamChangeKind,
+  type ExamCheckResult,
+  type ExamCheckRun,
+  type ExamPathRef,
+  type ExamVersionDetail,
+  type ExamVersionList,
+  type ExamVersionRow,
+  type ExamWorkingCopy,
+  type GeneratePreviewRequest,
+  type ListingCheckGroup,
+  type ListingCheckIssue,
+  type PathCheck,
+  type PathCheckResult,
+  type PathChoice,
+  type PathSelectionCheck,
+  type PreviewAllocationCell,
+  type PreviewAttachment,
+  type PreviewBlock,
+  type PreviewCheck,
+  type PreviewCheckCode,
+  type PreviewCompliance,
+  type PreviewItem,
+  type PreviewPaper,
+  type PreviewPart,
+  type PreviewQuestion,
+  type PreviewResult,
+  type PreviewSubject,
+  type PreviewSubjectQuota,
+  type PublishExamRequest,
+  type PublishExamResponse,
+  type RunExamCheckRequest,
+  type StartDeepCheckResponse,
+  type SubjectCheck,
 } from "./review-types";
-import { CHECK_GROUPS, CHECK_ISSUE_CODES } from "./review-types";
 import type { ExamVersion } from "./types";
-
-/**
- * API của Kiểm tra cấu hình, Kiểm tra kỹ, Sinh đề xem trước, Phiên bản và Công bố (PBI-04 mục 9–11).
- */
 
 export { checkRequiredReason, errorCodeOf, ExamsApiError, toExamsApiError };
 
-/* ---------- Kiểm tra cấu hình ---------- */
+type Schema = components["schemas"];
 
 export async function getExamCheck({ examId }: { examId: string }): Promise<ExamCheckResult | null> {
   const client = createBrowserApiClient();
@@ -74,13 +70,9 @@ export async function runExamCheck({ examId, scope, partId, sectionId }: RunExam
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/{examId}/check", {
     params: { path: { examId } },
-    body: {
-      scope: scope ?? undefined,
-      partId: partId ?? undefined,
-      sectionId: sectionId ?? undefined,
-    },
+    body: { scope: scope ?? undefined, partId: partId ?? undefined, sectionId: sectionId ?? undefined },
   });
-  if (!response.ok || data === undefined || !isCheckResult(data)) throw toExamsApiError(response.status, error);
+  if (!response.ok || data === undefined || !("status" in data)) throw toExamsApiError(response.status, error);
   return mapCheckResult(data);
 }
 
@@ -89,7 +81,7 @@ export async function startDeepCheck(examId: string): Promise<StartDeepCheckResp
   const { data, error, response } = await client.POST("/api/v1/admin/exams/{examId}/check", {
     params: { path: { examId }, query: { deep: true } },
   });
-  if (!response.ok || data === undefined || !isCheckStarted(data) || data.runId === undefined) {
+  if (!response.ok || data === undefined || !("runId" in data) || "status" in data || data.runId === undefined) {
     throw toExamsApiError(response.status, error);
   }
   return { runId: data.runId };
@@ -109,8 +101,6 @@ export async function getCheckRun(examId: string, runId: string): Promise<ExamCh
     errorCode: data.errorCode ?? null,
   };
 }
-
-/* ---------- Đề xem trước ---------- */
 
 export async function generatePreview({
   examId,
@@ -134,8 +124,6 @@ export async function generatePreview({
   return mapPreviewResult(examId, data);
 }
 
-/* ---------- Phiên bản và công bố ---------- */
-
 export async function listExamVersions({ examId }: { examId: string }): Promise<ExamVersionList> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/exams/{examId}/versions", {
@@ -147,18 +135,12 @@ export async function listExamVersions({ examId }: { examId: string }): Promise<
     workingCopy: data.workingCopy ? mapWorkingCopy(data.workingCopy) : null,
     changes: (data.changes ?? []).map(mapChange),
     items: (data.items ?? [])
-      .filter((item): item is ApiVersionResponse & { version: number } => item.version !== undefined)
+      .filter((item): item is Schema["ExamVersionResponse"] & { version: number } => item.version !== undefined)
       .map(mapVersionRow),
   };
 }
 
-export async function getExamVersion({
-  examId,
-  version,
-}: {
-  examId: string;
-  version: number;
-}): Promise<ExamVersionDetail> {
+export async function getExamVersion({ examId, version }: { examId: string; version: number }): Promise<ExamVersionDetail> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.GET("/api/v1/admin/exams/{examId}/versions/{version}", {
     params: { path: { examId, version } },
@@ -180,10 +162,7 @@ export async function publishExam({
 }: PublishExamRequest): Promise<PublishExamResponse> {
   const client = createBrowserApiClient();
   const { data, error, response } = await client.POST("/api/v1/admin/exams/{examId}/publish", {
-    params: {
-      path: { examId },
-      header: { "Idempotency-Key": idempotencyKey ?? crypto.randomUUID() },
-    },
+    params: { path: { examId }, header: { "Idempotency-Key": idempotencyKey ?? crypto.randomUUID() } },
     body: { pathIds, ...(note !== null ? { note } : {}), expectedRevision },
   });
   if (!response.ok || !data) throw toExamsApiError(response.status, error);
@@ -191,80 +170,31 @@ export async function publishExam({
     examId: data.examId ?? examId,
     version: data.version ?? 0,
     publishedPathIds: data.publishedPathIds ?? [],
-    keptPaths: (data.keptPaths ?? []).map((path) => ({
-      pathId: path.pathId ?? "",
-      version: path.version ?? 0,
-    })),
+    keptPaths: (data.keptPaths ?? []).map((path) => ({ pathId: path.pathId ?? "", version: path.version ?? 0 })),
   };
 }
 
-/* ---------- Chuyển đổi sang kiểu của review-types.ts ---------- */
-
-type Schema = components["schemas"];
-type ApiCheckResult = Schema["ExamCheckResult"];
-type ApiCheckPath = Schema["ExamCheckPath"];
-type ApiCheckBlock = Schema["ExamCheckBlock"];
-type ApiCheckSubject = Schema["ExamCheckSubject"];
-type ApiCheckSelection = Schema["ExamCheckSelection"];
-type ApiIssue = Schema["ExamCheckIssue"] | Schema["ExamPreviewIssue"];
-type ApiCheckGroup = Schema["ExamCheckGroup"];
-type ApiCheckChoice = Schema["ExamCheckChoice"];
-type ApiCheckRequirement = Schema["ExamCheckRequirement"];
-type ApiVersionResponse = Schema["ExamVersionResponse"];
-type ApiVersionPath = Schema["ExamVersionPath"];
-type ApiVersionChoice = Schema["ExamVersionPathChoice"];
-type ApiVersionChange = Schema["ExamVersionChange"];
-type ApiWorkingCopy = Schema["ExamVersionWorkingCopy"];
-type ApiPreviewResult = Schema["ExamPreviewResult"];
-type ApiPreviewPaper = Schema["ExamPreviewPaper"];
-type ApiPreviewPart = Schema["ExamPreviewPart"];
-type ApiPreviewBlock = Schema["ExamPreviewBlock"];
-type ApiPreviewBlockRequirement = Schema["ExamPreviewBlockRequirement"];
-type ApiPreviewItem = Schema["ExamPreviewItem"];
-type ApiPreviewQuestion = Schema["ExamPreviewQuestion"];
-type ApiPreviewCheck = Schema["ExamPreviewCheck"];
-type ApiPreviewSubjectAllocation = Schema["ExamPreviewSubjectAllocation"];
-type ApiPreviewKnowledgeStat = Schema["ExamPreviewKnowledgeStat"];
-type ApiPathRef = Schema["ExamPreviewPathRef"];
-type ApiCheckSummary = Schema["ExamCheckSummary"];
-type ApiListingCheckGroup = Schema["ExamListingCheckGroup"];
-type ApiListingCheckIssue = Schema["ExamListingCheckIssue"];
-
-const INVALID_REASONS = ["STRUCTURE_CHANGED", "CONFIG_CHANGED", "SOURCE_CHANGED", "RULES_CHANGED"] as const;
 const ISSUE_DIMENSIONS = ["GRADE", "DIFFICULTY", "COMPETENCY", "COUNT", "SET_COUNT", "SET_SIZE", "TYPE", "COMMANDS", "POINTS"] as const;
-const CHOICE_KINDS = ["SUBJECT", "COMBINATION", "BRANCH", "SUBJECT_CHOICE"] as const;
-const PATH_RESULTS = ["VALID", "INVALID", "UNCONFIRMED"] as const;
-const BLOCK_RESULTS = ["FOUND", "NOT_FOUND", "UNCONFIRMED"] as const;
-const CHANGE_KINDS = [
-  "OPTION_ADDED",
-  "OPTION_REMOVED",
-  "BLOCK_ADDED",
-  "BLOCK_REMOVED",
-  "BLOCK_CHANGED",
-  "MATRIX_CHANGED",
-  "ORDER_CHANGED",
-  "QUESTIONS_REPLACED",
-] as const;
-const PREVIEW_CHECK_CODES = ["NO_DUPLICATES", "SETS_INTACT", "TOTAL_POINTS"] as const;
-const VERSION_STATES = ["WORKING", "SERVING", "RETIRED"] as const;
 
-function oneOf<T extends string>(values: readonly T[], value: string | null | undefined, fallback: T): T {
-  return value != null && (values as readonly string[]).includes(value) ? (value as T) : fallback;
-}
+const checkGroupOf = (value?: string): CheckGroup =>
+  value != null && (CHECK_GROUPS as readonly string[]).includes(value) ? (value as CheckGroup) : "INFO";
 
-function oneOfOrNull<T extends string>(values: readonly T[], value: string | null | undefined): T | null {
-  return value != null && (values as readonly string[]).includes(value) ? (value as T) : null;
-}
+const questionTypeOf = (value?: string): QuestionType | null =>
+  value != null && (QUESTION_TYPES as readonly string[]).includes(value) ? (value as QuestionType) : null;
 
-function isCheckResult(data: object): data is ApiCheckResult {
-  return "status" in data;
-}
+const dimensionOf = (value?: string): CheckIssue["dimension"] =>
+  value != null && (ISSUE_DIMENSIONS as readonly string[]).includes(value) ? (value as CheckIssue["dimension"]) : null;
 
-function isCheckStarted(data: object): data is Schema["ExamCheckStarted"] {
-  return "runId" in data && !("status" in data);
-}
+const pathResultOf = (value?: string): PathCheckResult =>
+  value === "VALID" || value === "INVALID" ? value : "UNCONFIRMED";
 
-const questionTypeOf = (value: string | undefined): QuestionType | null => oneOfOrNull(QUESTION_TYPES, value);
+const invalidReasonOf = (value?: string | null): CheckInvalidReason | null =>
+  value === "STRUCTURE_CHANGED" ||
+  value === "CONFIG_CHANGED" ||
+  value === "SOURCE_CHANGED" ||
+  value === "RULES_CHANGED"
+    ? value
+    : null;
 
 function issueKey(issue: Omit<CheckIssue, "key">): string {
   return [
@@ -281,14 +211,12 @@ function issueKey(issue: Omit<CheckIssue, "key">): string {
   ].join("|");
 }
 
-export function mapIssue(issue: ApiIssue): CheckIssue {
+export function mapIssue(issue: Schema["ExamCheckIssue"] | Schema["ExamPreviewIssue"]): CheckIssue {
   const mapped: Omit<CheckIssue, "key"> = {
-    code: oneOf<CheckIssueCode>(CHECK_ISSUE_CODES, issue.code, "INFO_MISSING"),
+    code: (issue.code || "INFO_MISSING") as CheckIssueCode,
     severity:
-      issue.severity === "UNCONFIRMED" || issue.severity === "WARNING"
-        ? (issue.severity as CheckIssueSeverity)
-        : "ERROR",
-    group: oneOf<CheckGroup>(CHECK_GROUPS, issue.group, "INFO"),
+      issue.severity === "UNCONFIRMED" || issue.severity === "WARNING" ? (issue.severity as CheckIssueSeverity) : "ERROR",
+    group: checkGroupOf(issue.group),
     partId: issue.partId ?? issue.location?.partId ?? null,
     partName: issue.partName ?? null,
     sectionId: issue.sectionId ?? issue.location?.sectionId ?? null,
@@ -298,7 +226,7 @@ export function mapIssue(issue: ApiIssue): CheckIssue {
     optionId: issue.optionId ?? null,
     gradeCode: issue.gradeCode ?? null,
     difficultyCode: issue.difficultyCode ?? null,
-    dimension: oneOfOrNull(ISSUE_DIMENSIONS, issue.dimension),
+    dimension: dimensionOf(issue.dimension),
     competencyCode: issue.competencyCode ?? null,
     answerType: questionTypeOf(issue.answerType),
     subjectCount: issue.subjectCount ?? null,
@@ -322,19 +250,27 @@ export function mapIssue(issue: ApiIssue): CheckIssue {
   return { key: issue.key ?? issueKey(mapped), ...mapped };
 }
 
-function mapChoice(choice: ApiCheckChoice | ApiVersionChoice | Schema["ExamPreviewPathChoice"]): PathChoice {
+function mapChoice(
+  choice: Schema["ExamCheckChoice"] | Schema["ExamVersionPathChoice"] | Schema["ExamPreviewPathChoice"],
+): PathChoice {
   return {
     partId: choice.partId ?? "",
     optionId: choice.optionId ?? "",
-    kind: oneOf<PathChoice["kind"]>(CHOICE_KINDS, choice.kind, "SUBJECT"),
+    kind: (choice.kind ?? "SUBJECT") as PathChoice["kind"],
     code: choice.code ?? "",
     name: choice.name ?? choice.code ?? "",
   };
 }
 
-function mapRequirement(requirement: ApiCheckRequirement | ApiPreviewBlockRequirement | undefined): BlockRequirement | null {
+function mapPathRef(path?: { pathId?: string; choices?: Schema["ExamPreviewPathChoice"][] }): ExamPathRef {
+  return { pathId: path?.pathId ?? "", choices: (path?.choices ?? []).map(mapChoice) };
+}
+
+function mapRequirement(
+  requirement?: Schema["ExamCheckRequirement"] | Schema["ExamPreviewBlockRequirement"],
+): BlockRequirement | null {
   if (!requirement) return null;
-  const dimensions = (items: { code?: string; required?: number }[] | undefined) =>
+  const dimensions = (items?: { code?: string; required?: number }[]) =>
     (items ?? []).map((item) => ({ code: item.code ?? "", required: item.required ?? 0 }));
   return {
     mode: requirement.mode === "SEPARATE" ? "SEPARATE" : "COMBINED",
@@ -349,7 +285,9 @@ function mapRequirement(requirement: ApiCheckRequirement | ApiPreviewBlockRequir
   };
 }
 
-function mapCheckBlock(block: ApiCheckBlock): BlockCheck {
+function mapCheckBlock(block: Schema["ExamCheckBlock"]): BlockCheck {
+  const result: BlockCheckResult =
+    block.result === "FOUND" || block.result === "UNCONFIRMED" ? block.result : "NOT_FOUND";
   return {
     partId: block.partId ?? "",
     partName: block.partName ?? "",
@@ -366,13 +304,13 @@ function mapCheckBlock(block: ApiCheckBlock): BlockCheck {
     available: block.available ?? 0,
     availableSets: block.availableSets ?? null,
     requirement: mapRequirement(block.requirement),
-    result: oneOf<BlockCheckResult>(BLOCK_RESULTS, block.result, "NOT_FOUND"),
+    result,
     issues: (block.issues ?? []).map(mapIssue),
   };
 }
 
-function mapCheckSubject(subject: ApiCheckSubject): SubjectCheck {
-  const dimensions = (items: { code?: string; required?: number; achieved?: number }[] | undefined) =>
+function mapCheckSubject(subject: Schema["ExamCheckSubject"]): SubjectCheck {
+  const dimensions = (items?: { code?: string; required?: number; achieved?: number }[]) =>
     (items ?? []).map((item) => ({ code: item.code ?? "", required: item.required ?? 0, achieved: item.achieved ?? 0 }));
   return {
     sectionId: subject.sectionId ?? "",
@@ -389,20 +327,19 @@ function mapCheckSubject(subject: ApiCheckSubject): SubjectCheck {
   };
 }
 
-function mapSelection(selection: ApiCheckSelection): PathSelectionCheck {
+function mapSelection(selection: Schema["ExamCheckSelection"]): PathSelectionCheck {
   return {
     subjectCodes: selection.subjectCodes ?? [],
     counts: selection.counts ?? [],
-    result: oneOf<PathCheckResult>(PATH_RESULTS, selection.result, "UNCONFIRMED"),
+    result: pathResultOf(selection.result),
     issues: (selection.issues ?? []).map(mapIssue),
   };
 }
 
-function mapCheckPath(path: ApiCheckPath): PathCheck {
+function mapCheckPath(path: Schema["ExamCheckPath"]): PathCheck {
   return {
-    pathId: path.pathId ?? "",
-    choices: (path.choices ?? []).map(mapChoice),
-    result: oneOf<PathCheckResult>(PATH_RESULTS, path.result, "UNCONFIRMED"),
+    ...mapPathRef(path),
+    result: pathResultOf(path.result),
     partIds: path.partIds ?? [],
     totalQuestions: path.totalQuestions ?? 0,
     totalMinutes: path.totalMinutes ?? 0,
@@ -414,15 +351,7 @@ function mapCheckPath(path: ApiCheckPath): PathCheck {
   };
 }
 
-function mapGroup(group: ApiCheckGroup): CheckGroupResult {
-  return {
-    group: oneOf<CheckGroup>(CHECK_GROUPS, group.group, "INFO"),
-    status: group.status === "PASS" || group.status === "WARN" ? group.status : "FAIL",
-    issues: (group.issues ?? []).map(mapIssue),
-  };
-}
-
-function mapListingIssue(issue: ApiListingCheckIssue): ListingCheckIssue {
+function mapListingIssue(issue: Schema["ExamListingCheckIssue"]): ListingCheckIssue {
   const code = issue.code ?? "";
   return {
     key: issue.key ?? `LISTING:${code}`,
@@ -433,7 +362,7 @@ function mapListingIssue(issue: ApiListingCheckIssue): ListingCheckIssue {
   };
 }
 
-function mapListingCheck(group: ApiListingCheckGroup | undefined | null): ListingCheckGroup | null {
+function mapListingCheck(group?: Schema["ExamListingCheckGroup"] | null): ListingCheckGroup | null {
   if (!group) return null;
   return {
     status: group.status === "PASS" || group.status === "WARN" ? group.status : "FAIL",
@@ -441,23 +370,26 @@ function mapListingCheck(group: ApiListingCheckGroup | undefined | null): Listin
   };
 }
 
-/** Vấn đề tính riêng của `ExamListing.checkIssues` (không có nhóm bọc). */
-export function mapListingCheckIssues(issues: readonly ApiListingCheckIssue[] | undefined): ListingCheckIssue[] {
+export function mapListingCheckIssues(issues?: readonly Schema["ExamListingCheckIssue"][]): ListingCheckIssue[] {
   return (issues ?? []).map(mapListingIssue);
 }
 
-function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
+function mapCheckResult(result: Schema["ExamCheckResult"]): ExamCheckResult {
   return {
     examId: result.examId ?? "",
     checkedAt: result.checkedAt ?? "",
     durationSeconds: result.durationSeconds ?? 0,
     timeLimitSeconds: result.timeLimitSeconds ?? 0,
     stale: result.stale ?? false,
-    invalidReason: oneOfOrNull<CheckInvalidReason>(INVALID_REASONS, result.invalidReason),
+    invalidReason: invalidReasonOf(result.invalidReason),
     status: result.status === "VALID" ? "VALID" : "INVALID",
     issueCount: result.issueCount ?? 0,
     paths: (result.paths ?? []).map(mapCheckPath),
-    groups: (result.groups ?? []).map(mapGroup),
+    groups: (result.groups ?? []).map((group): CheckGroupResult => ({
+      group: checkGroupOf(group.group),
+      status: group.status === "PASS" || group.status === "WARN" ? group.status : "FAIL",
+      issues: (group.issues ?? []).map(mapIssue),
+    })),
     listingCheck: mapListingCheck(result.listingCheck),
     partCount: result.partCount ?? 0,
     totalPoints: result.totalPoints ?? 0,
@@ -467,25 +399,13 @@ function mapCheckResult(result: ApiCheckResult): ExamCheckResult {
   };
 }
 
-/* ---------- Xem trước ---------- */
-
-function mapPreviewCheck(check: ApiPreviewCheck): PreviewCheck {
-  return {
-    code: oneOf<PreviewCheckCode>(PREVIEW_CHECK_CODES, check.code, "TOTAL_POINTS"),
-    status: check.status === "PASS" || check.status === "NOT_APPLICABLE" ? check.status : "FAIL",
-    value: check.value ?? null,
-  };
+export function mapAttachments(
+  attachments?: readonly { id?: string; name?: string; mime?: string }[],
+): PreviewAttachment[] {
+  return (attachments ?? []).map((att) => ({ id: att.id ?? "", name: att.name ?? "", mime: att.mime ?? "" }));
 }
 
-function mapAttachments(attachments: Schema["ExamPreviewAttachment"][] | undefined): PreviewAttachment[] {
-  return (attachments ?? []).map((attachment) => ({
-    id: attachment.id ?? "",
-    name: attachment.name ?? "",
-    mime: attachment.mime ?? "",
-  }));
-}
-
-function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
+function mapPreviewQuestion(question: Schema["ExamPreviewQuestion"]): PreviewQuestion {
   return {
     number: question.number ?? 0,
     questionId: question.questionId ?? "",
@@ -505,20 +425,12 @@ function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
       : null,
     points: question.points ?? 0,
     options: question.options
-      ? question.options.map((option) => ({
-          id: option.id ?? "",
-          content: option.content ?? "",
-          correct: option.correct ?? false,
-        }))
+      ? question.options.map((opt) => ({ id: opt.id ?? "", content: opt.content ?? "", correct: opt.correct ?? false }))
       : null,
     answer: question.answer ?? null,
     solution: question.solution ?? null,
     rubric: question.rubric
-      ? question.rubric.map((item) => ({
-          id: item.id ?? "",
-          description: item.description ?? "",
-          points: item.points ?? 0,
-        }))
+      ? question.rubric.map((item) => ({ id: item.id ?? "", description: item.description ?? "", points: item.points ?? 0 }))
       : null,
     body: (question.body ?? null) as QuestionBody | null,
     originalNumber: question.originalNumber ?? null,
@@ -529,7 +441,7 @@ function mapPreviewQuestion(question: ApiPreviewQuestion): PreviewQuestion {
   };
 }
 
-function mapPreviewItem(item: ApiPreviewItem): PreviewItem {
+function mapPreviewItem(item: Schema["ExamPreviewItem"]): PreviewItem {
   if (item.kind === "SET") {
     return {
       kind: "SET",
@@ -546,11 +458,7 @@ function mapPreviewItem(item: ApiPreviewItem): PreviewItem {
   return { kind: "QUESTION", question: mapPreviewQuestion(item.question ?? {}), originalOrder: item.originalOrder ?? null };
 }
 
-function emptyRequirement(): BlockRequirement {
-  return { mode: "COMBINED", cells: [], byGrade: [], byDifficulty: [], byCompetency: [] };
-}
-
-function mapPreviewBlock(block: ApiPreviewBlock): PreviewBlock {
+function mapPreviewBlock(block: Schema["ExamPreviewBlock"]): PreviewBlock {
   return {
     blockId: block.blockId ?? "",
     blockName: block.blockName ?? "",
@@ -563,7 +471,13 @@ function mapPreviewBlock(block: ApiPreviewBlock): PreviewBlock {
     questionCount: block.questionCount ?? 0,
     setCount: block.setCount ?? null,
     setSize: block.setSize ?? null,
-    requirement: mapRequirement(block.requirement) ?? emptyRequirement(),
+    requirement: mapRequirement(block.requirement) ?? {
+      mode: "COMBINED",
+      cells: [],
+      byGrade: [],
+      byDifficulty: [],
+      byCompetency: [],
+    },
     allocation: (block.allocation ?? []).map(
       (cell): PreviewAllocationCell => ({
         gradeCode: cell.gradeCode ?? "",
@@ -576,7 +490,7 @@ function mapPreviewBlock(block: ApiPreviewBlock): PreviewBlock {
   };
 }
 
-function mapPreviewPart(part: ApiPreviewPart): PreviewPart {
+function mapPreviewPart(part: Schema["ExamPreviewPart"]): PreviewPart {
   return {
     partId: part.partId ?? "",
     name: part.name ?? "",
@@ -591,36 +505,32 @@ function mapPreviewPart(part: ApiPreviewPart): PreviewPart {
   };
 }
 
-function mapPreviewSubject(subject: ApiPreviewSubjectAllocation): PreviewSubject {
-  const quotas: PreviewSubjectQuota[] = [
-    ...(subject.answerQuotas ?? []).map((quota) => ({
-      kind: "ANSWER_TYPE" as const,
-      code: quota.answerType ?? "",
-      required: quota.required ?? 0,
-      generated: quota.achieved ?? 0,
-    })),
-    ...(subject.byGrade ?? []).map((item) => ({
-      kind: "GRADE" as const,
+function mapPreviewSubject(subject: Schema["ExamPreviewSubjectAllocation"]): PreviewSubject {
+  const dimQuotas = (kind: "GRADE" | "DIFFICULTY", items?: Schema["ExamPreviewSubjectDimensionRow"][]): PreviewSubjectQuota[] =>
+    (items ?? []).map((item) => ({
+      kind,
       code: item.code ?? "",
       required: item.required ?? 0,
       generated: item.achieved ?? 0,
-    })),
-    ...(subject.byDifficulty ?? []).map((item) => ({
-      kind: "DIFFICULTY" as const,
-      code: item.code ?? "",
-      required: item.required ?? 0,
-      generated: item.achieved ?? 0,
-    })),
-  ];
+    }));
   return {
     sectionId: subject.sectionId ?? "",
     subjectCode: subject.subjectCode ?? "",
     questionCount: subject.questionCount ?? 0,
-    quotas,
+    quotas: [
+      ...(subject.answerQuotas ?? []).map((q): PreviewSubjectQuota => ({
+        kind: "ANSWER_TYPE",
+        code: q.answerType ?? "",
+        required: q.required ?? 0,
+        generated: q.achieved ?? 0,
+      })),
+      ...dimQuotas("GRADE", subject.byGrade),
+      ...dimQuotas("DIFFICULTY", subject.byDifficulty),
+    ],
   };
 }
 
-function mapPreviewPaper(paper: ApiPreviewPaper): PreviewPaper {
+function mapPreviewPaper(paper: Schema["ExamPreviewPaper"]): PreviewPaper {
   return {
     totalQuestions: paper.totalQuestions ?? 0,
     totalPoints: paper.totalPoints ?? 0,
@@ -629,21 +539,19 @@ function mapPreviewPaper(paper: ApiPreviewPaper): PreviewPaper {
     hasManualGrading: paper.hasManualGrading ?? false,
     parts: (paper.parts ?? []).map(mapPreviewPart),
     subjects: (paper.subjects ?? []).map(mapPreviewSubject),
-    checks: (paper.checks ?? []).map(mapPreviewCheck),
-    knowledgeStats: (paper.knowledgeStats ?? []).map(
-      (stat: ApiPreviewKnowledgeStat) => ({
-        nodeId: stat.nodeId ?? "",
-        code: stat.code ?? "",
-        name: stat.name ?? "",
-        subjectCode: stat.subjectCode ?? "",
-        count: stat.count ?? 0,
-      }),
-    ),
+    checks: (paper.checks ?? []).map((check): PreviewCheck => ({
+      code: (check.code ?? "TOTAL_POINTS") as PreviewCheckCode,
+      status: check.status === "PASS" || check.status === "NOT_APPLICABLE" ? check.status : "FAIL",
+      value: check.value ?? null,
+    })),
+    knowledgeStats: (paper.knowledgeStats ?? []).map((stat) => ({
+      nodeId: stat.nodeId ?? "",
+      code: stat.code ?? "",
+      name: stat.name ?? "",
+      subjectCode: stat.subjectCode ?? "",
+      count: stat.count ?? 0,
+    })),
   };
-}
-
-function mapPathRef(path: ApiPathRef | undefined): ExamPathRef {
-  return { pathId: path?.pathId ?? "", choices: (path?.choices ?? []).map(mapChoice) };
 }
 
 function mapCompliance(row: Schema["ExamPreviewCompliance"]): PreviewCompliance {
@@ -662,7 +570,7 @@ function mapCompliance(row: Schema["ExamPreviewCompliance"]): PreviewCompliance 
   };
 }
 
-function mapPreviewResult(examId: string, result: ApiPreviewResult): PreviewResult {
+function mapPreviewResult(examId: string, result: Schema["ExamPreviewResult"]): PreviewResult {
   const base = {
     examId: result.examId ?? examId,
     path: mapPathRef(result.path),
@@ -689,22 +597,21 @@ function mapPreviewResult(examId: string, result: ApiPreviewResult): PreviewResu
   };
 }
 
-/* ---------- Phiên bản ---------- */
+const mapPerson = (person?: { id: string; name?: string | null }): PersonRef =>
+  person ? { id: person.id, name: person.name ?? "" } : { id: "", name: "" };
 
-function mapVersionPath(path: ApiVersionPath): ExamPathRef {
-  return { pathId: path.pathId ?? "", choices: (path.choices ?? []).map(mapChoice) };
-}
-
-function mapVersionRow(row: ApiVersionResponse & { version: number }): ExamVersionRow {
+function mapVersionRow(row: Schema["ExamVersionResponse"] & { version: number }): ExamVersionRow {
+  const state: ExamVersion["state"] =
+    row.state === "WORKING" || row.state === "SERVING" ? row.state : "RETIRED";
   return {
     version: row.version,
-    state: oneOf<ExamVersion["state"]>(VERSION_STATES, row.state, "RETIRED"),
+    state,
     publishedAt: row.publishedAt ?? null,
     publishedBy: row.publishedBy ? mapPerson(row.publishedBy) : null,
     attemptCount: row.attemptCount ?? 0,
     note: row.note ?? null,
-    publishedPaths: (row.publishedPaths ?? []).map(mapVersionPath),
-    servingPaths: (row.servingPaths ?? []).map(mapVersionPath),
+    publishedPaths: (row.publishedPaths ?? []).map(mapPathRef),
+    servingPaths: (row.servingPaths ?? []).map(mapPathRef),
   };
 }
 
@@ -721,14 +628,10 @@ function emptyVersionRow(version: number): ExamVersionRow {
   };
 }
 
-function mapPerson(person: { id: string; name?: string | null }): PersonRef {
-  return { id: person.id, name: person.name ?? "" };
-}
-
-function mapChange(change: ApiVersionChange): ExamChange {
+function mapChange(change: Schema["ExamVersionChange"]): ExamChange {
   return {
     id: change.id ?? "",
-    kind: oneOf<ExamChangeKind>(CHANGE_KINDS, change.kind, "BLOCK_CHANGED"),
+    kind: (change.kind ?? "BLOCK_CHANGED") as ExamChangeKind,
     where: change.where ?? "",
     before: change.before ?? null,
     after: change.after ?? null,
@@ -737,23 +640,18 @@ function mapChange(change: ApiVersionChange): ExamChange {
   };
 }
 
-function mapWorkingCopy(copy: ApiWorkingCopy): ExamWorkingCopy {
-  const summary = copy.check;
+function mapWorkingCopy(copy: Schema["ExamVersionWorkingCopy"]): ExamWorkingCopy {
+  const status = copy.check?.status;
   return {
-    editedBy: copy.editedBy ? mapPerson(copy.editedBy) : { id: "", name: "" },
+    editedBy: mapPerson(copy.editedBy),
     savedAt: copy.savedAt ?? "",
     baseVersion: copy.baseVersion ?? null,
     note: copy.note ?? null,
-    check: mapCheckSummary(summary),
-    unpublishedPaths: (copy.unpublishedPaths ?? []).map(mapVersionPath),
-  };
-}
-
-function mapCheckSummary(summary: ApiCheckSummary | undefined): ExamWorkingCopy["check"] {
-  const status = summary?.status;
-  return {
-    status: status === "VALID" || status === "INVALID" || status === "NEEDS_RECHECK" ? status : "UNCHECKED",
-    issueCount: summary?.issueCount ?? 0,
-    checkedAt: summary?.checkedAt ?? null,
+    check: {
+      status: status === "VALID" || status === "INVALID" || status === "NEEDS_RECHECK" ? status : "UNCHECKED",
+      issueCount: copy.check?.issueCount ?? 0,
+      checkedAt: copy.check?.checkedAt ?? null,
+    },
+    unpublishedPaths: (copy.unpublishedPaths ?? []).map(mapPathRef),
   };
 }

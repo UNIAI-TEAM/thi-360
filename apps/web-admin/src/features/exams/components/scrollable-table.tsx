@@ -15,11 +15,6 @@ interface ScrollableTableProps {
   children: ReactNode;
 }
 
-/**
- * Khung bảng cuộn ngang của bước 1 và bước 2 (R-142, dòng 14): ở màn hẹp hiện dòng "Bảng cuộn ngang: vuốt để xem các
- * cột còn lại" phía trên, vùng cuộn có tên và nhận bàn phím (`tabIndex`). Chữ lấy từ nhóm của bảng tổng quan để mọi bảng
- * dùng chung một câu.
- */
 export function ScrollableTable({ label, labelledBy, className, children }: ScrollableTableProps) {
   const t = useTranslations("exams.create.overview");
   return (

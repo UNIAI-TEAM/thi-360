@@ -31,10 +31,6 @@ export interface BranchDialogProps {
   onAdd: (branch: { name: string; subjectCode: string }) => void;
 }
 
-/**
- * Thêm nhánh nội dung cho phần tự chọn có phần chung (THPTQG Tin học: Khoa học máy tính, Tin học ứng dụng). Học viên làm
- * phần chung cộng một nhánh; số câu từng nhánh bằng số câu của phần trừ phần chung.
- */
 export function BranchDialog({ open, onOpenChange, subjects, defaultSubjectCode, questionCount, onAdd }: BranchDialogProps) {
   const t = useTranslations("exams.combinations.branchDialog");
   return (

@@ -5,11 +5,6 @@ import type { RawInputEntry } from "./raw-input-store";
 import type { SubjectFormPins } from "./selection";
 import { rowFormBlockingRule } from "./row-blocking";
 
-/**
- * Lỗi chặn lưu của biểu mẫu MT/DS (FTM R-15, plan B1). Tính trên **bản nháp của mọi môn** cộng trạng thái nhập thô, không trên
- * component đang mở: môn chưa mở hay đã đóng vẫn được xét. Chỉ xét môn có biểu mẫu ghim là MT/DS; môn MD và bài ôn không bị
- * xét (dữ liệu của chúng giữ hành vi hôm nay).
- */
 export interface BlockingIssue {
   code: string;
   sectionId: string;
@@ -36,10 +31,6 @@ interface FormBlockingInput {
   rawInputs: readonly RawInputEntry[];
 }
 
-/**
- * Lỗi chặn lưu theo thứ tự bản nháp (phần → môn); mỗi môn: lỗi của luật rồi lỗi nhập thô. Mục nhập thô của môn không còn trong
- * bản nháp hoặc không dùng MT/DS không tính (không có chỗ để sửa).
- */
 export function formBlockingIssues({ exam, draft, pinnedForms, rawInputs }: FormBlockingInput): BlockingIssue[] {
   const issues: BlockingIssue[] = [];
   for (const part of draft) {

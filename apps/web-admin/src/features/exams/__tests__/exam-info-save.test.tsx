@@ -331,4 +331,101 @@ describe("Red-first B-01 / B-02 / B-06 (AC-09, AC-10, AC-12)", () => {
     });
     expect(backend.app(bca.id).maxScore).toBe(105);
   }, 30_000);
+
+  it("SF-1: đổi phạm vi (confirmReplace: true) kèm yearsConfirmed: true mà máy chủ bỏ qua yearsConfirmed ở PATCH đầu thì tự gửi PATCH bù { expectedRevision, yearsConfirmed: true }", async () => {
+    const server = new FakeServer()
+      .on(
+        "PATCH",
+        EXAM_PATH,
+        { status: 200, body: examDetailWire({ revision: 8, yearsConfirmed: false }) },
+        { status: 200, body: examDetailWire({ revision: 9, yearsConfirmed: true }) },
+      )
+      .install();
+
+    const initialExam = mapExamDetail(examDetailWire({ revision: 7, yearsConfirmed: false }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let savedMessage = "";
+
+    function ConfirmReplaceHarness() {
+      const form = useForm<ExamInfoFormValues>({ defaultValues: examToFormValues(initialExam) });
+      const { save } = useExamInfoSave({
+        exam: initialExam,
+        structure: undefined,
+        rows: [],
+        formDirty: true,
+        setError: form.setError,
+        onHold: () => undefined,
+        onStructureSaved: () => undefined,
+        onSaved: (message) => {
+          savedMessage = message;
+        },
+        onFailed: () => undefined,
+      });
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            save({
+              request: {
+                expectedRevision: 7,
+                kind: "SP2E",
+                scope: "SUBJECT",
+                subjectCode: "MATH",
+                confirmReplace: true,
+                yearsConfirmed: true,
+              },
+              parts: [],
+            })
+          }
+        >
+          Xác nhận thay cấu trúc
+        </button>
+      );
+    }
+
+    const user = userEvent.setup();
+    renderWithProviders(<ConfirmReplaceHarness />, { client });
+    await user.click(screen.getByRole("button", { name: "Xác nhận thay cấu trúc" }));
+
+    await waitFor(() => expect(server.calls("PATCH", EXAM_PATH)).toHaveLength(2));
+    expect(server.calls("PATCH", EXAM_PATH)[1]!.body).toEqual({
+      expectedRevision: 8,
+      yearsConfirmed: true,
+    });
+    await waitFor(() => expect(savedMessage).toBe("Đã lưu thông tin chung."));
+    expect(client.getQueryData<ExamDetail>(EXAMS_QUERY_KEYS.detail(EXAM_ID))).toMatchObject({
+      revision: 9,
+      yearsConfirmed: true,
+    });
+  });
+
+  it("SF-2: mode='create' khi POST 201 thành công nhưng PATCH bù yearsConfirmed lỗi 500 vẫn điều hướng sang /exams/<id>/structure", async () => {
+    const { ExamsBackend } = await import("./fake-exams-backend");
+    const { renderExamsUi } = await import("./render-exams-ui");
+    const backend = new ExamsBackend();
+    backend.install();
+    backend.server.on("PATCH", "/api/v1/admin/exams/:id", () => ({
+      status: 500,
+      body: { code: "INTERNAL_ERROR", message: "boom" },
+    }));
+
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/exams/new");
+    renderExamsUi(<ExamGeneralForm mode="create" />);
+
+    await screen.findByRole("form", { name: "Tạo bài thi" });
+    await user.click(screen.getByRole("combobox", { name: /^Kỳ thi/ }));
+    await user.click(await screen.findByRole("option", { name: /\(SP2E\)/ }));
+
+    const confirmCheckbox = await screen.findByRole("checkbox", { name: /Chuyên gia đã xác nhận chỉ tiêu/ });
+    await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "SP2E lỗi PATCH phụ");
+    await user.clear(screen.getByRole("textbox", { name: /Mã bài thi/ }));
+    await user.type(screen.getByRole("textbox", { name: /Mã bài thi/ }), "SP2E-PATCH-500");
+    await user.click(confirmCheckbox);
+    await user.click(screen.getByRole("button", { name: /Lưu và tiếp tục/ }));
+
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledTimes(1));
+    const createdId = backend.wireByCode("SP2E-PATCH-500")!.id;
+    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${createdId}/structure`);
+  }, 30_000);
 });

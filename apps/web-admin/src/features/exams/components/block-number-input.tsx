@@ -34,10 +34,6 @@ type BlockNumberInputProps = Omit<InputProps, "value" | "onChange" | "type" | "i
   onInvalidChange?: (invalid: boolean) => void;
 };
 
-/**
- * Ô nhập số nguyên không âm (hoặc thập phân cho %): `type="text"` + `inputMode` (không dùng `type="number"`, theo
- * hướng dẫn biểu mẫu), giữ nguyên chữ người dùng gõ, chỉ báo giá trị lên khi đọc được. Chữ sai thì `aria-invalid`.
- */
 export function BlockNumberInput({
   value,
   onValueChange,

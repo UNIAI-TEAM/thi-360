@@ -1,37 +1,18 @@
-/**
- * Bảng đăng ký biểu mẫu theo môn (FTM R-1): khóa bằng cặp mã kỳ + mã môn canonical. Mục cho biết biểu mẫu
- * (MT Ma trận môn, DS Danh sách dòng lấy câu) và các cấu hình của cặp (R-4, R-8 đến R-12).
- *
- * Tra bằng mã canonical. Bí danh chỉ đổi mã **dùng để tra** và chỉ ở kỳ có mã canonical tương ứng; không trả và không ghi lại
- * mã đã đổi (mã môn gốc của bài giữ nguyên). Mã không có trong bảng, kể cả mã hệ thống cũ, không có mục (dùng MD).
- */
 export type SubjectFormKind = "MATRIX" | "ROWS";
 
 export interface SubjectFormEntry {
   form: SubjectFormKind;
-  /** R-9: nhập tỷ lệ. `TWO_COLUMNS`: hai cột Số câu / Tỷ lệ (MT của V-ACT). `COUNT_OR_PERCENT`: số câu hoặc tỷ lệ (DS). */
   percentEntry: "NONE" | "TWO_COLUMNS" | "COUNT_OR_PERCENT";
-  /** R-8: mức áp dụng của phân bố theo kỳ. */
   enforcement: "FIXED_REQUIRED" | "DECLARED_REQUIRED" | "FIXED_REFERENCE" | "REFERENCE_WITH_APPLY";
-  /** R-10: bảng kết hợp Lớp × Độ khó; chỉ V-SAT, ở cấp phần. */
   combinedMatrix: "NONE" | "PART_LEVEL";
-  /** R-11: ẩn khối lớp ở màn soạn theo môn. */
   hideGrade: boolean;
-  /** R-4: lớp là tùy chọn (V-ACT Tiếng Việt). */
   gradeOptional: boolean;
-  /** R-4: cột Liên lớp (V-ACT Toán). */
   gradeMixedColumn: boolean;
-  /** R-12: giới hạn số chùm và cỡ chùm (Khoa học HSA, QDA). */
   setCount?: { min: number; max: number; size: number };
-  /** R-12: số câu điền đáp án tối thiểu (Lý, Hóa, Sinh ≥ 1; Sử, Địa được 0). */
   shortAnswerMin?: number;
-  /** H28: nhập tổng câu con, cỡ chùm linh hoạt (V-ACT Toán). */
   flexibleSets: boolean;
-  /** R-5, R-6: luồng MAPID của môn ở MT. */
   mapidFlow: "HSA_RULES" | "SCOPE_AND_QUOTA" | "NONE";
-  /** R-3: mục "Nguồn chùm" trong Thêm điều kiện của dòng Câu chùm. */
   setSource: boolean;
-  /** R-7: thêm hoặc tách dòng (H-SCA Anh, V-ACT Tư duy khoa học). */
   rowsEditable: "NONE" | "ADD_AND_SPLIT";
   /** THPTQG Văn: chỉ hiện dòng "Tự luận – tạm bỏ qua". */
   readOnlyNotice?: "ESSAY_SKIPPED";
@@ -52,7 +33,6 @@ interface KindRule {
   enforcement: SubjectFormEntry["enforcement"];
   combinedMatrix: SubjectFormEntry["combinedMatrix"];
   percent: Record<SubjectFormKind, SubjectFormEntry["percentEntry"]>;
-  /** Môn ẩn khối lớp (R-11, mã canonical). */
   hideGrade: readonly string[];
   matrix: readonly string[];
   rows: readonly string[];
@@ -75,7 +55,6 @@ const TWELVE_SUBJECTS = [
   "VAN",
 ] as const;
 
-/** Bảng kỳ theo R-1 (mã môn, số cặp, MT, DS) cùng cấu hình theo kỳ (R-8 đến R-11). */
 const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
   HSA: {
     enforcement: "FIXED_REQUIRED",
@@ -151,7 +130,6 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
   },
 };
 
-/** Giới hạn R-12 của Khoa học HSA, QDA: 1–2 chùm, mỗi chùm 3 câu con; Lý, Hóa, Sinh có ít nhất 1 câu điền. */
 const SCIENCE_SET_COUNT = { min: 1, max: 2, size: 3 } as const;
 const SCIENCE_LIMITS: Readonly<Record<string, number>> = { LY: 1, HOA: 1, SINH: 1, SU: 0, DIA: 0 };
 const LIMITED_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA"];
@@ -188,10 +166,6 @@ const REGISTRY: ReadonlyMap<string, SubjectFormEntry> = (() => {
   return map;
 })();
 
-/**
- * Mục của cặp, hoặc `null` khi cặp không có mục (kỳ lạ, môn lạ, mã hệ thống cũ, bí danh ở kỳ không có mã canonical): nơi gọi
- * dùng MD. Mã canonical tra trước; chỉ khi không có mới thử bí danh (D-3).
- */
 export function subjectFormFor(kindCode: string, subjectCode: string): SubjectFormEntry | null {
   const direct = REGISTRY.get(pairKey(kindCode, subjectCode));
   if (direct) return direct;

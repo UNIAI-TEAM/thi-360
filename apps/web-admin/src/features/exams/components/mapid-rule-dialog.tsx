@@ -62,10 +62,6 @@ interface MapidRuleDialogProps {
   onOpenRule?: (ruleId: string) => void;
 }
 
-/**
- * Hộp thoại "Thêm / Sửa quy tắc" của bảng Quy tắc MAPID (UNI-1707): bố cục 2 cột trên màn rộng (trái: Áp dụng cho + Loại quy tắc;
- * phải: MAPID + Điều kiện + Tóm tắt + Kiểm tra chéo 3 chiều) và 1 cột trên màn hẹp, dùng duy nhất thanh cuộn của `DialogContent`.
- */
 export function MapidRuleDialog(props: MapidRuleDialogProps) {
   const t = useTranslations("exams.mapidRules.dialog");
   const contentRef = useRef<HTMLDivElement>(null);

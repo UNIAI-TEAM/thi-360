@@ -1,10 +1,3 @@
-/**
- * Mỏ neo trường của biểu mẫu nhóm (FE-3a). Mỗi trường của nhóm có một điều khiển nhận focus được mang
- * `data-field="block-<blockId>-<field>"`; chỗ khác của màn (bấm lỗi ở vùng tổng hợp, kết quả kiểm tra) chọn đúng trường
- * bằng `focusBlockField(blockId, field)` hoặc bộ chọn `blockFieldSelector(blockId, field)`.
- *
- * Với trường là một nhóm điều khiển (radio, danh sách nhãn, danh sách chùm) mỏ neo nằm trên điều khiển đầu tiên của nhóm.
- */
 export const BLOCK_FIELDS = [
   "name",
   "mode",

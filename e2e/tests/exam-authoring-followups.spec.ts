@@ -142,6 +142,7 @@ test.describe("giao diện soạn đề 2B", () => {
     const left = Number((await retention.textContent())?.match(/còn (\d+) phút/)?.[1]);
     expect(left).toBeGreaterThanOrEqual(1);
     expect(left).toBeLessThanOrEqual(30);
+    await page.getByRole("tab", { name: "Phân bổ ma trận" }).click();
     await expect(page.getByText(/\(\d+, đã bỏ 1 câu\)/).first()).toBeVisible();
   });
 });

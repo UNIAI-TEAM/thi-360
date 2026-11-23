@@ -1,10 +1,6 @@
 import type { ExamSection } from "../types";
 import { subjectFormFor, type SubjectFormEntry } from "./registry";
 
-/**
- * Giới hạn R-12 phía web (Khoa học HSA, QDA), đọc từ bảng đăng ký. Máy chủ giữ bảng riêng (`SubjectFormLimits`); CR-2 đối
- * chiếu hai bảng khi nộp. Áp cho bài chuẩn: bài ôn không bao giờ tới đây vì không chọn MT/DS (R-1).
- */
 export interface SubjectFormLimits {
   setCount: { min: number; max: number; size: number };
   shortAnswerMin: number;

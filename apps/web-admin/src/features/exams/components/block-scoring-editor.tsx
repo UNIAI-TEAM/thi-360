@@ -23,10 +23,6 @@ export function evenTrueFalseTable(statementCount: number, points: number): numb
   return Array.from({ length: statementCount }, (_, index) => round((points * (index + 1)) / statementCount));
 }
 
-/**
- * Bảng điểm mặc định của kỳ thi quy theo điểm mỗi câu của khối (bảng THPTQG 0,1 / 0,25 / 0,5 / 1 tính trên điểm tối đa
- * 1); kỳ thi không có bảng thì chia đều 4 ý.
- */
 export function defaultTrueFalseTable(defaults: ScoringDefaults | null, points: number): number[] {
   const table = defaults?.trueFalse.table;
   if (!table?.length) return evenTrueFalseTable(4, points);
@@ -44,10 +40,6 @@ export function trueFalseTableIssues(table: readonly number[], points: number): 
   return issues;
 }
 
-/**
- * Quy tắc chấm mặc định khi khối đổi sang dạng câu có quy tắc: Đúng/Sai theo bảng của kỳ thi (khi kỳ thi có bảng),
- * Nhiều đáp án theo quy tắc của kỳ thi. Dạng khác bỏ quy tắc.
- */
 export function expectedScoringFor(
   questionType: QuestionBlock["questionType"],
   defaults: ScoringDefaults | null,
@@ -67,11 +59,6 @@ interface BlockScoringEditorProps {
   onChange: (expectedScoring: BlockExpectedScoring | undefined) => void;
 }
 
-/**
- * Quy tắc chấm mong đợi của khối (UNI-2599 quyết định 2–4): quy tắc thật nằm trên từng câu, khối chỉ giữ quy tắc mong
- * đợi để Kiểm tra cấu hình báo câu nguồn có quy tắc khác. Đúng/Sai: bảng điểm theo số ý đúng; Nhiều đáp án: đúng hết
- * mới có điểm hoặc chấm từng phần; Tự luận: chấm tay theo tiêu chí của câu.
- */
 export function BlockScoringEditor({ block, defaults, onChange }: BlockScoringEditorProps) {
   const t = useTranslations("exams.structure.scoring");
   const format = useFormatter();

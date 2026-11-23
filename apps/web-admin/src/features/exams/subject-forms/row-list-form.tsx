@@ -24,13 +24,6 @@ import { replaceWithSplit, splitBlock, splitState } from "./row-split";
 import { subjectFormFor } from "./registry";
 import { SubjectFormHeader } from "./subject-form-header";
 
-/**
- * Danh sách dòng lấy câu (DS, FTM R-7, lát CR-3a): đầu môn, bảng dòng một mục theo thứ tự của mẫu (tiêu đề phân đoạn khi có
- * `displaySegments`, chip audio, chỉ số chỉ đọc, tóm tắt điều kiện), màn sửa dòng gọn và khối Phân bổ đối chiếu gấp sẵn. Không có nút
- * thêm, xóa, lên, xuống dòng (R-13). Số lượng của dòng nhập theo số câu hoặc tỷ lệ ở kỳ cho nhập % (R-9), tách dòng ở cặp đăng ký (R-7);
- * Phân bổ đối chiếu có Số câu / Tỷ lệ, công tắc áp dụng và bảng kết hợp của V-SAT (CR-3b). Mỗi dòng gắn `data-form-row="<blockId>"`; điều
- * hướng (`?block=`, bấm lỗi, bấm tóm tắt) báo dòng đích bằng `ROW_TARGET_EVENT` và màn mở đúng màn sửa dòng.
- */
 export function RowListForm({
   context,
   subjectName,

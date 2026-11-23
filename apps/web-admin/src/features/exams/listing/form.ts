@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { ListingTerms, ResultView, UpdateListingRequest } from "./types";
 
-/** Giới hạn của máy chủ (TM 6.1, BE `ExamListingService`); máy chủ kiểm lại khi lưu. */
 export const LISTING_LIMITS = {
   summary: 300,
   description: 4000,
@@ -93,10 +92,6 @@ export interface ListingValidationMessages {
   attemptsRange: string;
 }
 
-/**
- * Lưu nháp chỉ chặn dữ liệu sai kiểu và vượt giới hạn (TM 6.2): giá và số lượt trống vẫn lưu được, khi công bố mới
- * thành lỗi chặn của nhóm Thông tin bán.
- */
 export function listingSchema(messages: ListingValidationMessages) {
   return z.object({
     summary: z.string().max(LISTING_LIMITS.summary, messages.summaryMax),

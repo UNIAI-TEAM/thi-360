@@ -23,18 +23,6 @@ import { ChoiceCardGroup, type ChoiceCardOption, ScopeField, useKindLabel, usePa
 /** Giá trị thẻ "Nghe và Đọc" trong nhóm phạm vi tách theo audio; thẻ còn lại mang mã phần (`P<thứ tự>`). */
 const WHOLE_SUBJECT = "SUBJECT";
 
-/**
- * Kỳ thi, phạm vi, môn, phần và cách dựng bài của bước 1 (2B 15.1, H4, K8; G2c `TaoBaiThiHscaVsat2B`):
- * - phạm vi chỉ gồm các phạm vi hồ sơ kỳ thi cho phép (`ScopeField`);
- * - kỳ thi `templateBy = SUBJECT` (SP2E, SPT) chọn môn trước rồi mới chọn phần khi phạm vi là Theo phần;
- * - kỳ thi `templateBy = SUBJECT` dùng một đồng hồ chung cho cả môn (H-SCA, V-SAT, `timing = SHARED`) đặt môn trước phạm
- *   vi, gọi phạm vi cả môn là "Cả môn"; môn tách phần theo audio (H-SCA Tiếng Anh) thay hai thẻ bằng Nghe, Đọc, Nghe và
- *   Đọc; phần viết đã lược (`omittedLocked`) và phần không có bài riêng không có trong danh sách phần;
- * - hai thẻ `build_mode` chỉ hiện khi phạm vi là Theo môn;
- * - không chọn phiên bản cấu trúc ở bước 1 (K8): phiên bản mặc định do máy chủ nạp.
- * - `showBuildMode = false` (tab Thông tin chung): kiểu xây bài không đổi được ở đó nên hai thẻ đó không hiện.
- * Component chỉ báo thay đổi qua `onChange`; trang quyết định nạp lại ngay hay hỏi xác nhận.
- */
 export function CreateExamScopeFields({
   kinds,
   subjects,

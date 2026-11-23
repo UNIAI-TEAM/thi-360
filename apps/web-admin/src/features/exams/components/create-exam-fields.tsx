@@ -100,10 +100,6 @@ type OptionalNumberInputProps = Omit<InputProps, "value" | "onChange" | "type" |
   onValueChange: (value: number | null) => void;
 };
 
-/**
- * Ô số thập phân được để trống (thang điểm, điểm của phần): `type="text"` + `inputMode="decimal"`, ô trống là `null`,
- * nhận dấu phẩy hoặc chấm, tối đa hai chữ số sau dấu phẩy. Chữ sai định dạng thì `aria-invalid` và giữ giá trị cũ.
- */
 export function OptionalNumberInput({ value, onValueChange, className, ...props }: OptionalNumberInputProps) {
   const [text, setText] = useState(() => formatOptionalNumber(value));
   const [lastValue, setLastValue] = useState(value);
@@ -134,9 +130,6 @@ export function OptionalNumberInput({ value, onValueChange, className, ...props 
   );
 }
 
-/**
- * Kỳ thi dạng ô chọn của bản vẽ TaoBaiThi2B: một mục cho mỗi kỳ thi của danh mục, tên đầy đủ từ danh mục.
- */
 export function KindSelect({
   kinds,
   value,
@@ -216,9 +209,6 @@ function yearText(year: number | null | undefined): string {
   return year === null || year === undefined ? "" : String(year);
 }
 
-/**
- * Ghi chú của mẫu đã nạp: năm cấu trúc khác năm ma trận thì cảnh báo, kèm ô xác nhận chuyên môn ở cả tạo mới và sửa (`R-07`).
- */
 export function TemplateNotes({
   template,
   yearsConfirmed = false,

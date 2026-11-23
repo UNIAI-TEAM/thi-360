@@ -1,9 +1,5 @@
 import { type OverviewRow, sectionCompetency } from "./create-exam-overview";
 
-/**
- * Tiểu mục V-ACT phân biệt bằng năng lực: hai mục cùng môn SCIENTIFIC_THINKING (H24) lấy tên theo mã năng lực
- * (R-109: không hiện mã thô). Năng lực không thuộc bảng này rơi về tên môn của mục.
- */
 const VACT_COMPETENCY_PART: Record<string, string> = { "VACT-TD-LOGIC": "LOGIC", "VACT-TD-SL": "REASONING" };
 /** Phần nhiều tiểu mục của V-ACT: mã năng lực các mục cùng tiền tố thì phần lấy tên thông điệp (Sử dụng ngôn ngữ, Tư duy khoa học). */
 const VACT_COMPETENCY_GROUP: Array<[prefix: string, part: string]> = [
@@ -26,11 +22,6 @@ interface OverviewLabelContext {
   audioLabel?: (row: OverviewRow) => string | undefined;
 }
 
-/**
- * Tên dòng theo ngôn ngữ đang chọn, dựng từ mã năng lực và mã môn (không lấy tên tiếng Việt lưu trong mẫu): mục cùng môn
- * tách tên theo năng lực, mục thường theo tên môn. Dòng phần một mục lấy tên của mục đó; phần nhiều mục lấy tên nhóm năng
- * lực. Không có khóa thì để `undefined`: giữ tên đang có của dòng. Dùng chung bảng tổng quan ở bước 1 và Thông tin chung.
- */
 export function overviewRowLabel(context: OverviewLabelContext, row: OverviewRow): string | undefined {
   if (row.kind === "section") {
     return context.partName((row.competencyCode && VACT_COMPETENCY_PART[row.competencyCode]) || row.subjectCode);
