@@ -3,6 +3,7 @@
 import {
   AttemptAudioPlayer,
   createTrialAudioAdapter,
+  filterAudioAttachments,
   type AudioClosedReason,
   type AudioPlayAdapter,
   type AudioPlaybackSnapshot,
@@ -12,9 +13,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toTrialAttachments } from "./mappers";
 import type { PreviewTrialAttachment, PreviewTrialPaperResponse } from "./types";
 
-export const MAX_TRIAL_AUDIO_PLAYS = 2;
+const MAX_TRIAL_AUDIO_PLAYS = 2;
 
-export const INITIAL_TRIAL_AUDIO_SNAPSHOT: AudioPlaybackSnapshot = {
+const INITIAL_TRIAL_AUDIO_SNAPSHOT: AudioPlaybackSnapshot = {
   playId: null,
   playsUsed: 0,
   playsLeft: MAX_TRIAL_AUDIO_PLAYS,
@@ -40,12 +41,10 @@ export interface TrialAudioRegistry {
 export function filterTrialAudioAttachments(
   attachments: readonly PreviewTrialAttachment[] | undefined,
 ): Array<{ id: string; name: string; mime: string }> {
-  return toTrialAttachments(attachments).filter((att) =>
-    att.mime.toLowerCase().startsWith("audio/"),
-  );
+  return filterAudioAttachments(toTrialAttachments(attachments));
 }
 
-export function collectTrialAudioAssetIds(
+function collectTrialAudioAssetIds(
   paper: PreviewTrialPaperResponse | undefined,
 ): string[] {
   if (!paper) return [];

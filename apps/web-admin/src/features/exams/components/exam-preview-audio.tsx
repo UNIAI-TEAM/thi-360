@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, cn, focusRing, IconButton } from "@thi360/ui";
+import { filterAudioAttachments } from "@thi360/ui/question";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
@@ -11,11 +12,6 @@ const ASSET_PATH = "/api/v1/admin/question-assets";
 const SEEK_STEP_SECONDS = 5;
 /** Sau khi tua, vị trí thật lệch quá mức này so với đích thì coi là tệp không tua được. */
 const SEEK_TOLERANCE_SECONDS = 0.3;
-
-/** Chỉ các tệp MIME `audio/*`; tệp đính kèm khác (PDF, ảnh) không có trình phát. */
-export function audioAttachments(attachments: readonly PreviewAttachment[] | undefined): PreviewAttachment[] {
-  return (attachments ?? []).filter((attachment) => attachment.mime.toLowerCase().startsWith("audio/"));
-}
 
 /** `seekable` có ít nhất một khoảng thật (end > start) thì tệp tua được; rỗng hay chỉ [[0,0]] là máy chủ không hỗ trợ Range. */
 function seekableRanges(element: HTMLMediaElement): boolean {
@@ -283,7 +279,7 @@ export function PreviewAudioPlayer({
 
 /** Các trình phát của một câu hoặc một bộ: mỗi tệp `audio/*` một trình phát xếp dọc. Không có tệp audio thì không hiện gì. */
 export function PreviewAudioList({ attachments, name }: { attachments: readonly PreviewAttachment[] | undefined; name: string }) {
-  const files = audioAttachments(attachments);
+  const files = filterAudioAttachments(attachments);
   if (files.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
