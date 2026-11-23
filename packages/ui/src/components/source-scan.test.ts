@@ -10,6 +10,7 @@ function walkFiles(dir: string): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (entry.name === "__tests__" || entry.name === "node_modules") continue;
       results.push(...walkFiles(full));
     } else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.(ts|tsx)$/.test(entry.name)) {
       results.push(full);
@@ -58,10 +59,14 @@ function stripCommentsPreservingStrings(source: string): string {
   return out;
 }
 
-describe("packages/ui/src/components source scan", () => {
+describe("packages/ui/src/components & essay-editor source scan", () => {
   it("không chứa ký tự tiếng Việt có dấu trong mã nguồn thành phần (ngoài tệp test và tệp chuỗi)", () => {
-    const componentsDir = path.resolve(import.meta.dirname);
-    const files = walkFiles(componentsDir);
+    const srcDir = path.resolve(import.meta.dirname, "..");
+    const roots = [
+      path.resolve(import.meta.dirname),
+      path.resolve(srcDir, "essay-editor"),
+    ];
+    const files = roots.flatMap(walkFiles);
     expect(files.length).toBeGreaterThan(0);
 
     const violations: string[] = [];
@@ -70,7 +75,7 @@ describe("packages/ui/src/components source scan", () => {
       const lines = stripped.split("\n");
       lines.forEach((line, index) => {
         if (VIETNAMESE_DIACRITIC_RE.test(line)) {
-          violations.push(`${path.relative(componentsDir, file)}:${index + 1}: ${line.trim()}`);
+          violations.push(`${path.relative(srcDir, file)}:${index + 1}: ${line.trim()}`);
         }
       });
     }

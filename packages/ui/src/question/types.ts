@@ -82,7 +82,7 @@ export type QuestionBody =
       shuffleOptions?: boolean;
     }
   | { type: "SHORT_ANSWER"; answers: string[]; inputHint?: string | null; answerFormat?: AnswerFormat | null }
-  | { type: "CLOZE"; passage: string; blanks: ClozeBlank[] }
+  | { type: "CLOZE"; passage: string; blanks: ClozeBlank[]; blankNumberStart?: number }
   | {
       type: "QUESTION_SET";
       /** Ngữ liệu chung (HTML; `span.blank` cho câu con dạng điền chỗ trống). */

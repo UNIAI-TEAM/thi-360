@@ -71,7 +71,11 @@ function shape(value: unknown): unknown {
 
 describe("quét nguồn của thành phần câu hỏi và bộ hiển thị (AC-20)", () => {
   it("không chứa chữ tiếng Việt có dấu viết thẳng trong mã nguồn (ngoài tệp test và tệp dịch)", () => {
-    const roots = [path.resolve(import.meta.dirname, ".."), path.resolve(import.meta.dirname, "../../rich-text")];
+    const roots = [
+      path.resolve(import.meta.dirname, ".."),
+      path.resolve(import.meta.dirname, "../../rich-text"),
+      path.resolve(import.meta.dirname, "../../essay-editor"),
+    ];
     const files = roots.flatMap(walk);
     expect(files.length).toBeGreaterThan(10);
     const violations: string[] = [];

@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./essay-editor": "./src/essay-editor/index.ts",
     "./question": "./src/question/index.ts",
     "./rich-text": "./src/rich-text/index.ts",
     "./styles/tokens.css": "./src/styles/tokens.css"
@@ -25,6 +26,8 @@
     "@radix-ui/react-tabs": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
     "@tanstack/react-table": "^8.21.3",
+    "@tiptap/react": "3.34.0",
+    "@tiptap/starter-kit": "3.34.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "katex": "0.19.1",

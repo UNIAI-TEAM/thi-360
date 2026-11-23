@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { NavTab, NavTabs } from "./nav-tabs";
 
 function Example({ current }: { current: "roles" | "users" }) {
@@ -58,6 +59,87 @@ describe("NavTabs", () => {
       // Không có viền (kể cả trong suốt) ở trạng thái thường: chế độ tương phản cao sẽ tô nó thành gạch chân.
       expect(link.className).not.toMatch(/(^|\s)after:border-(b-2|transparent)(\s|$)/);
     }
+  });
+
+  it("disabled dựng thẻ span tĩnh mang aria-disabled=true, bỏ qua href và không kích hoạt onClick (R-01, AC-01)", async () => {
+    const user = userEvent.setup();
+    const onDisabledClick = vi.fn();
+    render(
+      <NavTabs aria-label="Chi tiết đề thi">
+        <NavTab href="/exams/1" current>
+          Tổng quan
+        </NavTab>
+        <NavTab
+          href="/exams/1/trial"
+          disabled
+          current
+          onClick={onDisabledClick}
+          data-testid="disabled-tab"
+          title="Chưa sinh đề"
+        >
+          Làm thử
+        </NavTab>
+      </NavTabs>,
+    );
+
+    const nav = screen.getByRole("navigation", { name: "Chi tiết đề thi" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Làm thử" })).toBeNull();
+
+    const disabledEl = screen.getByTestId("disabled-tab");
+    expect(disabledEl.tagName).toBe("SPAN");
+    expect(disabledEl.parentElement?.tagName).toBe("LI");
+    expect(disabledEl).toHaveTextContent("Làm thử");
+    expect(disabledEl).toHaveAttribute("aria-disabled", "true");
+    expect(disabledEl).toHaveAttribute("data-disabled", "");
+    expect(disabledEl).toHaveAttribute("title", "Chưa sinh đề");
+    expect(disabledEl).not.toHaveAttribute("href");
+    expect(disabledEl).not.toHaveAttribute("aria-current");
+    expect(disabledEl).toHaveClass(
+      "h-10",
+      "px-4",
+      "text-text-muted/60",
+      "cursor-not-allowed",
+      "select-none",
+    );
+
+    await user.click(disabledEl);
+    expect(onDisabledClick).not.toHaveBeenCalled();
+  });
+
+  it("disabled kết hợp asChild chặn trước Slot: không dựng thẻ <a>/<Link>, không có href và không gọi onClick", async () => {
+    const user = userEvent.setup();
+    const onTabClick = vi.fn();
+    const onChildClick = vi.fn();
+    render(
+      <NavTabs aria-label="Chi tiết đề thi">
+        <NavTab href="/exams/1" current>
+          Tổng quan
+        </NavTab>
+        <NavTab disabled asChild onClick={onTabClick} data-testid="disabled-as-child">
+          <a href="/exams/1/preview" onClick={onChildClick} data-app-link="true">
+            Xem trước
+          </a>
+        </NavTab>
+      </NavTabs>,
+    );
+
+    const nav = screen.getByRole("navigation", { name: "Chi tiết đề thi" });
+    expect(nav.querySelectorAll("a")).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Xem trước" })).toBeNull();
+
+    const disabledEl = screen.getByTestId("disabled-as-child");
+    expect(disabledEl.tagName).toBe("SPAN");
+    expect(disabledEl.querySelector("a")).toBeNull();
+    expect(disabledEl).toHaveTextContent("Xem trước");
+    expect(disabledEl).toHaveAttribute("aria-disabled", "true");
+    expect(disabledEl).toHaveAttribute("data-disabled", "");
+    expect(disabledEl).not.toHaveAttribute("href");
+    expect(disabledEl).not.toHaveAttribute("data-app-link");
+
+    await user.click(disabledEl);
+    expect(onTabClick).not.toHaveBeenCalled();
+    expect(onChildClick).not.toHaveBeenCalled();
   });
 
   describe("thanh không đủ chỗ", () => {
